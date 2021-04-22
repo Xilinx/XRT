@@ -171,6 +171,7 @@ enum class key_type
   vcc_aux_pmc_millivolts,
   vcc_ram_millivolts,
   int_vcc_io_millivolts,
+  v0v9_int_vcc_vcu_millivolts,
   mac_contiguous_num,
   mac_addr_first,
   mac_addr_list,
@@ -1856,6 +1857,21 @@ struct int_vcc_io_millivolts : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::int_vcc_io_millivolts;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return std::to_string(value);
+  }
+};
+
+struct v0v9_int_vcc_vcu_millivolts : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::v0v9_int_vcc_vcu_millivolts;
 
   virtual boost::any
   get(const device*) const = 0;

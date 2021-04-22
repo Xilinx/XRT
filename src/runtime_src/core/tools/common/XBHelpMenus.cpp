@@ -524,17 +524,29 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
   std::string supportedValues;        // Formatted string of supported values
   std::string formattedString;        // Helper working string
                                       
+  // Make a copy of the data (since it is going to be modified)
+  VectorPairStrings workingCollection = _collection;
+
   // Determine the indention width
   unsigned int maxStringLength = 0;
-  for (const auto & pairs : _collection)
-    maxStringLength = std::max(maxStringLength, (unsigned int) pairs.first.length());
+  for (auto & pairs : workingCollection) {
+    // Determine if the keyName needs to have 'quotes', if so add them
+    if (pairs.first.find(' ') != std::string::npos ) {
+      pairs.first.insert(0, 1, '\'');  
+      pairs.first += "\'";     
+    }
+
+    maxStringLength = std::max<unsigned int>(maxStringLength, static_cast<unsigned int>(pairs.first.length()));
+  }
 
   const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
   boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s\n");  
+  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s\n");  
 
-  // report names and discription
-  for (const auto & pairs : _collection) {
-    XBU::wrap_paragraphs(boost::str(reportFmt % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/, formattedString);
+  // Report names and description
+  for (const auto & pairs : workingCollection) {
+    boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
+    XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/, formattedString);
     supportedValues += formattedString;
   }
 

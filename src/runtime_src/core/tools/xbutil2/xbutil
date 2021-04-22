@@ -38,27 +38,14 @@ declare -A VALOPT=( \
     )
 
 # Table to resolve reset sub-command based on switch passed to reset
-#declare -A RSTOPT=( \
-#        ["--device"]="XBUTIL2" \
-#        ["--type"]="XBUTIL2" \
-#        ["--help"]="XBUTIL2" \
-#        ["-d"]="DEVICE" \
-#        ["-r"]="XBUTIL2" \
-#        ["-h"]="XBUTIL2" \
-#    )
-
-# Switch to the table above once xbutil reset is implemented by the
-# next generation tool. For now redirect all reset requests to classic
-# tool
-
 declare -A RSTOPT=( \
-        ["--device"]="XBUTIL" \
-        ["--type"]="XBUTIL" \
-        ["--help"]="XBUTIL" \
-        ["-d"]="XBUTIL" \
-        ["-r"]="XBUTIL" \
-        ["-h"]="XBUTIL" \
-    )
+       ["--device"]="XBUTIL2" \
+       ["--type"]="XBUTIL2" \
+       ["--help"]="XBUTIL2" \
+       ["-d"]="DEVICE" \
+       ["-r"]="XBUTIL2" \
+       ["-h"]="XBUTIL2" \
+   )
 
 # Table to resolve program sub-command based on switch passed to program
 declare -A PROGOPT=( \

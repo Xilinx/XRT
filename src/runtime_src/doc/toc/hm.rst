@@ -1,21 +1,20 @@
-.. _sb.rst:
+.. _hm.rst:
 
-PCIe Slave-Bridge (SB)
-======================
+Host Memory Access
+==================
 
-Slave Bridge IP is used by the kernel(s) to read and write data directly from/to the Host Memory. Unlike the XDMA data transfer, this data transfer mechanism does not utlize global memories (DDR, HBM, PLRAM ,etc) on the card. Slave-Bridge provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
+Some of the recent Alveo cards support direct host memory access by the kernel(s) to read/write data directly from/to the host memory. Unlike the XDMA data transfer, this data transfer mechanism does not utilize global memories (DDR, HBM, PLRAM, etc) on the card. This feature provides DMA bypass capability that is primarily used for data transfer on a No-DMA platform.
 
 
 Kernel Compilation
 ------------------
 
-Use the following V++ configuration option to connect a kernel AXI-Master Port to Slave-Bridge IP.
+Use the following V++ configuration option to configure kernel port's connectivity to allow drive data through the AXI bridge to the host memory.
 
 .. code-block:: bash
 
    [connectivity]
    ## Syntax
-   ##sp=<cu_name>.<axi_master_port>:HOST[0]
    sp=my_kernel_1.m_axi_gmem:HOST[0]
 
 
@@ -27,7 +26,7 @@ To enable host memory access functionality the following settings are required f
 Hugepage Requirement
 ~~~~~~~~~~~~~~~~~~~~
 
-If the kernel requirement of the Host Memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These Hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank like memory.
+If the kernel requirement of the host memory is more than 1GB, XRT allocates multiple Hugepages from the host memory. These hugepages are internally remapped (inside the FPGA shell) so that kernel can see a large contiguous bank-like memory.
 
 
 **Steps required to enable Hugepages (Linux)**
@@ -82,7 +81,7 @@ Irrespective of the Hugepages settings, ``xbutil host_mem`` command must be used
 Maximum Host memory supported by the platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the platform supporting Slave-Bridge we can observe the following two data from a ``xbutil query`` output
+For the platform supporting the host memory access feature, we can observe the following two data from the ``xbutil query`` output
 
      - **Max HOST_MEM**: The maximum host memory supported by the platform.
      - **HOST_MEM size**: The host memory specified for this card (by ``xbutil host_mem``)
@@ -133,8 +132,8 @@ Assuming the platform supported maximum host memory is 16GB, the following outpu
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-OpenCL Host code Guideline
---------------------------
+Host code Guideline
+-------------------
 
 XRT OpenCL introduces a new buffer extension Flag ``XCL_MEM_EXT_HOST_ONLY`` that should be used to denote a Host-only buffer
 
@@ -148,10 +147,14 @@ XRT OpenCL introduces a new buffer extension Flag ``XCL_MEM_EXT_HOST_ONLY`` that
     cl::Buffer buffer_in (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
     cl::Buffer buffer_out(context,CL_MEM_WRITE_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
 
+In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``XCL_BO_FLAGS_HOST_ONLY`` as shown in the example below
 
-Follow coding guideline as dictated below
+.. code-block:: c++
 
-      - Use ``XCL_MEM_EXT_HOST_ONLY`` extension for Buffer declaration (as per the above example)
-      - Do not use ``CL_MEM_USE_HOST_PTR`` for creating a host-only buffer
-      - Buffer should mapped to the user-space ``clEnqueueMapBuffer`` for Read/Write
-      - Regular OpenCL data transfer APIs ``clEnqueueMigramemObjects``, ``clEnqueueWriteBuffer`` etc should be used. Though these API will not do any DMA operation, but they are used for Cache Invalidate/Flush as the application works on the Cache memory.
+    auto buffer_in  = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(0)); 
+    auto buffer_out = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(1)); 
+
+Also ensure to follow coding guideline as stated below
+
+      - Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.
+      - Regular data transfer APIs (OpenCL: ``clEnqueueMigramemObjects``/``clEnqueueWriteBuffer``, XRT Native API: ``xrt::bo::sync()``) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.

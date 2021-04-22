@@ -660,6 +660,9 @@ XclBin::addMergeSection(ParameterSectionData & _PSD)
     throw std::runtime_error(errMsg);
   }
 
+  // Update the path where this file is coming from
+  pSection->setPathAndName(_PSD.getFile());
+
   // Get the current section data
   boost::property_tree::ptree ptPayload;
   pSection->getPayload(ptPayload);

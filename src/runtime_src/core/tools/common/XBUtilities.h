@@ -24,6 +24,8 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <iostream>
+#include <vector>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -47,6 +49,7 @@ namespace XBUtilities {
    *                  false - disable verbosity (default)
    */
   void setVerbose(bool _bVerbose);
+  bool getVerbose();
   void setTrace(bool _bVerbose);
 
   void setShowHidden(bool _bShowHidden);
@@ -55,9 +58,9 @@ namespace XBUtilities {
   void disable_escape_codes( bool _disable );
   bool is_esc_enabled();  
 
-  void message_(MessageType _eMT, const std::string& _msg, bool _endl = true);
+  void message_(MessageType _eMT, const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout);
 
-  void message(const std::string& _msg, bool _endl = true); 
+  void message(const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout); 
   void info(const std::string& _msg, bool _endl = true);
   void warning(const std::string& _msg, bool _endl = true);
   void error(const std::string& _msg, bool _endl = true);
@@ -93,6 +96,22 @@ namespace XBUtilities {
   std::string format_base10_shiftdown3(uint64_t value);
   std::string format_base10_shiftdown6(uint64_t value);
   
+  template <typename T>
+  std::vector<T> as_vector( boost::property_tree::ptree const& pt, 
+                            boost::property_tree::ptree::key_type const& key) 
+  {
+    std::vector<T> r;
+
+    boost::property_tree::ptree::const_assoc_iterator it = pt.find(key);
+
+    if( it != pt.not_found()) {
+      for (auto& item : pt.get_child(key)) 
+        r.push_back(item.second);
+    }
+    return r;
+  }
+
+
    /**
    * get_axlf_section() - Get section from the file passed in
    *

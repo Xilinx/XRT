@@ -1,0 +1,119 @@
+{
+  "smartnic": {
+    "schema_version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    },
+    "extensions": [
+      {
+        "instance_name": "plugin_1:instance_1",
+        "version_info": {
+          "uuid": "474273F130A84802BAFE0B1349D273C9",
+          "minor": 0,
+          "patch": 2
+        },
+        "global_memory_size_bytes": 125,
+        "per_handle_memory_size_bytes": 125,
+        "info": [
+          {
+            "title": "My Special Plugin"
+          },
+          {
+            "creator": "Xilinx Engineer"
+          },
+          {
+            "subject": "Demo"
+          },
+          {
+            "description": "This is a special demo plugin"
+          },
+          {
+            "publisher": "Xilinx"
+          },
+          {
+            "date": "1997-07-16T19:20:30.45+01:00"
+          },
+          {
+            "type": "Networking accelerator"
+          },
+          {
+            "format": "SmartNIC plugin"
+          },
+          {
+            "identifier": "6511BA546-32A"
+          },
+          {
+            "source": "Special Company"
+          },
+          {
+            "language": "de-CH-1901"
+          },
+          {
+            "relation": "Networking"
+          },
+          {
+            "coverage": "Security"
+          },
+          {
+            "rights": "Xilinx Copyright 2021"
+          }
+        ],
+        "features": "01"
+      },
+      {
+        "instance_name": "plugin_2:instance_1",
+        "version_info": {
+          "uuid": "4BA402B066864876A82064DCF62575AA",
+          "minor": 0,
+          "patch": 2
+        },
+        "info": [
+          {
+            "title": "My Special Plugin"
+          },
+          {
+            "creator": "Xilinx Engineer"
+          },
+          {
+            "subject": "Demo"
+          },
+          {
+            "description": "This is a 2nd special demo plugin"
+          },
+          {
+            "publisher": "Xilinx"
+          },
+          {
+            "date": "1997-07-16T19:20:30.45+01:00"
+          },
+          {
+            "type": "Networking accelerator"
+          },
+          {
+            "format": "SmartNIC plugin"
+          },
+          {
+            "identifier": "6511BA546-32A"
+          },
+          {
+            "source": "Special Company"
+          },
+          {
+            "language": "de-CH-1901"
+          },
+          {
+            "relation": "Networking"
+          },
+          {
+            "coverage": "Security"
+          },
+          {
+            "rights": "Xilinx Copyright 2021"
+          }
+        ],
+        "features": "04"
+      }
+    ]
+  }
+}

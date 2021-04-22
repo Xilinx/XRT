@@ -228,9 +228,16 @@ get_continuous_trace_interval_ms()
 }
 
 inline unsigned int
-get_trace_dump_interval_s()
+get_trace_buffer_offload_interval_ms()
 {
-  static unsigned int value = detail::get_uint_value("Debug.trace_dump_interval_s",5);
+  static unsigned int value = detail::get_uint_value("Debug.trace_buffer_offload_interval_ms",10);
+  return value;
+}
+
+inline unsigned int
+get_trace_file_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("Debug.trace_file_dump_interval_s",5);
   return value;
 }
 

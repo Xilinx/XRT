@@ -600,6 +600,12 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
   return -ENOSYS;
 }
 
+int 
+xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
+{
+  return -ENOSYS;
+}
+
 /*
  * API to get number of live processes.
  * Applicable only for System Flow as it supports Multiple processes on same device.

@@ -237,6 +237,11 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	}
 
 out:
+	if (xrt_cu_get_protocol(cu_mgmt->xcus[index]) == CTRL_NONE) {
+		kds_err(client, "Cannot submit command to ap_ctrl_none CU");
+		return -EINVAL;
+	}
+
 	cu_stat_inc(cu_mgmt, usage[index]);
 	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;

@@ -169,6 +169,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,trace_buffer_offload_interval_ms,"
+	      << xrt_core::config::get_trace_buffer_offload_interval_ms() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,lop_trace,"
 	      << xrt_core::config::get_lop_trace() ;
       iniSettings.push_back(setting.str()) ;
@@ -554,11 +560,12 @@ namespace xdp {
 	{
 	  uint64_t amSlotID = (uint64_t)((cuInfo.second)->getAccelMon()) ;
 
-    // Stats don't make sense if runtime or executions = 0
-    if ((values.CuBusyCycles[amSlotID] == 0) || (values.CuExecCount[amSlotID] == 0))
-      continue;
+          // Stats don't make sense if runtime or executions = 0
+          if ((values.CuBusyCycles[amSlotID] == 0) ||
+              (values.CuExecCount[amSlotID] == 0))
+            continue;
 
-    // This info is the same for every execution call
+          // This info is the same for every execution call
 	  std::string cuName = (cuInfo.second)->getName() ;
 	  std::string kernelName = (cuInfo.second)->getKernelName() ;
 	  std::string cuLocalDimensions = (cuInfo.second)->getDim() ;

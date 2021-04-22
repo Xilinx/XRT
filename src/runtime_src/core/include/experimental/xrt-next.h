@@ -246,21 +246,6 @@ int
 xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data);
 
 /**
- * xclIPName2Index() - Obtain IP index by IP name
- *
- * @handle:        Device handle
- * @ipName:        IP name. usually "<kernel name>:<instance name>"
- * Return:         IP index or appropriate error number
- *
- * xclIPName2Index() should be used to obtain unique index of IP as understood by other XRT APIs
- * like xclOpenContext().
- *
- */
-XCL_DRIVER_DLLESPEC
-int
-xclIPName2Index(xclDeviceHandle handle, const char *ipName);
-
-/**
  * xclOpenIPInterruptNotify() - Open a fd for IP interrupt notify
  *
  * @handle:     Device handle

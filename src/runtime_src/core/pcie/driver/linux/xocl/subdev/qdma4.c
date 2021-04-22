@@ -1954,11 +1954,11 @@ static int qdma4_probe(struct platform_device *pdev)
 		ret = qdma4_csr_prog_ta(XDEV(xdev)->pdev, csr_bar, csr_base);
 		if (ret < 0)
 			xocl_err(&pdev->dev,
-				"Slave bridge BDF program failed (%d,0x%lx).",
+				"Host memory BDF program failed (%d,0x%lx).",
 				csr_bar, (unsigned long)csr_base);
 		else
 			xocl_info(&pdev->dev,
-				"Slave bridge BDF programmed (%d,0x%lx).",
+				"Host memory BDF programmed (%d,0x%lx).",
 				csr_bar, (unsigned long)csr_base);
 	}
 

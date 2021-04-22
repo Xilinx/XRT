@@ -29,6 +29,7 @@
 #include <unistd.h>
 
 #include <boost/format.hpp>
+#include <boost/tokenizer.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -232,6 +233,55 @@ struct aie_shim_info : aie_metadata
     boost::property_tree::write_json(oss, pt);
     std::string inifile_text = oss.str();
     return inifile_text;
+  }
+};
+
+struct kds_cu_stat
+{
+  using result_type = query::kds_cu_stat::result_type;
+  using data_type = query::kds_cu_stat::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    auto edev = get_edgedev(device);
+
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> stats;
+    std::string errmsg;
+
+    // The kds_custat_raw is printing in formatted string of each line
+    // Format: "%d,%s:%s,0x%lx,0x%x,%lu"
+    // Using comma as separator.
+    edev->sysfs_get("kds_custat_raw", errmsg, stats);
+    if (!errmsg.empty())
+      throw std::runtime_error(errmsg);
+
+    result_type cuStats;
+    // stats e.g.
+    // 0,vadd:vadd_1,0x1400000,0x4,0
+    // 1,vadd:vadd_2,0x1500000,0x4,0
+    // 2,mult:mult_1,0x1800000,0x4,0
+    for (auto& line : stats) {
+      boost::char_separator<char> sep(",");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 5)
+        throw std::runtime_error("CU statistic sysfs node corrupted");
+
+      data_type data;
+      constexpr int radix = 16;
+      tokenizer::iterator tok_it = tokens.begin();
+      data.index     = std::stoi(std::string(*tok_it++));
+      data.name      = std::string(*tok_it++);
+      data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
+      data.status    = std::stoul(std::string(*tok_it++), nullptr, radix);
+      data.usages    = std::stoul(std::string(*tok_it++));
+
+      cuStats.push_back(std::move(data));
+    }
+
+    return cuStats;
   }
 };
 
@@ -507,6 +557,9 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
+
+  emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
+  emplace_func0_request<query::kds_cu_stat,             kds_cu_stat>();
 }
 
 struct X { X() { initialize_query_table(); } };
