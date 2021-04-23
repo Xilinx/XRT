@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,6 +45,7 @@ void  main_(int argc, char** argv,
   bool bHelp = false;
   bool bBatchMode = false;
   bool bShowHidden = false;
+  bool bForce = false;
 
   // Build Options
   po::options_description globalOptions("Global Options");
@@ -52,6 +53,7 @@ void  main_(int argc, char** argv,
     ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
     ("batch",   boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
+    ("force",   boost::program_options::bool_switch(&bForce), "When possible, force an operation")
   ;
 
   // Hidden Options
@@ -97,6 +99,7 @@ void  main_(int argc, char** argv,
   XBU::setVerbose( bVerbose );
   XBU::setTrace( bTrace );
   XBU::setShowHidden( bShowHidden );
+  XBU::setForce( bForce );
 
   // Check to see if help was requested and no command was found
   if (vm.count("subCmd") == 0) {
