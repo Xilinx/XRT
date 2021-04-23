@@ -157,12 +157,17 @@ void recursive_transformation(const std::string& scope,
         itrObject->value.SetInt64(std::stoll(itrObject->value.GetString()));
       } else {
         // Positive Value
-        if (workingString.find_first_not_of("0123456789") != std::string::npos) {
+        if (workingString.find_first_not_of("0123456789abcdefABCDEFxX") != std::string::npos) {
           std::string errMsg = (boost::format("Error: Malformed integer: '%s'") % workingString).str();
           throw std::runtime_error(errMsg);
         }
-
-        itrObject->value.SetUint64(std::stoull(itrObject->value.GetString()));
+        try {
+          // Supports both base 10 and 16 (e.g., "0x..."
+          itrObject->value.SetUint64(std::stoull(itrObject->value.GetString(),0,0));
+        } catch (...) {
+          std::string errMsg = (boost::format("Error: Malformed integer: '%s'") % workingString).str();
+          throw std::runtime_error(errMsg);
+        }
       }
       return;    // -- Return --
     }
