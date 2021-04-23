@@ -68,7 +68,7 @@
                     }
                 ],
                 "address_mapping": {
-                    "offset": "0x400",
+                    "offset": "1024",
                     "aperture_size_bytes": "8388608"
                 },
                 "setup": {
