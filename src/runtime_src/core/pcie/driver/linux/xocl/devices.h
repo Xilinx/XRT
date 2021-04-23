@@ -52,6 +52,7 @@ enum {
 	XOCL_DSAFLAG_SMARTN			= (1 << 10),
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
 	XOCL_DSAFLAG_MPSOC			= (1 << 12),
+	XOCL_DSAFLAG_VERSAL_EDGE                = (1 << 13),
 };
 
 /* sysmon flags */
@@ -76,6 +77,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
+#define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -1838,6 +1840,24 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_RES_XFER_MGMT_VERSAL_EDGE			\
+		((struct resource []) {			\
+			{				\
+			.start	= 0x60000,		\
+			.end	= 0x6FFFF ,		\
+			.flags	= IORESOURCE_MEM,	\
+			}				\
+		})
+
+#define	XOCL_DEVINFO_XFER_MGMT_VERSAL_EDGE			\
+	{							\
+		XOCL_SUBDEV_XFER_VERSAL,			\
+		XOCL_XFER_VERSAL,				\
+		XOCL_RES_XFER_MGMT_VERSAL_EDGE,			\
+		ARRAY_SIZE(XOCL_RES_XFER_MGMT_VERSAL_EDGE),	\
+		.override_idx = -1,				\
+	}
+
 #define XOCL_RES_FLASH					\
 	((struct resource []) {				\
 		{					\
@@ -2058,6 +2078,13 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_UARTLITE,				\
 		})
 
+#define	MGMT_RES_VERSAL_EDGE						\
+		((struct xocl_subdev_info []) {				\
+		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
+		 	XOCL_DEVINFO_XFER_MGMT_VERSAL_EDGE,		\
+		})
+
+
 #define	MGMT_RES_DSA50							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
@@ -2126,6 +2153,16 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(MGMT_RES_VERSAL),		\
 		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
 	}
+
+#define XOCL_BOARD_MGMT_VERSAL_EDGE                                     \
+        (struct xocl_board_private){                                    \
+                .flags          = XOCL_DSAFLAG_VERSAL |                 \
+			XOCL_DSAFLAG_VERSAL_EDGE,                       \
+                .subdev_info    = MGMT_RES_VERSAL_EDGE,                 \
+                .subdev_num = ARRAY_SIZE(MGMT_RES_VERSAL_EDGE),         \
+                .flash_type = FLASH_TYPE_QSPI_VERSAL,                   \
+        }
+
 
 #define	MGMT_RES_6A8F							\
 		((struct xocl_subdev_info []) {				\
@@ -3330,6 +3367,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5020, PCI_ANY_ID, MGMT_U50) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5044, PCI_ANY_ID, MGMT_VERSAL) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6098, PCI_ANY_ID, MGMT_VERSAL_EDGE) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5048, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5050, PCI_ANY_ID, MGMT_U25) },	\

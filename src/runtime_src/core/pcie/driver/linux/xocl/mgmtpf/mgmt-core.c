@@ -1077,6 +1077,7 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 
 	if (!(dev_info->flags & XOCL_DSAFLAG_DYNAMIC_IP) &&
 	    !(dev_info->flags & XOCL_DSAFLAG_SMARTN) &&
+	    !(dev_info->flags & XOCL_DSAFLAG_VERSAL_EDGE) &&
 			i == dev_info->subdev_num &&
 			lro->core.intr_bar_addr != NULL) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_DMA_MSIX;
