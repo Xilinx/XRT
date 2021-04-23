@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -54,6 +54,9 @@ namespace XBUtilities {
 
   void setShowHidden(bool _bShowHidden);
   bool getShowHidden();
+
+  void setForce(bool _bForce);
+  bool getForce();
 
   void disable_escape_codes( bool _disable );
   bool is_esc_enabled();  
