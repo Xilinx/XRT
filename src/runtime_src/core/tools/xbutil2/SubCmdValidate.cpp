@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1556,7 +1556,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
-    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
+    if (!sOutput.empty() && !XBU::getForce() && boost::filesystem::exists(sOutput)) 
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
     if (testsToRun.empty()) 
@@ -1649,6 +1649,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     fOutput.open(sOutput, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) 
       throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+    std::cout << "Info: The output is being redirected to the file: \'" << sOutput << "\'" << std::endl;
+    std::cout << "Info: Validation started ... " << std::endl;
   }
 
   // Determine where the printed information should be sent.
@@ -1659,6 +1661,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, ptDevCollectionTestSuite, oOutput);
 
   // -- Create a summary of the report
-  create_report_summary(ptDevCollectionTestSuite, oOutput);
+  // Note: The report summary is only associated with the human readable format
+  if (schemaVersion == Report::SchemaVersion::text) 
+    create_report_summary(ptDevCollectionTestSuite, oOutput);
+
+  if (!sOutput.empty())
+    std::cout << "Info: Validation completed" << std::endl;
+
 }
 
