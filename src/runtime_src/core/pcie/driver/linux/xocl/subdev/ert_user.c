@@ -19,6 +19,7 @@
 #include "kds_client.h"
 
 #define	ERT_MAX_SLOTS		128
+#define ERT_MIN_SLOT_SIZE       512
 
 #define	ERT_STATE_GOOD		0x1
 #define	ERT_STATE_BAD		0x2
@@ -122,6 +123,7 @@ struct xocl_ert_user {
 
 	/* Configure dynamically */ 
 	unsigned int		num_slots;
+	unsigned int            slot_size;
 	bool			cq_intr;
 	bool			is_configured;
 	bool			ctrl_busy;
@@ -539,7 +541,7 @@ static inline void
 ert_get_return(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 {
 	u32 slot_addr;
-	int slot_size = ert_user->cq_range / ert_user->num_slots;
+	int slot_size = ert_user->slot_size;
 	int size;
 
 	size = ert_return_size(ecmd, slot_size);
@@ -625,17 +627,9 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 		ert_poll = false;
 	}
 
+	ert_user->slot_size = cfg->slot_size;
+
 	ert_user->num_slots = ert_user->cq_range / cfg->slot_size;
-
-	// Adjust slot size for ert poll mode
-	if (ert_poll)
-		ert_user->num_slots = MAX_CUS;
-
-	if (ert_full && cfg->cu_dma && ert_user->num_slots > 32) {
-		// Max slot size is 32 because of cudma bug
-		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
-		ert_user->num_slots = 32;
-	}
 
 	ert_user->polling_mode = cfg->polling;
 
@@ -1047,7 +1041,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	    xocl_mb_sched_on(xdev);
 	bool ert_full = !cfg->dataflow;
 	bool ert_poll = cfg->dataflow;
-	unsigned int ert_num_slots = 0;
+	unsigned int ert_num_slots = 0, slot_size = 0;
 
 	BUG_ON(!ert);
 
@@ -1079,21 +1073,35 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		ERTUSER_ERR(ert_user, "should not have zeroed value of cq_size=%lld, slot_size=%d",
 		    ert_user->cq_range, cfg->slot_size);
 		return -EINVAL;
+	} else if (cfg->slot_size & 0x1F) {
+		ERTUSER_ERR(ert_user, "slot_size should be 32-bit aligned, slot_size=%d",
+		   cfg->slot_size);
+		return -EINVAL;
 	}
 
-	ert_num_slots = ert_user->cq_range / cfg->slot_size;
+	slot_size = cfg->slot_size;
 
-	if (ert_poll)
-		// Adjust slot size for ert poll mode
-		ert_num_slots = MAX_CUS;
+	if (slot_size < ERT_MIN_SLOT_SIZE)
+		slot_size = ERT_MIN_SLOT_SIZE;
+
+	ert_num_slots = ert_user->cq_range / slot_size;
+
+	/*  1. cfg->slot_size need to be 32-bit aligned
+	 *  2. the slot num max: 128
+	 *  3. slot size at least 512 bytes 
+	 */
+
+	if (ert_num_slots > MAX_CUS)
+		// Adjust slot number to 128 maximum 
+		slot_size = ert_user->cq_range / MAX_CUS;
 
 	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
 		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
-		ert_num_slots = 32;
+		slot_size = ert_user->cq_range / 32;
 	}
 
-	cfg->slot_size = ert_user->cq_range / ert_num_slots;
+	cfg->slot_size = slot_size;
 
 	if (ert_poll) {
 		ERTUSER_INFO(ert_user, "configuring dataflow mode with ert polling\n");
@@ -1203,7 +1211,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 
 		//sched_debug_packet(epkt, epkt->count+sizeof(epkt->header)/sizeof(u32));
 	
-		slot_addr = ecmd->slot_idx * (ert_user->cq_range/ert_user->num_slots);
+		slot_addr = ecmd->slot_idx * ert_user->slot_size;
 
 		/* Hardware could be pretty fast, add to sq before touch the CQ_status or cmd queue*/
 		list_move_tail(&ecmd->list, &ert_user->sq.head);
