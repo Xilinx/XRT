@@ -253,9 +253,12 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
   std::cout << std::endl;
   std::cout << "\nIncoming Configuration\n";
   const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
+  // if no shells are installed, do not proceed
+  if(available_shells.empty())
+    throw xrt_core::error("No matching base partitions are installed on the system");
   // if multiple shells are installed, do not proceed
   if( available_shells.size() > 1)
-      throw xrt_core::error("Auto update is not possible when multiple shells are installed on the system. Please use --image option to specify the path of a particular flash image.");
+    throw xrt_core::error("Auto update is not possible when multiple shells are installed on the system. Please use --image option to specify the path of a particular flash image.");
 
   const boost::property_tree::ptree& available_shell = available_shells.front().second;
   std::pair <std::string, std::string> s = deployment_path_and_filename(available_shell.get<std::string>("file"));
@@ -266,7 +269,12 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
 
   std::cout << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
   std::cout << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+  auto logic_uuid = available_shell.get<std::string>("logic-uuid", "");
+  if (!logic_uuid.empty()) {
+    std::cout << boost::format("  %-20s : %s\n") % "Platform UUID" % logic_uuid;
+  } else {
+    std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+  }
 }
 
 static void
@@ -280,7 +288,12 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
     auto _rep = std::make_unique<ReportPlatform>();
     _rep->getPropertyTreeInternal(device.get(), _ptDevice);
     _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
-    pretty_print_platform_info(_ptDevice);
+    try {
+      pretty_print_platform_info(_ptDevice);
+    } catch (xrt_core::error& e) {
+      std::cerr << "  " << e.what() << std::endl;
+      return;
+    }
     std::cout << "----------------------------------------------------\n";
   }
 
@@ -375,7 +388,13 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
   for (const auto & device : deviceCollection) {
-    DSAInfo dsa(_pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells").front().second.get<std::string>("file"));
+    static boost::property_tree::ptree ptEmpty;
+    auto available_shells = _pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells", ptEmpty);
+    // Check if any base packages are available
+    if(available_shells.empty())
+      return;
+    
+    DSAInfo dsa(available_shells.front().second.get<std::string>("file"));
     //if the shell is not up-to-date and dsa has a flash image, queue the board for update
     bool same_shell = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell");
     bool same_sc = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc");
@@ -458,7 +477,13 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
   std::vector<char> buffer(total_size);
   stream.read(buffer.data(), total_size);
 
-  xrt_core::program_plp(dev, buffer);
+  try {
+    xrt_core::program_plp(dev, buffer);
+  } 
+  catch(xrt_core::error& e) {
+    std::cout << "ERROR: " << e.what() << std::endl;
+    return;
+  }
   std::cout << "Programmed shell successfully" << std::endl;
 }
 
