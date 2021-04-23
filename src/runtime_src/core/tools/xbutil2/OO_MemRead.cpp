@@ -17,7 +17,9 @@
 // Local - Include Files
 #include "OO_MemRead.h"
 #include "core/common/query_requests.h"
+#if __GNUC__
 #include "core/pcie/common/memaccess.h"
+#endif
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -38,33 +40,6 @@ size_t get_ddr_mem_size(const xrt_core::device* dev) {
 
   return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
 }
-
-/*
- * xclbin locking //todo move to XBU
- */
-struct xclbin_lock
-{
-  xclDeviceHandle m_handle;
-  xuid_t m_uuid;
-
-  xclbin_lock(std::shared_ptr<xrt_core::device> _dev)
-    : m_handle(_dev->get_device_handle())
-  {
-    auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
-
-    uuid_parse(xclbinid.c_str(), m_uuid);
-
-    if (uuid_is_null(m_uuid))
-      throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
-
-    if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
-      throw std::runtime_error("'Failed to lock down xclbin");
-  }
-
-  ~xclbin_lock(){
-    xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
-  }
-};
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -170,7 +145,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("Output file: %s") % m_outputFile));
 
   //read mem
-  xclbin_lock xclbin_lock(device);
+  XBU::xclbin_lock xclbin_lock(device);
 #ifdef _WIN32
   std::cout << "mem read is not supported on windows";
   return;
