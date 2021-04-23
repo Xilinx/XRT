@@ -965,6 +965,14 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return;
   }
 
+  int nodma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
+
+  if (nodma == 1 ) {
+    logger(_ptTest, "Details","M2M Test is not available");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   std::vector<mem_data> used_banks;
   const size_t bo_size = 256L * 1024 * 1024;
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
