@@ -47,7 +47,7 @@
 
 #include "xrt_error_code.h"
 
-#define	XOCL_ERROR_CAPACITY	16
+#define	XCL_ERROR_CAPACITY	16
 
 /**
  * struct xclErrorLast - Container for all last(latest) error records
@@ -64,7 +64,7 @@ struct xclErrorLast {
 typedef struct xcl_errors {
 	int		num_err;	/* number of errors recorded */
 	int		cap;		/* capacity of current error array */
-	struct xclErrorLast *errors;	/* error array pointer */
+	struct xclErrorLast errors[XCL_ERROR_CAPACITY];	/* error array pointer */
 } xcl_errors;
 
 #endif /* XCLERR_INT_H_ */
