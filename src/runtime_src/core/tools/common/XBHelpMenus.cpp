@@ -701,13 +701,17 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
         } catch (...) {}
         
         //if factory mode
-        std::string platform = "";
+        std::string platform = "<not defined>";
+        try {
           if (is_mfg) {
             platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
           }
           else {
             platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
           }
+        } catch(...) {
+          // proceed even if the platform name is not available
+        }
         std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
         _ostream << std::string(dev_desc.length(), '-') << std::endl;
         _ostream << dev_desc;
