@@ -388,7 +388,8 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
   for (const auto & device : deviceCollection) {
-    auto available_shells = _pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells");
+    static boost::property_tree::ptree ptEmpty;
+    auto available_shells = _pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells", ptEmpty);
     // Check if any base packages are available
     if(available_shells.empty())
       return;

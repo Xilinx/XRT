@@ -689,7 +689,7 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
         } catch (...) {}
         
         //if factory mode
-        std::string platform = "";
+        std::string platform = "<not defined>";
         try {
           if (is_mfg) {
             platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
