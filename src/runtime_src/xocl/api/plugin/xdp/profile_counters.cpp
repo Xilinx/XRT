@@ -454,7 +454,7 @@ namespace xocl {
                  auto xevent = xocl::xocl(e) ;
                  auto queue = xevent->get_command_queue() ;
                  uint64_t contextId = e->get_context()->get_uid() ;
-                 std::string deviceName = queue->get_device()->get_name() ;
+                 std::string deviceName = queue->get_device()->get_unique_name() ;
 
                  auto localDim = e->get_execution_context()->get_local_work_size() ;
                  auto globalDim = e->get_execution_context()->get_global_work_size() ;
