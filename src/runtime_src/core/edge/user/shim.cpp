@@ -113,7 +113,7 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   xclLog(XRT_INFO, "%s", __func__);
 
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
-  if (!mKernelFD) {
+  if (mKernelFD < 0) {
     xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
