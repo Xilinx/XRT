@@ -364,6 +364,13 @@ class aie_cfg_tile
     std::map<uint32_t, uint32_t> aieMemoryEventsMap;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList;
 
+    inline std::string getUniqueDeviceName()
+    {
+      // Since we can have multiple devices with the same shell,
+      //  differentiate them using the device ID
+      return deviceName + "-" + std::to_string(deviceId) ;
+    }
+
     XclbinInfo* currentXclbin() {
       if (loadedXclbins.size() <= 0)
         return nullptr ;
