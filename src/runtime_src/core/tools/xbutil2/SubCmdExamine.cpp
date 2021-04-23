@@ -99,8 +99,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables
-  std::vector<std::string> devices = {"all"};
-  std::vector<std::string> reportNames = {"host"};
+  std::vector<std::string> devices;       // Default values determined later in the flow
+  std::vector<std::string> reportNames;   // Default values determined later in the flow
   std::vector<std::string> elementsFilter;
   std::string sFormat = "text";
   std::string sOutput = "";
@@ -142,6 +142,22 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     printHelp(commonOptions, hiddenOptions);
     return;
   }
+
+  // Determine report level
+  if (devices.size() == 0 && reportNames.size() == 0)
+      reportNames.push_back("host");
+
+  if (devices.size() != 0 && reportNames.size() == 0) {
+    reportNames.push_back("platform");
+    reportNames.push_back("compute-units");
+  }
+
+  // Determine default values
+  if (devices.size() == 0)
+    devices.push_back("all");
+
+  if (reportNames.size() == 0)
+    reportNames.push_back("host");
 
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest

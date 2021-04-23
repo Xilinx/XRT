@@ -25,6 +25,7 @@
 #include <memory>
 #include <map>
 #include <iostream>
+#include <vector>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
@@ -95,6 +96,22 @@ namespace XBUtilities {
   std::string format_base10_shiftdown3(uint64_t value);
   std::string format_base10_shiftdown6(uint64_t value);
   
+  template <typename T>
+  std::vector<T> as_vector( boost::property_tree::ptree const& pt, 
+                            boost::property_tree::ptree::key_type const& key) 
+  {
+    std::vector<T> r;
+
+    boost::property_tree::ptree::const_assoc_iterator it = pt.find(key);
+
+    if( it != pt.not_found()) {
+      for (auto& item : pt.get_child(key)) 
+        r.push_back(item.second);
+    }
+    return r;
+  }
+
+
    /**
    * get_axlf_section() - Get section from the file passed in
    *
