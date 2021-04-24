@@ -319,7 +319,7 @@ The kernel object is created from the device, XCLBIN UUID and the kernel name us
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
            auto krnl = xrt::kernel(device, xclbin_uuid, name); 
 
-**Note**: For the kernel with more than 1 CU, a kernel handle (or object) should represent all the CUs having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, the specific CU name(s) should be used to obtain a kernel handle (or object) to represent the subset of CUs with identical connectivity. Otherwise XRT will do this selection internally to select a group of CUs and discard the rest of the CUs (discarded CUs are not used during the execution of a kernel).  
+**Note**: For the kernel with more than 1 CU, a kernel object can represent all the CUs having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, the specific CU name(s) should be used to obtain a kernel object to represent the subset of CUs with identical connectivity. Otherwise XRT will do this selection internally to select a group of CUs and discard the rest of the CUs (discarded CUs are not used during the execution of a kernel).  
 
 As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1. 
 
@@ -428,39 +428,7 @@ The member function to obtain the register offset for CU arguments. In the below
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
-Execution of the kernel is associated with a **Run** handle (or object). The kernel can be executed by the API ``xrtKernelRun`` (in C++ overloaded operator ``xrt::kernel::operator()``) that takes all the kernel arguments in order. The kernel execution API returns a run handle (or object) corresponding to the execution. 
-
-
-.. code:: c
-      :number-lines: 50
-       
-           // 1st kernel execution
-           xrtRunHandle run = xrtKernelRun(kernel, buf_a, buf_b,  scalar_1); 
-           xrtRunWait(run);
-    
-           // 2nd kernel execution with just changing 3rd argument
-           xrtRunSetArg(run,2,scalar_2); // Arguments are specified starting from 0
-           xrtRunStart(run);
-           xrtRunWait(run);
-
-           // Close the run handle
-           xrtRunClose(run);
-
-Note the following APIs regarding  the above example
-
-   - The kernel is executed by ``xrtKernelRun`` API by specifying all its arguments to obtain a Run handle
-   - The API ``xrtKernelRun`` is non-blocking. It returns as soon as it submits the job without waiting for the kernel's actual execution start.  
-   - The host code uses ``xrtRunWait`` API to block the current thread and wait till the kernel execution is finished.       
-   - After a run is finished, the same run handle can be reused to execute the kernel multiple times if desired. 
-     
-       - API ``xrtRunSetArg`` is used to set one or more arguments, in the example above only the last (3rd) argument is changed before the second execution
-       - API ``xrtRunStart`` is used to execute the kernel using the run handle. 
-   - API ``xrtRunClose`` is used to close the Run handle.  
- 
-   
-**C++**: The equivalent C++ code
-
-In C++ the ``xrt::kernel`` class provides **overloaded operator ()** to execute the kernel with a comma-separated list of arguments.  
+Execution of the kernel is associated with a **Run** handle (or object). The kernel can be executed by the ``xrt::kernel::operator()`` that takes all the kernel arguments in order. The kernel execution API returns a run object corresponding to the execution. 
 
 .. code:: c++
       :number-lines: 50
@@ -474,6 +442,10 @@ In C++ the ``xrt::kernel`` class provides **overloaded operator ()** to execute 
            run.start();
            run.wait();
 
+
+The ``xrt::kernel`` class provides **overloaded operator ()** to execute the kernel with a comma-separated list of arguments.  
+
+
 The above c++ code block is demonstrating 
   
   - The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
@@ -481,30 +453,25 @@ The above c++ code block is demonstrating
   - The member function ``xrt::run::set_arg`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
   - The member function ``xrt::run::start`` is used to start the next kernel execution with new argument(s).   
 
+
 Other kernel execution related APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Run handle/object supports few other use-cases. 
+**Obtaining the run object before execution**: In the above example we have seen a run object is obtained when the kernel is executed (kernel execution returns a run object). However, a run object can be obtained even before the kernel execution. The flow is as below
 
-**Obtaining the run handle/object before execution**: In the above example we have seen a run handle/object is obtained when the kernel is executed (kernel execution returns a run handle/object). However, a run handle can be obtained even before the kernel execution. The flow is as below
+    - Open a Run object by the ``xrt::run`` constructor with a kernel argument). 
+    - Set the kernel arguments associated for the next execution by the member function ``xrt::run::set_arg()`. 
+    - Execute the kernel by the member function ``xrt::run::start()``.
+    - Wait for the execution finish by the member function ``xrt::run::wait()``. 
 
-    - Open a Run handle (or object) by API ``xrtRunOpen`` (in C++ ``xrt::run`` constructor with a kernel argument). There is no kernel execution associated with this run handle/object yet
-    - Set the kernel arguments associated for the next execution by ``xrtRunSetArg`` (in C++ member function ``xrt::run::set_arg``). 
-    - Execute the kernel by ``xrtRunStart`` (in C++ member function ``xrt::run::start``).
-    - Wait for the execution finish by ``xrtRunWait`` (C++: ``xrt::run::wait``). 
+**Timeout while wait for kernel finish**: The member function ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes. To specify a timeout supported API ``xrt::run::wait()`` also accepts a timeout in millisecond unit.
 
-**Timeout while wait for kernel finish**: The API ``xrtRunWait`` blocks the current thread until the kernel execution finishes. However, a timeout supported API ``xrtRunWaitFor`` is also provided . The timeout number can be specified using a millisecond unit.
-
-In C++, the timeout facility can be used by the same member function that takes a ``std::chrono::milliseconds`` to specify the timeout. 
-
-**Asynchronous update of the kernel arguments**: The API ``xrtRunSetArg`` (C++: ``xrt::run::set_arg``) is synchronous to the kernel execution. This API can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this API (only for edge platform) ``xrtRunUpdateArg`` (in C++ member function ``xrt::run::update_arg``) is provided to change the kernel arguments asynchronous to the kernel execution. 
+**Asynchronous update of the kernel arguments**: The member function ``xrt::run::set_arg()`` is synchronous to the kernel execution. This function can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this functionality (only for edge platform) is provided by the member function ``xrt::run::update_arg()`` to change the kernel arguments asynchronous to the kernel execution. 
 
 Graph
 -----
 
-In Versal ACAPs with AI Engines, the XRT Graph APIs can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. As of the 2020.2 release, XRT provides a set of C APIs for graph control. The C++ APIs are planned for a future release. Also, as of the 2020.2 release Graph APIs are only supported on the Edge platform.
-
-A graph handle is of type ``xrtGraphHandle``. 
+In Versal ACAPs with AI Engines, the XRT Graph class (``xrt::graph``woo) and its member functions can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. 
 
 Graph Opening and Closing
 ~~~~~~~~~~~~~~~~~~~~~~~~~
