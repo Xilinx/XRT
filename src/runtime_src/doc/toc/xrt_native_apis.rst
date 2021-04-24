@@ -471,50 +471,42 @@ Other kernel execution related APIs
 Graph
 -----
 
-In Versal ACAPs with AI Engines, the XRT Graph class (``xrt::graph``woo) and its member functions can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. 
+In Versal ACAPs with AI Engines, the XRT Graph class (``xrt::graph``) and its member functions can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. 
 
 Graph Opening and Closing
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The XRT graph APIs support the obtaining of graph handle from currently loaded xclbin. The required APIs for graph open and close are
-
-         - ``xrtGraphOpen``: API provides the handle of the graph from the device, XCLBIN UUID, and the graph name. 
-         - ``xrtGraphClose``: API to close the graph handle. 
+The ``xrt::graph`` object can be opened using the uuid of the currently loaded XCLBIN file as shown below 
 
 .. code:: c
       :number-lines: 35
            
-           xuid_t xclbin_uuid;
-           xrtXclbinGetUUID(xclbin,xclbin_uuid);
+           auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
+           auto graph = xrt::graph(device, xclbin_uuid, "graph_name");
+           
 
-           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
-           ....
-           ....
-           xrtGraphClose(graph);
-
-
-The graph handle obtained from ``xrtGraphOpen`` is used to execute the graph function on the AIE tiles.
+The graph object can be used to execute the graph function on the AIE tiles.
 
 Reset Functions
 ~~~~~~~~~~~~~~~
 
 There are two reset functions are used:
 
-   - API ``xrtAIEResetArray`` is used to reset the whole AIE array. 
-   - API ``xrtGraphReset`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+   - API ``xrt::device::reset_array()`` is used to reset the whole AIE array. 
+   - API ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
 
 
 .. code:: c
       :number-lines: 45
            
-           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+           auto device = xrt::device(0);
            ...
            // AIE Array Reset
-           xrtAIEResetArray(device_handle)
+           device.reset_array();
            
-           xrtGraphHandle graph = xrtGraphOpen(device, xclbin_uuid, "graph_name");
+           auto graph = xrt::graph(device, xclbin_uuid, "graph_name");
            // Graph Reset
-           xrtGraphReset(graphHandle);
+           graph.reset();
 
 
 
@@ -522,7 +514,7 @@ There are two reset functions are used:
 Graph execution
 ~~~~~~~~~~~~~~~
 
-XRT provides basic graph execution control APIs to initialize, run, wait, and terminate graphs for a specific number of iterations. Below we will review some of the common graph execution styles. 
+XRT provides basic graph execution control interfaces to initialize, run, wait, and terminate graphs for a specific number of iterations. Below we will review some of the common graph execution styles. 
 
 Graph execution for a fixed number of iterations
 ************************************************
@@ -531,51 +523,51 @@ A graph can be executed for a fixed number of iterations followed by a "busy-wai
 
 **Busy Wait scheme**
 
-The graph can be executed for a fixed number of iteration by ``xrtGraphRun`` API using an iteration argument. Subsequently, ``xrtGraphWait`` or ``xrtGraphEnd`` API should be used (with argument 0) to wait until graph execution is completed. 
+The graph can be executed for a fixed number of iteration by ``xrt::graph::run()`` API using an iteration argument. Subsequently, ``xrt::graph::wait()`` or ``xrt::graph::end()`` API should be used (with argument 0) to wait until graph execution is completed. 
 
 Let's review the below example
 
-- The graph is executed for 3 iterations by API ``xrtGraphRun`` with the number of iterations as an argument. 
-- The API ``xrtGraphWait(graphHandle,0)`` is used to wait till the iteration is done. 
+- The graph is executed for 3 iterations by API ``xrt::graph::run()`` with the number of iterations as an argument. 
+- The API ``xrt::graph::wait(0)`` is used to wait till the iteration is done. 
 
-     - The API `xrtGraphWait` is used because the host code needs to execute the graph again. 
+     - The API `xrt::graph::wait()` is used because the host code needs to execute the graph again. 
 - The Graph is executed again for 5 iteration
-- The API ``xrtGraphEnd(graphHandle,0)`` is used to wait till the iteration is done. 
+- The API ``xrt::graph::end(0)`` is used to wait till the iteration is done. 
 
-    - After ``xrtGraphEnd`` the same graph should not be executed. 
+    - After ``xrt::graph::end()`` the same graph can not be executed. 
 
 .. code:: c
       :number-lines: 35
            
            // start from reset state
-           xrtGraphReset(graphHandle);
+           graph.reset();
            
            // run the graph for 3 iteration
-           xrtGraphRun(graphHandle, 3);
+           graph.run(3);
            
            // Wait till the graph is done 
-           xrtGraphWait(graphHandle,0);  // Use xrtGraphWait if you want to execute the graph again
+           graph.wait(0);  // Use graph::wait if you want to execute the graph again
            
            
-           xrtGraphRun(graphHandle,5);
-           xrtGraphEnd(graphHandle,0);  // Use xrtGraphEnd if you are done with the graph execution
+           graph.run(5);
+           graph.end(0);  // Use graph::end if you are done with the graph execution
 
 
 **Timeout wait scheme**
 
-As shown in the above example ``xrtGraphWait(graphHandle,0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrtGraphWaitDone`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
+As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by ``xrt::graph::wait(std::chrono::milliseconds)`` which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below
 
 .. code:: c++
       :number-lines: 35
            
            // start from reset state
-           xrtGraphReset(graphHandle);
+           graph.reset();
            
            // run the graph for 100 iteration
-           xrtGraphRun(graphHandle, 100);
+           graph.run(100);
            
             while (1) {
-             auto rval  = xrtGraphWaitDone(graphHandle, 5); 
+             auto rval  = graph.wait(5); 
               std::cout << "Wait for graph done returns: " << rval << std::endl;
               if (rval == -ETIME)  {
                    std::cout << "Timeout, reenter......" << std::endl;
