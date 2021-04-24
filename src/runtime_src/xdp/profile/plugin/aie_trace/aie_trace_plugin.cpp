@@ -702,20 +702,10 @@ namespace xdp {
 
     // Reconfigure profile counters
     for (int i=0; i < coreCounters.size(); ++i) {
-      std::cout << "Modifying counter " << i << std::endl;
-
-      // For every counter, change start/stop events
-      auto& counter = coreCounters.at(i);
-      counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
-      counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
-      //counter->initialize(XAIE_CORE_MOD, coreTraceStartEvent,
-      //                    XAIE_CORE_MOD, coreTraceEndEvent);
-
+      // 1. For every tile, change trace start/stop and timer
       auto& tile = coreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
-
-      // For every tile, change trace start/stop and timer
       if ((col != prevCol) || (row != prevRow)) {
         std::cout << "Modifying control and timer for tile (" << col << "," << row << ")" << std::endl;
         prevCol        = col;
@@ -729,6 +719,14 @@ namespace xdp {
                                   timerTrigValueLow, timerTrigValueHigh);
         XAie_ResetTimer(Aie, tileLocation, XAIE_CORE_MOD);
       }
+
+      // 2. For every counter, change start/stop events
+      std::cout << "Modifying counter " << i << std::endl;
+      auto& counter = coreCounters.at(i);
+      counter->stop();
+      counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
+      counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
+      counter->start();
     }
   }
 
