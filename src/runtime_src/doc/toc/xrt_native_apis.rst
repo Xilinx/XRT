@@ -581,28 +581,28 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
 Infinite Graph Execution
 ************************
 
-The graph runs infinitely if ``xrtGraphRun`` is called with iteration argument -1. While a graph running infinitely the APIs ``xrtGraphWait``, ``xrtGraphSuspend`` and xrtGraphEnd can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrtGraphResume`` is used to execute the infinitely running graph again. 
+The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument -1. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume`` is used to execute the infinitely running graph again. 
 
 
 .. code:: c
       :number-lines: 39
            
            // start from reset state
-           xrtGraphReset(graphHandle);
+           graph.reset();
            
            // run the graph infinitely
-           xrtGraphRun(graphHandle, -1);
+           graph.run(-1);
            
-           xrtGraphWait(graphHandle,3000);  // Suspends the graph after 3000 AIE cycles from the previous start 
+           graph.wait(3000);  // Suspends the graph after 3000 AIE cycles from the previous start 
            
            
-           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           graph.resume(); // Restart the suspended graph again to run forever
            
-           xrtGraphSuspend(graphHandle); // Suspend the graph immediately
+           graph.suspend(); // Suspend the graph immediately
            
-           xrtGraphResume(graphHandle); // Restart the suspended graph again to run forever
+           graph.resume(); // Restart the suspended graph again to run forever
            
-           xrtGraphEnd(graphHandle,5000);  // End the graph operation after 5000 AIE cycles from the previous start
+           graph.end(5000);  // End the graph operation after 5000 AIE cycles from the previous start
 
 
 In the example above
