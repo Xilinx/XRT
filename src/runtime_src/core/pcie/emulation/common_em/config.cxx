@@ -157,12 +157,14 @@ namespace xclemulation{
         setNewMbscheduler(getBoolValue(value,false));
       }
       else if (name == "user_pre_sim_script") {
-        setUserPreSimScript(value);
-        setenv("USER_PRE_SIM_SCRIPT", value.c_str(), true);
+        std::string absolutePath = getAbsolutePath(value, getExecutablePath());
+        setUserPreSimScript(absolutePath);
+        setenv("USER_PRE_SIM_SCRIPT", absolutePath.c_str(), true);
       }
       else if (name == "user_post_sim_script") {
-        setUserPostSimScript(value);
-        setenv("USER_POST_SIM_SCRIPT", value.c_str(), true);
+        std::string absolutePath = getAbsolutePath(value, getExecutablePath());
+        setUserPostSimScript(absolutePath);
+        setenv("USER_POST_SIM_SCRIPT", absolutePath.c_str(), true);
       } 
       else if (name == "xtlm_aximm_log") {
         bool val = getBoolValue(value, true);
@@ -198,7 +200,8 @@ namespace xclemulation{
         }
       }
       else if (name == "wcfg_file_path") {
-        setWcfgFilePath(value);
+        std::string path = getAbsolutePath(value, getExecutablePath());
+        setWcfgFilePath(path);
       }
       else if(name == "enable_shared_memory")
       {
@@ -352,7 +355,20 @@ namespace xclemulation{
     return cstr ? cstr : "";
   }
 
-  static std::string getExecutablePath()
+  std::string getAbsolutePath(const std::string& pathStr, const std::string& absBuildDirStr)
+  {
+    // If path value not set, user did not supply one. Must return empty string.
+    if (pathStr.empty()) {
+      return pathStr;
+    }
+    if (absBuildDirStr.empty()) {
+      return pathStr;
+    }
+
+    return boost::filesystem::absolute(pathStr.c_str(), absBuildDirStr.c_str()).string();
+  }
+
+  std::string getExecutablePath()
   {
     std::string hostBinaryPath = getSelfPath();
     if(hostBinaryPath.empty())
