@@ -366,7 +366,7 @@ def xclCloseContext(handle, xclbinId, ipIndex):
     return _valueOrError(libcore.xclCloseContext(handle, xclbinId.bytes, ipIndex))
 
 
-def xclLogMsg(handle, level, tag, format, *args):
+def xclLogMsg(handle, level, tag, form, *args):
     """
     Send message to log file as per settings in ini file.
 
@@ -378,8 +378,8 @@ def xclLogMsg(handle, level, tag, format, *args):
     :return: 0 on success or appropriate error number
     """
     libcore.xclAllocBO.restype = ctypes.c_int
-    libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    return _valueOrError(libcore.xclLogMsg(handle, level, tag, format, *args))
+    libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+    return _valueOrError(libcore.xclLogMsg(handle, level, tag, form, *args))
 
 
 def xclAllocBO(handle, size, unused, flags):

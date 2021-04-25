@@ -19,4 +19,7 @@ add_test(NAME xbmgmt2
   COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 --new scan
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
+#add_test(NAME python_binding
+#  COMMAND ${PYTHON_EXECUTABLE}
+
 set_tests_properties(xbutil xbmgmt PROPERTIES ENVIRONMENT INTERNAL_BUILD=1)
