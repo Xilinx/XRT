@@ -377,8 +377,8 @@ def xclLogMsg(handle, level, tag, form, *args):
     :param ...: All other arguments as per the format
     :return: 0 on success or appropriate error number
     """
-    libcore.xclAllocBO.restype = ctypes.c_int
-    libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+    libcore.xclLogMsg.restype = ctypes.c_int
+    libcore.xclLogMsg.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
     return _valueOrError(libcore.xclLogMsg(handle, level, tag, form, *args))
 
 

@@ -16,6 +16,11 @@ import pyxrt as pp
 import xrt_binding as xx
 import ert_binding as ee
 
+def config():
+    fd = open("xrt.ini", "w")
+    fd.write("[Runtime]\nruntime_log=console\nverbosity=10\n")
+    fd.close()
+
 def reflect():
     count = 0;
     print("Begin XRT pybind11 reflection\n")
@@ -34,11 +39,11 @@ def reflect():
     return count
 
 def main(args):
-
     try:
+        config()
         count = xx.xclProbe()
         count = reflect()
-        xx.xclLogMsg(None, xx.xrtLogMsgLevel.XRT_ERROR, "PYTHON_TEST", "%d", count)
+        xx.xclLogMsg(None, xx.xrtLogMsgLevel.XRT_INFO, b"XRT PYTHON TEST", b"%d symbols in XRT python binding", count)
         print("PASSED TEST")
         return 0
 
@@ -46,7 +51,6 @@ def main(args):
         print(o)
         print("FAILED TEST")
         return -o.errno
-
     except AssertionError as a:
         print(a)
         print("FAILED TEST")
@@ -55,6 +59,8 @@ def main(args):
         print(e)
         print("FAILED TEST")
         return -1
+    finally:
+        os.remove("xrt.ini")
 
 if __name__ == "__main__":
     result = main(sys.argv)
