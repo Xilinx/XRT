@@ -19,6 +19,8 @@
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
+#include "core/common/message.h"
+
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
@@ -99,6 +101,7 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
 void DeviceTraceOffload::stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
+  if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPING;
 }
 
@@ -231,10 +234,9 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
-    debug_stream
-      << "ERROR: Circular buffer overwrite detected "
-      << " bytes written : " << bytes_written << " bytes_read : " << bytes_read
-      << std::endl;
+    xrt_core::message::send(xrt_core::message::severity_level::warning,
+                            "XRT",
+                            "Circular buffer overwrite detected in hardware.  Stopping device offload");
     stop_offload();
     return;
   }
