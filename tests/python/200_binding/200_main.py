@@ -5,7 +5,8 @@
 #
 # Copyright (C) 2021 Xilinx, Inc
 #
-# Sanity test to ensure we can resolve python bindings without executing them
+# Sanity test to ensure we can resolve python bindings and execute two which
+# do not need a device
 #
 
 import os
@@ -16,11 +17,24 @@ import pyxrt as pp
 import xrt_binding as xx
 import ert_binding as ee
 
+def clear():
+    try:
+        os.remove("xrt.ini")
+    except Exception as e:
+        # If xrt.ini is missing do not bother
+        return
+    finally:
+        return
+
+# Create a temporary xrt.ini for use by this application which
+# turns on high verbosity so INFO messages are printed by xclLogMsg
+
 def config():
     fd = open("xrt.ini", "w")
     fd.write("[Runtime]\nruntime_log=console\nverbosity=10\n")
     fd.close()
 
+# Dump symbols exported by the bindings
 def reflect():
     count = 0;
     print("Begin XRT pybind11 reflection\n")
@@ -60,7 +74,7 @@ def main(args):
         print("FAILED TEST")
         return -1
     finally:
-        os.remove("xrt.ini")
+        clear()
 
 if __name__ == "__main__":
     result = main(sys.argv)
