@@ -469,10 +469,10 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	xclbin = (char __user *)axlf;
 
 	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head->m_header.m_length);
-        if (ret) {
-                ret = -EFAULT;
-                goto out;
-        }
+	if (ret) {
+		ret = -EFAULT;
+		goto out;
+	}
 
 	write_lock(&zdev->attr_rwlock);
 
@@ -494,15 +494,15 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	}
 
 	if (is_aie_only(axlf)) {
-                ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, NULL);
-                if (ret)
-                        goto out;
-        }
+		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, NULL);
+		if (ret)
+			goto out;
 
-	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
-	if (size > 0 ) {
-		zdev->aie_data.size = size;
-		zocl_create_aie(zdev, axlf, aie_res);
+		size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
+		if (size > 0 ) {
+			zdev->aie_data.size = size;
+			zocl_create_aie(zdev, axlf, aie_res);
+		}
 	}
 
 	size = zocl_offsetof_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
