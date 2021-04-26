@@ -1073,7 +1073,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		    ert_user->cq_range, cfg->slot_size);
 		return -EINVAL;
 	} else if (!IS_ALIGNED(cfg->slot_size, 4)) {
-		ERTUSER_ERR(ert_user, "slot_size should be 32-bit aligned, slot_size=%d",
+		ERTUSER_ERR(ert_user, "slot_size should be 4 bytes aligned, slot_size=%d",
 		   cfg->slot_size);
 		return -EINVAL;
 	}
@@ -1087,12 +1087,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 
 	/*  1. cfg->slot_size need to be 32-bit aligned
 	 *  2. the slot num max: 128
-	 *  3. slot size at least 512 bytes 
 	 */
-
-	if (ert_num_slots > ERT_MAX_SLOTS)
-		// Adjust slot number to 128 maximum 
-		slot_size = ert_user->cq_range / ERT_MAX_SLOTS;
 
 	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
