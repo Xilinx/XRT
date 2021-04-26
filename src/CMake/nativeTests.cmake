@@ -12,11 +12,11 @@ add_test(NAME xbutil
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME xbutil2
-  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 --new examine
+  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 examine
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME xbmgmt2
-  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 --new --help
+  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 --help
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME python_binding
