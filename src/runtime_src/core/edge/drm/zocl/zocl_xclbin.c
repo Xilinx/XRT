@@ -477,32 +477,24 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	write_lock(&zdev->attr_rwlock);
 
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
-
-	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
-		if (is_aie_only(axlf)) {
-                        ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, NULL);
-                        if (ret)
-                                DRM_WARN("read xclbin: fail to load AIE");
-                        else
-                                zocl_create_aie(zdev, axlf, aie_res);
-		} else {
-			DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
-				 __func__, &axlf_head->m_header.uuid);
-		}
-		goto out;
-	}
-
 	if (is_aie_only(axlf)) {
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, NULL);
-		if (ret)
+		if (ret) {
+			DRM_WARN("read xclbin: fail to load AIE");
 			goto out;
-
+		}
 		size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
 		if (size > 0 ) {
 			zdev->aie_data.size = size;
 			zocl_create_aie(zdev, axlf, aie_res);
 		}
+	}
+
+	/* Check unique ID */
+	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
+		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
+			 __func__, &axlf_head->m_header.uuid);
+		goto out;
 	}
 
 	size = zocl_offsetof_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
@@ -536,6 +528,7 @@ out:
 	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
+	vfree(aie_res);
 	return ret;
 }
 
