@@ -101,6 +101,9 @@ namespace xdp {
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
+    // For callback events that don't have a unique ID
+    std::map<uint64_t, uint64_t> uidMap ;
+
     // Each device will have dynamically updated counter values.
     std::map<std::pair<uint64_t, xrt_core::uuid>, xclCounterResults> deviceCounters ;
 
@@ -167,6 +170,11 @@ namespace xdp {
     XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
     XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID, VTFEventType type);
     XDP_EXPORT bool hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type);
+
+    // For API events that we cannot guarantee have unique IDs across all
+    //  the plugins, we have a seperate matching of start to end
+    XDP_EXPORT void markXRTUIDStart(uint64_t uid, uint64_t eventID) ;
+    XDP_EXPORT uint64_t matchingXRTUIDStart(uint64_t uid);
 
     // A lookup into the string table
     XDP_EXPORT uint64_t addString(const std::string& value) ;
