@@ -4717,12 +4717,17 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 {
 	int ret = 0;
 
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %lld", off, count);
+
 	if (!xmc_qsfp_supported(xmc))
-		return 0;
+		return -EINVAL;
 
 	/* read done, exit */
-	if (off >= CMC_OP_IO_CONTROL_MAXLEN)
-		return 0;
+	if (off >= CMC_OP_IO_CONTROL_MAXLEN) {
+		xocl_err(&xmc->pdev->dev, "cannot read more than %d bytes",
+			CMC_OP_IO_CONTROL_MAXLEN);
+		return -EINVAL;
+	}
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -4759,10 +4764,12 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 {
 	int ret = 0;
 
-	if (!xmc_qsfp_supported(xmc) || off != 0)
-		return 0;
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %lld", off, count);
 
-	if (count > CMC_OP_IO_CONTROL_MAXLEN) {
+	if (!xmc_qsfp_supported(xmc) || off != 0)
+		return -EINVAL;
+
+	if (off != 0 || count > CMC_OP_IO_CONTROL_MAXLEN) {
 		xocl_err(&xmc->pdev->dev, "cannot write more than %d bytes",
 			CMC_OP_IO_CONTROL_MAXLEN);
 		return -EINVAL;
@@ -4859,7 +4866,7 @@ xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 	if (!xmc_qsfp_supported(xmc))
 		return 0;
 
-	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld\n", __func__, off, count);
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld\n", off, count);
 
 	/*
 	 * Assemble cmc pkg into request buffer.
