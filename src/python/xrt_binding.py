@@ -17,6 +17,7 @@
 """
 
 import os
+import sys
 import errno
 import ctypes
 import warnings
