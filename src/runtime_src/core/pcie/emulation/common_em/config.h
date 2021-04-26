@@ -19,7 +19,9 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
 
+#include "boost/filesystem/path.hpp"
 #include "xbar_sys_parameters.h"
 #include "xclhal2.h"
 #include "xclfeatures.h"
@@ -260,6 +262,8 @@ namespace xclemulation{
   bool isXclEmulationModeHwEmuOrSwEmu();
   bool is_sw_emulation();
   std::string getRunDirectory();
+  std::string getExecutablePath();
+  std::string getAbsolutePath(const std::string& pathStr, const std::string& absBuildDirStr);
   
   std::map<std::string,std::string> getEnvironmentByReadingIni();
   std::string getXclbinVersion(const axlf* top);
