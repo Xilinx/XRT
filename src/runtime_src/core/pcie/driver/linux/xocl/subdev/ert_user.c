@@ -19,7 +19,6 @@
 #include "kds_client.h"
 
 #define	ERT_MAX_SLOTS		128
-#define ERT_MIN_SLOT_SIZE       512
 
 #define	ERT_STATE_GOOD		0x1
 #define	ERT_STATE_BAD		0x2
@@ -1073,7 +1072,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 		ERTUSER_ERR(ert_user, "should not have zeroed value of cq_size=%lld, slot_size=%d",
 		    ert_user->cq_range, cfg->slot_size);
 		return -EINVAL;
-	} else if (cfg->slot_size & 0x1F) {
+	} else if (!IS_ALIGNED(cfg->slot_size, 4)) {
 		ERTUSER_ERR(ert_user, "slot_size should be 32-bit aligned, slot_size=%d",
 		   cfg->slot_size);
 		return -EINVAL;
@@ -1081,8 +1080,8 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 
 	slot_size = cfg->slot_size;
 
-	if (slot_size < ERT_MIN_SLOT_SIZE)
-		slot_size = ERT_MIN_SLOT_SIZE;
+	if (slot_size < (ert_user->cq_range/ERT_MAX_SLOTS))
+		slot_size = ert_user->cq_range/ERT_MAX_SLOTS;
 
 	ert_num_slots = ert_user->cq_range / slot_size;
 
@@ -1091,9 +1090,9 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	 *  3. slot size at least 512 bytes 
 	 */
 
-	if (ert_num_slots > MAX_CUS)
+	if (ert_num_slots > ERT_MAX_SLOTS)
 		// Adjust slot number to 128 maximum 
-		slot_size = ert_user->cq_range / MAX_CUS;
+		slot_size = ert_user->cq_range / ERT_MAX_SLOTS;
 
 	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug

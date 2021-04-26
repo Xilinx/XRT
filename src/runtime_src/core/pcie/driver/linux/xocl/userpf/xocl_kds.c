@@ -15,7 +15,7 @@
  */
 #include "xclbin.h"
 #include "ps_kernel.h"
-	
+
 #ifdef KDS_VERBOSE
 #define print_ecmd_info(ecmd) \
 do {\
