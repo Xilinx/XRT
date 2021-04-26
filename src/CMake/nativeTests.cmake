@@ -12,11 +12,18 @@ add_test(NAME xbutil
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME xbutil2
-  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 --new scan
+  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbutil2/xbutil2 examine
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 add_test(NAME xbmgmt2
-  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 --new scan
+  COMMAND ${CMAKE_BINARY_DIR}/runtime_src/core/tools/xbmgmt2/xbmgmt2 --help
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+add_test(NAME python_binding
+  COMMAND ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/../tests/python/200_binding/200_main.py"
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+set_tests_properties(python_binding PROPERTIES ENVIRONMENT
+  "PYTHONPATH=.${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}/python;XILINX_XRT=.${CMAKE_INSTALL_PREFIX}/${XRT_INSTALL_DIR}")
 
 set_tests_properties(xbutil xbmgmt PROPERTIES ENVIRONMENT INTERNAL_BUILD=1)

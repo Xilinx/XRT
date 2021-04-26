@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-find_package(PythonLibs 3.4.0)
+find_package(PythonLibs 3.4.0 REQUIRED)
 if (PythonLibs_FOUND)
   message("-- Python libs version: ${PYTHONLIBS_VERSION_STRING}")
   message("-- PYTHON_INCLUDE_PATH ${PYTHON_INCLUDE_PATH}")
@@ -14,7 +14,7 @@ if (PythonLibs_FOUND)
     SET(PKGDIR "site-packages")
   endif(${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
 
-  find_package(pybind11 2.6.0 PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
 endif(PythonLibs_FOUND)
 
 if (pybind11_FOUND)

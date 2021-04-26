@@ -95,7 +95,7 @@ if (DEFINED ENV{XRT_BOOST_INSTALL})
   # Some later versions of boost spews warnings form property_tree
   add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 else()
-  find_package(Boost 
+  find_package(Boost
     REQUIRED COMPONENTS system filesystem program_options)
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
@@ -116,6 +116,7 @@ set (XRT_INSTALL_BIN_DIR       "${XRT_INSTALL_DIR}/bin")
 set (XRT_INSTALL_UNWRAPPED_DIR "${XRT_INSTALL_BIN_DIR}/unwrapped")
 set (XRT_INSTALL_INCLUDE_DIR   "${XRT_INSTALL_DIR}/include")
 set (XRT_INSTALL_LIB_DIR       "${XRT_INSTALL_DIR}/lib${LIB_SUFFIX}")
+set (XRT_INSTALL_PYTHON_DIR    "${XRT_INSTALL_DIR}/python")
 set (XRT_VALIDATE_DIR          "${XRT_INSTALL_DIR}/test")
 set (XRT_NAMELINK_ONLY NAMELINK_ONLY)
 set (XRT_NAMELINK_SKIP NAMELINK_SKIP)
