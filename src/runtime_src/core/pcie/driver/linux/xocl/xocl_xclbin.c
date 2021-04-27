@@ -31,13 +31,12 @@ static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
 	uint64_t size;
 	int ret = 0;
 
-	ret = xrt_xclbin_get_section(xclbin, PARTITION_METADATA, &metadata, &size);
-
 	/* aie only xclbin for edge_pcie platforms will not have partition metadata
-	   we should not error out by checking partition metadata */
+	 * we should not error out by checking partition metadata */
 	if (xclbin->m_header.m_actionMask & AM_LOAD_AIE)
-		ret = 0;
+		return ret;
 
+	ret = xrt_xclbin_get_section(xclbin, PARTITION_METADATA, &metadata, &size);
 	if (ret)
 		return ret;
 
@@ -59,9 +58,10 @@ static int versal_xclbin_download(xdev_handle_t xdev, void *args)
 
 	BUG_ON(!arg->xclbin);
 
-	/*aie only xclbin needs to be downloaded from host we should do it even
-	 for the falt shells */
-	if (xclbin->m_header.m_mode == XCLBIN_FLAT && !(xclbin->m_header.m_actionMask & AM_LOAD_AIE)) {
+	/* aie only xclbin needs to be downloaded from host we should do it even
+	 * for the falt shells */
+	if (xclbin->m_header.m_mode == XCLBIN_FLAT &&
+	    !(xclbin->m_header.m_actionMask & AM_LOAD_AIE)) {
 		xocl_info(&XDEV(xdev)->pdev->dev,
 		    "xclbin is generated for flat shell, dont need to load PDI");
 		return ret;

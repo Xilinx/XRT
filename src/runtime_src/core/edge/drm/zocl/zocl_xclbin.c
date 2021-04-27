@@ -24,13 +24,40 @@
 
 extern int kds_mode;
 
-static int zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct sched_client_ctx *client);
-
 static bool 
 is_aie_only(struct axlf *axlf)
 {
         return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
+}
+
+static int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+                        char __user *xclbin, struct sched_client_ctx *client)
+{
+        uint64_t size;
+        char *pdi_buf = NULL;
+        int ret; 
+
+        if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+                DRM_ERROR("%s Shared context can not load xclbin", __func__);
+                return -EPERM;
+        }
+
+        size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
+        if (size == 0)
+                return 0;
+
+        ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
+        vfree(pdi_buf);
+
+        /* Mark AIE out of reset state after load PDI */
+        if (zdev->aie) {
+                mutex_lock(&zdev->aie_lock);
+                zdev->aie->aie_reset = false;
+                mutex_unlock(&zdev->aie_lock);
+        }
+
+        return ret;
 }
 
 static int
@@ -450,7 +477,6 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	struct axlf *axlf_head = axlf;
 	char *xclbin = NULL;
 	char *section_buffer = NULL;
-	void *aie_res = 0;
 	size_t size_of_header;
 	size_t num_of_sections;
 	uint64_t size = 0;
@@ -468,25 +494,19 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	num_of_sections = axlf_head->m_header.m_numSections-1;
 	xclbin = (char __user *)axlf;
 
+	write_lock(&zdev->attr_rwlock);
+
 	ret = !ZOCL_ACCESS_OK(VERIFY_READ, xclbin, axlf_head->m_header.m_length);
 	if (ret) {
 		ret = -EFAULT;
 		goto out;
 	}
 
-	write_lock(&zdev->attr_rwlock);
-
-	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
 	if (is_aie_only(axlf)) {
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, NULL);
 		if (ret) {
 			DRM_WARN("read xclbin: fail to load AIE");
 			goto out;
-		}
-		size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
-		if (size > 0 ) {
-			zdev->aie_data.size = size;
-			zocl_create_aie(zdev, axlf, aie_res);
 		}
 	}
 
@@ -528,37 +548,6 @@ out:
 	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
 	mutex_unlock(&zdev->zdev_xclbin_lock);
-	vfree(aie_res);
-	return ret;
-}
-
-static int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-			char __user *xclbin, struct sched_client_ctx *client)
-{
-	uint64_t size;
-	char *pdi_buf = NULL;
-	int ret;
-
-	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
-		DRM_ERROR("%s Shared context can not load xclbin", __func__);
-		return -EPERM;
-	}
-
-	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
-	if (size == 0)
-		return 0;
-
-	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
-	vfree(pdi_buf);
-
-	/* Mark AIE out of reset state after load PDI */
-	if (zdev->aie) {
-		mutex_lock(&zdev->aie_lock);
-		zdev->aie->aie_reset = false;
-		mutex_unlock(&zdev->aie_lock);
-	}
-
 	return ret;
 }
 
