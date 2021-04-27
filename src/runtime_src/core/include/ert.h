@@ -679,9 +679,21 @@ uint32_t ert_base_addr = 0;
 
 /*
 * Used in driver and user space code
+*/
+/*
 * Upper limit on number of dependencies in execBuf waitlist
 */
 #define MAX_DEPS        8
+
+/*
+* Maximum size of mandatory fields in bytes for all packet type
+*/
+#define MAX_HEADER_SIZE 64
+
+/*
+* Maximum size of mandatory fields in bytes for all packet type
+*/
+#define MAX_CONFIG_PACKET_SIZE 512
 
 /*
  * Helper functions to hide details of ert_start_copybo_cmd
