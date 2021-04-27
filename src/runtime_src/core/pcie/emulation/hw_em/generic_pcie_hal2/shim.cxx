@@ -2042,9 +2042,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ci_buf = malloc(ci_msg.ByteSize());
+#else
+    ci_buf = malloc(ci_msg.ByteSizeLong());
+#endif
     ri_msg.set_size(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ri_buf = malloc(ri_msg.ByteSize());
+#else
+    ri_buf = malloc(ri_msg.ByteSizeLong());
+#endif
 
     buf = nullptr;
     buf_size = 0;
@@ -3796,8 +3804,13 @@ Q2H_helper :: Q2H_helper(xclhwemhal2::HwEmShim* _inst) {
     header->set_xcl_api(0);
     response_header->set_size(0);
     response_header->set_xcl_api(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     i_len           = header->ByteSize();
     ri_len          = response_header->ByteSize();
+#else
+    i_len           = header->ByteSizeLong();
+    ri_len          = response_header->ByteSizeLong();
+#endif
 }
 Q2H_helper::~Q2H_helper() {
     delete Q2h_sock;
@@ -3835,7 +3848,11 @@ int Q2H_helper::poolingon_Qdma() {
         bool resp = inst->device2xrt_rd_trans_cb((unsigned long int)payload.addr(),(void* const)data.get(),(unsigned long int)payload.size());
         response_payload.set_valid(resp);
         response_payload.set_data((void*)data.get(),payload.size());
-        int r_len = response_payload.ByteSize();
+#if GOOGLE_PROTOBUF_VERSION < 3006001
+        auto r_len = response_payload.ByteSize();
+#else
+        auto r_len = response_payload.ByteSizeLong();
+#endif
         SEND_RESP2QDMA()
     }
     if (header->xcl_api() == xclQdma2HostWriteMem_n) {
@@ -3844,7 +3861,11 @@ int Q2H_helper::poolingon_Qdma() {
     	payload.ParseFromArray((void*)raw_payload.get(), r);
         bool resp = inst->device2xrt_wr_trans_cb((unsigned long int)payload.addr(),(void const*)payload.data().c_str(),(unsigned long int)payload.size());
         response_payload.set_valid(resp);
-        int r_len = response_payload.ByteSize();
+#if GOOGLE_PROTOBUF_VERSION < 3006001
+        auto r_len = response_payload.ByteSize();
+#else
+        auto r_len = response_payload.ByteSizeLong();
+#endif
         SEND_RESP2QDMA()
     }
     if (header->xcl_api() == xclQdma2HostInterrupt_n) {
@@ -3854,7 +3875,11 @@ int Q2H_helper::poolingon_Qdma() {
         uint32_t interrupt_line = payload.interrupt_line();
         bool resp = inst->device2xrt_irq_trans_cb(interrupt_line,4);
         response_payload.set_valid(resp);
-        int r_len = response_payload.ByteSize();
+#if GOOGLE_PROTOBUF_VERSION < 3006001
+        auto r_len = response_payload.ByteSize();
+#else
+        auto r_len = response_payload.ByteSizeLong();
+#endif
         SEND_RESP2QDMA()
     }
 

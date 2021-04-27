@@ -84,24 +84,8 @@ namespace xdp {
       //  all of our writers, then finally unregister ourselves
       //  from the database.
 
-      for (auto o : offloaders)
-      {
-        auto offloader = std::get<0>(o.second) ;
-
-        if(offloader->continuous_offload()) {
-          offloader->stop_offload();
-          // To avoid a race condition, wait until the thread is stopped
-          while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-        } else {
-          offloader->read_trace();
-          offloader->read_trace_end();
-        }
-        printTraceWarns(offloader);
-      }
-
-      // Also, store away the counter results
+      readTrace() ;
       readCounters() ;
-
       XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
     }
@@ -111,6 +95,25 @@ namespace xdp {
     for (auto h : deviceHandles)
     {
       xclClose(h) ;
+    }
+  }
+
+  void HALDeviceOffloadPlugin::readTrace()
+  {
+    if (!active) return ;
+
+    for (auto o : offloaders) {
+      auto offloader = std::get<0>(o.second) ;
+
+      if(offloader->continuous_offload()) {
+        offloader->stop_offload();
+        // To avoid a race condition, wait until the thread is stopped
+        while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+      } else {
+        offloader->read_trace();
+        offloader->read_trace_end();
+      }
+      printTraceWarns(offloader);
     }
   }
 

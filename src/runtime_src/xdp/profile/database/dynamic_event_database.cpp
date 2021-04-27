@@ -166,6 +166,23 @@ namespace xdp {
     return 0 ;
   }
 
+  void VPDynamicDatabase::markXRTUIDStart(uint64_t uid, uint64_t eventID)
+  {
+    std::lock_guard<std::mutex> lock(hostLock) ;
+    uidMap[uid] = eventID ;
+  }
+
+  uint64_t VPDynamicDatabase::matchingXRTUIDStart(uint64_t uid)
+  {
+    std::lock_guard<std::mutex> lock(hostLock) ;
+    if (uidMap.find(uid) != uidMap.end()) {
+      uint64_t value = uidMap[uid] ;
+      uidMap.erase(uid) ;
+      return value ;
+    }
+    return 0 ;
+  }
+
   void VPDynamicDatabase::markRange(uint64_t functionID,
                                     std::pair<const char*, const char*> desc,
                                     uint64_t startTimestamp)

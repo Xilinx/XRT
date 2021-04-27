@@ -46,7 +46,7 @@ namespace xdp {
     // These are the continuous offload configuration parameters as read
     //  from xrt.ini.
     bool continuous_trace ;
-    unsigned int continuous_trace_interval_ms ;
+    unsigned int trace_buffer_offload_interval_ms ;
     bool m_enable_circular_buffer = false;
 
   protected:
@@ -72,6 +72,7 @@ namespace xdp {
     XDP_EXPORT void startContinuousThreads(uint64_t deviceId) ;
 
     XDP_EXPORT void readCounters() ;
+    XDP_EXPORT virtual void readTrace() = 0 ;
     XDP_EXPORT void printTraceWarns(DeviceTraceOffload* offloader) ;
 
   public:

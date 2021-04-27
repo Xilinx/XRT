@@ -31,28 +31,55 @@ mtx.unlock();
     func_name##_response r_msg; \
     AQUIRE_MUTEX()
 
-#define SERIALIZE_AND_SEND_MSG(func_name)\
-     unsigned c_len = c_msg.ByteSize(); \
-    buf_size = alloc_void(c_len); \
-    bool rv = c_msg.SerializeToArray(buf,c_len); \
+#if GOOGLE_PROTOBUF_VERSION < 3006001
+// Use the deprecated 32 bit version of the size
+#define SERIALIZE_AND_SEND_MSG(func_name)                               \
+    auto c_len = c_msg.ByteSize();                                      \
+    buf_size = alloc_void(c_len);                                       \
+    bool rv = c_msg.SerializeToArray(buf,c_len);                        \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
-    \
-    ci_msg.set_size(c_len); \
-    ci_msg.set_xcl_api(func_name##_n); \
-    unsigned ci_len = ci_msg.ByteSize(); \
-    rv = ci_msg.SerializeToArray(ci_buf,ci_len); \
+                                                                        \
+    ci_msg.set_size(c_len);                                             \
+    ci_msg.set_xcl_api(func_name##_n);                                  \
+    auto ci_len = ci_msg.ByteSize();                                    \
+    rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
     if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
-    \
-    _s_inst->sk_write(ci_buf,ci_len); \
-    _s_inst->sk_write(buf,c_len); \
-    \
-    _s_inst->sk_read(ri_buf,ri_msg.ByteSize()); \
-    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize()); \
-    assert(true == rv);\
-    buf_size = alloc_void(ri_msg.size()); \
-    _s_inst->sk_read(buf,ri_msg.size()); \
-    rv = r_msg.ParseFromArray(buf,ri_msg.size()); \
-    assert(true == rv);\
+                                                                        \
+    _s_inst->sk_write(ci_buf,ci_len);                                   \
+    _s_inst->sk_write(buf,c_len);                                       \
+                                                                        \
+    _s_inst->sk_read(ri_buf,ri_msg.ByteSize());                         \
+    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSize());               \
+    assert(true == rv);                                                 \
+    buf_size = alloc_void(ri_msg.size());                               \
+    _s_inst->sk_read(buf,ri_msg.size());                                \
+    rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
+    assert(true == rv);
+#else
+// More recent protoc handles 64 bit size objects and the 32 bit version is deprecated
+#define SERIALIZE_AND_SEND_MSG(func_name)                               \
+    auto c_len = c_msg.ByteSizeLong();                                  \
+    buf_size = alloc_void(c_len);                                       \
+    bool rv = c_msg.SerializeToArray(buf,c_len);                        \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+                                                                        \
+    ci_msg.set_size(c_len);                                             \
+    ci_msg.set_xcl_api(func_name##_n);                                  \
+    auto ci_len = ci_msg.ByteSizeLong();                                \
+    rv = ci_msg.SerializeToArray(ci_buf,ci_len);                        \
+    if(rv == false){std::cerr<<"FATAL ERROR:protobuf SerializeToArray failed"<<std::endl;exit(1);} \
+                                                                        \
+    _s_inst->sk_write(ci_buf,ci_len);                                   \
+    _s_inst->sk_write(buf,c_len);                                       \
+                                                                        \
+    _s_inst->sk_read(ri_buf,ri_msg.ByteSizeLong());                     \
+    rv = ri_msg.ParseFromArray(ri_buf,ri_msg.ByteSizeLong());           \
+    assert(true == rv);                                                 \
+    buf_size = alloc_void(ri_msg.size());                               \
+    _s_inst->sk_read(buf,ri_msg.size());                                \
+    rv = r_msg.ParseFromArray(buf,ri_msg.size());                       \
+    assert(true == rv);
+#endif
 
 //RELEASE BUFFER MEMORIES
 #define FREE_BUFFERS() \

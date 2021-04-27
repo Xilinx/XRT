@@ -367,7 +367,7 @@ enum drm_zocl_axlf_flags {
  * @dir:	input or output argument for a CU
  */
 struct argument_info {
-	char		name[32];
+	char		name[64];
 	uint32_t	offset;
 	uint32_t	size;
 	uint32_t	dir;

@@ -135,11 +135,15 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     std::string vbnv = "xilinx_" + board_name + "_GOLDEN";
     pt_current_shell.put("vbnv", vbnv);
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
-      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], ""); 
+    try {
+      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], "");
       pt_current_shell.put("vbnv", part.name);
       pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[0]));
       pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[0]));
       pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
+    } catch (...) {
+      //safe to ignore exceptions. We print out whatever information that is available to us
+    }
 
       boost::property_tree::ptree pt_plps;
       for(unsigned int i = 1; i < logic_uuids.size(); i++) {
@@ -174,6 +178,8 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_available_shell.put("vbnv", installedDSA.name);
     pt_available_shell.put("sc_version", installedDSA.bmcVer);
     pt_available_shell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
+    //the first UUID in the list is logic-uuid
+    pt_available_shell.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
     pt_available_shell.put("file", installedDSA.file);
 
     boost::property_tree::ptree pt_status;
@@ -231,7 +237,7 @@ ReportPlatform::writeReport( const xrt_core::device * device,
   auto logic_uuid = pt.get<std::string>("platform.current_shell.logic-uuid", "");
   auto interface_uuid = pt.get<std::string>("platform.current_shell.interface-uuid", "");
   if (!logic_uuid.empty() && !interface_uuid.empty()) {
-    output << fmtBasic % "Platform ID" % logic_uuid;
+    output << fmtBasic % "Platform UUID" % logic_uuid;
     output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
     output << fmtBasic % "Platform ID" % pt.get<std::string>("platform.current_shell.id", "N/A");
@@ -259,8 +265,14 @@ ReportPlatform::writeReport( const xrt_core::device * device,
     boost::property_tree::ptree& available_shell = kv.second;
     output << fmtBasic % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
     output << fmtBasic % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-    output << fmtBasic % "Platform ID" % available_shell.get<std::string>("id", "N/A");
-    output << std::endl;
+    // print platform ID, for 2RP, platform ID = logic UUID 
+    auto platform_uuid = available_shell.get<std::string>("logic-uuid", "");
+    if (!platform_uuid.empty()) {
+      output << fmtBasic % "Platform UUID" % platform_uuid;
+    } else {
+      output << fmtBasic % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+    }
+      output << std::endl;
   }
 
   //PLPs installed on the system

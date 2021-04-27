@@ -194,7 +194,7 @@ namespace xdp {
     std::vector<std::string> deviceNames ;
     for (auto device : deviceInfo)
     {
-      deviceNames.push_back((device.second)->deviceName) ;
+      deviceNames.push_back((device.second)->getUniqueDeviceName()) ;
     }
 
     return deviceNames ;
