@@ -31,36 +31,6 @@ is_aie_only(struct axlf *axlf)
 }
 
 static int
-zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
-                        char __user *xclbin, struct sched_client_ctx *client)
-{
-        uint64_t size;
-        char *pdi_buf = NULL;
-        int ret; 
-
-        if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
-                DRM_ERROR("%s Shared context can not load xclbin", __func__);
-                return -EPERM;
-        }
-
-        size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
-        if (size == 0)
-                return 0;
-
-        ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
-        vfree(pdi_buf);
-
-        /* Mark AIE out of reset state after load PDI */
-        if (zdev->aie) {
-                mutex_lock(&zdev->aie_lock);
-                zdev->aie->aie_reset = false;
-                mutex_unlock(&zdev->aie_lock);
-        }
-
-        return ret;
-}
-
-static int
 zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 flags)
 {
 	struct drm_device *ddev = zdev->ddev;
@@ -459,6 +429,36 @@ zocl_xclbin_same_uuid(struct drm_zocl_dev *zdev, xuid_t *uuid)
 {
 	return (zocl_xclbin_get_uuid(zdev) != NULL &&
 	    uuid_equal(uuid, zocl_xclbin_get_uuid(zdev)));
+}
+
+static int
+zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
+			char __user *xclbin, struct sched_client_ctx *client)
+{
+	uint64_t size;
+	char *pdi_buf = NULL;
+	int ret;
+
+	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
+		DRM_ERROR("%s Shared context can not load xclbin", __func__);
+		return -EPERM;
+	}
+
+	size = zocl_read_sect(PDI, &pdi_buf, axlf, xclbin);
+	if (size == 0)
+		return 0;
+
+	ret = zocl_fpga_mgr_load(zdev, pdi_buf, size, FPGA_MGR_PARTIAL_RECONFIG);
+	vfree(pdi_buf);
+
+	/* Mark AIE out of reset state after load PDI */
+	if (zdev->aie) {
+		mutex_lock(&zdev->aie_lock);
+		zdev->aie->aie_reset = false;
+		mutex_unlock(&zdev->aie_lock);
+	}
+
+	return ret;
 }
 
 /*
