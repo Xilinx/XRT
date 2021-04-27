@@ -14,29 +14,28 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include <linux/mutex.h>
-
+#include "common.h"
 #include "xocl_drv.h"
 
 static void
 xocl_clear_all_error_record(struct xocl_dev *xdev)
 {
-	struct xocl_error *err = xdev->xocl_errors;
+	struct xcl_errors *err = xdev->core.errors;
 	if (!err)
 		return;
 
-	mutex_lock(&xdev->errors_lock);
+	mutex_lock(&xdev->core.errors_lock);
 
-	memset(err->errors, 0, sizeof(err->errors);
+	memset(err->errors, 0, sizeof(err->errors));
 	err->num_err = 0;
 
-	mutex_unlock(&xdev->errors_lock);
+	mutex_unlock(&xdev->core.errors_lock);
 }
 
 int
-xocl_insert_error_record(struct xocl_dev *xdev, xrtErrorLast *err_last)
+xocl_insert_error_record(struct xocl_dev *xdev, struct xclErrorLast *err_last)
 {
-	struct xocl_error *err = xdev->xocl_errors;
+	struct xcl_errors *err = xdev->core.errors;
 	if (!err)
 		return -ENOENT;
 	//TODO
@@ -55,9 +54,9 @@ xocl_init_errors(struct xocl_dev *xdev)
 void
 xocl_fini_errors(struct xocl_dev *xdev)
 {
-	struct xocl_error *err = xdev->xocl_errors;
+	struct xcl_errors *err = xdev->core.errors;
 	if (!err)
-		return -EINVAL;
+		return;
 	//TODO
 }
 
