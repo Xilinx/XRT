@@ -59,7 +59,7 @@ typedef struct xclErrorLast {
 	xrtErrorCode	err_code;	/* 64 bits; XRT error code */
 	xrtErrorTime	ts;		/* 64 bits; timestamp */
 	unsigned        pid;            /* 32 bits; pid associated with error, if available */
-};
+} xclErrorLast;
 
 typedef struct xcl_errors {
 	int		num_err;	/* number of errors recorded */
