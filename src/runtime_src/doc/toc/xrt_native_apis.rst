@@ -607,22 +607,22 @@ The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argu
 
 In the example above
 
-- The API ``xrtGraphRun(graphHandle, -1)`` is used to execute the graph infinitely
-- The API ``xrtGraphWait(graphHandle,3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
+- The member function ``xrt::graph::run(-1)`` is used to execute the graph infinitely
+- The API ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
 
        - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately. 
-- The API ``xrtGraphResume`` is used to restart the suspended graph
-- The API ``xrtGraphSuspend`` is used to suspend the graph immediately
-- The API ``xrtGraphEnd(graphHandle,5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
+- The API ``xrt::graph::resume()`` is used to restart the suspended graph
+- The API ``xrt::graph::suspend()`` is used to suspend the graph immediately
+- The API ``xrt::graph::end(5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
        
        - If the graph was already run more than 5000 AIE cycles the graph ends immediately.
-       - Using ``xrtGraphEnd`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
+       - Using ``xrt::graph::end()`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
 
 
 Measuring AIE cycle consumed by the Graph
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The API ``xrtGraphTimeStamp`` can be used to determine AIE cycle consumed between a graph start and stop. 
+The member function ``xrt::graph::get_timestamp`` can be used to determine AIE cycle consumed between a graph start and stop. 
 
 Here in this example, the AIE cycle consumed by 3 iteration is calculated
  
@@ -631,16 +631,16 @@ Here in this example, the AIE cycle consumed by 3 iteration is calculated
       :number-lines: 35
            
            // start from reset state
-           xrtGraphReset(graphHandle);
+           graph.reset();
            
-           uint64_t begin_t = xrtGraphTimeStamp(graphHandle);
+           uint64_t begin_t = graph.get_timestamp();
            
            // run the graph for 3 iteration
-           xrtGraphRun(graphHandle, 3);
+           graph.run(3);
            
-           xrtGraphWait(graphHandle, 0); 
+           graph.wait(0); 
            
-           uint64_t end_t = xrtGraphTimeStamp(graphHandle);
+           uint64_t end_t = graph.get_timestamp();
            
            std::cout<<"Number of AIE cycles consumed in the 3 iteration is: "<< end_t-begin_t; 
            
@@ -648,39 +648,34 @@ Here in this example, the AIE cycle consumed by 3 iteration is calculated
 RTP (Runtime Parameter) control
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT provides the API to update and read the runtime parameters of the graph. 
+The ``xrt::graph`` class contains member function to update and read the runtime parameters of the graph. 
 
-- The API ``xrtGraphUpdateRTP`` to update the RTP 
-- The API ``xrtGraphReadRTP`` to read the RTP. 
+- The member function ``xrt::graph::update()`` to update the RTP 
+- The member function ``xrt::graph::read()`` to read the RTP. 
 
 .. code:: c++
       :number-lines: 35
 
-           ret = xrtGraphReset(graphHandle);
-           if (ret) throw std::runtime_error("Unable to reset graph");
+           graph.reset();
 
-           ret = xrtGraphRun(graphHandle, 2);
-           if (ret) throw std::runtime_error("Unable to run graph");
+           graph.run(2);
 
            float increment[1] = {1};
-           const char *inVect = reinterpret_cast<const char *>(increment);
-           xrtGraphUpdateRTP(graphHandle, "mm.mm0.in[2]", inVect, sizeof (float));
+           graph.update("mm.mm0.in[2]", increment);
      
            // Do more things
-           xrtGraphRun(graphHandle,16);
-           xrtGraphWait(graphHandle,0);
+           graph.run(16);
+           graph.wait(0);
      
            // Read RTP
-           float increment_out[1] = {1};
-           char *outVect = reinterpret_cast<char *>(increment_out);
-           xrtGraphReadRTP(graphHandle, "mm.mm0.inout[0]", outVect, sizeof(float));
-           std::cout<<"\n RTP value read<<increment_out[0]; 
+           float increment_out;
+           graph.read("mm.mm0.inout[0]", &increment_out);
+           std::cout<<"\n RTP value read<<increment_out; 
  
-In the above example, the API ``xrtGraphUpdateRTP`` and ``xrtGraphReadRTP`` are used to update and read the RTP values respectively. Note the API arguments 
+In the above example, the member function ``xrt::graph::update()`` and ``xrt::graph::read()`` are used to update and read the RTP values respectively. Note the function arguments 
    
       - The hierarchical name of the RTP port
-      - Pointer to write or read the RTP variable
-      - The size of the RTP value. 
+      - Variable to set/read the RTP
 
 DMA operation to and from Global Memory IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
