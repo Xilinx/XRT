@@ -86,7 +86,7 @@ namespace xdp {
 
     uint64_t start = 0 ;
     
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingXRTUIDStart(id) ;
 
     VTFEvent* event = 
       new OpenCLBufferTransfer(start,
@@ -97,7 +97,9 @@ namespace xdp {
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
+    if (isStart) {
+      (db->getDynamicInfo()).markXRTUIDStart(id, event->getEventId()) ;
+    }
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
@@ -125,7 +127,7 @@ namespace xdp {
 
     uint64_t start = 0 ;
     
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingXRTUIDStart(id) ;
 
     // On the OpenCL side, NDRange Migrate might generate buffer transfer
     //  complete events with a buffer size of 0 that don't have corresponding
@@ -142,7 +144,9 @@ namespace xdp {
 			       bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
+    if (isStart) {
+      (db->getDynamicInfo()).markXRTUIDStart(id, event->getEventId()) ;
+    }
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
@@ -172,7 +176,7 @@ namespace xdp {
 
     uint64_t start = 0 ;
     
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingXRTUIDStart(id) ;
 
     VTFEvent* event = 
       new OpenCLCopyBuffer(start,
@@ -185,7 +189,9 @@ namespace xdp {
 			   bufferSize) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
-    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
+    if (isStart) {
+      (db->getDynamicInfo()).markXRTUIDStart(id, event->getEventId()) ;
+    }
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
@@ -216,7 +222,7 @@ namespace xdp {
 
     uint64_t start = 0 ;
     
-    if (!isStart) start = (db->getDynamicInfo()).matchingStart(id) ;
+    if (!isStart) start = (db->getDynamicInfo()).matchingXRTUIDStart(id) ;
     std::string workgroupConfiguration = 
       std::to_string(workgroupConfigurationX) + ":" +
       std::to_string(workgroupConfigurationY) + ":" +
@@ -244,7 +250,9 @@ namespace xdp {
 
     (db->getDynamicInfo()).addEvent(event) ;
 
-    if (isStart) (db->getDynamicInfo()).markStart(id, event->getEventId()) ;
+    if (isStart) {
+      (db->getDynamicInfo()).markXRTUIDStart(id, event->getEventId()) ;
+    }
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }

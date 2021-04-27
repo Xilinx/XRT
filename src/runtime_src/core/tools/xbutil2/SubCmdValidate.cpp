@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -965,6 +965,14 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return;
   }
 
+  int nodma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
+
+  if (nodma == 1 ) {
+    logger(_ptTest, "Details","M2M Test is not available");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   std::vector<mem_data> used_banks;
   const size_t bo_size = 256L * 1024 * 1024;
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
@@ -1114,17 +1122,17 @@ static std::vector<TestCollection> testSuite = {
  * print basic information about a test
  */
 static void
-pretty_print_test_desc(const boost::property_tree::ptree& test, int test_idx,
-                       size_t testSuiteSize, std::ostream & _ostream, const std::string& bdf)
+pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
+                       std::ostream & _ostream, const std::string& bdf)
 {
   if(test.get<std::string>("status", "").compare("skipped") != 0) {
-    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     _ostream << boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name");
     if(XBU::getVerbose())
       XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
   }
   else if(XBU::getVerbose()) {
-    std::string test_desc = boost::str(boost::format("Test %d/%d [%s]") % test_idx % testSuiteSize % bdf);
+    std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     XBU::message(boost::str(boost::format("%-28s: %s \n") % test_desc % test.get<std::string>("name")));
     XBU::message(boost::str(boost::format("    %-24s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
   }
@@ -1218,7 +1226,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device, boost::proper
   _ptTree.put("sc_version", xrt_core::device_query<xrt_core::query::xmc_sc_version>(device));
   _ptTree.put("platform_id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   if (schemaVersion == Report::SchemaVersion::text) {
-    _ostream << boost::format("Validate device[%s]\n") % _ptTree.get<std::string>("device_id");
+    _ostream << boost::format("Validate device [%s]\n") % _ptTree.get<std::string>("device_id");
     _ostream << boost::format("%-20s: %s\n") % "Platform" % _ptTree.get<std::string>("platform");
     _ostream << boost::format("%-20s: %s\n") % "SC Version" % _ptTree.get<std::string>("sc_version");
     _ostream << boost::format("%-20s: %s\n") % "Platform ID" % _ptTree.get<std::string>("platform_id");
@@ -1256,7 +1264,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
     if(schemaVersion == Report::SchemaVersion::text) {
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
       if(is_black_box_test())
-        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+        pretty_print_test_desc(ptTest, test_idx, _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
     }
 
     testPtr->testHandle(device, ptTest);
@@ -1265,7 +1273,7 @@ run_test_suite_device(const std::shared_ptr<xrt_core::device>& device,
     if(schemaVersion == Report::SchemaVersion::text) {
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
       if(!is_black_box_test()) 
-        pretty_print_test_desc(ptTest, ++test_idx, testObjectsToRun.size(), _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
+        pretty_print_test_desc(ptTest, test_idx, _ostream, xrt_core::query::pcie_bdf::to_string(bdf));
       pretty_print_test_run(ptTest, status, _ostream);
     }
       
@@ -1556,7 +1564,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
-    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
+    if (!sOutput.empty() && !XBU::getForce() && boost::filesystem::exists(sOutput)) 
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
     if (testsToRun.empty()) 
@@ -1584,7 +1592,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
       // Did we have a hit?  If not then let the user know of a typo
       if (nameFound == false) {
-        throw xrt_core::error((boost::format("Invalided test name: '%s'") % userTestName).str());
+        throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
       }
     }
 
@@ -1649,6 +1657,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     fOutput.open(sOutput, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) 
       throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+    std::cout << "Info: The output is being redirected to the file: \'" << sOutput << "\'" << std::endl;
+    std::cout << "Info: Validation started ... " << std::endl;
   }
 
   // Determine where the printed information should be sent.
@@ -1659,6 +1669,12 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, ptDevCollectionTestSuite, oOutput);
 
   // -- Create a summary of the report
-  create_report_summary(ptDevCollectionTestSuite, oOutput);
+  // Note: The report summary is only associated with the human readable format
+  if (schemaVersion == Report::SchemaVersion::text) 
+    create_report_summary(ptDevCollectionTestSuite, oOutput);
+
+  if (!sOutput.empty())
+    std::cout << "Info: Validation completed" << std::endl;
+
 }
 

@@ -1407,8 +1407,10 @@ int shim::xclLoadAxlf(const axlf *buffer)
 
         int ai = 0;
         for (auto& arg : kernel.args) {
-            if (arg.name.size() > sizeof(krnl->args[ai].name))
+            if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+                xrt_logmsg(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
                 return -EINVAL;
+            }
             std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
             krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
             krnl->args[ai].offset = arg.offset;

@@ -578,6 +578,26 @@ int xrt_cu_get_protocol(struct xrt_cu *xcu)
 	return xcu->info.protocol;
 }
 
+int xrt_cu_regmap_size(struct xrt_cu *xcu)
+{
+	int max_off_idx = 0;
+	int max_off = 0;
+	int i;
+
+	if (!xcu->info.num_args)
+		return xcu->info.size;
+
+	/* Max regmap size is max offset + register size */
+	for (i = 0; i < xcu->info.num_args; i++) {
+		if (max_off < xcu->info.args[i].offset) {
+			max_off = xcu->info.args[i].offset;
+			max_off_idx = i;
+		}
+	}
+
+	return max_off + xcu->info.args[max_off_idx].size;
+}
+
 int xrt_cu_init(struct xrt_cu *xcu)
 {
 	int err = 0;

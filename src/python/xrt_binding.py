@@ -1,5 +1,5 @@
 """
- Copyright (C) 2019-2020 Xilinx, Inc
+ Copyright (C) 2019-2021 Xilinx, Inc
 
  ctypes based Python binding for XRT
 
@@ -17,8 +17,10 @@
 """
 
 import os
+import sys
 import errno
 import ctypes
+import warnings
 from numbers import Integral
 
 from xclbin_binding import *
@@ -176,6 +178,11 @@ def _valueOrError(res):
         raise OSError(errno.ENODEV, os.strerror(errno.ENODEV))
     return res
 
+def _xclDeprecation(message):
+    warnings.warn(message + ", please use xrt prefixed APIs or pybind11 based object oriented APIs", DeprecationWarning)
+
+def _xclStreamDeprecation(message):
+    warnings.warn(message + ", streaming APIs are being deprecated. Please migrate to Host Memory (previously known as Slave Bridge) based design", DeprecationWarning)
 
 def xclProbe():
     """
@@ -188,6 +195,7 @@ def xclVersion():
     """
     :return: the version number. 1 => Hal1 ; 2 => Hal2
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     return libcore.xclVersion()
 
 def xclOpen(deviceIndex, logFileName, level):
@@ -199,6 +207,7 @@ def xclOpen(deviceIndex, logFileName, level):
     :param level: (int) Severity level of messages to log
     :return: device handle
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclOpen.restype = ctypes.POINTER(xclDeviceHandle)
     libcore.xclOpen.argtypes = [ctypes.c_uint, ctypes.c_char_p, ctypes.c_int]
     return _valueOrError(libcore.xclOpen(deviceIndex, logFileName, level))
@@ -211,6 +220,7 @@ def xclClose(handle):
     :param handle: (xclDeviceHandle) device handle
     :return: None
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclClose.restype = None
     libcore.xclClose.argtype = xclDeviceHandle
     libcore.xclClose(handle)
@@ -225,6 +235,7 @@ def xclGetDeviceInfo2 (handle, info):
     :return: 0 on success or appropriate error number
     """
 
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclGetDeviceInfo2.restype = ctypes.c_int
     libcore.xclGetDeviceInfo2.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return _valueOrError(libcore.xclGetDeviceInfo2(handle, info))
@@ -237,6 +248,7 @@ def xclGetUsageInfo (handle, info):
     :param info: Information record
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclGetUsageInfo.restype = ctypes.c_int
     libcore.xclGetUsageInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return _valueOrError(libcore.xclGetUsageInfo(handle, info))
@@ -249,6 +261,7 @@ def xclGetErrorStatus(handle, info):
     :param info: Information record
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclGetErrorStatus.restype = ctypes.c_int
     libcore.xclGetErrorStatus.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2)]
     return _valueOrError(libcore.xclGetErrorStatus(handle, info))
@@ -266,6 +279,7 @@ def xclLoadXclBin(handle, buf):
     xclbin as a section. xclbin may also contains other sections which are suitably
     handled by the driver
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclLoadXclBin.restype = ctypes.c_int
     libcore.xclLoadXclBin.argtypes = [xclDeviceHandle, ctypes.c_void_p]
     return _valueOrError(libcore.xclLoadXclBin(handle, buf))
@@ -281,6 +295,7 @@ def xclGetSectionInfo(handle, info, size, kind, index):
     :param index: The (sub)section index for the "kind" type.
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclGetSectionInfo.restype = ctypes.c_int
     libcore.xclGetSectionInfo.argtypes = [xclDeviceHandle, ctypes.POINTER(xclDeviceInfo2),
                                        ctypes.POINTER(ctypes.sizeof(xclDeviceInfo2)),
@@ -296,6 +311,7 @@ def xclReClock2(handle, region, targetFreqMHz):
     :param targetFreqMHz: Array of target frequencies in order for the Clock Wizards driving the PR region
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclReClock2.restype = ctypes.c_int
     libcore.xclReClock2.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint]
     return _valueOrError(libcore.xclReClock2(handle, region, targetFreqMHz))
@@ -305,12 +321,14 @@ def xclLockDevice(handle):
     """
     The function is NOP; it exists for backward compatiblity.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     return 0
 
 def xclUnlockDevice(handle):
     """
     The function is NOP; it exists for backward compatiblity.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     return 0
 
 def xclOpenContext(handle, xclbinId, ipIndex, shared):
@@ -327,6 +345,7 @@ def xclOpenContext(handle, xclbinId, ipIndex, shared):
     only if another client has not already setup up a context on that compute unit. Shared
     contexts can be concurrently allocated by many processes on the same compute units.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclOpenContext.restype = ctypes.c_int
     libcore.xclOpenContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint, ctypes.c_bool]
     return _valueOrError(libcore.xclOpenContext(handle, xclbinId.bytes, ipIndex, shared))
@@ -342,12 +361,13 @@ def xclCloseContext(handle, xclbinId, ipIndex):
 
     Close a previously allocated shared/exclusive context for a compute unit.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclCloseContext.restype = ctypes.c_int
     libcore.xclCloseContext.argtypes = [xclDeviceHandle, ctypes.c_char_p, ctypes.c_uint]
     return _valueOrError(libcore.xclCloseContext(handle, xclbinId.bytes, ipIndex))
 
 
-def xclLogMsg(handle, level, tag, format, *args):
+def xclLogMsg(handle, level, tag, form, *args):
     """
     Send message to log file as per settings in ini file.
 
@@ -358,9 +378,9 @@ def xclLogMsg(handle, level, tag, format, *args):
     :param ...: All other arguments as per the format
     :return: 0 on success or appropriate error number
     """
-    libcore.xclAllocBO.restype = ctypes.c_int
-    libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p]
-    return _valueOrError(libcore.xclLogMsg(handle, level, tag, format, *args))
+    libcore.xclLogMsg.restype = ctypes.c_int
+    libcore.xclLogMsg.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]
+    return _valueOrError(libcore.xclLogMsg(handle, level, tag, form, *args))
 
 
 def xclAllocBO(handle, size, unused, flags):
@@ -373,6 +393,7 @@ def xclAllocBO(handle, size, unused, flags):
     :param flags: (unsigned int) Specify bank information, etc
     :return: BO handle
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclAllocBO.restype = ctypes.c_uint
     libcore.xclAllocBO.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_int, ctypes.c_uint]
     return _valueOrError(libcore.xclAllocBO(handle, size, unused, flags))
@@ -387,6 +408,7 @@ def xclAllocUserPtrBO(handle, userptr, size, flags):
     :param flags: Specify bank information, etc
     :return: BO handle
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclAllocUserPtrBO.restype = ctypes.c_uint
     libcore.xclAllocUserPtrBO.argtypes = [xclDeviceHandle, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_uint]
     return _valueOrError(libcore.xclAllocUserPtrBO(handle, userptr, size, flags))
@@ -399,6 +421,7 @@ def xclFreeBO(handle, boHandle):
     :param handle: device handle
     :param boHandle: BO handle
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclFreeBO.restype = None
     libcore.xclFreeBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     libcore.xclFreeBO(handle, boHandle)
@@ -414,6 +437,7 @@ def xclWriteBO(handle, boHandle, src, size, seek):
     :param seek: Offset within the BO
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclWriteBO.restype = ctypes.c_int
     libcore.xclWriteBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
     return _valueOrError(libcore.xclWriteBO(handle, boHandle, src, size, seek))
@@ -429,6 +453,7 @@ def xclReadBO(handle, boHandle, dst, size, skip):
     :param skip: Offset within the BO
     :return: 0 on success or appropriate error number
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclReadBO.restype = ctypes.c_int
     libcore.xclReadBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p, ctypes.c_size_t, ctypes.c_size_t]
     return _valueOrError(libcore.xclReadBO(handle, boHandle, dst, size, skip))
@@ -449,7 +474,7 @@ def xclMapBO(handle, boHandle, write):
     Return type void pointer doesn't get correctly binded in ctypes
     To map the buffer, explicitly specify the type and size of data
     """
-
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclMapBO.restype = ctypes.POINTER(ctypes.c_char)
     libcore.xclMapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_bool]
     ptr = libcore.xclMapBO(handle, boHandle, write)
@@ -464,6 +489,7 @@ def xclUnmapBO(handle, boHandle, addr):
     :param addr: (pointer) buffer pointer
 
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclUnmapBO.restype = ctypes.c_int
     libcore.xclUnmapBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_void_p]
     return _valueOrError(libcore.xclUnmapBO(handle, boHandle, addr))
@@ -480,6 +506,7 @@ def xclSyncBO(handle, boHandle, direction, size, offset):
     :param offset: (size_t) Offset within the BO
     :return: 0 on success or standard errno
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclSyncBO.restype = ctypes.c_int
     libcore.xclSyncBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_int, ctypes.c_size_t, ctypes.c_size_t]
     return _valueOrError(libcore.xclSyncBO(handle, boHandle, direction, size, offset))
@@ -496,6 +523,7 @@ def xclCopyBO(handle, dstBoHandle, srcBoHandle, size, dst_offset, src_offset):
     :param src_offset: src  Offset within the BO
     :return: 0 on success or standard errno
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclCopyBO.restype = ctypes.c_int
     libcore.xclCopyBO.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_uint, ctypes.c_size_t, ctypes.c_size_t,
                                ctypes.c_uint]
@@ -509,6 +537,7 @@ def xclExportBO(handle, boHandle):
     :param boHandle: BO handle which needs to be exported
     :return: File handle to the BO or standard errno
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclExportBO.restype = ctypes.c_int
     libcore.xclExportBO.argtypes = [xclDeviceHandle, ctypes.c_uint]
     return _valueOrError(libcore.xclExportBO(handle, boHandle))
@@ -525,6 +554,7 @@ def xclImportBO(handle, fd, flags):
     Import a BO exported by another device.
     This operation is backed by Linux DMA-BUF framework
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclImportBO.restype = ctypes.c_int
     libcore.xclImportBO.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint]
     libcore.xclImportBO(handle, fd, flags)
@@ -538,6 +568,7 @@ def xclGetBOProperties(handle, boHandle, properties):
     :param properties: BO properties struct pointer
     :return: 0 on success
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclGetBOProperties.restype = ctypes.c_int
     libcore.xclGetBOProperties.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.POINTER(xclBOProperties)]
     return _valueOrError(libcore.xclGetBOProperties(handle, boHandle, properties))
@@ -594,6 +625,7 @@ def xclWrite(handle, space, offset, hostBuf, size):
     This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
     execution management please use XRT Compute Unit Execution Management APIs defined below
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclWrite.restype = ctypes.c_size_t
     libcore.xclWrite.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
     return libcore.xclWrite(handle, space, offset, hostBuf, size)
@@ -613,6 +645,7 @@ def xclRead(handle, space, offset, hostBuf, size):
     This API will be deprecated in future. Please use this API only for IP bringup/debugging. For
     execution management please use XRT Compute Unit Execution Management APIs defined below
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclRead.restype = ctypes.c_size_t
     libcore.xclRead.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_size_t]
     return libcore.xclRead(handle, space, offset, hostBuf, size)
@@ -627,6 +660,7 @@ def xclExecBuf(handle, cmdBO):
     Submit an exec buffer for execution. The exec buffer layout is defined by struct ert_packet
     which is defined in file *ert.h*. The BO should been allocated with DRM_XOCL_BO_EXECBUF flag.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclExecBuf.restype = ctypes.c_int
     libcore.xclExecBuf.argtypes = [xclDeviceHandle, ctypes.c_uint]
     return _valueOrError(libcore.xclExecBuf(handle, cmdBO))
@@ -645,6 +679,7 @@ def xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list):
     handles in the wait list must have beeen submitted prior to this
     call to xclExecBufWithWaitList.
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclExecBufWithWaitList.restype = ctypes.c_int
     libcore.xclExecBufWithWaitList.argtypes = [xclDeviceHandle, ctypes.c_uint, ctypes.c_size_t, ctypes.POINTER(ctypes.c_uint)]
     return _valueOrError(libcore.xclExecBufWithWaitList(handle, cmdBO, num_bo_in_wait_list, bo_wait_list))
@@ -660,6 +695,7 @@ def xclExecWait(handle, timeoutMilliSec):
     call on the driver file handle. The return value has same semantics as poll system call.
     If return value is > 0 caller should check the status of submitted exec buffers
     """
+    _xclDeprecation(sys._getframe().f_code.co_name)
     libcore.xclExecWait.restype = ctypes.c_int
     libcore.xclExecWait.argtypes = [xclDeviceHandle, ctypes.c_int]
     return libcore.xclExecWait(handle, timeoutMilliSec)
@@ -692,6 +728,7 @@ def xclCreateWriteQueue(handle, q_ctx, q_hdl):
     successes.
     This feature will be enabled in a future release.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclCreateWriteQueue.restype = ctypes.c_int
     libcore.xclCreateWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
     return libcore.xclCreateWriteQueue(handle, q_ctx, q_hdl)
@@ -708,6 +745,7 @@ def xclCreateReadQueue(handle, q_ctx, q_hdl):
     successes.
     This feature will be enabled in a future release.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclCreateReadQueue.restype = ctypes.c_int
     libcore.xclCreateReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueContext), ctypes.c_uint64]
     return libcore.xclCreateReadQueue(handle, q_ctx, q_hdl)
@@ -724,6 +762,7 @@ def xclAllocQDMABuf(handle, size, buf_hdl):
     These functions allocate and free DMA buffers which is used for queue read and write.
     This feature will be enabled in a future release.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclAllocQDMABuf.restypes = ctypes.c_void_p
     libcore.xclAllocQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_size_t, ctypes.c_uint64]
     return libcore.xclAllocQDMABuf(handle, size, buf_hdl)
@@ -739,6 +778,7 @@ def xclFreeQDMABuf(handle, buf_hdl):
     These functions allocate and free DMA buffers which is used for queue read and write.
     This feature will be enabled in a future release.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclFreeQDMABuf.restypes = ctypes.c_int
     libcore.xclFreeQDMABuf.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libcore.xclFreeQDMABuf(handle, buf_hdl)
@@ -752,6 +792,7 @@ def xclDestroyQueue(handle, q_hdl):
     This function destroy Queue and release all resources. It returns -EBUSY if Queue is in running state.
     This feature will be enabled in a future release.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclDestroyQueue.restypes = ctypes.c_int
     libcore.xclDestroyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libcore.xclDestroyQueue(handle, q_hdl)
@@ -765,6 +806,7 @@ def xclModifyQueue(handle, q_hdl):
     This function modifies Queue context on the fly. Modifying rid implies
     to program hardware traffic manager to connect Queue to the kernel pipe.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclModifyQueue.restypes = ctypes.c_int
     libcore.xclModifyQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libcore.xclModifyQueue(handle, q_hdl)
@@ -777,6 +819,7 @@ def xclStartQueue(handle, q_hdl):
 
     This function set xclStartQueue to running state. xclStartQueue starts to process Read and Write requests.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclStartQueue.restypes = ctypes.c_int
     libcore.xclStartQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libcore.xclStartQueue(handle, q_hdl)
@@ -790,6 +833,7 @@ def xclStopQueue(handle, q_hdl):
     This function set Queue to init state. all pending read and write requests will be flushed.
     wr_complete and rd_complete will be called with error wbe for flushed requests.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclStopQueue.restypes = ctypes.c_int
     libcore.xclStopQueue.argtypes = [xclDeviceHandle, ctypes.c_uint64]
     return libcore.xclStopQueue(handle, q_hdl)
@@ -862,6 +906,7 @@ def xclWriteQueue(handle, q_hdl, wr_req):
          silent: (only used with non-blocking);
              No event generated after write completes
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclWriteQueue.restype = ctypes.c_ssize_t
     libcore.xclWriteQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libcore.xclWriteQueue(handle, q_hdl, wr_req)
@@ -883,6 +928,7 @@ def xclReadQueue(handle, q_hdl, wr_req):
          non-blocking:
              return 0 immidiately.
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclReadQueue.restype = ctypes.c_ssize_t
     libcore.xclReadQueue.argtypes = [xclDeviceHandle, ctypes.POINTER(xclQueueRequest)]
     return libcore.xclReadQueue(handle, q_hdl, wr_req)
@@ -898,6 +944,7 @@ def xclPollCompletion(handle, min_compl, max_compl, comps, actual_compl, timeout
     :param timeout: timeout
     :return:
     """
+    _xclStreamDeprecation(sys._getframe().f_code.co_name)
     libcore.xclPollCompletion.restype = ctypes.c_int
     libcore.xclPollCompletion.argtypes = [xclDeviceHandle, ctypes.c_int, ctypes.c_int, ctypes.POINTER(xclReqCompletion),
                                        ctypes.POINTER(ctypes.c_int), ctypes.c_int]
@@ -974,7 +1021,7 @@ def xrtDeviceToXclDevice(handle):
     libcoreutil.xrtDeviceToXclDevice.restype = ctypes.POINTER(xclDeviceHandle)
     libcoreutil.xrtDeviceToXclDevice.argtypes = [xrtDeviceHandle]
     return _valueOrError(libcoreutil.xrtDeviceToXclDevice(handle))
-    
+
 def xrtPLKernelOpen(handle, xclbinId, name):
     """
     Open a PL kernel and obtain its handle

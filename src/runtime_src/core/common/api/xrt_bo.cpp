@@ -414,8 +414,15 @@ class buffer_import : public bo_impl
 
 public:
   buffer_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
-    : bo_impl(dhdl, ehdl), hbuf(device->map_bo(handle, true))
-  {}
+    : bo_impl(dhdl, ehdl)
+  {
+    try {
+      hbuf = device->map_bo(handle, true);
+    }
+    catch (const std::exception&) {
+      hbuf = nullptr;
+    }
+  }
 
   ~buffer_import()
   {
@@ -435,6 +442,8 @@ public:
   virtual void*
   get_hbuf() const
   {
+    if (!hbuf)
+      throw xrt_core::system_error(std::errc::bad_address, "No host memory for imported buffer");
     return hbuf;
   }
 };
