@@ -207,11 +207,12 @@ if [ $? != 0 ]; then
    error "XRT build failed"
 fi
 
-echo "[CMD]: petalinux-build -c zocl"
-$PETA_BIN/petalinux-build -c zocl
-if [ $? != 0 ]; then
-   error "ZOCL build failed"
-fi
+# zocl is now part of xrt depenendencies. No need to build zocl from petalinux 2021.1+
+#echo "[CMD]: petalinux-build -c zocl"
+#$PETA_BIN/petalinux-build -c zocl
+#if [ $? != 0 ]; then
+#   error "ZOCL build failed"
+#fi
 
 echo "Copying rpms in $ORIGINAL_DIR/$PETALINUX_NAME"
 if [ ! -d build/tmp/deploy/rpm ]; then

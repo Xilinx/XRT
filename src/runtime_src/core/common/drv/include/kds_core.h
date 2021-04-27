@@ -154,6 +154,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_get_cu_total(struct kds_sched *kds);
 u32 kds_get_cu_addr(struct kds_sched *kds, int idx);
 u32 kds_get_cu_proto(struct kds_sched *kds, int idx);
+int kds_get_max_regmap_size(struct kds_sched *kds);
 int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,

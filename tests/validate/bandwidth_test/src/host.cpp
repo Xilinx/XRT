@@ -23,7 +23,8 @@
 int main(int argc, char** argv) {
     if (argc < 2) {
         std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
-                  << "<optional> -d device_id" << std::endl;
+                  << "<optional> -d device_id"
+                  << "<optional> -l iter_cnt" << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -33,10 +34,12 @@ int main(int argc, char** argv) {
     // Switches
     //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
     parser.addSwitch("--device", "-d", "device id", "0");
+    parser.addSwitch("--iter_cnt", "-l", "loop iteration count", "10000");
     parser.parse(argc, argv);
 
     // Read settings
     std::string dev_id = parser.value("device");
+    std::string iter_cnt = parser.value("iter_cnt");
 
     int NUM_KERNEL;
     std::string test_path = argv[1];
@@ -80,7 +83,7 @@ int main(int argc, char** argv) {
     auto fileBuf = xcl::read_binary_file(binaryFile);
     cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
 
-    auto pos= dev_id.find(":");
+    auto pos = dev_id.find(":");
     cl::Device device;
     if (pos == std::string::npos) {
         uint32_t device_index = stoi(dev_id);
@@ -124,8 +127,9 @@ int main(int argc, char** argv) {
     }
 
     double max_throughput = 0;
+    int reps = stoi(iter_cnt);
+
     for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
-        unsigned int reps = 1000;
         unsigned int DATA_SIZE = i;
 
         if (xcl::is_emulation()) {
@@ -225,3 +229,4 @@ int main(int argc, char** argv) {
 
     return EXIT_SUCCESS;
 }
+

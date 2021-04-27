@@ -538,9 +538,11 @@ static void xocl_work_cb(struct work_struct *work)
 		mutex_lock(&xocl_reset_mutex);
 		if (!xocl_get_buddy_fpga(&buddy_xdev, xocl_get_buddy_cb))
 			buddy_xdev = NULL;
-		if (buddy_xdev)
+		if (buddy_xdev) {
+			xocl_drvinst_set_offline(buddy_xdev->core.drm, true);
 			(void) xocl_hot_reset(buddy_xdev, XOCL_RESET_FORCE |
 				XOCL_RESET_SHUTDOWN | XOCL_RESET_NO);
+		}
 		(void) xocl_hot_reset(xdev, XOCL_RESET_FORCE |
 			       	XOCL_RESET_SHUTDOWN);
 		mutex_unlock(&xocl_reset_mutex);

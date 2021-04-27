@@ -597,7 +597,7 @@ namespace xdp {
 	    // (averageTime*(values.CuExecCount[cuIndex]))/totalTime ;
 	    std::string speedup_string = std::to_string(speedup) + "x" ;
 
-	    fout << (device->deviceName) << "," 
+	    fout << device->getUniqueDeviceName() << "," 
 		 << cuName << ","
 		 << kernelName << ","
 		 << globalWorkDimensions << ","
@@ -829,7 +829,7 @@ namespace xdp {
 	      (100.0 * transferRate) / xclbin->maxWriteBW ;
 	    if (aveBW > 100.0) aveBW = 100.0 ;
 
-	    fout << (device->deviceName) << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << xclbin->cus[monitor->cuIndex]->getName() << "/"
 		 << portName << ","
 		 << (monitor->args) << ","
@@ -849,7 +849,7 @@ namespace xdp {
 		(100.0 * transferRate) / xclbin->maxReadBW ;
 	      if (aveBW > 100.0) aveBW = 100.0 ;
 
-	      fout << (device->deviceName) << ","
+	      fout << device->getUniqueDeviceName() << ","
 		   << xclbin->cus[monitor->cuIndex]->getName() << "/"
 		   << portName << ","
 		   << (monitor->args) << ","
@@ -941,7 +941,7 @@ namespace xdp {
             double linkUtil = 100.0 - linkStarve - linkStall ;
             double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / 1000.0;
             
-            fout << (device->deviceName) << ","
+            fout << device->getUniqueDeviceName() << ","
                  << masterPort << ","
                  << masterArgs << ","
                  << slavePort << ","
@@ -1012,7 +1012,7 @@ namespace xdp {
 	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "WRITE" << ","
 		 << values.WriteTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1052,7 +1052,7 @@ namespace xdp {
 	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
 	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "READ" << ","
 		 << values.ReadTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1140,7 +1140,7 @@ namespace xdp {
 	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "WRITE" << ","
 		 << values.WriteTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1180,7 +1180,7 @@ namespace xdp {
 	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
 	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "READ" << ","
 		 << values.ReadTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1268,7 +1268,7 @@ namespace xdp {
 	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
 	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "WRITE" << ","
 		 << values.WriteTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1308,7 +1308,7 @@ namespace xdp {
 	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
 	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
 
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << "READ" << ","
 		 << values.ReadTranx[AIMIndex] << "," ;
 	    if (getFlowMode() == HW_EMU)
@@ -1418,7 +1418,7 @@ namespace xdp {
 
 	  // Verify that this CU actually had some data transfers registered
 	  if (computeUnitName != "" && numTransfers != 0) {
-	    fout << device->deviceName << ","
+	    fout << device->getUniqueDeviceName() << ","
 		 << computeUnitName << ","
 		 << numTransfers << ","
 		 << aveBytesPerTransfer << ","
@@ -1651,7 +1651,7 @@ namespace xdp {
     auto deviceInfos = (t->db->getStaticInfo()).getDeviceInfos() ;
 
     for (auto device : deviceInfos) {
-      std::string deviceName = device->deviceName ;
+      std::string deviceName = device->getUniqueDeviceName() ;
       uint64_t execTime = (t->db->getStats()).getDeviceActiveTime(deviceName) ;
       
       (t->fout) << "DEVICE_EXEC_TIME" << "," 
@@ -1686,7 +1686,7 @@ namespace xdp {
           }
 
           (t->fout) << "CU_CALLS" << ","
-                    << device->deviceName << "|"
+                    << device->getUniqueDeviceName() << "|"
                     << ((cu.second)->getName()) << ","
                     << execCount
                     << "," << std::endl ;
@@ -1748,7 +1748,7 @@ namespace xdp {
       for (auto mon : monitors)
       {
         (t->fout) << "NUM_MONITORS" << ","
-                  << device->deviceName << "|"
+                  << device->getUniqueDeviceName() << "|"
                   << (mon.second)->type << "|"
                   << (mon.second)->numTraceEnabled << ","
                   << (mon.second)->numTotal << "," << std::endl;
@@ -1788,7 +1788,7 @@ namespace xdp {
 	    memName = "DDR[" + memName.substr(4,4) + "]" ;
 
 	  (t->fout) << "MEMORY_USAGE" << ","
-		    << (device->deviceName) << "|"
+		    << device->getUniqueDeviceName() << "|"
 		    << memName
 		    << ","
 		    << (memory.second)->used
@@ -2091,7 +2091,7 @@ namespace xdp {
     bool done = false;
 
     for (auto device : deviceInfos) {
-      std::string deviceName = device->deviceName ;
+      std::string deviceName = device->getUniqueDeviceName() ;
       for (auto xclbin : device->loadedXclbins) {
         for (auto memory : xclbin->memoryInfo) {
           if ((memory.second)->name.find("PLRAM") != std::string::npos) {
@@ -2141,19 +2141,19 @@ namespace xdp {
       if (device->isEdgeDevice)
       {
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
-		  << device->deviceName << "|DDR" << ","
+		  << device->getUniqueDeviceName() << "|DDR" << ","
 		  << 64 << "," << std::endl ;
       }
       else
       {
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
-		  << device->deviceName << "|HBM" << ","
+		  << device->getUniqueDeviceName() << "|HBM" << ","
 		  << 256 << "," << std::endl ;
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
-		  << device->deviceName << "|DDR" << ","
+		  << device->getUniqueDeviceName() << "|DDR" << ","
 		  << 512 << "," << std::endl ;
 	(t->fout) << "MEMORY_TYPE_BIT_WIDTH" << "," 
-		  << device->deviceName << "|PLRAM" << ","
+		  << device->getUniqueDeviceName() << "|PLRAM" << ","
 		  << 512 << "," << std::endl ;	  
       }
     }

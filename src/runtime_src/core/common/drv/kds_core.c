@@ -862,6 +862,22 @@ u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 	return cu_mgmt->xcus[idx]->info.protocol;
 }
 
+int kds_get_max_regmap_size(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int size;
+	int max_size = 0;
+	int i;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		size = xrt_cu_regmap_size(cu_mgmt->xcus[i]);
+		if (max_size < size)
+			max_size = size;
+	}
+
+	return max_size;
+}
+
 static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
 {
 	kds_err(xcmd->client, "ert submit op not implemented\n");
