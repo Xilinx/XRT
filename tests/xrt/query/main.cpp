@@ -76,12 +76,13 @@ int run(int argc, char** argv)
   if (uuid != xclbin.get_uuid())
     throw std::runtime_error("Unexpected uuid error");
 
-  std::cout << "device name:     " << device.get_info<xrt::info::device::name>() << "\n";
-  std::cout << "device bdf:      " << device.get_info<xrt::info::device::bdf>() << "\n";
-  std::cout << "device kdma:     " << device.get_info<xrt::info::device::kdma>() << "\n";
-  std::cout << "device max freq: " << device.get_info<xrt::info::device::max_clock_frequency_mhz>() << "\n";
-  std::cout << "device m2m:      " << std::boolalpha << device.get_info<xrt::info::device::m2m>() << std::dec << "\n";
-  std::cout << "device nodma:    " << std::boolalpha << device.get_info<xrt::info::device::nodma>() << std::dec << "\n";
+  std::cout << "device name:           " << device.get_info<xrt::info::device::name>() << "\n";
+  std::cout << "device bdf:            " << device.get_info<xrt::info::device::bdf>() << "\n";
+  std::cout << "device kdma:           " << device.get_info<xrt::info::device::kdma>() << "\n";
+  std::cout << "device max freq:       " << device.get_info<xrt::info::device::max_clock_frequency_mhz>() << "\n";
+  std::cout << "device m2m:            " << std::boolalpha << device.get_info<xrt::info::device::m2m>() << std::dec << "\n";
+  std::cout << "device nodma:          " << std::boolalpha << device.get_info<xrt::info::device::nodma>() << std::dec << "\n";
+  std::cout << "device interface uuid: " << device.get_info<xrt::info::device::interface_uuid>().to_string() << "\n";
 
   return 0;
 }

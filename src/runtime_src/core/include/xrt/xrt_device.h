@@ -52,22 +52,24 @@ namespace info {
  * with param traits.
  */
 enum class device : unsigned int {
-  name,
   bdf,
+  interface_uuid,
   kdma,
   max_clock_frequency_mhz,
   m2m,
+  name,
   nodma,
 };
 
 /**
  * Return type for xrt::device::get_info()
  */
-XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::bdf, std::string);
+XRT_INFO_PARAM_TRAITS(device::interface_uuid, xrt::uuid);
 XRT_INFO_PARAM_TRAITS(device::kdma, std::uint32_t);
 XRT_INFO_PARAM_TRAITS(device::max_clock_frequency_mhz, unsigned long);
 XRT_INFO_PARAM_TRAITS(device::m2m, bool);
+XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
 
 } // info
