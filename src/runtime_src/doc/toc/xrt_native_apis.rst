@@ -689,38 +689,37 @@ In the above example, the member function ``xrt::graph::update()`` and ``xrt::gr
 DMA operation to and from Global Memory IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-XRT provides API ``xrtAIESyncBO`` to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
+The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::sync()`` that can be used to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
 
 
 .. code:: c++
       :number-lines: 35
 
-           xrtDeviceHandle device_handle = xrtDeviceOpen(0);
+           auto device = xrt::aie::device(0);
        
            // Buffer from GM to AIE
-           xrtBufferHandle in_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+           auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
        
            // Buffer from AIE to GM
-           xrtBufferHandle out_bo_handle  = xrtBOAlloc(device_handle, SIZE * sizeof (float), 0, 0);
+           auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
        
-           inp_bo_map = (float *)xrtBOMap(in_bo_handle);
-           out_bo_map = (float *)xrtBOMap(out_bo_handle);
+           auto inp_bo_map = in_bo.map<float *>(); 
+           auto out_bo_map = out_bo.map<float *>();
 
            // Prepare input data 
            std::copy(my_float_array,my_float_array+SIZE,inp_bo_map);
 
 
-           xrtAIESyncBO(device_handle, in_bo_handle, "in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
+           in_bo.sync("in_sink", XCL_BO_SYNC_BO_GMIO_TO_AIE, SIZE * sizeof(float),0); 
 
-           xrtAIESyncBO(device_handle, out_bo_handle, "out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
+           out_bo.sync("out_sink", XCL_BO_SYNC_BO_AIE_TO_GMIO, SIZE * sizeof(float), 0);
        
        
 The above code shows
 
-    - Input and output buffer (``in_bo_handle`` and ``out_bo_handle``) to the graph are created and mapped to the user space
-    - The API ``xrtAIESyncBO`` is used for data transfer using the following arguments
+    - Input and output buffer (``in_bo`` and ``out_bo``) to the graph are created and mapped to the user space
+    - The member function ``xrt::aie::bo::sync`` is used for data transfer using the following arguments
     
-          - Device and Buffer Handle
           - The name of the GMIO ports associated with the DMA transfer
           - The direction of the buffer transfer 
           
