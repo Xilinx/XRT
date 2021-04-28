@@ -114,7 +114,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     //-- base address
     addr = std::stoll(m_baseAddress, nullptr, 0);
   }
-  catch(const std::invalid_argument) {
+  catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
     return;
   }
@@ -123,7 +123,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     //-- size
     size = std::stoll(m_sizeBytes, nullptr, 0);
   }
-  catch(const std::invalid_argument) {
+  catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--size'\n") % m_sizeBytes;
     return;
   }

@@ -122,7 +122,7 @@ XBU::verbose("SubCommand option: read mem");
     //-- size
     size = std::stoll(m_sizeBytes, nullptr, 0);
   }
-  catch(const std::invalid_argument) {
+  catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--size'\n") % m_sizeBytes;
     return;
   }
@@ -132,7 +132,7 @@ XBU::verbose("SubCommand option: read mem");
       //-- fill pattern
       fill_byte = std::stoi(m_fill, nullptr, 0);
     }
-    catch(const std::invalid_argument) {
+    catch(const std::invalid_argument&) {
       std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255\n") % m_fill;
       return;
     }
