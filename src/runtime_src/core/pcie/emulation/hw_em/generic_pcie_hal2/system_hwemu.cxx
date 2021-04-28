@@ -89,9 +89,16 @@ program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
 
 void
 system::
-mem_read(const xrt_core::device* dev, long long addr, long long size, std::string output_file) const
+mem_read(const xrt_core::device* dev, long long addr, long long size, const std::string& output_file) const
 {
   throw std::runtime_error("memory read is not supported");
+}
+
+void
+system::
+mem_write(const xrt_core::device* device, long long addr, long long size, unsigned int pattern) const
+{
+  throw std::runtime_error("memory write is not supported");
 }
 
 std::shared_ptr<xrt_core::device>

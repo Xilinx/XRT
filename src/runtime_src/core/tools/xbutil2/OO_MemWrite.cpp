@@ -39,7 +39,6 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
     , m_baseAddress("")
     , m_sizeBytes("")
     , m_fill("")
-    , m_inputFile("")
     , m_help(false)
 
 {
@@ -48,7 +47,6 @@ OO_MemWrite::OO_MemWrite( const std::string &_longName, bool _isHidden)
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to write")
     ("fill,f", boost::program_options::value<decltype(m_fill)>(&m_fill), "The byte value to fill the memory with")
-    ("input,i", boost::program_options::value<decltype(m_inputFile)>(&m_inputFile), "The binary file to read from")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -83,7 +81,6 @@ XBU::verbose("SubCommand option: read mem");
 
   //-- Working variables
   std::shared_ptr<xrt_core::device> device;
-  std::unique_ptr<char> buffer; //input file contents
   long long addr = 0, size = 0;
   unsigned int fill_byte = 'J';
 
@@ -102,24 +99,6 @@ XBU::verbose("SubCommand option: read mem");
     // set working variable
     device = deviceCollection.front();
 
-    //-- Input file
-    if (!m_inputFile.empty() && !boost::filesystem::exists(m_inputFile)) 
-      throw xrt_core::error((boost::format("Input file is not valid: '%s'") % m_inputFile).str());
-
-    // open file
-    // std::basic_ifstream<char> file(m_inputFile);
-    // // read data
-    // buffer.insert(buffer.begin(), std::istreambuf_iterator<char>(file)),
-    //                           std::istreambuf_iterator<char>());
-
-    std::ifstream file(m_inputFile);
-    if (file) {
-      file.seekg (0, file.end);
-      int length = file.tellg();
-      file.seekg (0, file.beg);
-      file.read (buffer.get(), length);
-    }
-
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
@@ -134,7 +113,7 @@ XBU::verbose("SubCommand option: read mem");
     //-- base address
     addr = std::stoll(m_baseAddress, nullptr, 0);
   }
-  catch(const std::invalid_argument) {
+  catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
     return;
   }
@@ -162,17 +141,13 @@ XBU::verbose("SubCommand option: read mem");
   XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
   XBU::verbose(boost::str(boost::format("Address: %s") % addr));
   XBU::verbose(boost::str(boost::format("Size: %s") % size));
-  XBU::verbose(boost::str(boost::format("Input file: %s") % m_inputFile));
   XBU::verbose(boost::str(boost::format("Fill pattern: %s") % m_fill));
 
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
   
   try {
-    if(buffer.get() == nullptr)
-      xrt_core::mem_write(device.get(), addr, size, fill_byte);
-    else
-      xrt_core::mem_write(device.get(), addr, size, buffer.get());
+    xrt_core::mem_write(device.get(), addr, size, fill_byte);
   } catch(const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;
     return;

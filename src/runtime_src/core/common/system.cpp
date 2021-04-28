@@ -202,15 +202,9 @@ program_plp(const device* dev, const std::vector<char> &buffer)
 }
 
 void
-mem_read(const device* dev, long long addr, long long size, std::string output_file)
+mem_read(const device* dev, long long addr, long long size, const std::string& output_file)
 {
   instance().mem_read(dev, addr, size, output_file);
-}
-
-void
-mem_write(const device* dev, long long addr, long long size, char* buffer)
-{
-  instance().mem_write(dev, addr, size, buffer);
 }
 
 void
