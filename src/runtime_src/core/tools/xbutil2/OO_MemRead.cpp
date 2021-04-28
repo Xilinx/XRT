@@ -17,9 +17,7 @@
 // Local - Include Files
 #include "OO_MemRead.h"
 #include "core/common/query_requests.h"
-#if __GNUC__
-#include "core/pcie/common/memaccess.h"
-#endif
+#include "core/common/system.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
@@ -31,15 +29,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-
-// ----- L O C A L  M E T H O D S -------------------------------------------
-
-size_t get_ddr_mem_size(const xrt_core::device* dev) {
-  auto ddr_size = xrt_core::device_query<xrt_core::query::rom_ddr_bank_size_gb>(dev);
-  auto ddr_bank_count = xrt_core::device_query<xrt_core::query::rom_ddr_bank_count_max>(dev);
-
-  return (ddr_size << 30) * ddr_bank_count / (1024 * 1024);
-}
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -146,17 +135,13 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
 
   //read mem
   XBU::xclbin_lock xclbin_lock(device);
-#ifdef _WIN32
-  std::cout << "mem read is not supported on windows";
-  return;
-#else
-  auto bdf_str = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
-  auto handle = device->get_device_handle();
-  if(xcldev::memaccess(handle, get_ddr_mem_size(device.get()), getpagesize(), bdf_str)
-      .read(m_outputFile, addr, size) < 0)
-    std::cout << "Memory read failed\n";
-  else
-    std::cout << "Memory read succeeded\n";
-#endif
+  
+  try{
+    xrt_core::mem_read(device.get(), addr, size, m_outputFile);
+  } catch(const xrt_core::error& e) {
+    std::cerr << e.what() << std::endl;
+    return;
+  }
+  std::cout << "Memory read succeeded" << std::endl;
 }
 

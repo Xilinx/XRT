@@ -1304,7 +1304,7 @@ getTestNameDescriptions(bool addAdditionOptions)
 
   // 'verbose' option
   if (addAdditionOptions) {
-    reportDescriptionCollection.emplace_back("all", "All known validate tests will be executed (default)");
+    reportDescriptionCollection.emplace_back("all", "All applicable validate tests will be executed (default)");
     reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 

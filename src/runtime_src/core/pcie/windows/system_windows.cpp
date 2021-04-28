@@ -212,4 +212,11 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
   }
 }
 
+void
+system_windows::
+mem_read(const device*, long long, long long, std::string) const
+{
+  throw std::runtime_error("memory read is not supported");
+}
+
 } // xrt_core

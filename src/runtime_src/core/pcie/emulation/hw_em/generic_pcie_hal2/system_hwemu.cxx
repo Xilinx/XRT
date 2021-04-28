@@ -87,6 +87,13 @@ program_plp(const xrt_core::device* dev, const std::vector<char> &buffer) const
   throw std::runtime_error("plp program is not supported");
 }
 
+void
+system::
+mem_read(const xrt_core::device* dev, long long addr, long long size, std::string output_file) const
+{
+  throw std::runtime_error("memory read is not supported");
+}
+
 std::shared_ptr<xrt_core::device>
 get_userpf_device(device::handle_type device_handle, device::id_type id)
 {
