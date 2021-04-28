@@ -399,6 +399,7 @@ namespace xdp {
     }
 
     for (auto device: platform->get_device_range()) {
+      if (!device->is_active()) continue ;
       auto mem_tp = device->get_axlf_section<const mem_topology*>(axlf_section_kind::MEM_TOPOLOGY) ;
       if (!mem_tp) continue ;
       std::string devName = device->get_unique_name() ;
