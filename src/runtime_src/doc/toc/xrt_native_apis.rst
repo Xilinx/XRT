@@ -736,10 +736,11 @@ In general, XRT APIs can encounter two types of errors:
        - Synchronous error: Error can be thrown by the API itself. These types of errors should be checked against all APIs (strongly recommended). 
        - Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
        
-XRT provides a couple of APIs to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
+XRT provides an ``xrt::error`` class and its member functions to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
  
-       - ``xrtErrorGetLast`` - Gets the last error code and its timestamp of a given error class
-       - ``xrtErrorGetString`` - Gets the description string of a given error code.
+       - Member function ``xrt::error::get_error_code()`` - Gets the last error code and its timestamp of a given error class
+       - Member function ``xrt::error::get_timestamp()`` - Gets the timestamp of the last error
+       - Member function ``xrt:error::to_string()`` - Gets the description string of a given error code.
 
 **NOTE**: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release. 
 
@@ -748,39 +749,30 @@ Example code
 .. code:: c++
       :number-lines: 41
 
-           rval = xrtGraphRun(graphHandle, runInteration);
-           if (rval != 0) {                                                                   
-               /* code to handle synchronous xrtGraphRun error */ 
-               goto fail;                                             
-           }      
- 
-           rval = xrtGraphWaitDone(graphHandle, timeout);
+           graph.run(runInteration);
+           
+           rval = graph.wait(timeout);
            if (rval == -ETIME) {
                /* wait Graph done timeout without further information */
                xrtErrorCode errCode;
                uint64_t timestamp;
- 
-               rval = xrtErrorGetLast(devHandle, XRT_ERROR_CLASS_AIE, &errCode, &timestamp);
-               if (rval == 0) {
-                   size_t len = 0;
-                   if (xrtErrorGetString(devHandle, errCode, nullptr, 0, &len))
-                       goto fail;
-                   std::vector<char> buf(len);  // or C equivalent
-                   if (xrtErrorGetString(devHandle, errCode, buf.data(), buf.size()))
-                       goto fail;
-                   /* code to deal with this specific error */
-                   std::cout << buf.data() << std::endl;
-               }
-          }                  
+               
+               xrt::error error(device, XRT_ERROR_CLASS_AIE);
+
+               auto errCode = error.get_error_code(); 
+               auto timestamp = error.get_timestamp();
+               auto err_str = error.to_string(); 
+                  
+               /* code to deal with this specific error */
+               std::cout << err_str << std::endl;
+            }                  
           /* more code can be added here to check other error class */
         
        
 The above code shows
      
-     - As good practice synchronous error checking is done directly against all APIs (line 41,47,53,56,59)
-     - After timeout occurs from ``xrtGraphWaitDone`` the API ``xrtErrorGetLast`` is called to retrieve asynchronous error code (line 53) 
-     - Using the error code API ``xrtErrorGetString`` is called to get the length of the error string (line 56)
-     - The API ``xrtErrorGetString`` called again for the second time to get the full error string (line 59)
+     - After timeout occurs from ``xrt::graph::wait()`` the member functions ``xrt::error`` class are called to retrieve asynchronous error code and timestamp
+     - Member function ``xrt::error::to_string()`` is called to obtain the error string. 
 
 
 
