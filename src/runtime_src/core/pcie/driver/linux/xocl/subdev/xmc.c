@@ -414,8 +414,7 @@ struct xmc_pkt {
 };
 
 /* QSFP related macros */
-#define CMC_OP_READ_QSFP_MAXLEN		128 /* In bytes */
-#define CMC_OP_WRITE_QSFP_MAXLEN	13
+#define CMC_QSFP_PAGE_SIZE		128 /* In bytes */
 #define CMC_OP_IO_CONTROL_MAXLEN	1
 
 #define CMC_QSFP_DIAG_DATA_OFFSET \
@@ -523,11 +522,11 @@ static void clock_status_check(struct platform_device *pdev, bool *latched);
 static void xmc_get_serial_num(struct platform_device *pdev);
 
 static ssize_t xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page, int level);
+	loff_t off, size_t count);
 static ssize_t xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page, int level);
+	loff_t off, size_t count);
 static ssize_t xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page, int level);
+	loff_t off, size_t count);
 static ssize_t xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer,
 	loff_t off, size_t count);
 static ssize_t xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer,
@@ -2662,207 +2661,108 @@ static struct bin_attribute bin_dimm_temp_by_mem_topology_attr = {
  * preprocessor magic for qsfp name pattern:
  * The following sysfs node will be created.
  *
+ * qsfp0_diag			(read only)
+ * qsfp0_i2c			(read, write)
  * qsfp0_io_config		(read, write)
- * qsfp0_lower_page0		(read only)
- * qsfp0_upper_page0		(read only)
- * qsfp0_upper_page1		(read only)
- * qsfp0_upper_page2		(read only)
- * qsfp0_upper_page3		(read only)
- * qsfp0_i2c_lower_page0	(read, write)
- * qsfp0_i2c_upper_page0	(read, write)
- * qsfp0_i2c_upper_page1	(read, write)
- * qsfp0_i2c_upper_page2	(read, write)
- * qsfp0_i2c_upper_page3	(read, write)
  * ...
- * qsfp3_io_config 		(read, write)
- * qsfp3_lower_page0		(read only)
- * qsfp3_upper_page0		(read only)
- * qsfp3_upper_page1		(read only)
- * qsfp3_upper_page2		(read only)
- * qsfp3_upper_page3		(read only)
- * qsfp3_i2c_lower_page0	(read, write)
- * qsfp3_i2c_upper_page0	(read, write)
- * qsfp3_i2c_upper_page1	(read, write)
- * qsfp3_i2c_upper_page2	(read, write)
- * qsfp3_i2c_upper_page3	(read, write)
+ * qsfp3_diag			(read only)
+ * qsfp3_i2c			(read, write)
+ * qsfp3_io_config		(read, write)
  */
 
-/* qsfp_diag, e.g qsfp3_upper_page3 */
-static ssize_t
-xmc_qsfp_lower_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int pg)
-{
-	BUG_ON(pg != 0);
-	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 0);
-}
-static ssize_t
-xmc_qsfp_upper_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int pg)
-{
-	return xmc_qsfp_diag_read(xmc, port, buffer, off, count, pg, 1);
-}
-
-#define QSFP_READ(PORT, level, pg) 						\
-static ssize_t qsfp##PORT##_##level##_page##pg##_read(                          \
+#define QSFP_DIAG_READ(PORT) 							\
+static ssize_t qsfp##PORT##_diag_read(                          		\
 	struct file *filp, struct kobject *kobj, 	                        \
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_##level##_read(xmc, PORT, buffer, off, count, pg);      \
+	return xmc_qsfp_diag_read(xmc, PORT, buffer, off, count);      		\
 }
 
-#define QSFP_READ_PORT(PORT) \
-	QSFP_READ(PORT, lower, 0) \
-	QSFP_READ(PORT, upper, 0) \
-	QSFP_READ(PORT, upper, 1) \
-	QSFP_READ(PORT, upper, 2) \
-	QSFP_READ(PORT, upper, 3) \
+QSFP_DIAG_READ(0)
+QSFP_DIAG_READ(1)
+QSFP_DIAG_READ(2)
+QSFP_DIAG_READ(3)
 
-QSFP_READ_PORT(0)
-QSFP_READ_PORT(1)
-QSFP_READ_PORT(2)
-QSFP_READ_PORT(3)
-
-#define QSFP_BIN_ATTR(PORT) \
-	static BIN_ATTR_RO(qsfp##PORT##_lower_page0, 0); \
-	static BIN_ATTR_RO(qsfp##PORT##_upper_page0, 0); \
-	static BIN_ATTR_RO(qsfp##PORT##_upper_page1, 0); \
-	static BIN_ATTR_RO(qsfp##PORT##_upper_page2, 0); \
-	static BIN_ATTR_RO(qsfp##PORT##_upper_page3, 0);
-QSFP_BIN_ATTR(0);
-QSFP_BIN_ATTR(1);
-QSFP_BIN_ATTR(2);
-QSFP_BIN_ATTR(3);
-
-#define QSFP_DIAG(PORT) \
-	&bin_attr_qsfp##PORT##_lower_page0, \
-	&bin_attr_qsfp##PORT##_upper_page0, \
-	&bin_attr_qsfp##PORT##_upper_page1, \
-	&bin_attr_qsfp##PORT##_upper_page2, \
-	&bin_attr_qsfp##PORT##_upper_page3 \
+#define QSFP_DIAG_ATTR(PORT)                                               	\
+static struct bin_attribute bin_attr_qsfp##PORT##_diag = {                 	\
+	.attr = {                                                               \
+		.name = "qsfp" #PORT "_diag",	                        	\
+		.mode = 0444                                                   	\
+	},                                                                      \
+	.read = qsfp##PORT##_diag_read,                               		\
+	.size = 0                                                               \
+};
+QSFP_DIAG_ATTR(0);
+QSFP_DIAG_ATTR(1);
+QSFP_DIAG_ATTR(2);
+QSFP_DIAG_ATTR(3);
 
 /*
  * qsfp_i2c read,write
  */
-static ssize_t
-xmc_qsfp_lower_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page)
-{
-	BUG_ON(page != 0);
-	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 0);
-}
-static ssize_t
-xmc_qsfp_lower_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page)
-{
-	BUG_ON(page != 0);
-	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 0);
-}
-static ssize_t
-xmc_qsfp_upper_i2c_read(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page)
-{
-	return xmc_qsfp_i2c_read(xmc, port, buffer, off, count, page, 1);
-}
-static ssize_t
-xmc_qsfp_upper_i2c_write(struct xocl_xmc *xmc, int port, char *buffer,
-	loff_t off, size_t count, int page)
-{
-	return xmc_qsfp_i2c_write(xmc, port, buffer, off, count, page, 1);
-}
-#define QSFP_I2C_PORT_PAGE(PORT, LEVEL, PAGE, RW)				\
-static ssize_t qsfp##PORT##_##LEVEL##_page##PAGE##_i2c_##RW(                    \
+
+#define QSFP_I2C_RW(PORT, RW)							\
+static ssize_t qsfp##PORT##_i2c_##RW(                    			\
 	struct file *filp, struct kobject *kobj, 	                        \
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_##LEVEL##_i2c_##RW(xmc, PORT, buffer, off, count, PAGE);\
+	return xmc_qsfp_i2c_##RW(xmc, PORT, buffer, off, count);		\
 }
 
-#define QSFP_I2C_PORT(PORT) \
-	QSFP_I2C_PORT_PAGE(PORT, lower, 0, read) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 0, read) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 1, read)	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 2, read) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 3, read) 	\
-	QSFP_I2C_PORT_PAGE(PORT, lower, 0, write) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 0, write) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 1, write) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 2, write) 	\
-	QSFP_I2C_PORT_PAGE(PORT, upper, 3, write)
+#define QSFP_I2C_PORT(PORT) 							\
+	QSFP_I2C_RW(PORT, read) 						\
+	QSFP_I2C_RW(PORT, write)
 
 QSFP_I2C_PORT(0)
 QSFP_I2C_PORT(1)
 QSFP_I2C_PORT(2)
 QSFP_I2C_PORT(3)
 
-#define QSFP_I2C_ATTR_PAGE(PORT, PAGE)                                          \
-static struct bin_attribute bin_attr_qsfp##PORT##_i2c_##PAGE = {              \
+#define QSFP_I2C_ATTR(PORT)	                                                \
+static struct bin_attribute bin_attr_qsfp##PORT##_i2c = {                	\
 	.attr = {                                                               \
-		.name = "qsfp" #PORT "_i2c_" #PAGE,	                        \
-		.mode = 0600                                                    \
+		.name = "qsfp" #PORT "_i2c",  					\
+		.mode = 0644                                                    \
 	},                                                                      \
-	.read = qsfp##PORT##_##PAGE##_i2c_read,                                 \
-	.write = qsfp##PORT##_##PAGE##_i2c_write,                               \
-	.size = 0                                                               \
+	.read = qsfp##PORT##_i2c_read,   					\
+	.write = qsfp##PORT##_i2c_write, 					\
+	.size = 0                        					\
 };
-
-#define QSFP_I2C_ATTR(PORT) \
-	QSFP_I2C_ATTR_PAGE(PORT, lower_page0) \
-	QSFP_I2C_ATTR_PAGE(PORT, upper_page0) \
-	QSFP_I2C_ATTR_PAGE(PORT, upper_page1) \
-	QSFP_I2C_ATTR_PAGE(PORT, upper_page2) \
-	QSFP_I2C_ATTR_PAGE(PORT, upper_page3)
 
 QSFP_I2C_ATTR(0);
 QSFP_I2C_ATTR(1);
 QSFP_I2C_ATTR(2);
 QSFP_I2C_ATTR(3);
 
-#define QSFP_I2C(PORT) \
-	&bin_attr_qsfp##PORT##_i2c_lower_page0, \
-	&bin_attr_qsfp##PORT##_i2c_upper_page0, \
-	&bin_attr_qsfp##PORT##_i2c_upper_page1, \
-	&bin_attr_qsfp##PORT##_i2c_upper_page2, \
-	&bin_attr_qsfp##PORT##_i2c_upper_page3 \
-
 /* qsfp_io_conifg, e.g. qsfp0_io_config */
-#define QSFP_IO_CONFIG_READ(PORT) \
-static ssize_t qsfp##PORT##_io_config_read(    		                        \
+#define QSFP_IO_CONFIG_RW(PORT, RW) 						\
+static ssize_t qsfp##PORT##_io_config_##RW(   		                        \
 	struct file *filp, struct kobject *kobj, 	                        \
 	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
 {                                                                               \
 	struct xocl_xmc *xmc =                                                  \
 		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_io_read(xmc, PORT, buffer, off, count);                 \
+	return xmc_qsfp_io_##RW(xmc, PORT, buffer, off, count);                 \
 }
 
-#define QSFP_IO_CONFIG_WRITE(PORT) \
-static ssize_t qsfp##PORT##_io_config_write(   		                        \
-	struct file *filp, struct kobject *kobj, 	                        \
-	struct bin_attribute *attr, char *buffer, loff_t off, size_t count)     \
-{                                                                               \
-	struct xocl_xmc *xmc =                                                  \
-		dev_get_drvdata(container_of(kobj, struct device, kobj));       \
-	return xmc_qsfp_io_write(xmc, PORT, buffer, off, count);                \
-}
+#define QSFP_IO_CONFIG(PORT) 							\
+	QSFP_IO_CONFIG_RW(PORT, read) 						\
+	QSFP_IO_CONFIG_RW(PORT, write)
 
-QSFP_IO_CONFIG_READ(0);
-QSFP_IO_CONFIG_READ(1);
-QSFP_IO_CONFIG_READ(2);
-QSFP_IO_CONFIG_READ(3);
-QSFP_IO_CONFIG_WRITE(0);
-QSFP_IO_CONFIG_WRITE(1);
-QSFP_IO_CONFIG_WRITE(2);
-QSFP_IO_CONFIG_WRITE(3);
+QSFP_IO_CONFIG(0);
+QSFP_IO_CONFIG(1);
+QSFP_IO_CONFIG(2);
+QSFP_IO_CONFIG(3);
 
 #define QSFP_IO_CONFIG_ATTR(PORT)                                               \
 static struct bin_attribute bin_attr_qsfp##PORT##_io_config = {                 \
 	.attr = {                                                               \
 		.name = "qsfp" #PORT "_io_config",	                        \
-		.mode = 0600                                                    \
+		.mode = 0644                                                    \
 	},                                                                      \
 	.read = qsfp##PORT##_io_config_read,                                    \
 	.write = qsfp##PORT##_io_config_write,                                  \
@@ -2875,14 +2775,14 @@ QSFP_IO_CONFIG_ATTR(3);
 
 static struct bin_attribute *xmc_bin_attrs[] = {
 	&bin_dimm_temp_by_mem_topology_attr,
-	QSFP_DIAG(0),
-	QSFP_DIAG(1),
-	QSFP_DIAG(2),
-	QSFP_DIAG(3),
-	QSFP_I2C(0),
-	QSFP_I2C(1),
-	QSFP_I2C(2),
-	QSFP_I2C(3),
+	&bin_attr_qsfp0_diag,
+	&bin_attr_qsfp1_diag,
+	&bin_attr_qsfp2_diag,
+	&bin_attr_qsfp3_diag,
+	&bin_attr_qsfp0_i2c,
+	&bin_attr_qsfp1_i2c,
+	&bin_attr_qsfp2_i2c,
+	&bin_attr_qsfp3_i2c,
 	&bin_attr_qsfp0_io_config,
 	&bin_attr_qsfp1_io_config,
 	&bin_attr_qsfp2_io_config,
@@ -4817,12 +4717,17 @@ xmc_qsfp_io_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_
 {
 	int ret = 0;
 
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %lld", off, count);
+
 	if (!xmc_qsfp_supported(xmc))
-		return 0;
+		return -EINVAL;
 
 	/* read done, exit */
-	if (off >= CMC_OP_IO_CONTROL_MAXLEN)
-		return 0;
+	if (off >= CMC_OP_IO_CONTROL_MAXLEN) {
+		xocl_err(&xmc->pdev->dev, "cannot read more than %d bytes",
+			CMC_OP_IO_CONTROL_MAXLEN);
+		return -EINVAL;
+	}
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -4859,10 +4764,12 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 {
 	int ret = 0;
 
-	if (!xmc_qsfp_supported(xmc) || off != 0)
-		return 0;
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %lld", off, count);
 
-	if (count > CMC_OP_IO_CONTROL_MAXLEN) {
+	if (!xmc_qsfp_supported(xmc) || off != 0)
+		return -EINVAL;
+
+	if (off != 0 || count > CMC_OP_IO_CONTROL_MAXLEN) {
 		xocl_err(&xmc->pdev->dev, "cannot write more than %d bytes",
 			CMC_OP_IO_CONTROL_MAXLEN);
 		return -EINVAL;
@@ -4886,19 +4793,27 @@ xmc_qsfp_io_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	return ret;
 }
 
-static ssize_t
-xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
-	int page, int level)
+/* read one page into buf */
+static int
+xmc_qsfp_diag_read_page(struct xocl_xmc *xmc, int port, int page, int level,
+	char *buf, int buf_len)
 {
 	u32 data_size = 0;
 	int ret = 0;
 
-	if (!xmc_qsfp_supported(xmc))
-		return 0;
+	xocl_dbg(&xmc->pdev->dev, "page %d, level %d", page, level);
 
-	/* exit after reading enough data */
-	if (off >= CMC_OP_READ_QSFP_MAXLEN)
-		return 0;
+	if (buf_len > CMC_QSFP_PAGE_SIZE) {
+		xocl_err(&xmc->pdev->dev,
+			"request size %d is greater than page size %d",
+			buf_len, CMC_QSFP_PAGE_SIZE);
+		return -EINVAL;
+	}
+	if (buf_len & 0x3) {
+		xocl_err(&xmc->pdev->dev,
+			"request size %d is not 4 byte aligned", buf_len);
+		return -EINVAL;
+	}
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -4922,37 +4837,94 @@ xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 	}
 
 	data_size = xmc->mbx_pkt.qsfp_diag_r.data_size;
-	xocl_info(&xmc->pdev->dev, "data_size %d", data_size);
-	if (data_size == 0)
-		goto out;
-	if (data_size > count) {
-		xocl_err(&xmc->pdev->dev, "buffer count %ld is too small", count);
-		goto out;
-	}
-	if (data_size & 0x3) {
-		/* Most likely the returned data is corrupted, bail out.*/
-		xocl_info(&xmc->pdev->dev,
-			"data_size %d is not 4 byte aligned", data_size);
+	if (data_size != CMC_QSFP_PAGE_SIZE) {
+		xocl_err(&xmc->pdev->dev, "data_size %d is not %d page aligned",
+			data_size, CMC_QSFP_PAGE_SIZE);
+		ret = -ENODATA;
 		goto out;
 	}
 
 	if (xmc->base_addrs[IO_REG]) {
-		xocl_memcpy_fromio(buffer, xmc->base_addrs[IO_REG] +
-			xmc->mbx_offset + CMC_QSFP_DIAG_DATA_OFFSET, data_size);
+		/* only copy request buf_len back to buf */
+		xocl_memcpy_fromio(buf, xmc->base_addrs[IO_REG] +
+			xmc->mbx_offset + CMC_QSFP_DIAG_DATA_OFFSET, buf_len);
 	}
 
-	mutex_unlock(&xmc->mbx_lock);
-	return data_size;
 out:
 	mutex_unlock(&xmc->mbx_lock);
-	return 0;
+	return ret;
 }
 
 static ssize_t
-xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
-	int page, int level)
+xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
+{
+	int buf_len = CMC_QSFP_PAGE_SIZE;
+	char buf[CMC_QSFP_PAGE_SIZE];
+	int i, start_page, end_page, global_idx, local_idx, local_len;
+	int ret = 0;
+
+	if (!xmc_qsfp_supported(xmc))
+		return 0;
+
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld\n", off, count);
+
+	/*
+	 * Assemble cmc pkg into request buffer.
+	 * Spec:
+	 *   each request is mapped to a page size 128 bits [0 - 127]
+	 *   page layout is: lower-0, upper-0, upper-1, etc... max is up to 255 pages.
+	 *   the request buffer starts from off to off+count.
+	 */
+
+	/* start includes itself */
+	start_page = off / buf_len; 
+	end_page = (off + count - 1) / buf_len;
+	global_idx = 0;
+	local_idx = off % buf_len;
+	local_len = min((int)count, (int)(buf_len - off % buf_len));
+
+	xocl_dbg(&xmc->pdev->dev,
+		"start_page %d end_page %d local_idx %d local_len %d\n",
+		start_page, end_page, local_idx, local_len);
+
+	for (i = start_page; i <= end_page; i++) {
+		/* lower page is level 0, upper page is level 1 */
+		int level = i == 0 ? 0 : 1;
+		/* lower page is page 0, upper page 0 starts from page index 1 */
+		int page = i == 0 ? 0 : i - 1;
+		int remain = 0;
+
+		xocl_dbg(&xmc->pdev->dev, "index %d", i);
+
+		/* read the whole page */
+		ret = xmc_qsfp_diag_read_page(xmc, port, page, level, buf, buf_len); 
+		if (ret) 
+			return ret;
+		/* copy the exact buffer back */
+		memcpy(buffer + global_idx, buf + local_idx, local_len);
+
+		global_idx += local_len;
+		remain = count - global_idx;
+		if (remain >= buf_len) {
+			local_idx = 0;
+			local_len = buf_len;
+		} else {
+			local_idx = 0;
+			local_len = remain;
+		}
+		xocl_dbg(&xmc->pdev->dev,
+			"global_idx %d remain %d local_idx %d local_len %d\n",
+			global_idx, remain, local_idx, local_len);
+	}
+
+	return count;
+}
+
+static ssize_t
+xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
 {
 	/* current protocl only support one byte */
+	int page = 0, level = 0;
 	u32 data_size = sizeof(u8);
 	int ret = 0;
 
@@ -4960,8 +4932,7 @@ xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 		return 0;
 
 	/* we don't limit the offset for reading */
-	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
-		__func__, off, count, port, page, level);
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld port %d", off, count, port);
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -5000,9 +4971,9 @@ out:
 }
 
 static inline ssize_t
-xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count,
-	int page, int level)
+xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
 {
+	int page = 0, level = 0;
 	int ret = 0;
 	size_t max_data_size;
 	/* current protocl only support one byte */
@@ -5012,8 +4983,7 @@ xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 		return 0;
 
 	/* we don't limit the offset for reading */
-	xocl_dbg(&xmc->pdev->dev, "%s off %lld count %ld port %d, page %d, level %d\n",
-		__func__, off, count, port, page, level);
+	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld port %d", off, count, port);
 
 	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
 		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data);
