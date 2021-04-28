@@ -356,7 +356,7 @@ namespace xdp {
         values.push_back(counterValue);
 
         // Read tile timer (once per tile to minimize overhead)
-        if ((aie->column != prevColumn) && (aie->row != prevRow)) {
+        if ((aie->column != prevColumn) || (aie->row != prevRow)) {
           prevColumn = aie->column;
           prevRow = aie->row;
           XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
