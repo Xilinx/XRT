@@ -221,7 +221,7 @@ mem_read(const device*, long long, long long, const std::string&) const
 
 void
 system_windows::
-mem_write(const device* device, long long addr, long long size, unsigned int pattern) const
+mem_write(const device*, long long, long long, unsigned int) const
 {
   throw std::runtime_error("memory write is not supported");
 }
