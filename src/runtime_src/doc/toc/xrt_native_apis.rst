@@ -458,9 +458,9 @@ The ``xrt::kernel`` class provides **overloaded operator ()** to execute the ker
 The above c++ code block is demonstrating 
   
   - The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
-  - The member function ``xrt::run::wait`` is used to block the current thread until the current execution is finished. 
-  - The member function ``xrt::run::set_arg`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
-  - The member function ``xrt::run::start`` is used to start the next kernel execution with new argument(s).   
+  - The member function ``xrt::run::wait()`` is used to block the current thread until the current execution is finished. 
+  - The member function ``xrt::run::set_arg()`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
+  - The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).   
 
 
 Other kernel execution related APIs
@@ -501,14 +501,14 @@ Reset Functions
 
 There are two reset functions are used:
 
-   - API ``xrt::device::reset_array()`` is used to reset the whole AIE array. 
-   - API ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+   - The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. 
+   - The member function ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
 
 
 .. code:: c
       :number-lines: 45
            
-           auto device = xrt::device(0);
+           auto device = xrt::aie::device(0);
            ...
            // AIE Array Reset
            device.reset_array();
@@ -625,12 +625,12 @@ The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argu
 In the example above
 
 - The member function ``xrt::graph::run(-1)`` is used to execute the graph infinitely
-- The API ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
+- The member function ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
 
        - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately. 
-- The API ``xrt::graph::resume()`` is used to restart the suspended graph
-- The API ``xrt::graph::suspend()`` is used to suspend the graph immediately
-- The API ``xrt::graph::end(5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
+- The member function ``xrt::graph::resume()`` is used to restart the suspended graph
+- The member function ``xrt::graph::suspend()`` is used to suspend the graph immediately
+- The member function ``xrt::graph::end(5000)`` is  ending the graph after 5000 AIE cycles from the previous graph start. 
        
        - If the graph was already run more than 5000 AIE cycles the graph ends immediately.
        - Using ``xrt::graph::end()`` eliminates the capability of rerunning the Graph (without loading PDI and a graph reset again). 
@@ -639,7 +639,7 @@ In the example above
 Measuring AIE cycle consumed by the Graph
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The member function ``xrt::graph::get_timestamp`` can be used to determine AIE cycle consumed between a graph start and stop. 
+The member function ``xrt::graph::get_timestamp()`` can be used to determine AIE cycle consumed between a graph start and stop. 
 
 Here in this example, the AIE cycle consumed by 3 iteration is calculated
  
