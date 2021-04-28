@@ -18,6 +18,8 @@
 #define xrt_core_common_query_requests_h
 
 #include "query.h"
+#include "error.h"
+#include "uuid.h"
 #include <string>
 #include <vector>
 #include <sstream>
@@ -551,6 +553,22 @@ struct interface_uuids : request
   to_string(const std::string& value)
   {
     return value;
+  }
+
+  // Convert string value to proper uuid string if necessary
+  // and return xrt::uuid
+  static uuid
+  to_uuid(const std::string& value)
+  {
+    std::string str = value;
+    if (str.length() < 24)  // for '-' insertion
+      throw xrt_core::system_error(EINVAL, "invalid uuid: " + value);
+    for (auto idx : {8, 13, 18, 23})
+      if (str[idx] != '-')
+        str.insert(idx,1,'-');
+    if (str.length() != 36) // final uuid length must be 36 chars
+      throw xrt_core::system_error(EINVAL, "invalid uuid: " + value);
+    return uuid(str);
   }
 };
 
