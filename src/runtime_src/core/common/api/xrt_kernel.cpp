@@ -1169,6 +1169,7 @@ class kernel_impl
   {
     if (protocol == FAST_ADAPTER)
       amend_fa_args();
+    // For AP_CTRL_HS/CHAIN, first 4 are control register
     if (protocol == AP_CTRL_HS || protocol == AP_CTRL_CHAIN)
       regmap_size = std::max(regmap_size, 4LU);
   }
