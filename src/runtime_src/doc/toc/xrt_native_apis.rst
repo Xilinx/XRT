@@ -576,16 +576,24 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
            graph.run(100);
            
             while (1) {
-             auto rval  = graph.wait(5); 
-              std::cout << "Wait for graph done returns: " << rval << std::endl;
-              if (rval == -ETIME)  {
-                   std::cout << "Timeout, reenter......" << std::endl;
-                   // Do something 
+                          
+              try {
+                 graph.wait(5);
               }
-              else  // Graph is done, quit the loop
-                  break;
+              catch (const std::system_error& ex) {
+            
+                 if (ex.code().value() == ETIME) {          
+                   
+                    std::cout << "Timeout, reenter......" << std::endl;
+                    // Do something
+             
+                 } else {
+                    /* Graph is done break the loop */
+                    break;
+                 }
              }
-
+            
+             
 
 Infinite Graph Execution
 ************************
@@ -733,7 +741,7 @@ XRT Error API
 
 In general, XRT APIs can encounter two types of errors:
  
-       - Synchronous error: Error can be thrown by the API itself. These types of errors should be checked against all APIs (strongly recommended). 
+       - Synchronous error: Error can be thrown by the API itself. The host code can catch these exception and take necessary steps. 
        - Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
        
 XRT provides an ``xrt::error`` class and its member functions to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
@@ -751,22 +759,24 @@ Example code
 
            graph.run(runInteration);
            
-           rval = graph.wait(timeout);
-           if (rval == -ETIME) {
-               /* wait Graph done timeout without further information */
-               xrtErrorCode errCode;
-               uint64_t timestamp;
-               
-               xrt::error error(device, XRT_ERROR_CLASS_AIE);
+           try {
+              graph.wait(timeout);
+           }
+           catch (const std::system_error& ex) {
+            
+              if (ex.code().value() == ETIME) {          
+                 xrt::error error(device, XRT_ERROR_CLASS_AIE);
 
-               auto errCode = error.get_error_code(); 
-               auto timestamp = error.get_timestamp();
-               auto err_str = error.to_string(); 
+                 auto errCode = error.get_error_code(); 
+                 auto timestamp = error.get_timestamp();
+                 auto err_str = error.to_string(); 
                   
-               /* code to deal with this specific error */
-               std::cout << err_str << std::endl;
-            }                  
-          /* more code can be added here to check other error class */
+                 /* code to deal with this specific error */
+                 std::cout << err_str << std::endl;
+              } else {
+               /* Something else */
+              }
+           }
         
        
 The above code shows
