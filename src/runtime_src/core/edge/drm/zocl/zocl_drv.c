@@ -280,6 +280,8 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 {
 	int i;
 
+	BUG_ON(zocl_xclbin_refcount(zdev));
+
 	for (i = 0; i < MAX_CU_NUM; ++i) {
 		if (!zdev->cu_pldev[i])
 			continue;
