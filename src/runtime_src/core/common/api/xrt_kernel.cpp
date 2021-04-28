@@ -1165,14 +1165,20 @@ class kernel_impl
   }
 
   void
+  amend_ap_args()
+  {
+    // adjust regmap size for kernels without arguments.
+    // first 4 register map entries are control registers
+    regmap_size = std::max<size_t>(regmap_size, 4);
+  }
+
+  void
   amend_args()
   {
     if (protocol == FAST_ADAPTER)
       amend_fa_args();
-    // For AP_CTRL_HS/CHAIN, first 4 are control register
-    size_t regmap_size_default = 4;
-    if (protocol == AP_CTRL_HS || protocol == AP_CTRL_CHAIN)
-      regmap_size = std::max(regmap_size, regmap_size_default);
+    else if (protocol == AP_CTRL_HS || protocol == AP_CTRL_CHAIN)
+      amend_ap_args();
   }
 
   unsigned int
