@@ -1169,6 +1169,8 @@ class kernel_impl
   {
     if (protocol == FAST_ADAPTER)
       amend_fa_args();
+    if (protocol == AP_CTRL_HS || protocol == AP_CTRL_CHAIN)
+      regmap_size = std::max(regmap_size, 4LU);
   }
 
   unsigned int
