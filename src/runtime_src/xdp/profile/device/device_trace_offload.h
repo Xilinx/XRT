@@ -87,6 +87,9 @@ public:
     void read_trace() {
       m_read_trace(true);
     };
+    bool circular_buffer_overwrite_detected() {
+      return m_circ_buf_overwrite_detected;
+    }
     DeviceTraceLogger* getDeviceTraceLogger() {
       return deviceTraceLogger;
     };
@@ -148,6 +151,7 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
+    bool m_circ_buf_overwrite_detected = false;
 
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;
