@@ -163,7 +163,7 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   const std::string dsapath("/opt/xilinx/dsa/");
   const std::string xsapath(getXsaPath(vendor));
 
-  if(!boost::filesystem::is_directory(dsapath) || !boost::filesystem::is_directory(xsapath)) {
+  if(!boost::filesystem::is_directory(dsapath) && !boost::filesystem::is_directory(xsapath)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
     _ptTest.put("status", "failed");
