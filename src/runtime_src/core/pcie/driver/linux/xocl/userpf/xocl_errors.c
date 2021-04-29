@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: sarabjee@xilinx.com
  *
@@ -18,24 +18,24 @@
 #include "xocl_drv.h"
 
 static void
-xocl_clear_all_error_record(struct xocl_dev *xdev)
+xocl_clear_all_error_record(struct xocl_dev_core *core)
 {
-	struct xcl_errors *err = xdev->core.errors;
+	struct xcl_errors *err = core->errors;
 	if (!err)
 		return;
 
-	mutex_lock(&xdev->core.errors_lock);
+	mutex_lock(&core->errors_lock);
 
 	memset(err->errors, 0, sizeof(err->errors));
 	err->num_err = 0;
 
-	mutex_unlock(&xdev->core.errors_lock);
+	mutex_unlock(&core->errors_lock);
 }
 
 int
-xocl_insert_error_record(struct xocl_dev *xdev, struct xclErrorLast *err_last)
+xocl_insert_error_record(struct xocl_dev_core *core, struct xclErrorLast *err_last)
 {
-	struct xcl_errors *err = xdev->core.errors;
+	struct xcl_errors *err = core->errors;
 	if (!err)
 		return -ENOENT;
 	//TODO
@@ -44,7 +44,7 @@ xocl_insert_error_record(struct xocl_dev *xdev, struct xclErrorLast *err_last)
 }
 
 int
-xocl_init_errors(struct xocl_dev *xdev)
+xocl_init_errors(struct xocl_dev_core *core)
 {
 	//TODO
 
@@ -52,9 +52,9 @@ xocl_init_errors(struct xocl_dev *xdev)
 }
 
 void
-xocl_fini_errors(struct xocl_dev *xdev)
+xocl_fini_errors(struct xocl_dev_core *core)
 {
-	struct xcl_errors *err = xdev->core.errors;
+	struct xcl_errors *err = core->errors;
 	if (!err)
 		return;
 	//TODO
