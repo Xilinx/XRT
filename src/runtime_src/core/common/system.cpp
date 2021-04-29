@@ -201,4 +201,16 @@ program_plp(const device* dev, const std::vector<char> &buffer)
   instance().program_plp(dev, buffer);
 }
 
+void
+mem_read(const device* dev, long long addr, long long size, const std::string& output_file)
+{
+  instance().mem_read(dev, addr, size, output_file);
+}
+
+void
+mem_write(const device* dev, long long addr, long long size, unsigned int pattern)
+{
+  instance().mem_write(dev, addr, size, pattern);
+}
+
 } // xrt_core
