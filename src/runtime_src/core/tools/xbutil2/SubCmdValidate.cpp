@@ -830,6 +830,12 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
     std::stringstream run_details;
     size_t block_size = 16 * 1024 * 1024; // Default block size 16MB
+
+    // check if the bank has enough memory to allocate
+    //  m_size is in KB so convert block_size (bytes) to KB for comparision 
+    if(mem.m_size < (block_size/1024))
+      continue;
+            
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
