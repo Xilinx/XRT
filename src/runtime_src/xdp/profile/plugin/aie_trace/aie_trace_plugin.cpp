@@ -801,10 +801,11 @@ namespace xdp {
       return;
     }
 
-    // Set metrics which flushes the trace 
+    // Set metrics to flush the trace FIFOs
     // NOTE: The data mover uses a burst length of 256, so we need 64 more 
-    // dummy packets to ensure all trace gets written to DDR.
-    setFlushMetrics(deviceId, handle);
+    // dummy packets to ensure all execution trace gets written to DDR.
+    if (xrt_core::config::get_aie_trace_flush())
+      setFlushMetrics(deviceId, handle);
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
       auto offloader = std::get<0>(aieOffloaders[deviceId]);

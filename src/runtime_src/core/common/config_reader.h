@@ -304,6 +304,13 @@ get_aie_trace()
   return value;
 }
 
+inline bool
+get_aie_trace_flush()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
+  return value;
+}
+
 inline std::string
 get_aie_trace_metrics()
 {
