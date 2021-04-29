@@ -199,6 +199,7 @@ enum class key_type
   mfg_ver,
   is_recovery,
   is_ready,
+  is_offline,
   f_flash_type,
   flash_type,
   board_name,
@@ -2134,6 +2135,22 @@ struct is_ready : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_ready;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// struct is_offline - check if device is offline (being reset)
+//
+// A value of true means means the device is currently offline and in
+// process of resetting.  An application sigbus handler can catch
+// SIGBUS and check if device is offline and take appropriate action.
+//
+// This query request is exposed through xrt::device::get_info
+struct is_offline : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_offline;
 
   virtual boost::any
   get(const device*) const = 0;

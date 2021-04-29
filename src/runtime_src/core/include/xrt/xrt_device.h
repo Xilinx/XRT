@@ -59,6 +59,7 @@ enum class device : unsigned int {
   m2m,
   name,
   nodma,
+  offline,
 };
 
 /**
@@ -71,6 +72,7 @@ XRT_INFO_PARAM_TRAITS(device::max_clock_frequency_mhz, unsigned long);
 XRT_INFO_PARAM_TRAITS(device::m2m, bool);
 XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
+XRT_INFO_PARAM_TRAITS(device::offline, bool);
 
 } // info
   
