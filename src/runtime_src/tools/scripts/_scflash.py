@@ -187,11 +187,9 @@ def main():
         #      we just don't try to kill processes running on the buddy FPGA. This
         #      should be fine
         #2. call 'xbmgmt flash' on the specified FPGA
-        #3. call 'xbmgmt reset --ert' on the 'fixed sc' FPGA to reboot cmc
-        #   this step 3 is a workaround to https://jira.xilinx.com/browse/CR-1076187
-        #4. wait for FPGAs back online
-        # steps 3 & 4 are not needed anymore since CR-1076187 has been fixed. this
-        # will save some time for the sc flash
+        #3. remove the buddy mgmt, buddy user, and user node to clear cached SC info
+        #   Note. the SC info in the mgmt node will be cleared during flash.
+        #4. rescan to get the removed nodes back
         #Note: since this python is called by xbmgmt, so we can't do a card reset
         #      here, otherwise, card reset will remove the xclmgmt which is still
         #      being used by the calling xbmgmt.
@@ -208,7 +206,21 @@ def main():
         #2
         print("sc flash...")
         retcode = run_xbmgmt([xbmgmt, "flash", "--sc_firmware", "--path", args.path, "--card", mgmt, "--no_cardlevel"])
-        return retcode
+        if retcode:
+            return retcode
+        #3
+        print("remove: %s" % user)
+        run_pcie("echo 1 > " + os.path.join(rootDir, user, "remove"))
+        if buddy_user:
+            print("remove: %s" % buddy_user)
+            run_pcie("echo 1 > " + os.path.join(rootDir, buddy_user, "remove"))
+            buddy_mgmt = buddy_user[:len(buddy_user)-1] + "0"
+            print("remove: %s" % buddy_mgmt)
+            run_pcie("echo 1 > " + os.path.join(rootDir, buddy_mgmt, "remove"))
+        #4
+        print("pcie rescan")
+        run_pcie("echo 1 > /sys/bus/pci/rescan")
+        return 0
     except Exception as e:
         print(e)
 
