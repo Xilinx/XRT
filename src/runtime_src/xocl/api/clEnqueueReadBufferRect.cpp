@@ -145,30 +145,31 @@ clEnqueueReadBufferRect(cl_command_queue     command_queue ,
     xocl::xocl(*event)->queue(true /*wait*/);
   }
 
-  // Now the event is running, this should be hard_event and handle asynchronously
   auto device = xocl::xocl(command_queue)->get_device();
-  auto xdevice = device->get_xdevice();
   auto boh = xocl::xocl(buffer)->get_buffer_object_or_error(device);
-  void* host_ptr = xdevice->map(boh);
-  
-  size_t yit,zit;
-  for(zit=0;zit<region[2];zit++){
-    for(yit=0;yit<region[1];yit++){
-      size_t buffer_row_origin_in_bytes =
-        buffer_origin_in_bytes+
-        zit*buffer_slice_pitch+
-        yit*buffer_row_pitch;
+  cl_int errc = 0;
+
+  // This is memory map is bigger than we could make it when start offsets is not 0, 0, 0.
+  void *host_ptr = clEnqueueMapBuffer(command_queue, buffer, true, CL_MAP_READ,
+                                      0, boh.size(), num_events_in_wait_list,
+                                      event_wait_list, nullptr, &errc);
+  if (errc)
+    return errc;
+
+  size_t yit, zit;
+  for (zit = 0; zit < region[2]; zit++) {
+    for (yit = 0; yit < region[1]; yit++) {
+      size_t buffer_row_origin_in_bytes = buffer_origin_in_bytes +
+                                          zit * buffer_slice_pitch +
+                                          yit * buffer_row_pitch;
       size_t host_row_origin_in_bytes =
-        host_origin_in_bytes+
-        zit*host_slice_pitch+
-        yit*host_row_pitch;
-      memcpy( &((uint8_t *)(ptr))[host_row_origin_in_bytes],
-              &((uint8_t *)(host_ptr))[buffer_row_origin_in_bytes],
-              region[0]);
+          host_origin_in_bytes + zit * host_slice_pitch + yit * host_row_pitch;
+      memcpy(&((uint8_t *)(ptr))[host_row_origin_in_bytes],
+             &((uint8_t *)(host_ptr))[buffer_row_origin_in_bytes], region[0]);
     }
   }
-  xdevice->unmap(boh);
 
+  clEnqueueUnmapMemObject(command_queue, buffer, host_ptr, 0, nullptr, nullptr);
   if (event)
     xocl::xocl(*event)->set_status(CL_COMPLETE);
 
