@@ -772,10 +772,11 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
 
       // Add a tag value to indicate that this entry was the result of grouping memories
       std::string newTag = "MBG[";
-      for (unsigned int memIndex = startIndex; memIndex <= endIndex; ++memIndex) {
-        newTag += std::to_string(workingConnections[memIndex].memIndex);
-        newTag += (memIndex != endIndex) ? "," : "]";
-      }
+      newTag += std::to_string(workingConnections[startIndex].memIndex);
+      if (startIndex != endIndex)
+        newTag += ":" + std::to_string(workingConnections[endIndex].memIndex);
+
+      newTag += "]";
 
       // Record the new tag, honoring the size limitation
       ptGroupMemory.put("m_tag", newTag.substr(0, sizeof(mem_data::m_tag) - 1).c_str());
