@@ -87,6 +87,7 @@ enum class key_type
   xmc_board_name,
   xmc_serial_num,
   max_power_level,
+  power_warning,
   xmc_sc_presence,
   is_sc_fixed,
   xmc_sc_version,
@@ -2002,6 +2003,21 @@ struct power_microwatts : request
   to_string(result_type value)
   {
     return std::to_string(value);
+  }
+};
+
+struct power_warning : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::power_warning;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
   }
 };
 
