@@ -598,7 +598,7 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
 Infinite Graph Execution
 ************************
 
-The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument -1. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume`` is used to execute the infinitely running graph again. 
+The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument 0. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume`` is used to execute the infinitely running graph again. 
 
 
 .. code:: c
@@ -608,7 +608,7 @@ The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argu
            graph.reset();
            
            // run the graph infinitely
-           graph.run(-1);
+           graph.run(0);
            
            graph.wait(3000);  // Suspends the graph after 3000 AIE cycles from the previous start 
            
@@ -624,7 +624,7 @@ The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argu
 
 In the example above
 
-- The member function ``xrt::graph::run(-1)`` is used to execute the graph infinitely
+- The member function ``xrt::graph::run(0)`` is used to execute the graph infinitely
 - The member function ``xrt::graph::wait(3000)`` suspends the graph after 3000 AIE cycles from the graph starts. 
 
        - If the graph was already run more than 3000 AIE cycles the graph is suspended immediately. 
@@ -677,7 +677,7 @@ The ``xrt::graph`` class contains member function to update and read the runtime
 
            graph.run(2);
 
-           float increment[1] = {1};
+           float increment = 1.0;
            graph.update("mm.mm0.in[2]", increment);
      
            // Do more things
@@ -697,7 +697,7 @@ In the above example, the member function ``xrt::graph::update()`` and ``xrt::gr
 DMA operation to and from Global Memory IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::sync()`` that can be used to synchronize the buffer contents between GMIO and AIE. The following code shows a sample example
+The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::sync()`` that can be used to synchronize the buffer contents between global memory and AIE. The following code shows a sample example
 
 
 .. code:: c++
@@ -705,10 +705,10 @@ The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::s
 
            auto device = xrt::aie::device(0);
        
-           // Buffer from GM to AIE
+           // Buffer from global memory (GM) to AIE
            auto in_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
        
-           // Buffer from AIE to GM
+           // Buffer from AIE to global memory (GM)
            auto out_bo  = xrt::aie::bo (device, SIZE * sizeof (float), 0, 0);
        
            auto inp_bo_map = in_bo.map<float *>(); 
