@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: sarabjee@xilinx.com
  *
@@ -46,7 +46,10 @@ xocl_insert_error_record(struct xocl_dev_core *core, struct xclErrorLast *err_la
 int
 xocl_init_errors(struct xocl_dev_core *core)
 {
-	//TODO
+	/*TODO
+	 * mutex_init(core->errors_lock);
+	 */
+	core->errors = NULL;
 
 	return 0;
 }

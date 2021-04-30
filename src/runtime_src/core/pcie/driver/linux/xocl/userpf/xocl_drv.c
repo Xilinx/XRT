@@ -1587,6 +1587,11 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
+	/* TODO
+	 * initialize xocl_errors
+	 * xocl_init_errors(&xdev->core);
+	 */
+
 
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
