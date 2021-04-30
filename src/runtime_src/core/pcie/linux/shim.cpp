@@ -895,7 +895,7 @@ int shim::m2mCopyBO(unsigned int dst_bo_handle,
 	    .src_offset = src_offset,
     };
 
-    return mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &m2m);
+    return mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_COPY_BO, &m2m) ? -errno : 0;
 }
 
 /*
