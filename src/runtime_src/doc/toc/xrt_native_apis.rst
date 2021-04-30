@@ -32,6 +32,9 @@ The C++ Class objects used for the APIs are
 +---------------+-------------------+
 |   Kernel      | ``xrt::kernel``   |  
 +---------------+-------------------+
+| User Managed  | ``xrt::ip``       |
+|   Kernel      |                   |  
++---------------+-------------------+
 |   Run         | ``xrt::run``      |  
 +---------------+-------------------+
 |   Graph       | ``xrt::graph``    |  
@@ -49,8 +52,8 @@ All the core data structures are defined inside in the header files at ``$XILINX
 The common host code flow using the above data structures is as below
    
       - Open Xilinx **Device** and Load the **XCLBIN**
-      - Set up the **Buffers** that are used to transfer the data between the host and the device
-      - Use the Buffer APIs for the data transfer between host and device (before and after the kernel execution).
+      - Create **Buffer** objects to transfer data to kernel inputs and outputs
+      - Use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
       - Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA. 
        
       
@@ -81,7 +84,13 @@ The above code block shows
     - The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
     - The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
 
-The class constructor ``xrt::device::device(const std::string& bdf)`` also supports opening a device object from a Pcie BDF passed as a string. 
+The class constructor ``xrt::device::device(const std::string& bdf)`` also supports opening a device object from a Pcie BDF passed as a string.
+
+.. code:: c++
+      :number-lines: 10
+           
+           auto device = xrt::device("0000:03:00.1");
+
 
 The ``xrt::device::get_info()`` is a useful member function to obtain necessary information about a device. Some of the information such as Name, BDF can be used to select a specific device to load an XCLBIN
 
@@ -122,7 +131,7 @@ In the above code ``xrt::bo`` buffer objects are created using the class's const
 
   - As no special flags are used a regular buffer will be created.  
   - The second argument specifies the buffer size. 
-  - The third argument should be used to specify enumerated Memory Bank index to specify the memory location where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
+  - The third argument should be used to specify enumerated memory bank index (to specify the memory location) where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
   
   
 Creating special Buffers
@@ -182,16 +191,16 @@ To transfer the data from the host to the device, the user first needs to update
    
 The ``xrt::bo`` class has following member functions for the same functionality
 
-    1. ``xrt::bo::write``
-    2. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
+    1. ``xrt::bo::write()``
+    2. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
 
 To transfer the data from the device to the host, the steps are reverse, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer. 
 
 
 The corresponding ``xrt::bo`` class's member functions are
 
-    1. ``xrt::bo::sync`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
-    2. ``xrt::bo::read``
+    1. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
+    2. ``xrt::bo::read()``
 
 
 Code example of transferring data from the host to the device
@@ -209,7 +218,7 @@ Code example of transferring data from the host to the device
            input_buffer.write(buff_data);
            input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and 0 offset are used as default arguments. 
+Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments. 
 
 
 II. Data transfer between host and device by Buffer map API
@@ -317,8 +326,8 @@ The following topics are discussed below
        - Other kernel execution related API
        
 
-Obtaining kernel handle/object from XCLBIN
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Obtaining kernel object from XCLBIN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The kernel object is created from the device, XCLBIN UUID and the kernel name using ``xrt::kernel()`` constructor as shown below
 
@@ -381,58 +390,6 @@ If the kernel bank index is ambiguous then ``kernel.group_id()`` returns the las
 
 However, if the kernel object is created for a specific CU (by using the ``{kernel_name:{cu_name(s)}}`` for xrt::kernel consturctor) then the user can use their desired CU as they create in the host code. 
 
-   
-Reading and write CU mapped registers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-To read and write from the AXI-Lite register space corresponding to a CU, the CU must be opened in exclusive mode (in shared mode, multiple processes can access the CU's address space, hence it is unsafe if they are trying to access/change registers at the same time leading to a potential race behavior). The required member functions from the ``xrt::kernel`` class are
-  
-    -  ``xrt::kernel::read_register``
-    -  ``xrt::kernel::write_register``
-
-.. code:: c++
-      :number-lines: 35
-       
-           int read_data; 
-           int write_data = 7; 
-              
-           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
-
-           read_data = kernel.read_register(READ_OFFSET);
-           kernel.write_register(WRITE_OFFSET,write_data); 
-
-In the above code block
-
-              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
-              - The Register Read/Write operation is performed. 
-              
-Obtaining the argument offset
-*****************************
-              
-The register read/write access APIs use the register offset as shown in the above examples. The user can get the register offset of a corresponding kernel argument from the ``v++`` generated ``.xclbin.info`` file and use with the register read/write APIs. 
-
-.. code::
-    
-    --------------------------
-    Instance:        foo_1
-    Base Address: 0x1800000
-
-    Argument:          a
-    Register Offset:   0x10
-    
-
-
-The member function to obtain the register offset for CU arguments. In the below example C API ``xrtKernelArgOffset`` is used to obtain offset of third argument of the CU ``foo:foo_1``.  
-
-
-.. code:: c++
-      :number-lines: 38
-
-           // Assume foo has 3 arguments, a,b,c (arg 0, arg 1 and arg 2 respectively) 
-           
-           auto krnl = xrt::kernel(device, xclbin_uuid, "foo:{foo_1}", true); 
-           auto offset = krnl.offset(2);
-
  
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
@@ -477,10 +434,71 @@ Other kernel execution related APIs
 
 **Asynchronous update of the kernel arguments**: The member function ``xrt::run::set_arg()`` is synchronous to the kernel execution. This function can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this functionality (only for edge platform) is provided by the member function ``xrt::run::update_arg()`` to change the kernel arguments asynchronous to the kernel execution. 
 
+User Managed Kernel
+-------------------
+
+The ``xrt::kernel`` is used to denote the kernels with standard control interface through AXI-Lite control registers. These standard control interfaces are well defined and understood by XRT. XRT manages the kernel execution transparent to the user. 
+
+The XRT also supports custom control interface for a kernel. These type of kernels must be managed by the user by writing/reading from the AXI-Lite register space. To differentiate from the XRT managed kernel, class ``xrt::ip`` is used to denote a user-managed kernel. 
+
+Creating IP object from XCLBIN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The IP object creation is very similar to creating a kernel. 
+
+.. code:: c++
+      :number-lines: 35
+          
+           auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
+           auto ip = xrt::ip(device, xclbin_uuid, "ip_name");
+           
+An ip object can only be opened in exclusive mode. 
+
+Allocating buffers for the IP inputs/outputs 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Simialr to XRT managed kernel ``xrt::bo`` objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank. 
+
+Below is a example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumated index of the memory bank as seen by the XRT. The bank index can be obtained by ``xbutil examine --report memory`` command.  
+
+.. code:: c++
+      :number-lines: 35
+          
+           auto buf_in_a = xrt::bo(device, DATA_SIZE,XCL_BO_FLAGS_HOST_ONLY,8);
+           auto buf_in_b = xrt::bo(device, DATA_SIZE,XCL_BO_FLAGS_HOST_ONLY,8);
+
+
+Reading and write CU mapped registers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To read and write from the AXI-Lite register space to a CU (``xrt::ip`` instance in the hardware), the required member functions from the ``xrt::ip`` class are
+  
+    -  ``xrt::ip::read_register``
+    -  ``xrt::ip::write_register``
+
+.. code:: c++
+      :number-lines: 35
+       
+           int read_data; 
+           int write_data = 7; 
+              
+           auto ip = xrt::ip(device, xclbin_uuid, "foo:{foo_1}"); 
+
+           read_data = ip.read_register(READ_OFFSET);
+           ip.write_register(WRITE_OFFSET,write_data); 
+
+In the above code block
+
+              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+              - The Register Read/Write operation is performed. 
+
+
 Graph
 -----
 
 In Versal ACAPs with AI Engines, the XRT Graph class (``xrt::graph``) and its member functions can be used to dynamically load, monitor, and control the graphs executing on the AI Engine array. 
+
+**A note regarding Device and Buffer**: In AIE based application, the device and buffer have some additional functionlities. For this reason the classes ``xrt::aie::device`` and ``xrt::aie::buffer`` are recommended to specify device and buffer objects. 
 
 Graph Opening and Closing
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -587,10 +605,7 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
                     std::cout << "Timeout, reenter......" << std::endl;
                     // Do something
              
-                 } else {
-                    /* Graph is done break the loop */
-                    break;
-                 }
+                 } 
              }
             
              
@@ -598,7 +613,7 @@ As shown in the above example ``xrt::graph::wait(0)`` performs a busy-wait and s
 Infinite Graph Execution
 ************************
 
-The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument 0. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume`` is used to execute the infinitely running graph again. 
+The graph runs infinitely if ``xrt::graph::run()`` is called with iteration argument 0. While a graph running infinitely the APIs ``xrt::graph::wait()``, ``xrt::graph::suspend()`` and ``xrt::graph::end()`` can be used to suspend/end the graph operation after some number of AIE cycles. The API ``xrt::graph::resume()`` is used to execute the infinitely running graph again. 
 
 
 .. code:: c
