@@ -20,7 +20,6 @@
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
-#include "core/common/query_requests.h"
 
 #include "common/system.h"
 
