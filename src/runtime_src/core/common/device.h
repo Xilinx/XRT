@@ -55,9 +55,9 @@ public:
   // device index type
   using id_type = unsigned int;
   using handle_type = xclDeviceHandle;
+  using memory_type = xrt::xclbin::mem::memory_type;
 
 public:
-
   XRT_CORE_COMMON_EXPORT
   device(id_type device_id);
 
@@ -267,6 +267,9 @@ public:
    */
   const std::vector<size_t>&
   get_memidx_encoding(const uuid& xclbin_id = uuid()) const;
+
+  memory_type
+  get_memory_type(size_t memidx) const;
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots

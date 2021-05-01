@@ -114,7 +114,8 @@ public:
       hbm                  = MEM_HBM,
       bram                 = MEM_BRAM,
       uram                 = MEM_URAM,
-      streaming_connection = MEM_STREAMING_CONNECTION
+      streaming_connection = MEM_STREAMING_CONNECTION,
+      host                 = MEM_HOST
     };
   
   public:
