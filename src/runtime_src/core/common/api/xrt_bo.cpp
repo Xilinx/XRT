@@ -216,7 +216,7 @@ public:
     std::memcpy(dst, hbuf, sz);
   }
 
-  void
+  virtual void
   copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
   {
     // Check size and offset of dst and src
@@ -468,20 +468,56 @@ class buffer_nodma : public bo_impl
 {
   buffer_kbuf m_host_only;
   buffer_dbuf m_device_only;
+  void* m_ubuf = nullptr;
+
+  void
+  valid_or_error(size_t sz, size_t offset)
+  {
+    if (!sz)
+      throw xrt_core::system_error(EINVAL, "size must be a positive number");
+    if (sz + offset > size)
+      throw xrt_core::system_error(EINVAL, "offset exceeds buffer size");
+  }
+
+  void
+  sync_to_ubuf(size_t sz, size_t offset)
+  {
+    if (!m_ubuf)
+      return;
+    valid_or_error(sz, offset);
+    auto hbuf = static_cast<char*>(m_host_only.get_hbuf()) + offset;
+    auto ubuf = static_cast<char*>(m_ubuf) + offset;
+    std::memcpy(ubuf, hbuf, sz);
+  }
+
+  void
+  sync_to_hbuf(size_t sz, size_t offset)
+  {
+    if (!m_ubuf)
+      return;
+    valid_or_error(sz, offset);
+    auto hbuf = static_cast<char*>(m_host_only.get_hbuf()) + offset;
+    auto ubuf = static_cast<char*>(m_ubuf) + offset;
+    std::memcpy(hbuf, ubuf, sz);
+  }
 
 public:
-  buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
-    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
+  buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz, void* ubuf)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz), m_ubuf(ubuf)
   {
-
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
+
+    if (m_ubuf) {
+      auto fmt = boost::format("Host pointer '0x%x' leads to extra memcpy for NoDMA platforms") % ubuf;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
+    }
   }
 
   virtual void*
   get_hbuf() const
   {
-    return m_host_only.get_hbuf();
+    return m_ubuf ? m_ubuf : m_host_only.get_hbuf();
   }
 
   // sync is M2M copy between host and device bo
@@ -489,13 +525,29 @@ public:
   void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
-    if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
+    if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
+      sync_to_hbuf(sz, offset);
       // dst, src, size, dst_offset, src_offset
       device->copy_bo(m_device_only.get_xcl_handle(), m_host_only.get_xcl_handle(), sz, offset, offset);
-    else
+    }
+    else {
       // dst, src, size, dst_offset, src_offset
       device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, offset, offset);
+      sync_to_ubuf(sz, offset);
+    }
   }
+
+  void
+  copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
+  {
+    // Copy src device bo to dst (this) device bo
+    bo_impl::copy(src, sz, src_offset, dst_offset);
+
+    // Copy dst (this) dbuf to dst (this) hbuf
+    device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, dst_offset, dst_offset);
+    sync_to_ubuf(sz, dst_offset);
+  }
+    
 };
 
 // class buffer_sub - Sub buffer
@@ -624,12 +676,16 @@ alloc_dbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
+alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp, void* userptr=nullptr)
 {
+  if (sz % 64)
+    throw xrt_core::error(EINVAL, "Invalid buffer size '" + std::to_string(sz) +
+                          "', must be multiple of 64 bytes for NoDMA platforms");
+
   try {
     auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
     auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
+    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz, userptr);
     return boh;
   }
   catch (const std::exception& ex) {
@@ -668,6 +724,9 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 static std::shared_ptr<xrt::bo_impl>
 alloc_userptr(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  if (is_nodma(dhdl))
+    return alloc_nodma(dhdl, sz, flags, grp, userptr);
+  
   return alloc_ubuf(dhdl, userptr, sz, flags, grp);
 }
 
