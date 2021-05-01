@@ -47,6 +47,9 @@ public:
 
   void
   program_plp(const device* dev, const std::vector<char> &buffer) const;
+
+  void
+  mem_read(const device* dev, long long addr, long long size, std::string output_file) const;
 };
 
 namespace edge_linux {
