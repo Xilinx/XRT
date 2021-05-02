@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -178,9 +178,9 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     if (jsonFormat) {
       infoMessage = "Failed to find any Debug IP Layout section in the bitstream loaded on device. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded." ;
     } else {
-      _output << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
-		<< "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-		<< std::endl;
+      _output << "  INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
+		          << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
+		          << std::endl;
     }
    return;
   }
@@ -194,7 +194,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
   std::string path(layoutPath.data());
 
   if(path.empty()) {
-    _output << "INFO: Failed to find path to Debug IP Layout. "
+    _output << "  INFO: Failed to find path to Debug IP Layout. "
             << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
             << std::endl;
     return;
@@ -269,13 +269,13 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
         // No need to show these Debug IP types
         continue;
       default:
-        _output << "Found invalid IP in debug ip layout with type "
+        _output << "  Found invalid IP in debug ip layout with type "
                 << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
         return;
     }
   }
 
-  _output << "Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
+  _output << "  Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
 
   std::stringstream sstr;
   for(uint32_t i = 0; i < maxDebugIpType; i++) {
@@ -285,7 +285,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
     sstr << debugIpNames[i] << " : " << debugIpNum[i] << std::endl;
   }
 
-  _output << "IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl << sstr.str() << std::endl;
+  _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl << sstr.str() << std::endl;
 }
 
 void 
@@ -620,12 +620,12 @@ DebugIpStatusCollector::printAIMResults(std::ostream& _output)
   auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
 
-  boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
   _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
                     % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
           << std::endl;
 
-  boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
   for (size_t i = 0; i< aimResults.NumSlots; ++i) {
     _output << valueFormat
                   % cuNames[AXI_MM_MONITOR][i] % portNames[AXI_MM_MONITOR][i]
@@ -822,11 +822,11 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
 
   auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
 
-  boost::format header("%-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  boost::format header("  %-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
   _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
           << std::endl;
 
-  boost::format valueFormat("%-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x");
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x");
   for (size_t i = 0; i < amResults.NumSlots; ++i) {
     _output << valueFormat
                   % cuNames[ACCEL_MONITOR][i] 
@@ -957,11 +957,11 @@ DebugIpStatusCollector::printASMResults(std::ostream& _output)
   auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
   auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
 
-  boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
   _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
           << std::endl;
 
-  boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
   for (size_t i = 0; i < asmResults.NumSlots; ++i) {
     _output << valueFormat
                   % cuNames[AXI_STREAM_MONITOR][i] % portNames[AXI_STREAM_MONITOR][i]
@@ -1142,12 +1142,12 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
     _output << "No AXI violations found \n";
 
   if (violations_found && /*aVerbose &&*/ !invalid_codes) {
-    boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+    boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
     _output << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot[0]" % "Snapshot[1]" % "Snapshot[2]" % "Snapshot[3]"
                       % "Cumulative[0]" % "Cumulative[1]" % "Cumulative[2]" % "Cumulative[3]"
             << std::endl;
 
-    boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+    boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
     for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
       _output << valueFormat
                     % cuNames[LAPC][i] % portNames[LAPC][i]
@@ -1299,12 +1299,12 @@ DebugIpStatusCollector::printSPCResults(std::ostream& _output)
     auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
     auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
 
-    boost::format header("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
+    boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
     _output << std::endl
             << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
             << std::endl;
 
-    boost::format valueFormat("%-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
+    boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
     for (size_t i = 0; i < spcResults.NumSlots; ++i) {
       _output << valueFormat
                     % cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] % portNames[AXI_STREAM_PROTOCOL_CHECKER][i]
@@ -1612,9 +1612,10 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 
 
 void 
-ReportDebugIpStatus::writeReport( const xrt_core::device * _pDevice,
-                             const std::vector<std::string> & _elementsFilter, 
-                             std::iostream & _output) const
+ReportDebugIpStatus::writeReport( const xrt_core::device* _pDevice,
+                                  const boost::property_tree::ptree& /*_pt*/, 
+                                  const std::vector<std::string>& _elementsFilter,
+                                  std::ostream & _output) const
 {
   auto handle = _pDevice->get_device_handle();
 

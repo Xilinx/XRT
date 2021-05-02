@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -85,9 +85,8 @@ static void
 testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, bool& is_done)
 {
   int counter = 0;
-  while(counter < max_test_duration && !is_done) {
-    run_test.get()->update(counter);
-    counter++;
+  while((counter < run_test.get()->getMaxIterations()) && !is_done) {
+    run_test.get()->update(counter++);
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
@@ -130,7 +129,7 @@ XBUtilities::runScript( const std::string & env,
   // Kick off progress reporter
   bool is_done = false;
   // Fix: create busy bar
-  auto run_test = std::make_shared<XBUtilities::ProgressBar>("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
+  auto run_test = std::make_shared<XBUtilities::ProgressBar>("Running Test", max_test_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
   std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
   // Close existing stderr and set it to be the write end of the pipe.
@@ -197,7 +196,8 @@ XBUtilities::runScript( const std::string & env,
                         const std::string & script, 
                         const std::vector<std::string> & args,
                         std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr)
+                        std::ostringstream & os_stderr,
+                        bool erasePassFailMessage)
 {
   auto envPath = findEnvPath(env);
   
@@ -220,7 +220,7 @@ XBUtilities::runScript( const std::string & env,
   _env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_esc_enabled(), std::cout); 
+  ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
@@ -236,6 +236,12 @@ XBUtilities::runScript( const std::string & env,
   while (runningProcess.running()) {
     run_test.update(counter++);
     std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    if (counter >= run_test.getMaxIterations()) {
+        if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
+          std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+      throw std::runtime_error("Test timed out");
+    }
   }
 
   // Not really needed, but should be added for completeness 
@@ -254,6 +260,10 @@ XBUtilities::runScript( const std::string & env,
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
   run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
+
+  // Erase the "Pass Fail" message
+  if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
+    std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 
   return exitCode;
 }

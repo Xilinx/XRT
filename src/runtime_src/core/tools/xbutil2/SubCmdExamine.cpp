@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,6 +34,7 @@ namespace po = boost::program_options;
 // System - Include Files
 #include <iostream> 
 #include <fstream>
+#include <regex>
 
 // ---- Reports ------
 #include "tools/common/Report.h"
@@ -104,7 +105,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices;       // Default values determined later in the flow
   std::vector<std::string> reportNames;   // Default values determined later in the flow
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "text";
+  std::string sFormat = "json";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -136,7 +137,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested 
@@ -161,23 +162,29 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if (reportNames.size() == 0)
     reportNames.push_back("host");
 
+  // -- DRC checks --
+  // Examine the output format
+  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+  if (schemaVersion == Report::SchemaVersion::unknown) {
+    std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % sFormat << std::endl
+              << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
+    printHelp(commonOptions, hiddenOptions);
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  // Output file
+  if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) {
+    std::cerr << boost::format("ERROR: The output file '%s' already exists.  Please either remove it or execute this command again with the '--force' option to overwrite it.") % sOutput << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
 
   try {
     // Collect the reports to be processed
     XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
-
-    // Output Format
-    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown) 
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
-
-    // Output file
-    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
-        throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
     // Collect all of the devices of interest
     std::set<std::string> deviceNames;
@@ -213,28 +220,27 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       }
     }
   } catch (const xrt_core::error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    XBU::print_exception_and_throw_cancel(e);
   }
   catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    XBU::print_exception_and_throw_cancel(e);
   }
 
-  // -- Create the reports ------------------------------------------------
-  if (sOutput.empty()) {
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout);
-  }
-  else {
+  // Create the report
+  std::ostringstream oSchemaOutput;
+  XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+
+  // -- Write output file ----------------------------------------------
+  if (!sOutput.empty()) {
     std::ofstream fOutput;
     fOutput.open(sOutput, std::ios::out | std::ios::binary);
-    if (!fOutput.is_open()) 
-      throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
+    if (!fOutput.is_open()) {
+      std::cerr << boost::format("Unable to open the file '%s' for writing.") % sOutput << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
 
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, fOutput);
+    fOutput << oSchemaOutput.str();
 
-    fOutput.close();
+    std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
 }

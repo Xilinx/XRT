@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -109,7 +109,6 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices;
   std::string resetType = "hot";
   bool help = false;
-  bool force = false; //TO-DO: remove this when the global force is implemented
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
@@ -154,8 +153,20 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
   // -- process "device" option -----------------------------------------------
   // enforce device specification
-  if(devices.empty())
-    throw xrt_core::error("Please specify a device using --device option");
+  if(devices.empty()) {
+    std::cerr << std::endl
+              << "ERROR: Device not specified." << std::endl
+              << "Specifying a device via '--device' is required to apply a reset." << std::endl << std::endl
+              << "The following devices are available to use:" << std::endl;
+
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& dev = kd.second;
+      std::cerr << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
+    }
+    std::cerr << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
@@ -175,7 +186,8 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   pretty_print_action_list(deviceCollection, type);
 
   // Ask user for permission
-  if(!force && !XBU::can_proceed())
+  XBUtilities::sudo_or_throw("Root privileges are required to perform management resets");
+  if(!XBU::can_proceed(XBU::getForce()))
     return;
 
   //perform reset actions

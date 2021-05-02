@@ -1,8 +1,7 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
- * Author(s) : Sonal Santan
- *           : Hem Neema
- *           : Ryan Radjabi
+ * Copyright (C) 2016-2021
+ * Xilinx, Inc Author(s) : Sonal Santan 
+ *           : Hem Neema : Ryan Radjabi
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1685,7 +1684,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
     //Now we can safely erase all subsectors
     int beatCount = 0;
-    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(recordList.size()), XBU::is_escape_codes_disabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i) {
         beatCount++;
         // if(beatCount%20==0) {
@@ -1712,7 +1711,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
     //Next we program flash. Note that bitstream guard is still active
     beatCount = 0;
-    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(recordList.size()), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(recordList.size()), XBU::is_escape_codes_disabled(), std::cout);
     for (ELARecordList::iterator i = recordList.begin(), e = recordList.end(); i != e; ++i)
     {
         beatCount++;

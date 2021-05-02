@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,7 +43,7 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const boost::program_options::options_description & _optionHidden) const
 {
   boost::program_options::positional_options_description emptyPOD;
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD);
+  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD, m_globalOptions);
 }
 
 void
@@ -51,7 +51,7 @@ SubCmd::printHelp( const boost::program_options::options_description & _optionDe
                    const boost::program_options::options_description & _optionHidden,
                    const SubOptionOptions & _subOptionOptions) const
 {
- XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions);
+ XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, _subOptionOptions, m_globalOptions);
 }
 
 
