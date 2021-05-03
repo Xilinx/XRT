@@ -345,7 +345,8 @@ XBUtilities::get_available_devices(bool inUserDomain)
 
     //if factory mode
     if (is_mfg) {
-      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
+      auto mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(device);
+      std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN_"+ std::to_string(mGoldenVer);
       pt_dev.put("vbnv", vbnv);
     }
     else {
