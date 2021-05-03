@@ -221,9 +221,9 @@ shell_status(bool shell_status, bool sc_status, int num_dsa_shells)
 }
 
 void 
-ReportPlatform::writeReport( const xrt_core::device* _pDevice, 
+ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/, 
                              const boost::property_tree::ptree& _pt, 
-                             const std::vector<std::string>& _elementsFilter,
+                             const std::vector<std::string>& /*_elementsFilter*/,
                              std::ostream & _output) const
 {
   _output << "Flash properties\n";

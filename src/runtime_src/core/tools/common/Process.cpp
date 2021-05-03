@@ -96,7 +96,8 @@ XBUtilities::runScript( const std::string & env,
                         const std::string & script, 
                         const std::vector<std::string> & args,
                         std::ostringstream & os_stdout,
-                        std::ostringstream & os_stderr)
+                        std::ostringstream & os_stderr,
+                        bool /*erasePassFailMessage*/)
 {
   // Fix environment variables before running test case
   setenv("XILINX_XRT", "/opt/xilinx/xrt", 0);

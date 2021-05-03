@@ -251,9 +251,10 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportCu::writeReport( const xrt_core::device* _pDevice,
+ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
                        const boost::property_tree::ptree& _pt, 
-                       const std::vector<std::string>& _elementsFilter,std::ostream & _output) const
+                       const std::vector<std::string>& /*_elementsFilter*/,
+                       std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");

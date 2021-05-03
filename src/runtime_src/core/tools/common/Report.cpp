@@ -95,7 +95,7 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
   } catch (const std::exception& e) {
     std::string reportName = getReportName();
     if (!reportName.empty()) {
-      reportName[0] = std::toupper(reportName[0]);
+      reportName[0] = static_cast<char>(std::toupper(reportName[0]));
       std::cerr << reportName << std::endl;
     }
 
