@@ -544,11 +544,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			xcmd->cb.notify_host(xcmd, xcmd->status);
 			ret = 0;
 			goto out1;
-		} else if (ret < 0) {
-			xcmd->status = KDS_ERROR;
-			xcmd->cb.notify_host(xcmd, xcmd->status);
+		} else if (ret < 0)
 			goto out1;
-		}
 
 		break;
 	case ERT_SK_START:
