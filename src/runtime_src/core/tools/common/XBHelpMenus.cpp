@@ -239,7 +239,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, key.size(), m_maxColumnWidth - key.size(), false);
+    auto formattedString = XBU::wrap_paragraphs(_description, key.size(), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
@@ -372,9 +372,6 @@ XBUtilities::report_option_help( const std::string & _groupName,
   if ( !_groupName.empty() )
     std::cout << fmtHeader % _groupName;
 
-  // Helper string
-  std::string formattedString;
-
   // Report the options
   boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
   for (auto & option : _optionDescription.options()) {
@@ -409,9 +406,6 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   const std::string fgc_usageBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
   const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
   const std::string fgc_reset       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
-
-  // Helper string
-  std::string formattedString;
 
   // -- Command description
   {
@@ -486,9 +480,6 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
   const std::string fgc_reset        = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
-  // Helper string
-  std::string formattedString;
-
   // -- Command
   boost::format fmtCommand(fgc_header + "\nCOMMAND: " + fgc_commandBody + "%s\n" + fgc_reset);
   if ( !_subCommand.empty() )
@@ -541,7 +532,6 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
   // Working variables
   const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
   std::string supportedValues;        // Formatted string of supported values
-  std::string formattedString;        // Helper working string
                                       
   // Make a copy of the data (since it is going to be modified)
   VectorPairStrings workingCollection = _collection;

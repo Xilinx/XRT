@@ -1217,7 +1217,8 @@ print_status(test_status status, std::ostream & _ostream)
 static void
 get_platform_info(const std::shared_ptr<xrt_core::device>& device, 
                   boost::property_tree::ptree& ptTree, 
-                  Report::SchemaVersion schemaVersion, std::ostream & oStream)
+                  Report::SchemaVersion /*schemaVersion*/, 
+                  std::ostream & oStream)
 {
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
   ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
