@@ -846,10 +846,10 @@ namespace xclhwemhal2 {
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
+      /*if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
         sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
         setSimPath(sim_path);
-      }
+      }*/
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -861,11 +861,12 @@ namespace xclhwemhal2 {
       {
         if (sim_path.empty())
         {
-          sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+          sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
           setSimPath(sim_path);
         }
 
-        if (boost::filesystem::exists(sim_path) == false)
+        // As GDB feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
+        /*if (boost::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
@@ -905,7 +906,7 @@ namespace xclhwemhal2 {
 
             logMessage(dMsg, 0);
           }
-        }
+        }*/
       }
 
       if (mLogStream.is_open())
