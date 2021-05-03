@@ -80,7 +80,7 @@ xma_dec_plugins_load(XmaSystemCfg      *systemcfg,
                 xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
                           "Failed to open plugin %s\n", pluginfullname);
                 xma_logmsg(XMA_ERROR_LOG, XMA_DECODER_MOD,
-                          "Error message: %s\n", dlerror());
+                          "Error message: %s\n", error);
                 return XMA_ERROR;
             }
             memcpy(&decoders[k++], plg, sizeof(XmaDecoderPlugin));
