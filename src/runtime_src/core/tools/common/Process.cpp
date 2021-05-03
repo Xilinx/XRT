@@ -84,7 +84,7 @@ setShellPathEnv(const std::string& var_name, const std::string& trailing_path)
 static void 
 testCaseProgressReporter(std::shared_ptr<XBUtilities::ProgressBar> run_test, bool& is_done)
 {
-  int counter = 0;
+  unsigned int counter = 0;
   while((counter < run_test.get()->getMaxIterations()) && !is_done) {
     run_test.get()->update(counter++);
     std::this_thread::sleep_for(std::chrono::seconds(1));
