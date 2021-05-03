@@ -44,7 +44,11 @@ ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev,
     ptree.add("sub_vendor", qr::pcie_subsystem_vendor::to_string(xrt_core::device_query<qr::pcie_subsystem_vendor>(dev)));
     ptree.add("link_speed_gbit_sec", xrt_core::device_query<qr::pcie_link_speed_max>(dev));
     ptree.add("express_lane_width_count", xrt_core::device_query<qr::pcie_express_lane_width>(dev));
-    ptree.add("dma_thread_count", xrt_core::device_query<qr::dma_threads_raw>(dev).size());
+
+    //this sysfs node might not be present for nodma, but it is safe to ignore.
+    try {
+      ptree.add("dma_thread_count", xrt_core::device_query<qr::dma_threads_raw>(dev).size());
+    } catch(...) {}
     ptree.add("cpu_affinity", xrt_core::device_query<qr::cpu_affinity>(dev));
     ptree.add("max_shared_host_mem_aperture_bytes", xrt_core::device_query<qr::max_shared_host_mem_aperture_bytes>(dev));
     ptree.add("shared_host_mem_size_bytes", xrt_core::device_query<qr::shared_host_mem>(dev));
@@ -76,5 +80,4 @@ ReportPcieInfo::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-22s : %s Bytes\n") % "Shared Host Memory" % pt_pcie.get<std::string>("host_mem_size_bytes", "0");
   _output << boost::format("  %-22s : %s Bytes\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
   _output << std::endl;
-  
 }

@@ -62,11 +62,22 @@ is_sw_emulation()
   return swemu;
 }
 
-static bool
+inline bool
+is_nodma(const xrt_core::device* core_device)
+{
+  return core_device->is_nodma();
+}
+
+inline bool
+is_nodma(const xrt::device& device)
+{
+  return is_nodma(device.get_handle().get());
+}
+
+inline bool
 is_nodma(xclDeviceHandle xhdl)
 {
-  auto core_device = xrt_core::get_userpf_device(xhdl);
-  return core_device->is_nodma();
+  return is_nodma(xrt_core::get_userpf_device(xhdl).get());
 }
 
 }
@@ -127,6 +138,7 @@ class bo_impl
 public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
   static constexpr int32_t no_group = std::numeric_limits<int32_t>::max();
+  static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
 
 private:
   void
@@ -136,6 +148,7 @@ private:
     device->get_bo_properties(handle, &prop);
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
+    flags = static_cast<bo::flags>(prop.flags & ~XRT_BO_FLAGS_MEMIDX_MASK);
 
 #ifdef _WIN32 // All shims minus windows return proper flags
     // Remove when driver returns the flags that were used to ctor the bo
@@ -146,11 +159,12 @@ private:
 
 protected:
   std::shared_ptr<xrt_core::device> device;
-  xclBufferHandle handle;           // driver handle
-  size_t size;                      // size of buffer
-  mutable uint64_t addr = no_addr;  // bo device address
-  mutable int32_t grpid = no_group; // memory group index
-  bool free_bo;                     // should dtor free bo
+  xclBufferHandle handle;             // driver handle
+  size_t size;                        // size of buffer
+  mutable uint64_t addr = no_addr;    // bo device address
+  mutable int32_t grpid = no_group;   // memory group index
+  mutable bo::flags flags = no_flags; // flags per bo properties
+  bool free_bo;                       // should dtor free bo
 
 public:
   explicit bo_impl(size_t sz)
@@ -305,6 +319,17 @@ public:
   virtual void
   sync(xclBOSyncDirection dir, size_t sz, size_t offset)
   {
+    // One may think that host_only BOs should not be synced, but here
+    // is the deal: The sync does not really do DMA, but just flush
+    // the CPU cache (to_device) so that device will get the most
+    // up-to-date data from physical memory or invalid CPU cache
+    // (from_device) so that host CPU can read the most up-to-date
+    // data device has put into the physical memory. As of today, all
+    // Xilinx's Alveo devices will automatically trigger cache
+    // coherence actions when it reads from or write to physical
+    // memory, but we still recommend user to perform explicit BO sync
+    // operation just in case the HW changes in the future.
+    // if (get_flags() != bo::flags::host_only)
     device->sync_bo(handle, dir, sz, offset + get_offset());
   }
 
@@ -324,6 +349,15 @@ public:
       get_bo_properties();
 
     return grpid;
+  }
+
+  virtual bo::flags
+  get_flags() const
+  {
+    if (flags == no_flags)
+      get_bo_properties();
+
+    return flags;
   }
 
   virtual size_t get_size()      const { return size;    }
@@ -468,7 +502,7 @@ class buffer_nodma : public bo_impl
 {
   buffer_kbuf m_host_only;
   buffer_dbuf m_device_only;
-  void* m_ubuf = nullptr;
+  void* m_ubuf = nullptr;   // currently not supported (alloc_ubuf throws)
 
   void
   valid_or_error(size_t sz, size_t offset)
@@ -650,10 +684,21 @@ alloc_kbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup
 static std::shared_ptr<xrt::bo_impl>
 alloc_ubuf(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
+  // On NoDMA platforms a userptr would require userspace management
+  // of specified userptr with extra memcpy on sync and copy.  If
+  // supported then it would hide inefficient application code, so
+  // just say no.
+  if (is_nodma(dhdl))
+    throw xrt_core::error(EINVAL, "userptr is not supported for NoDMA platforms");
+
+  if (flags & XRT_BO_FLAGS_HOST_ONLY)
+    throw xrt_core::error(EINVAL, "userptr is not supported for host only buffers");
+
   // error if userptr is not aligned properly
   if (!is_aligned_ptr(userptr))
-    throw xrt_core::error(-EINVAL, "userptr is not aligned");
+    throw xrt_core::error(EINVAL, "userptr is not aligned");
 
+  // driver pins and manages userptr
   auto handle = alloc_bo(dhdl, userptr, sz, flags, grp);
   auto boh = std::make_shared<xrt::buffer_ubuf>(dhdl, handle, sz, userptr);
   return boh;
@@ -724,9 +769,6 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 static std::shared_ptr<xrt::bo_impl>
 alloc_userptr(xclDeviceHandle dhdl, void* userptr, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
 {
-  if (is_nodma(dhdl))
-    return alloc_nodma(dhdl, sz, flags, grp, userptr);
-  
   return alloc_ubuf(dhdl, userptr, sz, flags, grp);
 }
 
@@ -747,6 +789,35 @@ get_xcl_device_handle(xrtDeviceHandle dhdl)
 {
   return xrt_core::device_int::get_xcl_device_handle(dhdl);
 }
+
+// When no flags are specified, automatically infer host_only for
+// NoDMA platforms when memory bank is host memory only.
+static xrtBufferFlags
+adjust_buffer_flags(const xrt::device& device, xrt::bo::flags flags, xrt::memory_group grp)
+{
+  if (flags != xrt::bo::flags::normal)
+    return static_cast<xrtBufferFlags>(flags);
+
+  if (!is_nodma(device))
+    return static_cast<xrtBufferFlags>(flags);
+
+  if (device.get_handle()->get_memory_type(grp) == xrt_core::device::memory_type::host)
+    return static_cast<xrtBufferFlags>(xrt::bo::flags::host_only);
+
+  return static_cast<xrtBufferFlags>(flags);
+}
+
+// When no flags are specified, automatically infer host_only for
+// NoDMA platforms when memory bank is host memory only.
+// Optimized short cut to avoid converting xclDeviceHandle to core device
+static xrtBufferFlags
+adjust_buffer_flags(xclDeviceHandle dhdl, xrt::bo::flags flags, xrt::memory_group grp)
+{
+  if (flags == xrt::bo::flags::normal)
+    return adjust_buffer_flags(xrt::device{dhdl}, flags, grp);
+  return static_cast<xrtBufferFlags>(flags);
+}
+  
 
 } // namespace
 
@@ -816,13 +887,13 @@ namespace xrt {
 bo::
 bo(xclDeviceHandle dhdl, void* userptr, size_t sz, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-           alloc_userptr, dhdl, userptr, sz, static_cast<xrtBufferFlags>(flags), grp))
+      alloc_userptr, dhdl, userptr, sz, adjust_buffer_flags(dhdl, flags, grp), grp))
 {}
 
 bo::
 bo(xclDeviceHandle dhdl, size_t size, bo::flags flags, memory_group grp)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-           alloc, dhdl, size, static_cast<xrtBufferFlags>(flags), grp))
+      alloc, dhdl, size, adjust_buffer_flags(dhdl, flags, grp), grp))
 {}
 
 bo::

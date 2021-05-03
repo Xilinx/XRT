@@ -55,6 +55,8 @@ SectionMemTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
       return "MEM_ARE";
     case MEM_STREAMING_CONNECTION:
       return "MEM_STREAMING_CONNECTION";
+    case MEM_HOST:
+      return "MEM_HOST";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_memType);
@@ -91,6 +93,9 @@ SectionMemTopology::getMemType(std::string& _sMemType) const {
 
   if (_sMemType == "MEM_STREAMING_CONNECTION")
     return MEM_STREAMING_CONNECTION;
+
+  if (_sMemType == "MEM_HOST")
+    return MEM_HOST;
 
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);
