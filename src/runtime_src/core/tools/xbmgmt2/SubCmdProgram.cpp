@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -571,20 +571,20 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::vector<std::string> image;
   bool revertToGolden = false;
   bool help = false;
-  bool force = false;
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
+
+    // TODO: Auto update the 'base' values
     ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images."/*  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    /*("force,f", boost::program_options::bool_switch(&force), "Force update the flash image")*/
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -655,21 +655,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  if(force) {
-    //force is a sub-option of update
-    if(update.empty())
-      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --force'");
-  }
-
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
 
   if(!image.empty()) {
     //image is a sub-option of update
     if(update.empty())
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
+
     //we support only 2 flash images atm
     if(image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
+
     //find the absolute path to the specified image
     auto image_paths = find_flash_image_paths(image);
     if(!XBU::can_proceed())
@@ -683,13 +679,16 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::verbose("Sub command: --base");
     std::string empty = "";
     if(update.compare("all") == 0)
-      auto_flash(deviceCollection, force);
-    else if(update.compare("flash") == 0)
-      throw xrt_core::error("Platform only update is not supported");
-    else if(update.compare("sc") == 0)
-      throw xrt_core::error("SC only update is not supported");
-    else 
+      auto_flash(deviceCollection, XBU::getForce());
+    else {
+      if(update.compare("flash") == 0)
+        throw xrt_core::error("Platform only update is not supported");
+
+      if(update.compare("sc") == 0)
+        throw xrt_core::error("SC only update is not supported");
+       
       throw xrt_core::error("Please specify a valid value");
+    }
     return;
   }
   
