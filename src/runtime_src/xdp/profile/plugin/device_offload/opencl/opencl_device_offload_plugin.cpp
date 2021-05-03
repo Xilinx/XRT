@@ -144,8 +144,7 @@ namespace xdp {
           offloader->read_trace() ;
           offloader->read_trace_end() ;
         }
-        db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
-        printTraceWarns(offloader);
+        checkTraceBufferFullness(offloader, deviceId);
       }
     }
   }
@@ -184,7 +183,7 @@ namespace xdp {
         offloader->read_trace() ;
         offloader->read_trace_end() ;
       }
-      printTraceWarns(offloader);
+      checkTraceBufferFullness(offloader, deviceId);
     }
     readCounters() ;
 

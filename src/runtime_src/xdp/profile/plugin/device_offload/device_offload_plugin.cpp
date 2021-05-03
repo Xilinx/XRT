@@ -343,7 +343,7 @@ namespace xdp {
       {
         offloader->read_trace() ;
       }
-      printTraceWarns(offloader);
+      checkTraceBufferFullness(offloader, o.first);
     }
 
     // Also, store away the counter results
@@ -352,10 +352,12 @@ namespace xdp {
     XDPPlugin::endWrite(openNewFiles);
   }
 
-  void DeviceOffloadPlugin::printTraceWarns(DeviceTraceOffload* offloader)
+  void DeviceOffloadPlugin::checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId)
   {
     if (!(getFlowMode() == HW))
       return;
+
+    db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
 
     if (offloader->has_fifo() && offloader->trace_buffer_full()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", FIFO_WARN_MSG);
