@@ -72,6 +72,20 @@ static ssize_t board_name_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(board_name);
 
+/* last/latest xocl errrors */
+static ssize_t xocl_errors_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	struct xcl_errors *err = xdev->core.errors;
+	if (!err)
+		return -ENOENT;
+	//TODO
+
+	return 0;
+}
+static DEVICE_ATTR_RO(xocl_errors);
+
 /* -live client contexts-- */
 static ssize_t kdsstat_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -657,6 +671,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
 	&dev_attr_userbar.attr,
 	&dev_attr_board_name.attr,
+	&dev_attr_xocl_errors.attr,
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
