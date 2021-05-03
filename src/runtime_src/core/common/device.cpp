@@ -31,6 +31,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <functional>
 
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )
@@ -207,6 +208,23 @@ get_memidx_encoding(const uuid& xclbin_id) const
   if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
     throw error(EINVAL, "xclbin id mismatch");
   return m_memidx_encoding;
+}
+
+device::memory_type
+device::
+get_memory_type(size_t memidx) const
+{
+  auto mem_topology = get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY);
+  if (!mem_topology || mem_topology->m_count < static_cast<int32_t>(memidx))
+    throw error(EINVAL, "invalid memory bank index");
+
+  const auto& mem = mem_topology->m_mem_data[memidx];
+  auto mtype = static_cast<memory_type>(mem.m_type);
+  if (mtype != memory_type::dram)
+    return mtype;
+  return (strncmp(reinterpret_cast<const char*>(mem.m_tag), "HOST[0]", 7) == 0) 
+    ? memory_type::host
+    : mtype;
 }
 
 std::pair<size_t, size_t>
