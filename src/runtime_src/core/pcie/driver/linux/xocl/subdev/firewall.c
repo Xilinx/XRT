@@ -405,6 +405,12 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 	if (!FW_PRIVILEGED(fw))
 		return 0;
 
+	/* 
+	 * TODO for error last functionality 
+	 * struct xocl_dev_core *core = xocl_get_xdev(pdev);
+	 * xocl_insert_error_record(core, err_last); to add error record  
+	 */
+
 	for (i = 0; i < fw->max_level; i++) {
 		val = IS_FIRED(fw, i);
 		if (val) {

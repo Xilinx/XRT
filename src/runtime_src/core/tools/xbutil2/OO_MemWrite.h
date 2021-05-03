@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,7 @@
 #define __OO_MemWrite_h_
 
 #include "tools/common/OptionOptions.h"
+#include <vector>
 
 class OO_MemWrite : public OptionOptions {
  public:
@@ -27,11 +28,10 @@ class OO_MemWrite : public OptionOptions {
   OO_MemWrite( const std::string &_longName, bool _isHidden = false);
 
  private:
-  std::string m_device;
+  std::vector<std::string> m_device;
   std::string m_baseAddress;
   std::string m_sizeBytes;
   std::string m_fill;
-  std::string m_inputFile;
   bool m_help;
 };
 

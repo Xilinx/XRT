@@ -33,7 +33,8 @@ class DeviceEventCreatorFromTrace
   VPDatabase* db = nullptr;
 
   std::vector<uint64_t>  traceIDs;
-  std::vector<std::list<VTFDeviceEvent*>> cuStarts;
+  // Keep track of the event ID and device timestamp of CU starts
+  std::vector<std::list<std::pair<uint64_t, uint64_t>>> cuStarts;
 
   // Last Transactions
   std::vector<uint64_t> amLastTrans;

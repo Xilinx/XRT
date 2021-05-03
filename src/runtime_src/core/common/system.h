@@ -128,6 +128,18 @@ public:
   {
     throw std::runtime_error("plp program is not supported");
   }
+
+  virtual void
+  mem_read(const device*, long long, long long, const std::string&) const
+  {
+    throw std::runtime_error("memory read is not supported");
+  }
+
+  virtual void
+  mem_write(const device*, long long, long long, unsigned int) const
+  {
+    throw std::runtime_error("memory write is not supported");
+  }
 }; // system
 
 /**
@@ -251,6 +263,14 @@ get_monitor_access_type();
 XRT_CORE_COMMON_EXPORT
 void
 program_plp(const device* dev, const std::vector<char> &buffer);
+
+XRT_CORE_COMMON_EXPORT
+void
+mem_read(const device* dev, long long addr, long long size, const std::string& output_file);
+
+XRT_CORE_COMMON_EXPORT
+void
+mem_write(const device* device, long long addr, long long size, unsigned int pattern);
 
 } //xrt_core
 

@@ -273,6 +273,8 @@ get_info(info::device param) const
   case info::device::nodma :                  // bool
     return query::to_value<info::device::nodma, xrt_core::query::nodma>
       (handle.get(), [](const auto& val) { return bool(val); });
+  case info::device::offline :
+    return query::raw<info::device::offline, xrt_core::query::is_offline>(handle.get());
   }
 
   throw std::runtime_error("internal error: unreachable");

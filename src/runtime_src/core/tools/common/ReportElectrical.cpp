@@ -90,6 +90,7 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
   }
   pt.put("power_consumption_max_watts", power_watts);
   pt.put("power_consumption_watts", XBUtilities::format_base10_shiftdown6(xrt_core::device_query<qr::power_microwatts>(_pDevice)));
+  pt.put("power_consumption_warning", qr::power_warning::to_string(xrt_core::device_query<qr::power_warning>(_pDevice)));
   boost::property_tree::ptree sensor_array;
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<qr::v12v_aux_millivolts, qr::v12v_aux_milliamps>(_pDevice, "12v_aux", "12 Volts Auxillary")));
@@ -165,7 +166,8 @@ ReportElectrical::writeReport( const xrt_core::device * _pDevice,
   _output << "Electrical\n";
   boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
   _output << boost::format("  %-22s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts");
-  _output << boost::format("  %-22s: %s Watts\n\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts");
+  _output << boost::format("  %-22s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts");
+  _output << boost::format("  %-22s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning");
   _output << boost::format("  %-22s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
   for(auto& kv : electricals) {
     boost::property_tree::ptree& pt_sensor = kv.second;

@@ -87,6 +87,7 @@ enum class key_type
   xmc_board_name,
   xmc_serial_num,
   max_power_level,
+  power_warning,
   xmc_sc_presence,
   is_sc_fixed,
   xmc_sc_version,
@@ -199,6 +200,7 @@ enum class key_type
   mfg_ver,
   is_recovery,
   is_ready,
+  is_offline,
   f_flash_type,
   flash_type,
   board_name,
@@ -2004,6 +2006,21 @@ struct power_microwatts : request
   }
 };
 
+struct power_warning : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::power_warning;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "true" : "false";
+  }
+};
+
 struct host_mem_size : request
 {
   using result_type = uint64_t;
@@ -2134,6 +2151,22 @@ struct is_ready : request
 {
   using result_type = bool;
   static const key_type key = key_type::is_ready;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+// struct is_offline - check if device is offline (being reset)
+//
+// A value of true means means the device is currently offline and in
+// process of resetting.  An application sigbus handler can catch
+// SIGBUS and check if device is offline and take appropriate action.
+//
+// This query request is exposed through xrt::device::get_info
+struct is_offline : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::is_offline;
 
   virtual boost::any
   get(const device*) const = 0;

@@ -57,12 +57,13 @@ namespace xdp {
     // In addition to creating the event, we must log statistics
 
     // Execution time = (end time) - (start time)
-    auto startTimeEvent = cuStarts[s].front();
-    auto startTime = convertDeviceToHostTimestamp(startTimeEvent->getDeviceTimestamp());
+    std::pair<uint64_t, uint64_t> startEventInfo = cuStarts[s].front();
+    auto startEventID = startEventInfo.first ;
+    auto startTime = convertDeviceToHostTimestamp(startEventInfo.second);
     auto executionTime = hostTimestamp - startTime;
 
     cuStarts[s].pop_front();
-    auto event = new KernelEvent(startTimeEvent->getEventId(),
+    auto event = new KernelEvent(startEventID,
                                  hostTimestamp, KERNEL, deviceId, s, cuId);
     event->setDeviceTimestamp(deviceTimestamp);
     db->getDynamicInfo().addEvent(event);
@@ -107,7 +108,7 @@ namespace xdp {
       db->getDynamicInfo().addEvent(event);
       db->getDynamicInfo().markDeviceEventStart(monTraceID, event);
 
-      cuStarts[s].push_back(event);
+      cuStarts[s].push_back(std::make_pair(event->getEventId(), trace.Timestamp));
       if(1 == cuStarts[s].size()) {
         traceIDs[s] = 0; // When current CU starts, reset stall status
       }

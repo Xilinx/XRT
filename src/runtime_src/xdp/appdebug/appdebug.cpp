@@ -192,13 +192,14 @@ template class app_debug_view<lapc_debug_view>;
 template class app_debug_view<std::vector<cl_command_queue>>;
 template class app_debug_view<std::vector<cl_mem>>;
 
-template class app_debug_track<cl_command_queue>;
-template class app_debug_track<cl_mem>;
-
 //Initialize the static member of app_debug_track
 template<> bool app_debug_track<cl_command_queue>::m_set = true;
 template<> bool app_debug_track<cl_mem>::m_set = true;
 bool app_debug_track<cl_event>::m_set = true;
+
+template class app_debug_track<cl_command_queue>;
+template class app_debug_track<cl_mem>;
+
 
 
 std::string event_debug_view_base::getstring(int aVerbose, int aQuotes)
@@ -935,10 +936,10 @@ getScalarArgValue(const xocl::kernel* kernel, const xocl::kernel::xargument* arg
   }
   else {
     sstr << "0x";
-    for (int i = hostsize - 1; i >= 0; --i) 
+    for (int i = hostsize - 1; i >= 0; --i)
       sstr << std::hex << std::setw(2) << std::setfill('0') << data[i];
   }
-  
+
   return sstr.str();
 }
 
@@ -1151,7 +1152,7 @@ aim_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  //  unsigned int numSlots = 
+  //  unsigned int numSlots =
   getIPCountAddrNames(SysfsPath, AXI_MM_MONITOR, nullptr, &slotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(slotNames, cuNameportNames);
 
@@ -1282,7 +1283,7 @@ struct asm_debug_view {
   std::string  DevUserName ;
   std::string    SysfsPath;
 
-  asm_debug_view() 
+  asm_debug_view()
   {
     std::fill(StrNumTranx,     StrNumTranx     + XASM_MAX_NUMBER_SLOTS, 0);
     std::fill(StrDataBytes,    StrDataBytes    + XASM_MAX_NUMBER_SLOTS, 0);
@@ -1294,14 +1295,14 @@ struct asm_debug_view {
   }
   ~asm_debug_view() { }
   std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
-  
+
   std::string getJSONString(bool aVerbose) ;
   std::string getXGDBString(bool aVerbose) ;
 } ;
 
 std::string
 asm_debug_view::getstring(int aVerbose, int aJSONFormat) {
-  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
+  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;
   else return getXGDBString(aVerbose != 0 ? true : false) ;
 }
 
@@ -1314,15 +1315,15 @@ asm_debug_view::getJSONString(bool aVerbose) {
   {
     if (i > 0) sstr << "," ;
     sstr << "{" ;
-    sstr << "\"" << "StrNumTransactions"  << "\"" << ":" 
+    sstr << "\"" << "StrNumTransactions"  << "\"" << ":"
 	 << "\"" << StrNumTranx[i] << "\"" << "," ;
-    sstr << "\"" << "StrDataBytes"  << "\"" << ":" 
+    sstr << "\"" << "StrDataBytes"  << "\"" << ":"
 	 << "\"" << StrDataBytes[i] << "\"" << "," ;
-    sstr << "\"" << "StrBusyCycles"  << "\"" << ":" 
+    sstr << "\"" << "StrBusyCycles"  << "\"" << ":"
 	 << "\"" << StrBusyCycles[i] << "\"" << "," ;
-    sstr << "\"" << "StrStallCycles"  << "\"" << ":" 
+    sstr << "\"" << "StrStallCycles"  << "\"" << ":"
 	 << "\"" << StrStallCycles[i] << "\"" << "," ;
-    sstr << "\"" << "StrStarveCycles"  << "\"" << ":" 
+    sstr << "\"" << "StrStarveCycles"  << "\"" << ":"
 	 << "\"" << StrStarveCycles[i] << "\"" ;
     sstr << "}" ;
   }
@@ -1386,7 +1387,7 @@ clGetDebugStreamCounters()
     return adv;
   }
 
-  xclStreamingDebugCountersResults streamingDebugCounters;  
+  xclStreamingDebugCountersResults streamingDebugCounters;
   memset(&streamingDebugCounters, 0, sizeof(xclStreamingDebugCountersResults));
   std::string subdev = "icap";
   std::string entry = "debug_ip_layout";
@@ -1404,7 +1405,7 @@ clGetDebugStreamCounters()
   }
 
   auto asm_view = new asm_debug_view () ;
-  
+
   std::copy(streamingDebugCounters.StrNumTranx,
 	    streamingDebugCounters.StrNumTranx+XASM_MAX_NUMBER_SLOTS,
 	    asm_view->StrNumTranx);
@@ -1420,7 +1421,7 @@ clGetDebugStreamCounters()
   std::copy(streamingDebugCounters.StrStarveCycles,
 	    streamingDebugCounters.StrStarveCycles+XASM_MAX_NUMBER_SLOTS,
 	    asm_view->StrStarveCycles);
-  
+
   asm_view->NumSlots    = streamingDebugCounters.NumSlots ;
   asm_view->DevUserName = streamingDebugCounters.DevUserName ;
   asm_view->SysfsPath = sysfs_open_path;
@@ -1459,7 +1460,7 @@ struct am_debug_view {
   std::string DevUserName ;
   std::string SysfsPath;
 
-  am_debug_view() 
+  am_debug_view()
   {
     std::fill(CuExecCount, CuExecCount + XAM_MAX_NUMBER_SLOTS, 0);
     std::fill(CuExecCycles, CuExecCycles + XAM_MAX_NUMBER_SLOTS, 0);
@@ -1476,14 +1477,14 @@ struct am_debug_view {
   }
   ~am_debug_view() { }
   std::string getstring(int aVerbose = 0, int aJSONFormat = 0);
-  
+
   std::string getJSONString(bool aVerbose) ;
   std::string getXGDBString(bool aVerbose) ;
 } ;
 
 std::string
 am_debug_view::getstring(int aVerbose, int aJSONFormat) {
-  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;  
+  if (aJSONFormat) return getJSONString(aVerbose != 0 ? true : false) ;
   else return getXGDBString(aVerbose != 0 ? true : false) ;
 }
 
@@ -1498,27 +1499,27 @@ am_debug_view::getJSONString(bool aVerbose) {
   {
     if (i > 0) sstr << "," ;
     sstr << "{" ;
-    sstr << "\"" << "CuName"  << "\"" << ":" 
+    sstr << "\"" << "CuName"  << "\"" << ":"
 	 << "\"" << slotNames[i] << "\"" << "," ;
-    sstr << "\"" << "CuExecCount"  << "\"" << ":" 
+    sstr << "\"" << "CuExecCount"  << "\"" << ":"
 	 << "\"" << CuExecCount[i] << "\"" << "," ;
-    sstr << "\"" << "CuExecCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuExecCycles"  << "\"" << ":"
 	 << "\"" << CuExecCycles[i] << "\"" << "," ;
-    sstr << "\"" << "CuBusyCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuBusyCycles"  << "\"" << ":"
 	     << "\"" << CuBusyCycles[i] << "\"" << "," ;
-    sstr << "\"" << "CuMaxParallelIter"  << "\"" << ":" 
+    sstr << "\"" << "CuMaxParallelIter"  << "\"" << ":"
 	     << "\"" << CuMaxParallelIter[i] << "\"" << "," ;
-    sstr << "\"" << "CuStallExtCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuStallExtCycles"  << "\"" << ":"
 	 << "\"" << CuStallExtCycles[i] << "\"" << "," ;
-    sstr << "\"" << "CuStallIntCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuStallIntCycles"  << "\"" << ":"
 	 << "\"" << CuStallIntCycles[i] << "\"" << "," ;
-    sstr << "\"" << "CuStallStrCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuStallStrCycles"  << "\"" << ":"
 	 << "\"" << CuStallStrCycles[i] << "\"" ;
-    sstr << "\"" << "CuMinExecCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuMinExecCycles"  << "\"" << ":"
 	 << "\"" << CuMinExecCycles[i] << "\"" ;
-    sstr << "\"" << "CuMaxExecCycles"  << "\"" << ":" 
+    sstr << "\"" << "CuMaxExecCycles"  << "\"" << ":"
 	 << "\"" << CuMaxExecCycles[i] << "\"" ;
-    sstr << "\"" << "CuStartCount"  << "\"" << ":" 
+    sstr << "\"" << "CuStartCount"  << "\"" << ":"
 	 << "\"" << CuStartCount[i] << "\"" ;
     sstr << "}" ;
   }
@@ -1536,15 +1537,15 @@ am_debug_view::getXGDBString(bool aVerbose) {
   std::for_each(slotNames.begin(), slotNames.end(), [&](std::string& slotName){
     col = std::max(col, (int)slotName.length() + 4);
   });
-  
+
 
   sstr << "Accelerator Monitor (AM) Counters\n" ;
   sstr << std::left
        <<         std::setw(col) << "CU Name"
-       << "  " << std::setw(16) << "Exec Count" 
-       << "  " << std::setw(16) << "Exec Cycles" 
-       << "  " << std::setw(16) << "Busy Cycles" 
-       << "  " << std::setw(16) << "Max Parallels" 
+       << "  " << std::setw(16) << "Exec Count"
+       << "  " << std::setw(16) << "Exec Cycles"
+       << "  " << std::setw(16) << "Busy Cycles"
+       << "  " << std::setw(16) << "Max Parallels"
        << "  " << std::setw(16) << "Ext Stall Cycles"
        << "  " << std::setw(16) << "Int Stall Cycles"
        << "  " << std::setw(16) << "Str Stall Cycles"
@@ -1586,7 +1587,7 @@ clGetDebugAccelMonitorCounters()
     return adv;
   }
 
-  xclAccelMonitorCounterResults amCounters;  
+  xclAccelMonitorCounterResults amCounters;
   memset(&amCounters, 0, sizeof(xclAccelMonitorCounterResults));
 
   std::string subdev = "icap";
@@ -1606,7 +1607,7 @@ clGetDebugAccelMonitorCounters()
 
   auto am_view = new am_debug_view() ;
   am_view->SysfsPath = sysfs_open_path;
-  
+
   std::copy(amCounters.CuExecCount,
 	    amCounters.CuExecCount+XAM_MAX_NUMBER_SLOTS,
 	    am_view->CuExecCount);
@@ -1637,7 +1638,7 @@ clGetDebugAccelMonitorCounters()
   std::copy(amCounters.CuStartCount,
 	    amCounters.CuStartCount+XAM_MAX_NUMBER_SLOTS,
 	    am_view->CuStartCount);
-  
+
   am_view->NumSlots    = amCounters.NumSlots ;
   am_view->DevUserName = amCounters.DevUserName ;
 
@@ -1688,7 +1689,7 @@ lapc_debug_view::getstring(int aVerbose, int aJSONFormat) {
     }
   }
 
-  // unsigned int numSlots = 
+  // unsigned int numSlots =
   getIPCountAddrNames(SysfsPath, LAPC, nullptr, &lapcSlotNames);
   std::pair<size_t, size_t> widths = getCUNamePortName(lapcSlotNames, cuNameportNames);
 
@@ -1840,5 +1841,3 @@ clGetDebugCheckers() {
 }
 }//appdebug
 //Debug functions
-
-

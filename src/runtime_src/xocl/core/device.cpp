@@ -337,11 +337,11 @@ get_stream(xrt_xocl::device::stream_flags flags, xrt_xocl::device::stream_attrs 
 
     if(read && !(flags & XCL_STREAM_WRITE_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,
-           "Connecting a kernel write only stream to non-user-read stream, argument " + ext->flags);
+                        "Connecting a kernel write only stream to non-user-read stream, argument " + std::to_string(ext->flags));
 
     if(write &&  !(flags & XCL_STREAM_READ_ONLY))
       throw xocl::error(CL_INVALID_OPERATION,
-           "Connecting a kernel read stream to non-user-write stream, argument " + ext->flags);
+                        "Connecting a kernel read stream to non-user-write stream, argument " + std::to_string(ext->flags));
 
     if(mem.m_type != MEM_STREAMING)
       throw xocl::error(CL_INVALID_OPERATION,
@@ -786,7 +786,7 @@ copy_buffer(memory* src_buffer, memory* dst_buffer, size_t src_offset, size_t ds
   try {
     auto src = src_buffer->get_buffer_object(this);
     auto dst = dst_buffer->get_buffer_object(this);
-    
+
     dst.copy(src, size, src_offset, dst_offset);
     dst_buffer->set_resident(this);
     return;
