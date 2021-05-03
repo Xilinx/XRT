@@ -59,7 +59,7 @@ xma_admin_session_create(XmaAdminProperties *props)
     {
         xma_logmsg(XMA_ERROR_LOG, XMA_ADMIN_MOD,
             "Failed to get struct admin_plugin from %s\n Error msg: %s\n",
-            props->plugin_lib, dlerror());
+            props->plugin_lib, error);
         return nullptr;
     }
     if (plg->xma_version == NULL) {
@@ -153,7 +153,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         return nullptr;
     }
     */
-    
+
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->admin_plugin->plugin_data_size, sizeof(uint8_t));

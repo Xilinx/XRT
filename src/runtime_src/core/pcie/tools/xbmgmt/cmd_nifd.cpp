@@ -21,6 +21,7 @@
 #include <fstream>
 #include <getopt.h>
 #include <climits>
+#include <cstring>
 
 #include "xbmgmt.h"
 #include "core/pcie/linux/scan.h"
@@ -51,7 +52,7 @@ static int status(unsigned int index)
     std::cout << "NIFD IP not available on selected device" << std::endl;
     return -errno;
   }
-	  
+
   const int NIFD_CHECK_STATUS = 8;
   unsigned int status = 0;
   int result = dev->ioctl(fd, NIFD_CHECK_STATUS, &status);
@@ -93,10 +94,10 @@ static int readback(const std::string& inputFile, unsigned int index)
     std::cout << "NIFD IP not available on selected device" << std::endl;
     return -errno;
   }
-	  
-  unsigned int numBits = hardwareFramesAndOffsets.size() / 2 ;
-  unsigned int resultWords = numBits % 32 ? numBits/32 + 1 : numBits/32 ;
-  unsigned int packet[1 + numBits*2 + resultWords] = {0} ;
+
+  const unsigned int numBits = hardwareFramesAndOffsets.size() / 2 ;
+  const unsigned int resultWords = numBits % 32 ? numBits/32 + 1 : numBits/32 ;
+  std::vector<unsigned int> packet(1 + numBits*2 + resultWords, 0);
   packet[0] = numBits ;
   for (unsigned int i = 0 ; i < hardwareFramesAndOffsets.size() ; ++i)
   {
@@ -114,7 +115,7 @@ static int readback(const std::string& inputFile, unsigned int index)
     dev->close(fd) ;
     return 0 ;
   }
-  result = dev->ioctl(fd, NIFD_READBACK_VARIABLE, packet) ;
+  result = dev->ioctl(fd, NIFD_READBACK_VARIABLE, packet.data()) ;
   result |= dev->ioctl(fd, NIFD_SWITCH_ICAP_TO_PR);
   if (result != 0)
   {
@@ -140,7 +141,7 @@ static int readback(const std::string& inputFile, unsigned int index)
 int nifdHandler(int argc, char* argv[])
 {
   sudoOrDie() ;
-  
+
   if (argc < 2)
     return -EINVAL ;
 

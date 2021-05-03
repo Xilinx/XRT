@@ -75,7 +75,7 @@ xma_kernel_plugins_load(XmaSystemCfg      *systemcfg,
             {
                 xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
                     "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
+                    pluginfullname, error);
                 return XMA_ERROR;
             }
             memcpy(&kernels[k++], plg, sizeof(XmaKernelPlugin));
