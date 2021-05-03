@@ -55,7 +55,7 @@ namespace plugins {
 
     // Deprecation warnings specific to the .ini flags
     if (xrt_core::config::get_profile()) {
-      std::string message = "\"profile\" configuration in xrt.ini will be deprecated in the next release.  Please user \"opencl_summary=true\" to enable OpenCL profiling and \"opencl_device_counter=true\" for device counter data in OpenCL profile summary." ;
+      std::string message = "\"profile\" configuration in xrt.ini will be deprecated in the next release.  Please use \"opencl_summary=true\" to enable OpenCL profiling and \"opencl_device_counter=true\" for device counter data in OpenCL profile summary." ;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                               message) ;
     }

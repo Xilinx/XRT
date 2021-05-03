@@ -113,6 +113,7 @@ namespace xdp {
         offloader->read_trace();
         offloader->read_trace_end();
       }
+      db->getDynamicInfo().setTraceBufferFull(o.first, offloader->trace_buffer_full());
       printTraceWarns(offloader);
     }
   }
