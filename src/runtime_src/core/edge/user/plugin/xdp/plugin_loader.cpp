@@ -24,7 +24,6 @@
 #include "sc_profile.h"
 
 #include "core/common/config_reader.h"
-#include "core/common/message.h"
 
 namespace xdp {
 namespace hal_hw_plugins {
@@ -34,10 +33,6 @@ bool load()
 {
   if (xrt_core::config::get_xrt_trace() || xrt_core::config::get_xrt_profile()) {
     xdp::hal::load() ;
-  }
-  if(xrt_core::config::get_xrt_profile()) {
-    std::string message = "\"xrt_profile\" configuration in xrt.ini will be deprecated in the next release.  Please use \"xrt_trace=true\" to enable trace for XRT HAL APIs.";
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", message);
   }
 
   if (xrt_core::config::get_data_transfer_trace() != "off") {
