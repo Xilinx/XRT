@@ -11,9 +11,9 @@
 
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
-  trap "" INT
-  "$0.bat" "$@"
-  exit $?
+    trap "" INT
+    "$0.bat" "$@"
+    exit $?
 fi
 
 # Working variables
@@ -163,8 +163,8 @@ if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
     PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
     case ${PROG} in
 	XBUTIL | XBUTIL2)
-            # Non ambiguous command line argument, utility already resolved
-	    ;;
+        # Non ambiguous command line argument, utility already resolved
+	;;
 	RSTOPT)
 	    # We have an ambiguous sub-command, use the next token/switch to
 	    # disambiguate by a second look up
@@ -203,23 +203,23 @@ fi
 
 # Default to the new gen tool if we still could not disambuguate the choice
 if [[ -z ${XRT_PROG} ]]; then
-    PROG=${DEFAULT}
+    XRT_PROG=${DEFAULT}
 fi
 
 # Friendly message
-if [ ${XRT_PROG} == "xbutil2" ]; then
-  echo "-----------------------------------------------------"
-  echo " Invoking next generation of the xbutil application "
-  echo "-----------------------------------------------------"
+if [[ ${XRT_PROG} == "xbutil2" ]]; then
+    echo "-----------------------------------------------------"
+    echo " Invoking next generation of the xbutil application "
+    echo "-----------------------------------------------------"
 fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
-  echo "ERROR: Could not find 64-bit loader executable."
-  echo "ERROR: ${XRT_LOADER} does not exist."
-  exit 1
+    echo "ERROR: Could not find 64-bit loader executable."
+    echo "ERROR: ${XRT_LOADER} does not exist."
+    exit 1
 fi
 
 "${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"

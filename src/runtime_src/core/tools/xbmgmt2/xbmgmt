@@ -16,9 +16,11 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
-DEFAULT=xbmgmt
+# Working variables
+DEFAULT=xbmgmt2
 XBMGMT=xbmgmt
 XBMGMT2=xbmgmt2
+XRT_PROG=""
 
 # Table to resolve reset sub-command based on switch passed to reset
 declare -A RSTOPT=( \
@@ -60,22 +62,12 @@ declare -A COMMANDS=( \
         ["--help"]="XBMGMT2" \
         ["--verbose"]="XBMGMT2" \
         ["--batch"]="XBMGMT2" \
+        ["--force"]="XBMGMT2" \
         ["-h"]="XBMGMT2" \
         ["-v"]="XBMGMT2" \
         ["-b"]="XBMGMT2" \
     )
 
-
-# Working variables
-XRT_PROG=${DEFAULT}
-
-# Determine which version of xbmgmt should be used
-# Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
-  XRT_PROG=xbmgmt
-elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbmgmt2
-fi
 
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
@@ -84,53 +76,66 @@ while [ $# -gt 0 ]; do
   case "$1" in
     # Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
     -new|--new)
-      XRT_PROG=xbmgmt2
+	XRT_PROG=xbmgmt2
       shift
       ;;
+    # Indicates that the classic version of xbutil should be used
+    -old|--old)
+	XRT_PROG=xbmgmt
+	shift
+	;;
     # Copy the options the remaining options
     *)
-      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
-      shift
-      ;;
+	XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+	XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+	shift
+	;;
   esac
 done
 
-# If user did not specify -new/--new then attempt to determine if user
+# Determine which version of xbmgmt should be used
+# Check to see environment variable is NOT set
+if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+     XRT_PROG=xbmgmt2
+fi
+
+# If user did not specify -old/--old then attempt to determine if user
 # wants to use classic or new by peeking inside the command line
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
-if [ ${XRT_PROG} == "xbmgmt" ]; then
+if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
   PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
   case ${PROG} in
     XBMGMT | XBMGMT2)
-      # Get named reference to the value pointed by the string returned
-      XRT_PROG=${!PROG}
+      # Non ambiguous command line argument, utility already resolved
       ;;
     RSTOPT)
       # We have an ambiguous sub-command, use the next token/switch to
       # disambiguate by a second look up
+      PROG="DEFAULT"
       if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
         PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-        XRT_PROG=${!PROG}
-      else
-        # User did not provide switch to the sub-command so we cannot
-        # disabmiguate, default to DEFAULT
-        XRT_PROG=${DEFAULT}
       fi
       ;;
     *)
       # Bogus sub-command which failed lookup
-      XRT_PROG=${DEFAULT}
+      PROG="DEFAULT"
       ;;
   esac
+  # Get named reference to the value pointed by the string returned
+  XRT_PROG=${!PROG}
+fi
+
+# Default to the new gen tool if we still could not disambuguate the choice
+if [[ -z ${XRT_PROG} ]]; then
+    XRT_PROG=${DEFAULT}
 fi
 
 # Friendly message
-if [ ${XRT_PROG} == "xbmgmt2" ]; then
+if [[ ${XRT_PROG} == "xbmgmt2" ]]; then
   echo "-----------------------------------------------------"
   echo " Invoking next generation of the xbmgmt application "
   echo "-----------------------------------------------------"
@@ -145,4 +150,4 @@ if [ ! -f "$XRT_LOADER" ]; then
   exit 1
 fi
 
-"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+"${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"
