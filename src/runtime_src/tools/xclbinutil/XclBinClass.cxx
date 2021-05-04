@@ -26,6 +26,7 @@
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/filesystem.hpp>
 #include <random>
+#include <sstream>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -668,7 +669,17 @@ XclBin::addMergeSection(ParameterSectionData & _PSD)
   pSection->getPayload(ptPayload);
 
   // Merge the sections 
-  pSection->appendToSectionMetadata(ptMerge, ptPayload);
+  try {
+    pSection->appendToSectionMetadata(ptMerge, ptPayload);
+  } catch (std::exception &e) {
+    std::cerr << std::endl;
+    std::cerr << "ERROR: An exception was thrown while attempting to merge the following JSON image to the section: '" << pSection->getSectionKindAsString() << "'" << std::endl;
+    std::cerr << "       Exception Message: " << e.what() << std::endl;
+    std::ostringstream jsonBuf;
+    boost::property_tree::write_json(jsonBuf, ptMerge, true);
+    std::cerr << jsonBuf.str() << std::endl;
+    throw std::runtime_error("Aborting remaining operations");
+  }
 
   // Store the resulting merger
   pSection->purgeBuffers();
@@ -1178,7 +1189,17 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     boost::property_tree::ptree ptPayload;
     pSection->getPayload(ptPayload);
 
-    pSection->appendToSectionMetadata(ptSection->second, ptPayload);
+    try {
+      pSection->appendToSectionMetadata(ptSection->second, ptPayload);
+    } catch (std::exception &e) {
+      std::cerr << std::endl;
+      std::cerr << "ERROR: An exception was thrown while attempting to append the following JSON image to the section: '" << pSection->getSectionKindAsString() << "'" << std::endl;
+      std::cerr << "       Exception Message: " << e.what() << std::endl;
+      std::ostringstream jsonBuf;
+      boost::property_tree::write_json(jsonBuf, ptSection->second, true);
+      std::cerr << jsonBuf.str() << std::endl;
+      throw std::runtime_error("Aborting remaining operations");
+    }
 
     pSection->purgeBuffers();
     pSection->readJSONSectionImage(ptPayload);

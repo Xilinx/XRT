@@ -19,6 +19,7 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <sstream>
 
 
 #include "XclBinUtilities.h"
@@ -449,7 +450,17 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         boost::property_tree::read_json(ss, pt);
 
         // O.K. - Lint checking is done and write it to our buffer
-        readJSONSectionImage(pt);
+        try {
+          readJSONSectionImage(pt);
+        } catch (std::exception &e) {
+          std::cerr << std::endl;
+          std::cerr << "ERROR: An exception was thrown while attempting to add following JSON image to the section: '" << getSectionKindAsString() << "'" << std::endl;
+          std::cerr << "       Exception Message: " << e.what() << std::endl;
+          std::ostringstream jsonBuf;
+          boost::property_tree::write_json(jsonBuf, pt, true);
+          std::cerr << jsonBuf.str() << std::endl;
+          throw std::runtime_error("Aborting remaining operations");
+        }
         break;
       }
     case FT_HTML:
