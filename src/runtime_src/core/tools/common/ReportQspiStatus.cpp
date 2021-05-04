@@ -44,17 +44,16 @@ ReportQspiStatus::getPropertyTree20202( const xrt_core::device * device,
 }
 
 void 
-ReportQspiStatus::writeReport( const xrt_core::device * device,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & output) const
+ReportQspiStatus::writeReport( const xrt_core::device* /*_pDevice*/,
+                               const boost::property_tree::ptree& _pt, 
+                               const std::vector<std::string>& /*_elementsFilter*/, 
+                               std::ostream & _output) const
 {
-  boost::property_tree::ptree pt;
-  getPropertyTreeInternal(device, pt);
+  boost::property_tree::ptree ptEmpty;
+  const boost::property_tree::ptree& ptree = _pt.get_child("qspi_wp_status", ptEmpty);
 
-  boost::property_tree::ptree& ptree = pt.get_child("qspi_wp_status");
-
-  output << "QSPI write protection status" << std::endl;
-  output << boost::format("  %-20s : %s\n") % "Primary" % ptree.get<std::string>("primary");
-  output << boost::format("  %-20s : %s\n") % "Recovery" % ptree.get<std::string>("recovery");
-  output << std::endl;
+  _output << "QSPI write protection status" << std::endl;
+  _output << boost::format("  %-23s: %s\n") % "Primary" % ptree.get<std::string>("primary");
+  _output << boost::format("  %-23s: %s\n") % "Recovery" % ptree.get<std::string>("recovery");
+  _output << std::endl;
 }

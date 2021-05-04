@@ -88,29 +88,27 @@ ReportMailbox::getPropertyTree20202( const xrt_core::device * device,
 
 
 void 
-ReportMailbox::writeReport(const xrt_core::device * device,
-                            const std::vector<std::string> & /*_elementsFilter*/,
-                            std::iostream & output) const
+ReportMailbox::writeReport( const xrt_core::device* /*_pDevice*/,
+                            const boost::property_tree::ptree& _pt,
+                            const std::vector<std::string>& /*_elementsFilter*/,
+                            std::ostream & _output) const
 {
-  boost::property_tree::ptree pt;
   boost::property_tree::ptree empty_ptree;
-  try {
-    getPropertyTreeInternal(device, pt);
-  } catch (...) {}
 
-  output << "Mailbox\n";
-  if (pt.empty()) {
-    output << "  Information unavailable" << std::endl; 
+  _output << "Mailbox" << std::endl;
+
+  if (_pt.empty()) 
     return;
-  }
-  boost::property_tree::ptree& mailbox = pt.get_child("mailbox.requests", empty_ptree);
-  output << boost::format("  %-22s : %s Bytes\n") % "Total bytes received" % pt.get<std::string>("mailbox.raw_bytes");
-  for(auto& kv : mailbox) {
-    boost::property_tree::ptree& pt_temp = kv.second;
-    output << boost::format("  %-22s : %-2d\n") % pt_temp.get<std::string>("description") % pt_temp.get<int>("msg_count");
-  }
-  output << std::endl;
+  
+  const boost::property_tree::ptree& mailbox = _pt.get_child("mailbox.requests", empty_ptree);
+  _output << boost::format("  %-22s : %s Bytes\n") % "Total bytes received" % _pt.get<std::string>("mailbox.raw_bytes");
 
+  for(auto& kv : mailbox) {
+    const boost::property_tree::ptree& pt_temp = kv.second;
+    _output << boost::format("  %-22s : %-2d\n") % pt_temp.get<std::string>("description") % pt_temp.get<int>("msg_count");
+  }
+
+  _output << std::endl;
 }
 
 

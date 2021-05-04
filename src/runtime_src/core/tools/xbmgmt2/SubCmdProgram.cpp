@@ -165,7 +165,7 @@ update_SC(unsigned int  index, const std::string& file)
     const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
     std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
     
-    int exit_code = XBU::runScript("python", scFlashPath, args, os_stdout, os_stderr);
+    int exit_code = XBU::runScript("python", scFlashPath, args, os_stdout, os_stderr, false);
 
     if (exit_code != 0) {
       std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
@@ -379,7 +379,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
  * Update shell and sc firmware on the device automatically
  */
 static void 
-auto_flash(xrt_core::device_collection& deviceCollection, bool force) 
+auto_flash(xrt_core::device_collection& deviceCollection) 
 {
   //report status of all the devices
   boost::property_tree::ptree _pt;
@@ -418,7 +418,7 @@ auto_flash(xrt_core::device_collection& deviceCollection, bool force)
   if (!boardsToUpdate.empty()) {
 
     // Prompt user about what boards will be updated and ask for permission.
-    if(!force && !XBU::can_proceed())
+    if(!XBU::can_proceed(XBU::getForce()))
       return;
 
     // Perform DSA and BMC updating
@@ -668,7 +668,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     //find the absolute path to the specified image
     auto image_paths = find_flash_image_paths(image);
-    if(!XBU::can_proceed())
+    if(!XBU::can_proceed(XBU::getForce()))
       return;
     for (const auto & dev : deviceCollection)
       update_shell(dev->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
@@ -677,9 +677,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   if (!update.empty()) {
     XBU::verbose("Sub command: --base");
+    XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
     std::string empty = "";
     if(update.compare("all") == 0)
-      auto_flash(deviceCollection, XBU::getForce());
+      auto_flash(deviceCollection);
     else {
       if(update.compare("flash") == 0)
         throw xrt_core::error("Platform only update is not supported");
@@ -710,8 +711,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       flasher_list.push_back(flasher);
     }
     
+    XBUtilities::sudo_or_throw("Root privileges are required to revert the device to its golden flash image");
+
     //ask user's permission
-    if(!XBU::can_proceed())
+    if(!XBU::can_proceed(XBU::getForce()))
       return;
     
     for(auto& f : flasher_list) {
@@ -735,6 +738,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     //only 1 device and name
     if(deviceCollection.size() > 1)
       throw xrt_core::error("Please specify a single device");
+
     auto dev = deviceCollection.front();
 
     Flasher flasher(dev->get_device_id());
@@ -753,10 +757,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "Programming shell on device [" << flasher.sGetDBDF() << "]..." << std::endl;
     std::cout << "Partition file: " << dsa.file << std::endl;
     
-    //ask user's permission
     for (const auto& uuid : dsa.uuids) {
       //check if plp is compatible with the installed blp
       if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
+        XBUtilities::sudo_or_throw("Root privileges are required to load the PLP image");
         program_plp(dev.get(), dsa.file);
         return;
       }

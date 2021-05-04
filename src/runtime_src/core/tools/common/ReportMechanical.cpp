@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -67,19 +67,18 @@ ReportMechanical::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportMechanical::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & _output) const
+ReportMechanical::writeReport( const xrt_core::device* /*_pDevice*/,
+                               const boost::property_tree::ptree& _pt, 
+                               const std::vector<std::string>& /*_elementsFilter*/,
+                               std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "Mechanical\n";
   _output << "  Fans\n";
-  boost::property_tree::ptree& fans = _pt.get_child("mechanical.fans", empty_ptree);
+  const boost::property_tree::ptree& fans = _pt.get_child("mechanical.fans", empty_ptree);
   for(auto& kv : fans) {
-    boost::property_tree::ptree& pt_fan = kv.second;
+    const boost::property_tree::ptree& pt_fan = kv.second;
     if(!pt_fan.get<bool>("is_present", false)) {
       _output << "    Not present"  << std::endl;
       continue;
@@ -88,6 +87,5 @@ ReportMechanical::writeReport( const xrt_core::device * _pDevice,
     _output << boost::format("      %-22s: %s C\n") % "Critical Trigger Temp" % pt_fan.get<std::string>("critical_trigger_temp_C");
     _output << boost::format("      %-22s: %s RPM\n") % "Speed" % pt_fan.get<std::string>("speed_rpm");
   }
-  _output << std::endl;
-  
+  _output << std::endl; 
 }

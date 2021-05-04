@@ -28,7 +28,7 @@ class ReportPlatforms : public Report {
  public:
   virtual void getPropertyTreeInternal(const xrt_core::device * dev, boost::property_tree::ptree &pt) const;
   virtual void getPropertyTree20202(const xrt_core::device * deve, boost::property_tree::ptree &pt) const;
-  virtual void writeReport(const xrt_core::device * dev, const std::vector<std::string> & _elementsFilter, std::iostream & output) const;
+  virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
 };
 
 #endif

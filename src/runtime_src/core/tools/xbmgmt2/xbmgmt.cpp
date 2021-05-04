@@ -69,8 +69,13 @@ int main( int argc, char** argv )
 
   // -- Ready to execute the code
   try {
-    main_(argc, argv, executable, description, subCommands);
+    main_( argc, argv, executable, description, subCommands);
     return 0;
+  } catch (const xrt_core::error& e) {
+    // Clean exception exit
+    // If the exception is "operation_canceled" then don't print the header debug info
+    if (e.code().value() != static_cast<int>(std::errc::operation_canceled))
+      xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -44,6 +44,7 @@ OptionOptions::printHelp() const
   XBU::report_subcommand_help( m_executable, 
                                m_command + " --" + m_longName, 
                                m_description, m_extendedHelp, 
-                               m_optionsDescription, m_optionsHidden, m_positionalOptions);
+                               m_optionsDescription, m_optionsHidden, 
+                               m_positionalOptions, m_globalOptions);
 }
 

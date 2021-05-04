@@ -152,48 +152,53 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
 }
 
 void 
-ReportPlatforms::writeReport( const xrt_core::device * dev,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & output) const
+ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
+                              const boost::property_tree::ptree& _pt, 
+                              const std::vector<std::string>& /*_elementsFilter*/,
+                              std::ostream & _output) const
 {
-  boost::property_tree::ptree pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(dev, pt);
 
-  output << "Platform\n";
-  boost::property_tree::ptree& platforms = pt.get_child("platforms", empty_ptree);
+  _output << "Platform\n";
+  const boost::property_tree::ptree& platforms = _pt.get_child("platforms", empty_ptree);
   for(auto& kp : platforms) {
-    boost::property_tree::ptree& pt_platform = kp.second;
-    boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region");
-    output << boost::format("  %-20s : %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
-    output << boost::format("  %-20s : %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
-    output << boost::format("  %-20s : %s \n") % "JTAG ID Code" % pt_static_region.get<std::string>("jtag_idcode");
+    const boost::property_tree::ptree& pt_platform = kp.second;
+    const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
+    _output << boost::format("  %-23s: %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
+    _output << boost::format("  %-23s: %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
+    _output << boost::format("  %-23s: %s \n") % "JTAG ID Code" % pt_static_region.get<std::string>("jtag_idcode");
     
-    boost::property_tree::ptree& pt_board_info = pt_platform.get_child("off_chip_board_info");
-    output << boost::format("  %-20s : %s Bytes\n") % "DDR Size" % pt_board_info.get<std::string>("ddr_size_bytes");
-    output << boost::format("  %-20s : %s \n") % "DDR Count" % pt_board_info.get<std::string>("ddr_count");
+    const boost::property_tree::ptree& pt_board_info = pt_platform.get_child("off_chip_board_info");
+    _output << boost::format("  %-23s: %s Bytes\n") % "DDR Size" % pt_board_info.get<std::string>("ddr_size_bytes");
+    _output << boost::format("  %-23s: %s \n") % "DDR Count" % pt_board_info.get<std::string>("ddr_count");
     
-    boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
-    output << boost::format("  %-20s : %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
-    output << boost::format("  %-20s : %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
+    const boost::property_tree::ptree& pt_status = pt_platform.get_child("status");
+    _output << boost::format("  %-23s: %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
+    _output << boost::format("  %-23s: %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
 
-    boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
-    if(!clocks.empty())
-      output << "Clocks\n";
-    for(auto& kc : clocks) {
-      boost::property_tree::ptree& pt_clock = kc.second;
-      output << boost::format("  %-20s : %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
+    const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
+    if(!clocks.empty()) {
+      _output << std::endl << "Clocks" << std::endl;
+      for(auto& kc : clocks) {
+        const boost::property_tree::ptree& pt_clock = kc.second;
+        _output << boost::format("  %-23s: %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
+      }
     }
 
-    boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
-    if(!macs.empty())
-      output << "Mac Addresses\n";
-    for(auto& km : macs) {
-      boost::property_tree::ptree& pt_mac = km.second;
-      output << boost::format("  %-20s : %s\n") % "" % pt_mac.get<std::string>("address");
+    const boost::property_tree::ptree& macs = pt_platform.get_child("macs", empty_ptree);
+    if(!macs.empty()) {
+      _output << std::endl;
+      unsigned int macCount = 0;
+
+      for(auto& km : macs) {
+        const boost::property_tree::ptree& pt_mac = km.second;
+        if( macCount++ == 0) 
+          _output << boost::format("%-25s: %s\n") % "Mac Addresses" % pt_mac.get<std::string>("address");
+        else
+          _output << boost::format("  %-23s: %s\n") % "" % pt_mac.get<std::string>("address");
+      }
     }
   }
   
-  output << std::endl;
-  
+  _output << std::endl;
 }
