@@ -239,7 +239,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, key.size(), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
@@ -410,7 +410,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Command description
   {
     static const std::string key = "DESCRIPTION: ";
-    auto formattedString = XBU::wrap_paragraphs(_description, key.size(), m_maxColumnWidth - key.size(), false);
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
     boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
     if ( !formattedString.empty() )
       std::cout << fmtHeader % formattedString;
