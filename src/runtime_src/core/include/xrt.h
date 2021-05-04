@@ -791,7 +791,7 @@ XCL_DRIVER_DLLESPEC
 int
 xclExecWait(xclDeviceHandle handle, int timeoutMilliSec);
 
-/* XRT Compute Unit Execution Management APIs */
+/* End XRT Compute Unit Execution Management APIs */
 
 
 XCL_DRIVER_DLLESPEC
