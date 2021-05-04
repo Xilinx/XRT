@@ -33,7 +33,8 @@ class DeviceEventCreatorFromTrace
   VPDatabase* db = nullptr;
 
   std::vector<uint64_t>  traceIDs;
-  std::vector<std::list<VTFDeviceEvent*>> cuStarts;
+  // Keep track of the event ID and device timestamp of CU starts
+  std::vector<std::list<std::pair<uint64_t, uint64_t>>> cuStarts;
 
   // Last Transactions
   std::vector<uint64_t> amLastTrans;
@@ -69,6 +70,9 @@ class DeviceEventCreatorFromTrace
   void addKernelDataTransferEvent(VTFEventType ty, xclTraceResults& trace,
                                   uint32_t slot, int32_t cuId,
                                   double hostTimestamp) ;
+
+  void addCUEndEvent(double hostTimestamp, uint64_t deviceTimestamp,
+                     uint32_t s, int32_t cuId);
 
   // Functions for handling dropped device packets
   void addApproximateCUEndEvents();

@@ -113,7 +113,7 @@ shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
   xclLog(XRT_INFO, "%s", __func__);
 
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
-  if (!mKernelFD) {
+  if (mKernelFD < 0) {
     xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
@@ -559,8 +559,10 @@ xclLoadAxlf(const axlf *buffer)
 
       int ai = 0;
       for (auto& arg : kernel.args) {
-        if (arg.name.size() > sizeof(krnl->args[ai].name))
+        if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+          xclLog(XRT_ERROR, "%s: Argument name length %d>%d", __func__, arg.name.size(), sizeof(krnl->args[ai].name));
           return -EINVAL;
+        }
         std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
         krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
         krnl->args[ai].offset = arg.offset;

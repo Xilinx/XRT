@@ -41,7 +41,7 @@
 #define DEV_TIMEOUT	90 // seconds
 #define MGMT_DRV_V1	"xclmgmt"
 #define USER_DRV_V1	"xocl"
-#define MGMT_DRV_V2	"xrt-mgmt"
+#define MGMT_DRV_V2	"xrt-mgnt"
 #define USER_DRV_V2	"xrt-user"
 
 namespace {
@@ -773,7 +773,7 @@ public:
   {
     try {
       if (subdev.compare("rom") == 0 && entry.compare("VBNV") == 0) {
-        sysfs::get(sysfs_name, "xmgmt_main", "VBNV", err, s);
+        sysfs::get(sysfs_name, "xmgnt_main", "VBNV", err, s);
         if (!err.empty())
           sysfs::get(sysfs_name, "xrt_vsec_golden", "VBNV", err, s);
       } else {
@@ -876,10 +876,10 @@ private:
     { "",       "vendor",       "",             "vendor" },
     { "",       "device",       "",             "device" },
     // rom/xxx
-    { "rom",    "uuid",         "xmgmt_main",   "logic_uuids" },
-    { "rom",    "*",            "xmgmt_main",   "*" },
+    { "rom",    "uuid",         "xmgnt_main",   "logic_uuids" },
+    { "rom",    "*",            "xmgnt_main",   "*" },
     // root/xxx
-    { "",       "*",            "xmgmt_main",   "*" },
+    { "",       "*",            "xmgnt_main",   "*" },
     // xmc/xxx
     { "xmc",    "*",            "xrt_cmc",     "*" },
     // flash/xxx
@@ -909,7 +909,7 @@ private:
     const std::string subdev_v2;
   };
   const std::vector<devfs_node_map> devfs_map {
-    { "",        "xmgmt" },
+    { "",        "xmgnt" },
     { "xmc",     "cmc" },
   };
   const devfs_node_map& find_devfs_map(const std::string& subdev)

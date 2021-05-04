@@ -252,12 +252,14 @@ static int cu_probe(struct platform_device *pdev)
 	switch (info->protocol) {
 	case CTRL_HS:
 	case CTRL_CHAIN:
+	case CTRL_NONE:
 		xcu->base.info.model = XCU_HLS;
 		break;
 	case CTRL_FA:
 		xcu->base.info.model = XCU_FA;
 		break;
 	default:
+		XCU_ERR(xcu, "Unknown protocol");
 		return -EINVAL;
 	}
 

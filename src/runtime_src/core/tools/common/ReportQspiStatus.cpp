@@ -53,7 +53,7 @@ ReportQspiStatus::writeReport( const xrt_core::device * device,
 
   boost::property_tree::ptree& ptree = pt.get_child("qspi_wp_status");
 
-  output << "QSPI write portection status" << std::endl;
+  output << "QSPI write protection status" << std::endl;
   output << boost::format("  %-20s : %s\n") % "Primary" % ptree.get<std::string>("primary");
   output << boost::format("  %-20s : %s\n") % "Recovery" % ptree.get<std::string>("recovery");
   output << std::endl;

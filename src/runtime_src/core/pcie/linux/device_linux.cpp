@@ -526,6 +526,7 @@ initialize_query_table()
   emplace_sysfs_get<query::firewall_time_sec>                 ("firewall", "detected_time");
 
   emplace_sysfs_get<query::power_microwatts>                  ("xmc", "xmc_power");
+  emplace_sysfs_get<query::power_warning>                     ("xmc", "xmc_power_warn");
   emplace_sysfs_get<query::host_mem_size>                     ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::kds_numcdmas>                      ("mb_scheduler", "kds_numcdmas");
 
@@ -540,6 +541,7 @@ initialize_query_table()
   emplace_sysfs_get<query::mfg_ver>                          ("", "mfg_ver");
   emplace_sysfs_get<query::is_recovery>                      ("", "recovery");
   emplace_sysfs_get<query::is_ready>                         ("", "ready");
+  emplace_sysfs_get<query::is_offline>                       ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                     ("flash", "flash_type");
   emplace_sysfs_get<query::flash_type>                       ("", "flash_type");
   emplace_sysfs_get<query::board_name>                       ("", "board_name");

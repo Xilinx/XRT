@@ -237,6 +237,11 @@ acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	}
 
 out:
+	if (xrt_cu_get_protocol(cu_mgmt->xcus[index]) == CTRL_NONE) {
+		kds_err(client, "Cannot submit command to ap_ctrl_none CU");
+		return -EINVAL;
+	}
+
 	cu_stat_inc(cu_mgmt, usage[index]);
 	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;
@@ -547,7 +552,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 		return ret;
 
 	ret = wait_for_completion_interruptible(&kds->comp);
-	if (ret == -ERESTARTSYS && !kds->ert_disable) {
+	if (ret == -ERESTARTSYS) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
 		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
@@ -857,6 +862,22 @@ u32 kds_get_cu_proto(struct kds_sched *kds, int idx)
 	return cu_mgmt->xcus[idx]->info.protocol;
 }
 
+int kds_get_max_regmap_size(struct kds_sched *kds)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int size;
+	int max_size = 0;
+	int i;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		size = xrt_cu_regmap_size(cu_mgmt->xcus[i]);
+		if (max_size < size)
+			max_size = size;
+	}
+
+	return max_size;
+}
+
 static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
 {
 	kds_err(xcmd->client, "ert submit op not implemented\n");
@@ -962,7 +983,7 @@ int kds_cfg_update(struct kds_sched *kds)
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
-	if (kds->cmdmem.dev_paddr) {
+	if (kds->cmdmem.bo) {
 		ret = kds_fa_assign_cmdmem(kds);
 		if (ret)
 			return -EINVAL;

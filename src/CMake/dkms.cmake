@@ -67,6 +67,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_ioctl.c
   xocl/userpf/xocl_sysfs.c
   xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl_errors.c
   xocl/userpf/xocl_kds.c
   xocl/userpf/xocl.dracut.conf
   xocl/userpf/99-xocl.rules
@@ -259,6 +260,8 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclfeatures.h
   include/xclbin.h
   include/xclerr.h
+  include/xclerr_int.h
+  include/xrt_error_code.h
   include/xrt_mem.h
   )
 

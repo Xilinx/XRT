@@ -72,6 +72,7 @@ namespace xdp {
     XDP_EXPORT void startContinuousThreads(uint64_t deviceId) ;
 
     XDP_EXPORT void readCounters() ;
+    XDP_EXPORT virtual void readTrace() = 0 ;
     XDP_EXPORT void printTraceWarns(DeviceTraceOffload* offloader) ;
 
   public:

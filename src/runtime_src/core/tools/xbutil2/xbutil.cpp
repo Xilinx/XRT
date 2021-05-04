@@ -42,13 +42,13 @@ int main( int argc, char** argv )
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
     subCommands.emplace_back(std::make_shared<  SubCmdExamine >(false, false, false));
     subCommands.emplace_back(std::make_shared<  SubCmdProgram >(false, false, false));
+    subCommands.emplace_back(std::make_shared<    SubCmdReset >(false,  false, false));
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
 #endif
 
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true,  false, true ));
-    subCommands.emplace_back(std::make_shared<    SubCmdReset >(true,  false, false));
   }
 
   const std::string executable = "xbutil";

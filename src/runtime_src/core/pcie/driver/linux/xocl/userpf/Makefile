@@ -92,6 +92,7 @@ xocl-y := \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\
+	xocl_errors.o	\
 	xocl_bo.o	\
 	xocl_drm.o	\
 	xocl_ioctl.o	\

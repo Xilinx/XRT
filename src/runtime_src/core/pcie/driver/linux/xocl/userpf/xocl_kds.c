@@ -540,6 +540,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
 		if (ret > 0) {
+			xcmd->status = KDS_COMPLETED;
+			xcmd->cb.notify_host(xcmd, xcmd->status);
 			ret = 0;
 			goto out1;
 		} else if (ret < 0)
@@ -890,6 +892,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	struct ert_configure_cmd *ecmd = to_cfg_pkg(pkg);
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	int num_cu = kds_get_cu_total(kds);
+	int regmap_size;
 	u32 base_addr = 0xFFFFFFFF;
 	int ret = 0;
 	int i;
@@ -906,7 +909,6 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	ecmd->num_cus	= num_cu;
 	ecmd->cu_shift	= 16;
-	ecmd->slot_size	= cfg->slot_size;
 	ecmd->ert	= cfg->ert;
 	ecmd->polling	= cfg->polling;
 	ecmd->cu_dma	= cfg->cu_dma;
@@ -915,6 +917,13 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->dataflow	= cfg->dataflow;
 	ecmd->rw_shared	= cfg->rw_shared;
 	kds->cu_mgmt.rw_shared = cfg->rw_shared;
+
+	ecmd->slot_size = MAX_CONFIG_PACKET_SIZE;
+	regmap_size = kds_get_max_regmap_size(kds);
+	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
+		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
+	/* cfg->slot_size is for debug purpose */
+	/* ecmd->slot_size	= cfg->slot_size; */
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {

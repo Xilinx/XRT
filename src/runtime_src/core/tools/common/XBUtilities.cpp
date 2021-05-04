@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,7 +20,6 @@
 #include "core/common/error.h"
 #include "core/common/utils.h"
 #include "core/common/message.h"
-#include "core/common/query_requests.h"
 
 #include "common/system.h"
 
@@ -86,6 +85,7 @@ static bool m_bVerbose = false;
 static bool m_bTrace = false;
 static bool m_disableEscapeCodes = false;
 static bool m_bShowHidden = false;
+static bool m_bForce = false;
 
 
 // ------ F U N C T I O N S ---------------------------------------------------
@@ -136,6 +136,23 @@ bool
 XBUtilities::getShowHidden()
 {
   return m_bShowHidden;
+}
+
+void
+XBUtilities::setForce(bool _bForce)
+{
+  m_bForce = _bForce;
+
+  if (m_bForce) 
+    trace("Enabling force option");
+  else
+    trace("Disabling force option");
+}
+
+bool 
+XBUtilities::getForce()
+{
+  return m_bForce;
 }
 
 void

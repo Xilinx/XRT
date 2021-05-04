@@ -99,6 +99,7 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
 void DeviceTraceOffload::stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
+  if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPING;
 }
 
@@ -160,6 +161,7 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
   m_trbuf_full = false;
+  m_circ_buf_overwrite_detected = false;
 
   if (has_ts2mm()) {
     m_initialized = init_s2mm(circ_buf);
@@ -231,10 +233,7 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
-    debug_stream
-      << "ERROR: Circular buffer overwrite detected "
-      << " bytes written : " << bytes_written << " bytes_read : " << bytes_read
-      << std::endl;
+    m_circ_buf_overwrite_detected = true;
     stop_offload();
     return;
   }
