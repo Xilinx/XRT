@@ -5,8 +5,8 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
-# xbmgmt loader which automatically switches between classic and next
-# generation xbmgmt utility. The current default is classic xbmgmt tool.
+# xbmgmt loader which automatically switches between legacy and next-gen
+# xbmgmt utility. Starting with 2021.1 the default is next-gen xbmgmt utility.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
@@ -39,9 +39,9 @@ declare -A RSTOPT=( \
         ["-h"]="XBMGMT2" \
     )
 
-# In the following table "reset" points to a second table by name
-# Note that reset is valid both for classic and next generation tool
-# and hence requires a second lookup to resolve between xbmgmt and xbmgmt2
+# In the following table "reset" points to a second table by name.
+# Note that reset is valid both for legacy and next-gen tool and hence
+# requires a second lookup to resolve between xbmgmt and xbmgmt2
 declare -A COMMANDS=( \
         ["help"]="XBMGMT" \
         ["version"]="XBMGMT" \
@@ -63,9 +63,6 @@ declare -A COMMANDS=( \
         ["--verbose"]="XBMGMT2" \
         ["--batch"]="XBMGMT2" \
         ["--force"]="XBMGMT2" \
-        ["-h"]="XBMGMT2" \
-        ["-v"]="XBMGMT2" \
-        ["-b"]="XBMGMT2" \
     )
 
 
@@ -79,8 +76,8 @@ while [ $# -gt 0 ]; do
 	    XRT_PROG=xbmgmt2
 	    shift
 	    ;;
-	# Indicates that the classic version of xbutil should be used
-	-old|--old)
+	# Indicates that the legacy version of xbutil should be used
+	-legacy|--legacy)
 	    XRT_PROG=xbmgmt
 	    shift
 	    ;;
@@ -99,8 +96,8 @@ if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
     XRT_PROG=xbmgmt2
 fi
 
-# If user did not specify -old/--old then attempt to determine if user
-# wants to use classic or new by peeking inside the command line
+# If user did not specify -legacy/--legacy then attempt to determine if
+# user wants to use legacy or next-gen by peeking inside the command line.
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
@@ -135,10 +132,10 @@ if [[ -z ${XRT_PROG} ]]; then
 fi
 
 # Friendly message
-if [[ ${XRT_PROG} == "xbmgmt2" ]]; then
-    echo "-----------------------------------------------------"
-    echo " Invoking next generation of the xbmgmt application "
-    echo "-----------------------------------------------------"
+if [[ ${XRT_PROG} == "xbmgmt" ]]; then
+    echo "---------------------------------------------------------------------"
+    echo "Legacy xbmgmt is being deprecated, consider moving to next-gen xbmgmt"
+    echo "---------------------------------------------------------------------"
 fi
 
 # -- Find and call the loader

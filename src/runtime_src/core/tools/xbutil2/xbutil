@@ -5,8 +5,8 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
-# xbutil loader which automatically switches between classic and next gen
-# xbutil utility. Starting with 2021.1 the default is next gen xbutil.
+# xbutil loader which automatically switches between legacy and next-gen
+# xbutil utility. Starting with 2021.1 the default is next-gen xbutil tool.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
@@ -60,7 +60,7 @@ declare -A PROGOPT=( \
 
 # In the following table "reset", "program" and "validate" point to a second
 # table by name. Note that reset, program and validate are valid both for
-# classic and next gen tool and hence require a second lookup to resolve
+# legacy and next-gen tool and hence require a second lookup to resolve
 # between xbutil and xbutil2
 declare -A COMMANDS=( \
         ["help"]="XBUTIL" \
@@ -93,9 +93,6 @@ declare -A COMMANDS=( \
         ["--verbose"]="XBUTIL2" \
         ["--batch"]="XBUTIL2" \
         ["--force"]="XBUTIL2" \
-        ["-h"]="XBUTIL2" \
-        ["-v"]="XBUTIL2" \
-        ["-b"]="XBUTIL2" \
     )
 
 INTRE='^[0-9]+$'
@@ -131,8 +128,8 @@ while [ $# -gt 0 ]; do
 	    XRT_PROG=xbutil2
 	    shift
 	    ;;
-	# Indicates that the classic version of xbutil should be used
-	-old|--old)
+	# Indicates that the legacy version of xbutil should be used
+	-legacy|--legacy)
 	    XRT_PROG=xbutil
 	    shift
 	    ;;
@@ -151,8 +148,8 @@ if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
      XRT_PROG=xbutil2
 fi
 
-# If user did not specify -old/--old then attempt to determine if user
-# wants to use classic or new by peeking inside the command line
+# If user did not specify -legacy/--legacy then attempt to determine if
+# user wants to use legacy or next-gen by peeking inside the command line.
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
@@ -207,10 +204,10 @@ if [[ -z ${XRT_PROG} ]]; then
 fi
 
 # Friendly message
-if [[ ${XRT_PROG} == "xbutil2" ]]; then
-    echo "-----------------------------------------------------"
-    echo " Invoking next generation of the xbutil application "
-    echo "-----------------------------------------------------"
+if [[ ${XRT_PROG} == "xbutil" ]]; then
+    echo "---------------------------------------------------------------------"
+    echo "Legacy xbutil is being deprecated, consider moving to next-gen xbutil"
+    echo "---------------------------------------------------------------------"
 fi
 
 # -- Find and call the loader
