@@ -136,5 +136,8 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
     topOptions.push_back("--help");
   }
 
+  optionOption->setGlobalOptions(getGlobalOptions());
+
+  // Execute the option
   optionOption->execute(topOptions);
 }

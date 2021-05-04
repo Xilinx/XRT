@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,7 +26,8 @@ namespace XBUtilities {
                const std::string & script, 
                const std::vector<std::string> & args,
                std::ostringstream & os_stdout,
-               std::ostringstream & os_stderr);
+               std::ostringstream & os_stderr,
+               bool erasePassFailMessage);
 };
 
 #endif

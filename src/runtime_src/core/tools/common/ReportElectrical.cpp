@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -68,7 +68,7 @@ lvl_to_power_watts(uint64_t lvl)
 
 void
 ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
-                                              boost::property_tree::ptree &_pt) const
+                                           boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
   // Then update this method to do so.
@@ -77,7 +77,7 @@ ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 
 void 
 ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice, 
-                                           boost::property_tree::ptree &_pt) const
+                                        boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
   std::string power_watts;
@@ -155,22 +155,21 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportElectrical::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & _output) const
+ReportElectrical::writeReport( const xrt_core::device* /*_pDevice*/,
+                               const boost::property_tree::ptree& _pt, 
+                               const std::vector<std::string>& /*_elementsFilter*/,
+                               std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "Electrical\n";
-  boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
-  _output << boost::format("  %-22s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts");
-  _output << boost::format("  %-22s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts");
-  _output << boost::format("  %-22s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning");
-  _output << boost::format("  %-22s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
+  const boost::property_tree::ptree& electricals = _pt.get_child("electrical.power_rails", empty_ptree);
+  _output << boost::format("  %-23s: %s Watts\n") % "Max Power" % _pt.get<std::string>("electrical.power_consumption_max_watts");
+  _output << boost::format("  %-23s: %s Watts\n") % "Power" % _pt.get<std::string>("electrical.power_consumption_watts");
+  _output << boost::format("  %-23s: %s\n\n") % "Power Warning" % _pt.get<std::string>("electrical.power_consumption_warning");
+  _output << boost::format("  %-23s: %6s   %6s\n") % "Power Rails" % "Voltage" % "Current";
   for(auto& kv : electricals) {
-    boost::property_tree::ptree& pt_sensor = kv.second;
+    const boost::property_tree::ptree& pt_sensor = kv.second;
     std::string name = pt_sensor.get<std::string>("description");
     bool volts_is_present = pt_sensor.get<bool>("voltage.is_present");
     std::string volts = pt_sensor.get<std::string>("voltage.volts");
@@ -178,11 +177,11 @@ ReportElectrical::writeReport( const xrt_core::device * _pDevice,
     std::string amps = pt_sensor.get<std::string>("current.amps");
 
     if(volts_is_present && amps_is_present)
-      _output << boost::format("  %-22s: %6s V, %6s A\n") % name % volts % amps;
+      _output << boost::format("  %-23s: %6s V, %6s A\n") % name % volts % amps;
     else if(volts_is_present)
-      _output << boost::format("  %-22s: %6s V\n") % name % volts;
+      _output << boost::format("  %-23s: %6s V\n") % name % volts;
     else if(amps_is_present)
-      _output << boost::format("  %-22s: %16s A\n") % name % amps;
+      _output << boost::format("  %-23s: %16s A\n") % name % amps;
   }
   _output << std::endl;
   

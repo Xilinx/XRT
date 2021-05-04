@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,21 +46,22 @@ ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
 
 
 void 
-ReportFirewall::writeReport(const xrt_core::device * _pDevice,
-                            const std::vector<std::string> & /*_elementsFilter*/,
-                            std::iostream & _output) const
+ReportFirewall::writeReport(const xrt_core::device* /*_pDevice*/,
+                            const boost::property_tree::ptree& _pt,
+                            const std::vector<std::string>& /*_elementsFilter*/,
+                            std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "Firewall\n";
   if (_pt.empty()) {
     _output << "  Information unavailable" << std::endl; 
     return;
   }
-  _output << boost::format("  %s %d: %s %s\n\n") % "Level" % _pt.get<std::string>("firewall.firewall_level") 
-              % _pt.get<std::string>("firewall.firewall_status") % _pt.get<std::string>("firewall.status");
+  _output << boost::format("  %s %d: %s %s\n\n") % "Level" 
+              % _pt.get<std::string>("firewall.firewall_level", "--") 
+              % _pt.get<std::string>("firewall.firewall_status", "--") 
+              % _pt.get<std::string>("firewall.status", "--");
 
 }
 

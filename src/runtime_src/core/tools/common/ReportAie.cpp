@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020 Xilinx, Inc
+  Copyright (C) 2020-2021 Xilinx, Inc
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
   not use this file except in compliance with the License. A copy of the
@@ -542,13 +542,12 @@ ReportAie::getPropertyTree20202(const xrt_core::device * _pDevice,
 }
 
 void 
-ReportAie::writeReport(const xrt_core::device * _pDevice,
-                       const std::vector<std::string> & /*_elementsFilter*/, 
-                       std::iostream & _output) const
+ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
+                       const boost::property_tree::ptree& _pt, 
+                       const std::vector<std::string>& /*_elementsFilter*/, 
+                       std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   // validate and print aie metadata by checking schema_version node
   if(!_pt.get_child_optional("aie_metadata.schema_version"))
@@ -559,7 +558,7 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
 
   try {
     for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
-      boost::property_tree::ptree& graph = gr.second;
+      const boost::property_tree::ptree& graph = gr.second;
       _output << boost::format("  GRAPH[%2d] %-10s: %s\n") % graph.get<std::string>("id")
            % "Name" % graph.get<std::string>("name");
       _output << boost::format("            %-10s: %s\n") % "Status" % graph.get<std::string>("status");
@@ -567,7 +566,7 @@ ReportAie::writeReport(const xrt_core::device * _pDevice,
            % "Iteration_Memory [C:R]" % "Iteration_Memory_Addresses";
       int count = 0;
       for (auto& node : graph.get_child("tile")) {
-        boost::property_tree::ptree& tile = node.second;
+        const boost::property_tree::ptree& tile = node.second;
         _output << boost::format("    [%2d]   %-20s%-30s%-30d\n") % count
             % (tile.get<std::string>("column") + ":" + tile.get<std::string>("row"))
             % (tile.get<std::string>("memory_column") + ":" + tile.get<std::string>("memory_row"))

@@ -59,28 +59,25 @@ ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev,
 }
 
 void 
-ReportPcieInfo::writeReport( const xrt_core::device * dev,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & output) const
+ReportPcieInfo::writeReport( const xrt_core::device* /*_pDevice*/,
+                             const boost::property_tree::ptree& _pt, 
+                             const std::vector<std::string>& /*_elementsFilter*/,
+                             std::ostream & _output) const
 {
-  boost::property_tree::ptree pt;
-  getPropertyTreeInternal(dev, pt);
-
-  output << "Pcie Info\n";
-  auto& pt_pcie = pt.get_child("pcie_info");
+  _output << "Pcie Info\n";
+  auto& pt_pcie = _pt.get_child("pcie_info");
   if(pt_pcie.empty()) {
-    output << "  Information unavailable" << std::endl; 
+    _output << "  Information unavailable" << std::endl; 
     return;
   }
-  output << boost::format("  %-22s : %s\n") % "Vendor" % pt_pcie.get<std::string>("vendor");
-  output << boost::format("  %-22s : %s\n") % "Device" % pt_pcie.get<std::string>("device");
-  output << boost::format("  %-22s : %s\n") % "Sub Device" % pt_pcie.get<std::string>("sub_device");
-  output << boost::format("  %-22s : %s\n") % "Sub Vendor" % pt_pcie.get<std::string>("sub_vendor");
-  output << boost::format("  %-22s : Gen%sx%s\n") % "PCIe" % pt_pcie.get<std::string>("link_speed_gbit_sec") % pt_pcie.get<std::string>("express_lane_width_count");
-  output << boost::format("  %-22s : %s\n") % "DMA Thread Count" % pt_pcie.get<std::string>("dma_thread_count", "0");
-  output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity", "0");
-  output << boost::format("  %-22s : %s Bytes\n") % "Shared Host Memory" % pt_pcie.get<std::string>("host_mem_size_bytes", "0");
-  output << boost::format("  %-22s : %s Bytes\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
-  output << std::endl;
-  
+  _output << boost::format("  %-22s : %s\n") % "Vendor" % pt_pcie.get<std::string>("vendor");
+  _output << boost::format("  %-22s : %s\n") % "Device" % pt_pcie.get<std::string>("device");
+  _output << boost::format("  %-22s : %s\n") % "Sub Device" % pt_pcie.get<std::string>("sub_device");
+  _output << boost::format("  %-22s : %s\n") % "Sub Vendor" % pt_pcie.get<std::string>("sub_vendor");
+  _output << boost::format("  %-22s : Gen%sx%s\n") % "PCIe" % pt_pcie.get<std::string>("link_speed_gbit_sec") % pt_pcie.get<std::string>("express_lane_width_count");
+  _output << boost::format("  %-22s : %s\n") % "DMA Thread Count" % pt_pcie.get<std::string>("dma_thread_count");
+  _output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity");
+  _output << boost::format("  %-22s : %s Bytes\n") % "Shared Host Memory" % pt_pcie.get<std::string>("host_mem_size_bytes", "0");
+  _output << boost::format("  %-22s : %s Bytes\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
+  _output << std::endl;
 }

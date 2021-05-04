@@ -48,13 +48,18 @@ void  main_(int argc, char** argv,
   bool bForce = false;
 
   // Build Options
-  po::options_description globalOptions("Global Options");
-  globalOptions.add_options()
-    ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
+  po::options_description globalSubCmdOptions("Global Command Options");
+  globalSubCmdOptions.add_options()
     ("verbose", boost::program_options::bool_switch(&bVerbose), "Turn on verbosity")
     ("batch",   boost::program_options::bool_switch(&bBatchMode), "Enable batch mode (disables escape characters)")
     ("force",   boost::program_options::bool_switch(&bForce), "When possible, force an operation")
   ;
+
+  po::options_description globalOptions("Global Options");
+  globalOptions.add_options()
+    ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
+  ;
+  globalOptions.add(globalSubCmdOptions);
 
   // Hidden Options
   po::options_description hiddenOptions("Hidden Options");
@@ -133,10 +138,10 @@ void  main_(int argc, char** argv,
   if (bHelp == true) 
     opts.push_back("--help");
 
+  subCommand->setGlobalOptions(globalSubCmdOptions);
+
   // -- Execute the sub-command
   subCommand->execute(opts);
-
-  return;
 }
 
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -42,6 +42,8 @@ class OptionOptions {
   const boost::program_options::positional_options_description & 
     getPositionalOptions() const { return m_positionalOptions; } ;
 
+  void setGlobalOptions(const boost::program_options::options_description &globalOptions) { m_globalOptions.add(globalOptions); };
+
  public:
   virtual ~OptionOptions() {};
 
@@ -67,6 +69,7 @@ class OptionOptions {
   bool m_isHidden;
   std::string m_description;
   std::string m_extendedHelp;
+  boost::program_options::options_description m_globalOptions;
 };
   
 #endif

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,7 +31,6 @@ class Report {
   // Remember to update the initialization of Report::m_schemaVersionMapping 
   // if new enumeration values are added
   enum class SchemaVersion  {
-    text,
     unknown,
     json_internal,
     json_20202,
@@ -58,11 +57,11 @@ class Report {
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
 
-  boost::any getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter) const;
+  void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Child methods that need to be implemented
  protected:
-  virtual void writeReport(const xrt_core::device *_pDevice, const std::vector<std::string> & _elementsFilter, std::iostream & _output) const = 0;
+  virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
   virtual void getPropertyTreeInternal(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
   virtual void getPropertyTree20202(const xrt_core::device *_pDevice, boost::property_tree::ptree &_pt) const = 0;
 

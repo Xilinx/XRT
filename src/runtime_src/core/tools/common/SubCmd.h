@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -44,6 +44,11 @@ class SubCmd {
    void setExecutableName(const std::string & _name) { m_executableName = _name; };
    const std::string & getExecutableName() const {return m_executableName; };
 
+   void setGlobalOptions(const boost::program_options::options_description &globalOptions) { m_globalOptions.add(globalOptions); };
+
+ protected:
+   const boost::program_options::options_description & getGlobalOptions() const { return m_globalOptions; };
+
  public:
    virtual ~SubCmd() {};
 
@@ -75,6 +80,7 @@ public:
   std::string m_shortDescription;
   std::string m_longDescription;
   std::string m_exampleSyntax;
+  boost::program_options::options_description m_globalOptions;
 
   bool m_isHidden;
   bool m_isDeprecated;

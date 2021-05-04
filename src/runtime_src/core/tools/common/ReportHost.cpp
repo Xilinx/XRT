@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,13 +59,12 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
 
 
 void
-ReportHost::writeReport(const xrt_core::device * _pDevice,
-                        const std::vector<std::string> & /*_elementsFilter*/,
-                        std::iostream & _output) const
+ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
+                        const boost::property_tree::ptree& _pt,
+                        const std::vector<std::string>& /*_elementsFilter*/,
+                        std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   _output << "System Configuration\n";
   try {
@@ -76,9 +75,9 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     _output << boost::format("  %-20s : %s\n") % "CPU Cores" % _pt.get<std::string>("host.os.cores");
     _output << boost::format("  %-20s : %lld MB\n") % "Memory" % (std::strtoll(_pt.get<std::string>("host.os.memory_bytes").c_str(),nullptr,16) / BYTES_TO_MEGABYTES);
     _output << boost::format("  %-20s : %s\n") % "Distribution" % _pt.get<std::string>("host.os.distribution","N/A");
-    boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
+    const boost::property_tree::ptree& available_libraries = _pt.get_child("host.os.libraries", empty_ptree);
     for(auto& kl : available_libraries) {
-      boost::property_tree::ptree& lib = kl.second;
+      const boost::property_tree::ptree& lib = kl.second;
       std::string lib_name = lib.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(lib_name);
       _output << boost::format("  %-20s : %s\n") % lib_name
@@ -91,9 +90,9 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
     _output << boost::format("  %-20s : %s\n") % "Branch" % _pt.get<std::string>("host.xrt.branch", "N/A");
     _output << boost::format("  %-20s : %s\n") % "Hash" % _pt.get<std::string>("host.xrt.hash", "N/A");
     _output << boost::format("  %-20s : %s\n") % "Hash Date" % _pt.get<std::string>("host.xrt.build_date", "N/A");
-    boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
+    const boost::property_tree::ptree& available_drivers = _pt.get_child("host.xrt.drivers", empty_ptree);
     for(auto& drv : available_drivers) {
-      boost::property_tree::ptree& driver = drv.second;
+      const boost::property_tree::ptree& driver = drv.second;
       std::string drv_name = driver.get<std::string>("name", "N/A");
       boost::algorithm::to_upper(drv_name);
       _output << boost::format("  %-20s : %s, %s\n") % drv_name
@@ -107,17 +106,15 @@ ReportHost::writeReport(const xrt_core::device * _pDevice,
   }
 
   _output << "Devices present\n";
-  boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
+  const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
 
   if(available_devices.empty())
     _output << "  0 devices found" << std::endl;
   
   for(auto& kd : available_devices) {
-    boost::property_tree::ptree& dev = kd.second;
+    const boost::property_tree::ptree& dev = kd.second;
     std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
     _output << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
   }
   _output << std::endl;
-
-
 }
