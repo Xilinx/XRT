@@ -5,8 +5,8 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
-# xbutil loader which automatically switches between classic and next
-# generation xbutil utility. The current default is classic xbutil tool.
+# xbutil loader which automatically switches between classic and next gen
+# xbutil utility. Starting with 2021.1 the default is next gen xbutil.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
@@ -16,12 +16,11 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
   exit $?
 fi
 
+# Working variables
 DEFAULT=xbutil2
 XBUTIL=xbutil
 XBUTIL2=xbutil2
-
-# Working variables
-XRT_PROG=${DEFAULT}
+XRT_PROG=""
 
 # Table to resolve validate sub-command based on switch passed to validate
 declare -A VALOPT=( \
@@ -61,7 +60,7 @@ declare -A PROGOPT=( \
 
 # In the following table "reset", "program" and "validate" point to a second
 # table by name. Note that reset, program and validate are valid both for
-# classic and next generation tool and hence requires a second lookup to resolve
+# classic and next gen tool and hence require a second lookup to resolve
 # between xbutil and xbutil2
 declare -A COMMANDS=( \
         ["help"]="XBUTIL" \
@@ -93,6 +92,7 @@ declare -A COMMANDS=( \
         ["--help"]="XBUTIL2" \
         ["--verbose"]="XBUTIL2" \
         ["--batch"]="XBUTIL2" \
+        ["--force"]="XBUTIL2" \
         ["-h"]="XBUTIL2" \
         ["-v"]="XBUTIL2" \
         ["-b"]="XBUTIL2" \
@@ -120,11 +120,6 @@ function parse_device_arg() {
     esac
     PROG=${RESULT}
 }
-# Determine which version of xbutil should be used
-# Check to see environment variable is NOT set
-if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbutil2
-fi
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
@@ -150,6 +145,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# Determine which version of xbutil should be used
+# Check to see environment variable is set
+if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+     XRT_PROG=xbutil2
+fi
+
 # If user did not specify -old/--old then attempt to determine if user
 # wants to use classic or new by peeking inside the command line
 # Ideally with bash 'nameref' the case/esac would not be necessary and
@@ -157,11 +158,13 @@ done
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
-if [[ ${XRT_PROG} == "xbutil2" ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
+if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
+    # Look up the utility usin the first command line argument
     PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
     case ${PROG} in
 	XBUTIL | XBUTIL2)
-	;;
+            # Non ambiguous command line argument, utility already resolved
+	    ;;
 	RSTOPT)
 	    # We have an ambiguous sub-command, use the next token/switch to
 	    # disambiguate by a second look up
@@ -198,6 +201,11 @@ if [[ ${XRT_PROG} == "xbutil2" ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
     XRT_PROG=${!PROG}
 fi
 
+# Default to the new gen tool if we still could not disambuguate the choice
+if [[ -z ${XRT_PROG} ]]; then
+    PROG=${DEFAULT}
+fi
+
 # Friendly message
 if [ ${XRT_PROG} == "xbutil2" ]; then
   echo "-----------------------------------------------------"
@@ -214,4 +222,4 @@ if [ ! -f "$XRT_LOADER" ]; then
   exit 1
 fi
 
-"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+"${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"
