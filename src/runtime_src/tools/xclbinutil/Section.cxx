@@ -452,13 +452,12 @@ Section::readPayload(std::fstream& _istream, enum FormatType _eFormatType)
         // O.K. - Lint checking is done and write it to our buffer
         try {
           readJSONSectionImage(pt);
-        } catch (std::exception &e) {
-          std::cerr << std::endl;
-          std::cerr << "ERROR: An exception was thrown while attempting to add following JSON image to the section: '" << getSectionKindAsString() << "'" << std::endl;
-          std::cerr << "       Exception Message: " << e.what() << std::endl;
+        } catch (const std::exception &e) {
+          std::cerr << "\nERROR: An exception was thrown while attempting to add following JSON image to the section: '" << getSectionKindAsString() << "'\n";
+          std::cerr << "       Exception Message: " << e.what() << "\n";
           std::ostringstream jsonBuf;
           boost::property_tree::write_json(jsonBuf, pt, true);
-          std::cerr << jsonBuf.str() << std::endl;
+          std::cerr << jsonBuf.str() << "\n";
           throw std::runtime_error("Aborting remaining operations");
         }
         break;
