@@ -11,9 +11,9 @@
 
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
-  trap "" INT
-  "$0.bat" "$@"
-  exit $?
+    trap "" INT
+    "$0.bat" "$@"
+    exit $?
 fi
 
 # Working variables
@@ -73,30 +73,30 @@ declare -A COMMANDS=( \
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
-  case "$1" in
-    # Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
-    -new|--new)
-	XRT_PROG=xbmgmt2
-      shift
-      ;;
-    # Indicates that the classic version of xbutil should be used
-    -old|--old)
-	XRT_PROG=xbmgmt
-	shift
-	;;
-    # Copy the options the remaining options
-    *)
-	XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-	XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
-	shift
-	;;
-  esac
+    case "$1" in
+	# Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
+	-new|--new)
+	    XRT_PROG=xbmgmt2
+	    shift
+	    ;;
+	# Indicates that the classic version of xbutil should be used
+	-old|--old)
+	    XRT_PROG=xbmgmt
+	    shift
+	    ;;
+	# Copy the options the remaining options
+	*)
+	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+	    XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+	    shift
+	    ;;
+    esac
 done
 
 # Determine which version of xbmgmt should be used
 # Check to see environment variable is NOT set
 if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbmgmt2
+    XRT_PROG=xbmgmt2
 fi
 
 # If user did not specify -old/--old then attempt to determine if user
@@ -107,26 +107,26 @@ fi
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
 if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
-  PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-  case ${PROG} in
-    XBMGMT | XBMGMT2)
-      # Non ambiguous command line argument, utility already resolved
-      ;;
-    RSTOPT)
-      # We have an ambiguous sub-command, use the next token/switch to
-      # disambiguate by a second look up
-      PROG="DEFAULT"
-      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-      fi
-      ;;
-    *)
-      # Bogus sub-command which failed lookup
-      PROG="DEFAULT"
-      ;;
-  esac
-  # Get named reference to the value pointed by the string returned
-  XRT_PROG=${!PROG}
+    PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+    case ${PROG} in
+	XBMGMT | XBMGMT2)
+	# Non ambiguous command line argument, utility already resolved
+	;;
+	RSTOPT)
+	    # We have an ambiguous sub-command, use the next token/switch to
+	    # disambiguate by a second look up
+	    PROG="DEFAULT"
+	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+		PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	    fi
+	    ;;
+	*)
+	    # Bogus sub-command which failed lookup
+	    PROG="DEFAULT"
+	    ;;
+    esac
+    # Get named reference to the value pointed by the string returned
+    XRT_PROG=${!PROG}
 fi
 
 # Default to the new gen tool if we still could not disambuguate the choice
@@ -136,18 +136,18 @@ fi
 
 # Friendly message
 if [[ ${XRT_PROG} == "xbmgmt2" ]]; then
-  echo "-----------------------------------------------------"
-  echo " Invoking next generation of the xbmgmt application "
-  echo "-----------------------------------------------------"
+    echo "-----------------------------------------------------"
+    echo " Invoking next generation of the xbmgmt application "
+    echo "-----------------------------------------------------"
 fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
-  echo "ERROR: Could not find 64-bit loader executable."
-  echo "ERROR: ${XRT_LOADER} does not exist."
-  exit 1
+    echo "ERROR: Could not find 64-bit loader executable."
+    echo "ERROR: ${XRT_LOADER} does not exist."
+    exit 1
 fi
 
 "${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"
