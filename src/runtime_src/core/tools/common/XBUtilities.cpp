@@ -162,7 +162,7 @@ XBUtilities::disable_escape_codes(bool _disable)
 }
 
 bool
-XBUtilities::is_esc_enabled() {
+XBUtilities::is_escape_codes_disabled() {
   return m_disableEscapeCodes;
 }
 
@@ -262,108 +262,69 @@ XBUtilities::trace_print_tree(const std::string & _name,
   XBUtilities::message(buf.str());
 }
 
-void
-XBUtilities::wrap_paragraph( const std::string & _unformattedString,
-                             unsigned int _indentWidth,
-                             unsigned int _columnWidth,
-                             bool _indentFirstLine,
-                             std::string &_formattedString)
-{
-  // Set return variables to a now state
-  _formattedString.clear();
 
-  if (_indentWidth >= _columnWidth) {
-    std::string errMsg = boost::str(boost::format("Internal Error: %s paragraph indent (%d) is greater than or equal to the column width (%d) ") % __FUNCTION__ % _indentWidth % _columnWidth);
-    throw std::runtime_error(errMsg);
-  }
+std::string
+XBUtilities::wrap_paragraphs( const std::string & unformattedString,
+                              unsigned int indentWidth,
+                              unsigned int columnWidth,
+                              bool indentFirstLine) {
+  std::vector<std::string> lines;
 
-  std::string::const_iterator lineBeginIter = _unformattedString.begin();
-  const std::string::const_iterator paragraphEndIter = _unformattedString.end();
+  // Process the string
+  std::string workingString;
 
-  unsigned int linesProcessed = 0;
-
-  while (lineBeginIter != paragraphEndIter)
-  {
-    const unsigned int paragraphWidth = ((linesProcessed != 0) || _indentFirstLine) ? (_columnWidth - _indentWidth) : _columnWidth;
-
-    // Remove leading spaces
-    if ((linesProcessed > 0) &&
-        (*lineBeginIter == ' ')) {
-      lineBeginIter++;
+  for (const auto &entry : unformattedString) {
+    // Do we have a new line added by the user
+    if (entry == '\n') {
+      lines.push_back(workingString);
+      workingString.clear();
       continue;
     }
 
-    // Determine the end-of-the line to be examined
-    std::string::const_iterator lineEndIter = lineBeginIter;
-    auto remainingChars = std::distance(lineBeginIter, paragraphEndIter);
-    if (remainingChars < paragraphWidth)
-      lineEndIter += remainingChars;
-    else
-      lineEndIter += paragraphWidth;
+    workingString += entry;
 
-    // Not last line
-    if (lineEndIter != paragraphEndIter) {
-      // Find a break between the words
-      std::string::const_iterator lastSpaceIter = find(std::reverse_iterator<std::string::const_iterator>(lineEndIter),
-                                                       std::reverse_iterator<std::string::const_iterator>(lineBeginIter), ' ').base();
+    // Check to see if this string is too long
+    if (workingString.size() >= columnWidth) {
+      // Find the beginning of the previous 'word'
+      auto index = workingString.find_last_of(" ");
 
-      // See if we have gone to the beginning, if not then break the line
-      if (lastSpaceIter != lineBeginIter) {
-        lineEndIter = lastSpaceIter;
-      }
+      // None found, keep on adding characters till we find a space
+      if (index == std::string::npos)
+        continue;
+
+      // Add the line and populate the next line
+      lines.push_back(workingString.substr(0, index));
+      workingString = workingString.substr(index + 1);
     }
-
-    // Add new line
-    if (linesProcessed > 0)
-      _formattedString += "\n";
-
-    // Indent the line
-    if ((linesProcessed > 0) ||
-        (_indentFirstLine == true)) {
-      for (size_t index = _indentWidth; index > 0; index--)
-      _formattedString += " ";
-    }
-
-    // Write out the line
-    _formattedString.append(lineBeginIter, lineEndIter);
-
-    lineBeginIter = lineEndIter;
-    linesProcessed++;
-  }
-}
-
-void
-XBUtilities::wrap_paragraphs( const std::string & _unformattedString,
-                              unsigned int _indentWidth,
-                              unsigned int _columnWidth,
-                              bool _indentFirstLine,
-                              std::string &_formattedString)
-{
-  // Set return variables to a now state
-  _formattedString.clear();
-
-  if (_indentWidth >= _columnWidth) {
-    std::string errMsg = boost::str(boost::format("Internal Error: %s paragraph indent (%d) is greater than or equal to the column width (%d) ") % __FUNCTION__ % _indentWidth % _columnWidth);
-    throw std::runtime_error(errMsg);
   }
 
-  typedef boost::tokenizer<boost::char_separator<char>> tokenizer;
-  boost::char_separator<char> sep{"\n", "", boost::keep_empty_tokens};
-  tokenizer paragraphs{_unformattedString, sep};
+  if (!workingString.empty())
+    lines.push_back(workingString);
 
-  tokenizer::const_iterator iter = paragraphs.begin();
-  while (iter != paragraphs.end()) {
-    std::string formattedParagraph;
-    wrap_paragraph(*iter, _indentWidth, _columnWidth, _indentFirstLine, formattedParagraph);
-    _formattedString += formattedParagraph;
-    _indentFirstLine = true; // We wish to indent all lines following the first
+  // Early exit, nothing here
+  if (lines.size() == 0)
+    return std::string();
 
-    ++iter;
+  // -- Build the formatted string
+  std::string formattedString;
 
-    // Determine if a '\n' should be added
-    if (iter != paragraphs.end())
-      _formattedString += "\n";
+  // Iterate over the lines building the formatted string
+  const std::string indention(indentWidth, ' ');
+  auto iter = lines.begin();
+  while (iter != lines.end()) {
+    // Add an indention
+    if (iter != lines.begin() || indentFirstLine)
+      formattedString += indention;
+    
+    // Add formatted line
+    formattedString += *iter;
+
+    // Don't add a '\n' on the last line
+    if (++iter != lines.end())
+      formattedString += "\n";
   }
+
+  return formattedString;
 }
 
 boost::property_tree::ptree
@@ -564,14 +525,18 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
 }
 
 bool
-XBUtilities::can_proceed()
+XBUtilities::can_proceed(bool force)
 {
   bool proceed = false;
   std::string input;
 
   std::cout << "Are you sure you wish to proceed? [Y/n]: ";
-  std::getline( std::cin, input );
 
+  if (force) 
+    std::cout << "Y (Force override)" << std::endl;
+  else
+    std::getline(std::cin, input);
+  
   // Ugh, the std::transform() produces windows compiler warnings due to
   // conversions from 'int' to 'char' in the algorithm header file
   boost::algorithm::to_lower(input);
@@ -589,7 +554,7 @@ void
 XBUtilities::can_proceed_or_throw(const std::string& info, const std::string& error)
 {
   std::cout << info << "\n";
-  if (!can_proceed())
+  if (!can_proceed(getForce()))
     throw xrt_core::system_error(ECANCELED, error);
 }
 
@@ -599,8 +564,29 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 #ifndef _WIN32
   if ((getuid() == 0) || (geteuid() == 0))
     return;
-  throw xrt_core::system_error(EPERM, msg);
+
+  std::cerr << "ERROR: " << msg << std::endl;
+  throw xrt_core::error(std::errc::operation_canceled);
 #endif
+}
+
+
+void 
+XBUtilities::print_exception_and_throw_cancel(const xrt_core::error& e)
+{
+  // Remove the type of error from the message.
+  const std::string msg = std::regex_replace(e.what(), std::regex(std::string(": ") + e.code().message()), "");
+
+  std::cerr << boost::format("ERROR (%s): %s") % e.code().message() % msg << std::endl;
+
+  throw xrt_core::error(std::errc::operation_canceled);
+}
+
+void 
+XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
+{
+  std::cerr << boost::format("ERROR: %s\n") % e.what();
+  throw xrt_core::error(std::errc::operation_canceled);
 }
 
 std::vector<char>

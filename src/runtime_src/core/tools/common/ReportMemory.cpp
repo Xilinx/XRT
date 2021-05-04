@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -275,13 +275,12 @@ ReportMemory::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportMemory::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & _output) const
+ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
+                           const boost::property_tree::ptree& _pt, 
+                           const std::vector<std::string>& /*_elementsFilter*/,
+                           std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   _output << boost::format("%s\n") % _pt.get<std::string>("mem_topology.description");
 

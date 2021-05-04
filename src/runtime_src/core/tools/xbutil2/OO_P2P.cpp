@@ -239,10 +239,12 @@ p2p(xrt_core::device* device, action_type action, bool force)
 {
   if (action == action_type::validate)
     p2ptest::test(device);
+
   if (action == action_type::enable) {
     XBU::sudo_or_throw("Root privileges required to enable p2p");
     device->p2p_enable(force);
   }
+
   if (action == action_type::disable) {
     XBU::sudo_or_throw("Root privileges required to disable p2p");
     device->p2p_disable(force);

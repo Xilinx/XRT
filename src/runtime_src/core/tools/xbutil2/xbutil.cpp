@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -70,10 +70,16 @@ int main( int argc, char** argv )
   try {
     main_( argc, argv, executable, description, subCommands);
     return 0;
+  } catch (const xrt_core::error& e) {
+    // Clean exception exit
+    // If the exception is "operation_canceled" then don't print the header debug info
+    if (e.code().value() != static_cast<int>(std::errc::operation_canceled))
+      xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (const std::exception &e) {
     xrt_core::send_exception_message(e.what(), executable.c_str());
   } catch (...) {
     xrt_core::send_exception_message("Unknown error", executable.c_str());
   }
+
   return 1;
 }

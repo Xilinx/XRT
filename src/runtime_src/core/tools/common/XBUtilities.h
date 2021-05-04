@@ -60,7 +60,7 @@ namespace XBUtilities {
   bool getForce();
 
   void disable_escape_codes( bool _disable );
-  bool is_esc_enabled();  
+  bool is_escape_codes_disabled();  
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout);
 
@@ -75,22 +75,17 @@ namespace XBUtilities {
   void trace_print_tree(const std::string & _name, 
                         const boost::property_tree::ptree & _pt);
 
-  bool can_proceed();
+  bool can_proceed(bool force=false);
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);
-  // ---------
-  void wrap_paragraph( const std::string & _unformattedString, 
-                       unsigned int _indentWidth, 
-                       unsigned int _columnWidth, 
-                       bool _indentFirstLine,
-                       std::string &_formattedString);
-  void wrap_paragraphs( const std::string & _unformattedString, 
-                        unsigned int _indentWidth, 
-                        unsigned int _columnWidth, 
-                        bool _indentFirstLine,
-                        std::string &_formattedString);
+  void print_exception_and_throw_cancel(const xrt_core::error& e);
+  void print_exception_and_throw_cancel(const std::runtime_error& e);
 
+  std::string wrap_paragraphs( const std::string & unformattedString,
+                               unsigned int indentWidth,
+                               unsigned int columnWidth,
+                               bool indentFirstLine);
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);

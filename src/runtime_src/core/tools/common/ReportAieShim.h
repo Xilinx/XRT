@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportCu_h_
-#define __ReportCu_h_
+#ifndef __ReportAieShim_h_
+#define __ReportAieShim_h_
 
 // Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportCu : public Report {
+class ReportAieShim : public Report {
  public:
-  ReportCu() : Report("compute-units", "Information of the compute units", true /*deviceRequired*/) { /*empty*/ };
+  ReportAieShim() : Report("aieshim", "AIE shim tile status", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

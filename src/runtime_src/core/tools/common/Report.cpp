@@ -1,5 +1,5 @@
 /**
- * Copyright (C)2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +25,6 @@
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
   { SchemaVersion::unknown,       false, "",              "Unknown entry"},
-  { SchemaVersion::text,          true,  "text",          "Human readable report (default)"},
   { SchemaVersion::json_20202,    true,  "JSON",          "Latest JSON schema"}, // Note: to be updated to the latest schema version every release
   { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
   { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
@@ -70,41 +69,37 @@ Report::Report(const std::string & _reportName,
 }
 
 
-boost::any 
-Report::getFormattedReport(const xrt_core::device *_pDevice, 
-                           SchemaVersion _schemaVersion,
-                           const std::vector<std::string> & _elementFilter) const
+void 
+Report::getFormattedReport( const xrt_core::device *pDevice, 
+                            SchemaVersion schemaVersion,
+                            const std::vector<std::string> & elementFilter,
+                            std::ostream & consoleStream,
+                            boost::property_tree::ptree & pt) const
 {
-  // Helper variables
-  boost::property_tree::ptree _pt;
-  std::stringstream _ostream;
-  boost::any returnValue;
+  try {
+    switch (schemaVersion) {
+      case SchemaVersion::json_internal:
+        getPropertyTreeInternal(pDevice, pt);
+        break;
 
-  switch (_schemaVersion) {
-    case SchemaVersion::text:  
-      writeReport(_pDevice, _elementFilter, _ostream);
-      returnValue = _ostream.str();
-      return returnValue;
+      case SchemaVersion::json_20202:
+        getPropertyTree20202(pDevice, pt);
+        break;
 
-    case SchemaVersion::json_internal:
-      getPropertyTreeInternal(_pDevice, _pt);
-      returnValue = _pt;
-      return returnValue;
+      default:
+        throw std::runtime_error("ERROR: Unknown schema version.");
+        break;
+    }
 
-    case SchemaVersion::json_20202:
-      getPropertyTree20202(_pDevice, _pt);
-      returnValue = _pt;
-      return returnValue;
+    writeReport(pDevice, pt, elementFilter, consoleStream);
+  } catch (const std::exception& e) {
+    std::string reportName = getReportName();
+    if (!reportName.empty()) {
+      reportName[0] = static_cast<char>(std::toupper(reportName[0]));
+      std::cerr << reportName << std::endl;
+    }
 
-    case SchemaVersion::unknown:
-      throw std::runtime_error("ERROR: Unknown schema version.");
-
-    // Note: There is no default in this switch statement.  Relying on the
-    //       compiler to produce a warning indicating that all of the enum values
-    //       are present.
+    std::cerr << "  ERROR: " << e.what() << std::endl << std::endl;
+    // Fall through
   }
-
-  // Code will never get here, but the compiler doesn't know that.
-  throw std::runtime_error("Report::getFormattedReport() - Unexpected execution in the code flow.");
 }
-

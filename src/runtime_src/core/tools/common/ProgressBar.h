@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -51,6 +51,11 @@ class ProgressBar {
   void
   finish(bool _successful, const std::string &_msg);
 
+  static std::string
+  formatTime(std::chrono::duration<double> duration);
+
+  unsigned int getMaxIterations() {return m_maxNumIterations;}
+  
   ~ProgressBar();
   ProgressBar() = delete;
 

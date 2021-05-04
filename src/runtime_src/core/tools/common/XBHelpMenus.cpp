@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -85,7 +85,7 @@ static const uint8_t FGC_EXTENDED_BODY    = 70;  // 70
 
 
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
-static unsigned int m_maxColumnWidth = 90;
+static unsigned int m_maxColumnWidth = 100;
 static unsigned int m_shortDescriptionColumn = 24;
 
 
@@ -226,22 +226,24 @@ XBUtilities::report_commands_help( const std::string &_executable,
 { 
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_usageBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_subCmd     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_subCmdBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
-  const std::string fgc_reset      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
+  const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_usageBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_subCmd     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
+  const std::string fgc_subCmdBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD_BODY).string();
+  const std::string fgc_reset      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
   // Helper variable
-  std::string formattedString;
   static std::string sHidden = "(Hidden)";
 
   // -- Command description
-  XBU::wrap_paragraphs(_description, 13, m_maxColumnWidth, false, formattedString);
-  boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
-  if ( !formattedString.empty() )
-    std::cout << fmtHeader % formattedString;
+  {
+    static const std::string key = "DESCRIPTION: ";
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
+    if ( !formattedString.empty() )
+      std::cout << fmtHeader % formattedString;
+  }
 
   // -- Command usage
   boost::program_options::positional_options_description emptyPOD;
@@ -292,7 +294,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "AVAILABLE";
     for (auto & subCmdEntry : subCmdsReleased) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -301,7 +303,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "PRELIMINARY";
     for (auto & subCmdEntry : subCmdsPreliminary) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -310,7 +312,7 @@ XBUtilities::report_commands_help( const std::string &_executable,
     std::cout << fmtSubCmdHdr % "DEPRECATED";
     for (auto & subCmdEntry : subCmdsDepricated) {
       std::string sPreAppend = subCmdEntry->isHidden() ? sHidden + " " : "";
-      XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false, formattedString);
+      auto formattedString = XBU::wrap_paragraphs(sPreAppend + subCmdEntry->getShortDescription(), subCmdDescTab, m_maxColumnWidth, false);
       std::cout << fmtSubCmd % subCmdEntry->getName() % formattedString;
     }
   }
@@ -356,10 +358,10 @@ XBUtilities::report_option_help( const std::string & _groupName,
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header     = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_optionName = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OPTION).string();
-  const std::string fgc_optionBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
-  const std::string fgc_reset      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
+  const std::string fgc_header     = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_optionName = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION).string();
+  const std::string fgc_optionBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OPTION_BODY).string();
+  const std::string fgc_reset      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
   // Determine if there is anything to report
   if (_optionDescription.options().empty())
@@ -369,9 +371,6 @@ XBUtilities::report_option_help( const std::string & _groupName,
   boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
   if ( !_groupName.empty() )
     std::cout << fmtHeader % _groupName;
-
-  // Helper string
-  std::string formattedString;
 
   // Report the options
   boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
@@ -383,7 +382,7 @@ XBUtilities::report_option_help( const std::string & _groupName,
 
     std::string optionDisplayFormat = create_option_format_name(option.get(), _bReportParameter);
     unsigned int optionDescTab = 23;
-    XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false, formattedString);
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth - optionDescTab, false);
     std::cout << fmtOption % optionDisplayFormat % formattedString;
   }
 }
@@ -395,26 +394,27 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const std::string &_extendedHelp,
                                      const boost::program_options::options_description &_optionDescription,
                                      const boost::program_options::options_description &_optionHidden,
-                                     const boost::program_options::positional_options_description & _positionalDescription)
+                                     const boost::program_options::positional_options_description & _positionalDescription,
+                                     const boost::program_options::options_description &_globalOptions)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_usageBody   = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset       = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
-
-  // Helper string
-  std::string formattedString;
+  const std::string fgc_header      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+  const std::string fgc_usageBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
   // -- Command description
-  XBU::wrap_paragraphs(_description, 13, m_maxColumnWidth, false, formattedString);
-  boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
-  if ( !formattedString.empty() )
-    std::cout << fmtHeader % formattedString;
+  {
+    static const std::string key = "DESCRIPTION: ";
+    auto formattedString = XBU::wrap_paragraphs(_description, static_cast<unsigned int>(key.size()), m_maxColumnWidth - static_cast<unsigned int>(key.size()), false);
+    boost::format fmtHeader(fgc_header + "\n" + key + fgc_headerBody + "%s\n" + fgc_reset);
+    if ( !formattedString.empty() )
+      std::cout << fmtHeader % formattedString;
+  }
 
   // -- Command usage
   std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription);
@@ -431,7 +431,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 
     std::string optionDisplayFormat = create_option_format_name(option.get(), false);
     unsigned int optionDescTab = 33;
-    XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false, formattedString);
+    auto formattedString = XBU::wrap_paragraphs(option->description(), optionDescTab, m_maxColumnWidth, false);
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
     std::cout << fmtOOSubPositional % ("<" + option->long_name() + ">") % formattedString;
@@ -441,14 +441,19 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   // -- Options
   report_option_help("OPTIONS", _optionDescription, _positionalDescription, false);
 
+  // -- Global Options
+  report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);
+
   if (XBU::getShowHidden()) 
     report_option_help("OPTIONS (Hidden)", _optionHidden, _positionalDescription, false);
 
   // Extended help
-  boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-  XBU::wrap_paragraph(_extendedHelp, 2, m_maxColumnWidth, false, formattedString);
-  if (!formattedString.empty()) 
-    std::cout << fmtExtHelp % formattedString;
+  {
+    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
+    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
+    if (!formattedString.empty()) 
+      std::cout << fmtExtHelp % formattedString;
+  }
 }
 
 void 
@@ -458,24 +463,22 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const std::string &_extendedHelp,
                                      const boost::program_options::options_description &_optionDescription,
                                      const boost::program_options::options_description &_optionHidden,
-                                     const SubCmd::SubOptionOptions & _subOptionOptions)
+                                     const SubCmd::SubOptionOptions & _subOptionOptions,
+                                     const boost::program_options::options_description &_globalOptions)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
-  const std::string fgc_header       = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER).string();
-  const std::string fgc_headerBody   = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
-  const std::string fgc_commandBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
-  const std::string fgc_usageBody    = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
+  const std::string fgc_header       = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER).string();
+  const std::string fgc_headerBody   = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_HEADER_BODY).string();
+  const std::string fgc_commandBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_SUBCMD).string();
+  const std::string fgc_usageBody    = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_USAGE_BODY).string();
 
-  const std::string fgc_ooption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
-  const std::string fgc_ooptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
-  const std::string fgc_poption      = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
-  const std::string fgc_poptionBody  = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
-  const std::string fgc_extendedBody = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
-  const std::string fgc_reset        = XBUtilities::is_esc_enabled() ? "" : ec::fgcolor::reset();
-
-  // Helper string
-  std::string formattedString;
+  const std::string fgc_ooption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION).string();
+  const std::string fgc_ooptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_OOPTION_BODY).string();
+  const std::string fgc_poption      = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL).string();
+  const std::string fgc_poptionBody  = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_POSITIONAL_BODY).string();
+  const std::string fgc_extendedBody = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor(FGC_EXTENDED_BODY).string();
+  const std::string fgc_reset        = XBUtilities::is_escape_codes_disabled() ? "" : ec::fgcolor::reset();
 
   // -- Command
   boost::format fmtCommand(fgc_header + "\nCOMMAND: " + fgc_commandBody + "%s\n" + fgc_reset);
@@ -483,10 +486,12 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
     std::cout << fmtCommand % _subCommand;
  
   // -- Command description
-  XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false, formattedString);
-  boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
-  if ( !formattedString.empty() )
-    std::cout << fmtHeader % formattedString;
+  {
+    auto formattedString = XBU::wrap_paragraphs(_description, 15, m_maxColumnWidth, false);
+    boost::format fmtHeader(fgc_header + "\nDESCRIPTION: " + fgc_headerBody + "%s\n" + fgc_reset);
+    if ( !formattedString.empty() )
+      std::cout << fmtHeader % formattedString;
+  }
 
   // -- Usage
   std::string usageSubCmds;
@@ -506,14 +511,19 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   boost::program_options::positional_options_description emptyPOD;
   report_option_help("OPTIONS", _optionDescription, emptyPOD, false);
 
+  // -- Global Options
+  report_option_help("GLOBAL OPTIONS", _globalOptions, emptyPOD, false);
+
   if (XBU::getShowHidden()) 
     report_option_help("OPTIONS (Hidden)", _optionHidden, emptyPOD, false);
 
   // Extended help
-  boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
-  XBU::wrap_paragraph(_extendedHelp, 2, m_maxColumnWidth, false, formattedString);
-  if (!formattedString.empty()) 
-    std::cout << fmtExtHelp % formattedString;
+  {
+    boost::format fmtExtHelp(fgc_extendedBody + "\n  %s\n" +fgc_reset);
+    auto formattedString = XBU::wrap_paragraphs(_extendedHelp, 2, m_maxColumnWidth, false);
+    if (!formattedString.empty()) 
+      std::cout << fmtExtHelp % formattedString;
+  }
 }
 
 std::string 
@@ -522,7 +532,6 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
   // Working variables
   const unsigned int maxColumnWidth = m_maxColumnWidth - m_shortDescriptionColumn; 
   std::string supportedValues;        // Formatted string of supported values
-  std::string formattedString;        // Helper working string
                                       
   // Make a copy of the data (since it is going to be modified)
   VectorPairStrings workingCollection = _collection;
@@ -540,14 +549,14 @@ XBUtilities::create_suboption_list_string(const VectorPairStrings &_collection)
   }
 
   const unsigned int indention = maxStringLength + 5;  // New line indention after the '-' character (5 extra spaces)
-  boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s\n");  
-  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s\n");  
+  boost::format reportFmt(std::string("  %-") + std::to_string(maxStringLength) + "s - %s");  
+  boost::format reportFmtQuotes(std::string(" %-") + std::to_string(maxStringLength + 1) + "s - %s");  
 
   // Report names and description
   for (const auto & pairs : workingCollection) {
     boost::format &reportFormat = pairs.first[0] == '\'' ? reportFmtQuotes : reportFmt;
-    XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/, formattedString);
-    supportedValues += formattedString;
+    auto formattedString = XBU::wrap_paragraphs(boost::str(reportFormat % pairs.first % pairs.second), indention, maxColumnWidth, false /*indent first line*/);
+    supportedValues += formattedString + "\n";
   }
 
   return supportedValues;
@@ -616,20 +625,21 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 
 
 void 
-XBUtilities::produce_reports( xrt_core::device_collection _devices, 
-                              const ReportCollection & _reportsToProcess, 
-                              Report::SchemaVersion _schemaVersion, 
-                              std::vector<std::string> & _elementFilter,
-                              std::ostream &_ostream)
+XBUtilities::produce_reports( xrt_core::device_collection devices, 
+                              const ReportCollection & reportsToProcess, 
+                              Report::SchemaVersion schemaVersion, 
+                              std::vector<std::string> & elementFilter,
+                              std::ostream & consoleStream,
+                              std::ostream & schemaStream)
 {
   // Some simple DRCs
-  if (_reportsToProcess.empty()) {
-    _ostream << "Info: No action taken, no reports given.\n";
+  if (reportsToProcess.empty()) {
+    consoleStream << "Info: No action taken, no reports given.\n";
     return;
   }
 
-  if (_schemaVersion == Report::SchemaVersion::unknown) {
-    _ostream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
+  if (schemaVersion == Report::SchemaVersion::unknown) {
+    consoleStream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
     return;
   }
 
@@ -639,7 +649,7 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
   // Add schema version
   {
     boost::property_tree::ptree ptSchemaVersion;
-    ptSchemaVersion.put("schema", Report::getSchemaDescription(_schemaVersion).optionName.c_str());
+    ptSchemaVersion.put("schema", Report::getSchemaDescription(schemaVersion).optionName.c_str());
     ptSchemaVersion.put("creation_date", xrt_core::timestamp());
 
     ptRoot.add_child("schema_version", ptSchemaVersion);
@@ -648,40 +658,32 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
 
   // -- Process the reports that don't require a device
   boost::property_tree::ptree ptSystem;
-  for (const auto & report : _reportsToProcess) {
+  for (const auto & report : reportsToProcess) {
     if (report->isDeviceRequired() == true)
       continue;
 
-    boost::any output = report->getFormattedReport(nullptr, _schemaVersion, _elementFilter);
+    boost::property_tree::ptree ptReport;
+    report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
 
-    // Simple string output
-    if (output.type() == typeid(std::string)) 
-      _ostream << boost::any_cast<std::string>(output);
+    // Only support 1 node on the root
+    if (ptReport.size() > 1)
+      throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
 
-    if (output.type() == typeid(boost::property_tree::ptree)) {
-      boost::property_tree::ptree ptReport = boost::any_cast< boost::property_tree::ptree>(output);
-
-      // Only support 1 node on the root
-      if (ptReport.size() > 1)
-        throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(_schemaVersion).optionName).str());
-
-      // We have 1 node, copy the child to the root property tree
-      if (ptReport.size() == 1) {
-        for (const auto & ptChild : ptReport) {
-          ptSystem.add_child(ptChild.first, ptChild.second);
-        }
-      }
+    // We have 1 node, copy the child to the root property tree
+    if (ptReport.size() == 1) {
+      for (const auto & ptChild : ptReport) 
+        ptSystem.add_child(ptChild.first, ptChild.second);
     }
   }
   if (!ptSystem.empty()) 
     ptRoot.add_child("system", ptSystem);
 
-  // -- Check if any device sepcific report is requested
-  auto dev_report = [_reportsToProcess]() {
-    for (auto &report : _reportsToProcess) {
+  // -- Check if any device specific report is requested
+  auto dev_report = [reportsToProcess]() {
+    for (auto &report : reportsToProcess) {
       if (report->isDeviceRequired() == true)
         return true;
-      }
+    }
     return false;
   };
 
@@ -689,56 +691,50 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
     // -- Process reports that work on a device
     boost::property_tree::ptree ptDevices;
     int dev_idx = 0;
-    for (const auto & device : _devices) {
+    for (const auto & device : devices) {
       boost::property_tree::ptree ptDevice;
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
       ptDevice.put("interface_type", "pcie");
       ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-      if (_schemaVersion == Report::SchemaVersion::text) {
-        bool is_mfg = false;
-        try {
-          is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-        } catch (...) {}
-        
-        //if factory mode
-        std::string platform = "<not defined>";
-        try {
-          if (is_mfg) {
-            platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
-          }
-          else {
-            platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
-          }
-        } catch(...) {
-          // proceed even if the platform name is not available
+
+      bool is_mfg = false;
+      try {
+        is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+      } catch (...) {}
+      
+      //if factory mode
+      std::string platform = "<not defined>";
+      try {
+        if (is_mfg) {
+          platform = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN";
         }
-        std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % _devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
-        _ostream << std::string(dev_desc.length(), '-') << std::endl;
-        _ostream << dev_desc;
-        _ostream << std::string(dev_desc.length(), '-') << std::endl;
+        else {
+          platform = xrt_core::device_query<xrt_core::query::rom_vbnv>(device);
+        }
+      } catch(...) {
+        // proceed even if the platform name is not available
       }
-      for (auto &report : _reportsToProcess) {
+      std::string dev_desc = (boost::format("%d/%d [%s] : %s\n") % ++dev_idx % devices.size() % ptDevice.get<std::string>("device_id") % platform).str();
+      consoleStream << std::endl;
+      consoleStream << std::string(dev_desc.length(), '-') << std::endl;
+      consoleStream << dev_desc;
+      consoleStream << std::string(dev_desc.length(), '-') << std::endl;
+
+      for (auto &report : reportsToProcess) {
         if (report->isDeviceRequired() == false)
           continue;
 
-        boost::any output = report->getFormattedReport(device.get(), _schemaVersion, _elementFilter);
+        boost::property_tree::ptree ptReport;
+        report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
 
-        // Simple string output
-        if (output.type() == typeid(std::string)) 
-          _ostream << boost::any_cast<std::string>(output);
+        // Only support 1 node on the root
+        if (ptReport.size() > 1)
+          throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(schemaVersion).optionName).str());
 
-        if (output.type() == typeid(boost::property_tree::ptree)) {
-          boost::property_tree::ptree ptReport = boost::any_cast< boost::property_tree::ptree>(output);
-
-          // Only support 1 node on the root
-          if (ptReport.size() > 1)
-            throw xrt_core::error((boost::format("Invalid JSON - The report '%s' has too many root nodes.") % Report::getSchemaDescription(_schemaVersion).optionName).str());
-
-          // We have 1 node, copy the child to the root property tree
-          if (ptReport.size() == 1) {
-            for (const auto & ptChild : ptReport) {
-              ptDevice.add_child(ptChild.first, ptChild.second);
-            }
+        // We have 1 node, copy the child to the root property tree
+        if (ptReport.size() == 1) {
+          for (const auto & ptChild : ptReport) {
+            ptDevice.add_child(ptChild.first, ptChild.second);
           }
         }
       }
@@ -749,14 +745,16 @@ XBUtilities::produce_reports( xrt_core::device_collection _devices,
       ptRoot.add_child("devices", ptDevices);
   }
 
+  // -- Write the formatted output 
+  switch (schemaVersion) {
+    case Report::SchemaVersion::json_20202:
+      boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
+      schemaStream << std::endl;  
+      break;
 
-  // Did we add anything to the property tree.  If so, then write it out.
-  if ((_schemaVersion != Report::SchemaVersion::text) &&
-      (_schemaVersion != Report::SchemaVersion::unknown)) {
-    // Write out JSON format
-    std::ostringstream outputBuffer;
-    boost::property_tree::write_json(outputBuffer, ptRoot, true /*Pretty print*/);
-    _ostream << outputBuffer.str() << std::endl;
+    default:
+      // Do nothing
+      break;
   }
 }
 

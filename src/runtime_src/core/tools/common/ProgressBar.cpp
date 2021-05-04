@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -55,8 +55,8 @@ static boost::format fmtBatchPF("\n[%s]: %s < %s >\n");
 
 // ------ S T A T I C   F U N C T I O N S -------------------------------------
 
-static std::string
-format_time(std::chrono::duration<double> duration) 
+std::string
+ProgressBar::formatTime(std::chrono::duration<double> duration) 
 {
   auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
   auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
@@ -88,7 +88,7 @@ ProgressBar::ProgressBar(const std::string &_opNname, unsigned int _maxNumIterat
     , m_lastUpdated(std::chrono::high_resolution_clock::now()) 
 {
   if (!m_isBatch) 
-    m_ostr << fmtUpdate % "" % /*Percent*/ 0 % m_opName % format_time(m_elapsedTime) << std::endl;
+    m_ostr << fmtUpdate % "" % /*Percent*/ 0 % m_opName % formatTime(m_elapsedTime) << std::endl;
   else 
     m_ostr << m_opName << ": ";
 
@@ -114,7 +114,7 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
 
   // -- Batch --
   if (m_isBatch) {
-    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % format_time(m_elapsedTime);
+    m_ostr << fmtBatchPF % (_successful ? "PASSED" : "FAILED") % _msg % formatTime(m_elapsedTime);
     m_ostr.flush();
     return;
   }
@@ -123,7 +123,7 @@ ProgressBar::finish(bool _successful, const std::string &_msg)
   boost::format &fmt = _successful ? fmtPassed : fmtFailed;
   m_ostr << EscapeCodes::cursor().prev_line()
          << EscapeCodes::cursor().clear_line()
-         << fmt % _msg % format_time(m_elapsedTime)
+         << fmt % _msg % formatTime(m_elapsedTime)
          << std::endl << EscapeCodes::cursor().show();
 
   m_ostr.flush();
@@ -196,7 +196,7 @@ ProgressBar::update(unsigned int _iteration)
 
   // Write the new progress bar
   m_ostr << EscapeCodes::cursor().prev_line()
-         << fmtUpdate % progressBar % runningPercent % m_opName % format_time(m_elapsedTime)
+         << fmtUpdate % progressBar % runningPercent % m_opName % formatTime(m_elapsedTime)
          << std::endl;
 
   m_ostr.flush();

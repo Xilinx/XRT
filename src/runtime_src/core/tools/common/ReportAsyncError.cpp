@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,16 +77,15 @@ ReportAsyncError::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void
-ReportAsyncError::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/,
-                                  std::iostream & _output) const
+ReportAsyncError::writeReport( const xrt_core::device* /*_pDevice*/,
+                               const boost::property_tree::ptree& _pt,
+                               const std::vector<std::string>& /*_elementsFilter*/,
+                               std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
   //check if a valid report is generated
-  boost::property_tree::ptree& pt_err = _pt.get_child("asynchronous_errors");
+  const boost::property_tree::ptree& pt_err = _pt.get_child("asynchronous_errors");
   if(pt_err.empty())
     return;
 
