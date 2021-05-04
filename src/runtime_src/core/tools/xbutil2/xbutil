@@ -203,8 +203,8 @@ if [[ -z ${XRT_PROG} ]]; then
     XRT_PROG=${DEFAULT}
 fi
 
-# Friendly message
-if [[ ${XRT_PROG} == "xbutil" ]]; then
+# Friendly message if running in a terminal
+if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
     echo "---------------------------------------------------------------------"
     echo "Legacy xbutil is being deprecated, consider moving to next-gen xbutil"
     echo "---------------------------------------------------------------------"
