@@ -95,6 +95,7 @@ run(const std::string& xclbin_fnm)
   auto xclbin = xrt::xclbin(xclbin_fnm);
   auto uuid = xclbin.get_uuid();
   std::cout << xclbin_fnm << "\n";
+  std::cout << "xsa(" << xclbin.get_xsa_name() << ")\n";
   std::cout << "uuid(" << uuid.to_string() << ")\n\n";
 
   for (auto& kernel : xclbin.get_kernels())

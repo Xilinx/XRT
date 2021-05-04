@@ -552,7 +552,7 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 		return ret;
 
 	ret = wait_for_completion_interruptible(&kds->comp);
-	if (ret == -ERESTARTSYS && !kds->ert_disable) {
+	if (ret == -ERESTARTSYS) {
 		kds->ert->abort(kds->ert, client, NO_INDEX);
 		wait_for_completion(&kds->comp);
 		bad_state = kds->ert->abort_done(kds->ert, client, NO_INDEX);
@@ -983,7 +983,7 @@ int kds_cfg_update(struct kds_sched *kds)
 	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
-	if (kds->cmdmem.dev_paddr) {
+	if (kds->cmdmem.bo) {
 		ret = kds_fa_assign_cmdmem(kds);
 		if (ret)
 			return -EINVAL;

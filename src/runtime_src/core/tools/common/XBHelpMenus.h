@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -44,7 +44,8 @@ namespace XBUtilities {
                             const std::string &_extendedHelp,
                             const boost::program_options::options_description & _optionDescription,
                             const boost::program_options::options_description &_optionHidden,
-                            const boost::program_options::positional_options_description & _positionalDescription );
+                            const boost::program_options::positional_options_description & _positionalDescription,
+                            const boost::program_options::options_description &_globalOptions);
 
   void 
     report_subcommand_help( const std::string &_executableName,
@@ -53,7 +54,8 @@ namespace XBUtilities {
                             const std::string &_extendedHelp,
                             const boost::program_options::options_description &_optionDescription,
                             const boost::program_options::options_description &_optionHidden,
-                            const SubCmd::SubOptionOptions & _subOptionOptions);
+                            const SubCmd::SubOptionOptions & _subOptionOptions,
+                            const boost::program_options::options_description &_globalOptions);
 
   void 
     report_option_help( const std::string & _groupName, 
@@ -82,11 +84,12 @@ namespace XBUtilities {
                                   ReportCollection & reportsToUse);
 
   void 
-     produce_reports( xrt_core::device_collection _devices, 
-                      const ReportCollection & _reportsToProcess, 
-                      Report::SchemaVersion _schema, 
-                      std::vector<std::string> & _elementFilter,
-                      std::ostream &_ostream);
+     produce_reports( xrt_core::device_collection devices, 
+                      const ReportCollection & reportsToProcess, 
+                      Report::SchemaVersion schema, 
+                      std::vector<std::string> & elementFilter,
+                      std::ostream & consoleStream,
+                      std::ostream & schemaStream);
 };
 
 #endif

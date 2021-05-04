@@ -270,6 +270,13 @@ get_xrt_trace()
 }
 
 inline bool
+get_xrt_profile()
+{
+  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
+  return value;
+}
+
+inline bool
 get_native_xrt_trace()
 {
   static bool value = detail::get_bool_value("Debug.native_xrt_trace", false);

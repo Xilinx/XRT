@@ -20,6 +20,7 @@
 // Include files
 // Please keep these to the bare minimum
 #include "core/common/device.h"
+#include "core/common/query_requests.h"
 
 #include <string>
 #include <memory>
@@ -59,7 +60,7 @@ namespace XBUtilities {
   bool getForce();
 
   void disable_escape_codes( bool _disable );
-  bool is_esc_enabled();  
+  bool is_escape_codes_disabled();  
 
   void message_(MessageType _eMT, const std::string& _msg, bool _endl = true, std::ostream & _ostream = std::cout);
 
@@ -74,22 +75,17 @@ namespace XBUtilities {
   void trace_print_tree(const std::string & _name, 
                         const boost::property_tree::ptree & _pt);
 
-  bool can_proceed();
+  bool can_proceed(bool force=false);
   void can_proceed_or_throw(const std::string& info, const std::string& error);
 
   void sudo_or_throw(const std::string& msg);
-  // ---------
-  void wrap_paragraph( const std::string & _unformattedString, 
-                       unsigned int _indentWidth, 
-                       unsigned int _columnWidth, 
-                       bool _indentFirstLine,
-                       std::string &_formattedString);
-  void wrap_paragraphs( const std::string & _unformattedString, 
-                        unsigned int _indentWidth, 
-                        unsigned int _columnWidth, 
-                        bool _indentFirstLine,
-                        std::string &_formattedString);
+  void print_exception_and_throw_cancel(const xrt_core::error& e);
+  void print_exception_and_throw_cancel(const std::runtime_error& e);
 
+  std::string wrap_paragraphs( const std::string & unformattedString,
+                               unsigned int indentWidth,
+                               unsigned int columnWidth,
+                               bool indentFirstLine);
   void collect_devices( const std::set<std::string>  &_deviceBDFs,
                         bool _inUserDomain,
                         xrt_core::device_collection &_deviceCollection);
@@ -156,6 +152,33 @@ namespace XBUtilities {
 
   std::string 
   parse_clock_id(const std::string& id);
+
+ /*
+  * xclbin locking
+  */
+  struct xclbin_lock
+  {
+    xclDeviceHandle m_handle;
+    xuid_t m_uuid;
+
+    xclbin_lock(std::shared_ptr<xrt_core::device> _dev)
+      : m_handle(_dev->get_device_handle())
+    {
+      auto xclbinid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(_dev);
+
+      uuid_parse(xclbinid.c_str(), m_uuid);
+
+      if (uuid_is_null(m_uuid))
+        throw std::runtime_error("'uuid' invalid, please re-program xclbin.");
+
+      if (xclOpenContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max(), true))
+        throw std::runtime_error("'Failed to lock down xclbin");
+    }
+
+    ~xclbin_lock(){
+      xclCloseContext(m_handle, m_uuid, std::numeric_limits<unsigned int>::max());
+    }
+  };
 
 };
 

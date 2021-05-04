@@ -17,6 +17,9 @@ static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 
 #define XRT_DRIVER_VERSION "@XRT_VERSION_STRING@,@XRT_HASH@"
 
+#define XRT_VERSION(major, minor) ((major << 16) + (minor))
+#define XRT_VERSION_CODE XRT_VERSION(@XRT_VERSION_MAJOR@, @XRT_VERSION_MINOR@)
+
 # ifdef __cplusplus
 #include <iostream>
 #include <string>

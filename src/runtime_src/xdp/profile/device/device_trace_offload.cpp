@@ -19,8 +19,6 @@
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
 
-#include "core/common/message.h"
-
 namespace xdp {
 
 DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
@@ -163,6 +161,7 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
   m_trbuf_full = false;
+  m_circ_buf_overwrite_detected = false;
 
   if (has_ts2mm()) {
     m_initialized = init_s2mm(circ_buf);
@@ -234,9 +233,7 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
-    xrt_core::message::send(xrt_core::message::severity_level::warning,
-                            "XRT",
-                            "Circular buffer overwrite detected in hardware.  Stopping device offload");
+    m_circ_buf_overwrite_detected = true;
     stop_offload();
     return;
   }

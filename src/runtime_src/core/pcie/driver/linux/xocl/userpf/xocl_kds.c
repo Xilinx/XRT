@@ -540,6 +540,8 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_START_COPYBO:
 		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
 		if (ret > 0) {
+			xcmd->status = KDS_COMPLETED;
+			xcmd->cb.notify_host(xcmd, xcmd->status);
 			ret = 0;
 			goto out1;
 		} else if (ret < 0)

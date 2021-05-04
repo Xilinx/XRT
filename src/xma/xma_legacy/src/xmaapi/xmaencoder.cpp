@@ -53,11 +53,11 @@ typedef struct XmaEncoderStats
 // Private functions for managing statistics
 void xma_enc_session_statsfile_init(XmaEncoderSession *session);
 
-void xma_enc_session_statsfile_send_frame(XmaEncoderSession *session, 
+void xma_enc_session_statsfile_send_frame(XmaEncoderSession *session,
                                           uint64_t           timestamp,
                                           uint32_t           frame_size);
 
-void xma_enc_session_statsfile_recv_data(XmaEncoderSession *session, 
+void xma_enc_session_statsfile_recv_data(XmaEncoderSession *session,
                                          uint64_t           timestamp,
                                          uint32_t           data_size);
 
@@ -117,7 +117,7 @@ xma_enc_plugins_load(XmaSystemCfg      *systemcfg,
             {
                 xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
                     "Failed to open plugin %s\n Error msg: %s\n",
-                    pluginfullname, dlerror());
+                    pluginfullname, error);
                 return XMA_ERROR;
             }
             memcpy(&encoders[k++], plg, sizeof(XmaEncoderPlugin));
@@ -234,7 +234,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         return NULL;
     }
 
-    // Create encoder file if it does not exist and initialize all fields 
+    // Create encoder file if it does not exist and initialize all fields
     xma_enc_session_statsfile_init(enc_session);
 
     return enc_session;
@@ -247,7 +247,7 @@ xma_enc_session_destroy(XmaEncoderSession *session)
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
 
-    // Clean up the stats file, but don't delete it 
+    // Clean up the stats file, but don't delete it
     xma_enc_session_statsfile_close(session);
 
     rc  = session->encoder_plugin->close(session);
@@ -286,13 +286,13 @@ xma_enc_session_send_frame(XmaEncoderSession *session,
     uint32_t frame_size;
 
     xma_logmsg(XMA_DEBUG_LOG, XMA_ENCODER_MOD, "%s()\n", __func__);
-    clock_gettime(CLOCK_MONOTONIC, &ts);  
+    clock_gettime(CLOCK_MONOTONIC, &ts);
     timestamp = (ts.tv_sec * 1000000000) + ts.tv_nsec;
     rc = session->encoder_plugin->send_frame(session, frame);
     if (frame->do_not_encode == false)
     {
-        frame_size = frame->frame_props.width * frame->frame_props.height; 
-        xma_enc_session_statsfile_send_frame(session, 
+        frame_size = frame->frame_props.width * frame->frame_props.height;
+        xma_enc_session_statsfile_send_frame(session,
                                              timestamp,
                                              frame_size);
     }
@@ -313,9 +313,9 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
     rc = session->encoder_plugin->recv_data(session, data, data_size);
     if (*data_size)
     {
-        clock_gettime(CLOCK_MONOTONIC, &ts);  
+        clock_gettime(CLOCK_MONOTONIC, &ts);
         timestamp = (ts.tv_sec * 1000000000) + ts.tv_nsec;
-        xma_enc_session_statsfile_recv_data(session, 
+        xma_enc_session_statsfile_recv_data(session,
                                             timestamp,
                                             *data_size);
     }
@@ -323,7 +323,7 @@ xma_enc_session_recv_data(XmaEncoderSession *session,
     return rc;
 }
 
-void 
+void
 xma_enc_session_statsfile_init(XmaEncoderSession *session)
 {
     char            *path = (char*) "/var/tmp/xilinx";
@@ -371,11 +371,11 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     kern_inst = xma_res_kern_handle_get(session->base.kern_res);
     chan_id = session->base.chan_id;
     sprintf(fname, "%s/ENC-%s-%s-%d-%d-%d",
-            path, enc_type_str, vendor, dev_id, kern_inst, chan_id);     
-    
+            path, enc_type_str, vendor, dev_id, kern_inst, chan_id);
+
     // Open the file - create if it doesn't exixt, truncate if it does
     umask(0);
-    stats->fd = open(fname, O_RDWR | O_CREAT | O_TRUNC, 0666);    
+    stats->fd = open(fname, O_RDWR | O_CREAT | O_TRUNC, 0666);
 
     // Initialize our in-memory copy of the stats
     stats->last_pid_in_use = getpid();
@@ -392,14 +392,14 @@ xma_enc_session_statsfile_init(XmaEncoderSession *session)
     session->base.stats = stats;
 }
 
-void xma_enc_session_statsfile_send_frame(XmaEncoderSession *session, 
+void xma_enc_session_statsfile_send_frame(XmaEncoderSession *session,
                                           uint64_t           timestamp,
                                           uint32_t           frame_size)
 {
     XmaEncoderStats *stats;
 
     stats = (XmaEncoderStats*)session->base.stats;
-     
+
     // Update send_frame stats
     stats->last_received_input_ts = timestamp;
     stats->received_frame_count++;
@@ -409,14 +409,14 @@ void xma_enc_session_statsfile_send_frame(XmaEncoderSession *session,
     xma_enc_session_statsfile_write(stats);
 }
 
-void xma_enc_session_statsfile_recv_data(XmaEncoderSession *session, 
+void xma_enc_session_statsfile_recv_data(XmaEncoderSession *session,
                                          uint64_t           timestamp,
                                          uint32_t           data_size)
 {
     XmaEncoderStats *stats;
 
     stats = (XmaEncoderStats*)session->base.stats;
-     
+
     // Update recv_data stats
     stats->last_received_output_ts = timestamp;
     stats->encoded_frame_count++;
@@ -430,7 +430,7 @@ void xma_enc_session_statsfile_write(XmaEncoderStats *stats)
     int32_t          rc;
     char             stat_buf[1024];
 
-    sprintf(stat_buf, g_stat_fmt, 
+    sprintf(stat_buf, g_stat_fmt,
             stats->last_pid_in_use,
             stats->last_received_input_ts,
             stats->last_received_output_ts,
@@ -441,25 +441,25 @@ void xma_enc_session_statsfile_write(XmaEncoderStats *stats)
             stats->encoded_bit_count);
 
     if (stats->fd <= 0) {
-        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD, 
+        xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                    "statsfile failed to open\n");
     } else {
         // Always re-write the entire file
         lseek(stats->fd, 0, SEEK_SET);
-        rc = write(stats->fd, stat_buf, strlen(stat_buf)); 
+        rc = write(stats->fd, stat_buf, strlen(stat_buf));
         if (rc < 0)
-            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD, 
+            xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                     "Write to statsfile failed\n");
     }
 }
 
-void 
+void
 xma_enc_session_statsfile_close(XmaEncoderSession *session)
 {
     XmaEncoderStats *stats;
 
     stats = (XmaEncoderStats*)session->base.stats;
-     
+
     // Close and free the stats memory
     close(stats->fd);
     free(stats);

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,7 +36,8 @@ namespace EscapeCodes {
     public:
       std::string hide() const { return std::string("\033[?25l"); };
       std::string show() const { return std::string("\033[?25h"); };
-      std::string prev_line() const { return std::string("\033[F"); };
+      std::string up() const { return std::string("\033[1A"); };
+      std::string prev_line() const { return std::string("\r") + up(); };  // Note: "\033[1F" is not ANSI
       std::string clear_line() const { return std::string("\033[2K"); };
   };
   

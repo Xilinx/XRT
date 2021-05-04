@@ -61,6 +61,7 @@
 #include "lib/libfdt/libfdt.h"
 #include <linux/firmware.h>
 #include "kds_core.h"
+#include "xclerr_int.h"
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
 #include <linux/sched/signal.h>
@@ -523,6 +524,9 @@ struct xocl_dev_core {
 	struct workqueue_struct	*wq;
 	struct xocl_work	works[XOCL_WORK_NUM];
 	struct mutex		wq_lock;
+
+	struct xcl_errors	*errors;
+	struct mutex		errors_lock;
 
 	struct kds_sched	kds;
 

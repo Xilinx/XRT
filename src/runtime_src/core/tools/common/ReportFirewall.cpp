@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,33 +34,34 @@ ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
                                        boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
-  pt.put("Description","Firewall Information");
-  pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
-  pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
-  pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice))));
-    // There can only be 1 root node
+  try {
+    pt.put("Description","Firewall Information");
+    pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
+    pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
+    pt.put("status", xrt_core::utils::parse_firewall_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice))));
+  } catch(...) {}
+  // There can only be 1 root node
   _pt.add_child("firewall", pt);
 }
 
 
 void 
-ReportFirewall::writeReport(const xrt_core::device * _pDevice,
-                            const std::vector<std::string> & /*_elementsFilter*/,
-                            std::iostream & _output) const
+ReportFirewall::writeReport(const xrt_core::device* /*_pDevice*/,
+                            const boost::property_tree::ptree& _pt,
+                            const std::vector<std::string>& /*_elementsFilter*/,
+                            std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  try {
-    getPropertyTreeInternal(_pDevice, _pt);
-  } catch (...) {}
 
   _output << "Firewall\n";
   if (_pt.empty()) {
     _output << "  Information unavailable" << std::endl; 
     return;
   }
-  _output << boost::format("  %s %d: %s %s\n\n") % "Level" % _pt.get<std::string>("firewall.firewall_level") 
-              % _pt.get<std::string>("firewall.firewall_status") % _pt.get<std::string>("firewall.status");
+  _output << boost::format("  %s %d: %s %s\n\n") % "Level" 
+              % _pt.get<std::string>("firewall.firewall_level", "--") 
+              % _pt.get<std::string>("firewall.firewall_status", "--") 
+              % _pt.get<std::string>("firewall.status", "--");
 
 }
 

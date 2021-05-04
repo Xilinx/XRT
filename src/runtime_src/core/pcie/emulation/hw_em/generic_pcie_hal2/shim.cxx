@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <boost/lexical_cast.hpp>
 #include "core/common/xclbin_parser.h"
+#include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
 #include <mutex>
 #include <set>
@@ -128,7 +129,7 @@ namespace xclhwemhal2 {
       std::lock_guard<std::mutex> lk(mutex);
       handles.erase(hdl);
     }
-    
+
     struct X
     {
       ~X()
@@ -141,9 +142,9 @@ namespace xclhwemhal2 {
       }
     };
 
-    static X x;  
+    static X x;
   }
-  
+
   Event::Event()
   {
     awlen = 0;
@@ -190,20 +191,20 @@ namespace xclhwemhal2 {
     }
 
   }
-  
-  std::string HwEmShim::loadFileContentsToString(const std::string& path) 
+
+  std::string HwEmShim::loadFileContentsToString(const std::string& path)
   {
     std::ifstream file(path);
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
-  
-  void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content) 
+
+  void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content)
   {
     std::ofstream out(path);
     out << content << std::endl;
     out.close();
   }
-  
+
   std::string HwEmShim::modifyContent(const std::string& simulatorName, std::string& content)
   {
     if (simulatorName == "xcelium") {
@@ -219,10 +220,10 @@ namespace xclhwemhal2 {
     }
     return content;
   }
-  
-  void HwEmShim::writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName ) 
-  { 
-    // Write the contents of this file into a string  
+
+  void HwEmShim::writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName )
+  {
+    // Write the contents of this file into a string
     std::string content = loadFileContentsToString(simPath + "/simulate.sh");
     // Modify as per simulator name
     content = modifyContent(simulatorName, content);
@@ -232,7 +233,7 @@ namespace xclhwemhal2 {
     std::string filePath = simPath + "/simulate.sh";
     systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
-  
+
   void HwEmShim::parseHLSPrintf(const std::string& simPath)
   {
     std::ifstream ifs(simPath + "/simulate.log");
@@ -244,9 +245,9 @@ namespace xclhwemhal2 {
       if ( pos != std::string::npos) {
         logMessage(line, 0);
       }
-    }	  
+    }
   }
-  
+
   void HwEmShim::parseSimulateLog ()
   {
     std::string simPath = getSimPath();
@@ -343,7 +344,7 @@ namespace xclhwemhal2 {
     if (std::memcmp(bitstreambin, "xclbin2", 7)) {
       PRINTENDFUNC;
       return -1;
-    }  
+    }
     //check xclbin version with vivado tool version
     xclemulation::checkXclibinVersionWithTool(header);
 
@@ -759,7 +760,7 @@ namespace xclhwemhal2 {
           mLogStream << __func__ << " UNZIP of sim bin started" << std::endl;
 
         systemUtil::makeSystemCall(zip_fileName, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
- 
+
         if (mLogStream.is_open())
           mLogStream << __func__ << " UNZIP of sim bin complete" << std::endl;
 
@@ -846,10 +847,10 @@ namespace xclhwemhal2 {
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
+      /*if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
         sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
         setSimPath(sim_path);
-      }
+      }*/
 
       if (userSpecifiedSimPath.empty() == false)
       {
@@ -861,11 +862,12 @@ namespace xclhwemhal2 {
       {
         if (sim_path.empty())
         {
-          sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
+          sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
           setSimPath(sim_path);
         }
 
-        if (boost::filesystem::exists(sim_path) == false)
+        // As GDB feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
+        /*if (boost::filesystem::exists(sim_path) == false)
         {
           if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
@@ -905,7 +907,7 @@ namespace xclhwemhal2 {
 
             logMessage(dMsg, 0);
           }
-        }
+        }*/
       }
 
       if (mLogStream.is_open())
@@ -2099,7 +2101,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     bUnified = _unified;
     bXPR = _xpr;
     mCore = nullptr;
-    mMBSch = nullptr; 
+    mMBSch = nullptr;
     m_scheduler = nullptr;
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
@@ -2138,7 +2140,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if (mPlatformData.get_optional<std::string>("plp.m2m").is_initialized()) {
         mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
       }
-      
+
       if (mPlatformData.get_optional<std::string>("plp.dma").is_initialized()) {
         std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
         mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
@@ -2166,7 +2168,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       if (mPlatformData.get_optional<std::string>("plp.m2m_address").is_initialized()) {
         std::stringstream streamSS;
-        streamSS << std::hex << mPlatformData.get<std::string>("plp.m2m_address"); 
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.m2m_address");
         uint64_t baseAddr_u;
         streamSS >> baseAddr_u;
         return baseAddr_u;
@@ -2180,20 +2182,20 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       if (mPlatformData.get_optional<std::string>("plp.ertCmdqBaseAddr").is_initialized()) {
         std::stringstream streamSS ;
-        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertCmdqBaseAddr"); 
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertCmdqBaseAddr");
         uint64_t baseAddr_u;
         streamSS >> baseAddr_u;
         return baseAddr_u;
       }
     }
-    return 0; 
+    return 0;
   }
 
   uint64_t HwEmShim::getErtBaseAddress() {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       if (mPlatformData.get_optional<std::string>("plp.ertBaseAddr").is_initialized()) {
         std::stringstream streamSS ;
-        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertBaseAddr"); 
+        streamSS << std::hex << mPlatformData.get<std::string>("plp.ertBaseAddr");
         uint64_t baseAddr_u;
         streamSS >> baseAddr_u;
         return baseAddr_u;
@@ -2243,7 +2245,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       std::string cdmaAddrStr = "plp.cdmaBaseAddress" + std::to_string(index);
       if (mPlatformData.get_optional<std::string>(cdmaAddrStr).is_initialized()) {
         std::stringstream streamSS ;
-        streamSS << std::hex << mPlatformData.get<std::string>(cdmaAddrStr); 
+        streamSS << std::hex << mPlatformData.get<std::string>(cdmaAddrStr);
         uint64_t baseAddr_u;
         streamSS >> baseAddr_u;
         return baseAddr_u;
@@ -2812,7 +2814,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
     }
   }
-  else if(dBO->fd >= 0){  //destination p2p buffer 
+  else if(dBO->fd >= 0){  //destination p2p buffer
     int ack = false;
     auto fItr = mFdToFileNameMap.find(dBO->fd);
     if (fItr != mFdToFileNameMap.end()) {
@@ -3035,7 +3037,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
 
   xclemulation::drm_xocl_bo* bo = xclGetBoByHandle(cmdBO);
   int ret=-1;
-  if(xclemulation::config::getInstance()->isNewMbscheduler()) 
+  if(xclemulation::config::getInstance()->isNewMbscheduler())
   {
       if(!m_scheduler || !bo)
       {
@@ -3086,9 +3088,9 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
   drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
   ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
   return ret ? -errno : ret;*/
-  
+
   int ret=-1;
-  if(xclemulation::config::getInstance()->isNewMbscheduler()) 
+  if(xclemulation::config::getInstance()->isNewMbscheduler())
   {
       if(!m_scheduler || !bo)
       {
@@ -3097,7 +3099,7 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigne
       }
       ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
-  } else { 
+  } else {
     ret = mMBSch->add_exec_buffer(mCore, bo);
     PRINTENDFUNC;
   }
@@ -3184,7 +3186,7 @@ int HwEmShim::xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t num
     uint32_t numWords = numSamples * wordsPerSample;
 
 //    alignas is defined in c++11
-#if GCC_VERSION >= 40800
+#ifndef _WINDOWS
     /* Alignment is limited to 16 by PPC64LE : so , should it be
     alignas(16) uint32_t hostbuf[traceBufSzInWords];
     */
@@ -3602,7 +3604,7 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
   }
 
 //Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
- int HwEmShim::getCuIdxBaseAddrMap() 
+ int HwEmShim::getCuIdxBaseAddrMap()
  {
    std::string errmsg;
    if (!mCoreDevice){
@@ -3610,7 +3612,7 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
      std::cerr << errmsg << std::endl;
      return -EINVAL;
    }
-   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);    
+   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
    if (!buffer.first){
      errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - can't load ip_layout section";
      std::cerr << errmsg << std::endl;
@@ -3624,7 +3626,7 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
    }
    mCuIndxVsBaseAddrMap.clear();
    //Fill map with CU Index and Base address of the kernel in IP_LAYOUT section in XCLBIN
-   for (int i = 0; i < map->m_count; i++) {      
+   for (int i = 0; i < map->m_count; i++) {
      mCuIndxVsBaseAddrMap[i] = map->m_ip_data[i].m_base_address;
    }
    return 0;

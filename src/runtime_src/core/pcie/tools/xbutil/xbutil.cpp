@@ -1162,14 +1162,14 @@ int xcldev::device::runTestCase(const std::string& py,
     std::string xclbinPath;
     searchXsaAndDsa(m_idx, xsaXclbinPath, dsaXclbinPath, xclbinPath, output);
     std::string cmd;
-    
+
     // if platform.json exists in the new shell pakcage then use the new testcase
     // else fallback to old python test cases
-    
+
     // NEW FLOW: runs if platform.json is available
     auto json_exists = [xclbinPath]() { return boost::filesystem::exists(xclbinPath + "platform.json") ? true : false; };
-    
-    if(json_exists()) {    
+
+    if(json_exists()) {
         //map old testcase names to new testcase names
         static const std::map<std::string, std::string> test_map = {
             { "22_verify.py",             "validate.exe"    },
@@ -1178,7 +1178,7 @@ int xcldev::device::runTestCase(const std::string& py,
             { "xrt_iops_test.exe",        "xrt_iops_test.exe" },
             { "xcl_iops_test.exe",        "xcl_iops_test.exe" }
         };
-        
+
         if (test_map.find(py) == test_map.end())
             return -EOPNOTSUPP;
 
@@ -1199,17 +1199,17 @@ int xcldev::device::runTestCase(const std::string& py,
     else if (py.find(".exe") == std::string::npos) { //OLD FLOW:
         // Use suffix ".exe" to identify special test case is not ideal. Let's do it for now.
         // We could refine this once need.
-        xrtTestCasePath += py;    
+        xrtTestCasePath += py;
         xclbinPath += xclbin;
 
         if (stat(xrtTestCasePath.c_str(), &st) != 0 || stat(xclbinPath.c_str(), &st) != 0) {
-            // 0RP (nonDFX) flat shell support.  
-            // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.  
+            // 0RP (nonDFX) flat shell support.
+            // Currently, there isn't a clean way to determine if a nonDFX shell's interface is truly flat.
             // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
             std::string logic_uuid, errmsg;
             pcidev::get_dev(m_idx)->sysfs_get( "", "logic_uuids", errmsg, logic_uuid);
 
-            // Only skip the test if it nonDFX platform and the accelerator doesn't exist. 
+            // Only skip the test if it nonDFX platform and the accelerator doesn't exist.
             // All other conditions should generate an error.
             if (!logic_uuid.empty() && xclbin.compare("verify.xclbin") == 0) {
                 output += "Verify xclbin not available or shell partition is not programmed. Skipping validation.";
@@ -2344,8 +2344,10 @@ xcldev::device::iopsTest()
         std::cout << "IOPS print result unexpected" << std::endl;
         ret = -EINVAL;
     }
-    std::cout << "\rMaximum " << output.substr(sp, ep - sp) << std::endl;
-    return 0;
+    else {
+        std::cout << "\rMaximum " << output.substr(sp, ep - sp) << std::endl;
+    }
+    return ret;
 }
 
 int

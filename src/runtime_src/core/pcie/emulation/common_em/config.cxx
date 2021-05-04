@@ -262,11 +262,11 @@ namespace xclemulation{
         else if (boost::iequals(value,"off" ))
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
-        }
-        else if (boost::iequals(value,"gdb" ))
+        } 
+        /*else if (boost::iequals(value,"gdb")) 
         {
           setLaunchWaveform(DEBUG_MODE::GDB);
-        }
+        }*/
         else
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
@@ -331,10 +331,10 @@ namespace xclemulation{
       {
         setLaunchWaveform(DEBUG_MODE::OFF);
       }
-      else if (boost::iequals(simulationMode,"gdb" ))
+      /*else if (boost::iequals(simulationMode,"gdb" ))
       {
         setLaunchWaveform(DEBUG_MODE::GDB);
-      }
+      }*/
     }
   }
 

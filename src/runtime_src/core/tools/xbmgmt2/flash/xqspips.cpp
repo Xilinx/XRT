@@ -405,7 +405,7 @@ void XQSPIPS_Flasher::program(std::istream& binStream, unsigned base)
 #endif
 
     int beatCount = 0;
-    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar program_flash("Programming flash", static_cast<unsigned int>(pages), XBU::is_escape_codes_disabled(), std::cout);
     for (unsigned int page = 0; page <= pages; page++) {
         program_flash.update(beatCount++);
 
@@ -439,7 +439,7 @@ int XQSPIPS_Flasher::verify(std::istream& binStream, unsigned base)
     int mismatched = 0;
     bool verified = true;
     int beatCount = 0;
-    XBU::ProgressBar verify_flash("Verifying flash", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar verify_flash("Verifying flash", static_cast<unsigned int>(pages), XBU::is_escape_codes_disabled(), std::cout);
     for (unsigned int page = 0; page <= pages; page++) {
         verify_flash.update(beatCount++);
 
@@ -499,7 +499,7 @@ void XQSPIPS_Flasher::readBack(const std::string& output, unsigned int base)
     const unsigned int pages = total_size / PAGE_SIZE;
 
     int beatCount = 0;
-    XBU::ProgressBar read_flash("Reading flash back", static_cast<unsigned int>(pages), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar read_flash("Reading flash back", static_cast<unsigned int>(pages), XBU::is_escape_codes_disabled(), std::cout);
     for (unsigned int page = 0; page <= pages; page++) {
         read_flash.update(beatCount++);
 
@@ -1114,7 +1114,7 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
     int beatCount = 0;
     //roundup byteCount to next SECTOR boundary
     byteCount = (byteCount + SECTOR_SIZE - 1) & (~SECTOR_SIZE);
-    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(byteCount / SECTOR_SIZE), XBU::is_esc_enabled(), std::cout);
+    XBU::ProgressBar erase_flash("Erasing flash", static_cast<unsigned int>(byteCount / SECTOR_SIZE), XBU::is_escape_codes_disabled(), std::cout);
     for (Sector = 0; Sector < (byteCount / SECTOR_SIZE); Sector++) {
 
         if(!isFlashReady())

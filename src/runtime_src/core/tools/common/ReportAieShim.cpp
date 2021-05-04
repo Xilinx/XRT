@@ -285,20 +285,27 @@ ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice,
 }
 
 void 
-ReportAieShim::writeReport(const xrt_core::device * _pDevice,
-                       const std::vector<std::string> & /*_elementsFilter*/, 
-                       std::iostream & _output) const
+ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
+                            const boost::property_tree::ptree& _pt, 
+                            const std::vector<std::string>& /*_elementsFilter*/,
+                            std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
 
-  _output << "Aie\n";
-  _output << boost::format("  %-10s\n") % _pt.get<std::string>("aie_shim_status.description");
+  _output << "AIE\n";
 
   try {
     int count = 0;
-    for (auto& tile: _pt.get_child("aie_shim_status.tiles")) {
+    const boost::property_tree::ptree ptShimTiles = _pt.get_child("aie_shim_status.tiles", empty_ptree);
+
+    if (ptShimTiles.empty()) {
+      _output << "  <AIE information unavailable>" << std::endl << std::endl;
+      return;
+    }
+
+    _output << "  Shim Status" << std::endl;
+
+    for (auto &tile : ptShimTiles) {
       _output << boost::format("Tile[%2d]\n") % count++;
       _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");

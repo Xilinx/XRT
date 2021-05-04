@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -83,7 +83,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices = {"all"};
   std::vector<std::string> reportNames = {"platform"};
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "text";
+  std::string sFormat = "json";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -136,7 +136,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
-    if (!sOutput.empty() && boost::filesystem::exists(sOutput)) 
+    if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 
         throw xrt_core::error((boost::format("Output file already exists: '%s'") % sOutput).str());
 
     // Collect all of the devices of interest
@@ -171,18 +171,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // -- Create the reports ------------------------------------------------
-  if (sOutput.empty()) {
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout);
-  }
-  else {
+  // Create the report
+  std::ostringstream oSchemaOutput;
+  XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+
+  // -- Write output file ----------------------------------------------
+  if (!sOutput.empty()) {
     std::ofstream fOutput;
     fOutput.open(sOutput, std::ios::out | std::ios::binary);
     if (!fOutput.is_open()) 
       throw xrt_core::error((boost::format("Unable to open the file '%s' for writing.") % sOutput).str());
 
-    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, fOutput);
+    fOutput << oSchemaOutput.str();
 
-    fOutput.close();
+    std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
 }
