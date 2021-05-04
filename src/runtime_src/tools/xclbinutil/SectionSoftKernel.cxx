@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -230,7 +230,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     XUtil::TRACE(XUtil::format("  mpo_symbol_name (0x%lx): '%s'", softKernelHdr.mpo_symbol_name, sValue.c_str()).c_str());
 
     // DRC Check checking to see if the maximum symbol name length has been violated
-    static const unsigned int MAX_SYMBOL_NAME_LENGTH = 19;
+    constexpr unsigned int MAX_SYMBOL_NAME_LENGTH = 19;
     if (sValue.length() > MAX_SYMBOL_NAME_LENGTH) {
       const std::string errMsg = (boost::format("ERROR: The given symbol name '%s' (length %d) exceeds the maximum support length of %d characters.") 
                                             % sValue % sValue.length() % MAX_SYMBOL_NAME_LENGTH).str();
@@ -244,6 +244,14 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     uint32_t value = ptSK.get<uint32_t>("m_num_instances", defaultValue);
     softKernelHdr.m_num_instances = value;
     XUtil::TRACE(XUtil::format("  m_num_instances: %d", softKernelHdr.m_num_instances).c_str());
+
+    // DRC Check checking the maximum number of instances
+    constexpr unsigned int MAX_NUM_INSTANCES = 128;
+    if (value > MAX_NUM_INSTANCES) {
+      const std::string errMsg = (boost::format("ERROR: The number of instances (%d) exceeds the maximum supported value (%d).") 
+                                                 % value % MAX_NUM_INSTANCES).str();
+      throw std::runtime_error(errMsg);
+    }
   }
 
   // Last item to be initialized
