@@ -70,7 +70,6 @@ namespace xdp {
     std::set<std::string> mMemoryMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
     std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
-    std::shared_ptr<xaiefal::XAieDev> AieRscDevice;
   };
 
 } // end namespace xdp

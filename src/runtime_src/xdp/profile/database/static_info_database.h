@@ -30,6 +30,10 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 
+#ifdef XRT_ENABLE_AIE
+#include "xaiefal/xaiefal.hpp"
+#include "core/edge/user/shim.h"
+#endif
 
 namespace xdp {
 
@@ -595,6 +599,12 @@ class aie_cfg_tile
     // Static info can be accessed via any host thread
     std::mutex dbLock ;
 
+    // AIE device (Supported devices only)
+#ifdef XRT_ENABLE_AIE
+    XAie_DevInst *aieDevInst;
+    std::shared_ptr<xaiefal::XAieDev> aieDevice;
+#endif
+
     bool resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device);
 
     // Helper functions that fill in device information
@@ -1126,6 +1136,11 @@ class aie_cfg_tile
 
       return deviceInfo[deviceId]->gmioList.size();
     }
+
+#ifdef XRT_ENABLE_AIE
+    XDP_EXPORT XAie_DevInst * getAieDevInst(void* devHandle) ;
+    XDP_EXPORT std::shared_ptr<xaiefal::XAieDev> getAieDevice(void* devHandle) ;
+#endif
 
     // Reseting device information whenever a new xclbin is added
     XDP_EXPORT void updateDevice(uint64_t deviceId, void* devHandle) ;

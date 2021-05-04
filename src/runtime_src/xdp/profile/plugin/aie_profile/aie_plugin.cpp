@@ -103,17 +103,15 @@ namespace xdp {
 
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
+    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
+    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+          "Unable to get AIE device. There will be no AIE profiling.");
+      return false;
+    }
+
     bool runtimeCounters = false;
-
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv)
-      return runtimeCounters;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return runtimeCounters;
-
-    auto Aie = aieArray->getDevInst();
-    AieRscDevice = std::make_shared<xaiefal::XAieDev>(Aie, false);
 	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Get AIE clock frequency
@@ -230,8 +228,8 @@ namespace xdp {
         auto col = tile.col;
         auto row = tile.row;
         // NOTE: resource manager requires absolute row number
-        auto& core   = AieRscDevice->tile(col, row + 1).core();
-        auto& memory = AieRscDevice->tile(col, row + 1).mem();
+        auto& core   = aieDevice->tile(col, row + 1).core();
+        auto& memory = aieDevice->tile(col, row + 1).mem();
 
         for (int i=0; i < startEvents.size(); ++i) {
           // Request counter from resource manager
@@ -263,8 +261,8 @@ namespace xdp {
           auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyStartEvent = 0;
           uint8_t phyEndEvent = 0;
-          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, startEvents.at(i), &phyStartEvent);
-          XAie_EventLogicalToPhysicalConv(Aie, loc, mod, endEvents.at(i), &phyEndEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &phyEndEvent);
           if (!isCore) {
             phyStartEvent += BASE_MEMORY_COUNTER;
             phyEndEvent += BASE_MEMORY_COUNTER;
@@ -306,9 +304,6 @@ namespace xdp {
   
   void AIEProfilingPlugin::pollAIECounters(uint32_t index, void* handle)
   {
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv)
-      return;
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
       return;
@@ -318,8 +313,8 @@ namespace xdp {
       // Wait until xclbin has been loaded and device has been updated in database
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
-      auto aieArray = drv->getAieArray();
-      if (!aieArray)
+      auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
+      if (!aieDevInst)
         continue;
 
       uint32_t prevColumn = 0;
@@ -344,9 +339,8 @@ namespace xdp {
         uint32_t counterValue;
         if (mPerfCounters.empty()) {
           // Compiler-defined counters
-          // TODO: How do we safely read these?
           XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
-          XAie_PerfCounterGet(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
+          XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
         }
         else {
           // Runtime-defined counters
@@ -360,7 +354,7 @@ namespace xdp {
           prevColumn = aie->column;
           prevRow = aie->row;
           XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
-          XAie_ReadTimer(aieArray->getDevInst(), tileLocation, XAIE_CORE_MOD, &timerValue);
+          XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
         }
         values.push_back(timerValue);
 
