@@ -291,7 +291,6 @@ class xclbin_impl
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
-    std::string m_xsa_name;
 
     // kernel_cu_to_ip() - convert ::ip_data entry to xclbin::ip object
     //
@@ -398,7 +397,6 @@ class xclbin_impl
     // xclbin_info() - constructor for xclbin meta data
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
-      , m_xsa_name("todo")
     {
       init_mems();     // must be first
       init_ips();      // must be before kernels
@@ -442,6 +440,13 @@ public:
   virtual
   uuid
   get_uuid() const
+  {
+    throw std::runtime_error("not implemented");
+  }
+
+  virtual
+  std::string
+  get_xsa_name() const
   {
     throw std::runtime_error("not implemented");
   }
@@ -499,12 +504,6 @@ public:
   get_mems() const
   {
     return get_xclbin_info()->m_mems;
-  }
-
-  std::string
-  get_xsa_name() const
-  {
-    return get_xclbin_info()->m_xsa_name;
   }
 };
 
@@ -582,6 +581,13 @@ public:
   get_uuid() const
   {
     return m_uuid;
+  }
+
+  virtual
+  std::string
+  get_xsa_name() const
+  {
+    return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
   }
 
   virtual
