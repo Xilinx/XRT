@@ -121,8 +121,10 @@ xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
 /**
  * DOC: XRT Stream Queue APIs
  *
- * NOTE: ALL STREAMING APIs ARE DEPRECATED!!!!
- * THESE WILL BE REMOVED IN A FUTURE RELEASE
+ * NOTE: ALL STREAMING APIs ARE DEPRECATED!!!! THESE WILL BE REMOVED IN
+ * A FUTURE RELEASE. PLEASE PORT YOUR APPLICATION TO USE SLAVE BRIDGE
+ * (ALSO KNOWN AS HOST MEMORY) FOR EQUIVALENT FUNCTIONALITY.
+ *
  * These functions are used for next generation DMA Engine, QDMA. QDMA
  * provides not only memory mapped DMA which moves data between host
  * memory and board memory, but also stream DMA which moves data
@@ -430,6 +432,8 @@ XCL_DRIVER_DLLESPEC
 int
 xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
                   struct xclReqCompletion *comps, int* actual_compl, int timeout);
+
+/* End XRT Stream Queue APIs */
 
 #ifdef __cplusplus
 }
