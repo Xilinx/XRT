@@ -62,6 +62,24 @@ def main():
 
 
   # ---------------------------------------------------------------------------
+  
+  step = "3) Read in a soft kernel and its metadata where the instances are greater then 128"
+  
+  inputJSON = os.path.join(args.resource_dir, "softkernel_129instances.rtd")
+  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  softKernelName = "my_kernel"
+  
+  cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
+  
+  try:
+    print("Note: Testing for an excessive instances (expecting an error)")
+    execCmd(step, cmd)
+  except:
+    print("Test passed - Exception raised")
+  else:
+    raise Exception("Error: Large instance count accepted.  DRC check did not trip.")
+
+  # ---------------------------------------------------------------------------
 
   # If the code gets this far, all is good.
   return False
