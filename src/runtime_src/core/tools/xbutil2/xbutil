@@ -5,23 +5,22 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
-# xbutil loader which automatically switches between classic and next
-# generation xbutil utility. The current default is classic xbutil tool.
+# xbutil loader which automatically switches between legacy and next-gen
+# xbutil utility. Starting with 2021.1 the default is next-gen xbutil tool.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
-  trap "" INT
-  "$0.bat" "$@"
-  exit $?
+    trap "" INT
+    "$0.bat" "$@"
+    exit $?
 fi
 
-DEFAULT=xbutil
+# Working variables
+DEFAULT=xbutil2
 XBUTIL=xbutil
 XBUTIL2=xbutil2
-
-# Working variables
-XRT_PROG=xbutil
+XRT_PROG=""
 
 # Table to resolve validate sub-command based on switch passed to validate
 declare -A VALOPT=( \
@@ -31,6 +30,7 @@ declare -A VALOPT=( \
         ["--output"]="XBUTIL2" \
         ["--help"]="XBUTIL2" \
         ["-d"]="DEVICE" \
+        ["-q"]="XBUTIL" \
         ["-f"]="XBUTIL2" \
         ["-r"]="XBUTIL2" \
         ["-o"]="XBUTIL2" \
@@ -60,7 +60,7 @@ declare -A PROGOPT=( \
 
 # In the following table "reset", "program" and "validate" point to a second
 # table by name. Note that reset, program and validate are valid both for
-# classic and next generation tool and hence requires a second lookup to resolve
+# legacy and next-gen tool and hence require a second lookup to resolve
 # between xbutil and xbutil2
 declare -A COMMANDS=( \
         ["help"]="XBUTIL" \
@@ -92,9 +92,7 @@ declare -A COMMANDS=( \
         ["--help"]="XBUTIL2" \
         ["--verbose"]="XBUTIL2" \
         ["--batch"]="XBUTIL2" \
-        ["-h"]="XBUTIL2" \
-        ["-v"]="XBUTIL2" \
-        ["-b"]="XBUTIL2" \
+        ["--force"]="XBUTIL2" \
     )
 
 INTRE='^[0-9]+$'
@@ -119,13 +117,6 @@ function parse_device_arg() {
     esac
     PROG=${RESULT}
 }
-# Determine which version of xbutil should be used
-# Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
-    XRT_PROG=xbutil
-elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbutil2
-fi
 
 # -- Examine the options
 XRTWARP_PROG_ARGS_size=0
@@ -137,6 +128,11 @@ while [ $# -gt 0 ]; do
 	    XRT_PROG=xbutil2
 	    shift
 	    ;;
+	# Indicates that the legacy version of xbutil should be used
+	-legacy|--legacy)
+	    XRT_PROG=xbutil
+	    shift
+	    ;;
 	# Copy the options the remaining options
 	*)
 	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
@@ -146,17 +142,25 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# If user did not specify -new/--new then attempt to determine if user
-# wants to use classic or new by peeking inside the command line
+# Determine which version of xbutil should be used
+# Check to see environment variable is set
+if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+     XRT_PROG=xbutil2
+fi
+
+# If user did not specify -legacy/--legacy then attempt to determine if
+# user wants to use legacy or next-gen by peeking inside the command line.
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
-if [ ${XRT_PROG} == "xbutil" ]; then
+if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
+    # Look up the utility usin the first command line argument
     PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
     case ${PROG} in
 	XBUTIL | XBUTIL2)
+        # Non ambiguous command line argument, utility already resolved
 	;;
 	RSTOPT)
 	    # We have an ambiguous sub-command, use the next token/switch to
@@ -194,20 +198,25 @@ if [ ${XRT_PROG} == "xbutil" ]; then
     XRT_PROG=${!PROG}
 fi
 
-# Friendly message
-if [ ${XRT_PROG} == "xbutil2" ]; then
-  echo "-----------------------------------------------------"
-  echo " Invoking next generation of the xbutil application "
-  echo "-----------------------------------------------------"
+# Default to the new gen tool if we still could not disambuguate the choice
+if [[ -z ${XRT_PROG} ]]; then
+    XRT_PROG=${DEFAULT}
+fi
+
+# Friendly message if running in a terminal
+if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
+    echo "---------------------------------------------------------------------"
+    echo "Legacy xbutil is being deprecated, consider moving to next-gen xbutil"
+    echo "---------------------------------------------------------------------"
 fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
-  echo "ERROR: Could not find 64-bit loader executable."
-  echo "ERROR: ${XRT_LOADER} does not exist."
-  exit 1
+    echo "ERROR: Could not find 64-bit loader executable."
+    echo "ERROR: ${XRT_LOADER} does not exist."
+    exit 1
 fi
 
-"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+"${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"
