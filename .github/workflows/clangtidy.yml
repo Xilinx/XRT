@@ -25,11 +25,15 @@ jobs:
       run: |
         build/build.sh -clangtidy -opt |& tee build.clangtidy.log
         clang-tidy-html build.clangtidy.log
-    - name: Upload Coverity imed
+    - name: Upload clang raw log
       if: steps.cache-sha.outputs.cache-hit != 'true'
       uses: actions/upload-artifact@v1
       with:
-        name: clang-tidy logs
-        path: |
-          build.clangtidy.log
-          clang.html
+        name: clang-tidy-log
+        path: build.clangtidy.log
+    - name: Upload clang html
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      uses: actions/upload-artifact@v1
+      with:
+        name: clang-tidy-html
+        path: clang.html
