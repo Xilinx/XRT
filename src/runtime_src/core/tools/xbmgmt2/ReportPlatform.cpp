@@ -77,8 +77,10 @@ get_installed_partitions(std::string interface_uuid)
     if(installedDSA.hasFlashImage || installedDSA.uuids.empty())
       continue;
     pt_plp.put("vbnv", installedDSA.name);
+
     //the first UUID is always the logic UUID
-    pt_plp.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
+    std::string uuid = installedDSA.uuids.empty() ? "" : XBU::string_to_UUID(installedDSA.uuids[0]);
+    pt_plp.put("logic-uuid", uuid);
 
     // Find the UUID that it exposes for other partitions
     for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
@@ -178,8 +180,9 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_available_shell.put("vbnv", installedDSA.name);
     pt_available_shell.put("sc_version", installedDSA.bmcVer);
     pt_available_shell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
-    //the first UUID in the list is logic-uuid
-    pt_available_shell.put("logic-uuid", XBU::string_to_UUID(installedDSA.uuids[0]));
+        //the first UUID is always the logic UUID
+    std::string uuid = installedDSA.uuids.empty() ? "" : XBU::string_to_UUID(installedDSA.uuids[0]);
+    pt_available_shell.put("logic-uuid", uuid);
     pt_available_shell.put("file", installedDSA.file);
 
     boost::property_tree::ptree pt_status;
