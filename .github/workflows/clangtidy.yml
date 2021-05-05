@@ -1,0 +1,35 @@
+on: workflow_dispatch
+    
+jobs:
+  clangtidy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout XRT
+      uses: actions/checkout@v2
+    - name: Store sha
+      run: echo ${{ github.sha }} > sha
+    - name: Compare sha
+      uses: actions/cache@v2
+      id: cache-sha
+      with:
+        path: sha
+        key: commit-${{ github.sha }}
+    - name: Install dependencies
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        sudo apt update
+        sudo src/runtime_src/tools/scripts/xrtdeps.sh
+        sudo pip3 install clang-html
+    - name: Build with clangtidy
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      run: |
+        build/build.sh -clangtidy -opt |& tee build.clangtidy.log
+        clang-tidy-html build.clangtidy.log
+    - name: Upload Coverity imed
+      if: steps.cache-sha.outputs.cache-hit != 'true'
+      uses: actions/upload-artifact@v1
+      with:
+        name: clang-tidy logs
+        path: |
+          build.clangtidy.log
+          clang.html
