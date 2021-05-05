@@ -711,14 +711,13 @@ namespace xdp {
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
   {
-    auto drv = ZYNQ::shim::handleCheck(handle);
-    if (!drv)
+    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
+    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    if (!aieDevInst || !aieDevice) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+          "Unable to get AIE device. There will be no flushing of AIE event trace.");
       return;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return;
-    auto Aie = aieArray->getDevInst();
-    auto aieDevice = std::make_shared<xaiefal::XAieDev>(Aie, false);
+    }
 
     // New start & end events for trace control and counters
     coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
@@ -753,9 +752,9 @@ namespace xdp {
         coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
 
         XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
-        XAie_SetTimerTrigEventVal(Aie, tileLocation, XAIE_CORE_MOD,
+        XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
                                   timerTrigValueLow, timerTrigValueHigh);
-        XAie_ResetTimer(Aie, tileLocation, XAIE_CORE_MOD);
+        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
 
       // 2. For every counter, change start/stop events
