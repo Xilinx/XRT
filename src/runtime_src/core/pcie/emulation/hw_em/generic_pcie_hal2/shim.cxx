@@ -753,6 +753,13 @@ namespace xclhwemhal2 {
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
       xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+
+      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
+        std::string dMsg = "ERROR: [HW-EMU 21] DEBUG_MODE option GDB is no more valid. Valid options for DEBUG_MODE are 'gui', 'batch' and 'off'. Please make sure you build the application with 'wdb' mode";
+        logMessage(dMsg, 0);
+        return -1;
+      }
+
       std::string userSpecifiedSimPath = xclemulation::config::getInstance()->getSimDir();
       if (userSpecifiedSimPath.empty())
       {
@@ -1062,6 +1069,11 @@ namespace xclhwemhal2 {
         exit(0);
       }
 #endif
+    }
+    else {
+      std::string dMsg = "ERROR: [HW-EMU 22] Invalid " + sim_path + " constructed. Please make sure to create the xclbin with hw_emu.debugMode=wdb.";
+      logMessage(dMsg, 0);
+      return -1;
     }
 
     if (mLogStream.is_open())

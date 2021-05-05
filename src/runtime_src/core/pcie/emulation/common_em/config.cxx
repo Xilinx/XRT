@@ -263,10 +263,11 @@ namespace xclemulation{
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
         } 
-        /*else if (boost::iequals(value,"gdb")) 
+        else if (boost::iequals(value,"gdb")) 
         {
           setLaunchWaveform(DEBUG_MODE::GDB);
-        }*/
+          std::cout << "WARNING: [HW-EMU 08] Invalid option '" << value << "` specified in xrt.ini/sdaccel.ini for debug_mode." << std::endl;
+        }
         else
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
@@ -331,10 +332,11 @@ namespace xclemulation{
       {
         setLaunchWaveform(DEBUG_MODE::OFF);
       }
-      /*else if (boost::iequals(simulationMode,"gdb" ))
+      else if (boost::iequals(simulationMode,"gdb" ))
       {
         setLaunchWaveform(DEBUG_MODE::GDB);
-      }*/
+        std::cout<<"WARNING: [HW-EMU 08] Invalid option '"<<simulationMode<<"` specified in xrt.ini/sdaccel.ini"<<std::endl;
+      }
     }
   }
 

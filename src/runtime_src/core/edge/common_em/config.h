@@ -140,7 +140,8 @@ namespace xclemulation{
   enum DEBUG_MODE {
     OFF,
     BATCH,
-    GUI
+    GUI,
+    GDB
   };
   
   enum ERTMODE {

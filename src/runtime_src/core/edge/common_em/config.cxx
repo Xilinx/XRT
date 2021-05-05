@@ -243,10 +243,11 @@ namespace xclemulation{
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
         }
-        /*else if (boost::iequals(value,"gdb" ))
+        else if (boost::iequals(value,"gdb" ))
         {
           setLaunchWaveform(DEBUG_MODE::GDB);
-        }*/
+          std::cout << "WARNING: [HW-EMU 08] Invalid option '" << value << "` specified in xrt.ini/sdaccel.ini for debug_mode." << std::endl;
+        }
         else
         {
           setLaunchWaveform(DEBUG_MODE::OFF);
@@ -291,7 +292,7 @@ namespace xclemulation{
       }
       else if(name.find("Debug.") == std::string::npos)
       {
-        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in xrt.ini"<<std::endl;
+        std::cout<<"WARNING: [HW-EM 08] Invalid option '"<<name<<"` specified in xrt.ini/sdaccel.ini"<<std::endl;
       }
     }
     //this code has to be removed once gui generates ini file by adding launch_waveform property
@@ -311,13 +312,13 @@ namespace xclemulation{
       {
         setLaunchWaveform(DEBUG_MODE::OFF);
       }
-      /*else if (boost::iequals(simulationMode,"gdb" ))
+      else if (boost::iequals(simulationMode,"gdb" ))
       {
         setLaunchWaveform(DEBUG_MODE::GDB);
-      }*/
+        std::cout << "WARNING: [HW-EMU 08] Invalid option '" << value << "` specified in xrt.ini/sdaccel.ini for debug_mode." << std::endl;
+      }
     }
   }
-
 
   static std::string getSelfPath()
   {
