@@ -315,7 +315,7 @@ namespace xclemulation{
       else if (boost::iequals(simulationMode,"gdb" ))
       {
         setLaunchWaveform(DEBUG_MODE::GDB);
-        std::cout << "WARNING: [HW-EMU 08] Invalid option '" << value << "` specified in xrt.ini/sdaccel.ini for debug_mode." << std::endl;
+        std::cout << "WARNING: [HW-EMU 08] Invalid option '" << simulationMode << "` specified in xrt.ini/sdaccel.ini for debug_mode." << std::endl;
       }
     }
   }
