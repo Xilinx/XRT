@@ -18,6 +18,7 @@
 #define AIE_TRACE_PLUGIN_H
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
 extern "C" {
@@ -52,8 +53,10 @@ namespace xdp {
       virtual void writeAll(bool openNewFiles);
 
     private:
-      void setMetrics(uint64_t deviceId, void* handle);
       inline uint32_t bcIdToEvent(int bcId);
+      void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
+      bool setMetrics(uint64_t deviceId, void* handle);
+      void setFlushMetrics(uint64_t deviceId, void* handle);
 
     private:
       // Trace Runtime Status
@@ -73,10 +76,16 @@ namespace xdp {
       typedef std::vector<EventType> EventVector;
       typedef std::vector<uint32_t>  ValueVector;
 
-      // Trace metrics      
+      // Trace metrics
+      std::string metricSet;    
       std::set<std::string> metricSets;
       std::map<std::string, EventVector> coreEventSets;
       std::map<std::string, EventVector> memoryEventSets;
+
+      // AIE profile counters
+      std::vector<xrt_core::edge::aie::tile_type> coreCounterTiles;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> coreCounters;
+      std::vector<std::shared_ptr<xaiefal::XAiePerfCounter>> memoryCounters;
 
       // Counter metrics (same for all sets)
       EventType   coreTraceStartEvent;

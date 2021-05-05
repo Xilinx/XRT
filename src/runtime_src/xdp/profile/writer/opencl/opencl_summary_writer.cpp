@@ -121,6 +121,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,native_xrt_trace,"
+	      << xrt_core::config::get_native_xrt_trace() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,xrt_profile,"
 	      << xrt_core::config::get_xrt_profile() ;
       iniSettings.push_back(setting.str()) ;
@@ -181,6 +187,12 @@ namespace xdp {
     }
     {
       std::stringstream setting ;
+      setting << "XRT_INI_SETTING,trace_file_dump_interval_s,"
+	      << xrt_core::config::get_trace_file_dump_interval_s() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
       setting << "XRT_INI_SETTING,lop_trace,"
 	      << xrt_core::config::get_lop_trace() ;
       iniSettings.push_back(setting.str()) ;
@@ -237,6 +249,12 @@ namespace xdp {
       std::stringstream setting ;
       setting << "XRT_INI_SETTING,vitis_ai_profile,"
 	      << xrt_core::config::get_vitis_ai_profile() ;
+      iniSettings.push_back(setting.str()) ;
+    }
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING,sc_profile,"
+	      << xrt_core::config::get_sc_profile() ;
       iniSettings.push_back(setting.str()) ;
     }
   }

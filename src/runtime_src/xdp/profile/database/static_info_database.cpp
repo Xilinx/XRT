@@ -136,6 +136,11 @@ namespace xdp {
     pid = static_cast<int>(getpid()) ;
 #endif
     applicationStartTime = 0 ;
+
+#ifdef XRT_ENABLE_AIE
+    aieDevInst = nullptr;
+    aieDevice = nullptr;
+#endif
   }
 
   VPStaticDatabase::~VPStaticDatabase()
@@ -498,7 +503,7 @@ namespace xdp {
       ComputeUnitInstance* cuObj = nullptr;
 
       std::stringstream msg;
-      msg << "Initializing profile monitor " << i << ": type = " << debugIpData->m_type << ", name = " << name << ", index = " << index;
+      msg << "Initializing profile monitor " << i << ": name = " << name << ", index = " << index;
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
 
       // find CU
@@ -652,6 +657,35 @@ namespace xdp {
 
     return true; 
   }
+
+#ifdef XRT_ENABLE_AIE
+  XAie_DevInst * 
+  VPStaticDatabase::getAieDevInst(void* devHandle) {
+    if (aieDevInst)
+      return aieDevInst;
+
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr;
+    auto aieArray = drv->getAieArray();
+    if (!aieArray)
+      return nullptr;
+    aieDevInst = aieArray->getDevInst();
+    return aieDevInst;
+  }
+
+  std::shared_ptr<xaiefal::XAieDev> 
+  VPStaticDatabase::getAieDevice(void* devHandle) {
+    if (aieDevice)
+      return aieDevice;
+
+    getAieDevInst(devHandle);
+    if (!aieDevInst)
+      return nullptr;
+    aieDevice = std::make_shared<xaiefal::XAieDev>(aieDevInst, false);
+    return aieDevice;
+  }
+#endif
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
