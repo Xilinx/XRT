@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -124,7 +124,13 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
+constexpr size_t max_cus = 128;
+constexpr size_t cus_per_word = 32;
+
+// NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
+
 
 XRT_CORE_UNUSED // debug enabled function
 std::string
@@ -136,13 +142,15 @@ debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
 
   std::ofstream ostr(fnm,std::ios::app);
   //std::ostringstream ostr;
+  constexpr auto indent3 = 3; // stupid lint warnings
+  constexpr auto indent8 = 8; // stupid lint warnings
   ostr << msg << "\n";
   ostr << std::uppercase << std::setfill('0') << std::setw(3);
   ostr << "pkt->header    = 0x"
-       << std::setw(8) << std::hex << pkt->header << std::dec << "\n";
+       << std::setw(indent8) << std::hex << pkt->header << std::dec << "\n";
   for (size_t i = 0; i < pkt->count; ++i)
-    ostr << "pkt->data[" << std::setw(3) << i << "] = 0x"
-         << std::setw(8) << std::hex << pkt->data[i] << std::dec << "\n";
+    ostr << "pkt->data[" << std::setw(indent3) << i << "] = 0x"
+         << std::setw(indent8) << std::hex << pkt->data[i] << std::dec << "\n";
   return fnm;
 }
 
@@ -258,6 +266,8 @@ struct device_type
   xrt_core::bo_cache exec_buffer_cache;
   uint32_t uid; // internal unique id for debug
 
+  static constexpr unsigned int cache_size = 128;
+
   static uint32_t
   create_uid()
   {
@@ -265,27 +275,35 @@ struct device_type
     return count++;
   }
 
+  explicit
   device_type(xrtDeviceHandle dhdl)
     : core_device(xrt_core::device_int::get_core_device(dhdl))
-    , exec_buffer_cache(core_device->get_device_handle(), 128)
+    , exec_buffer_cache(core_device->get_device_handle(), cache_size)
     , uid(create_uid())
   {
     XRT_DEBUGF("device_type::device_type(%d)\n", uid);
   }
 
-  device_type(const std::shared_ptr<xrt_core::device>& cdev)
-    : core_device(cdev)
-    , exec_buffer_cache(core_device->get_device_handle(), 128)
+  explicit
+  device_type(std::shared_ptr<xrt_core::device> cdev)
+    : core_device(std::move(cdev))
+    , exec_buffer_cache(core_device->get_device_handle(), cache_size)
     , uid(create_uid())
   {
     XRT_DEBUGF("device_type::device_type(%d)\n", uid);
   }
 
+  // NOLINTNEXTLINE(modernize-use-equals-default)
   ~device_type()
   {
     XRT_DEBUGF("device_type::~device_type(%d)\n", uid);
   }
 
+  device_type(const device_type&) = delete;
+  device_type(device_type&&) = delete;
+  device_type& operator=(device_type&) = delete;
+  device_type& operator=(device_type&&) = delete;
+  
   template <typename CommandType>
   xrt_core::bo_cache::cmd_bo<CommandType>
   create_exec_buf()
@@ -314,11 +332,11 @@ template <size_t size>
 class encoded_bitset
 {
 public:
-  encoded_bitset()
-  {}
+  encoded_bitset() = default;
 
   // Encoding is represented using a vector  that maps
   // the original index to the encoded (compressed) index.
+  explicit
   encoded_bitset(const std::vector<size_t>* enc)
     : m_encoding(enc)
   {}
@@ -374,13 +392,12 @@ class ip_context
       if (connections.size() >= size)
         return;
 
-      connections.resize(size, {encoding});
+      connections.resize(size, encoded_bitset<max_connections>{encoding});
       default_connection.resize(size, no_memidx);
     }
 
   public:
-    connectivity()
-    {}
+    connectivity() = default;
 
     // @device: core device
     // @conn: connectivity section of xclbin
@@ -433,7 +450,7 @@ class ip_context
 
 public:
   using access_mode = xrt::kernel::cu_access_mode;
-  constexpr static unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
+  static constexpr unsigned int virtual_cu_idx = std::numeric_limits<unsigned int>::max();
 
   // open() - open a context in a specific IP/CU
   //
@@ -448,11 +465,12 @@ public:
        const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
-    static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, 128>> dev2ips;
+    static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, max_cus>> dev2ips;
     std::lock_guard<std::mutex> lk(mutex);
     auto& ips = dev2ips[device];
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
+      // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
       ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
@@ -479,6 +497,7 @@ public:
     auto& vip = dev2vip[device];
     auto ipctx = vip.lock();
     if (!ipctx)
+      // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
       vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
     return ipctx;
   }
@@ -543,21 +562,35 @@ public:
     device->close_context(xid.get(), cuidx);
   }
 
+  ip_context(const ip_context&) = delete;
+  ip_context(ip_context&&) = delete;
+  ip_context& operator=(ip_context&) = delete;
+  ip_context& operator=(ip_context&&) = delete;
+
 private:
   // regular CU
   ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
              const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
-    : device(dev), xid(xclbin_id)
-    , args(dev, xclbin_id, ipindex), cuidx(cuindex)
-    , address(ip->m_base_address), size(64_kb), access(am)
+    : device(dev)
+    , xid(xclbin_id)
+    , args(dev, xclbin_id, ipindex)
+    , cuidx(cuindex)
+    , address(ip->m_base_address)
+    , size(64_kb)  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    , access(am)
   {
     if (access != access_mode::none)
       device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
   }
 
   // virtual CU
-  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id)
-    : device(dev), xid(xclbin_id), cuidx(virtual_cu_idx), address(0), size(0), access(access_mode::shared)
+  ip_context(xrt_core::device* dev, xrt::uuid xclbin_id)
+    : device(dev)
+    , xid(std::move(xclbin_id))
+    , cuidx(virtual_cu_idx)
+    , address(0)
+    , size(0)
+    , access(access_mode::shared)
   {
     device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(access));
   }
@@ -585,8 +618,9 @@ public:
   using callback_list = std::vector<callback_function_type>;
 
 public:
-  kernel_command(const std::shared_ptr<device_type>& dev)
-    : m_device(dev)
+  explicit
+  kernel_command(std::shared_ptr<device_type> dev)
+    : m_device(std::move(dev))
     , m_execbuf(m_device->create_exec_buf<ert_start_kernel_cmd>())
     , m_done(true)
   {
@@ -595,24 +629,29 @@ public:
     XRT_DEBUGF("kernel_command::kernel_command(%d)\n", m_uid);
   }
 
-  ~kernel_command()
+  ~kernel_command() override
   {
     XRT_DEBUGF("kernel_command::~kernel_command(%d)\n", m_uid);
     // This is problematic, bo_cache should return managed BOs
     m_device->exec_buffer_cache.release(m_execbuf);
   }
 
+  kernel_command(const kernel_command&) = delete;
+  kernel_command(kernel_command&&) = delete;
+  kernel_command& operator=(kernel_command&) = delete;
+  kernel_command& operator=(kernel_command&&) = delete;
+
   void
-  encode_compute_units(const std::bitset<128>& cumask, size_t num_cumasks)
+  encode_compute_units(const std::bitset<max_cus>& cumask, size_t num_cumasks)
   {
     auto ecmd = get_ert_cmd<ert_packet*>();
     std::fill(ecmd->data, ecmd->data + num_cumasks, 0);
 
-    for (size_t cu_idx = 0; cu_idx < 128; ++cu_idx) {
+    for (size_t cu_idx = 0; cu_idx < max_cus; ++cu_idx) {
       if (!cumask.test(cu_idx))
         continue;
-      auto mask_idx = cu_idx / 32;
-      auto idx_in_mask = cu_idx - mask_idx * 32;
+      auto mask_idx = cu_idx / cus_per_word;              
+      auto idx_in_mask = cu_idx - mask_idx * cus_per_word;
       ecmd->data[mask_idx] |= (1 << idx_in_mask);
     }
   }
@@ -639,7 +678,7 @@ public:
   add_callback(callback_function_type&& fcn)
   {
     bool complete = false;
-    ert_cmd_state state;
+    ert_cmd_state state = ERT_CMD_STATE_MAX;
     {
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_managed && !m_done)
@@ -766,26 +805,26 @@ public:
   ////////////////////////////////////////////////////////////////
   // Implement xrt_core::command API
   ////////////////////////////////////////////////////////////////
-  virtual ert_packet*
-  get_ert_packet() const
+  ert_packet*
+  get_ert_packet() const override
   {
     return reinterpret_cast<ert_packet*>(m_execbuf.second);
   }
 
-  virtual xrt_core::device*
-  get_device() const
+  xrt_core::device*
+  get_device() const override
   {
     return m_device->get_core_device();
   }
 
-  virtual xclBufferHandle
-  get_exec_bo() const
+  xclBufferHandle
+  get_exec_bo() const override
   {
     return m_execbuf.first;
   }
 
-  virtual void
-  notify(ert_cmd_state s)
+  void
+  notify(ert_cmd_state s) override
   {
     bool complete = false;
     bool callbacks = false;
@@ -853,7 +892,15 @@ public:
 private:
   struct iarg
   {
-    virtual ~iarg() {}
+    iarg() = default;
+
+    virtual
+    ~iarg() = default;
+
+    iarg(const iarg&) = delete;
+    iarg(iarg&&) = delete;
+    iarg& operator=(iarg&) = delete;
+    iarg& operator=(iarg&&) = delete;
 
     // somewhat expensive copy conversion of argument
     virtual std::vector<uint32_t>
@@ -869,21 +916,22 @@ private:
   {
     size_t size;  // size in bytes of argument per xclbin
 
+    explicit
     scalar_type(size_t bytes)
       : size(bytes)
     {}
 
-    virtual std::vector<uint32_t>
-    get_value(std::va_list* args) const
+    std::vector<uint32_t>
+    get_value(std::va_list* args) const override
     {
-      HostType value = va_arg(*args, VaArgType);
+      HostType value = va_arg(*args, VaArgType); // NOLINT
       return value_to_uint32_vector(value);
     }
 
     void
-    set(setter* setter, const argument& arg, std::va_list* args) const
+    set(setter* setter, const argument& arg, std::va_list* args) const override
     {
-      HostType value = va_arg(*args, VaArgType);
+      HostType value = va_arg(*args, VaArgType); // NOLINT
       setter->set_arg_value(arg, arg_range<uint8_t>{&value, sizeof(value)});
     }
   };
@@ -893,21 +941,22 @@ private:
   {
     size_t size;  // size in bytes of argument per xclbin
 
+    explicit
     scalar_type(size_t bytes)
       : size(bytes)
     {}
 
-    virtual std::vector<uint32_t>
-    get_value(std::va_list* args) const
+    std::vector<uint32_t>
+    get_value(std::va_list* args) const override
     {
-      HostType* value = va_arg(*args, VaArgType*);
+      HostType* value = va_arg(*args, VaArgType*); // NOLINT
       return value_to_uint32_vector(value, size);
     }
 
     void
-    set(setter* setter, const argument& arg, std::va_list* args) const
+    set(setter* setter, const argument& arg, std::va_list* args) const override
     {
-      HostType* value = va_arg(*args, VaArgType*);
+      HostType* value = va_arg(*args, VaArgType*); // NOLINT
       setter->set_arg_value(arg, arg_range<uint8_t>{value, size});
     }
   };
@@ -916,27 +965,28 @@ private:
   {
     size_t size;   // size in bytes of argument per xclbin
 
+    explicit
     global_type(size_t bytes)
       : size(bytes)
     {}
 
-    virtual std::vector<uint32_t>
-    get_value(std::va_list* args) const
+    std::vector<uint32_t>
+    get_value(std::va_list* args) const override
     {
       if (!xrt_core::config::get_xrt_bo())
         throw std::runtime_error("xclBufferHandle not supported as kernel argument");
 
-      auto bo = va_arg(*args, xrtBufferHandle);
+      auto bo = va_arg(*args, xrtBufferHandle); // NOLINT
       return value_to_uint32_vector(xrt_core::bo::address(bo));
     }
 
     void
-    set(setter* setter, const argument& arg, std::va_list* args) const
+    set(setter* setter, const argument& arg, std::va_list* args) const override
     {
       if (!xrt_core::config::get_xrt_bo())
         throw std::runtime_error("xclBufferHandle not supported as kernel argument");
 
-      auto bo = va_arg(*args, xrtBufferHandle);
+      auto bo = va_arg(*args, xrtBufferHandle); // NOLINT
       auto addr = xrt_core::bo::address(bo);
       setter->set_arg_value(arg, arg_range<uint8_t>{&addr, sizeof(addr)});
     }
@@ -944,17 +994,17 @@ private:
 
   struct null_type : iarg
   {
-    virtual std::vector<uint32_t>
-    get_value(std::va_list* args) const
+    std::vector<uint32_t>
+    get_value(std::va_list* args) const override
     {
-      (void) va_arg(*args, void*); // swallow unsettable argument
+      (void) va_arg(*args, void*);    // NOLINT swallow unsettable argument
       return std::vector<uint32_t>(); // empty
     }
 
     void
-    set(setter*, const argument&, std::va_list* args) const
+    set(setter*, const argument&, std::va_list* args) const override
     {
-      (void) va_arg(*args, void*); // swallow unsettable argument
+      (void) va_arg(*args, void*); // NOLINT swallow unsettable argument
     }
   };
 
@@ -967,13 +1017,14 @@ public:
   static constexpr size_t no_index = xarg::no_index;
   using direction = xarg::direction;
 
-  argument()
-  {}
+  argument() = default;
+  ~argument() = default;
 
-  argument(argument&& rhs)
+  argument(argument&& rhs) noexcept
     : arg(std::move(rhs.arg)), content(std::move(rhs.content))
   {}
 
+  explicit
   argument(xarg&& karg)
     : arg(std::move(karg))
   {
@@ -995,9 +1046,9 @@ public:
         content = std::make_unique<scalar_type<unsigned int*,unsigned int*>>(arg.size);
       else if (arg.hosttype == "float*")
         throw std::runtime_error("float* kernel argument not supported");
-      else if (arg.size == 4)
+      else if (arg.size == sizeof(uint32_t))
         content = std::make_unique<scalar_type<uint32_t,uint32_t>>(arg.size);
-      else if (arg.size == 8)
+      else if (arg.size == sizeof(uint64_t))
         content = std::make_unique<scalar_type<uint64_t,uint64_t>>(arg.size);
       else
         // throw xrt_core::error(-EINVAL, "Unknown scalar argument type '" + arg.hosttype + "'");
@@ -1017,6 +1068,10 @@ public:
       throw std::runtime_error("Unexpected error");
     }
   }
+
+  argument(const argument&) = delete;
+  argument& operator=(argument&) = delete;
+  argument& operator=(argument&&) = delete;
 
   const xarg&
   get_xarg() const
@@ -1110,7 +1165,7 @@ class kernel_impl
   std::vector<argument> args;          // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;           // CU context locks
   ipctx vctx;                          // virtual CU context
-  std::bitset<128> cumask;             // cumask for command execution
+  std::bitset<max_cus> cumask;         // cumask for command execution
   size_t regmap_size = 0;              // CU register map size
   size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
   size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
@@ -1286,7 +1341,7 @@ public:
       auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
       ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, ipidx, cuidx, am));
       cumask.set(cuidx);
-      num_cumasks = std::max<size_t>(num_cumasks, (cuidx / 32) + 1);
+      num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
     }
 
     // set kernel protocol
@@ -1302,7 +1357,7 @@ public:
     // get kernel arguments from xml parser
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
-      regmap_size = std::max(regmap_size, (arg.offset + arg.size) / 4);
+      regmap_size = std::max(regmap_size, (arg.offset + arg.size) / sizeof(uint32_t));
       args.emplace_back(std::move(arg));
     }
 
@@ -1314,6 +1369,11 @@ public:
   {
     XRT_DEBUGF("kernel_impl::~kernel_impl(%d)\n" , uid);
   }
+
+  kernel_impl(const kernel_impl&) = delete;
+  kernel_impl(kernel_impl&&) = delete;
+  kernel_impl& operator=(kernel_impl&) = delete;
+  kernel_impl& operator=(kernel_impl&&) = delete;
 
   // Initialize kernel command and return pointer to payload
   // after mandatory static data.
@@ -1337,7 +1397,7 @@ public:
     return name;
   }
 
-  const std::bitset<128>&
+  const std::bitset<max_cus>&
   get_cumask() const
   {
     return cumask;
@@ -1462,16 +1522,21 @@ class run_impl
   {
     uint8_t* data;
 
+    explicit
     arg_setter(uint32_t* d)
       : data(reinterpret_cast<uint8_t*>(d))
     {}
 
     virtual
-    ~arg_setter()
-    {}
+    ~arg_setter() = default;
 
-    virtual void
-    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
+    arg_setter(const arg_setter&) = delete;
+    arg_setter(arg_setter&&) = delete;
+    arg_setter& operator=(arg_setter&) = delete;
+    arg_setter& operator=(arg_setter&&) = delete;
+
+    void
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override = 0;
 
     virtual arg_range<uint8_t>
     get_arg_value(const argument& arg) = 0;
@@ -1480,20 +1545,21 @@ class run_impl
   // AP_CTRL_HS, AP_CTRL_CHAIN
   struct hs_arg_setter : arg_setter
   {
+    explicit
     hs_arg_setter(uint32_t* data)
       : arg_setter(data)
     {}
 
-    virtual void
-    set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
+    void
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
       auto cmdidx = arg.offset();
       auto count = std::min(arg.size(), value.size());
       std::copy_n(value.begin(), count, data + cmdidx);
     }
 
-    virtual arg_range<uint8_t>
-    get_arg_value(const argument& arg)
+    arg_range<uint8_t>
+    get_arg_value(const argument& arg) override
     {
       auto cmdidx = arg.offset();
       return { data + cmdidx, arg.size() };
@@ -1503,12 +1569,13 @@ class run_impl
   // FAST_ADAPTER
   struct fa_arg_setter : arg_setter
   {
+    explicit
     fa_arg_setter(uint32_t* data)
       : arg_setter(data)
     {}
 
-    virtual void
-    set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
+    void
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
@@ -1518,8 +1585,8 @@ class run_impl
       std::copy_n(value.begin(), count, reinterpret_cast<uint8_t*>(desc_entry->arg_value));
     }
 
-    virtual arg_range<uint8_t>
-    get_arg_value(const argument& arg)
+    arg_range<uint8_t>
+    get_arg_value(const argument& arg) override
     {
       auto desc = reinterpret_cast<ert_fa_descriptor*>(data);
       auto desc_entry = reinterpret_cast<ert_fa_desc_entry*>(desc->data + arg.fa_desc_offset() / sizeof(uint32_t));
@@ -1588,7 +1655,7 @@ class run_impl
   using callback_function_type = std::function<void(ert_cmd_state)>;
   std::shared_ptr<kernel_impl> kernel;    // shared ownership
   std::vector<ipctx> ips;                 // ips controlled by this run object
-  std::bitset<128> cumask;                // cumask for command execution
+  std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
@@ -1642,6 +1709,7 @@ public:
   // as a result of setting kernel arguments (global buffers) in
   // which case they must be re-encoded as indicated by encode_cumask
   // data member before starting the command.
+  explicit
   run_impl(std::shared_ptr<kernel_impl> k)
     : kernel(std::move(k))                        // share ownership
     , ips(kernel->get_ips())
@@ -1657,6 +1725,7 @@ public:
 
   // Clones a run impl, so that the clone can be executed concurrently
   // with the clonee.
+  explicit
   run_impl(const run_impl* rhs)
     : kernel(rhs->kernel)
     , ips(rhs->ips)
@@ -1675,6 +1744,11 @@ public:
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
   }
 
+  run_impl(const run_impl&) = delete;
+  run_impl(run_impl&&) = delete;
+  run_impl& operator=(run_impl&) = delete;
+  run_impl& operator=(run_impl&&) = delete;
+
   kernel_impl*
   get_kernel() const
   {
@@ -1688,7 +1762,7 @@ public:
     return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
   }
 
-  const std::bitset<128>&
+  const std::bitset<max_cus>&
   get_cumask() const
   {
     return cumask;
@@ -1827,6 +1901,7 @@ class run_update_type
   }
 
 public:
+  explicit
   run_update_type(run_impl* r)
     : run(r)
     , kernel(run->get_kernel())
@@ -1955,6 +2030,7 @@ get_device(xrtDeviceHandle dhdl)
     ? (*itr).second.lock()
     : nullptr;
   if (!device) {
+    // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
     device = std::shared_ptr<device_type>(new device_type(dhdl));
     xrt_core::exec::init(device->get_core_device());
     devices.emplace(std::make_pair(dhdl, device));
@@ -1973,6 +2049,7 @@ get_device(const std::shared_ptr<xrt_core::device>& core_device)
     ? (*itr).second.lock()
     : nullptr;
   if (!device) {
+    // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
     device = std::shared_ptr<device_type>(new device_type(core_device));
     xrt_core::exec::init(device->get_core_device());
     devices.emplace(std::make_pair(dhdl, device));
@@ -2186,7 +2263,7 @@ clone(const xrt::run& run)
   return std::make_shared<xrt::run_impl>(run.get_handle().get());
 }
 
-const std::bitset<128>&
+const std::bitset<max_cus>&
 get_cumask(const xrt::run& run)
 {
   return run.get_handle()->get_cumask();
@@ -2541,8 +2618,8 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
 {
   try {
     std::va_list args;
-    std::va_list* argptr = &args ;
-    va_start(args, khdl);
+    std::va_list* argptr = &args;
+    va_start(args, khdl);  // NOLINT
     auto result = xdp::native::profiling_wrapper(__func__,
     [khdl, argptr]{
       auto handle = xrtRunOpen(khdl);
@@ -2668,7 +2745,7 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
   try {
     std::va_list args;
     std::va_list* argptr = &args;
-    va_start(args, index);
+    va_start(args, index); // NOLINT
     auto result = xdp::native::profiling_wrapper(__func__,
     [rhdl, index, argptr]{
       auto upd = get_run_update(rhdl);
@@ -2714,8 +2791,8 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
 {
   try {
     std::va_list args;
-    std::va_list* argptr = &args ;
-    va_start(args, index);
+    std::va_list* argptr = &args;
+    va_start(args, index);  // NOLINT
     auto result = xdp::native::profiling_wrapper(__func__,
     [rhdl, index, argptr]{
       auto run = get_run(rhdl);

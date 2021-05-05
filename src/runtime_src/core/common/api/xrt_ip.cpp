@@ -39,7 +39,7 @@
 
 namespace {
 
-constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; } //NOLINT
 
 inline bool
 is_sw_emulation()
@@ -86,6 +86,11 @@ public:
     }
   }
 
+  interrupt_impl(const interrupt_impl&) = delete;
+  interrupt_impl(interrupt_impl&&) = delete;
+  interrupt_impl& operator=(interrupt_impl&) = delete;
+  interrupt_impl& operator=(interrupt_impl&&) = delete;
+
   void
   enable()
   {
@@ -121,11 +126,12 @@ class ip_impl
     xrt::uuid xclbin_uuid;         //
     unsigned int idx;      // index of ip per driver
     const ip_data* ip;
-    uint64_t address;      // base address of ip
     uint64_t size;         // address range of ip, To-Be-Computed
 
-    ip_context(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xid, const std::string& nm)
-      : device(std::move(dev)), xclbin_uuid(xid), size(64_kb)
+    ip_context(std::shared_ptr<xrt_core::device> dev, xrt::uuid xid, const std::string& nm)
+      : device(std::move(dev)),
+        xclbin_uuid(std::move(xid)),
+        size(64_kb) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
     {
       auto ip_section = device->get_axlf_section(IP_LAYOUT, xclbin_uuid);
       if (!ip_section.first)
@@ -154,6 +160,11 @@ class ip_impl
     {
       device->close_context(xclbin_uuid.get(), idx);
     }
+
+    ip_context(const ip_context&) = delete;
+    ip_context(ip_context&&) = delete;
+    ip_context& operator=(ip_context&) = delete;
+    ip_context& operator=(ip_context&&) = delete;
 
     unsigned int
     get_idx() const
@@ -215,6 +226,11 @@ public:
     XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , uid);
   }
 
+  ip_impl(const ip_impl&) = delete;
+  ip_impl(ip_impl&&) = delete;
+  ip_impl& operator=(ip_impl&) = delete;
+  ip_impl& operator=(ip_impl&&) = delete;
+
   uint32_t
   read_register(uint32_t offset) const
   {
@@ -242,6 +258,7 @@ public:
   {
     auto intr = interrupt.lock();
     if (!intr)
+      // NOLINTNEXTLINE(modernize-make-shared) used in weak_ptr
       interrupt = intr = std::shared_ptr<ip::interrupt_impl>(new ip::interrupt_impl(device, ipctx.get_idx()));
 
     return intr;
