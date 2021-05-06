@@ -87,9 +87,6 @@ public:
     void read_trace() {
       m_read_trace(true);
     };
-    bool circular_buffer_overwrite_detected() {
-      return m_circ_buf_overwrite_detected;
-    }
     DeviceTraceLogger* getDeviceTraceLogger() {
       return deviceTraceLogger;
     };
@@ -131,7 +128,7 @@ private:
     void read_trace_fifo(bool force=true);
     void read_trace_s2mm(bool force=true);
     uint64_t read_trace_s2mm_partial();
-    void config_s2mm_reader(uint64_t wordCount);
+    bool config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm(bool circ_buf);
     void reset_s2mm();
     bool should_continue();
@@ -139,6 +136,7 @@ private:
     void offload_device_continuous();
 
     bool m_trbuf_full = false;
+    bool trbuf_offload_done = false;
 
     // Clock Training Params
     bool m_force_clk_train = true;
@@ -151,7 +149,6 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
-    bool m_circ_buf_overwrite_detected = false;
 
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;

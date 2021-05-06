@@ -18,6 +18,8 @@
 
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
+#include "core/common/message.h"
+#include "experimental/xrt_profile.h"
 
 namespace xdp {
 
@@ -161,7 +163,7 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
   m_trbuf_full = false;
-  m_circ_buf_overwrite_detected = false;
+  trbuf_offload_done = false;
 
   if (has_ts2mm()) {
     m_initialized = init_s2mm(circ_buf);
@@ -202,7 +204,9 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   // There's enough data available
   m_wordcount_old = wordcount;
 
-  config_s2mm_reader(wordcount);
+  if (!config_s2mm_reader(wordcount))
+    return;
+
   uint64_t nBytes = m_trbuf_sz - m_trbuf_offset;
 
   auto start = std::chrono::steady_clock::now();
@@ -224,8 +228,11 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
     m_trbuf_full = true;
 }
 
-void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
+bool DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
 {
+  if (trbuf_offload_done)
+    return false;
+
   auto bytes_written = wordCount * TRACE_PACKET_SIZE;
   auto bytes_read = m_rollover_count*m_trbuf_alloc_sz + m_trbuf_sz;
 
@@ -233,17 +240,24 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
-    m_circ_buf_overwrite_detected = true;
+    trbuf_offload_done = true;
+
+    // Add warnings and user markers
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
+    xrt::profile::user_event events;
+    events.mark("Trace Buffer Overwrite Detected");
+
     stop_offload();
-    return;
+    return false;
   }
 
   // Start Offload from previous offset
   m_trbuf_offset = m_trbuf_sz;
   if (m_trbuf_offset == m_trbuf_alloc_sz) {
     if (!m_use_circ_buf) {
+      trbuf_offload_done = true;
       stop_offload();
-      return;
+      return false;
     }
     m_rollover_count++;
     m_trbuf_offset = 0;
@@ -262,6 +276,8 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
     << " Written : " << wordCount * 8
     << " rollover count : " << m_rollover_count
     << std::endl;
+
+  return true;
 }
 
 bool DeviceTraceOffload::init_s2mm(bool circ_buf)
