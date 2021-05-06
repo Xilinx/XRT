@@ -492,7 +492,7 @@ static inline const char *reg2name(struct mailbox *mbx, u32 *reg)
 }
 
 int mailbox_request(struct platform_device *, void *, size_t,
-	void *, size_t *, mailbox_msg_cb_t, void *, u32, u32);
+	void *, size_t *, mailbox_msg_cb_t, void *, u32, u32, bool);
 int mailbox_post_notify(struct platform_device *, void *, size_t);
 int mailbox_get(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 
@@ -1697,7 +1697,7 @@ static ssize_t mailbox_show(struct device *dev,
 
 	req.req = XCL_MAILBOX_REQ_TEST_READ;
 	ret = mailbox_request(to_platform_device(dev), &req, sizeof(req),
-		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0, 0);
+		mbx->mbx_tst_rx_msg, &respsz, NULL, NULL, 0, 0, false);
 	if (ret) {
 		MBX_ERR(mbx, "failed to read test msg from peer: %d", ret);
 	} else if (respsz > 0) {
@@ -1911,7 +1911,7 @@ static bool req_is_sw(struct platform_device *pdev, enum xcl_mailbox_request req
  */
 int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	void *resp, size_t *resplen, mailbox_msg_cb_t cb,
-	void *cbarg, u32 resp_ttl, u32 tx_ttl)
+	void *cbarg, u32 resp_ttl, u32 tx_ttl, bool force)
 {
 	int rv = -ENOMEM;
 	struct mailbox *mbx = platform_get_drvdata(pdev);
@@ -1922,6 +1922,16 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		MBX_WARN(mbx, "req %d is received on disabled channel, err: %d",
 				 ((struct xcl_mailbox_req *)req)->req, -EFAULT);
 		return -EFAULT;
+	}
+
+	if (!force) {
+		uint64_t ch_state = 0;
+		(void) mailbox_get(pdev, CHAN_STATE, &ch_state);
+		if (!(ch_state & XCL_MB_PEER_SAME_DOMAIN &&
+		    ch_state & XCL_MB_PEER_READY)) {
+			MBX_WARN(mbx, "peer is not ready yet.");
+			return -EIO;
+		}
 	}
 
 	MBX_INFO(mbx, "sending request: %d via %s",

@@ -567,7 +567,7 @@ static void xmc_read_from_peer(struct platform_device *pdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	(void) xocl_peer_request(xdev,
-		mb_req, reqlen, xcl_sensor, &resp_len, NULL, NULL, 0, 0);
+		mb_req, reqlen, xcl_sensor, &resp_len, NULL, NULL, 0, 0, false);
 	set_sensors_data(xmc, xcl_sensor);
 
 done:
@@ -1006,7 +1006,7 @@ static void read_bdinfo_from_peer(struct platform_device *pdev)
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	ret = xocl_peer_request(xdev,
-		mb_req, reqlen, xmc->bdinfo_raw, &resp_len, NULL, NULL, 0, 0);
+		mb_req, reqlen, xmc->bdinfo_raw, &resp_len, NULL, NULL, 0, 0, false);
 done:
 	if (ret) {
 		/* if we failed to get board info from peer, free it and 

@@ -1163,9 +1163,9 @@ typedef	void (*mailbox_msg_cb_t)(void *arg, void *data, size_t len,
 	u64 msgid, int err, bool sw_ch);
 struct xocl_mailbox_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	int (*request)(struct platform_device *pdev, void *req,
-		size_t reqlen, void *resp, size_t *resplen,
-		mailbox_msg_cb_t cb, void *cbarg, u32 rx_timeout, u32 tx_timeout);
+	int (*request)(struct platform_device *pdev, void *req, size_t reqlen,
+		void *resp, size_t *resplen, mailbox_msg_cb_t cb, void *cbarg,
+		u32 rx_timeout, u32 tx_timeout, bool force);
 	int (*post_notify)(struct platform_device *pdev, void *req, size_t len);
 	int (*post_response)(struct platform_device *pdev,
 		enum xcl_mailbox_request req, u64 reqid, void *resp, size_t len);
@@ -1179,9 +1179,9 @@ struct xocl_mailbox_funcs {
 	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
 #define MAILBOX_READY(xdev, cb)	\
 	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev) && MAILBOX_OPS(xdev)->cb)
-#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout)	\
+#define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout, force)	\
 	(MAILBOX_READY(xdev, request) ? MAILBOX_OPS(xdev)->request(MAILBOX_DEV(xdev), \
-	req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout) : -ENODEV)
+	req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout, force) : -ENODEV)
 #define	xocl_peer_response(xdev, req, reqid, buf, len)			\
 	(MAILBOX_READY(xdev, post_response) ? MAILBOX_OPS(xdev)->post_response(	\
 	MAILBOX_DEV(xdev), req, reqid, buf, len) : -ENODEV)

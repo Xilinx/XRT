@@ -506,7 +506,7 @@ static void p2p_read_addr_mgmtpf(struct p2p *p2p)
 		mb_p2p->p2p_bar_len, mb_p2p->p2p_bar_addr);
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, &ret,
-		&resplen, NULL, NULL, 0, 0);
+		&resplen, NULL, NULL, 0, 0, false);
 	vfree(mb_req);
 	if (ret) {
 		p2p_err(p2p, "dropped request (%d), failed with err: %d",
