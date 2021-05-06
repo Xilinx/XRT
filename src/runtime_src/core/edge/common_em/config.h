@@ -137,17 +137,16 @@ namespace xclemulation{
 	}
   };
 
-  enum DEBUG_MODE {
-    OFF,
-    BATCH,
-    GUI,
-    GDB
-  };
+  enum class debug_mode {
+    off,
+    batch,
+    gui,
+    gdb };   
   
-  enum ERTMODE {
-    NONE,
-    LEGACY,
-    UPDATED 
+  enum class ertmode {
+    none,
+    legacy,
+    updated 
   };
 
   class config 
@@ -167,7 +166,7 @@ namespace xclemulation{
       inline void setSimDir( std::string& simDir)               { mSimDir           = simDir;        }
       inline void setUserPreSimScript( std::string& userPreSimScript) {mUserPreSimScript = userPreSimScript; }
 	    inline void setUserPostSimScript( std::string& userPostSimScript) {mUserPostSimScript = userPostSimScript; }
-      inline void setLaunchWaveform( DEBUG_MODE lWaveform)  { mLaunchWaveform   = lWaveform;     }
+      inline void setLaunchWaveform( debug_mode lWaveform)  { mLaunchWaveform   = lWaveform;     }
       inline void suppressInfo( bool suppress)                  { mSuppressInfo     = suppress;      }
       inline void suppressWarnings( bool suppress)              { mSuppressWarnings = suppress;      }
       inline void suppressErrors( bool suppress)                { mSuppressErrors   = suppress;      }
@@ -179,7 +178,7 @@ namespace xclemulation{
       inline void setKeepRunDir(bool _mKeepRundir)              { mKeepRunDir = _mKeepRundir;        }    
       inline void setLauncherArgs(std::string & _mLauncherArgs) { mLauncherArgs = _mLauncherArgs;    }
       inline void setSystemDPA(bool _isDPAEnabled)              { mSystemDPA    = _isDPAEnabled;     }
-      inline void setLegacyErt(ERTMODE _legacyErt)              { mLegacyErt    = _legacyErt;        }
+      inline void setLegacyErt(ertmode _legacyErt)              { mLegacyErt    = _legacyErt;        }
       
       inline bool isDiagnosticsEnabled()        const { return mDiagnostics;    }
       inline bool isUMRChecksEnabled()          const { return mUMRChecks;      }
@@ -192,7 +191,7 @@ namespace xclemulation{
       inline std::string getSimDir()            const { return mSimDir;         }
       inline std::string getUserPreSimScript()  const { return mUserPreSimScript;}
   	  inline std::string getUserPostSimScript()  const { return mUserPostSimScript;}
-      inline DEBUG_MODE getLaunchWaveform() const { return mLaunchWaveform; }
+      inline debug_mode getLaunchWaveform() const { return mLaunchWaveform; }
       inline bool isInfoSuppressed()            const { return mSuppressInfo;    }
       inline bool isWarningsuppressed()         const { return mSuppressWarnings;}
       inline bool isErrorsSuppressed()          const { return mSuppressErrors;  }
@@ -204,7 +203,7 @@ namespace xclemulation{
       inline bool isWarningsToBePrintedOnConsole() const { return mPrintWarningsInConsole;}
       inline std::string getLauncherArgs() const { return mLauncherArgs;}
       inline bool isSystemDPAEnabled() const     { return mSystemDPA;              }
-      inline ERTMODE getLegacyErt() const         { return mLegacyErt;              }
+      inline ertmode getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
       inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
@@ -217,7 +216,7 @@ namespace xclemulation{
       bool mOOBChecks;
       bool mMemLogs;
       bool mDontRun;
-      DEBUG_MODE mLaunchWaveform;
+      debug_mode mLaunchWaveform;
       std::string mSimDir;
       std::string mUserPreSimScript;
 	    std::string mUserPostSimScript;
@@ -235,7 +234,7 @@ namespace xclemulation{
       bool mKeepRunDir;
       std::string mLauncherArgs;
       bool mSystemDPA;
-      ERTMODE mLegacyErt;
+      ertmode mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
       TIMEOUT_SCALE mTimeOutScale;

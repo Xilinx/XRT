@@ -752,10 +752,10 @@ namespace xclhwemhal2 {
     if (!simDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
-      xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+      xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
-        std::string dMsg = "ERROR: [HW-EMU 21] DEBUG_MODE option GDB is no more valid. Valid options for DEBUG_MODE are 'gui', 'batch' and 'off'. Please make sure you build the application with 'wdb' mode";
+      if (lWaveform == xclemulation::debug_mode::gdb) {
+        std::string dMsg = "ERROR: [HW-EMU 21] debug_mode option 'gdb' is no more valid. Valid options for debug_mode are 'gui', 'batch' and 'off'. Please make sure you build the application with 'wdb' mode";
         logMessage(dMsg, 0);
         return -1;
       }
@@ -780,7 +780,7 @@ namespace xclhwemhal2 {
         std::transform(simulatorType.begin(), simulatorType.end(), simulatorType.begin(), [](unsigned char c){return std::tolower(c);});
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::GUI)
+      if (lWaveform == xclemulation::debug_mode::gui)
       {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
@@ -813,7 +813,7 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::BATCH)
+      if (lWaveform == xclemulation::debug_mode::batch)
       {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
@@ -840,7 +840,7 @@ namespace xclhwemhal2 {
         setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
       }
 
-      if (lWaveform == xclemulation::DEBUG_MODE::OFF) {
+      if (lWaveform == xclemulation::debug_mode::off) {
         // NOTE: proto inst filename must match name in HPIKernelCompilerHwEmu.cpp
         std::string protoFileName = "./" + bdName + "_behav.protoinst";
         std::stringstream cmdLineOption;
@@ -854,7 +854,7 @@ namespace xclhwemhal2 {
         setenv("VITIS_LAUNCH_WAVEFORM_BATCH", "1", true);
       }
 
-      /*if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
+      /*if (lWaveform == xclemulation::debug_mode::gdb) {
         sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
         setSimPath(sim_path);
       }*/
@@ -873,15 +873,15 @@ namespace xclhwemhal2 {
           setSimPath(sim_path);
         }
 
-        // As GDB feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
+        // As gdb feature is unsupported for 2021.1, we removed this cross check. We will re-enable it once we have 2 possibilities
         /*if (boost::filesystem::exists(sim_path) == false)
         {
-          if (lWaveform == xclemulation::DEBUG_MODE::GDB) {
+          if (lWaveform == xclemulation::debug_mode::gdb) {
             sim_path = binaryDirectory + "/behav_waveform/" + simulatorType;
             setSimPath(sim_path);
             std::string waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 
-            std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in GDB mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
+            std::string dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gdb' in INI file and none of kernels compiled in 'gdb' mode. Running simulation using waveform mode. Do run v++ link with -g and --xp param:hw_emu.debugMode=gdb options to launch simulation in 'gdb' mode";
             logMessage(dMsg, 0);
 
             std::string protoFileName = "./" + bdName + "_behav.protoinst";
@@ -897,7 +897,7 @@ namespace xclhwemhal2 {
               setenv("VITIS_WAVEFORM_WDB_FILENAME", std::string(wdbFileName + ".wdb").c_str(), true);
             }
 
-            // Commented to set these when DEBUG_MODE is set to GDB
+            // Commented to set these when debug_mode is set to gdb
             //setenv("VITIS_KERNEL_PROFILE_FILENAME", kernelProfileFileName.c_str(), true);
             //setenv("VITIS_KERNEL_TRACE_FILENAME", kernelTraceFileName.c_str(), true);
           }
@@ -905,9 +905,9 @@ namespace xclhwemhal2 {
             std::string dMsg;
             sim_path = binaryDirectory + "/behav_gdb/" + simulatorType;
             setSimPath(sim_path);
-            if (lWaveform == xclemulation::DEBUG_MODE::GUI)
+            if (lWaveform == xclemulation::debug_mode::gui)
               dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'gui' in ini file. Cannot enable simulator gui in this mode. Using " + sim_path + " as simulation directory.";
-            else if (lWaveform == xclemulation::DEBUG_MODE::BATCH)
+            else if (lWaveform == xclemulation::debug_mode::batch)
               dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'batch' in ini file. Using " + sim_path + " as simulation directory.";
             else
               dMsg = "WARNING: [HW-EMU 07] debug_mode is set to 'off' in ini file (or) considered by default. Using " + sim_path + " as simulation directory.";
@@ -1611,7 +1611,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-     xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+     xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
 
     // The following is evil--hardcoding. This name may change.
     // Is there a way we can determine the name from the directories or otherwise?
@@ -1629,7 +1629,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(pPath)
       {
         // Copy waveform database
-        if (lWaveform != xclemulation::DEBUG_MODE::OFF) {
+        if (lWaveform != xclemulation::debug_mode::off) {
           std::string extension = "wdb";
           if (boost::filesystem::exists(binaryDirectory+"/msim"))
           {
@@ -1738,8 +1738,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     resetProgram(false);
 
     int status = 0;
-    xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-    if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF)
+    xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+    if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-0] Waiting for the simulator process to exit";
@@ -1750,7 +1750,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(!simDontRun)
       while (-1 == waitpid(0, &status, 0));
 
-    if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF)
+    if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
       && xclemulation::config::getInstance()->isInfoSuppressed() == false)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
@@ -1867,8 +1867,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(saveWdb)
     {
       int status = 0;
-      xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-      if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF )
+      xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+      if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off )
         && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
         std::string waitingMsg ="INFO: [HW-EMU 06-0] Waiting for the simulator process to exit";
@@ -1879,7 +1879,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(!simDontRun)
         while (-1 == waitpid(0, &status, 0));
 
-      if(( lWaveform == xclemulation::DEBUG_MODE::GUI || lWaveform == xclemulation::DEBUG_MODE::BATCH || lWaveform == xclemulation::DEBUG_MODE::OFF )
+      if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off )
         && xclemulation::config::getInstance()->isInfoSuppressed() == false)
       {
         std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
@@ -2095,10 +2095,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     // Delete detailed kernel trace data mining results file
     // NOTE: do this only if we're going to write a new one
-    xclemulation::DEBUG_MODE lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
-    if (lWaveform == xclemulation::DEBUG_MODE::GUI
-        || lWaveform == xclemulation::DEBUG_MODE::BATCH
-        || lWaveform == xclemulation::DEBUG_MODE::OFF) {
+    xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
+    if (lWaveform == xclemulation::debug_mode::gui
+        || lWaveform == xclemulation::debug_mode::batch
+        || lWaveform == xclemulation::debug_mode::off) {
       char path[FILENAME_MAX];
       size_t size = MAXPATHLEN;
       char* pPath = GetCurrentDir(path,size);
@@ -2218,9 +2218,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
   bool HwEmShim::isLegacyErt()
   {
-    if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::LEGACY)
+    if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ertmode::legacy)
       return true;
-    else if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ERTMODE::UPDATED)
+    else if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ertmode::updated)
       return false;
 
     //Following platforms uses legacyErt As per Emulation team.
