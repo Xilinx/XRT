@@ -736,7 +736,7 @@ namespace xdp {
 
     // Reconfigure profile counters
     for (int i=0; i < coreCounters.size(); ++i) {
-      // 1. For every tile, change trace start/stop and timer
+      // 1. For every tile, stop trace & change trace start/stop and timer
       auto& tile = coreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
@@ -749,6 +749,8 @@ namespace xdp {
         prevRow        = row;
         auto& core     = aieDevice->tile(col, row + 1).core();
         auto coreTrace = core.traceControl();
+
+        coreTrace->stop();
         coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
 
         XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
@@ -767,6 +769,22 @@ namespace xdp {
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
       counter->start();
+    }
+
+    // 3. For every tile, restart trace
+    prevCol = 0;
+    prevRow = 0;
+    for (int i=0; i < coreCounters.size(); ++i) {
+      auto& tile = coreCounterTiles.at(i);
+      auto  col  = tile.col;
+      auto  row  = tile.row;
+      if ((col != prevCol) || (row != prevRow)) {
+        prevCol        = col;
+        prevRow        = row;
+        auto& core     = aieDevice->tile(col, row + 1).core();
+        auto coreTrace = core.traceControl();
+        coreTrace->start();
+      }
     }
   }
 
@@ -804,7 +822,7 @@ namespace xdp {
     // dummy packets to ensure all execution trace gets written to DDR.
     if (xrt_core::config::get_aie_trace_flush()) {
       setFlushMetrics(deviceId, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(10));
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
