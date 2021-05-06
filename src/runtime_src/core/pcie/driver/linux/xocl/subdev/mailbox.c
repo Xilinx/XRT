@@ -1924,6 +1924,9 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		return -EFAULT;
 	}
 
+	/*
+	 * Force sending request to peer or wait till drivers are fully probed.
+	 */
 	if (!force) {
 		uint64_t ch_state = 0;
 		(void) mailbox_get(pdev, CHAN_STATE, &ch_state);
