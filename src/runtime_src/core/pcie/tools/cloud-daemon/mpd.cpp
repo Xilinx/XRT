@@ -97,7 +97,7 @@ public:
 
 private:
     void update_profile_subdev_to_container(const std::string &sysfs_name,
-        const std::string &subdev_name,    
+        const std::string &subdev_name,
         const std::string &suffix);
     void update_cgroup_device(const std::string &cgroup_file,
         const std::string &subdev_name);
@@ -136,7 +136,7 @@ std::string Mpd::get_xocl_major_minor(const std::string &sysfs_name)
         }
         dir++;
     }
-    return "";    
+    return "";
 }
 
 bool Mpd::file_exist(const std::string &name)
@@ -147,7 +147,7 @@ bool Mpd::file_exist(const std::string &name)
 
 /*
  * check whether major:minor info is in the device cgroup file
- */   
+ */
 bool Mpd::string_in_file(const std::string &name, const std::string &str)
 {
     std::ifstream f(name);
@@ -168,7 +168,7 @@ bool Mpd::string_in_file(const std::string &name, const std::string &str)
  * lxc containers are under folder 'lxc'
  * docker containers are under folder 'docker'
  * kubernetes & openshift OCI compliant containers are under folder 'kubepods'
- */ 
+ */
 bool Mpd::device_in_container(const std::string major_minor, std::string &path)
 {
     std::string cgroup_base = "/sys/fs/cgroup/devices/";
@@ -180,7 +180,7 @@ bool Mpd::device_in_container(const std::string major_minor, std::string &path)
 
     for (auto &t : folder) {
         if (!file_exist(cgroup_base + t))
-            continue;        
+            continue;
         boost::filesystem::recursive_directory_iterator dir(cgroup_base + t), end;
         while (dir != end) {
             std::string fn = dir->path().filename().string();
@@ -199,7 +199,7 @@ bool Mpd::device_in_container(const std::string major_minor, std::string &path)
 /*
  * get major:minor info of the subdevice, and add the info to cgroup file
  * device.[allow|deny]
- */ 
+ */
 void Mpd::update_cgroup_device(const std::string &cgroup_file,
     const std::string &subdev_name)
 {
@@ -219,13 +219,13 @@ void Mpd::update_cgroup_device(const std::string &cgroup_file,
         }
         syslog(LOG_INFO, "subdev %s(%s) added to container %s",
             fn.c_str(), str.c_str(), cgroup_file.c_str());
-    }    
+    }
 }
 
 /*
  * If the FPGA device is assigned to a container, update the ULP subdevice
  * major:minor info to container cgroup file also
- */ 
+ */
 void Mpd::update_profile_subdev_to_container(const std::string &sysfs_name,
     const std::string &subdev_name,
     const std::string &suffix)
@@ -255,13 +255,13 @@ void Mpd::extract_sysfs_name_and_subdev_name(const std::string &devpath,
     for (auto &t : subdevs) {
         size_t pos_s, pos_e = devpath.find(t);
         if (pos_e != std::string::npos) {
-            pos_s = devpath.substr(0, pos_e - 1).rfind("/"); 
+            pos_s = devpath.substr(0, pos_e - 1).rfind("/");
             sysfs_name = devpath.substr(pos_s + 1, pos_e - pos_s - 2);
             pos_s = devpath.rfind("!");
                 if (pos_s != std::string::npos) {
                     subdev = devpath.substr(pos_s + 1);
             }
-            break;    
+            break;
         }
     }
 }
@@ -337,7 +337,7 @@ void Mpd::run()
                 continue;
 
             threads_handling[sysfs_name] = true;
-            
+
             /*
              * create the thread pair for it.
              */
@@ -524,7 +524,7 @@ int Mpd::localMsgHandler(const pcieFunc& dev, std::unique_ptr<sw_msg>& orig,
              *((int *)(processed->payloadData())));
         break;
     }
-    case XCL_MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this. 
+    case XCL_MAILBOX_REQ_PEER_DATA: {//optional. aws plugin need to implement this.
         xcl_mailbox_subdev_peer *subdev_req =
             reinterpret_cast<xcl_mailbox_subdev_peer *>(req->data);
         switch (subdev_req->kind) {
@@ -699,7 +699,7 @@ void Mpd::mpd_getMsg(size_t index)
         ip = getIP(dev.getHost());
         if (ip.empty()) {
             dev.log(LOG_ERR, "Can't find out IP from host: %s, mpd_getMsg thread for %s exit!!",
-                    dev.getHost(), sysfs_name.c_str());
+                    dev.getHost().c_str(), sysfs_name.c_str());
             threads_handling[sysfs_name] = false;
             return;
         }
@@ -727,7 +727,7 @@ void Mpd::mpd_getMsg(size_t index)
     * This is usefull for aws. Since there is no mgmt, when xocl driver is loaded,
     * and before the mpd daemon is running, sending MAILBOX_REQ_USER_PROBE msg
     * will timeout and get no response, so there is no chance to know the card is
-    * ready. 
+    * ready.
     * With this notification, when the mpd open/close the mailbox instance, a fake
     * MAILBOX_REQ_MGMT_STATE msg is sent to mailbox in xocl, pretending a mgmt is
     * ready, then xocl will send a MAILBOX_REQ_USER_PROBE again. This time, mpd
@@ -778,8 +778,8 @@ void Mpd::mpd_getMsg(size_t index)
                 broken = true;
                 break;
             }
-        
-            msgq->addMsg(msg);    
+
+            msgq->addMsg(msg);
         }
 
         if (broken)
@@ -788,14 +788,14 @@ void Mpd::mpd_getMsg(size_t index)
 
     threads_handling[sysfs_name] = false;
 
-    //notify mailbox driver the daemon is offline 
+    //notify mailbox driver the daemon is offline
     if (plugin_cbs.mb_notify) {
         ret = (*plugin_cbs.mb_notify)(index, mbxfd, false);
         if (ret)
             dev.log(LOG_ERR, "failed to mark mgmt as offline");
     }
 
-    if (msdfd > 0)     
+    if (msdfd > 0)
         close(msdfd);
 
     dev.log(LOG_INFO, "mpd_getMsg thread for %s exit!!",

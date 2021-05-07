@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -226,7 +226,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
         retries--;
 
         ret = erase();
-        XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_esc_enabled(), std::cout);
+        XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_escape_codes_disabled(), std::cout);
         int counter = 0;
         for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
             ret = program(tiTxtStream, *i);

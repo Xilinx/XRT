@@ -154,7 +154,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   pretty_print_action_list(deviceCollection, type);
 
   // Ask user for permission
-  if(!XBU::can_proceed())
+  if(!XBU::can_proceed(XBU::getForce()))
     return;
 
   //perform reset actions

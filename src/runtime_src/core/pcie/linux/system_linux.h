@@ -50,6 +50,12 @@ public:
 
   void
   program_plp(const device* dev, const std::vector<char> &buffer) const;
+  
+  void
+  mem_read(const device* dev, long long addr, long long size, const std::string& output_file) const;
+
+  void
+  mem_write(const device* device, long long addr, long long size, unsigned int pattern) const;
 
   monitor_access_type
   get_monitor_access_type() const

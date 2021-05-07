@@ -23,11 +23,13 @@
 //
 
 #include <iostream>
-#include <unistd.h>
+#include <memory>
+#include <cstdlib>
+#include <cstring>
 #include <sys/types.h>
 #include <getopt.h>
 #include <libgen.h>
-#include <string.h>
+#include <unistd.h>
 
 #include "pcidev.h"
 #include "xspi.h"
@@ -155,11 +157,11 @@ static bool canProceed()
 
 static void printHelp(const char *fname)
 {
-    char *tmp = strdup(fname);
+    auto tmp = std::unique_ptr<char, decltype(std::free)*>{strdup(fname), std::free};
 
     std::cout << "Usage: " << std::endl;
 
-    std::cout << basename(tmp) << " [options]" << std::endl;
+    std::cout << basename(tmp.get()) << " [options]" << std::endl;
     std::cout << "\nOptions:" << std::endl;
 
     std::cout << "\n\"SPI flash\"\n";
@@ -392,7 +394,7 @@ int qspips_erase(int argc, char *argv[])
     }
 
     std::cout << "About to erase flash"
-        << " [0x" << std::hex << offset << ",0x" << offset+len 
+        << " [0x" << std::hex << offset << ",0x" << offset+len
         << "] on card " << bdf << std::endl;
 
     if (offset + len > GOLDEN_BASE)
@@ -431,7 +433,7 @@ int qspips_flash(int argc, char *argv[])
         case '1':
             bdf = std::string(optarg);
             break;
-        case '2':    
+        case '2':
             bin_file = std::string(optarg);
             break;
         case '3':
@@ -526,7 +528,7 @@ int qspips_readback(int argc, char *argv[])
     }
 
     std::cout << "Read out flash"
-        << " [0x" << std::hex << offset << ",0x" << offset+len 
+        << " [0x" << std::hex << offset << ",0x" << offset+len
         << "] on card " << bdf << " to " << output << std::dec << std::endl;
 
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);

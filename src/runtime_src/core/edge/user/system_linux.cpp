@@ -210,6 +210,13 @@ program_plp(const device* dev, const std::vector<char> &buffer) const
   throw std::runtime_error("plp program is not supported");
 }
 
+void
+system_linux::
+mem_read(const device*, long long, long long, std::string) const
+{
+  throw std::runtime_error("memory read is not supported");
+}
+
 namespace edge_linux {
 
 std::shared_ptr<device>

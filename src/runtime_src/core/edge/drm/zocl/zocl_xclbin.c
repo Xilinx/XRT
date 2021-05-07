@@ -946,22 +946,30 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zdev->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
 
-out0:
-	write_unlock(&zdev->attr_rwlock);
-	/* out of the atomic context */ 
+	if (kds_mode == 1) {
+		/*
+		 * Invoking kernel thread (kthread), hence need
+		 * to call this outside of the atomic context
+		 */
+		write_unlock(&zdev->attr_rwlock);
 
-	/* Invoking kernel thread (kthread), hence need to call this outside of the atomic context */
-	if (!ret && kds_mode == 1) {
 		subdev_destroy_cu(zdev);
 		ret = zocl_create_cu(zdev);
-		if (ret)
-			goto out1;
+		if (ret) {
+			write_lock(&zdev->attr_rwlock);
+			goto out0;
+		}
 		ret = zocl_kds_update(zdev);
-		if (ret)
-			goto out1;
+		if (ret) {
+			write_lock(&zdev->attr_rwlock);
+			goto out0;
+		}
+
+		write_lock(&zdev->attr_rwlock);
 	}
 
-out1:
+out0:
+	write_unlock(&zdev->attr_rwlock);
 	vfree(aie_res);
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);

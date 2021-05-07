@@ -32,7 +32,7 @@ namespace hal_hw_plugins {
 // This function is responsible for loading all of the HAL level HW XDP plugins
 bool load()
 {
-  if (xrt_core::config::get_xrt_trace()) {
+  if (xrt_core::config::get_xrt_trace() || xrt_core::config::get_xrt_profile()) {
     xdp::hal::load() ;
   }
 

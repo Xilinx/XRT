@@ -242,10 +242,15 @@ device::
 get_info(info::device param) const
 {
   switch (param) {
-  case info::device::name :                   // std::string
-    return query::raw<info::device::name, xrt_core::query::rom_vbnv>(handle.get());
   case info::device::bdf :                    // std::string
     return query::to_string<info::device::bdf, xrt_core::query::pcie_bdf>(handle.get());
+  case info::device::interface_uuid :         // std::string
+    return query::to_value<info::device::interface_uuid, xrt_core::query::interface_uuids>
+      (handle.get(), [](const auto& iids) {
+        return (iids.size() == 1)
+          ? xrt_core::query::interface_uuids::to_uuid(iids[0])
+          : uuid {};
+      });
   case info::device::kdma :                   // uint32_t
     return query::raw<info::device::kdma, xrt_core::query::kds_numcdmas>(handle.get());
   case info::device::max_clock_frequency_mhz: // unsigned long
@@ -263,9 +268,13 @@ get_info(info::device param) const
     catch (const std::exception&) {
       return false;
     }
+  case info::device::name :                   // std::string
+    return query::raw<info::device::name, xrt_core::query::rom_vbnv>(handle.get());
   case info::device::nodma :                  // bool
     return query::to_value<info::device::nodma, xrt_core::query::nodma>
       (handle.get(), [](const auto& val) { return bool(val); });
+  case info::device::offline :
+    return query::raw<info::device::offline, xrt_core::query::is_offline>(handle.get());
   }
 
   throw std::runtime_error("internal error: unreachable");

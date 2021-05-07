@@ -26,6 +26,7 @@
 #include <boost/uuid/uuid_io.hpp>       // for to_string
 #include <boost/filesystem.hpp>
 #include <random>
+#include <sstream>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -482,7 +483,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
 
   try {
     boost::property_tree::read_json(ss, _mirrorData);
-  } catch (boost::property_tree::json_parser_error &e) {
+  } catch (const boost::property_tree::json_parser_error &e) {
     std::string errMsg = XUtil::format("ERROR: Parsing mirror metadata in the xclbin archive on line %d: %s", e.line(), e.message().c_str());
     throw std::runtime_error(errMsg);
   }
@@ -618,7 +619,7 @@ readJSONFile(const std::string & filename, boost::property_tree::ptree &pt)
   // Read in the JSON file
   try {
     boost::property_tree::read_json(fs, pt);
-  } catch (boost::property_tree::json_parser_error &e) {
+  } catch (const boost::property_tree::json_parser_error &e) {
     std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", filename.c_str(), e.line(), e.message().c_str());
     throw std::runtime_error(errMsg);
   }
@@ -668,7 +669,16 @@ XclBin::addMergeSection(ParameterSectionData & _PSD)
   pSection->getPayload(ptPayload);
 
   // Merge the sections 
-  pSection->appendToSectionMetadata(ptMerge, ptPayload);
+  try {
+    pSection->appendToSectionMetadata(ptMerge, ptPayload);
+  } catch (const std::exception &e) {
+    std::cerr << "\nERROR: An exception was thrown while attempting to merge the following JSON image to the section: '" << pSection->getSectionKindAsString() << "'\n";
+    std::cerr << "       Exception Message: " << e.what() << "\n";
+    std::ostringstream jsonBuf;
+    boost::property_tree::write_json(jsonBuf, ptMerge, true);
+    std::cerr << jsonBuf.str() << "\n";
+    throw std::runtime_error("Aborting remaining operations");
+  }
 
   // Store the resulting merger
   pSection->purgeBuffers();
@@ -1070,7 +1080,7 @@ XclBin::addSections(ParameterSectionData &_PSD)
   boost::property_tree::ptree pt;
   try {
     boost::property_tree::read_json(fs, pt);
-  } catch (boost::property_tree::json_parser_error &e) {
+  } catch (const boost::property_tree::json_parser_error &e) {
     std::string errMsg = XUtil::format("ERROR: Parsing the file '%s' on line %d: %s", sJSONFileName.c_str(), e.line(), e.message().c_str());
     throw std::runtime_error(errMsg);
   }
@@ -1101,7 +1111,17 @@ XclBin::addSections(ParameterSectionData &_PSD)
     }
 
     pSection = Section::createSectionObjectOfKind(eKind);
-    pSection->readJSONSectionImage(pt);
+    try {
+      pSection->readJSONSectionImage(pt);
+    } catch (const std::exception &e) {
+      std::cerr << "\nERROR: An exception was thrown while attempting to add following JSON image to the section: '" << pSection->getSectionKindAsString() << "'\n";
+      std::cerr << "       Exception Message: " << e.what() << "\n";
+      std::ostringstream jsonBuf;
+      boost::property_tree::write_json(jsonBuf, pt, true);
+      std::cerr << jsonBuf.str() << "\n";
+      throw std::runtime_error("Aborting remaining operations");
+    }
+
     if (pSection->getSize() == 0) {
       XUtil::QUIET("");
       XUtil::QUIET(XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'", 
@@ -1178,7 +1198,16 @@ XclBin::appendSections(ParameterSectionData &_PSD)
     boost::property_tree::ptree ptPayload;
     pSection->getPayload(ptPayload);
 
-    pSection->appendToSectionMetadata(ptSection->second, ptPayload);
+    try {
+      pSection->appendToSectionMetadata(ptSection->second, ptPayload);
+    } catch (const std::exception &e) {
+      std::cerr << "\nERROR: An exception was thrown while attempting to append the following JSON image to the section: '" << pSection->getSectionKindAsString() << "'\n";
+      std::cerr << "       Exception Message: " << e.what() << std::endl;
+      std::ostringstream jsonBuf;
+      boost::property_tree::write_json(jsonBuf, ptSection->second, true);
+      std::cerr << jsonBuf.str() << "\n";
+      throw std::runtime_error("Aborting remaining operations");
+    }
 
     pSection->purgeBuffers();
     pSection->readJSONSectionImage(ptPayload);

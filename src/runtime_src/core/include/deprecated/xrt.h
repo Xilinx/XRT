@@ -79,7 +79,7 @@ XCL_DRIVER_DLLESPEC
 int
 xclRemoveAndScanFPGA();
 
-/* Use xclGetBOProperties */  
+/* Use xclGetBOProperties */
 XRT_DEPRECATED
 static inline size_t
 xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
@@ -88,7 +88,7 @@ xclGetBOSize(xclDeviceHandle handle, xclBufferHandle boHandle)
     return !xclGetBOProperties(handle, boHandle, &p) ? (size_t)p.size : (size_t)-1;
 }
 
-/* Use xclGetBOProperties */  
+/* Use xclGetBOProperties */
 XRT_DEPRECATED
 static inline uint64_t
 xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
@@ -97,14 +97,14 @@ xclGetDeviceAddr(xclDeviceHandle handle, xclBufferHandle boHandle)
     return !xclGetBOProperties(handle, boHandle, &p) ? p.paddr : (uint64_t)-1;
 }
 
-/* Use xclRegWrite */  
+/* Use xclRegWrite */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 size_t
 xclWrite(xclDeviceHandle handle, enum xclAddressSpace space, uint64_t offset,
          const void *hostBuf, size_t size);
 
-/* Use xclRegRead */  
+/* Use xclRegRead */
 XRT_DEPRECATED
 XCL_DRIVER_DLLESPEC
 size_t
@@ -117,6 +117,142 @@ XCL_DRIVER_DLLESPEC
 int
 xclRegisterInterruptNotify(xclDeviceHandle handle, unsigned int userInterrupt,
                            int fd);
+
+/**
+ * DOC: XRT Stream Queue APIs
+ *
+ * NOTE: ALL STREAMING APIs ARE DEPRECATED!!!! THESE WILL BE REMOVED IN
+ * A FUTURE RELEASE. PLEASE PORT YOUR APPLICATION TO USE SLAVE BRIDGE
+ * (ALSO KNOWN AS HOST MEMORY) FOR EQUIVALENT FUNCTIONALITY.
+ *
+ */
+
+enum xclStreamContextFlags {
+	/* Enum for xclQueueContext.flags */
+	XRT_QUEUE_FLAG_POLLING		= (1 << 2),
+};
+
+struct xclQueueContext {
+    uint32_t	type;	   /* stream or packet Queue, read or write Queue*/
+    uint32_t	state;	   /* initialized, running */
+    uint64_t	route;	   /* route id from xclbin */
+    uint64_t	flow;	   /* flow id from xclbin */
+    uint32_t	qsize;	   /* number of descriptors */
+    uint32_t	desc_size; /* this might imply max inline msg size */
+    uint64_t	flags;	   /* isr en, wb en, etc */
+};
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclCreateWriteQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx,
+                    uint64_t *q_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclCreateReadQueue(xclDeviceHandle handle, struct xclQueueContext *q_ctx,
+                   uint64_t *q_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclDestroyQueue(xclDeviceHandle handle, uint64_t q_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+void*
+xclAllocQDMABuf(xclDeviceHandle handle, size_t size, uint64_t *buf_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclFreeQDMABuf(xclDeviceHandle handle, uint64_t buf_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclModifyQueue(xclDeviceHandle handle, uint64_t q_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclStartQueue(xclDeviceHandle handle, uint64_t q_hdl);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclStopQueue(xclDeviceHandle handle, uint64_t q_hdl);
+
+struct xclReqBuffer {
+    union {
+	char*    buf;    // ptr or,
+	uint64_t va;	 // offset
+    };
+    uint64_t  len;
+    uint64_t  buf_hdl;   // NULL when first field is buffer pointer
+};
+
+enum xclQueueRequestKind {
+    XCL_QUEUE_WRITE = 0,
+    XCL_QUEUE_READ  = 1,
+    //More, in-line etc.
+};
+
+enum xclQueueRequestFlag {
+    XCL_QUEUE_REQ_EOT			= 1 << 0,
+    XCL_QUEUE_REQ_CDH			= 1 << 1,
+    XCL_QUEUE_REQ_NONBLOCKING		= 1 << 2,
+    XCL_QUEUE_REQ_SILENT		= 1 << 3, /* not supp. not generate event for non-blocking req */
+};
+
+struct xclQueueRequest {
+    enum xclQueueRequestKind op_code;
+    struct xclReqBuffer*       bufs;
+    uint32_t	        buf_num;
+    char*               cdh;
+    uint32_t	        cdh_len;
+    uint32_t		flag;
+    void*		priv_data;
+    uint32_t            timeout;
+};
+
+struct xclReqCompletion {
+    char			resv[64]; /* reserved for meta data */
+    void			*priv_data;
+    size_t			nbytes;
+    int				err_code;
+};
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+ssize_t
+xclWriteQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *wr_req);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+ssize_t
+xclReadQueue(xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest *rd_req);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclPollQueue(xclDeviceHandle handle, uint64_t q_hdl, int min_compl,
+		   int max_compl, struct xclReqCompletion *comps,
+		   int* actual_compl, int timeout);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclSetQueueOpt(xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val);
+
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
+                  struct xclReqCompletion *comps, int* actual_compl, int timeout);
+
+/* End XRT Stream Queue APIs */
 
 #ifdef __cplusplus
 }

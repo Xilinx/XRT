@@ -536,4 +536,21 @@ namespace xdp {
 
     return nocNames[deviceId] ;
   }
+
+  void VPDynamicDatabase::setTraceBufferFull(uint64_t deviceId, bool val)
+  {
+    if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
+      deviceTraceBufferFullMap.insert(std::pair<uint64_t, bool>(deviceId, val));
+      return;
+    }
+    deviceTraceBufferFullMap[deviceId] = val;
+  }
+
+  bool VPDynamicDatabase::isTraceBufferFull(uint64_t deviceId)
+  {
+    if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
+      return false;
+    }
+    return deviceTraceBufferFullMap[deviceId];
+  }
 }

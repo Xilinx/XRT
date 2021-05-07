@@ -70,6 +70,7 @@ Recommended settings are : 'coarse' option for data transfer trace and no stall 
 
 #define TS2MM_WARN_MSG_CIRC_BUF       "Unable to use circular buffer for continuous trace offload. Please increase trace \
 buffer size and/or reduce continuous trace interval."
+#define TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. Timeline trace could be incomplete."
 
 #define MIN_TRACE_DUMP_INTERVAL_S 1
 #define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."

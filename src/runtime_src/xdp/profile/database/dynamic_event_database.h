@@ -101,6 +101,9 @@ namespace xdp {
     // For device events
     std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
+    // For Trace Buffer Fullness Status 
+    std::map<uint64_t, bool> deviceTraceBufferFullMap;
+
     // For callback events that don't have a unique ID
     std::map<uint64_t, uint64_t> uidMap ;
 
@@ -231,6 +234,10 @@ namespace xdp {
 				   const std::vector<uint64_t>& values) ;
     XDP_EXPORT std::vector<CounterSample> getNOCSamples(uint64_t deviceId) ;
     XDP_EXPORT CounterNames getNOCNames(uint64_t deviceId) ;
+
+    // Device Trace Buffer Fullness Status
+    XDP_EXPORT void setTraceBufferFull(uint64_t deviceId, bool val);
+    XDP_EXPORT bool isTraceBufferFull(uint64_t deviceId);
   } ;
   
 }

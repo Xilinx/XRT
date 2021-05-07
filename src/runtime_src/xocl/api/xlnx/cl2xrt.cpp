@@ -28,7 +28,10 @@ namespace xrt { namespace opencl {
 xrt::device
 get_xrt_device(cl_device_id device)
 {
-  return xocl::xocl(device)->get_xrt_device();
+  auto xdevice = xocl::xocl(device)->get_xrt_device();
+  if (!xdevice)
+    throw xrt_core::error(ENODEV, "OpenCL context has not been created, xrt::device does not exist");
+  return xdevice;
 }
 
 xrt::bo

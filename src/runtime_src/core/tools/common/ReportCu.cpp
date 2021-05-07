@@ -251,26 +251,26 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportCu::writeReport( const xrt_core::device * _pDevice,
-                                  const std::vector<std::string> & /*_elementsFilter*/, 
-                                  std::iostream & _output) const
+ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
+                       const boost::property_tree::ptree& _pt, 
+                       const std::vector<std::string>& /*_elementsFilter*/,
+                       std::ostream & _output) const
 {
-  boost::property_tree::ptree _pt;
   boost::property_tree::ptree empty_ptree;
-  getPropertyTreeInternal(_pDevice, _pt);
-  boost::format cuFmt("%-8s%-30s%-16s%-8s%-8s\n");
+  boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
   //check if a valid CU report is generated
-  boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units");
+  const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
   if(pt_cu.empty())
     return;
 
-  _output << "PL Compute Units" << std::endl;
+  _output << "Compute Units" << std::endl;
+  _output << "  PL Compute Units" << std::endl;
   _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
     for(auto& kv : pt_cu) {
-      boost::property_tree::ptree& cu = kv.second;
+      const boost::property_tree::ptree& cu = kv.second;
       if(cu.get<std::string>("type").compare("PL") != 0)
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
@@ -286,12 +286,12 @@ ReportCu::writeReport( const xrt_core::device * _pDevice,
   _output << std::endl;
 
   //PS kernel report
-  _output << "PS Compute Units" << std::endl;
+  _output << "  PS Compute Units" << std::endl;
   _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
   try {
     int index = 0;
     for(auto& kv : pt_cu) {
-      boost::property_tree::ptree& cu = kv.second;
+      const boost::property_tree::ptree& cu = kv.second;
       if(cu.get<std::string>("type").compare("PS") != 0)
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
