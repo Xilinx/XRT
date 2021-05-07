@@ -54,52 +54,35 @@ addnodelist(std::string search_str, std::string node_str,boost::property_tree::p
             "col": "0",
             "row": "0",
             "dma": {
-                "Channel_status": {
-                    "MM2S": [
+                "channel_status": {
+                    "mm2s": [
                         "Running"
                     ],
-                    "S2MM": [
+                    "s2mm": [
                         "Stalled_on_lock"
                     ]
                 },
-                "Mode": {
-                    "MM2S": [
-                        "A_B"
-                    ],
-                    "S2MM": [
-                        "FIFO",
-                        "Packet_Switching"
-                    ]
-                },
-                "Queue_size": {
-                    "MM2S": [
+                "queue_size": {
+                    "mm2s": [
                         "2"
                     ],
-                    "S2MM": [
+                    "s2mm": [
                         "3"
                     ]
                 },
-                "Queue_status": {
-                    "MM2S": [
+                "queue_status": {
+                    "mm2s": [
                         "channel0_overflow"
                     ],
-                    "S2MM": [
+                    "s2mm": [
                         "channel0_overflow"
                     ]
                 },
-                "Current_BD": {
-                    "MM2S": [
+                "current_bd": {
+                    "mm2s": [
                         "3"
                     ],
-                    "S2MM": [
-                        "2"
-                    ]
-                },
-                "Lock_ID": {
-                    "MM2S": [
-                        "1"
-                    ],
-                    "S2MM": [
+                    "s2mm": [
                         "2"
                     ]
                 }
@@ -113,18 +96,18 @@ addnodelist(std::string search_str, std::string node_str,boost::property_tree::p
                 ]
             },
             "errors": {
-                "Core_module": {
+                "core": {
                     "Bus": [
                         "AXI-MM_slave_error"
                     ]
                 },
-                "Memory_module": {
+                "memory": {
                     "ECC": [
                         "DM_ECC_error_scrub_2-bit",
                         "DM_ECC_error_2-bit"
                     ]
                 },
-                "PL_module": {
+                "pl": {
                     "DMA": [
                         "DMA_S2MM_0_error",
                         "DMA_MM2S_1_error"
@@ -132,16 +115,16 @@ addnodelist(std::string search_str, std::string node_str,boost::property_tree::p
                 }
             },
             "event": {
-                "Core_module": [
+                "core": [
                     "Perf_Cnt0",
                     "PC_0",
                     "Memory_Stall"
                 ],
-                "Memory_module": [
+                "memory": [
                     "Lock_0_Acquired",
                     "DMA_S2MM_0_go_to_idle"
                 ],
-                "PL_module": [
+                "pl": [
                     "DMA_S2MM_0_Error",
                     "Lock_0_Acquired"
                 ]
@@ -177,66 +160,50 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
 
       std::string mode;
       boost::property_tree::ptree empty_pt;
-      for (auto& node: oshim.get_child("dma.Mode.MM2S", empty_pt)) {
-        mode +=(mode.empty()?"":", ")+node.second.data();
+
+      if(oshim.find("dma") != oshim.not_found()) {
+        boost::property_tree::ptree mm2s_array;
+        auto queue_size = oshim.get_child("dma.queue_size.mm2s").begin();
+        auto queue_status = oshim.get_child("dma.queue_status.mm2s").begin();
+        auto current_bd = oshim.get_child("dma.current_bd.mm2s").begin();
+        int id = 0;
+        for (auto& node : oshim.get_child("dma.channel_status.mm2s")) {
+          boost::property_tree::ptree channel;
+          channel.put("id", id++);
+          channel.put("channel_status", node.second.data());
+          channel.put("queue_size", queue_size->second.data());
+          channel.put("queue_status", queue_status->second.data());
+          channel.put("current_bd", current_bd->second.data());
+          queue_size++;
+          queue_status++;
+          current_bd++;
+          mm2s_array.push_back(std::make_pair("", channel));
+        }
+        ishim.add_child("dma.mm2s.channel", mm2s_array);
+
+        boost::property_tree::ptree s2mm_array;
+        queue_size = oshim.get_child("dma.queue_size.s2mm").begin();
+        queue_status = oshim.get_child("dma.queue_status.s2mm").begin();
+        current_bd = oshim.get_child("dma.current_bd.s2mm").begin();
+        id = 0;
+        for (auto& node : oshim.get_child("dma.channel_status.s2mm")) {
+          boost::property_tree::ptree channel;
+          channel.put("id", id++);
+          channel.put("channel_status", node.second.data());
+          channel.put("queue_size", queue_size->second.data());
+          channel.put("queue_status", queue_status->second.data());
+          channel.put("current_bd", current_bd->second.data());
+          queue_size++;
+          queue_status++;
+          current_bd++;
+          s2mm_array.push_back(std::make_pair("", channel));
+        }
+        ishim.add_child("dma.s2mm.channel", s2mm_array);
       }
 
-      if(!mode.empty())
-        ishim.put("dma.mm2s.mode", mode);
+      if(oshim.find("lock") != oshim.not_found())
+        addnodelist("lock", "locks", oshim, ishim);
 
-      mode.clear();
-      for (auto& node: oshim.get_child("dma.Mode.S2MM", empty_pt)) {
-        mode +=(mode.empty()?"":", ")+node.second.data();
-      }
-
-      if(!mode.empty())
-        ishim.put("dma.s2mm.mode", mode);
-
-      boost::property_tree::ptree mm2s_array;
-      auto queue_size = oshim.get_child("dma.Queue_size.MM2S").begin();
-      auto queue_status = oshim.get_child("dma.Queue_status.MM2S").begin();
-      auto current_bd = oshim.get_child("dma.Current_BD.MM2S").begin();
-      auto lock_id = oshim.get_child("dma.Lock_ID.MM2S").begin();
-      int id = 0;
-      for (auto& node : oshim.get_child("dma.Channel_status.MM2S")) {
-        boost::property_tree::ptree channel;
-        channel.put("id", id);
-        channel.put("channel_status", node.second.data());
-        channel.put("queue_size", queue_size->second.data());
-        channel.put("queue_status", queue_status->second.data());
-        channel.put("current_bd", current_bd->second.data());
-        channel.put("lock_id", lock_id->second.data());
-        queue_size++;
-        queue_status++;
-        current_bd++;
-        lock_id++;
-        mm2s_array.push_back(std::make_pair("", channel));
-      }
-      ishim.add_child("dma.mm2s.channel", mm2s_array);
-
-      boost::property_tree::ptree s2mm_array;
-      queue_size = oshim.get_child("dma.Queue_size.S2MM").begin();
-      queue_status = oshim.get_child("dma.Queue_status.S2MM").begin();
-      current_bd = oshim.get_child("dma.Current_BD.S2MM").begin();
-      lock_id = oshim.get_child("dma.Lock_ID.S2MM").begin();
-      id = 0;
-      for (auto& node : oshim.get_child("dma.Channel_status.S2MM")) {
-        boost::property_tree::ptree channel;
-        channel.put("id", id);
-        channel.put("channel_status", node.second.data());
-        channel.put("queue_size", queue_size->second.data());
-        channel.put("queue_status", queue_status->second.data());
-        channel.put("current_bd", current_bd->second.data());
-        channel.put("lock_id", lock_id->second.data());
-        queue_size++;
-        queue_status++;
-        current_bd++;
-        lock_id++;
-        s2mm_array.push_back(std::make_pair("", channel));
-      }
-      ishim.add_child("dma.s2mm.channel", s2mm_array);
-
-      addnodelist("lock", "locks", oshim, ishim);
       boost::property_tree::ptree module_array;
       for (auto& node : oshim.get_child("errors", empty_pt)) {
         boost::property_tree::ptree module;
@@ -254,7 +221,9 @@ populate_aie_shim(const xrt_core::device * device, const std::string& desc, boos
         module.add_child("error", type_array);
         module_array.push_back(std::make_pair("", module));
       }
-      ishim.add_child("errors", module_array);
+
+      if(oshim.find("errors") != oshim.not_found())
+        ishim.add_child("errors", module_array);
 
       addnodelist("event", "events", oshim, ishim);
       tile_array.push_back(std::make_pair("tile"+std::to_string(col),ishim));
@@ -312,7 +281,6 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
       if(tile.second.find("dma") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "DMA";
         _output << boost::format("        %s:\n") % "MM2S";
-        _output << fmt12("%s") % "Mode" % tile.second.get<std::string>("dma.mm2s.mode");
 
         _output << boost::format("            %s:\n") % "Channel";
         for(auto& node : tile.second.get_child("dma.mm2s.channel")) {
@@ -321,12 +289,10 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
           _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
           _output << fmt16("%s") % "Queue Status" % node.second.get<std::string>("queue_status");
           _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
-          _output << fmt16("%s") % "Lock ID" % node.second.get<std::string>("lock_id");
           _output << std::endl;
         }
 
         _output << boost::format("        %s:\n") % "S2MM";
-        _output << fmt12("%s") % "Mode" % tile.second.get<std::string>("dma.s2mm.mode");
 
         _output << boost::format("            %s:\n") % "Channel";
         for(auto& node : tile.second.get_child("dma.s2mm.channel")) {
@@ -335,7 +301,6 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
           _output << fmt16("%s") % "Queue Size" % node.second.get<std::string>("queue_size");
           _output << fmt16("%s") % "Queue Status" % node.second.get<std::string>("queue_status");
           _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
-          _output << fmt16("%s") % "Lock ID" % node.second.get<std::string>("lock_id");
           _output << std::endl;
         }
       } 

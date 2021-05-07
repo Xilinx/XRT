@@ -5,20 +5,22 @@
 #
 # Copyright (C) 2020-2021 Xilinx, Inc.
 #
-# xbmgmt loader which automatically switches between classic and next
-# generation xbmgmt utility. The current default is classic xbmgmt tool.
+# xbmgmt loader which automatically switches between legacy and next-gen
+# xbmgmt utility. Starting with 2021.1 the default is next-gen xbmgmt utility.
 #
 
 # -- Detect a Windows environment and automatically switch to the .bat file
 if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
-  trap "" INT
-  "$0.bat" "$@"
-  exit $?
+    trap "" INT
+    "$0.bat" "$@"
+    exit $?
 fi
 
-DEFAULT=xbmgmt
+# Working variables
+DEFAULT=xbmgmt2
 XBMGMT=xbmgmt
 XBMGMT2=xbmgmt2
+XRT_PROG=""
 
 # Table to resolve reset sub-command based on switch passed to reset
 declare -A RSTOPT=( \
@@ -37,9 +39,9 @@ declare -A RSTOPT=( \
         ["-h"]="XBMGMT2" \
     )
 
-# In the following table "reset" points to a second table by name
-# Note that reset is valid both for classic and next generation tool
-# and hence requires a second lookup to resolve between xbmgmt and xbmgmt2
+# In the following table "reset" points to a second table by name.
+# Note that reset is valid both for legacy and next-gen tool and hence
+# requires a second lookup to resolve between xbmgmt and xbmgmt2
 declare -A COMMANDS=( \
         ["help"]="XBMGMT" \
         ["version"]="XBMGMT" \
@@ -60,89 +62,89 @@ declare -A COMMANDS=( \
         ["--help"]="XBMGMT2" \
         ["--verbose"]="XBMGMT2" \
         ["--batch"]="XBMGMT2" \
-        ["-h"]="XBMGMT2" \
-        ["-v"]="XBMGMT2" \
-        ["-b"]="XBMGMT2" \
+        ["--force"]="XBMGMT2" \
     )
 
-
-# Working variables
-XRT_PROG=${DEFAULT}
-
-# Determine which version of xbmgmt should be used
-# Check to see environment variable is NOT set
-if [ -z ${XRT_TOOLS_NEXTGEN+x} ]; then
-  XRT_PROG=xbmgmt
-elif [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
-     XRT_PROG=xbmgmt2
-fi
 
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
-  case "$1" in
-    # Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
-    -new|--new)
-      XRT_PROG=xbmgmt2
-      shift
-      ;;
-    # Copy the options the remaining options
-    *)
-      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
-      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
-      shift
-      ;;
-  esac
+    case "$1" in
+	# Indicates that the new version of xbmgmt (e.g., xbmgmt2) should be used
+	-new|--new)
+	    XRT_PROG=xbmgmt2
+	    shift
+	    ;;
+	# Indicates that the legacy version of xbutil should be used
+	-legacy|--legacy)
+	    XRT_PROG=xbmgmt
+	    shift
+	    ;;
+	# Copy the options the remaining options
+	*)
+	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+	    XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+	    shift
+	    ;;
+    esac
 done
 
-# If user did not specify -new/--new then attempt to determine if user
-# wants to use classic or new by peeking inside the command line
+# Determine which version of xbmgmt should be used
+# Check to see environment variable is NOT set
+if [ "${XRT_TOOLS_NEXTGEN,,}" = "true" ]; then
+    XRT_PROG=xbmgmt2
+fi
+
+# If user did not specify -legacy/--legacy then attempt to determine if
+# user wants to use legacy or next-gen by peeking inside the command line.
 # Ideally with bash 'nameref' the case/esac would not be necessary and
 # we should be able to deref in one step using helper declaration like
 # declare -n PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
 # However RHEL 7.X still uses bash 4.2 which does not support nameref :-(
 
-if [ ${XRT_PROG} == "xbmgmt" ]; then
-  PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
-  case ${PROG} in
-    XBMGMT | XBMGMT2)
-      # Get named reference to the value pointed by the string returned
-      XRT_PROG=${!PROG}
-      ;;
-    RSTOPT)
-      # We have an ambiguous sub-command, use the next token/switch to
-      # disambiguate by a second look up
-      if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
-        PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
-        XRT_PROG=${!PROG}
-      else
-        # User did not provide switch to the sub-command so we cannot
-        # disabmiguate, default to DEFAULT
-        XRT_PROG=${DEFAULT}
-      fi
-      ;;
-    *)
-      # Bogus sub-command which failed lookup
-      XRT_PROG=${DEFAULT}
-      ;;
-  esac
+if [[ -z ${XRT_PROG} ]] && [[ ${#XRTWRAP_PROG_ARGS[@]} -gt 0 ]]; then
+    PROG=${COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+    case ${PROG} in
+	XBMGMT | XBMGMT2)
+	# Non ambiguous command line argument, utility already resolved
+	;;
+	RSTOPT)
+	    # We have an ambiguous sub-command, use the next token/switch to
+	    # disambiguate by a second look up
+	    PROG="DEFAULT"
+	    if [ ${#XRTWRAP_PROG_ARGS[@]} -gt 1 ]; then
+		PROG=${RSTOPT[${XRTWRAP_PROG_ARGS[1]}]:-${DEFAULT}}
+	    fi
+	    ;;
+	*)
+	    # Bogus sub-command which failed lookup
+	    PROG="DEFAULT"
+	    ;;
+    esac
+    # Get named reference to the value pointed by the string returned
+    XRT_PROG=${!PROG}
 fi
 
-# Friendly message
-if [ ${XRT_PROG} == "xbmgmt2" ]; then
-  echo "-----------------------------------------------------"
-  echo " Invoking next generation of the xbmgmt application "
-  echo "-----------------------------------------------------"
+# Default to the new gen tool if we still could not disambuguate the choice
+if [[ -z ${XRT_PROG} ]]; then
+    XRT_PROG=${DEFAULT}
+fi
+
+# Friendly message if running in a terminal
+if [[ ${XRT_PROG} == "xbmgmt" ]] && [[ -t 1 ]]; then
+    echo "---------------------------------------------------------------------"
+    echo "Legacy xbmgmt is being deprecated, consider moving to next-gen xbmgmt"
+    echo "---------------------------------------------------------------------"
 fi
 
 # -- Find and call the loader
 XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
 
 if [ ! -f "$XRT_LOADER" ]; then
-  echo "ERROR: Could not find 64-bit loader executable."
-  echo "ERROR: ${XRT_LOADER} does not exist."
-  exit 1
+    echo "ERROR: Could not find 64-bit loader executable."
+    echo "ERROR: ${XRT_LOADER} does not exist."
+    exit 1
 fi
 
-"${XRT_LOADER}" -exec $XRT_PROG "${XRTWRAP_PROG_ARGS[@]}"
+"${XRT_LOADER}" -exec ${XRT_PROG} "${XRTWRAP_PROG_ARGS[@]}"

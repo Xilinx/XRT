@@ -144,7 +144,7 @@ private:
   void
   get_bo_properties() const
   {
-    xclBOProperties prop;
+    xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
     addr = prop.paddr;
     grpid = prop.flags & XRT_BO_FLAGS_MEMIDX_MASK;
@@ -158,13 +158,14 @@ private:
   }
 
 protected:
-  std::shared_ptr<xrt_core::device> device;
-  xclBufferHandle handle;             // driver handle
-  size_t size;                        // size of buffer
-  mutable uint64_t addr = no_addr;    // bo device address
-  mutable int32_t grpid = no_group;   // memory group index
-  mutable bo::flags flags = no_flags; // flags per bo properties
-  bool free_bo;                       // should dtor free bo
+  // deliberately made protected, this is a file-scoped controlled API 
+  std::shared_ptr<xrt_core::device> device; // NOLINT
+  xclBufferHandle handle;                   // NOLINT driver handle
+  size_t size;                              // NOLINT size of buffer
+  mutable uint64_t addr = no_addr;          // NOLINT bo device address
+  mutable int32_t grpid = no_group;         // NOLINT memory group index
+  mutable bo::flags flags = no_flags;       // NOLINT flags per bo properties
+  bool free_bo;                             // NOLINT should dtor free bo
 
 public:
   explicit bo_impl(size_t sz)
@@ -178,7 +179,7 @@ public:
   bo_impl(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
     : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(ehdl)), free_bo(true)
   {
-    xclBOProperties prop;
+    xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
     size = prop.size;
   }
@@ -193,6 +194,11 @@ public:
     if (free_bo)
       device->free_bo(handle);
   }
+
+  bo_impl(const bo_impl&) = delete;
+  bo_impl(bo_impl&&) = delete;
+  bo_impl& operator=(bo_impl&) = delete;
+  bo_impl& operator=(bo_impl&&) = delete;
 
   xclBufferHandle
   get_xcl_handle() const
@@ -299,6 +305,7 @@ public:
       throw xrt_core::system_error(EINVAL, "No host side buffer in destination buffer");
 
     // sync to src to ensure data integrity, logically const
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast) // special case
     const_cast<bo_impl*>(src)->sync(XCL_BO_SYNC_BO_FROM_DEVICE, sz, src_offset);
 
     // copy host side buffer
@@ -381,8 +388,8 @@ public:
     , ubuf(buf)
   {}
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     return ubuf;
   }
@@ -402,8 +409,8 @@ public:
     : bo_impl(dhdl, bhdl, sz), hbuf(std::move(b))
   {}
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     return hbuf.get();
   }
@@ -422,7 +429,7 @@ public:
     : bo_impl(dhdl, bhdl, sz), hbuf(device->map_bo(handle, true))
   {}
 
-  ~buffer_kbuf()
+  ~buffer_kbuf() override
   {
     try {
       device->unmap_bo(handle, hbuf);
@@ -431,8 +438,13 @@ public:
     }
   }
 
-  virtual void*
-  get_hbuf() const
+  buffer_kbuf(const buffer_kbuf&) = delete;
+  buffer_kbuf(buffer_kbuf&&) = delete;
+  buffer_kbuf& operator=(buffer_kbuf&) = delete;
+  buffer_kbuf& operator=(buffer_kbuf&&) = delete;
+  
+  void*
+  get_hbuf() const override
   {
     return hbuf;
   }
@@ -458,7 +470,7 @@ public:
     }
   }
 
-  ~buffer_import()
+  ~buffer_import() override
   {
     try {
       device->unmap_bo(handle, hbuf);
@@ -467,14 +479,19 @@ public:
     }
   }
 
-  virtual bool
-  is_imported() const
+  buffer_import(const buffer_import&) = delete;
+  buffer_import(buffer_import&&) = delete;
+  buffer_import& operator=(buffer_import&) = delete;
+  buffer_import& operator=(buffer_import&&) = delete;
+  
+  bool
+  is_imported() const override
   {
     return true;
   }
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     if (!hbuf)
       throw xrt_core::system_error(std::errc::bad_address, "No host memory for imported buffer");
@@ -491,8 +508,8 @@ public:
     : bo_impl(dhdl, bhdl, sz)
   {}
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     throw xrt_core::error(-EINVAL, "device only buffer has no host buffer");
   }
@@ -548,8 +565,8 @@ public:
     }
   }
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     return m_ubuf ? m_ubuf : m_host_only.get_hbuf();
   }
@@ -557,7 +574,7 @@ public:
   // sync is M2M copy between host and device bo
   // nodma is guaranteed to have M2M
   void
-  sync(xclBOSyncDirection dir, size_t sz, size_t offset)
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset) override
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
       sync_to_hbuf(sz, offset);
@@ -572,7 +589,7 @@ public:
   }
 
   void
-  copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset)
+  copy(const bo_impl* src, size_t sz, size_t src_offset, size_t dst_offset) override
   {
     // Copy src device bo to dst (this) device bo
     bo_impl::copy(src, sz, src_offset, dst_offset);
@@ -604,26 +621,26 @@ public:
       throw xrt_core::error(-EINVAL, "sub buffer size and offset");
   }
 
-  virtual size_t
-  get_offset() const
+  size_t
+  get_offset() const override
   {
     return offset;
   }
 
-  virtual void*
-  get_hbuf() const
+  void*
+  get_hbuf() const override
   {
     return hbuf;
   }
 
-  virtual bool
-  is_sub_buffer() const
+  bool
+  is_sub_buffer() const override
   {
     return true;
   }
 
-  virtual uint64_t
-  get_address() const
+  uint64_t
+  get_address() const override
   {
     return bo_impl::get_address() + offset;
   }
@@ -723,7 +740,8 @@ alloc_dbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 static std::shared_ptr<xrt::bo_impl>
 alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp, void* userptr=nullptr)
 {
-  if (sz % 64)
+  constexpr size_t align = 64;
+  if (sz % align)
     throw xrt_core::error(EINVAL, "Invalid buffer size '" + std::to_string(sz) +
                           "', must be multiple of 64 bytes for NoDMA platforms");
 

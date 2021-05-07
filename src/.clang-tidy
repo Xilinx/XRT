@@ -4,7 +4,26 @@
 # clang-tidy "-checks=cert-*,bugprone-*,clang-analyzer-*,concurrency-*,cppcoreguidelines-*,hicpp-*,modernize-*" --dump-config
 # clang-tidy looks for .clang-tidy file walking up the source directory structure to identify which checks to run
 # One can customize checks in specific source directories by placing custom .clang-tidy in those source directories
-Checks:          'clang-diagnostic-*,clang-analyzer-*,cert-*,bugprone-*,clang-analyzer-*,concurrency-*,cppcoreguidelines-*,hicpp-*,modernize-*,-modernize-use-trailing-return-type,-cppcoreguidelines-pro-bounds-pointer-arithmetic'
+Checks: '
+clang-diagnostic-*,
+clang-analyzer-*,
+cert-*,
+bugprone-*,
+clang-analyzer-*,
+concurrency-*,
+cppcoreguidelines-*,
+hicpp-*,
+-hicpp-no-array-decay,
+-hicpp-signed-bitwise,
+modernize-*,
+-modernize-use-trailing-return-type,
+-cppcoreguidelines-pro-bounds-pointer-arithmetic,
+-cppcoreguidelines-pro-type-union-access,
+-cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+-cppcoreguidelines-pro-type-reinterpret-cast,
+-cppcoreguidelines-pro-bounds-constant-array-index
+'
+
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
@@ -178,7 +197,7 @@ CheckOptions:
   - key:             hicpp-no-malloc.Reallocations
     value:           '::realloc'
   - key:             hicpp-signed-bitwise.IgnorePositiveIntegerLiterals
-    value:           '0'
+    value:           '1'
   - key:             hicpp-special-member-functions.AllowMissingMoveFunctions
     value:           '0'
   - key:             hicpp-special-member-functions.AllowSoleDefaultDtor

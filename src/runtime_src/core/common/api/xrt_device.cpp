@@ -247,9 +247,9 @@ get_info(info::device param) const
   case info::device::interface_uuid :         // std::string
     return query::to_value<info::device::interface_uuid, xrt_core::query::interface_uuids>
       (handle.get(), [](const auto& iids) {
-        if (iids.size() != 1)
-          throw xrt_core::error("Unexpected interface uuid from device");
-        return xrt_core::query::interface_uuids::to_uuid(iids[0]);
+        return (iids.size() == 1)
+          ? xrt_core::query::interface_uuids::to_uuid(iids[0])
+          : uuid {};
       });
   case info::device::kdma :                   // uint32_t
     return query::raw<info::device::kdma, xrt_core::query::kds_numcdmas>(handle.get());

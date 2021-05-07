@@ -159,6 +159,9 @@ For best performance peer devices wanting to exchange data should be under the s
 
 If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.
 
+To measure peak P2P performance with two Alveo cards, it needs to use indentical configuration of both them. This means same type of Alveo and running same verson of shell. Also both card should be under the same PCIe switch. Second, it has been known that P2P read has better throughput comparing to P2P write. Thus, P2P read should be used in benchmark to get the peak performance.
+
+
 
 P2P Data Transfer between FPGA Cards
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
