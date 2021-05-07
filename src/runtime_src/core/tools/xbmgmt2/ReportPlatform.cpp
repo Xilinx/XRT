@@ -133,8 +133,9 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   
   boost::property_tree::ptree pt_current_shell;
   if(xrt_core::device_query<xrt_core::query::is_mfg>(device)) { // golden
+    auto mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(device);
     std::string board_name = xrt_core::device_query<xrt_core::query::board_name>(device);
-    std::string vbnv = "xilinx_" + board_name + "_GOLDEN";
+    std::string vbnv = "xilinx_" + board_name + "_GOLDEN_" + std::to_string( mGoldenVer);
     pt_current_shell.put("vbnv", vbnv);
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
     try {
