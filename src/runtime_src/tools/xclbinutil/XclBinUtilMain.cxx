@@ -177,7 +177,7 @@ int main_(int argc, const char** argv) {
       ("input,i", boost::program_options::value<std::string>(&sInputFile), "Input file name. Reads xclbin into memory.")
       ("output,o", boost::program_options::value<std::string>(&sOutputFile), "Output file name. Writes in memory xclbin image to a file.")
 
-      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: HW, HW_EMU, and SW_EMU.")
+      ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw, hw_emu, and sw_emu.")
 
       ("private-key", boost::program_options::value<std::string>(&sPrivateKey), "Private key used in signing the xclbin image.")
       ("certificate", boost::program_options::value<std::string>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
