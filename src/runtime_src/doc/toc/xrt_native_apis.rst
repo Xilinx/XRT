@@ -16,7 +16,7 @@ Example g++ command
     g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
-The XRT native API supports both C and C++ flavor of APIs. For general host code development C++ based APIs are recommended. For this reason this document only describes the C++ based API interface. The full C and C++ API documentation (generated based on The Doxygen) can be found in `<./xrt_native.main.rst>`_.
+The XRT native API supports both C and C++ flavor of APIs. For general host code development C++ based APIs are recommended. For this reason this document only describes the C++ based API interface. The full doxygen generated C and C++ API documentation can be found in `<./xrt_native.main.rst>`_.
 
 
 The C++ Class objects used for the APIs are 
