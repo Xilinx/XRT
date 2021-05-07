@@ -67,7 +67,7 @@ Device and XCLBIN class provide fundamental infrastructure-related interfaces. T
 - Load compiled kernel binary (or XCLBIN) onto the device 
 
 
-The simplest code to load a XCLBIN as below  
+The simplest code to load an XCLBIN as below  
 
 .. code:: c++
       :number-lines: 10
@@ -113,9 +113,9 @@ Buffers are primarily used to transfer the data between the host and the device.
 1. Buffer allocation and deallocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The C++ inteface for buffers as below
+The C++ interface for buffers as below
    
-The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K align. By default a regular buffer is created (optionally the user can creates other types of buffer by providing a flag). 
+The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K aligned. By default, a regular buffer is created (optionally the user can create other types of buffers by providing a flag). 
 
 .. code:: c++
       :number-lines: 15
@@ -130,21 +130,21 @@ In the above code ``xrt::bo`` buffer objects are created using the class's const
 
 - As no special flags are used a regular buffer will be created.  
 - The second argument specifies the buffer size. 
-- The third argument should be used to specify enumerated memory bank index (to specify the memory location) where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
+- The third argument should be used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. In this example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using the ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
   
   
 Creating special Buffers
 ************************
 
-The ``xrt::bo()`` constructors accepts multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values
+The ``xrt::bo()`` constructors accept multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values
 
 - ``xrt::bo::flags::normal``: Default, Regular Buffer
 - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
 - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
 - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
-- ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+- ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when the host CPU frequently accessing the buffer (applicable for edge platform).
 
-The below example shows creating a P2P buffer on a device memory bank connected to the argument 3 of the kernel. 
+The below example shows creating a P2P buffer on a device memory bank connected to argument 3 of the kernel. 
 
 .. code:: c++
       :number-lines: 15
@@ -155,7 +155,7 @@ The below example shows creating a P2P buffer on a device memory bank connected 
 Creating Buffers from the user pointer
 **************************************
 
-The ``xrt::bo()`` constructor can also be called using pointer provided by the user. The user pointer must be aligned to 4K boundary.
+The ``xrt::bo()`` constructor can also be called using a pointer provided by the user. The user pointer must be aligned to 4K boundary.
 
 .. code:: c++
       :number-lines: 15
@@ -193,7 +193,7 @@ The ``xrt::bo`` class has following member functions for the same functionality
 1. ``xrt::bo::write()``
 2. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
 
-To transfer the data from the device to the host, the steps are reverse, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer. 
+To transfer the data from the device to the host, the steps are reversed, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer. 
 
 
 The corresponding ``xrt::bo`` class's member functions are
@@ -217,7 +217,7 @@ Code example of transferring data from the host to the device
            input_buffer.write(buff_data);
            input_buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
-Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for paritial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments. 
+Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for partial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments. 
 
 
 II. Data transfer between host and device by Buffer map API
@@ -251,7 +251,7 @@ XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer object
            
            dst_buffer.copy(src_buffer, copy_size_in_bytes);
 
-The API ``xrt::bo::copy()`` also has overloaded version to provide a different offset than 0 for both the source and the destination buffer. 
+The API ``xrt::bo::copy()`` also has overloaded versions to provide a different offset than 0 for both the source and the destination buffer. 
 
 3. Miscellaneous other Buffer APIs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -264,7 +264,7 @@ DMA-BUF API
 XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. 
 
 - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
-- ``xrt::bo()`` constructor : Allocate a BO imported from exported buffer handle
+- ``xrt::bo()`` constructor: Allocate a BO imported from exported buffer handle
 
 
 Consider the situation of exporting buffer from device 1 to device 2. 
@@ -288,7 +288,7 @@ Sub-buffer support
 
 The ``xrt::bo`` class constructor can also be used to allocate a sub-buffer from a parent buffer by specifying a start offset and the size. 
 
-In the example below a sub-buffer is created from a parent buffer of size 4 bytes staring from its offset 0 
+In the example below a sub-buffer is created from a parent buffer of size 4 bytes starting from its offset 0 
 
 .. code:: c++ 
       :number-lines: 18
@@ -312,17 +312,16 @@ XRT provides few other API Class member functions to obtain information related 
 Kernel and Run
 --------------
 
-To execute a kernel on a device, first a kernel class object has to be created from currently loaded xclbin.  The kernel object can used to execute the kernel function on the hardware instance (Compute Unit or CU) of the kernel.  
+To execute a kernel on a device, a kernel class (``xrt::kernel``) object has to be created from currently loaded xclbin.  The kernel object can be used to execute the kernel function on the hardware instance (Compute Unit or CU) of the kernel.  
 
-A Run object represents an execution of the kernel. Upon finishing the kernel execution, the Run object can be reused to invoke the same kernel function if desired. 
+A Run object (``xrt::run``) represents an execution of the kernel. Upon finishing the kernel execution, the Run object can be reused to invoke the same kernel function if desired. 
 
 The following topics are discussed below
 
 - Obtaining kernel object from XCLBIN
 - Getting the bank group index of a kernel argument
-- Reading and write CU mapped registers
 - Execution of kernel and dealing with the associated run
-- Other kernel execution related API
+- Other kernel related API
        
 
 Obtaining kernel object from XCLBIN
@@ -336,7 +335,7 @@ The kernel object is created from the device, XCLBIN UUID and the kernel name us
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
            auto krnl = xrt::kernel(device, xclbin_uuid, name); 
 
-**Note**: For the kernel with more than 1 CU, a kernel object can represent all the CUs having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, the specific CU name(s) should be used to obtain a kernel object to represent the subset of CUs with identical connectivity. Otherwise XRT will do this selection internally to select a group of CUs and discard the rest of the CUs (discarded CUs are not used during the execution of a kernel).  
+**Note**: A single kernel object (when created by a kernel name) can be used to execute multiple CUs as long as CUs are having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, XRT assigns a subset of CUs (one or more CUs with identical connectivity) to the created kernel object and discards the rest of the CUs (discarded CUs are not used during the execution of a kernel).  For this type of situation creating a kernel object using mangled CU names can be more useful. 
 
 As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1. 
 
@@ -354,22 +353,7 @@ As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The
                   
            krnl_obj_3 = xrt::kernel(device, xclbin_uuid, "foo:{foo_3}");     
 
-      
-Exclusive access of the kernel's CU
-***********************************
-  
-By default, ``xrt::kernel()`` opens a kernel's CU in a shared mode so that the CU can be shared with the other processes. In some cases, it is required to open the CU in exclusive mode (for example, when it is required to read/write CU mapped register). Exclusive CU opening fails if the CU is already opened in either shared or exclusive access. To open a CU in exclusive mode the ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument. The enumerator values are: 
-
-- ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
-- ``xrt::kernel::cu_access_mode::exclusive`` 
-
-.. code:: c++
-      :number-lines: 39
-       
-           auto krnl = xrt::kernel(device, xclbin_uuid, name, xrt::kernel::cu_access_mode::exclusive); 
-
    
-
 Getting bank group index of the kernel argument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -385,15 +369,15 @@ Let us review the example below where the buffer is allocated for the kernel's f
 
 
 
-If the kernel bank index is ambiguous then ``kernel.group_id()`` returns the last memory bank index in the list it maintains. This is the case when the kernel has multiple CU with different connectivity for that argument. For example, let's assume a kernel argument (argument 0) is connected to memory bank 0, 1, 2 (for 3 CUs), then kernel.group_id(0) will return the last index from the group {0,1,2}, i.e. 2. As a result the buffer is created on the memory bank 2, so the buffer cannot be used for the CU0 and CU1.  
+If the kernel bank index is ambiguous then ``kernel.group_id()`` returns the last memory bank index in the list it maintains. This is the case when the kernel has multiple CU with different connectivity for that argument. For example, let's assume a kernel argument (argument 0) is connected to memory bank 0, 1, 2 (for 3 CUs), then ``kernel.group_id(0)`` will return the last index from the group {0,1,2}, i.e. 2. As a result the buffer is created on the memory bank 2, so the buffer cannot be used for the CU0 and CU1.  
 
-However, if the kernel object is created for a specific CU (by using the ``{kernel_name:{cu_name(s)}}`` for xrt::kernel consturctor) then the user can use their desired CU as they create in the host code. 
+However, in the above situation, the user can always create 3 distinct kernel objects corresponds to 3 CUs (by using the ``{kernel_name:{cu_name(s)}}`` for xrt::kernel constructor) to execute the CUs by separate ``xrt::kernel`` objects. 
 
- 
+
 Executing the kernel
 ~~~~~~~~~~~~~~~~~~~~
 
-Execution of the kernel is associated with a **Run** handle (or object). The kernel can be executed by the ``xrt::kernel::operator()`` that takes all the kernel arguments in order. The kernel execution API returns a run object corresponding to the execution. 
+Execution of the kernel is associated with a **Run** object. The kernel can be executed by the ``xrt::kernel::operator()`` that takes all the kernel arguments in order. The kernel execution API returns a run object corresponding to the execution. 
 
 .. code:: c++
       :number-lines: 50
@@ -419,8 +403,8 @@ The above c++ code block is demonstrating
 - The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).   
 
 
-Other kernel execution related APIs
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Other kernel APIs
+~~~~~~~~~~~~~~~~~
 
 **Obtaining the run object before execution**: In the above example we have seen a run object is obtained when the kernel is executed (kernel execution returns a run object). However, a run object can be obtained even before the kernel execution. The flow is as below
 
