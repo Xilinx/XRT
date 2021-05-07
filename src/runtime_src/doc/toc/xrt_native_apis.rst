@@ -21,24 +21,23 @@ The XRT native API supports both C and C++ flavor of APIs. For general host code
 
 The C++ Class objects used for the APIs are 
 
-+---------------+-------------------+
-|               |   C++ Class       |  
-+===============+===================+
-|   Device      | ``xrt::device``   |  
-+---------------+-------------------+
-|   XCLBIN      | ``xrt::xclbin``   |  
-+---------------+-------------------+
-|   Buffer      | ``xrt::bo``       |  
-+---------------+-------------------+
-|   Kernel      | ``xrt::kernel``   |  
-+---------------+-------------------+
-| User Managed  | ``xrt::ip``       |
-|   Kernel      |                   |  
-+---------------+-------------------+
-|   Run         | ``xrt::run``      |  
-+---------------+-------------------+
-|   Graph       | ``xrt::graph``    |  
-+---------------+-------------------+
++----------------------+-------------------+
+|                      |   C++ Class       |  
++======================+===================+
+|   Device             | ``xrt::device``   |  
++----------------------+-------------------+
+|   XCLBIN             | ``xrt::xclbin``   |  
++----------------------+-------------------+
+|   Buffer             | ``xrt::bo``       |  
++----------------------+-------------------+
+|   Kernel             | ``xrt::kernel``   |  
++----------------------+-------------------+
+|   Run                | ``xrt::run``      |  
++----------------------+-------------------+
+| User-managed Kernel  | ``xrt::ip``       |  
++----------------------+-------------------+
+|   Graph              | ``xrt::graph``    |  
++----------------------+-------------------+
 
 All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. In the user host code, it is sufficient to include ``"xrt/xrt_kernel.h"`` and ``"xrt/xrt_aie.h"`` (when using Graph APIs) to access all the APIs related to these data structure.
 
