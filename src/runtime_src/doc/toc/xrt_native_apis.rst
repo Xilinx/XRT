@@ -63,8 +63,8 @@ Device and XCLBIN
 
 Device and XCLBIN class provide fundamental infrastructure-related interfaces. The primary objective of the device and XCLBIN related APIs are
  
-    - Open a Device
-    - Load compiled kernel binary (or XCLBIN) onto the device 
+- Open a Device
+- Load compiled kernel binary (or XCLBIN) onto the device 
 
 
 The simplest code to load a XCLBIN as below  
@@ -79,9 +79,9 @@ The simplest code to load a XCLBIN as below
        
 The above code block shows
 
-    - The ``xrt::device`` class's constructor is used to open the device (enumerated as 0)
-    - The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
-    - The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
+- The ``xrt::device`` class's constructor is used to open the device (enumerated as 0)
+- The member function ``xrt::device::load_xclbin`` is used to load the XCLBIN from the filename. 
+- The member function ``xrt::device::load_xclbin`` returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section). 
 
 The class constructor ``xrt::device::device(const std::string& bdf)`` also supports opening a device object from a Pcie BDF passed as a string.
 
@@ -104,9 +104,9 @@ Buffers
 
 Buffers are primarily used to transfer the data between the host and the device. The Buffer related APIs are discussed in the following three subsections
 
-       1. Buffer allocation and deallocation
-       2. Data transfer using Buffers
-       3. Miscellaneous other Buffer APIs
+1. Buffer allocation and deallocation
+2. Data transfer using Buffers
+3. Miscellaneous other Buffer APIs
 
 
 
