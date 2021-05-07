@@ -1060,7 +1060,10 @@ static int p2p_remap_resource(struct platform_device *pdev, int bar_idx,
 
 	if (!p2p->remapper) {
 		p2p_err(p2p, "remap does not exist");
-		return -EINVAL;
+		/* remap bar doesn't exist on u2 platforms and remap_range set to entire
+		 * p2p bar len in p2p_mem_init(). So, check remap_range val before returning err code.
+		 */
+		return (p2p->remap_range ? 0 : -EINVAL);
 	}
 
 	mutex_lock(&p2p->p2p_lock);
