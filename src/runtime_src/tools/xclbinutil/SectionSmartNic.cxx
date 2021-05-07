@@ -100,12 +100,16 @@ read_file_into_buffer(const std::string& fileName,
                       const std::string& fromRelativeDir,
                       std::vector<char>& buffer) {
   // Build the path to our file of interest
-  boost::filesystem::path filePath(fromRelativeDir);
-  filePath /= fileName;
+  boost::filesystem::path filePath = fileName;
+
+  if (filePath.is_relative()) {
+    filePath = fromRelativeDir;
+    filePath /= fileName;
+  }
 
   // Open the file
   std::ifstream file(filePath.string(), std::ifstream::in | std::ifstream::binary);
-  if (!file.is_open())
+  if (!file.is_open()) 
     throw std::runtime_error("ERROR: Unable to open the file for reading: " + fileName);
 
   // Get the file size

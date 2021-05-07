@@ -180,14 +180,20 @@ SchemaTransformUniversal_schema_version( const boost::property_tree::ptree& _ptO
     throw std::runtime_error("Error: schema_version.minor key not found.");
   }
 
-  const std::string & sMajor = _ptOriginal.get<std::string>("major");
-  int major = std::stoi(sMajor.c_str(), 0, 16);
+  std::string sMajor = _ptOriginal.get<std::string>("major");
+  int major = sMajor.empty() ? -1 : std::stoi(sMajor.c_str(), 0, 16);
 
-  const std::string & sMinor = _ptOriginal.get<std::string>("minor");
-  int minor = std::stoi(sMinor.c_str(), 0 , 16);
+  std::string sMinor = _ptOriginal.get<std::string>("minor");
+  int minor = sMinor.empty() ? -1 : std::stoi(sMinor.c_str(), 0 , 16);
 
   if ((major != 1) || (minor != 0)) {
-    std::string errMsg = "Error: Unsupported schema_version: Major:" + sMajor + ", Minor:" + sMinor;
+    if (sMajor.empty())
+      sMajor = "<undefined>";
+
+    if (sMinor.empty())
+      sMinor = "<undefined>";
+
+    std::string errMsg = "Error: Unsupported schema_version: Major: '" + sMajor + "', Minor: '" + sMinor + "'";
     throw std::runtime_error(errMsg);
   }
 
