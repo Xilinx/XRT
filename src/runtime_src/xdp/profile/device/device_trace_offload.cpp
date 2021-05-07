@@ -64,8 +64,7 @@ void DeviceTraceOffload::offload_device_continuous()
   // Do a final forced read
   m_read_trace(true);
   read_trace_end();
-
-  status = OffloadThreadStatus::STOPPED;
+  offload_finished();
 }
 
 void DeviceTraceOffload::train_clock_continuous()
@@ -75,7 +74,7 @@ void DeviceTraceOffload::train_clock_continuous()
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
 
-  status = OffloadThreadStatus::STOPPED;
+  offload_finished();
 }
 
 bool DeviceTraceOffload::should_continue()
@@ -103,6 +102,13 @@ void DeviceTraceOffload::stop_offload()
   std::lock_guard<std::mutex> lock(status_lock);
   if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPING;
+}
+
+void DeviceTraceOffload::offload_finished()
+{
+  std::lock_guard<std::mutex> lock(status_lock);
+  if (status == OffloadThreadStatus::STOPPED) return ;
+  status = OffloadThreadStatus::STOPPED;
 }
 
 void DeviceTraceOffload::train_clock()

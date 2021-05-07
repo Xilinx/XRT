@@ -61,8 +61,6 @@ public:
     XDP_EXPORT
     void stop_offload();
 
-    inline OffloadThreadStatus get_status() { return status ; }
-
 public:
     XDP_EXPORT
     virtual bool read_trace_init(bool circ_buf = false);
@@ -95,6 +93,10 @@ public:
       min_offload_rate = m_circ_buf_min_rate;
       requested_offload_rate = m_circ_buf_cur_rate;
       return m_use_circ_buf;
+    };
+    inline OffloadThreadStatus get_status() {
+      std::lock_guard<std::mutex> lock(status_lock);
+      return status;
     };
     inline bool continuous_offload() { return continuous ; }
     inline void set_continuous(bool value = true) { continuous = value ; }
@@ -134,6 +136,7 @@ private:
     bool should_continue();
     void train_clock_continuous();
     void offload_device_continuous();
+    void offload_finished();
 
     bool m_trbuf_full = false;
     bool trbuf_offload_done = false;
