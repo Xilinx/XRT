@@ -36,7 +36,7 @@
 
 /**
  * DOC: A GEM style driver for Xilinx PCIe based accelerators
- * This file defines ioctl command codes and associated structures for interacting with
+ * File *xocl_ioctl.h* defines ioctl command codes and associated structures for interacting with
  * *xocl* PCI driver for Xilinx FPGA platforms.
  *
  * Device memory allocation is modeled as buffer objects (bo). For each bo driver tracks the host pointer
