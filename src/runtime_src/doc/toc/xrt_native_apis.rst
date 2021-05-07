@@ -50,10 +50,10 @@ All the core data structures are defined inside in the header files at ``$XILINX
 
 The common host code flow using the above data structures is as below
    
- - Open Xilinx **Device** and Load the **XCLBIN**
- - Create **Buffer** objects to transfer data to kernel inputs and outputs
- - Use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
- - Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA. 
+- Open Xilinx **Device** and Load the **XCLBIN**
+- Create **Buffer** objects to transfer data to kernel inputs and outputs
+- Use the Buffer class member functions for the data transfer between host and device (before and after the kernel execution).
+- Use **Kernel** and **Run** objects to offload and manage the compute-intensive tasks running on FPGA. 
        
       
 Below we will walk through the common API usage to accomplish the above tasks. 
