@@ -676,7 +676,7 @@ xclmgmt_load_xclbin(const char* buffer) const {
     xrt_core::send_exception_message(e.what(), "Failed to open device");
   }
 
-  if(ret == -errno) {
+  if(ret != 0) {
     throw error(ret, "Failed to download xclbin");
   }
 }
