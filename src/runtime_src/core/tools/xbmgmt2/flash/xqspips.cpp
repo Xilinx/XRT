@@ -595,11 +595,11 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream)
     //eraseBulk();
 
     program(binStream);
-    verify(binStream);
+    int ret = verify(binStream);
 
     enterOrExitFourBytesMode(EXIT_4B);
 
-    return 0;
+    return ret;
 }
 
 void XQSPIPS_Flasher::initQSpiPS()
