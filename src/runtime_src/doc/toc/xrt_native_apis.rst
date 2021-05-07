@@ -128,9 +128,9 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
 
 In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Please note the following 
 
-  - As no special flags are used a regular buffer will be created.  
-  - The second argument specifies the buffer size. 
-  - The third argument should be used to specify enumerated memory bank index (to specify the memory location) where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
+- As no special flags are used a regular buffer will be created.  
+- The second argument specifies the buffer size. 
+- The third argument should be used to specify enumerated memory bank index (to specify the memory location) where the buffer should be allocated. In this example, ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
   
   
 Creating special Buffers
@@ -138,11 +138,11 @@ Creating special Buffers
 
 The ``xrt::bo()`` constructors accepts multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values
 
-        - ``xrt::bo::flags::normal``: Default, Regular Buffer
-        - ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
-        - ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
-        - ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
-        - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
+- ``xrt::bo::flags::normal``: Default, Regular Buffer
+- ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
+- ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
+- ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+- ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when host CPU frequently accessing the buffer (applicable for embedded platform).
 
 The below example shows creating a P2P buffer on a device memory bank connected to the argument 3 of the kernel. 
 
@@ -177,9 +177,9 @@ The ``xrt::bo()`` constructor can also be called using pointer provided by the u
 
 XRT Buffer API library provides a rich set of APIs helping the data transfers between the host and the device, between the buffers, etc. We will discuss the following data transfer style
 
-        I. Data transfer between host and device by Buffer read/write API
-        II. Data transfer between host and device by Buffer map API
-        III. Data transfer between buffers by copy API
+I. Data transfer between host and device by Buffer read/write API
+II. Data transfer between host and device by Buffer map API
+III. Data transfer between buffers by copy API
 
 
 I. Data transfer between host and device by Buffer read/write API
@@ -190,16 +190,16 @@ To transfer the data from the host to the device, the user first needs to update
    
 The ``xrt::bo`` class has following member functions for the same functionality
 
-    1. ``xrt::bo::write()``
-    2. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
+1. ``xrt::bo::write()``
+2. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_TO_DEVICE``
 
 To transfer the data from the device to the host, the steps are reverse, the user first needs to do a DMA transfer from the device followed by the reading data from the host-side buffer backing pointer. 
 
 
 The corresponding ``xrt::bo`` class's member functions are
 
-    1. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
-    2. ``xrt::bo::read()``
+1. ``xrt::bo::sync()`` with flag ``XCL_BO_SYNC_BO_FROM_DEVICE``
+2. ``xrt::bo::read()``
 
 
 Code example of transferring data from the host to the device
@@ -263,8 +263,8 @@ DMA-BUF API
 
 XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. 
 
-   - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
-   - ``xrt::bo()`` constructor : Allocate a BO imported from exported buffer handle
+- ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
+- ``xrt::bo()`` constructor : Allocate a BO imported from exported buffer handle
 
 
 Consider the situation of exporting buffer from device 1 to device 2. 
@@ -277,9 +277,9 @@ Consider the situation of exporting buffer from device 1 to device 2.
 
 In the above example
 
-       - The buffer buffer_device_1 is a buffer allocated on device 1
-       - buffer_device_1 is exported by the member function ``xrt::bo::export_buffer``
-       - The new buffer buffer_device_2 is imported for device_2 by the constructor ``xrt::bo``
+- The buffer buffer_device_1 is a buffer allocated on device 1
+- buffer_device_1 is exported by the member function ``xrt::bo::export_buffer``
+- The new buffer buffer_device_2 is imported for device_2 by the constructor ``xrt::bo``
 
 
  
@@ -304,8 +304,8 @@ Buffer information
 
 XRT provides few other API Class member functions to obtain information related to the buffer. 
 
-   - The member function ``xrt::bo::size()``: Size of the buffer
-   - The member function ``xrt::bo::address()`` : Physical address of the buffer
+- The member function ``xrt::bo::size()``: Size of the buffer
+- The member function ``xrt::bo::address()`` : Physical address of the buffer
 
 
 
@@ -318,11 +318,11 @@ A Run object represents an execution of the kernel. Upon finishing the kernel ex
 
 The following topics are discussed below
 
-       - Obtaining kernel object from XCLBIN
-       - Getting the bank group index of a kernel argument
-       - Reading and write CU mapped registers
-       - Execution of kernel and dealing with the associated run
-       - Other kernel execution related API
+- Obtaining kernel object from XCLBIN
+- Getting the bank group index of a kernel argument
+- Reading and write CU mapped registers
+- Execution of kernel and dealing with the associated run
+- Other kernel execution related API
        
 
 Obtaining kernel object from XCLBIN
@@ -340,19 +340,19 @@ The kernel object is created from the device, XCLBIN UUID and the kernel name us
 
 As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1. 
 
-       - Opening kernel object for foo_1 and foo_2 (as they have identical interface connection)
+- Opening kernel object for foo_1 and foo_2 (as they have identical interface connection)
        
-         .. code:: c
-               :number-lines: 35
+.. code:: c
+      :number-lines: 35
                   
-                    krnl_obj_1_2 = xrt::kernel(device, xclbin_uuid, "foo:{foo_1,foo_2}");     
+           krnl_obj_1_2 = xrt::kernel(device, xclbin_uuid, "foo:{foo_1,foo_2}");     
    
-       - Opening kernel object for foo_3
+- Opening kernel object for foo_3
           
-         .. code:: c
-               :number-lines: 35
+.. code:: c
+      :number-lines: 35
                   
-                    krnl_obj_3 = xrt::kernel(device, xclbin_uuid, "foo:{foo_3}");     
+           krnl_obj_3 = xrt::kernel(device, xclbin_uuid, "foo:{foo_3}");     
 
       
 Exclusive access of the kernel's CU
@@ -360,8 +360,8 @@ Exclusive access of the kernel's CU
   
 By default, ``xrt::kernel()`` opens a kernel's CU in a shared mode so that the CU can be shared with the other processes. In some cases, it is required to open the CU in exclusive mode (for example, when it is required to read/write CU mapped register). Exclusive CU opening fails if the CU is already opened in either shared or exclusive access. To open a CU in exclusive mode the ``xrt::kernel`` constructor can be called with an additional ``enum class`` argument. The enumerator values are: 
 
-     - ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
-     - ``xrt::kernel::cu_access_mode::exclusive`` 
+- ``xrt::kernel::cu_access_mode::shared`` (default ``xrt::kernel`` constructor argument)
+- ``xrt::kernel::cu_access_mode::exclusive`` 
 
 .. code:: c++
       :number-lines: 39
@@ -413,10 +413,10 @@ The ``xrt::kernel`` class provides **overloaded operator ()** to execute the ker
 
 The above c++ code block is demonstrating 
   
-  - The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
-  - The member function ``xrt::run::wait()`` is used to block the current thread until the current execution is finished. 
-  - The member function ``xrt::run::set_arg()`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
-  - The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).   
+- The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
+- The member function ``xrt::run::wait()`` is used to block the current thread until the current execution is finished. 
+- The member function ``xrt::run::set_arg()`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
+- The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).   
 
 
 Other kernel execution related APIs
@@ -424,10 +424,10 @@ Other kernel execution related APIs
 
 **Obtaining the run object before execution**: In the above example we have seen a run object is obtained when the kernel is executed (kernel execution returns a run object). However, a run object can be obtained even before the kernel execution. The flow is as below
 
-    - Open a Run object by the ``xrt::run`` constructor with a kernel argument). 
-    - Set the kernel arguments associated for the next execution by the member function ``xrt::run::set_arg()`. 
-    - Execute the kernel by the member function ``xrt::run::start()``.
-    - Wait for the execution finish by the member function ``xrt::run::wait()``. 
+- Open a Run object by the ``xrt::run`` constructor with a kernel argument). 
+- Set the kernel arguments associated for the next execution by the member function ``xrt::run::set_arg()`. 
+- Execute the kernel by the member function ``xrt::run::start()``.
+- Wait for the execution finish by the member function ``xrt::run::wait()``. 
 
 **Timeout while wait for kernel finish**: The member function ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes. To specify a timeout supported API ``xrt::run::wait()`` also accepts a timeout in millisecond unit.
 
@@ -472,8 +472,8 @@ Reading and write CU mapped registers
 
 To read and write from the AXI-Lite register space to a CU (``xrt::ip`` instance in the hardware), the required member functions from the ``xrt::ip`` class are
   
-    -  ``xrt::ip::read_register``
-    -  ``xrt::ip::write_register``
+-  ``xrt::ip::read_register``
+-  ``xrt::ip::write_register``
 
 .. code:: c++
       :number-lines: 35
@@ -488,8 +488,8 @@ To read and write from the AXI-Lite register space to a CU (``xrt::ip`` instance
 
 In the above code block
 
-              - The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
-              - The Register Read/Write operation is performed. 
+- The CU named "foo_1" (name syntax: "kernel_name:{cu_name}") is opened exclusively.
+- The Register Read/Write operation is performed. 
 
 
 Graph
@@ -518,8 +518,8 @@ Reset Functions
 
 There are two reset functions are used:
 
-   - The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. 
-   - The member function ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+- The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. 
+- The member function ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
 
 
 .. code:: c
@@ -705,8 +705,8 @@ The ``xrt::graph`` class contains member function to update and read the runtime
  
 In the above example, the member function ``xrt::graph::update()`` and ``xrt::graph::read()`` are used to update and read the RTP values respectively. Note the function arguments 
    
-      - The hierarchical name of the RTP port
-      - Variable to set/read the RTP
+- The hierarchical name of the RTP port
+- Variable to set/read the RTP
 
 DMA operation to and from Global Memory IO
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -739,8 +739,8 @@ The AIE buffer class ``xrt::aie::bo`` supports member function ``xrt::aie::bo::s
        
 The above code shows
 
-    - Input and output buffer (``in_bo`` and ``out_bo``) to the graph are created and mapped to the user space
-    - The member function ``xrt::aie::bo::sync`` is used for data transfer using the following arguments
+- Input and output buffer (``in_bo`` and ``out_bo``) to the graph are created and mapped to the user space
+- The member function ``xrt::aie::bo::sync`` is used for data transfer using the following arguments
     
           - The name of the GMIO ports associated with the DMA transfer
           - The direction of the buffer transfer 
@@ -755,14 +755,14 @@ XRT Error API
 
 In general, XRT APIs can encounter two types of errors:
  
-       - Synchronous error: Error can be thrown by the API itself. The host code can catch these exception and take necessary steps. 
-       - Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
+- Synchronous error: Error can be thrown by the API itself. The host code can catch these exception and take necessary steps. 
+- Asynchronous error: Errors from the underneath driver, system, hardware, etc. 
        
 XRT provides an ``xrt::error`` class and its member functions to retrieve the asynchronous errors into the userspace host code. This helps to debug when something goes wrong.
  
-       - Member function ``xrt::error::get_error_code()`` - Gets the last error code and its timestamp of a given error class
-       - Member function ``xrt::error::get_timestamp()`` - Gets the timestamp of the last error
-       - Member function ``xrt:error::to_string()`` - Gets the description string of a given error code.
+- Member function ``xrt::error::get_error_code()`` - Gets the last error code and its timestamp of a given error class
+- Member function ``xrt::error::get_timestamp()`` - Gets the timestamp of the last error
+- Member function ``xrt:error::to_string()`` - Gets the description string of a given error code.
 
 **NOTE**: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release. 
 
@@ -795,8 +795,8 @@ Example code
        
 The above code shows
      
-     - After timeout occurs from ``xrt::graph::wait()`` the member functions ``xrt::error`` class are called to retrieve asynchronous error code and timestamp
-     - Member function ``xrt::error::to_string()`` is called to obtain the error string. 
+- After timeout occurs from ``xrt::graph::wait()`` the member functions ``xrt::error`` class are called to retrieve asynchronous error code and timestamp
+- Member function ``xrt::error::to_string()`` is called to obtain the error string. 
 
 
 
