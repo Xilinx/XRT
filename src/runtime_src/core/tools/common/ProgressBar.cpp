@@ -136,7 +136,6 @@ void
 ProgressBar::update(unsigned int _iteration) 
 {
   // Some simple DRC checks
-  assert(_iteration <= m_maxNumIterations);
   if (_iteration > m_maxNumIterations) 
     _iteration = m_maxNumIterations;
 

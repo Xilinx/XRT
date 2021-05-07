@@ -56,8 +56,6 @@
 #include <iostream>
 #include <thread>
 // ------ S T A T I C   V A R I A B L E S -------------------------------------
-// bandwidth testcase takes up-to a min to run
-static const int max_test_duration = 60;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 #ifdef NO_BOOST_PROCESS
@@ -95,6 +93,9 @@ unsigned int
 XBUtilities::runScript( const std::string & env, 
                         const std::string & script, 
                         const std::vector<std::string> & args,
+                        const std::string & running_header,
+                        const std::string & closing_header,
+                        int max_running_duration,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr,
                         bool /*erasePassFailMessage*/)
@@ -130,7 +131,7 @@ XBUtilities::runScript( const std::string & env,
   // Kick off progress reporter
   bool is_done = false;
   // Fix: create busy bar
-  auto run_test = std::make_shared<XBUtilities::ProgressBar>("Running Test", max_test_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
+  auto run_test = std::make_shared<XBUtilities::ProgressBar>(running_header, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
   std::thread t(testCaseProgressReporter, run_test, std::ref(is_done));
 
   // Close existing stderr and set it to be the write end of the pipe.
@@ -163,7 +164,7 @@ XBUtilities::runScript( const std::string & env,
 
   is_done = true;
   bool exitCode = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
-  run_test.get()->finish(exitCode, "");
+  run_test.get()->finish(exitCode, closing_header);
   // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
   // Remove this once busybar is implemented
   std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
@@ -196,6 +197,9 @@ unsigned int
 XBUtilities::runScript( const std::string & env,
                         const std::string & script, 
                         const std::vector<std::string> & args,
+                        const std::string & running_header,
+                        const std::string & closing_header,
+                        int max_running_duration,
                         std::ostringstream & os_stdout,
                         std::ostringstream & os_stderr,
                         bool erasePassFailMessage)
@@ -221,7 +225,7 @@ XBUtilities::runScript( const std::string & env,
   _env.erase("XCL_EMULATION_MODE");
 
   // Please fix: Should be a busy bar and NOT a progress bar
-  ProgressBar run_test("Running Test", max_test_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
+  ProgressBar run_test(running_header, max_running_duration, XBUtilities::is_escape_codes_disabled(), std::cout); 
 
   // Execute the python script and capture the outputs
   boost::process::ipstream ip_stdout;
@@ -241,7 +245,7 @@ XBUtilities::runScript( const std::string & env,
     if (counter >= run_test.getMaxIterations()) {
         if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 
           std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
-      throw std::runtime_error("Test timed out");
+      throw std::runtime_error("Time Out");
     }
   }
 
@@ -260,7 +264,7 @@ XBUtilities::runScript( const std::string & env,
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
-  run_test.finish(exitCode == 0 /*Success or failure*/, "Test duration:");
+  run_test.finish(exitCode == 0 /*Success or failure*/, closing_header);
 
   // Erase the "Pass Fail" message
   if (erasePassFailMessage && (XBUtilities::is_escape_codes_disabled() == 0)) 

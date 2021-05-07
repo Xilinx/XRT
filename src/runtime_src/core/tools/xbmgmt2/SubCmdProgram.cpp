@@ -165,7 +165,7 @@ update_SC(unsigned int  index, const std::string& file)
     const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
     std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
     
-    int exit_code = XBU::runScript("python", scFlashPath, args, os_stdout, os_stderr, false);
+    int exit_code = XBU::runScript("python", scFlashPath, args, "Programming SC ", "SC Programmed", 120, os_stdout, os_stderr, false);
 
     if (exit_code != 0) {
       std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
@@ -174,8 +174,8 @@ update_SC(unsigned int  index, const std::string& file)
     return;
   }
 
-  std::unique_ptr<firmwareImage> bmc =
-    std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+
   if (bmc->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
@@ -346,7 +346,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (current.bmcVer.empty())
     same_bmc = true;
   else
-    same_bmc = (candidate.bmcVer == current.bmcVer);
+    same_bmc = (candidate.bmcVer == current.bmcVer) && !XBU::getForce();
   
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -403,6 +403,11 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
     if (vendor == ARISTA_ID)
         same_shell = false;
+
+    if (XBU::getForce()) {
+      same_shell = false;
+      same_sc = false;
+    }
 
     if (!same_shell || !same_sc) {
       if(!dsa.hasFlashImage)
