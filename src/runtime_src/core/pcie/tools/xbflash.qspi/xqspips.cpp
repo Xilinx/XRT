@@ -627,11 +627,11 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream, unsigned offset
     std::cout << std::endl;
 
     program(binStream, offset);
-    verify(binStream, offset);
+    int ret = verify(binStream, offset);
 
     enterOrExitFourBytesMode(EXIT_4B);
 
-    return 0;
+    return ret;
 }
 
 int XQSPIPS_Flasher::xclErase(unsigned offset, unsigned total_size)
