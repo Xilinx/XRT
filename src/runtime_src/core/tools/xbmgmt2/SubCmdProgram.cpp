@@ -667,7 +667,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
       }
       std::cout << std::endl;
-        return;
+      throw xrt_core::error(std::errc::operation_canceled);
       }
   }
 

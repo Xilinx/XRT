@@ -405,12 +405,12 @@ bool DSAInfo::matchIntId(std::string &id) const
 
 bool DSAInfo::matchId(const DSAInfo& dsa) const
 {
-    if (uuids.size() == 0 && dsa.uuids.size() == 0 &&
+    if (uuids.empty() && dsa.uuids.empty() &&
         timestamp == dsa.timestamp)
         return true;
 
     //logid_uuid should always be the 1st.
-    if (uuids.size() > 0 && dsa.uuids.size() > 0 &&
+    if (!uuids.empty() && !dsa.uuids.empty() &&
         uuids[0].compare(dsa.uuids[0]) == 0)
         return true;
     return false;
