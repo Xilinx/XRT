@@ -25,6 +25,9 @@ namespace XBUtilities {
                const std::string & env, 
                const std::string & script, 
                const std::vector<std::string> & args,
+               const std::string & running_description,
+               const std::string & final_description,
+               int max_running_duration,
                std::ostringstream & os_stdout,
                std::ostringstream & os_stderr,
                bool erasePassFailMessage);
