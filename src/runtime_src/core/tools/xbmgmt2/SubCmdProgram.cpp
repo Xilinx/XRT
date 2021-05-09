@@ -655,6 +655,22 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  // We support programming all devices only for a u30 homogeneous setup
+  // --device all is deprecated 
+  for (const auto& dev : deviceCollection) {
+    if(deviceCollection.size() != 1 && xrt_core::device_query<xrt_core::query::board_name>(dev).compare("u30") != 0) {
+      std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
+      std::cout << "List of available devices:" << std::endl;
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+      for(auto& kd : available_devices) {
+        boost::property_tree::ptree& _dev = kd.second;
+        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+      }
+      std::cout << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+      }
+  }
+
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
 
   if(!image.empty()) {
@@ -771,6 +787,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // -- process "user" option ---------------------------------------
   if(!xclbin.empty()) {
     XBU::verbose(boost::str(boost::format("  xclbin: %s") % xclbin));
+    XBU::sudo_or_throw("Root privileges are required to download xclbin");
     //only 1 device and name
     if(deviceCollection.size() > 1)
       throw xrt_core::error("Please specify a single device");
