@@ -720,7 +720,8 @@ namespace xdp {
     }
 
     // New start & end events for trace control and counters
-    coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
+    //coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
+    coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
 	  coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
 
     // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
@@ -768,6 +769,7 @@ namespace xdp {
       counter->stop();
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
+      counter->changeThreshold( coreCounterEventValues.at(i % 2) );
       counter->start();
     }
 
@@ -822,7 +824,7 @@ namespace xdp {
     // dummy packets to ensure all execution trace gets written to DDR.
     if (xrt_core::config::get_aie_trace_flush()) {
       setFlushMetrics(deviceId, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(100));
+      std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {

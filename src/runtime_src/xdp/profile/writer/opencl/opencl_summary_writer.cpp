@@ -34,6 +34,7 @@
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 #ifdef _WIN32
 /* Disable warning for use of localtime */
@@ -1626,8 +1627,8 @@ namespace xdp {
     
     // Columns
     fout << "Parameter" << ","
-	 << "Element"   << ","
-	 << "Value"     << "," << std::endl ;
+         << "Element"   << ","
+         << "Value"     << "," << std::endl ;
 
     for (auto rule : guidanceRules)
     {
@@ -1637,6 +1638,8 @@ namespace xdp {
 
   bool OpenCLSummaryWriter::write(bool openNewFile)
   {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+                            "OpenCLSummaryWriter: write contents");
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
     writeKernelExecutionSummary() ;                 fout << std::endl ;
