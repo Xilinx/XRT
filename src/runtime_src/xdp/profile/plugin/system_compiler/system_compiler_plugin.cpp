@@ -24,7 +24,7 @@ namespace xdp {
   {
     db->registerPlugin(this);
 
-    db->getStaticInfo().addOpenedFile("profile_summary.csv", "PROFILE_SUMMARY");
+    db->getStaticInfo().addOpenedFile("sc_host_summary.csv", "PROFILE_SUMMARY");
     db->getStaticInfo().addOpenedFile("sc_trace.csv", "VP_TRACE");
   }
 
