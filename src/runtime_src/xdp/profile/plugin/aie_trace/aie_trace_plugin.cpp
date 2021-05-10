@@ -722,7 +722,7 @@ namespace xdp {
     // New start & end events for trace control and counters
     //coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
     coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
-	  coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
+    coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
 
     // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
     // NOTES: Each packet has 7 payload words (one word: 32bits)
