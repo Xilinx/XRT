@@ -69,7 +69,7 @@ Recommended settings are : 'coarse' option for data transfer trace and no stall 
 #define AIE_TS2MM_WARN_MSG_BUF_FULL       "AIE Trace Buffer is full. Device trace could be incomplete."
 
 #define TS2MM_WARN_MSG_CIRC_BUF       "Unable to use circular buffer for continuous trace offload. Please increase trace \
-buffer size and/or reduce continuous trace interval."
+buffer size and/or reduce trace_buffer_offload_interval."
 #define TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. Timeline trace could be incomplete."
 
 #define MIN_TRACE_DUMP_INTERVAL_S 1
