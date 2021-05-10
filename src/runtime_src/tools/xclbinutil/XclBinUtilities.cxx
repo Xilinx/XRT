@@ -771,12 +771,34 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
         ptGroupMemory.put("m_sizeKB", XUtil::format("0x%lx", groupSize / 1024).c_str());
 
       // Add a tag value to indicate that this entry was the result of grouping memories
-      std::string newTag = "MBG[";
-      newTag += std::to_string(workingConnections[startIndex].memIndex);
-      if (startIndex != endIndex)
-        newTag += ":" + std::to_string(workingConnections[endIndex].memIndex);
+      std::vector<int> memIndexVector;
+      for (unsigned int memIndex = startIndex; memIndex <= endIndex; ++memIndex) {
+        memIndexVector.push_back(workingConnections[memIndex].memIndex);
+      }
 
-      newTag += "]";
+      // Sort the vector 
+      std::sort(memIndexVector.begin(), memIndexVector.end());
+
+      // Iterate over the collection producing a more compress tag. 
+      // Contigious tag specified as start:end and non-contigious are seperated by ','
+      // Ex. MBG[0,2,3,4,6,8,9] becomes MBG[0,2:4,6,8:9]
+      std::string newTag = "MBG[";
+      for (unsigned int index = 0; index < memIndexVector.size();)
+      {
+        auto s_index = index;
+        while ((memIndexVector[index] + 1) == memIndexVector[index + 1])
+          index++;
+
+        newTag += std::to_string(memIndexVector[s_index]);
+        if (s_index != index) {
+          newTag += ":";
+          newTag += std::to_string(memIndexVector[index]);
+        }
+        
+	// If terminal then add ']' otherwise add ','  
+        newTag += (index != memIndexVector.size() - 1) ? "," : "]";
+        index++;
+      }
 
       // Record the new tag, honoring the size limitation
       ptGroupMemory.put("m_tag", newTag.substr(0, sizeof(mem_data::m_tag) - 1).c_str());
