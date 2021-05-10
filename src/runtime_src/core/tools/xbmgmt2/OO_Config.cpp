@@ -335,6 +335,19 @@ OO_Config::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Configuring multiple devices is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   //Option:show
   if (m_show) {
     XBU::verbose("Sub command: --show");

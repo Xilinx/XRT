@@ -112,7 +112,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
                                                                         "  hot          - Hot reset (default)\n")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
@@ -152,10 +152,10 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  Reset: %s") % resetType));
 
   // -- process "device" option -----------------------------------------------
-  // enforce device specification
-  if(devices.empty()) {
+  // enforce 1 device specification
+  if(devices.empty() || devices.size() > 1) {
     std::cerr << std::endl
-              << "ERROR: Device not specified." << std::endl
+              << "ERROR: Please specify a single device." << std::endl
               << "Specifying a device via '--device' is required to apply a reset." << std::endl << std::endl
               << "The following devices are available to use:" << std::endl;
 

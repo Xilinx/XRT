@@ -417,11 +417,6 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     }
   }
 
-  // Temporary Symptom Fix
-  // Release all of the devices to allow for the SC flash image to be programmed 
-  // on a u30.
-  deviceCollection.clear();
-
   // Continue to flash whatever we have collected in boardsToUpdate.
   uint16_t success = 0;
   bool needreboot = false;
@@ -585,7 +580,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
 
@@ -666,20 +661,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // We support programming all devices only for a u30 homogeneous setup
-  // --device all is deprecated 
-  for (const auto& dev : deviceCollection) {
-    if(deviceCollection.size() != 1 && xrt_core::device_query<xrt_core::query::board_name>(dev).compare("u30") != 0) {
-      std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
-      std::cout << "List of available devices:" << std::endl;
-      boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-      for(auto& kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-      }
-      std::cout << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-      }
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
