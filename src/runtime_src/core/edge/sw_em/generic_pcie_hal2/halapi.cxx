@@ -95,12 +95,6 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   }
   if (handle) {
     handle->xclOpen(logfileName);
-    if (bDefaultDevice)
-    {
-      std::string sDummyDeviceMsg = "INFO: [SW-EM 09-0] Unable to find emconfig.json. Using default device.";
-      if (xclemulation::config::getInstance()->isInfosToBePrintedOnConsole())
-        std::cout << sDummyDeviceMsg << std::endl;
-    }
   }
   return (xclDeviceHandle *)handle;
 }
