@@ -314,7 +314,7 @@ get_aie_trace()
 inline bool
 get_aie_trace_flush()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
+  static bool value = detail::get_bool_value("Debug.aie_trace_flush", true);
   return value;
 }
 
