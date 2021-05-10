@@ -795,7 +795,7 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
           newTag += std::to_string(memIndexVector[index]);
         }
         
-	// If terminal then add ']' otherwise add ','  
+        // If terminal then add ']' otherwise add ','  
         newTag += (index != memIndexVector.size() - 1) ? "," : "]";
         index++;
       }
