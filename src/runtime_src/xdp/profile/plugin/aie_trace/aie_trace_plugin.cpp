@@ -167,8 +167,8 @@ namespace xdp {
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. If metrics were not specified at compile-time, then AIE event trace will not be available.");
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will only be available if metrics were specified at compile time.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     }
 
@@ -757,7 +757,7 @@ namespace xdp {
         XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
         XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
                                   timerTrigValueLow, timerTrigValueHigh);
-        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
+        //XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
 
       // 2. For every counter, change start/stop events
@@ -773,7 +773,7 @@ namespace xdp {
       counter->start();
     }
 
-    // 3. For every tile, restart trace
+    // 3. For every tile, restart trace and reset timer
     prevCol = 0;
     prevRow = 0;
     for (int i=0; i < coreCounters.size(); ++i) {
@@ -786,6 +786,9 @@ namespace xdp {
         auto& core     = aieDevice->tile(col, row + 1).core();
         auto coreTrace = core.traceControl();
         coreTrace->start();
+
+        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
+        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
     }
   }

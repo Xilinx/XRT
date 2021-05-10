@@ -321,7 +321,7 @@ get_aie_trace_flush()
 inline std::string
 get_aie_trace_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
   return value;
 }
 
