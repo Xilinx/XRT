@@ -550,8 +550,6 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 if (type != MCS_FIRMWARE_PRIMARY)
                 {
                     this->setstate(failbit);
-                    std::cout << "FLASH dsabin supports only primary bitstream: "
-                        << file << std::endl;
                     return;
                 }
 
