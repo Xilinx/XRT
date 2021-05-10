@@ -190,6 +190,8 @@ xrt_xclbin_kind_to_string(enum axlf_section_kind kind)
 	case AIE_METADATA: 		return "AIE_METADATA";
 	case ASK_GROUP_TOPOLOGY: 	return "ASK_GROUP_TOPOLOGY";
 	case ASK_GROUP_CONNECTIVITY: 	return "ASK_GROUP_CONNECTIVITY";
+	case SMARTNIC:			return "SMARTNIC";
+	case AIE_RESOURCES:		return "AIE_RESOURCES";
 	default: 			return "UNKNOWN";
 	}
 }
