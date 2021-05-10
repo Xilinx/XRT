@@ -38,6 +38,35 @@
 #define NUM_MEMORY_TRACE_EVENTS 8
 #define CORE_BROADCAST_EVENT_BASE 107
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr ;
+    auto aieArray = drv->getAieArray() ;
+    if (!aieArray)
+      return nullptr ;
+    return aieArray->getDevInst() ;
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    if (aieDevInst != nullptr)
+      return nullptr ;
+    return new xaiefal::XAieDev(aieDevInst, false) ;
+  }
+
+  static void* deallocateAieDevice(void* aieDevice)
+  {
+    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    if (object != nullptr)
+      delete object ;
+  }
+} // end anonymous namespace
+
 namespace xdp {
 
   AieTracePlugin::AieTracePlugin()
@@ -156,8 +185,10 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
-    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    xaiefal::XAieDev* aieDevice =
+      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no AIE event trace.");
@@ -711,8 +742,11 @@ namespace xdp {
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
   {
-    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
-    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    xaiefal::XAieDev* aieDevice =
+      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
+
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no flushing of AIE event trace.");

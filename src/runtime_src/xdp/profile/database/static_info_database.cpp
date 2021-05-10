@@ -154,6 +154,10 @@ namespace xdp {
     for (auto iter : deviceInfo) {
       delete iter.second ;
     }
+
+    // AIE specific functions
+    if (aieDevice != nullptr && deallocateAieDevice != nullptr)
+      deallocateAieDevice(aieDevice) ;
   }
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
@@ -658,34 +662,30 @@ namespace xdp {
     return true; 
   }
 
-#ifdef XRT_ENABLE_AIE
-  XAie_DevInst * 
-  VPStaticDatabase::getAieDevInst(void* devHandle) {
+  void* VPStaticDatabase::getAieDevInst(std::function<void* (void*)> fetch,
+                                        void* devHandle)
+  {
+    std::lock_guard<std::mutex> lock(aieLock) ;
     if (aieDevInst)
-      return aieDevInst;
+      return aieDevInst ;
 
-    auto drv = ZYNQ::shim::handleCheck(devHandle);
-    if (!drv)
-      return nullptr;
-    auto aieArray = drv->getAieArray();
-    if (!aieArray)
-      return nullptr;
-    aieDevInst = aieArray->getDevInst();
-    return aieDevInst;
+    aieDevInst = fetch(devHandle) ;
+    return aieDevInst ;
   }
 
-  std::shared_ptr<xaiefal::XAieDev> 
-  VPStaticDatabase::getAieDevice(void* devHandle) {
+  void* VPStaticDatabase::getAieDevice(std::function<void* (void*)> allocate,
+                                       std::function<void (void*)> deallocate,
+                                       void* devHandle)
+  {
+    std::lock_guard<std::mutex> lock(aieLock) ;
     if (aieDevice)
       return aieDevice;
+    if (!aieDevInst) return nullptr ;
 
-    getAieDevInst(devHandle);
-    if (!aieDevInst)
-      return nullptr;
-    aieDevice = std::make_shared<xaiefal::XAieDev>(aieDevInst, false);
-    return aieDevice;
+    deallocateAieDevice = deallocate ;
+    aieDevice = allocate(devHandle) ;
+    return aieDevice ;
   }
-#endif
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
