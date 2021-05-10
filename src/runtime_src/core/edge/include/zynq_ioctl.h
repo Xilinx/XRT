@@ -15,7 +15,7 @@
 
 /**
  * DOC: A GEM style driver for Xilinx edge based accelerators
- * File *zynq_ioctl.h* defines ioctl command codes and associated structures for interacting with
+ * File *zynq_ioctl.h* defines ioctl command codes and associated structures for interacting with 
  * *zocl* driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).
  *
  * Accelerator memory allocation is modeled as buffer objects (bo). zocl
