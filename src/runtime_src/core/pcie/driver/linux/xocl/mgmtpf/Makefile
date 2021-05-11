@@ -57,7 +57,8 @@ xclmgmt-y := \
 	../subdev/xiic.o \
 	../subdev/mailbox.o \
 	../subdev/icap.o \
-	../subdev/clock.o \
+	../subdev/clock_wiz.o \
+	../subdev/clock_counter.o \
 	../subdev/mig.o \
 	../subdev/xmc.o \
 	../subdev/xmc_u2.o \

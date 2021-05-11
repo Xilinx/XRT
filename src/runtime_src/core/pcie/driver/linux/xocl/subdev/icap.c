@@ -469,7 +469,7 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
-		err = xocl_clock_get_freq_counter_khz(xdev, &freq, idx);
+		err = xocl_clock_get_freq_counter(xdev, &freq, idx);
 		if (err)
 			ICAP_WARN(icap, "clock subdev returns %d.", err);
 	} else {
@@ -2222,7 +2222,7 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	 *    3) MIG calibration
 	 */
 	/* If xclbin has clock metadata, refresh all clock freq */
-	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK);
+	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK_WIZ);
 	if (!err) {
 		err = icap_refresh_clock_freq(icap, xclbin);
 		if (err)
