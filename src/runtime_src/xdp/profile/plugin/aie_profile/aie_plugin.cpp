@@ -50,7 +50,7 @@ namespace {
   {
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
-    if (aieDevInst != nullptr)
+    if (!aieDevInst)
       return nullptr ;
     return new xaiefal::XAieDev(aieDevInst, false) ;
   }
