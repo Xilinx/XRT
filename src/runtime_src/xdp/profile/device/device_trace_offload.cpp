@@ -329,6 +329,11 @@ void DeviceTraceOffload::reset_s2mm()
   debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (!m_trbuf)
     return;
+
+  // Need to re-inititlize datamover with circular buffer off for reset to work properly
+  if (m_use_circ_buf)
+    dev_intf->initTS2MM(0, 0, 0);
+
   dev_intf->resetTS2MM();
   dev_intf->freeTraceBuf(m_trbuf);
   m_trbuf = 0;
