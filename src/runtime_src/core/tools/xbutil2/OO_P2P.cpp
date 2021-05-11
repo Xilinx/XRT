@@ -320,6 +320,20 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
   }
+
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Multiple devices are not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   for (auto& device : deviceCollection)
     p2p(device.get(), string2action(m_action), false);
 }

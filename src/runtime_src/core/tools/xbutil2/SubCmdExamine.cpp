@@ -146,7 +146,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Determine report level
   if (devices.size() == 0 && reportNames.size() == 0)
-      reportNames.push_back("host");
+    reportNames.push_back("host");
 
   if (devices.size() != 0 && reportNames.size() == 0) {
     reportNames.push_back("platform");
@@ -216,6 +216,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         for (const auto & report : missingReports) 
           std::cout << boost::format("         - %s\n") % report;
       }
+    }
+
+    // enforce 1 device specification if multiple reports are requested
+    if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 && reportNames.front().compare("host") != 0)) {
+      std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
+      std::cout << "List of available devices:" << std::endl;
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+      for(auto& kd : available_devices) {
+        boost::property_tree::ptree& _dev = kd.second;
+        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+      }
+      std::cout << std::endl;
+      return;
     }
   } catch (const xrt_core::error& e) {
     XBU::print_exception_and_throw_cancel(e);
