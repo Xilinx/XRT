@@ -167,8 +167,8 @@ namespace xdp {
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. If metrics were not specified at compile-time, then AIE event trace will not be available.");
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will only be available if metrics were specified at compile time.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     }
 
@@ -720,8 +720,9 @@ namespace xdp {
     }
 
     // New start & end events for trace control and counters
-    coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
-	  coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
+    //coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
+    coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
+    coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
 
     // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
     // NOTES: Each packet has 7 payload words (one word: 32bits)
@@ -736,7 +737,7 @@ namespace xdp {
 
     // Reconfigure profile counters
     for (int i=0; i < coreCounters.size(); ++i) {
-      // 1. For every tile, change trace start/stop and timer
+      // 1. For every tile, stop trace & change trace start/stop and timer
       auto& tile = coreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
@@ -749,12 +750,14 @@ namespace xdp {
         prevRow        = row;
         auto& core     = aieDevice->tile(col, row + 1).core();
         auto coreTrace = core.traceControl();
+
+        coreTrace->stop();
         coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
 
         XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
         XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
                                   timerTrigValueLow, timerTrigValueHigh);
-        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
+        //XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
 
       // 2. For every counter, change start/stop events
@@ -766,7 +769,27 @@ namespace xdp {
       counter->stop();
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
+      counter->changeThreshold( coreCounterEventValues.at(i % 2) );
       counter->start();
+    }
+
+    // 3. For every tile, restart trace and reset timer
+    prevCol = 0;
+    prevRow = 0;
+    for (int i=0; i < coreCounters.size(); ++i) {
+      auto& tile = coreCounterTiles.at(i);
+      auto  col  = tile.col;
+      auto  row  = tile.row;
+      if ((col != prevCol) || (row != prevRow)) {
+        prevCol        = col;
+        prevRow        = row;
+        auto& core     = aieDevice->tile(col, row + 1).core();
+        auto coreTrace = core.traceControl();
+        coreTrace->start();
+
+        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
+        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
+      }
     }
   }
 

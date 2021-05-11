@@ -314,14 +314,14 @@ get_aie_trace()
 inline bool
 get_aie_trace_flush()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_flush", false);
+  static bool value = detail::get_bool_value("Debug.aie_trace_flush", true);
   return value;
 }
 
 inline std::string
 get_aie_trace_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
   return value;
 }
 

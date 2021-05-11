@@ -1070,11 +1070,6 @@ namespace xclhwemhal2 {
       }
 #endif
     }
-    else {
-      std::string dMsg = "ERROR: [HW-EMU 22] Invalid " + sim_path + " constructed. Please make sure to create the xclbin with hw_emu.debugMode=wdb.";
-      logMessage(dMsg, 0);
-      return -1;
-    }
 
     if (mLogStream.is_open())
       mLogStream << __func__ << " Child process launched... " << std::endl;

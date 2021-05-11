@@ -92,7 +92,7 @@ update_shell(unsigned int index, const std::string& primary, const std::string& 
   if (flasher.upgradeFirmware("", pri.get(), sec.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base is updated successfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
 }
 
 /*
@@ -128,7 +128,7 @@ update_shell(unsigned int index, const std::string& flashType,
   if (flasher.upgradeFirmware(flashType, pri.get(), sec.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
-  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base is updated successfully.";
+  std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
   std::cout << "****************************************************\n";
   std::cout << "Cold reboot machine to load the new image on device.\n";
   std::cout << "****************************************************\n";
@@ -165,7 +165,7 @@ update_SC(unsigned int  index, const std::string& file)
     const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
     std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
     
-    int exit_code = XBU::runScript("python", scFlashPath, args, os_stdout, os_stderr, false);
+    int exit_code = XBU::runScript("python", scFlashPath, args, "Programming SC ", "SC Programmed", 120, os_stdout, os_stderr, false);
 
     if (exit_code != 0) {
       std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
@@ -174,8 +174,8 @@ update_SC(unsigned int  index, const std::string& file)
     return;
   }
 
-  std::unique_ptr<firmwareImage> bmc =
-    std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+  std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+
   if (bmc->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
@@ -346,25 +346,26 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
   if (current.bmcVer.empty())
     same_bmc = true;
   else
-    same_bmc = (candidate.bmcVer == current.bmcVer);
+    same_bmc = (candidate.bmcVer == current.bmcVer) && !XBU::getForce();
   
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
     return 0;
   }
 
+  boost::format programFmt("[%s] : %s...\n");
   if (!same_bmc) {
-    std::cout << "Updating SC firmware on device[" << flasher.sGetDBDF() <<
-      "]" << std::endl;
+    std::cout << programFmt % flasher.sGetDBDF() % "Updating SC firmware flash image";
     try {
       update_SC(boardIdx, candidate.file);
     } catch (const xrt_core::error& e) {
-      std::cout << "NOTE: Skipping SC flash. " << e.what() << std:: endl;
+      std::cout << "NOTE: Skipping SC flash: " << e.what() << std::endl;
     }
+    std::cout << std::endl;
   }
 
   if (!same_dsa) {
-    std::cout << boost::format("[%s] : Updating base\n") % flasher.sGetDBDF();
+    std::cout << programFmt % flasher.sGetDBDF() % "Updating base flash image";
     update_shell(boardIdx, candidate.file, candidate.file);
     reboot = true;
   }
@@ -404,12 +405,22 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     if (vendor == ARISTA_ID)
         same_shell = false;
 
+    if (XBU::getForce()) {
+      same_shell = false;
+      same_sc = false;
+    }
+
     if (!same_shell || !same_sc) {
       if(!dsa.hasFlashImage)
         throw xrt_core::error("Flash image is not available");
       boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
     }
   }
+
+  // Temporary Symptom Fix
+  // Release all of the devices to allow for the SC flash image to be programmed 
+  // on a u30.
+  deviceCollection.clear();
 
   // Continue to flash whatever we have collected in boardsToUpdate.
   uint16_t success = 0;
@@ -696,6 +707,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
     std::string empty = "";
     if(update.compare("all") == 0)
+      // Note: To get around a bug in the SC flashing code base,
+      //       auto_flash will clear the collection. This code need to be refactored and clean up.
       auto_flash(deviceCollection);
     else {
       if(update.compare("flash") == 0)

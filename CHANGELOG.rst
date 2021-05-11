@@ -6,23 +6,24 @@ XRT ChangeLog
 
 Added
 .....
-* Stable native XRT APIs (xrt::device, xrt::kernel, xrt::bo, xrt::uuid) promoted to ``include/xrt/`` folder.
+
+* Stable native XRT APIs (xrt::device, xrt::kernel, xrt::bo, xrt::uuid) promoted to ``include/xrt/`` folder. See ``tests/xrt/22_verify/22_verify/main.cpp`` for an example.
+* Software emulation support has been added for native XRT APIs.
+* API errors are now propagated up the stack as ``std::system_error`` exceptions with POSIX error code.
+* Added C++ APIs for AIE graph control and execution.
+* XRT driver debug trace support through debugfs ``/sys/kernel/debug/xclmgmt/...`` and ``/sys/kernel/debug/xocl/...``
+* Greatly improved and feature full next generation xbutil and xbmgmt utilities are now the default. The legacy version of the tools can be invoked by passing *--legacy* as the first switch to xbutil or xbmgmt invocation.
+* KDS scheduler in xocl has been refactored to significantly improve the throughput across hundreds of processes exercising multiple compute units across multiple devices concurrently.
+* Initial support for PS Kernel -- where a helper application running on APU on platforms like U30 and VCK5000 can be controlled from PCIe host -- has been added.
+* Initial pybind11 bindings for XRT C++ APIs. See ``tests/python/22_verify/22_verify.py`` for an example.
+* Initial multi-process support for AIE..
 * New xrt::xclbin experimental C++ API for xclbin introspection at run-time.
 * New xrt::ip experimental C++ API for register and user interrupt access of custom IPs.
-* API errors are propagated as std::system_error exceptions with POSIX error code.
-* Software emulation support for native XRT APIs.
-* XRT AIE/Graph C++ API and AIE multi-process support.
-* Enhanced the security, debuggability, stability of  PS (soft) kernel.  
-
-  * Remove the PS kernel binary configuration from user function and fully integrate the loading binary procedure with xclbin downloading.  
-  * Host side can read PS kernel name, status, number of runs with XRT utility. 
-  * Host code can get the PS kernel status and return value
-  
-* XRT driver debug trace support through debugfs ``/sys/kernel/debug/xclmgmt/...`` and ``/sys/kernel/debug/xocl/...``
 
 Removed
 .......
-
+* XRT streaming APIs used with QDMA PCIe DMA engine have been deprecated. They will be removed in a future release.
+* *xcl* prefixed HAL APIs have been deprecated from python bindings. They will be removed in a future release. Users should move to *xrt* prefixed APIs or pybind11 based APIs.
 
 2.10.0 (202020.2.10.x)
 ~~~~~~~~~~~~~~~~~~~~~~
