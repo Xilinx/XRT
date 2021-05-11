@@ -783,21 +783,21 @@ createMemoryBankGroupEntries( std::vector<WorkingConnection> & workingConnection
       // Contigious tag specified as start:end and non-contigious are seperated by ','
       // Ex. MBG[0,2,3,4,6,8,9] becomes MBG[0,2:4,6,8:9]
       std::string newTag = "MBG[";
-      for (unsigned int index = 0; index < memIndexVector.size();)
+      for (unsigned int idx = 0; idx < memIndexVector.size();)
       {
-        auto s_index = index;
-        while ((memIndexVector[index] + 1) == memIndexVector[index + 1])
-          index++;
+        auto s_index = idx;
+        while ((memIndexVector[idx] + 1) == memIndexVector[idx + 1])
+          idx++;
 
         newTag += std::to_string(memIndexVector[s_index]);
-        if (s_index != index) {
+        if (s_index != idx) {
           newTag += ":";
-          newTag += std::to_string(memIndexVector[index]);
+          newTag += std::to_string(memIndexVector[idx]);
         }
         
         // If terminal then add ']' otherwise add ','  
-        newTag += (index != memIndexVector.size() - 1) ? "," : "]";
-        index++;
+        newTag += (idx != memIndexVector.size() - 1) ? "," : "]";
+        idx++;
       }
 
       // Record the new tag, honoring the size limitation
