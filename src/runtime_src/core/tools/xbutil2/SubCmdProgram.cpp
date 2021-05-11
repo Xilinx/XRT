@@ -62,7 +62,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest. A value of 'all' indicates that every found device should be programmed.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("user,u", boost::program_options::value<std::string>(&xclbin), "The name (and path) of the xclbin to be loaded")
     ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -122,9 +122,18 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  //allow programming of only 1 device
-  if(deviceCollection.size() > 1)
-    throw xrt_core::error("Multiple devices found, please specify one device");
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Programming multiple device is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
   // -- process "program" option -----------------------------------------------
   if (!xclbin.empty()) {
