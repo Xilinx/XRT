@@ -397,7 +397,7 @@ The ``xrt::kernel`` class provides **overloaded operator ()** to execute the ker
 
 The above c++ code block is demonstrating 
   
-- The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a xrt::run object. This is an asynchronous API and returns after submitting the task.    
+- The kernel execution using the ``xrt::kernel()`` operator with the list of arguments that returns a ``xrt::run`` object. This is an asynchronous API and returns after submitting the task.    
 - The member function ``xrt::run::wait()`` is used to block the current thread until the current execution is finished. 
 - The member function ``xrt::run::set_arg()`` is used to set one or more kernel argument(s) before the next execution. In the example above, only the last (3rd) argument is changed.  
 - The member function ``xrt::run::start()`` is used to start the next kernel execution with new argument(s).   
@@ -406,10 +406,10 @@ The above c++ code block is demonstrating
 Other kernel APIs
 ~~~~~~~~~~~~~~~~~
 
-**Obtaining the run object before execution**: In the above example we have seen a run object is obtained when the kernel is executed (kernel execution returns a run object). However, a run object can be obtained even before the kernel execution. The flow is as below
+**Obtaining the run object before execution**: Example of the previous section shows to obtain a ``xrt::run`` object when the kernel is executed (kernel execution returns a run object). However, a ``xrt::run`` object can be obtained even before the kernel execution. The flow is as below
 
 - Open a Run object by the ``xrt::run`` constructor with a kernel argument). 
-- Set the kernel arguments associated for the next execution by the member function ``xrt::run::set_arg()`. 
+- Set the kernel arguments associated for the next execution by the member function ``xrt::run::set_arg()``. 
 - Execute the kernel by the member function ``xrt::run::start()``.
 - Wait for the execution finish by the member function ``xrt::run::wait()``. 
 
@@ -420,14 +420,14 @@ Other kernel APIs
 User Managed Kernel
 -------------------
 
-The ``xrt::kernel`` is used to denote the kernels with standard control interface through AXI-Lite control registers. These standard control interfaces are well defined and understood by XRT. XRT manages the kernel execution transparent to the user. 
+The ``xrt::kernel`` is used to execute the kernels with standard control interface through AXI-Lite control registers. These standard control interfaces are well defined and understood by XRT but transparent to the user. These XRT managed kernels should always be represented by ``xrt::kernel`` objects in the host code.  
 
-The XRT also supports custom control interface for a kernel. These type of kernels must be managed by the user by writing/reading from the AXI-Lite register space. To differentiate from the XRT managed kernel, class ``xrt::ip`` is used to denote a user-managed kernel. 
+The XRT also supports custom control interface for a kernel. These type of kernels (a.k.a User-Managed Kernel) must be managed by the user by writing/reading to/from the AXI-Lite registers controlling these kernels. To differentiate from the XRT managed kernel, class ``xrt::ip`` is used to specify a user-managed kernel inside the user host code. 
 
-Creating IP object from XCLBIN
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Creating ``xrt::ip`` object from XCLBIN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The IP object creation is very similar to creating a kernel. 
+The ``xrt::ip`` object creation is very similar to creating a kernel. 
 
 .. code:: c++
       :number-lines: 35
@@ -435,7 +435,7 @@ The IP object creation is very similar to creating a kernel.
            auto xclbin_uuid = device.load_xclbin("kernel.xclbin");
            auto ip = xrt::ip(device, xclbin_uuid, "ip_name");
            
-An ip object can only be opened in exclusive mode. 
+An ip object can only be opened in exclusive mode. That means at a time, only one thread/process can access IP at the same time. This is required for a safety reason because multiple threads/processes reading/writing to the AXI-Lite registers at the same time potentially leads to a race situation. 
 
 Allocating buffers for the IP inputs/outputs 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -454,7 +454,7 @@ Below is a example of creating two buffers. Note the last argument of ``xrt::bo`
 Reading and write CU mapped registers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To read and write from the AXI-Lite register space to a CU (``xrt::ip`` instance in the hardware), the required member functions from the ``xrt::ip`` class are
+To read and write from the AXI-Lite register space to a CU (specified by ``xrt::ip`` object in the host code), the required member functions from the ``xrt::ip`` class are
   
 -  ``xrt::ip::read_register``
 -  ``xrt::ip::write_register``
