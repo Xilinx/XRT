@@ -93,7 +93,7 @@ fi
 echo "Installing MSD / MPD daemons"
 
 # Update msd configuration before start daemons
-${installdir}/bin/xbmgmt config --daemon
+${installdir}/bin/xbmgmt config --daemon 2>&1 > /dev/null
 
 # Install msd/mpd services
 cp -f ${installdir}/etc/msd.service ${systemddir}
