@@ -28,6 +28,7 @@
 #include "xdp/profile/database/static_info_database.h"
 
 #include "core/common/time.h"
+#include "core/common/message.h"
 
 namespace xdp {
 
@@ -49,6 +50,9 @@ namespace xdp {
   {
     // Ignore openNewFile
     
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT",
+                            "VPRunSummaryWriter: write contents");
+
     // We could be called to write multiple times, so refresh before
     //  we dump
     refreshFile() ;
@@ -75,8 +79,7 @@ namespace xdp {
     {
       auto pid = (db->getStaticInfo()).getPid() ;
       auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
-      auto value =
-	std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+      auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
       uint64_t timeMsec = value.count() ;
 
       boost::property_tree::ptree ptGeneration ;
