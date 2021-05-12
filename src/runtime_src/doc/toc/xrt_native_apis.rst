@@ -26,29 +26,22 @@ The C++ Class objects used for the APIs are
 +======================+===================+================================================+
 |   Device             | ``xrt::device``   |  ``#include <xrt/xrt_device.h>``               |
 +----------------------+-------------------+------------------------------------------------+
-|   XCLBIN             | ``xrt::xclbin``   |  ``#include <xrt/xrt_xclbin.h>``               |
+|   XCLBIN             | ``xrt::xclbin``   |  ``#include <experimental/xrt_xclbin.h>``      |
 +----------------------+-------------------+------------------------------------------------+
 |   Buffer             | ``xrt::bo``       |  ``#include <xrt/xrt_bo.h>``                   |
 +----------------------+-------------------+------------------------------------------------+
 |   Kernel             | ``xrt::kernel``   |  ``#include <xrt/xrt_kernel.h>``               |
 +----------------------+-------------------+------------------------------------------------+
-|   Run                | ``xrt::run``      |  ``#include <xrt/xrt_run.h>``                  |
+|   Run                | ``xrt::run``      |  ``#include <xrt/xrt_kernel.h>``               |
 +----------------------+-------------------+------------------------------------------------+
-| User-managed Kernel  | ``xrt::ip``       |  ``#include <experimental/xrt_device.h>``      |
+| User-managed Kernel  | ``xrt::ip``       |  ``#include <xrt/xrt_device.h>``               |
 +----------------------+-------------------+------------------------------------------------+
-|   Graph              | ``xrt::graph``    |  ``#include <experimental/graph.h>``           |
+|   Graph              | ``xrt::graph``    |  ``#include <experimental/aie.h>``             |
 |                      |                   |                                                |
-|                      |                   |  ``#include <experimental/aie.h>``             |
+|                      |                   |  ``#include <experimental/graph.h>``           |
 +----------------------+-------------------+------------------------------------------------+
 
-All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. 
-
-.. code:: c
-      :number-lines: 5
-           
-           #include "xrt/xrt_kernel.h"
-           #include "experimental/xrt_aie.h"
-
+All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. The API interfaces that are in the experimental folder are subject to change in future. 
 
 The common host code flow using the above data structures is as below
    
