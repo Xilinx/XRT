@@ -59,7 +59,7 @@ namespace {
     return new xaiefal::XAieDev(aieDevInst, false) ;
   }
 
-  static void* deallocateAieDevice(void* aieDevice)
+  static void deallocateAieDevice(void* aieDevice)
   {
     xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
     if (object != nullptr)

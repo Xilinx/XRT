@@ -147,13 +147,13 @@ namespace xdp {
       delete runSummary ;
     }
 
-    for (auto iter : deviceInfo) {
-      delete iter.second ;
-    }
-
     // AIE specific functions
     if (aieDevice != nullptr && deallocateAieDevice != nullptr)
       deallocateAieDevice(aieDevice) ;
+
+    for (auto iter : deviceInfo) {
+      delete iter.second ;
+    }
   }
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
