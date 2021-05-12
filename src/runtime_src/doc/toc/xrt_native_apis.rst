@@ -22,7 +22,7 @@ The XRT native API supports both the C and C++ flavor of APIs. For general host 
 The C++ Class objects used for the APIs are 
 
 +----------------------+-------------------+--------------------------------------------+
-|                      |   C++ Class       |  Header files                               |
+|                      |   C++ Class       |  Header files                              |
 +======================+===================+============================================+
 |   Device             | ``xrt::device``   |  #include <xrt/xrt_device.h>               |
 +----------------------+-------------------+--------------------------------------------+
