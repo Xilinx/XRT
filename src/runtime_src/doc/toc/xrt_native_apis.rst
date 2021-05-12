@@ -500,24 +500,23 @@ The graph object can be used to execute the graph function on the AIE tiles.
 Reset Functions
 ~~~~~~~~~~~~~~~
 
-There are two reset functions are used:
-
-- The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. 
-- The member function ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
+The member function ``xrt::graph::reset()`` is used to reset a specified graph by disabling tiles and enabling tile reset. 
 
 
 .. code:: c
       :number-lines: 45
            
            auto device = xrt::aie::device(0);
+           
+           // load XCLBIN 
            ...
-           // AIE Array Reset
-           device.reset_array();
            
            auto graph = xrt::graph(device, xclbin_uuid, "graph_name");
            // Graph Reset
            graph.reset();
 
+
+The member function ``xrt::aie::device::reset_array()`` is used to reset the whole AIE array. But after this AIE reset functionality is called, the PDI get lost, so a special AIE only XCLBIN has be loaded (This flow is for advanced user only). 
 
 
 
