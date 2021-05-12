@@ -128,7 +128,8 @@ namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
     db(d), runSummary(nullptr), systemDiagram(""),
-    softwareEmulationDeviceName("")
+    softwareEmulationDeviceName(""), aieDevInst(nullptr),
+    aieDevice(nullptr), deallocateAieDevice(nullptr)
   {
 #ifdef _WIN32
     pid = _getpid() ;
@@ -136,11 +137,6 @@ namespace xdp {
     pid = static_cast<int>(getpid()) ;
 #endif
     applicationStartTime = 0 ;
-
-#ifdef XRT_ENABLE_AIE
-    aieDevInst = nullptr;
-    aieDevice = nullptr;
-#endif
   }
 
   VPStaticDatabase::~VPStaticDatabase()
