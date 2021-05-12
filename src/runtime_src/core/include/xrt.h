@@ -277,15 +277,14 @@ xclProbe();
  * xclOpen() - Open a device and obtain its handle.
  *
  * @deviceIndex:   Slot number of device 0 for first device, 1 for the second device...
- * @logFileName:   Log file to use for optional logging
- * @level:         Severity level of messages to log
+ * @logFileName:   Unused, logging is controlled via xrt.ini
+ * @level:         Unused, verbosity is controlled via xrt.ini
  *
  * Return:         Device handle
  */
 XCL_DRIVER_DLLESPEC
 xclDeviceHandle
-xclOpen(unsigned int deviceIndex, const char *logFileName,
-        enum xclVerbosityLevel level);
+xclOpen(unsigned int deviceIndex, const char* unused1, enum xclVerbosityLevel unused2);
 
 /**
  * xclClose() - Close an opened device

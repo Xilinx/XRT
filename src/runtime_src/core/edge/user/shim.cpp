@@ -100,16 +100,12 @@ namespace ZYNQ {
 std::map<uint64_t, uint32_t *> shim::mKernelControl;
 
 shim::
-shim(unsigned index, const char *logfileName, xclVerbosityLevel verbosity)
+shim(unsigned index)
   : mCoreDevice(xrt_core::edge_linux::get_userpf_device(this, index))
   , mBoardNumber(index)
-  , mVerbosity(verbosity)
   , mKernelClockFreq(100)
   , mCuMaps(128, nullptr)
 {
-  if (logfileName != nullptr)
-    xclLog(XRT_WARNING, "%s: logfileName is no longer supported", __func__);
-
   xclLog(XRT_INFO, "%s", __func__);
 
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
@@ -1619,7 +1615,7 @@ xclProbe()
 #endif
 
 xclDeviceHandle
-xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
+xclOpen(unsigned deviceIndex, const char*, xclVerbosityLevel)
 {
   try {
     //std::cout << "xclOpen called" << std::endl;
@@ -1633,7 +1629,7 @@ xclOpen(unsigned deviceIndex, const char *logFileName, xclVerbosityLevel level)
     OPEN_CB;
 #endif
 
-    auto handle = new ZYNQ::shim(deviceIndex, logFileName, level);
+    auto handle = new ZYNQ::shim(deviceIndex);
     if (!ZYNQ::shim::handleCheck(handle)) {
       delete handle;
       handle = XRT_NULL_HANDLE;
