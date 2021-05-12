@@ -37,6 +37,7 @@ namespace xdp {
 
   VPDynamicDatabase::~VPDynamicDatabase()
   {
+    std::cout << "VPDynamicDatabase destructor: begin" << std::endl;
     {
       std::lock_guard<std::mutex> lock(aieLock) ;
       for(auto mapEntry : aieTraceData) {
@@ -47,6 +48,7 @@ namespace xdp {
       }
       aieTraceData.clear();
     }
+    std::cout << "VPDynamicDatabase destructor: done with AIE" << std::endl;
 
     {
       std::lock_guard<std::mutex> lock(hostEventsLock) ;
@@ -54,6 +56,7 @@ namespace xdp {
       delete event.second;
       }
     }
+    std::cout << "VPDynamicDatabase destructor: done with host" << std::endl;
 
     {
       std::lock_guard<std::mutex> lock(deviceEventsLock) ;
@@ -64,6 +67,7 @@ namespace xdp {
         device.second.clear();
       }
     }
+    std::cout << "VPDynamicDatabase destructor: end" << std::endl;
   }
 
   void VPDynamicDatabase::markXclbinEnd(uint64_t deviceId)
@@ -318,6 +322,7 @@ namespace xdp {
 
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
   {
+    std::lock_guard<std::mutex> lock(deviceEventsLock) ;
     std::vector<VTFEvent*> events;
     if(deviceEvents.find(deviceId) == deviceEvents.end()) {
       return events;
@@ -539,6 +544,8 @@ namespace xdp {
 
   void VPDynamicDatabase::setTraceBufferFull(uint64_t deviceId, bool val)
   {
+    std::lock_guard<std::mutex> lock(deviceLock);
+
     if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
       deviceTraceBufferFullMap.insert(std::pair<uint64_t, bool>(deviceId, val));
       return;
@@ -548,6 +555,8 @@ namespace xdp {
 
   bool VPDynamicDatabase::isTraceBufferFull(uint64_t deviceId)
   {
+    std::lock_guard<std::mutex> lock(deviceLock);
+    
     if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
       return false;
     }

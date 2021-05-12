@@ -185,6 +185,9 @@ class aie_cfg_tile
   class ComputeUnitInstance
   {
   private:
+    // CU info can be accessed via any host thread
+    std::mutex cuLock;
+
     // The connections require the original index in the ip_layout
     int32_t index ; 
 
@@ -355,6 +358,9 @@ class aie_cfg_tile
     bool isReady           = false;
     bool isAIEcounterRead  = false;
     bool isGMIORead        = false;
+
+    // Device info can be accessed via any host thread
+    std::mutex infoLock;
 
     // ****** Information specific all previously loaded XCLBINs ******
     std::vector<XclbinInfo*> loadedXclbins ;
@@ -542,15 +548,19 @@ class aie_cfg_tile
            double freq, const std::string& mod,
            const std::string& aieName) ;
     void addAIECounterResources(uint32_t numCounters, uint32_t numTiles) {
+      std::lock_guard<std::mutex> lock(infoLock);
       aieCountersMap[numCounters] = numTiles;
     }
     void addAIECoreEventResources(uint32_t numEvents, uint32_t numTiles) {
+      std::lock_guard<std::mutex> lock(infoLock);
       aieCoreEventsMap[numEvents] = numTiles;
     }
     void addAIEMemoryEventResources(uint32_t numEvents, uint32_t numTiles) {
+      std::lock_guard<std::mutex> lock(infoLock);
       aieMemoryEventsMap[numEvents] = numTiles;
     }
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) {
+      std::lock_guard<std::mutex> lock(infoLock);
       aieCfgList.push_back(std::move(tile));
     }
   };
@@ -664,6 +674,7 @@ class aie_cfg_tile
 
     inline DeviceInfo* getDeviceInfo(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId];
@@ -671,6 +682,7 @@ class aie_cfg_tile
 
     inline XclbinInfo* getCurrentlyLoadedXclbin(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr ;
       return deviceInfo[deviceId]->currentXclbin() ;
@@ -678,6 +690,7 @@ class aie_cfg_tile
 
     inline void deleteCurrentlyUsedDeviceInterface(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
@@ -690,6 +703,7 @@ class aie_cfg_tile
 
     bool isDeviceReady(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false; 
       return deviceInfo[deviceId]->isReady;
@@ -697,6 +711,7 @@ class aie_cfg_tile
 
     bool isAIECounterRead(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false; 
       return deviceInfo[deviceId]->isAIEcounterRead;
@@ -704,6 +719,7 @@ class aie_cfg_tile
 
     void setIsAIECounterRead(uint64_t deviceId, bool val)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       deviceInfo[deviceId]->isAIEcounterRead = val;
@@ -711,6 +727,7 @@ class aie_cfg_tile
 
     void setIsGMIORead(uint64_t deviceId, bool val)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       deviceInfo[deviceId]->isGMIORead = val;
@@ -718,6 +735,7 @@ class aie_cfg_tile
 
     bool isGMIORead(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false; 
       return deviceInfo[deviceId]->isGMIORead;
@@ -725,6 +743,7 @@ class aie_cfg_tile
 
     double getClockRateMHz(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 300; 
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -735,12 +754,14 @@ class aie_cfg_tile
 
     void setDeviceName(uint64_t deviceId, const std::string& name)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       deviceInfo[deviceId]->deviceName = name;
     }
     std::string getDeviceName(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       return deviceInfo[deviceId]->deviceName; 
@@ -748,6 +769,7 @@ class aie_cfg_tile
 
     void setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return; 
       if (deviceInfo[deviceId]->currentXclbin() == nullptr)
@@ -757,6 +779,7 @@ class aie_cfg_tile
 
     DeviceIntf* getDeviceIntf(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->currentXclbin() == nullptr)
@@ -766,12 +789,14 @@ class aie_cfg_tile
 
     void setKDMACount(uint64_t deviceId, uint64_t num)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
       deviceInfo[deviceId]->kdmaCount = num;
     }
     uint64_t getKDMACount(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->kdmaCount; 
@@ -779,6 +804,7 @@ class aie_cfg_tile
 
     void setMaxReadBW(uint64_t deviceId, double bw)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
       deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW = bw ;
@@ -787,6 +813,7 @@ class aie_cfg_tile
 
     double getMaxReadBW(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
       return deviceInfo[deviceId]->loadedXclbins.back()->maxReadBW ;
@@ -795,6 +822,7 @@ class aie_cfg_tile
 
     void setMaxWriteBW(uint64_t deviceId, double bw)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return ;
       deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW = bw ;
@@ -803,13 +831,15 @@ class aie_cfg_tile
 
     double getMaxWriteBW(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end()) return 0 ;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0) return 0 ;
       return deviceInfo[deviceId]->loadedXclbins.back()->maxWriteBW ;
       //return deviceInfo[deviceId]->maxWriteBW ;
     }
 
-    std::string getXclbinName(uint64_t deviceId) { 
+    std::string getXclbinName(uint64_t deviceId) {
+      std::lock_guard<std::mutex> lock(dbLock); 
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return std::string(""); 
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -819,6 +849,7 @@ class aie_cfg_tile
     }
 
     std::vector<XclbinInfo*> getLoadedXclbins(uint64_t deviceId) {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end()) {
         std::vector<XclbinInfo*> blank ;
         return blank ;
@@ -828,6 +859,7 @@ class aie_cfg_tile
 
     ComputeUnitInstance* getCU(uint64_t deviceId, int32_t cuId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -838,6 +870,7 @@ class aie_cfg_tile
 
     inline std::map<int32_t, ComputeUnitInstance*>* getCUs(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -848,6 +881,7 @@ class aie_cfg_tile
 
     inline std::map<int32_t, Memory*>* getMemoryInfo(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -858,6 +892,7 @@ class aie_cfg_tile
 
     Memory* getMemory(uint64_t deviceId, int32_t memId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -869,6 +904,7 @@ class aie_cfg_tile
     // Includes only User Space AM enabled for trace
     inline uint64_t getNumAM(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->getNumAM(xclbin);
@@ -880,6 +916,7 @@ class aie_cfg_tile
      */
     inline uint64_t getNumAIM(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->getNumAIM(xclbin);
@@ -891,6 +928,7 @@ class aie_cfg_tile
      */
     inline uint64_t getNumASM(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->getNumASM(xclbin);
@@ -898,6 +936,7 @@ class aie_cfg_tile
 
     inline uint64_t getNumNOC(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->getNumNOC(xclbin);
@@ -905,6 +944,7 @@ class aie_cfg_tile
 
     inline uint64_t getNumAIECounter(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->aieList.size();
@@ -912,6 +952,7 @@ class aie_cfg_tile
 
     inline uint64_t getNumTraceGMIO(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       return deviceInfo[deviceId]->gmioList.size();
@@ -919,6 +960,7 @@ class aie_cfg_tile
 
     inline Monitor* getAMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getAMonitor(xclbin, slotID) ;
@@ -926,6 +968,7 @@ class aie_cfg_tile
 
     inline Monitor* getAIMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getAIMonitor(xclbin, slotID);
@@ -933,6 +976,7 @@ class aie_cfg_tile
 
     inline Monitor* getASMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotID)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getASMonitor(xclbin, slotID);
@@ -940,6 +984,7 @@ class aie_cfg_tile
 
     inline Monitor* getNOC(uint64_t deviceId, XclbinInfo* xclbin, uint64_t idx)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getNOC(xclbin, idx);
@@ -947,6 +992,7 @@ class aie_cfg_tile
 
     inline AIECounter* getAIECounter(uint64_t deviceId, uint64_t idx)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
 
@@ -959,29 +1005,34 @@ class aie_cfg_tile
     inline std::map<uint32_t, uint32_t>&
     getAIECounterResources(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       return deviceInfo[deviceId]->aieCountersMap;
     }
 
     inline std::map<uint32_t, uint32_t>&
     getAIECoreEventResources(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       return deviceInfo[deviceId]->aieCoreEventsMap;
     }
 
     inline std::map<uint32_t, uint32_t>&
     getAIEMemoryEventResources(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       return deviceInfo[deviceId]->aieMemoryEventsMap;
     }
 
     inline std::vector<std::unique_ptr<aie_cfg_tile>>&
       getAIECfgTiles(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       return deviceInfo[deviceId]->aieCfgList;
     }
 
     inline TraceGMIO* getTraceGMIO(uint64_t deviceId, uint64_t idx)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->gmioList[idx];
@@ -990,8 +1041,9 @@ class aie_cfg_tile
     inline void addTraceGMIO(uint64_t deviceId, uint32_t i, uint16_t col,
            uint16_t num, uint16_t stream, uint16_t len)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-  return ;
+        return ;
       deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
     }
 
@@ -1001,25 +1053,32 @@ class aie_cfg_tile
             const std::string& mod,
             const std::string& aieName)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
                 freq, mod, aieName) ;
     }
 
-    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles) {
+    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles) 
+    {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles) ;
     }
     
-    inline void addAIECoreEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+    inline void addAIECoreEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) 
+    {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIECoreEventResources(numEvents, numTiles) ;
     }
     
-    inline void addAIEMemoryEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
+    inline void addAIEMemoryEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) 
+    {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
@@ -1027,6 +1086,7 @@ class aie_cfg_tile
 
     inline void addAIECfgTile(uint64_t deviceId, std::unique_ptr<aie_cfg_tile>& tile)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIECfgTile(tile) ;
@@ -1035,6 +1095,7 @@ class aie_cfg_tile
     // Includes only User Space AIM enabled for trace, but no shell AIM
     inline std::map<uint64_t, Monitor*>* getAIMonitors(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getAIMonitors(xclbin);
@@ -1043,6 +1104,7 @@ class aie_cfg_tile
     // Includes only User Space ASM enabled for trace, but no shell ASM
     inline std::map<uint64_t, Monitor*>* getASMonitors(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
       return deviceInfo[deviceId]->getASMonitors(xclbin) ;
@@ -1050,6 +1112,7 @@ class aie_cfg_tile
 
     inline void getDataflowConfiguration(uint64_t deviceId, bool* config, size_t size)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -1077,6 +1140,7 @@ class aie_cfg_tile
 
     inline void getFaConfiguration(uint64_t deviceId, bool* config, size_t size)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
@@ -1097,6 +1161,7 @@ class aie_cfg_tile
 
     inline std::string getCtxInfo(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return "";
       return deviceInfo[deviceId]->ctxInfo;
@@ -1104,6 +1169,7 @@ class aie_cfg_tile
 
     inline bool hasFloatingAIM(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
       return deviceInfo[deviceId]->hasFloatingAIM(xclbin);
@@ -1111,6 +1177,7 @@ class aie_cfg_tile
 
     inline bool hasFloatingASM(uint64_t deviceId, XclbinInfo* xclbin)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
       return deviceInfo[deviceId]->hasFloatingASM(xclbin);
@@ -1118,6 +1185,7 @@ class aie_cfg_tile
 
     inline uint64_t getNumTracePLIO(uint64_t deviceId)
     {
+      std::lock_guard<std::mutex> lock(dbLock);
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
       if(deviceInfo[deviceId]->loadedXclbins.empty())
@@ -1133,7 +1201,8 @@ class aie_cfg_tile
       uint64_t numAIETraceStream = getNumTracePLIO(deviceId);
       if(numAIETraceStream)
         return numAIETraceStream;
-
+ 
+      std::lock_guard<std::mutex> lock(dbLock);
       return deviceInfo[deviceId]->gmioList.size();
     }
 

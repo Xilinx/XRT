@@ -83,6 +83,8 @@ namespace xdp {
 
   void ComputeUnitInstance::addConnection(int32_t argIdx, int32_t memIdx)
   {
+    std::lock_guard<std::mutex> lock(cuLock);
+
     if(connections.find(argIdx) == connections.end()) {
       std::vector<int32_t> mems(1, memIdx);
       connections[argIdx] = mems;
@@ -111,6 +113,8 @@ namespace xdp {
   void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
                                 uint16_t stream, uint16_t len)
   {
+    std::lock_guard<std::mutex> lock(infoLock);
+
     TraceGMIO* traceGmio = new TraceGMIO(id, col, num, stream, len);
     gmioList.push_back(traceGmio);
   }
@@ -121,9 +125,11 @@ namespace xdp {
                                  const std::string& mod,
                                  const std::string& aieName)
   {
-      AIECounter* aie = new AIECounter(i, col, r, num, start, end,
-                                       reset, freq, mod, aieName);
-      aieList.push_back(aie);
+    std::lock_guard<std::mutex> lock(infoLock);
+
+    AIECounter* aie = new AIECounter(i, col, r, num, start, end,
+                                     reset, freq, mod, aieName);
+    aieList.push_back(aie);
   }
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
@@ -145,19 +151,24 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
+    std::cout << "VPStaticDatabase destructor begin" << std::endl;
     if (runSummary != nullptr)
     {
       runSummary->write(false) ;
       delete runSummary ;
     }
 
+    std::cout << "VPStaticDatabase deleting device info" << std::endl;
     for (auto iter : deviceInfo) {
       delete iter.second ;
     }
+    std::cout << "VPStaticDatabase destructor end" << std::endl;
   }
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+    
     std::shared_ptr<xrt_core::device> device =
       xrt_core::get_userpf_device(devHandle);
 
@@ -196,6 +207,8 @@ namespace xdp {
 
   std::vector<std::string> VPStaticDatabase::getDeviceNames()
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     std::vector<std::string> deviceNames ;
     for (auto device : deviceInfo)
     {
@@ -207,6 +220,8 @@ namespace xdp {
 
   std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     std::vector<DeviceInfo*> infos ;
     for (auto device : deviceInfo)
     {
@@ -217,6 +232,8 @@ namespace xdp {
 
   bool VPStaticDatabase::hasStallInfo()
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     for (auto device : deviceInfo)
     {
       if ((device.second)->loadedXclbins.size() <= 0) continue ;
@@ -320,6 +337,8 @@ namespace xdp {
 
   bool VPStaticDatabase::setXclbinName(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+    
     // Get SYSTEM_METADATA section
     std::pair<const char*, size_t> systemMetadata = device->get_axlf_section(SYSTEM_METADATA);
     const char* systemMetadataSection = systemMetadata.first;
@@ -356,6 +375,8 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeComputeUnits(XclbinInfo* currentXclbin, const std::shared_ptr<xrt_core::device>& device)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     // Get IP_LAYOUT section 
     const ip_layout* ipLayoutSection = device->get_axlf_section<const ip_layout*>(IP_LAYOUT);
     if(ipLayoutSection == nullptr) return true;
@@ -487,6 +508,8 @@ namespace xdp {
 
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     // Look into the debug_ip_layout section and load information about Profile Monitors
     // Get DEBUG_IP_LAYOUT section 
     const debug_ip_layout* debugIpLayoutSection = device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
@@ -664,6 +687,7 @@ namespace xdp {
     if (aieDevInst)
       return aieDevInst;
 
+    std::lock_guard<std::mutex> lock(dbLock);
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)
       return nullptr;
@@ -682,6 +706,7 @@ namespace xdp {
     getAieDevInst(devHandle);
     if (!aieDevInst)
       return nullptr;
+    std::lock_guard<std::mutex> lock(dbLock);
     aieDevice = std::make_shared<xaiefal::XAieDev>(aieDevInst, false);
     return aieDevice;
   }
@@ -705,7 +730,8 @@ namespace xdp {
     {
       runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
     }
-    runSummary->write(false) ;
+    // Save write until done
+    //runSummary->write(false) ;
   }
 
   void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)

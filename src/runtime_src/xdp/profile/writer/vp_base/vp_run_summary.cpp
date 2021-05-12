@@ -76,10 +76,13 @@ namespace xdp {
       ptRunSummary.add_child("schema_version", ptSchema) ;
     }
 
+    std::cout << "Adding static info" << std::endl;
+    
     {
       auto pid = (db->getStaticInfo()).getPid() ;
       auto timestamp = (std::chrono::system_clock::now()).time_since_epoch() ;
-      auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
+      auto value =
+	std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
       uint64_t timeMsec = value.count() ;
 
       boost::property_tree::ptree ptGeneration ;
@@ -89,15 +92,22 @@ namespace xdp {
       ptRunSummary.add_child("generation", ptGeneration) ;
     }
 
+    std::cout << "Adding files..." << std::endl;
+
     boost::property_tree::ptree ptFiles ;
     for (auto f : files)
     {
+      std::cout << "Adding file " << f.first << std::endl;
       boost::property_tree::ptree ptFile ;
       ptFile.put("name", f.first.c_str()) ;
       ptFile.put("type", f.second.c_str()) ;
+      std::cout << "  Begin push back" << std::endl;
       ptFiles.push_back(std::make_pair("", ptFile)) ;
+      std::cout << "  End push back" << std::endl;
     }
     ptRunSummary.add_child("files", ptFiles) ;
+
+    std::cout << "Done adding files to run summary" << std::endl;
 
     // Add the system diagram information if available
     std::string systemDiagram = (db->getStaticInfo()).getSystemDiagram() ;
@@ -107,8 +117,10 @@ namespace xdp {
       ptSystemDiagram.put("payload_16bitEnc", systemDiagram.c_str()) ;
       ptRunSummary.add_child("system_diagram", ptSystemDiagram) ;
     }
+    std::cout << "Done writing system diagram" << std::endl;
 
     boost::property_tree::write_json(fout, ptRunSummary, true) ;
+    std::cout << "Done writing json" << std::endl;
     return true;
   }
 

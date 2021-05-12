@@ -20,6 +20,7 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <mutex>
 
 #include "xdp/profile/database/statistics_database.h"
 #include "xdp/profile/database/static_info_database.h"
@@ -61,6 +62,9 @@ namespace xdp {
     std::map<std::string, uint64_t> devices;
     uint64_t numDevices;
 
+    // Database can be accessed by multiple threads
+    std::mutex dbLock;
+    
   private:
     VPDatabase() ;
 

@@ -63,6 +63,8 @@ namespace xdp {
 
   uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+    
     if (devices.find(sysfsPath) == devices.end())
     {
       throw std::runtime_error("Device not registered in database");
@@ -72,6 +74,8 @@ namespace xdp {
 
   uint64_t VPDatabase::addDevice(const std::string& sysfsPath)
   {
+    std::lock_guard<std::mutex> lock(dbLock);
+
     if(devices.find(sysfsPath) == devices.end()) {
       devices[sysfsPath] = numDevices++;
     }
