@@ -70,6 +70,9 @@ namespace xdp {
     API_CALL             = 50,
     HAL_API_CALL         = 51,
     NATIVE_API_CALL      = 52,
+
+    // Miscellaneous
+    UNKNOWN_EVENT = 70,
   } ;
 
   class VTFEvent

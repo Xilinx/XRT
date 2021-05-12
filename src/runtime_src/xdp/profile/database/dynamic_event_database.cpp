@@ -110,39 +110,40 @@ namespace xdp {
     }
   }
 
-  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
-  {
-    std::lock_guard<std::mutex> lock(deviceLock);
-    deviceEventStartMap[traceID].push_back(event) ;
-  }
-
-  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
+  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID,
+    std::tuple<VTFEventType, uint64_t, double, uint64_t> info)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
-    VTFEvent* startEvent = nullptr;
-    auto& lst = deviceEventStartMap[traceID];
-    if (!lst.empty())
-    {
-      for (auto itr = lst.begin() ; itr != lst.end(); ++itr) {
-        if((*itr)->getEventType() == type) {
-          startEvent = (*itr);
-          lst.erase(itr);
-          break;
-        }
-      }
-    }
-    return startEvent;
+    deviceEventStartMap[traceID].push_back(info) ;
   }
 
-  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID,
-                                                      VTFEventType type)
+  std::tuple<VTFEventType, uint64_t, double, uint64_t>
+  VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+    std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent =
+      { UNKNOWN_EVENT, 0, 0.0, 0 } ;
+    auto& lst = deviceEventStartMap[traceID] ;
+    if (!lst.empty()) {
+      for (auto iter = lst.begin() ; iter != lst.end() ; ++iter) {
+        if (std::get<0>(*iter) == type) {
+          startEvent = (*iter);
+          lst.erase(iter);
+          break;
+	}
+      }
+    }
+    return startEvent ;
+  }
+
+  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
     if (deviceEventStartMap.find(traceID) == deviceEventStartMap.end())
       return false ;
     auto& lst = deviceEventStartMap[traceID] ;
-    for (auto e: lst) {
-      if (e->getEventType() == type)
+    for (auto e : lst) {
+      if (std::get<0>(e) == type)
         return true ;
     }
     return false ;
