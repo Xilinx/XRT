@@ -16,8 +16,10 @@
 #define XRT_CORE_COMMON_SOURCE
 #include "xclbin_parser.h"
 #include "config_reader.h"
+#include "error.h"
 
 #include <algorithm>
+#include <map>
 #include <regex>
 #include <cstring>
 #include <cstdlib>
@@ -39,7 +41,50 @@ namespace pt = boost::property_tree;
 static size_t
 convert(const std::string& str)
 {
-  return str.empty() ? 0 : std::stoul(str,0,0);
+  return str.empty() ? 0 : std::stoul(str,nullptr,0);
+}
+
+static xrt_core::xclbin::kernel_properties::mailbox_type
+convert_to_mailbox_type(const std::string& str)
+{
+  static std::map<std::string, xrt_core::xclbin::kernel_properties::mailbox_type> table = {
+    { "none", xrt_core::xclbin::kernel_properties::mailbox_type::none },
+    { "in", xrt_core::xclbin::kernel_properties::mailbox_type::in },
+    { "out", xrt_core::xclbin::kernel_properties::mailbox_type::out },
+    { "inout", xrt_core::xclbin::kernel_properties::mailbox_type::inout },
+    { "both", xrt_core::xclbin::kernel_properties::mailbox_type::inout },
+    { "true", xrt_core::xclbin::kernel_properties::mailbox_type::inout },
+    { "false", xrt_core::xclbin::kernel_properties::mailbox_type::none },
+  };
+  auto itr = table.find(str);
+  if (itr == table.end())
+    throw xrt_core::error("Invalid mailbox property '" + str + "'");
+  return (*itr).second;
+}
+
+
+// Kernel mailbox
+// Needed until meta-data support (Vitis-1147)
+// Format is "[/kernel_name/]*"
+// mailbox="/kernel1_name/kernel2_name/"
+static xrt_core::xclbin::kernel_properties::mailbox_type
+get_mailbox_from_ini(const std::string& kname)
+{
+  static auto mailbox_kernels = xrt_core::config::get_mailbox_kernels();
+  return (mailbox_kernels.find("/" + kname + "/") != std::string::npos)
+    ? xrt_core::xclbin::kernel_properties::mailbox_type::inout
+    : xrt_core::xclbin::kernel_properties::mailbox_type::none;
+}
+
+// Kernel auto restart counter offset
+// Needed until meta-data support (Vitis-1147)
+static xrt_core::xclbin::kernel_properties::restart_type
+get_restart_from_ini(const std::string& kname)
+{
+  static auto restart_kernels = xrt_core::config::get_auto_restart_kernels();
+  return (restart_kernels.find("/" + kname + "/") != std::string::npos)
+    ? 1
+    : 0;
 }
 
 static bool
@@ -121,7 +166,7 @@ get_base_addr(const ip_data& ip)
 {
   auto addr = ip.m_base_address;
   if (addr == static_cast<size_t>(-1))
-    addr = std::numeric_limits<size_t>::max() & ~0xFF;
+    addr = std::numeric_limits<size_t>::max() & ~0xFF; // NOLINT
   return addr;
 }
 
@@ -146,7 +191,7 @@ kernel_max_ctx(const ip_data& ip)
   auto ctxid_str = ctx.substr(pos1+knm.size()+2,pos2);
   auto ctxid = std::stoi(ctxid_str);
 
-  if (ctxid < 0 || ctxid > 31)
+  if (ctxid < 0 || ctxid > 31) // NOLINT
     throw std::runtime_error("context id must be between 0 and 31");
 
   return ctxid;
@@ -211,7 +256,7 @@ address_to_memidx(const mem_topology* mem_topology, uint64_t address)
       continue;
     if (address < mem.m_base_address)
       continue;
-    if (address > (mem.m_base_address + mem.m_size * 1024))
+    if (address > (mem.m_base_address + mem.m_size * 1024))  // NOLINT
       continue;
     return idx;
   }
@@ -423,13 +468,13 @@ get_debug_ips(const axlf* top)
     uint64_t addr = debug_ip_data.m_base_address;
     // There is no size for each debug IP in the xclbin. Use hardcoding size now.
     // The default size is 64KB.
-    size_t size = 0x10000;
+    size_t size = 0x10000; // NOLINT
     if (debug_ip_data.m_type == AXI_MONITOR_FIFO_LITE
         || debug_ip_data.m_type == AXI_MONITOR_FIFO_FULL)
        // The size of these two type of IPs is 8KB
-       size = 0x2000;
+       size = 0x2000;  // NOLINT
 
-    ips.push_back(std::make_pair(addr, size));
+    ips.emplace_back(std::make_pair(addr, size));
   }
 
   std::sort(ips.begin(), ips.end());
@@ -527,9 +572,9 @@ get_cus_pair(const axlf* top)
   std::vector<std::pair<uint64_t, size_t>> ret;
   cus = get_cus(top, false);
 
-  for (auto it = cus.begin(); it != cus.end(); ++it)
-    // CU size is 64KB
-    ret.push_back(std::make_pair(*it, 0x10000));
+  constexpr size_t cu_size = 0x10000; // CU size is 64KB
+  for (auto cu : cus)
+    ret.emplace_back(std::make_pair(cu, cu_size));
 
   return ret;
 }
@@ -544,7 +589,7 @@ std::vector<softkernel_object>
 get_softkernels(const axlf* top)
 {
   std::vector<softkernel_object> sks;
-  const axlf_section_header *pSection;
+  const axlf_section_header *pSection = nullptr;
 
   for (pSection = ::xclbin::get_axlf_section(top, SOFT_KERNEL);
     pSection != nullptr;
@@ -558,7 +603,7 @@ get_softkernels(const axlf* top)
       sko.mpo_name = std::string(begin + soft->mpo_name);
       sko.mpo_version = std::string(begin + soft->mpo_version);
       sko.size = soft->m_image_size;
-      sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);
+      sko.sk_buf = const_cast<char*>(begin + soft->m_image_offset);  // NOLINT
       sks.emplace_back(std::move(sko));
   }
 
@@ -568,7 +613,8 @@ get_softkernels(const axlf* top)
 size_t
 get_kernel_freq(const axlf* top)
 {
-  size_t kernel_clk_freq = 100; //default clock frequency is 100
+  constexpr size_t default_kernel_clk_freq = 100;
+  size_t kernel_clk_freq = default_kernel_clk_freq;
   auto xml = get_xml_section(top);
 
   pt::ptree xml_project;
@@ -595,7 +641,8 @@ get_kernel_freq(const axlf* top)
 size_t
 get_kernel_range(const char* xml_data, size_t xml_size, const std::string& kname)
 {
-  size_t kernel_range = 0x10000; //default kernel range is 64KB
+  constexpr size_t default_kernel_range = 0x10000; 
+  size_t kernel_range = default_kernel_range;
 
   pt::ptree xml_project;
   std::stringstream xml_stream;
@@ -669,6 +716,46 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
   return args;
 }
 
+std::vector<kernel_argument>
+get_kernel_arguments(const axlf* top, const std::string& kname)
+{
+  auto xml = get_xml_section(top);
+  return get_kernel_arguments(xml.first, xml.second, kname);
+}
+
+kernel_properties
+get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& kname)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
+    if (xml_kernel.first != "kernel")
+      continue;
+    if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
+      continue;
+
+    auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
+    if (mailbox == kernel_properties::mailbox_type::none)
+      mailbox = get_mailbox_from_ini(kname);
+    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.counted_auto_restart","0"));
+    if (restart == 0)
+      restart = get_restart_from_ini(kname);
+    return kernel_properties{kname, restart, mailbox};
+  }
+
+  return kernel_properties{};
+}
+    
+kernel_properties
+get_kernel_properties(const axlf* top, const std::string& kname)
+{
+  auto xml = get_xml_section(top);
+  return get_kernel_properties(xml.first, xml.second, kname);
+}
+
 std::vector<std::string>
 get_kernel_names(const char *xml_data, size_t xml_size)
 {
@@ -687,13 +774,6 @@ get_kernel_names(const char *xml_data, size_t xml_size)
   }
 
   return names;
-}
-
-std::vector<kernel_argument>
-get_kernel_arguments(const axlf* top, const std::string& kname)
-{
-  auto xml = get_xml_section(top);
-  return get_kernel_arguments(xml.first, xml.second, kname);
 }
 
 std::vector<kernel_object>
@@ -735,8 +815,9 @@ is_pdi_only(const axlf* top)
 std::string
 get_vbnv(const axlf* top)
 {
+  constexpr size_t vbnv_length = 64;
   auto vbnv = reinterpret_cast<const char*>(top->m_header.m_platformVBNV);
-  return {vbnv, strnlen(vbnv, 64)};
+  return {vbnv, strnlen(vbnv, vbnv_length)};
 }
 
 }} // xclbin, xrt_core
