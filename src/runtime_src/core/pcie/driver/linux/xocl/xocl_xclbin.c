@@ -195,13 +195,17 @@ int xocl_xclbin_download(xdev_handle_t xdev, const void *xclbin)
 	if (XOCL_DSA_IS_VERSAL(xdev))
 		return xocl_xclbin_download_impl(xdev, xclbin, &versal_ops);
 	else {
-		int rval;
-		/* TODO: return xocl_xclbin_download_impl(xdev, xclbin, &icap_ops); */
+		/*
+		 * TODO:
+		 * return xocl_xclbin_download_impl(xdev, xclbin, &icap_ops);
+		 */
+		int rval = 0;
 		rval = xocl_icap_download_axlf(xdev, xclbin);
-		if (!rval && XOCL_DSA_IS_MPSOC(xdev)) {
-			return xocl_xclbin_download_impl(xdev, xclbin,
-			    &mpsoc_ops);
-		}
+		if (!rval && XOCL_DSA_IS_MPSOC(xdev))
+			rval = xocl_xclbin_download_impl(xdev, xclbin, &mpsoc_ops);
+
+		if (rval)
+			xocl_icap_clean_bitstream(xdev);
 
 		return rval;
 	}
