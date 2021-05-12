@@ -34,7 +34,7 @@ The C++ Class objects used for the APIs are
 +----------------------+-------------------+------------------------------------------------+
 |   Run                | ``xrt::run``      |  ``#include <xrt/xrt_kernel.h>``               |
 +----------------------+-------------------+------------------------------------------------+
-| User-managed Kernel  | ``xrt::ip``       |  ``#include <xrt/xrt_device.h>``               |
+| User-managed Kernel  | ``xrt::ip``       |  ``#include <experimental/xrt_ip.h>``          |
 +----------------------+-------------------+------------------------------------------------+
 |   Graph              | ``xrt::graph``    |  ``#include <experimental/aie.h>``             |
 |                      |                   |                                                |
