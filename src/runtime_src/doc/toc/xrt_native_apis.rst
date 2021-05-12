@@ -21,23 +21,24 @@ The XRT native API supports both the C and C++ flavor of APIs. For general host 
 
 The C++ Class objects used for the APIs are 
 
-+----------------------+-------------------+
-|                      |   C++ Class       |  
-+======================+===================+
-|   Device             | ``xrt::device``   |  
-+----------------------+-------------------+
-|   XCLBIN             | ``xrt::xclbin``   |  
-+----------------------+-------------------+
-|   Buffer             | ``xrt::bo``       |  
-+----------------------+-------------------+
-|   Kernel             | ``xrt::kernel``   |  
-+----------------------+-------------------+
-|   Run                | ``xrt::run``      |  
-+----------------------+-------------------+
-| User-managed Kernel  | ``xrt::ip``       |  
-+----------------------+-------------------+
-|   Graph              | ``xrt::graph``    |  
-+----------------------+-------------------+
++----------------------+-------------------+--------------------------------------------+
+|                      |   C++ Class       |  Header files                               |
++======================+===================+============================================+
+|   Device             | ``xrt::device``   |  #include <xrt/xrt_device.h>               |
++----------------------+-------------------+--------------------------------------------+
+|   XCLBIN             | ``xrt::xclbin``   |  #include <xrt/xrt_xclbin.h>               |
++----------------------+-------------------+--------------------------------------------+
+|   Buffer             | ``xrt::bo``       |  #include <xrt/xrt_bo.h>                   |
++----------------------+-------------------+--------------------------------------------+
+|   Kernel             | ``xrt::kernel``   |  #include <xrt/xrt_kernel.h>               |
++----------------------+-------------------+--------------------------------------------+
+|   Run                | ``xrt::run``      |  #include <xrt/xrt_run.h>                  |
++----------------------+-------------------+--------------------------------------------+
+| User-managed Kernel  | ``xrt::ip``       |  #include <experimental/xrt_device.h>      |
++----------------------+-------------------+--------------------------------------------+
+|   Graph              | ``xrt::graph``    |  #include <experimental/graph.h>           |
+|                      |                   |  #include <experimental/aie.h>             |
++----------------------+-------------------+--------------------------------------------+
 
 All the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. 
 
