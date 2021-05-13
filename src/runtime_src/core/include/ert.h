@@ -36,7 +36,7 @@
  */
 
 /**
- * DOC: Xilinx SDAccel Embedded Runtime definition
+ * DOC: XRT Embedded Runtime definition
  *
  * Header file *ert.h* defines data structures used by Emebdded Runtime (ERT) and
  * XRT xclExecBuf() API.
