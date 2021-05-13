@@ -106,11 +106,11 @@ namespace xdp {
       event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
       event->setDeviceTimestamp(trace.Timestamp);
       db->getDynamicInfo().addEvent(event);
-      std::tuple<VTFEventType, uint64_t, double, uint64_t> info =
-        { event->getEventType(),
-          event->getEventId(),
-          event->getTimestamp(),
-          trace.Timestamp } ;
+      std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
+      std::get<0>(info) = event->getEventType() ;
+      std::get<1>(info) = event->getEventId() ;
+      std::get<2>(info) = event->getTimestamp() ;
+      std::get<3>(info) = trace.Timestamp ;
       db->getDynamicInfo().markDeviceEventStart(monTraceID, info);
 
       cuStarts[s].push_back(std::make_pair(event->getEventId(), trace.Timestamp));
@@ -149,11 +149,11 @@ namespace xdp {
       event = new KernelStall(0, hostTimestamp, type, deviceId, s, cuId);
       event->setDeviceTimestamp(trace.Timestamp);
       db->getDynamicInfo().addEvent(event);
-      std::tuple<VTFEventType, uint64_t, double, uint64_t> info =
-        { event->getEventType(),
-          event->getEventId(),
-          event->getTimestamp(),
-          trace.Timestamp } ;
+      std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
+      std::get<0>(info) = event->getEventType() ;
+      std::get<1>(info) = event->getEventId() ;
+      std::get<2>(info) = event->getTimestamp() ;
+      std::get<3>(info) = trace.Timestamp ;
       db->getDynamicInfo().markDeviceEventStart(monTraceID, info);
     }
   }
@@ -250,11 +250,11 @@ namespace xdp {
       memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId) ;
       memEvent->setDeviceTimestamp(trace.Timestamp) ;
       db->getDynamicInfo().addEvent(memEvent) ;
-      std::tuple<VTFEventType, uint64_t, double, uint64_t> info =
-        { memEvent->getEventType(),
-          memEvent->getEventId(),
-          memEvent->getTimestamp(),
-          trace.Timestamp } ;
+      std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
+      std::get<0>(info) = memEvent->getEventType() ;
+      std::get<1>(info) = memEvent->getEventId() ;
+      std::get<2>(info) = memEvent->getTimestamp() ;
+      std::get<3>(info) = trace.Timestamp ;
       db->getDynamicInfo().markDeviceEventStart(trace.TraceID, info);
     } else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
       std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart = 
@@ -376,11 +376,11 @@ namespace xdp {
           strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, s, cuId);
           strmEvent->setDeviceTimestamp(timestamp);
           db->getDynamicInfo().addEvent(strmEvent);
-          std::tuple<VTFEventType, uint64_t, double, uint64_t> info =
-            { strmEvent->getEventType(),
-              strmEvent->getEventId(),
-              strmEvent->getTimestamp(),
-              timestamp } ;
+          std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
+	  std::get<0>(info) = strmEvent->getEventType() ;
+	  std::get<1>(info) = strmEvent->getEventId() ;
+	  std::get<2>(info) = strmEvent->getTimestamp() ;
+	  std::get<3>(info) = timestamp ;
           db->getDynamicInfo().markDeviceEventStart(trace.TraceID, info);
         } else {
 	  std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =

@@ -121,8 +121,11 @@ namespace xdp {
   VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
-    std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent =
-      { UNKNOWN_EVENT, 0, 0.0, 0 } ;
+    std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent ;
+    std::get<0>(startEvent) = UNKNOWN_EVENT ;
+    std::get<1>(startEvent) = 0 ;
+    std::get<2>(startEvent) = 0.0 ;
+    std::get<3>(startEvent) = 0 ;
     auto& lst = deviceEventStartMap[traceID] ;
     if (!lst.empty()) {
       for (auto iter = lst.begin() ; iter != lst.end() ; ++iter) {
