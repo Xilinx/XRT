@@ -41,7 +41,7 @@ The C++ Class objects used for the APIs are
 |                      |                   |  ``#include <experimental/graph.h>``           |
 +----------------------+-------------------+------------------------------------------------+
 
-Majority of the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. The API interfaces that are in the experimental folder are subject to change in future. 
+Majority of the core data structures are defined inside in the header files at ``$XILINX_XRT/include/xrt/`` directory. Few newer features such as ``xrt::ip``, ``xrt::aie`` related header files are inside ``$XILINX_XRT/include/experimental`` directory. The API interfaces that are in the experimental folder are subject to breaking changes. 
 
 The common host code flow using the above data structures is as below
    
