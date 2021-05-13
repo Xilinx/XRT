@@ -217,6 +217,7 @@ Code example of transferring data from the host to the device
 
 Note the C++ ``xrt::bo::sync``, ``xrt::bo::write``, ``xrt::bo::read`` etc has overloaded version that can be used for partial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments. 
 
+Also note that if the buffer is created through the user-pointer, the ``xrt::bo::write`` or ``xrt::bo::read`` is not required before or after the ``xrt::bo::sync`` call. 
 
 II. Data transfer between host and device by Buffer map API
 ***********************************************************
