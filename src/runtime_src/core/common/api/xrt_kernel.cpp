@@ -303,7 +303,7 @@ struct device_type
   device_type(device_type&&) = delete;
   device_type& operator=(device_type&) = delete;
   device_type& operator=(device_type&&) = delete;
-  
+
   template <typename CommandType>
   xrt_core::bo_cache::cmd_bo<CommandType>
   create_exec_buf()
@@ -650,7 +650,7 @@ public:
     for (size_t cu_idx = 0; cu_idx < max_cus; ++cu_idx) {
       if (!cumask.test(cu_idx))
         continue;
-      auto mask_idx = cu_idx / cus_per_word;              
+      auto mask_idx = cu_idx / cus_per_word;
       auto idx_in_mask = cu_idx - mask_idx * cus_per_word;
       ecmd->data[mask_idx] |= (1 << idx_in_mask);
     }
@@ -1330,7 +1330,7 @@ public:
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    auto all_cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
+    auto all_cus = device->core_device->get_cus(xclbin_id);  // sort order
     for (const ip_data* cu : kernel_cus) {
       if (::get_ip_control(cu) == AP_CTRL_NONE)
         continue;

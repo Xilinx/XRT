@@ -271,6 +271,10 @@ public:
   memory_type
   get_memory_type(size_t memidx) const;
 
+  // get_cus() - Get list cu base addresses sorted by cu inidex
+  const std::vector<uint64_t>
+  get_cus(const uuid& xclbin_id) const;
+
   /**
    * get_ert_slots() - Get number of ERT CQ slots
    *
@@ -298,7 +302,7 @@ public:
   virtual void write(uint64_t, const void*, uint64_t) const {}
 
   virtual void reset(query::reset_type&) const {}
- 
+
   /**
    * xclmgmt_load_xclbin() - loads the xclbin through the mgmt pf
    */
@@ -335,6 +339,7 @@ public:
   mutable boost::optional<bool> m_nodma = boost::none;
 
   std::vector<size_t> m_memidx_encoding; // compressed mem_toplogy indices
+  std::vector<uint64_t> m_cus;           // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                  // currently loaded xclbin
 };
 
