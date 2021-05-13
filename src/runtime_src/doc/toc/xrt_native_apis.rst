@@ -414,7 +414,6 @@ Other kernel APIs
 
 **Timeout while wait for kernel finish**: The member function ``xrt::run::wait()`` blocks the current thread until the kernel execution finishes. To specify a timeout supported API ``xrt::run::wait()`` also accepts a timeout in millisecond unit.
 
-**Asynchronous update of the kernel arguments**: The member function ``xrt::run::set_arg()`` is synchronous to the kernel execution. This function can only be used when kernel is in the IDLE state and before the start of the next execution. An asynchronous version of this functionality (only for edge platform) is provided by the member function ``xrt::run::update_arg()`` to change the kernel arguments asynchronous to the kernel execution. 
 
 User Managed Kernel
 -------------------
