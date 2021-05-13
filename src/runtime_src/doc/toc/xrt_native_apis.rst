@@ -438,7 +438,7 @@ An ip object can only be opened in exclusive mode. That means at a time, only on
 Allocating buffers for the IP inputs/outputs 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Simialr to XRT managed kernel ``xrt::bo`` objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank. 
+Similar to XRT managed kernel ``xrt::bo`` objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank. 
 
 Below is a example of creating two buffers. Note the last argument of ``xrt::bo`` is the enumated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by ``xbutil examine --report memory`` command.  
 
