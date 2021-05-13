@@ -136,10 +136,10 @@ Creating special Buffers
 
 The ``xrt::bo()`` constructors accept multiple other buffer flags those are described using ``enum class`` argument with the following enumerator values
 
-- ``xrt::bo::flags::normal``: Default, Regular Buffer
-- ``xrt::bo::flags::device_only``: Device only Buffer (meant to be used only by the kernel).
-- ``xrt::bo::flags::host_only``: Host Only Buffer (buffer resides in the host memory directly transferred to/from the kernel)
-- ``xrt::bo::flags::p2p``: P2P Buffer, buffer for NVMe transfer  
+- ``xrt::bo::flags::normal``: Regular buffer (default)
+- ``xrt::bo::flags::device_only``: Device only buffer (meant to be used only by the kernel, there is no host backing pointer).
+- ``xrt::bo::flags::host_only``: Host only buffer (buffer resides in the host memory directly transferred to/from the kernel)
+- ``xrt::bo::flags::p2p``: P2P buffer, A special type of device-only buffer capable of peer-to-peer transfer 
 - ``xrt::bo::flags::cacheable``: Cacheable buffer can be used when the host CPU frequently accessing the buffer (applicable for edge platform).
 
 The below example shows creating a P2P buffer on a device memory bank connected to argument 3 of the kernel. 
