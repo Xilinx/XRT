@@ -121,7 +121,7 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
            auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_arg0);
            auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_arg1);
 
-In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Please note the following 
+In the above code ``xrt::bo`` buffer objects are created using the class constructor. Please note the following 
 
 - As no special flags are used a regular buffer will be created.  
 - The second argument specifies the buffer size. 
