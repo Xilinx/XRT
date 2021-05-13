@@ -115,11 +115,11 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
 .. code:: c++
       :number-lines: 15
            
-           auto bank_grp_arg_0 = kernel.group_id(0);
-           auto bank_grp_arg_1 = kernel.group_id(1);
+           auto bank_grp_arg0 = kernel.group_id(0); // Memory bank index for kernel argument 0
+           auto bank_grp_arg1 = kernel.group_id(1); // Memory bank index for kernel argument 1
     
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_arg_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_arg_1);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_arg0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_arg1);
 
 In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Please note the following 
 
