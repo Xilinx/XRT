@@ -140,6 +140,7 @@ private:
 
     bool m_trbuf_full = false;
     bool trbuf_offload_done = false;
+    uint64_t m_trbuf_addr = 0;
 
     // Clock Training Params
     bool m_force_clk_train = true;
