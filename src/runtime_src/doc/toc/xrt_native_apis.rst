@@ -123,7 +123,7 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
 
 In the above code ``xrt::bo`` buffer objects are created using the class constructor. Please note the following 
 
-- As no special flags are used a regular buffer will be created.  
+- As no special flags are used a regular buffer will be created. Regular buffer is most common type of buffer that has a host backing pointer allocated by user space in heap memory and a device buffer allocated in the specified memory bank. 
 - The second argument specifies the buffer size. 
 - The third argument is used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. There are two ways to specify the memory bank index
 
