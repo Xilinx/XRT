@@ -115,17 +115,20 @@ The class constructor ``xrt::bo`` is mainly used to allocates a buffer object 4K
 .. code:: c++
       :number-lines: 15
            
-           auto bank_grp_idx_0 = kernel.group_id(0);
-           auto bank_grp_idx_1 = kernel.group_id(1);
+           auto bank_grp_arg_0 = kernel.group_id(0);
+           auto bank_grp_arg_1 = kernel.group_id(1);
     
-           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_idx_0);
-           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_idx_1);
+           auto input_buffer = xrt::bo(device, buffer_size_in_bytes,bank_grp_arg_0);
+           auto output_buffer = xrt::bo(device, buffer_size_in_bytes, bank_grp_arg_1);
 
 In the above code ``xrt::bo`` buffer objects are created using the class's constructor. Please note the following 
 
 - As no special flags are used a regular buffer will be created.  
 - The second argument specifies the buffer size. 
-- The third argument should be used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. In this example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index where the corresponding kernel arguments are (in the above example argument 0 and 1) connected. Instead of using the ``xrt::kernel::group_id()`` member function, the direct memory bank index (as observed in ``xbutil examine --report memory``) can be used as well. 
+- The third argument is used to specify the enumerated memory bank index (to specify the buffer location) where the buffer should be allocated. There are two ways to specify the memory bank index
+
+ - Through kernel arguments: In the above example, the ``xrt::kernel::group_id()`` member function is used to pass the memory bank index. This member function accept kernel argument-index and automatically detect corresponding memory bank index by inspecting XCLBIN.
+ - Passing Memory bank index:  The ``xrt::kernel::group_id()`` also accepts the direct memory bank index (as observed from ``xbutil examine --report memory`` output). 
   
   
 Creating special Buffers
