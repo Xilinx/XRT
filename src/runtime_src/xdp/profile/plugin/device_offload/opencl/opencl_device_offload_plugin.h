@@ -46,6 +46,10 @@ namespace xdp {
 
     XDP_EXPORT virtual void readTrace() ;
 
+    // Which capabilities are turned on
+    bool counterOffloadEnabled ;
+    bool traceOffloadEnabled ;
+
   public:
     XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
     XDP_EXPORT ~OpenCLDeviceOffloadPlugin() ;
