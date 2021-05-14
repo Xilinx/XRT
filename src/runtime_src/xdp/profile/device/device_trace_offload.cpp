@@ -183,6 +183,15 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 
 void DeviceTraceOffload::read_trace_end()
 {
+  // If we use circular buffer then, final trace read
+  // might stop at trace buffer boundry and to read the entire
+  // trace, we need one last read
+  if (m_use_circ_buf && m_trbuf_sz == m_trbuf_alloc_sz) {
+    debug_stream
+      << "Try to read left over circular buffer data" << std::endl;
+    m_read_trace(true);
+  }
+
   // Trace logger will clear it's state and add approximations 
   // for pending events
   m_trace_vector.clear();
@@ -225,6 +234,12 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
 
   if (!host_buf)
     return;
+
+  // Print warning if processing large amount of trace
+  if (nBytes > TS2MM_WARN_BIG_BUF_SIZE && !m_trace_warn_big_done) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BIG_BUF);
+    m_trace_warn_big_done = true;
+  }
 
   dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
   deviceTraceLogger->processTraceData(m_trace_vector);
@@ -279,8 +294,9 @@ bool DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
     << "DeviceTraceOffload::config_s2mm_reader "
     << "Reading from 0x"
     << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz << std::dec
-    << " Written : " << wordCount * 8
-    << " rollover count : " << m_rollover_count
+    << " Bytes Read : " << bytes_read
+    << " Bytes Written : " << bytes_written
+    << " Rollovers : " << m_rollover_count
     << std::endl;
 
   return true;
