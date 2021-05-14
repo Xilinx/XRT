@@ -721,8 +721,7 @@ namespace xdp {
     {
       runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
     }
-    // Save write until done
-    //runSummary->write(false) ;
+    runSummary->write(false) ;
   }
 
   void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)

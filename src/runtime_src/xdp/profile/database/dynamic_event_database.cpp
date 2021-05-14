@@ -47,14 +47,12 @@ namespace xdp {
       }
       aieTraceData.clear();
     }
-    
     {
       std::lock_guard<std::mutex> lock(hostEventsLock) ;
       for (auto event : hostEvents) {
       delete event.second;
       }
     }
-    
     {
       std::lock_guard<std::mutex> lock(deviceEventsLock) ;
       for (auto device : deviceEvents) {
