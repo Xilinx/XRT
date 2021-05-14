@@ -18,7 +18,15 @@ Creating VM with virt-manager
  - run ``qemu-system-x86_64 -machine help``, and see q35 is supported. otherwise, it means the qemu version is too old. Please upgrade qemu to newer version 
  - start virt-manager, during VM creation, make sure choose 'Customize configuration before install' 
 
+ .. image:: q35-0_LI.jpg
+   :align: center
+   
  - Before 'Begin installation', make sure the chipset is 'q35' 
+ 
+ .. image:: q35-1_LI.jpg
+   :align: center
+ 
+ 
 
 Note: If you already created the VM with chipset 'i440', you can manually edit the XML config file of the VM to change the chipset to 'q35', there are quite several parts need to change. 
 
@@ -26,6 +34,9 @@ Pass through FPGA user PF to VM
 ###############################
 
 You can pass-through the FPGA do vm during vm creation. In the 'Customize configuration' window, add FPGA user PF 
+
+.. image:: pass-through.PNG
+   :align: center
 
 
 You can also do it after the vm is created.
