@@ -593,6 +593,9 @@ namespace xdp {
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -829,6 +832,9 @@ namespace xdp {
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
+    if (handle != nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -844,6 +850,9 @@ namespace xdp {
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
+    if (handle != nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -852,9 +861,9 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    if(deviceIdToHandle[deviceId] != handle) {
+    auto itr =  deviceIdToHandle.find(deviceId);
+    if (itr == deviceIdToHandle.end() || itr->second != handle)
       return;
-    }
 
     // Set metrics to flush the trace FIFOs
     // NOTE: The data mover uses a burst length of 256, so we need 64 more 
