@@ -52,8 +52,10 @@ DeviceTraceOffload::~DeviceTraceOffload()
 
 void DeviceTraceOffload::offload_device_continuous()
 {
-  if (!m_initialized && !read_trace_init(true))
+  if (!m_initialized && !read_trace_init(true)) {
+    offload_finished();
     return;
+  }
 
   while (should_continue()) {
     train_clock();
