@@ -151,18 +151,15 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
-    std::cout << "VPStaticDatabase destructor begin" << std::endl;
     if (runSummary != nullptr)
     {
       runSummary->write(false) ;
       delete runSummary ;
     }
 
-    std::cout << "VPStaticDatabase deleting device info" << std::endl;
     for (auto iter : deviceInfo) {
       delete iter.second ;
     }
-    std::cout << "VPStaticDatabase destructor end" << std::endl;
   }
 
   bool VPStaticDatabase::validXclbin(void* devHandle)

@@ -115,7 +115,6 @@ namespace xdp {
 
   DeviceOffloadPlugin::~DeviceOffloadPlugin()
   {
-    std::cout << "DeviceOffloadPlugin destructor" << std::endl;
   }
 
   void DeviceOffloadPlugin::addDevice(const std::string& sysfsPath)

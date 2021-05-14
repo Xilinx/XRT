@@ -34,7 +34,6 @@ namespace xdp {
 
   VPStatisticsDatabase::~VPStatisticsDatabase()
   {
-    std::cout << "VPStatisticsDatabase destructor" << std::endl;
   }
 
   void VPStatisticsDatabase::addTopHostRead(BufferTransferStats& transfer)

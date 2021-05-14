@@ -37,7 +37,6 @@ namespace xdp {
 
   VPDynamicDatabase::~VPDynamicDatabase()
   {
-    std::cout << "VPDynamicDatabase destructor: begin" << std::endl;
     {
       std::lock_guard<std::mutex> lock(aieLock) ;
       for(auto mapEntry : aieTraceData) {
@@ -48,16 +47,14 @@ namespace xdp {
       }
       aieTraceData.clear();
     }
-    std::cout << "VPDynamicDatabase destructor: done with AIE" << std::endl;
-
+    
     {
       std::lock_guard<std::mutex> lock(hostEventsLock) ;
       for (auto event : hostEvents) {
       delete event.second;
       }
     }
-    std::cout << "VPDynamicDatabase destructor: done with host" << std::endl;
-
+    
     {
       std::lock_guard<std::mutex> lock(deviceEventsLock) ;
       for (auto device : deviceEvents) {
@@ -67,7 +64,6 @@ namespace xdp {
         device.second.clear();
       }
     }
-    std::cout << "VPDynamicDatabase destructor: end" << std::endl;
   }
 
   void VPDynamicDatabase::markXclbinEnd(uint64_t deviceId)
