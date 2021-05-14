@@ -832,7 +832,7 @@ namespace xdp {
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
-    if (handle != nullptr)
+    if (handle == nullptr)
       return;
 
     char pathBuf[512];
@@ -850,7 +850,7 @@ namespace xdp {
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
-    if (handle != nullptr)
+    if (handle == nullptr)
       return;
 
     char pathBuf[512];
@@ -862,7 +862,7 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
     auto itr =  deviceIdToHandle.find(deviceId);
-    if (itr == deviceIdToHandle.end() || itr->second != handle)
+    if ((itr == deviceIdToHandle.end()) || (itr->second != handle))
       return;
 
     // Set metrics to flush the trace FIFOs
