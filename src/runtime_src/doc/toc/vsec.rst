@@ -46,9 +46,9 @@ pci path through user PF to kvm guest
       <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
     </hostdev>
  
-Here, domain='0x0000' bus='0x03' slot='0x00' function='0x1' is the dbdf of the user PF in host. while domain='0x0000' bus='0x00' slot='0x09' function='0x0' is the dbdf info assigned in vm.  we set 'managed = yes', so that when vm gets started, the PF(s) are automatically assigned to vm and when vm is destroyed, the vm is reassigned back to host.
+Here, ``domain='0x0000' bus='0x03' slot='0x00' function='0x1'`` is the dbdf of the user PF in host. while ``domain='0x0000' bus='0x00' slot='0x09' function='0x0'`` is the dbdf info assigned in vm.  we set ``managed = 'yes'``, so that when vm gets started, the PF(s) are automatically assigned to vm and when vm is destroyed, the vm is reassigned back to host.
 
-If want to do hot-plug, we should not set 'manage = yes'
+If want to do hot-plug, we should not set ``manage = 'yes'``
 
 More details, pls refer
 
