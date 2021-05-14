@@ -230,7 +230,7 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   debug_stream
     << "Elapsed time in microseconds for sync : "
     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-    << " µs" << std::endl;
+    << " µs" << " nBytes : " << nBytes << std::endl;
 
   if (!host_buf)
     return;
