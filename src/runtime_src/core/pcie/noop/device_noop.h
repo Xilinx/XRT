@@ -18,6 +18,7 @@
 #define PCIE_NOOP_DEVICE_LINUX_H
 
 #include "core/common/ishim.h"
+#include "core/common/query_requests.h"
 #include "core/pcie/common/device_pcie.h"
 
 namespace xrt_core { namespace noop {
@@ -34,7 +35,7 @@ private:
   virtual const query::request&
   lookup_query(query::key_type query_key) const
   {
-    throw std::runtime_error("query lookup not implemented");
+    throw query::no_such_key(query_key);
   }
 };
 

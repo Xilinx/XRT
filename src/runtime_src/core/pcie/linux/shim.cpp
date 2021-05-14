@@ -2233,20 +2233,19 @@ int shim::xclRegWrite(uint32_t ipIndex, uint32_t offset, uint32_t data)
 
 int shim::xclIPName2Index(const char *name)
 {
-    /* In new kds, driver determines CU index */
-    if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
-        for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
-            if (stat.name != name)
-                continue;
+    // In new kds, driver determines CU index
+    try {
+      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
+        if (stat.name == name)
+          return stat.index;
 
-            return stat.index;
-        }
-
-        xrt_logmsg(XRT_ERROR, "%s not found", name);
-        return -ENOENT;
+      xrt_logmsg(XRT_ERROR, "%s not found", name);
+      return -ENOENT;
+    }
+    catch (const xrt_core::query::no_such_key&) {
     }
 
-    /* Old kds is enabled */
+    // Old kds is enabled
     std::string errmsg;
     std::vector<char> buf;
     const uint64_t bad_addr = 0xffffffffffffffff;
@@ -2890,8 +2889,18 @@ int xclGetDebugProfileDeviceInfo(xclDeviceHandle handle, xclDebugProfileDeviceIn
 
 int xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int xclUpdateSchedulerStat(xclDeviceHandle handle)
