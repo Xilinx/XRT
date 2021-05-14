@@ -15,7 +15,7 @@ By default, the kvm will choose chipset 'i440', which doesn't have pcie support.
 Creating VM with virt-manager 
 #############################
 
- - run "qemu-system-x86_64 -machine help", and see q35 is supported. otherwise, it means the qemu version is too old. Please upgrade qemu to newer version 
+ - run ``qemu-system-x86_64 -machine help``, and see q35 is supported. otherwise, it means the qemu version is too old. Please upgrade qemu to newer version 
  - start virt-manager, during VM creation, make sure choose 'Customize configuration before install' 
 
  - Before 'Begin installation', make sure the chipset is 'q35' 
