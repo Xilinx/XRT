@@ -319,8 +319,8 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
   }
 
   // Data Mover will write input stream to this address
-  uint64_t bufAddr = dev_intf->getDeviceAddr(m_trbuf);
-  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr, m_use_circ_buf);
+  m_trbuf_addr = dev_intf->getDeviceAddr(m_trbuf);
+  dev_intf->initTS2MM(m_trbuf_alloc_sz, m_trbuf_addr, m_use_circ_buf);
   return true;
 }
 
@@ -329,6 +329,11 @@ void DeviceTraceOffload::reset_s2mm()
   debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (!m_trbuf)
     return;
+
+  // Need to re-inititlize datamover with circular buffer off for reset to work properly
+  if (m_use_circ_buf)
+    dev_intf->initTS2MM(0, m_trbuf_addr, 0);
+
   dev_intf->resetTS2MM();
   dev_intf->freeTraceBuf(m_trbuf);
   m_trbuf = 0;

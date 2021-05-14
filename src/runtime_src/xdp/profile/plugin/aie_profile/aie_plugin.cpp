@@ -39,6 +39,36 @@
 #define GROUP_CONFLICT_MASK 0xff
 #define GROUP_ERROR_MASK    0x3fff
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr ;
+    auto aieArray = drv->getAieArray() ;
+    if (!aieArray)
+      return nullptr ;
+    return aieArray->getDevInst() ;
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    if (!aieDevInst)
+      return nullptr ;
+    return new xaiefal::XAieDev(aieDevInst, false) ;
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    if (object != nullptr)
+      delete object ;
+  }
+
+} // end anonymous namespace
+
 namespace xdp {
 
   AIEProfilingPlugin::AIEProfilingPlugin() 
@@ -56,7 +86,7 @@ namespace xdp {
       {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
                      XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
       {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_CASCADE_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE}},
+                     XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
       {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
                      XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
     };
@@ -64,7 +94,7 @@ namespace xdp {
       {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
                      XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
       {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_CASCADE_STALL_CORE,        XAIE_EVENT_LOCK_STALL_CORE}},
+                     XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
       {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
                      XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
     };
@@ -108,8 +138,10 @@ namespace xdp {
 
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
-    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    xaiefal::XAieDev* aieDevice =
+      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no AIE profiling.");
@@ -328,7 +360,8 @@ namespace xdp {
       // Wait until xclbin has been loaded and device has been updated in database
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
-      auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
+      XAie_DevInst* aieDevInst =
+        static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
       if (!aieDevInst)
         continue;
 

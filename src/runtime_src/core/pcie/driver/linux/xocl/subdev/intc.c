@@ -106,6 +106,7 @@ struct intr_metadata {
 	u32			 enabled_cnt;
 	u32			 cnt;
 	u32			 blanking;
+	u32			 ienabled;
 	struct work_struct	 work;
 };
 
@@ -148,6 +149,49 @@ intc_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 static DEVICE_ATTR_RO(intc_stat);
 
 static ssize_t
+intc_blanking_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+	ssize_t sz = 0;
+	int i;
+
+	for (i = 0; i < INTR_NUM; i++) {
+		sz += sprintf(buf+sz, "CSR[%d] %d\n", i, intc->ert[i].blanking);
+	}
+
+	for (i = 0; i < INTR_NUM; i++) {
+		sz += sprintf(buf+sz, "CU INTC[%d] %d\n", i, intc->cu[i].blanking);
+	}
+
+	return sz;
+}
+
+static ssize_t
+intc_blanking_store(struct device *dev, struct device_attribute *attr,
+		    const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+	int blanking;
+	int i;
+
+	if (kstrtos32(buf, 10, &blanking) == -EINVAL)
+		return -EINVAL;
+
+	if (blanking != 0)
+		blanking = 1;
+
+	for (i = 0; i < INTR_NUM; i++) {
+		intc->ert[i].blanking = blanking;
+		intc->cu[i].blanking = blanking;
+	}
+
+	return count;
+}
+static DEVICE_ATTR(intc_blanking, 0644, intc_blanking_show, intc_blanking_store);
+
+static ssize_t
 name_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "intc\n");
@@ -156,6 +200,7 @@ static DEVICE_ATTR_RO(name);
 
 static struct attribute *intc_attrs[] = {
 	&dev_attr_intc_stat.attr,
+	&dev_attr_intc_blanking.attr,
 	&dev_attr_name.attr,
 	NULL,
 };
@@ -184,6 +229,16 @@ static void handle_pending(struct intr_metadata *data, u32 pending)
 
 		pending ^= 1 << index;
 	};
+}
+
+static inline u32 intc_get_isr(struct intr_metadata *data)
+{
+	u32 pending;
+
+	pending = (data->type == ERT_CSR_TYPE)?
+		ioread32(data->isr) :
+		ioread32(reg_addr(data->isr, isr));
+	return pending;
 }
 
 static void intc_polling(struct work_struct *work)
@@ -228,14 +283,22 @@ irqreturn_t intc_isr(int irq, void *arg)
 		return IRQ_HANDLED;
 	}
 
-	pending = (data->type == ERT_CSR_TYPE)?
-		   ioread32(data->isr) :
-		   ioread32(reg_addr(data->isr, isr));
+	/* AXI INTC is configured as high level interrupt input/output
+	 * But XDMA IP is rising edge sencitive.
+	 * In this case, if input interrupt is still high, write to IAR register
+	 * could not clear interrupt (output keep high)
+	 * One way is to disable interrupt then clear it.
+	 */
+	if (data->type == AXI_INTC_TYPE)
+		iowrite32(data->ienabled, reg_addr(data->isr, cie));
 
+	pending = intc_get_isr(data);
 	handle_pending(data, pending);
 
-	if (data->type == AXI_INTC_TYPE)
+	if (data->type == AXI_INTC_TYPE) {
 		iowrite32(pending, reg_addr(data->isr, iar));
+		iowrite32(data->ienabled, reg_addr(data->isr, sie));
+	}
 
 	return IRQ_HANDLED;
 }
@@ -396,6 +459,8 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 
 			iowrite32((1 << j), reg_addr(data->isr, sie));
 		}
+
+		data->ienabled = ioread32(reg_addr(data->isr, ier));
 	}
 
 	intc->mode = mode;
@@ -529,6 +594,8 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 
 	/* Register interrupt handler */
 	for (i = 0; i < INTR_NUM; i++) {
+		intc->cu[i].blanking = 1;
+		intc->ert[i].blanking = 1;
 		if (intc->mode == CU_INTR)
 			data = &intc->cu[i];
 		else
@@ -537,8 +604,6 @@ get_ssv3_res(struct platform_device *pdev, struct xocl_intc *intc)
 		xocl_user_interrupt_reg(xdev, data->intr, intc_isr, data);
 		/* disable interrupt */
 		xocl_user_interrupt_config(xdev, data->intr, false);
-
-		data->blanking = 1;
 	}
 
 	return 0;
