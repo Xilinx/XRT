@@ -573,7 +573,7 @@ namespace xdp {
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
-    if (!handle)
+    if (handle == nullptr)
       return;
 
     char pathBuf[512];
@@ -811,6 +811,9 @@ namespace xdp {
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -826,6 +829,9 @@ namespace xdp {
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+      
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
