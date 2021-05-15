@@ -98,12 +98,8 @@ namespace xdp {
     //  the label and tooltip
     std::map<uint64_t, std::tuple<const char*, const char*, uint64_t>> userMap ;
 
-    // For device events - a map from trace ID to a list of start event
-    //  information (type, event ID, host timestamp, and device timestamp) we
-    //  have not yet matched with an end event
-    std::map<uint64_t,
-             std::list<std::tuple<VTFEventType, uint64_t, double, uint64_t>>>
-      deviceEventStartMap ;
+    // For device events
+    std::map<uint64_t, std::list<VTFEvent*>> deviceEventStartMap;
 
     // For Trace Buffer Fullness Status 
     std::map<uint64_t, bool> deviceTraceBufferFullMap;
@@ -174,12 +170,9 @@ namespace xdp {
     XDP_EXPORT std::tuple<const char*, const char*, uint64_t> matchingRange(uint64_t functionID) ;
 
     // For Device Events, find matching start for end event
-    XDP_EXPORT void markDeviceEventStart(uint64_t traceID,
-      std::tuple<VTFEventType, uint64_t, double, uint64_t> info) ;
-    XDP_EXPORT
-    std::tuple<VTFEventType, uint64_t, double, uint64_t>
-    matchingDeviceEventStart(uint64_t traceID, VTFEventType type) ;
-    XDP_EXPORT bool hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type) ;
+    XDP_EXPORT void markDeviceEventStart(uint64_t slotID, VTFEvent* event);
+    XDP_EXPORT VTFEvent* matchingDeviceEventStart(uint64_t slotID, VTFEventType type);
+    XDP_EXPORT bool hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type);
 
     // For API events that we cannot guarantee have unique IDs across all
     //  the plugins, we have a seperate matching of start to end

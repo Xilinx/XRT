@@ -38,8 +38,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::addTopHostRead(BufferTransferStats& transfer)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     // Edge case: First read.
     if (topHostReads.size() == 0)
     {
@@ -76,8 +74,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::addTopHostWrite(BufferTransferStats& transfer)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     // Edge case: First write.
     if (topHostWrites.size() == 0)
     {
@@ -114,8 +110,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::addTopKernelExecution(KernelExecutionStats& exec)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     // Edge case: First execution
     if (topKernelExecutions.size() == 0)
     {
@@ -155,8 +149,6 @@ namespace xdp {
   std::vector<std::pair<std::string, TimeStatistics>>
   VPStatisticsDatabase::getComputeUnitExecutionStats(const std::string& cuName)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     std::vector<std::pair<std::string, TimeStatistics>> calls;
     for (auto element : computeUnitExecutionStats) {
       if (0 == cuName.compare(std::get<0>(element.first))) {
@@ -168,8 +160,6 @@ namespace xdp {
 
   uint64_t VPStatisticsDatabase::getDeviceActiveTime(const std::string& deviceName)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
       return 0 ;
     std::pair<uint64_t, uint64_t> time = deviceActiveTimes[deviceName] ;
@@ -178,8 +168,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::addEventCount(const char* label)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     std::string converted = "" ;
     if (label != nullptr) {
       converted = label ;
@@ -193,8 +181,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::addRangeCount(std::pair<const char*, const char*> desc)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     if (rangeCounts.find(desc) == rangeCounts.end()) {
       rangeCounts[desc] = 0 ;
     }
@@ -204,8 +190,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::recordRangeDuration(std::pair<const char*, const char*> desc, uint64_t duration)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     if (minRangeDurations.find(desc) == minRangeDurations.end()) {
       // First time seeing this particular range
       minRangeDurations[desc]   = duration ;
@@ -276,8 +260,6 @@ namespace xdp {
                                                  uint64_t startTime,
                                                  uint64_t endTime)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     if (deviceActiveTimes.find(deviceName) == deviceActiveTimes.end())
     {
       std::pair<uint64_t, uint64_t> execution =
@@ -303,8 +285,6 @@ namespace xdp {
                                                 const char** buffers,
                                                 uint64_t numBuffers)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     if (kernelExecutionStats.find(kernelName) == kernelExecutionStats.end())
     {
       TimeStatistics blank ;
@@ -343,8 +323,6 @@ namespace xdp {
                                                      const std::string& globalWorkGroup,
                                                      uint64_t executionTime)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     // If global work size is not known, then we need to get it from the latest enqueue 
     // of the associated kernel.
     std::string globalWork = globalWorkGroup;
@@ -439,15 +417,12 @@ namespace xdp {
 
   void VPStatisticsDatabase::setFirstKernelStartTime(double startTime)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
     if (firstKernelStartTime != 0.0) return ;
     firstKernelStartTime = startTime ;
   }
 
   void VPStatisticsDatabase::dumpCallCount(std::ofstream& fout)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-
     // For each function call, across all of the threads, find out
     //  the number of calls
     std::map<std::string, uint64_t> counts ;
@@ -472,8 +447,6 @@ namespace xdp {
 
   void VPStatisticsDatabase::dumpHALMemory(std::ofstream& fout)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    
     unsigned int i = 0 ; 
     for (auto m : memoryStats)
     {

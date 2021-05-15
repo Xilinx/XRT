@@ -47,12 +47,14 @@ namespace xdp {
       }
       aieTraceData.clear();
     }
+
     {
       std::lock_guard<std::mutex> lock(hostEventsLock) ;
       for (auto event : hostEvents) {
       delete event.second;
       }
     }
+
     {
       std::lock_guard<std::mutex> lock(deviceEventsLock) ;
       for (auto device : deviceEvents) {
@@ -108,43 +110,39 @@ namespace xdp {
     }
   }
 
-  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID,
-    std::tuple<VTFEventType, uint64_t, double, uint64_t> info)
+  void VPDynamicDatabase::markDeviceEventStart(uint64_t traceID, VTFEvent* event)
   {
-    std::lock_guard<std::mutex> lock(deviceLock) ;
-    deviceEventStartMap[traceID].push_back(info) ;
+    std::lock_guard<std::mutex> lock(deviceLock);
+    deviceEventStartMap[traceID].push_back(event) ;
   }
 
-  std::tuple<VTFEventType, uint64_t, double, uint64_t>
-  VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
+  VTFEvent* VPDynamicDatabase::matchingDeviceEventStart(uint64_t traceID, VTFEventType type)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
-    std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent ;
-    std::get<0>(startEvent) = UNKNOWN_EVENT ;
-    std::get<1>(startEvent) = 0 ;
-    std::get<2>(startEvent) = 0.0 ;
-    std::get<3>(startEvent) = 0 ;
-    auto& lst = deviceEventStartMap[traceID] ;
-    if (!lst.empty()) {
-      for (auto iter = lst.begin() ; iter != lst.end() ; ++iter) {
-        if (std::get<0>(*iter) == type) {
-          startEvent = (*iter);
-          lst.erase(iter);
+    VTFEvent* startEvent = nullptr;
+    auto& lst = deviceEventStartMap[traceID];
+    if (!lst.empty())
+    {
+      for (auto itr = lst.begin() ; itr != lst.end(); ++itr) {
+        if((*itr)->getEventType() == type) {
+          startEvent = (*itr);
+          lst.erase(itr);
           break;
-	}
+        }
       }
     }
-    return startEvent ;
+    return startEvent;
   }
 
-  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID, VTFEventType type)
+  bool VPDynamicDatabase::hasMatchingDeviceEventStart(uint64_t traceID,
+                                                      VTFEventType type)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
     if (deviceEventStartMap.find(traceID) == deviceEventStartMap.end())
       return false ;
     auto& lst = deviceEventStartMap[traceID] ;
-    for (auto e : lst) {
-      if (std::get<0>(e) == type)
+    for (auto e: lst) {
+      if (e->getEventType() == type)
         return true ;
     }
     return false ;
@@ -320,7 +318,6 @@ namespace xdp {
 
   std::vector<VTFEvent*> VPDynamicDatabase::getDeviceEvents(uint64_t deviceId)
   {
-    std::lock_guard<std::mutex> lock(deviceEventsLock) ;
     std::vector<VTFEvent*> events;
     if(deviceEvents.find(deviceId) == deviceEvents.end()) {
       return events;
@@ -542,8 +539,6 @@ namespace xdp {
 
   void VPDynamicDatabase::setTraceBufferFull(uint64_t deviceId, bool val)
   {
-    std::lock_guard<std::mutex> lock(deviceLock);
-
     if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
       deviceTraceBufferFullMap.insert(std::pair<uint64_t, bool>(deviceId, val));
       return;
@@ -553,8 +548,6 @@ namespace xdp {
 
   bool VPDynamicDatabase::isTraceBufferFull(uint64_t deviceId)
   {
-    std::lock_guard<std::mutex> lock(deviceLock);
-    
     if(deviceTraceBufferFullMap.find(deviceId) == deviceTraceBufferFullMap.end()) {
       return false;
     }
