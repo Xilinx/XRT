@@ -2640,6 +2640,24 @@ struct xocl_subdev_map {
 		.vbnv = "xilinx_u26z"	                          				\
 	}
 
+#define XOCL_BOARD_X3522PV_USER_RAPTOR2                     \
+	(struct xocl_board_private){                              \
+		.flags       = XOCL_DSAFLAG_DYNAMIC_IP,                 \
+		.board_name  = "x3522pv",                               \
+		.subdev_info = RES_USER_VSEC,                           \
+		.subdev_num  = ARRAY_SIZE(RES_USER_VSEC)                \
+	}
+
+#define XOCL_BOARD_X3522PV_MGMT_RAPTOR2                     \
+	(struct xocl_board_private){                              \
+		.flags       = XOCL_DSAFLAG_DYNAMIC_IP,                 \
+		.subdev_info = RES_MGMT_VSEC,                           \
+		.subdev_num  = ARRAY_SIZE(RES_MGMT_VSEC),               \
+		.flash_type  = FLASH_TYPE_SPI,                          \
+		.board_name  = "x3522pv",                               \
+		.vbnv        = "xilinx_x3522pv"                         \
+	}
+
 #define XOCL_BOARD_U30_USER_RAPTOR2                                     \
         (struct xocl_board_private){                                    \
                 .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
@@ -3338,6 +3356,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x505C, PCI_ANY_ID, U55C_MGMT_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5060, PCI_ANY_ID, U50LV_MGMT_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x506C, PCI_ANY_ID, U50C_MGMT_RAPTOR2) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5074, PCI_ANY_ID, X3522PV_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x006C, PCI_ANY_ID, MGMT_6A8F) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0078, PCI_ANY_ID, MGMT_XBB_DSA52) },  \
 	{ XOCL_PCI_DEVID(0x10EE, 0xE987, PCI_ANY_ID, XBB_MFG("samsung")) },\
@@ -3394,6 +3413,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x505D, PCI_ANY_ID, U55C_USER_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5061, PCI_ANY_ID, U50LV_USER_RAPTOR2) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x506D, PCI_ANY_ID, U50C_USER_RAPTOR2) },\
+	{ XOCL_PCI_DEVID(0x10EE, 0x5075, PCI_ANY_ID, X3522PV_USER_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
 	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\

@@ -873,6 +873,7 @@ DeviceIntf::~DeviceIntf()
 
   size_t DeviceIntf::allocTraceBuf(uint64_t sz ,uint8_t memIdx)
   {
+    std::lock_guard<std::mutex> lock(traceLock);
     auto bufHandle = mDevice->alloc(sz, memIdx);
     if (bufHandle) {
     // Can't read a buffer xrt hasn't written to
@@ -883,6 +884,7 @@ DeviceIntf::~DeviceIntf()
 
   void DeviceIntf::freeTraceBuf(size_t bufHandle)
   {
+    std::lock_guard<std::mutex> lock(traceLock);
     mDevice->free(bufHandle);
   }
 
@@ -894,6 +896,7 @@ DeviceIntf::~DeviceIntf()
   */
   void* DeviceIntf::syncTraceBuf(size_t bufHandle, uint64_t offset, uint64_t bytes)
   {
+    std::lock_guard<std::mutex> lock(traceLock);
     auto addr = mDevice->map(bufHandle);
     if (!addr)
       return nullptr;

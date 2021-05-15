@@ -865,7 +865,7 @@ namespace xdp {
   {
     if (handle == nullptr)
       return;
-      
+    
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -874,11 +874,10 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    auto itr = deviceIdToHandle.find(deviceId);
-    if ((itr == deviceIdToHandle.end()) || (itr->second != handle)) {
+    auto itr =  deviceIdToHandle.find(deviceId);
+    if ((itr == deviceIdToHandle.end()) || (itr->second != handle))
       return;
-    }
-    
+
     // Set metrics to flush the trace FIFOs
     // NOTE: The data mover uses a burst length of 256, so we need 64 more 
     // dummy packets to ensure all execution trace gets written to DDR.
