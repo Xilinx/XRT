@@ -366,9 +366,9 @@ namespace xdp {
     }
 
     if (offloader->has_ts2mm() && offloader->trace_buffer_full()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
-      xrt::profile::user_event events;
-      events.mark("Trace Buffer Full");
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
+        xrt::profile::user_event events;
+        events.mark("Trace Buffer Full");
     }
   }
 
