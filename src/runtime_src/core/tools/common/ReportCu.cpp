@@ -251,7 +251,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportCu::writeReport( const xrt_core::device* _pDevice,
                        const boost::property_tree::ptree& _pt, 
                        const std::vector<std::string>& /*_elementsFilter*/,
                        std::ostream & _output) const
