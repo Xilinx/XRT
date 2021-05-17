@@ -788,7 +788,7 @@ namespace xclcpuemhal2 {
     if (result == xclemulation::MemoryManager::mNull) {
       auto ddrSize = mDDRMemoryManager[flags]->size();
       std::string ddrSizeStr = std::to_string(ddrSize);
-      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
+      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
       std::cout << initMsg << std::endl;
       return result;
     }
