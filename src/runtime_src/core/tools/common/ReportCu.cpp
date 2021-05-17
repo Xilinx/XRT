@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
+#include <uuid/uuid.h>
 #include "ReportCu.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
