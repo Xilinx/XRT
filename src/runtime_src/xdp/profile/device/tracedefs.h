@@ -45,6 +45,8 @@
 #define TS2MM_DEF_BUF_SIZE      0x100000
 // 8KB
 #define TS2MM_MIN_BUF_SIZE      0x2000
+// Throw warning when we process > 50MB trace
+#define TS2MM_WARN_BIG_BUF_SIZE 0x3200000
 // Read data only if it's more than 512B unless forced
 #define TS2MM_MIN_READ_SIZE      0x200
 #define DEFAULT_TRACE_OFFLOAD_INTERVAL_MS 10
@@ -62,11 +64,15 @@ Please increase trace_buffer_size or use 'coarse' option for data_transfer_trace
 #define TS2MM_WARN_MSG_CIRC_BUF       "Device trace will be limited to trace buffer size due to insufficient trace offload rate. Please increase trace \
 buffer size and/or reduce trace_buffer_offload_interval."
 #define TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. Timeline trace could be incomplete."
+#define TS2MM_WARN_MSG_BIG_BUF         "Processing large amount of device trace. It could take a while before application ends."
 
 #define AIE_TS2MM_WARN_MSG_BUF_FULL       "AIE Trace Buffer is full. Device trace could be incomplete."
 
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
 #define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."
+#define TRACE_DUMP_FILE_COUNT_WARN 10
+#define TRACE_DUMP_FILE_COUNT_WARN_MSG "Contunous Trace might create a large number of trace files. Please use trace_file_dump_interval \
+to control how often trace data is written."
 
 #endif
