@@ -30,12 +30,23 @@ enum kds_opcode {
 	OP_GET_STAT,
 };
 
+/* KDS_NEW:		Command is validated
+ * KDS_QUEUED:		Command is sent to pending queue
+ * KDS_RUNNING:		Command is sent to hardware (CU/ERT)
+ * KDS_COMPLETED:	Command is completed
+ * KDS_ERROR:		Command is error out
+ * KDS_ABORT:		Command is abort
+ * KDS_TIMEOUT:		Command is timeout
+ */
 enum kds_status {
 	KDS_NEW = 0,
+	KDS_QUEUED,
+	KDS_RUNNING,
 	KDS_COMPLETED,
 	KDS_ERROR,
 	KDS_ABORT,
 	KDS_TIMEOUT,
+	KDS_STAT_MAX,
 };
 
 struct kds_command;
@@ -78,6 +89,8 @@ struct kds_command {
 	void			*priv;
 
 	unsigned int		 tick;
+	u32			 timestamp_enabled;
+	u64			 timestamp[KDS_STAT_MAX];
 
 	struct kds_cmd_ops	 cb;
 	/* execbuf is used to update the header
@@ -89,6 +102,8 @@ struct kds_command {
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;
 };
+
+void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s);
 
 /* execbuf command related funtions */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,

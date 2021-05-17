@@ -268,6 +268,19 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 	else if (status == KDS_ABORT)
 		ecmd->state = ERT_CMD_STATE_ABORT;
 
+	if (xcmd->timestamp_enabled) {
+		/* Only start kernel command supports timestamps */
+		struct ert_start_kernel_cmd *scmd;
+		struct cu_cmd_state_timestamps *ts;
+
+		scmd = (struct ert_start_kernel_cmd *)ecmd;
+		ts = ert_start_kernel_timestamps(scmd);
+		ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
+		ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
+		ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
+		ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+	}
+
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 
 	if (xcmd->cu_idx >= 0)

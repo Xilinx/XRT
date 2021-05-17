@@ -76,6 +76,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 	 */
 	while (xcu->num_cq) {
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
+		set_xcmd_timestamp(xcmd, xcmd->status);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
@@ -212,6 +213,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 	/* if successfully get credit, you must start cu */
 	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
 	xrt_cu_start(xcu);
+	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 
 	dst_q = &xcu->sq;
 	dst_len = &xcu->num_sq;

@@ -815,6 +815,28 @@ ert_start_kernel_timestamps(struct ert_start_kernel_cmd *pkt)
   return (struct cu_cmd_state_timestamps *)
     ((char *)pkt + P2ROUNDUP(offset, sizeof(uint64_t)));
 }
+
+/* Return 0 if this pkt doesn't support timestamp or disabled */
+static inline int
+get_size_with_timestamps_or_zero(struct ert_packet *pkt)
+{
+  struct ert_start_kernel_cmd *skcmd;
+  int size = 0;
+
+  switch (pkt->opcode) {
+  case ERT_START_CU:
+  case ERT_EXEC_WRITE:
+  case ERT_START_FA:
+  case ERT_SK_START:
+    skcmd = to_start_krnl_pkg(pkt);
+    if (skcmd->stat_enabled) {
+      size = (char *)ert_start_kernel_timestamps(skcmd) - (char *)pkt;
+      size += sizeof(struct cu_cmd_state_timestamps);
+    }
+  }
+
+  return size;
+}
 #endif
 
 #ifdef _WIN32
