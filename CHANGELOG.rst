@@ -17,8 +17,12 @@ Added
 * Initial support for PS Kernel -- where a helper application running on APU on platforms like U30 and VCK5000 can be controlled from PCIe host -- has been added.
 * Initial pybind11 bindings for XRT C++ APIs. See ``tests/python/22_verify/22_verify.py`` for an example.
 * Initial multi-process support for AIE..
-* New xrt::xclbin experimental C++ API for xclbin introspection at run-time.
-* New xrt::ip experimental C++ API for register and user interrupt access of custom IPs.
+* New ``xrt::xclbin`` experimental C++ API for xclbin introspection at run-time.
+* New ``xrt::ip`` experimental C++ API for register and user interrupt access of custom IPs.
+* Implemented a new profiling infrastructure with fine grained control using xrt.ini keys
+* AIE performance counters and event trace are now runtime configurable.
+* Support for tracing of native XRT API has been added.
+* Continuous trace offload performance has been improved with buffer reuse. The offload dump interval can be specified in xrt.ini.
 
 Removed
 .......
