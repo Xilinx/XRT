@@ -260,10 +260,10 @@ ReportCu::writeReport( const xrt_core::device* _pDevice,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(_pDevice));
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
 #ifndef _WIN32
-  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(_pDevice));
   char uuid_out[100];
   _output << "Loaded Xclbin UUID:" << std::endl;
   uuid_unparse_upper(uuid.get(), uuid_out);
