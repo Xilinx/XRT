@@ -385,6 +385,19 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 			ecmd->state = ERT_CMD_STATE_ABORT;
 	}
 
+	if (xcmd->timestamp_enabled) {
+		/* Only start kernel command supports timestamps */
+		struct ert_start_kernel_cmd *scmd;
+		struct cu_cmd_state_timestamps *ts;
+
+		scmd = (struct ert_start_kernel_cmd *)ecmd;
+		ts = ert_start_kernel_timestamps(scmd);
+		ts->skc_timestamps[ERT_CMD_STATE_NEW] = xcmd->timestamp[KDS_NEW];
+		ts->skc_timestamps[ERT_CMD_STATE_QUEUED] = xcmd->timestamp[KDS_QUEUED];
+		ts->skc_timestamps[ERT_CMD_STATE_RUNNING] = xcmd->timestamp[KDS_RUNNING];
+		ts->skc_timestamps[ecmd->state] = xcmd->timestamp[status];
+	}
+
 	XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(xcmd->gem_obj);
 	kfree(xcmd->execbuf);
 
@@ -407,7 +420,6 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 {
 	struct ert_packet *orig;
 	int pkg_size;
-	bool op_valid;
 
 	orig = (struct ert_packet *)xobj->vmapping;
 	orig->state = ERT_CMD_STATE_NEW;
@@ -422,11 +434,17 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	memcpy(ecmd->data, orig->data, ecmd->count * sizeof(u32));
 
 	/* opcode specific validation */
-	op_valid = ert_valid_opcode(ecmd);
-	if (!op_valid)
+	if (!ert_valid_opcode(ecmd)) {
 		userpf_err(xdev, "opcode(%d) is invalid\n", ecmd->opcode);
+		return false;
+	}
 
-	return op_valid;
+	if (get_size_with_timestamps_or_zero(ecmd) > xobj->base.size) {
+		userpf_err(xdev, "no space for timestamp in exec buf\n");
+		return false;
+	}
+
+	return true;
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
