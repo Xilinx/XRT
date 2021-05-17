@@ -301,7 +301,6 @@ namespace xdp {
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
         // Following function is broken on FAL so we need to directly call aie driver api
         // perfCounter->changeThreshold(coreCounterEventValues.at(i));
-        std::cout << "counterEvent : " << counterEvent << "set threshood on : " << idx << std::endl;
         XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_CORE_MOD, idx, coreCounterEventValues.at(i));
 
         // Set reset event based on counter number
