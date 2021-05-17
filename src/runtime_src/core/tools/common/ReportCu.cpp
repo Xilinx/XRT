@@ -17,7 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
+#ifndef _WIN32
 #include <uuid/uuid.h>
+#endif
 #include "ReportCu.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -258,14 +260,16 @@ ReportCu::writeReport( const xrt_core::device* _pDevice,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
-  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(_pDevice));
-  char uuid_out[100];
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
+#ifndef _WIN32
+  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(_pDevice));
+  char uuid_out[100];
   _output << "Loaded Xclbin UUID:" << std::endl;
   uuid_unparse_upper(uuid.get(), uuid_out);
   _output << uuid_out << std::endl;
   _output << "---------------------------------------------------" << std::endl;
+#endif
 
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
