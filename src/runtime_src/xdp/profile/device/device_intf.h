@@ -41,6 +41,7 @@
 #include <map>
 #include <cassert>
 #include <vector>
+#include <mutex>
 
 namespace xdp {
 
@@ -175,6 +176,8 @@ class DeviceIntf {
     bool mIsDeviceProfiling = true;
     // Debug IP Layout has been read or not
     bool mIsDebugIPlayoutRead = false;
+
+    std::mutex traceLock ;
 
     // Depending on OpenCL or HAL flow, "mDevice" is populated with xrt_xocl::device handle or HAL handle
     xdp::Device* mDevice = nullptr;

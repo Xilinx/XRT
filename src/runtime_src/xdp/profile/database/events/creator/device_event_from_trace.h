@@ -55,6 +55,8 @@ class DeviceEventCreatorFromTrace
   double traceClockRateMHz;
   double clockTrainSlope;
 
+  bool warnCUIncomplete=false;
+
   void trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp);
   double convertDeviceToHostTimestamp(uint64_t deviceTimestamp);
 

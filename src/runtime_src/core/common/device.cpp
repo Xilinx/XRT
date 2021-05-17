@@ -135,7 +135,7 @@ load_xclbin(const uuid& xclbin_id)
   const axlf* top = reinterpret_cast<axlf *>(xclbin_full.data());
   try {
     // set before register_axlf is called via load_axlf_meta
-    m_xclbin = xrt::xclbin{top};  
+    m_xclbin = xrt::xclbin{top};
     load_axlf_meta(m_xclbin.get_axlf());
   }
   catch (const std::exception&) {
@@ -175,6 +175,19 @@ register_axlf(const axlf* top)
       enc[midx] = eidx++;
     }
     m_memidx_encoding = std::move(enc);
+  }
+
+  // Compute CU sort order, kernel driver zocl and xocl now assign and
+  // control the sort order, which is accessible via a query request.
+  // For emulation old xclbin_parser::get_cus is used.
+  m_cus.clear();
+  try {
+    auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_stat>(this);
+    std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
+    std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
+  }
+  catch (const query::no_such_key&) {
+    m_cus = xclbin::get_cus(get_axlf_section<const ::ip_layout*>(IP_LAYOUT));
   }
 }
 
@@ -222,9 +235,19 @@ get_memory_type(size_t memidx) const
   auto mtype = static_cast<memory_type>(mem.m_type);
   if (mtype != memory_type::dram)
     return mtype;
-  return (strncmp(reinterpret_cast<const char*>(mem.m_tag), "HOST[0]", 7) == 0) 
+  return (strncmp(reinterpret_cast<const char*>(mem.m_tag), "HOST[0]", 7) == 0)
     ? memory_type::host
     : mtype;
+}
+
+const std::vector<uint64_t>
+device::
+get_cus(const uuid& xclbin_id) const
+{
+  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
+    throw error(EINVAL, "xclbin id mismatch");
+
+  return m_cus;
 }
 
 std::pair<size_t, size_t>

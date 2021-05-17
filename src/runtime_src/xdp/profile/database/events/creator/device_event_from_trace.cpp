@@ -465,7 +465,10 @@ namespace xdp {
         continue; // nothing to do? what about unmatched start?
       }
       const char* msg = "Incomplete CU profile trace detected. Timeline trace will have approximate CU End.";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
+      if (!warnCUIncomplete) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
+        warnCUIncomplete = true;
+      }
 
       // end event
       double hostTimestamp = convertDeviceToHostTimestamp(cuLastTimestamp);

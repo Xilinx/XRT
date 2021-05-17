@@ -654,11 +654,15 @@ xclIPName2Index(xclDeviceHandle handle, const char *ipName);
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~
  *
  * Unmanaged DMA APIs are for exclusive use by the debuggers and
- * tools. The APIs allow clinets to read/write from/to absolute device
+ * tools. The APIs allow clients to read/write from/to absolute device
  * address. No checks are performed if a buffer was allocated before
  * at the specified location or if the address is valid. Users who
- * want to take over the full memory managemnt of the device may use
- * this API to synchronize their buffers between host and device.
+ * want to take over the full memory managemnt of the device memory
+ * should instead use XRT sub-buffer infrastructure for fine grained
+ * placement of buffers as it also provides better DMA performancce
+ * and richer set of features like mmap/munmap, etc.
+ *
+ * The unmanaged APIs are planned to be be deprecated in future.
  */
 
 /**
@@ -672,9 +676,8 @@ xclIPName2Index(xclDeviceHandle handle, const char *ipName);
  * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation from absolute
- * location specified. Users may use this if they want to perform
- * their own device memory management -- not using the buffer object
- * (BO) framework defined before.
+ * location specified. As stated before this API is for use by
+ * debuggers and profilers. Do not use it in your application.
  */
 XCL_DRIVER_DLLESPEC
 ssize_t
@@ -692,9 +695,8 @@ xclUnmgdPread(xclDeviceHandle handle, unsigned int flags, void *buf,
  * Return:         0 on success or appropriate error number
  *
  * This API may be used to perform DMA operation to an absolute
- * location specified. Users may use this if they want to perform
- * their own device memory management -- not using the buffer object
- * (BO) framework defined before.
+ * location specified. As stated before this API is for use by
+ * debuggers and profilers. Do not use it in your application.
  */
 XCL_DRIVER_DLLESPEC
 ssize_t

@@ -926,20 +926,19 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
-  /* In new kds, driver determines CU index */
-  if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
-    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice)) {
-      if (stat.name != name)
-        continue;
-
-      return stat.index;
-    }
+  // In new kds, driver determines CU index
+  try {
+    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
+      if (stat.name == name)
+        return stat.index;
 
     xclLog(XRT_ERROR, "%s not found", name);
     return -ENOENT;
   }
+  catch (const xrt_core::query::no_such_key&) {
+  }
 
-  /* Old kds is enabled */
+  // Old kds is enabled
   std::string errmsg;
   std::vector<char> buf;
   const uint64_t bad_addr = 0xffffffffffffffff;
@@ -2373,8 +2372,18 @@ xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset,
 int
 xclIPName2Index(xclDeviceHandle handle, const char *name)
 {
-  ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
-  return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
+  try {
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    return (drv) ? drv->xclIPName2Index(name) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int

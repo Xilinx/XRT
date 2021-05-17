@@ -185,20 +185,32 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    if (!runtimeMetrics) {
+      std::stringstream msg;
+      msg << "Found compiler trace option of " << compilerOptions.event_trace 
+          << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+      return true;
+    }
+
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     xaiefal::XAieDev* aieDevice =
       static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-          "Unable to get AIE device. There will be no AIE event trace.");
+          "Unable to get AIE device. AIE event trace will not be available.");
       return false;
     }
 
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will only be available if metrics were specified at compile time.");
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     }
@@ -236,7 +248,6 @@ namespace xdp {
 
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
     std::vector<xrt_core::edge::aie::tile_type> tiles;
     for (auto& graph : graphs) {
@@ -596,6 +607,9 @@ namespace xdp {
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -680,10 +694,12 @@ namespace xdp {
     }
 
     // Create runtime config file
-    std::string configFile = "aie_event_runtime_config.json";
-    writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
-                                               deviceId, metricSet));
-    (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
+    if (runtimeMetrics) {
+      std::string configFile = "aie_event_runtime_config.json";
+      writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
+                                                 deviceId, metricSet));
+      (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
+    }
 
     // Create trace output files
     for(uint64_t n = 0; n < numAIETraceOutput; n++) {
@@ -829,6 +845,9 @@ namespace xdp {
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -844,6 +863,9 @@ namespace xdp {
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+    
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -852,9 +874,9 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    if(deviceIdToHandle[deviceId] != handle) {
+    auto itr =  deviceIdToHandle.find(deviceId);
+    if ((itr == deviceIdToHandle.end()) || (itr->second != handle))
       return;
-    }
 
     // Set metrics to flush the trace FIFOs
     // NOTE: The data mover uses a burst length of 256, so we need 64 more 
