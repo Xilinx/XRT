@@ -682,6 +682,9 @@ XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
     msg = "P2P config failed. P2P is not available";
     return static_cast<int>(p2p_config::not_supported);
   }
+  catch (const xrt_core::query::no_such_key&) {
+    return static_cast<int>(p2p_config::not_supported);
+  }
 
   int64_t bar = -1;
   int64_t rbar = -1;

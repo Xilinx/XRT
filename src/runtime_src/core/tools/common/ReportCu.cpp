@@ -135,15 +135,20 @@ populate_cus(const xrt_core::device *device)
 int 
 getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
 {
-  std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
-  if (buf.empty())
-    return 0;
-  const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
-  if(map->pkn_count < 0)
-    return -EINVAL;
+  try {
+    std::vector<char> buf = xrt_core::device_query<xrt_core::query::ps_kernel>(device);
+    if (buf.empty())
+      return 0;
+    const ps_kernel_node *map = reinterpret_cast<ps_kernel_node *>(buf.data());
+    if(map->pkn_count < 0)
+      return -EINVAL;
 
-  for (unsigned int i = 0; i < map->pkn_count; i++)
-    psKernels.emplace_back(map->pkn_data[i]);
+    for (unsigned int i = 0; i < map->pkn_count; i++)
+      psKernels.emplace_back(map->pkn_data[i]);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case
+  }
 
   return 0;
 }
@@ -162,11 +167,14 @@ populate_cus_new(const xrt_core::device *device)
   try {
     cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
     scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
-  } catch (const std::exception& ex) {
+  } 
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case
+  }
+  catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
   }
-
   for (auto& stat : cu_stats) {
     boost::property_tree::ptree ptCu;
     ptCu.put( "name",           stat.name);
