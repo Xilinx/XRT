@@ -45,9 +45,11 @@ static boost::property_tree::ptree
 mac_addresses(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
+  uint64_t mac_contiguous_num;
+  std::string mac_addr_first;
   try {
-    auto mac_contiguous_num = xrt_core::device_query<qr::mac_contiguous_num>(dev);
-    auto mac_addr_first = xrt_core::device_query<qr::mac_addr_first>(dev);
+    mac_contiguous_num = xrt_core::device_query<qr::mac_contiguous_num>(dev);
+    mac_addr_first = xrt_core::device_query<qr::mac_addr_first>(dev);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Ignoring if not available: Edge Case 
@@ -70,7 +72,13 @@ mac_addresses(const xrt_core::device * dev)
     } 
   }
   else { //old flow
-    auto mac_addr = xrt_core::device_query<qr::mac_addr_list>(dev);
+    std::vector<std::string> mac_addr;
+    try {	  
+      mac_addr = xrt_core::device_query<qr::mac_addr_list>(dev);
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      // Ignoring if not available: Edge Case 
+    }
     for (const auto& a : mac_addr) {
       boost::property_tree::ptree addr;
       if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
@@ -78,9 +86,9 @@ mac_addresses(const xrt_core::device * dev)
         ptree.push_back(std::make_pair("", addr));
       }
     }
-   }
-  return ptree;
+  }
 
+  return ptree;
 }
 
 void
@@ -158,9 +166,10 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   controller.put_child("satellite_controller", sc);
   controller.put_child("card_mgmt_controller", cmc);
   pt_platform.put_child("controller", controller);
- 
+
+  std::vector<char> raw; 
   try { 
-    auto raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
+    raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Ignoring if not available: Edge Case 
