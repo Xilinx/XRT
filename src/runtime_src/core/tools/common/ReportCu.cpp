@@ -17,9 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
-#ifndef _WIN32
-#include <uuid/uuid.h>
-#endif
 #include "ReportCu.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
@@ -92,6 +89,18 @@ schedulerUpdateStat(xrt_core::device *device)
 }
 
 boost::property_tree::ptree
+populate_uuid(const xrt_core::device *device)
+{
+  boost::property_tree::ptree pt;
+  std::string uuid_out;
+  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+  uuid_out = uuid.to_string();
+  boost::algorithm::to_upper(uuid_out);
+  pt.put("uuid", uuid_out);
+  return pt;
+}
+
+boost::property_tree::ptree
 populate_cus(const xrt_core::device *device)
 {
   schedulerUpdateStat(const_cast<xrt_core::device *>(device));
@@ -127,6 +136,7 @@ populate_cus(const xrt_core::device *device)
         ptCu.put( "base_address",		boost::str(boost::format("0x%x") % base_addr));
         ptCu.put( "usage",			usage);
         ptCu.add_child( std::string("status"),	get_cu_status(status));
+        ptCu.add_child( std::string("uuid"),	populate_uuid(device));
         pt.push_back(std::make_pair("", ptCu));
       }
     }
@@ -177,6 +187,7 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PL));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
+    ptCu.add_child( std::string("uuid"),	populate_uuid(device));
     pt.push_back(std::make_pair("", ptCu));
   }
 
@@ -207,6 +218,7 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
+    ptCu.add_child( std::string("uuid"),	populate_uuid(device));
     pt.push_back(std::make_pair("", ptCu));
 
     if (psk_inst >= psKernels.size()) {
@@ -260,16 +272,17 @@ ReportCu::writeReport( const xrt_core::device* _pDevice,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
-  auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(_pDevice));
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
-#ifndef _WIN32
-  char uuid_out[100];
-  _output << "Loaded Xclbin UUID:" << std::endl;
-  uuid_unparse_upper(uuid.get(), uuid_out);
-  _output << uuid_out << std::endl;
-  _output << "---------------------------------------------------" << std::endl;
-#endif
+  _output << "Loaded Xclbin UUID" << std::endl;
+  const boost::property_tree::ptree& pt_cu1 = _pt.get_child("compute_units", empty_ptree);
+  if(!pt_cu1.empty()) {
+    for(auto& kv : pt_cu1) {
+    const boost::property_tree::ptree& cu1 = kv.second;
+    std::string uuid = cu1.get_child("uuid").get<std::string>("uuid");
+    _output << "  "+uuid << std::endl;
+    }
+  }
 
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
