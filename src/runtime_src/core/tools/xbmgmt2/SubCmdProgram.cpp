@@ -137,7 +137,7 @@ update_shell(unsigned int index, const std::string& flashType,
 static std::string 
 getBDF(unsigned int index)
 {
-  auto dev =xrt_core::get_mgmtpf_device(index);
+  auto dev = xrt_core::get_mgmtpf_device(index);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
@@ -343,10 +343,8 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 
   // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
   // so do not update
-  if (current.bmcVer.empty())
+  if (current.bmc_ver().empty())
     same_bmc = true;
-  else
-    same_bmc = (candidate.bmcVer == current.bmcVer);
   
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -402,7 +400,7 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     // Always update Arista devices
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
     if (vendor == ARISTA_ID)
-        same_shell = false;
+      same_shell = false;
 
     if (!same_shell || !same_sc) {
       if(!dsa.hasFlashImage)
@@ -574,7 +572,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
 
