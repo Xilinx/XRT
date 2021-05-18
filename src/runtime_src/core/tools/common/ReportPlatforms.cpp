@@ -96,8 +96,22 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   
   boost::property_tree::ptree static_region;
   static_region.add("vbnv", xrt_core::device_query<qr::rom_vbnv>(dev));
-  static_region.add("jtag_idcode", qr::idcode::to_string(xrt_core::device_query<qr::idcode>(dev)));
-  static_region.add("fpga_name", xrt_core::device_query<qr::rom_fpga_name>(dev));
+  try {
+    static_region.add("jtag_idcode", qr::idcode::to_string(xrt_core::device_query<qr::idcode>(dev)));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case
+    static_region.add("jtag_idcode", "N/A");
+  }
+
+  try {
+    static_region.add("fpga_name", xrt_core::device_query<qr::rom_fpga_name>(dev));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case 
+    static_region.add("fpga_name", "N/A");
+  }
+  
   pt_platform.put_child("static_region", static_region);
 
   boost::property_tree::ptree bd_info;
@@ -110,7 +124,14 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   pt_platform.put_child("off_chip_board_info", bd_info);
 
   boost::property_tree::ptree status;
-  status.add("mig_calibrated", xrt_core::device_query<qr::status_mig_calibrated>(dev));
+  try {
+    status.add("mig_calibrated", xrt_core::device_query<qr::status_mig_calibrated>(dev));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case 
+    status.add("mig_calibrated", "N/A");
+  }
+
   std::string msg;
   auto value = XBUtilities::check_p2p_config(dev, msg);
   status.add("p2p_status", p2p_config_map[value]);
@@ -119,34 +140,51 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   boost::property_tree::ptree controller;
   boost::property_tree::ptree sc;
   boost::property_tree::ptree cmc;
-  sc.add("version", xrt_core::device_query<qr::xmc_sc_version>(dev));
-  sc.add("expected_version", xrt_core::device_query<qr::expected_sc_version>(dev));
-  cmc.add("version", xrt_core::device_query<qr::xmc_version>(dev));
-  cmc.add("serial_number", xrt_core::device_query<qr::xmc_serial_num>(dev));
-  cmc.add("oem_id", XBUtilities::parse_oem_id(xrt_core::device_query<qr::oem_id>(dev)));
+  try {
+    sc.add("version", xrt_core::device_query<qr::xmc_sc_version>(dev));
+    sc.add("expected_version", xrt_core::device_query<qr::expected_sc_version>(dev));
+    cmc.add("version", xrt_core::device_query<qr::xmc_version>(dev));
+    cmc.add("serial_number", xrt_core::device_query<qr::xmc_serial_num>(dev));
+    cmc.add("oem_id", XBUtilities::parse_oem_id(xrt_core::device_query<qr::oem_id>(dev)));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case 
+  }
   controller.put_child("satellite_controller", sc);
   controller.put_child("card_mgmt_controller", cmc);
   pt_platform.put_child("controller", controller);
-  
-  auto raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
-  if(!raw.empty()) {
-    boost::property_tree::ptree pt_clocks;
-    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-    for(int i = 0; i < clock_topology->m_count; i++) {
-      boost::property_tree::ptree clock;
-      clock.add("id", clock_topology->m_clock_freq[i].m_name);
-      clock.add("description", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
-      clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
-      pt_clocks.push_back(std::make_pair("", clock));
+ 
+  try { 
+    auto raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
+    if(!raw.empty()) {
+      boost::property_tree::ptree pt_clocks;
+      auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+      for(int i = 0; i < clock_topology->m_count; i++) {
+        boost::property_tree::ptree clock;
+        clock.add("id", clock_topology->m_clock_freq[i].m_name);
+        clock.add("description", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
+        clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
+        pt_clocks.push_back(std::make_pair("", clock));
+      }
+      pt_platform.put_child("clocks", pt_clocks);
     }
-    pt_platform.put_child("clocks", pt_clocks);
   }
-  
-  auto macs = mac_addresses(dev);
-  if(!macs.empty())
-    pt_platform.put_child("macs", macs);
-  
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case 
+  }
+
+ 
+  try { 
+    auto macs = mac_addresses(dev);
+    if(!macs.empty())
+      pt_platform.put_child("macs", macs);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case
+  }
+    
   ptree.push_back(std::make_pair("", pt_platform));
+ 
   // There can only be 1 root node
   pt.add_child("platforms", ptree);
 }
