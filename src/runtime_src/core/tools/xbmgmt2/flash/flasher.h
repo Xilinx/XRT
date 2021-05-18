@@ -33,6 +33,7 @@
 
 #include "core/common/device.h"
 
+#define BDINFO_MAC_DYNAMIC 0x4B
 struct BoardInfo
 {
     std::string mSerialNum;

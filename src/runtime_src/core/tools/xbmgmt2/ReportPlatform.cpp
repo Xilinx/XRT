@@ -59,7 +59,7 @@ mac_addresses(const xrt_core::device * dev, const BoardInfo& info)
   auto mac_addr_first = format_mac_addr(info.mMacAddrFirst);
   
   //new flow
-  if (mac_contiguous_num && !mac_addr_first.empty()) {
+  if (mac_contiguous_num && !info.mMacAddrFirst) {
     std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
     std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
     std::stringstream ss;
@@ -75,14 +75,17 @@ mac_addresses(const xrt_core::device * dev, const BoardInfo& info)
     } 
   }
   else { //old flow
-    auto mac_addr = xrt_core::device_query<xrt_core::query::mac_addr_list>(dev);
-    for (const auto& a : mac_addr) {
-      boost::property_tree::ptree addr;
-      if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
-        addr.add("address", a);
-        ptree.push_back(std::make_pair("", addr));
+    auto populate_mac_addr = [&](std::string addr) {
+      boost::property_tree::ptree ptaddr;
+      if(!addr.empty() && addr.compare("Unassigned") != 0){
+        ptaddr.add("address", info.mMacAddr0);
+        ptree.push_back(std::make_pair("", ptaddr));
       }
-    }
+    };
+    populate_mac_addr(info.mMacAddr0);
+    populate_mac_addr(info.mMacAddr1);
+    populate_mac_addr(info.mMacAddr2);
+    populate_mac_addr(info.mMacAddr3);
    }
   return ptree;
 }
@@ -159,12 +162,12 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   //create information tree for a device
   pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
-  pt_platform.put("hardware.serial_num", info.mSerialNum);
+  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? "N/A" : info.mSerialNum);
   boost::property_tree::ptree dev_prop;
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
-  dev_prop.put("board_name", info.mName);
+  dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
   dev_prop.put("config_mode", info.mConfigMode);
-  dev_prop.put("max_power_watts", info.mMaxPower);
+  dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
   pt_platform.add_child("device_properties", dev_prop);
 
   //Flashable partition running on FPGA
@@ -359,7 +362,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << std::endl;
   }
 
-  const boost::property_tree::ptree& macs = _pt.get_child("macs", pt_empty);
+  const boost::property_tree::ptree& macs = _pt.get_child("platform.macs", pt_empty);
   if(!macs.empty()) {
     _output << std::endl;
     unsigned int macCount = 0;
