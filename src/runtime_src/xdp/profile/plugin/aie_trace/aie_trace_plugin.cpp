@@ -301,13 +301,15 @@ namespace xdp {
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
 
-        perfCounter->changeThreshold( coreCounterEventValues.at(i) );
-
-        // Set reset event based on counter number
         // NOTE: store events for later use in trace
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
+        // Following function is broken on FAL so we need to directly call aie driver api
+        // perfCounter->changeThreshold(coreCounterEventValues.at(i));
+        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_CORE_MOD, idx, coreCounterEventValues.at(i));
 
+        // Set reset event based on counter number
         perfCounter->changeRstEvent(mod, counterEvent);
         coreEvents.push_back(counterEvent);
 
@@ -320,7 +322,6 @@ namespace xdp {
 
         // Update config file
         uint8_t phyEvent = 0;
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
         auto& cfg = cfgTile->core_trace_config.pc[idx];
         XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
         cfg.start_event = phyEvent;
@@ -344,11 +345,13 @@ namespace xdp {
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
 
-        perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
-
         // Set reset event based on counter number
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
+        // Following function is broken on FAL so we need to directly call aie driver api
+        // perfCounter->changeThreshold(memoryCounterEventValues.at(i));
+        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_MEM_MOD, idx, memoryCounterEventValues.at(i));
 
         perfCounter->changeRstEvent(mod, counterEvent);
         memoryEvents.push_back(counterEvent);
@@ -361,7 +364,6 @@ namespace xdp {
 
         // Update config file
         uint8_t phyEvent = 0;
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
         auto& cfg = cfgTile->memory_trace_config.pc[idx];
         XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
         cfg.start_event = phyEvent;
@@ -776,8 +778,8 @@ namespace xdp {
     }
 
     // New start & end events for trace control and counters
-    //coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
-    coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
+    coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
+    //coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
     coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
 
     // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
@@ -785,8 +787,8 @@ namespace xdp {
     //        We need 64 packets, so we need 7 * 64 = 448 words.
     //        Existing counters generates 1.5 words for every perf counter 2 triggers.
     //        Thus, 300 (299 exactly,, but 300 would have no harm) perf 2 counter events.
-    uint32_t timerTrigValueLow  = 0x92C0;
-    uint32_t timerTrigValueHigh = 0x129A;
+    uint32_t timerTrigValueLow  = 0x129A92C0;
+    uint32_t timerTrigValueHigh = 0x0;
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
@@ -809,11 +811,6 @@ namespace xdp {
 
         coreTrace->stop();
         coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
-
-        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
-        XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
-                                  timerTrigValueLow, timerTrigValueHigh);
-        //XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
 
       // 2. For every counter, change start/stop events
@@ -825,7 +822,6 @@ namespace xdp {
       counter->stop();
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
-      counter->changeThreshold( coreCounterEventValues.at(i % 2) );
       counter->start();
     }
 
@@ -844,6 +840,8 @@ namespace xdp {
         coreTrace->start();
 
         XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
+        XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
+                                  timerTrigValueLow, timerTrigValueHigh);
         XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
       }
     }

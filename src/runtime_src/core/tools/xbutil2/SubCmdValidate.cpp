@@ -820,6 +820,17 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
 
+  std::vector<std::string> dma_thr ;
+
+  try {
+   dma_thr = xrt_core::device_query<xrt_core::query::dma_threads_raw>(_dev);
+  } catch(...){}
+
+  if (dma_thr.size() == 0){
+    _ptTest.put("status", "skipped");
+    return ;
+  }
+
   auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
   size_t totalSize = 0;
   switch (vendor) {
