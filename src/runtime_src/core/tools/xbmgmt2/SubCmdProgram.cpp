@@ -312,12 +312,28 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 
 }
 
+/*
+ * bmcVer (shown as [SC=version]) can be 3 status:
+ *   1) regular SC version;
+ *        example: [SC=4.1.7]
+ *   2) INACTIVE;
+ *        exmaple: [SC=INACTIVE], this means no xmc subdev, we should not
+ *        attemp to flash the SC;
+ *   3) UNKNOWN;
+ *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
+ *        not normal, we still allow flashing SC.
+ *   4) FIXED SC version;
+ *        example: [SC=4.1.7(FIXED)], this means SC is running on slave mgmt pf
+ *        and cannot be updated throught this pf, SC version cannot be changed.
+ */
 static void 
 isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
 {
   if (!current.dsaname().empty()) {
     same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
-    same_bmc = (current.bmcVerIsFixed() || (candidate.bmc_ver() == current.bmc_ver()));
+    same_bmc = (current.bmcVerIsFixed() || 
+      (current.bmcVer.compare("INACTIVE") == 0) ||
+      (candidate.bmc_ver() == current.bmc_ver()));
   }
 }
 
