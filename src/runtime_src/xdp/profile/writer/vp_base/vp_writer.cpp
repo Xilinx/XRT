@@ -18,6 +18,8 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/writer/vp_base/vp_writer.h"
+#include "xdp/profile/device/tracedefs.h"
+#include "core/common/message.h"
 
 namespace xdp {
 
@@ -33,6 +35,7 @@ namespace xdp {
 
   // After write is called, if we are doing continuous offload
   //  we need to open a new file
+  bool VPWriter::warnFileNum = false;
   void VPWriter::switchFiles()
   {
     fout.close() ;
@@ -40,6 +43,11 @@ namespace xdp {
 
     ++fileNum ;
     currentFileName = std::to_string(fileNum) + std::string("-") + basename ;
+
+    if (fileNum == TRACE_DUMP_FILE_COUNT_WARN && !warnFileNum) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_FILE_COUNT_WARN_MSG);
+      warnFileNum = true;
+    }
 
     fout.open(currentFileName.c_str()) ;
   }

@@ -2552,7 +2552,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-    if (!xocl_verify_timestamp(xdev,
+	if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");
 		err = -EOPNOTSUPP;

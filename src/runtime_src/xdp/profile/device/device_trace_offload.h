@@ -113,12 +113,14 @@ protected:
     DeviceIntf* dev_intf;
 private:
     DeviceTraceLogger* deviceTraceLogger;
-
     std::vector<xclTraceResults> m_trace_vector = {};
     std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
+    bool m_trbuf_full = false;
+    bool trbuf_offload_done = false;
+    uint64_t m_trbuf_addr = 0;
 
 protected:
     bool m_initialized = false;
@@ -138,13 +140,9 @@ private:
     void offload_device_continuous();
     void offload_finished();
 
-    bool m_trbuf_full = false;
-    bool trbuf_offload_done = false;
-
     // Clock Training Params
     bool m_force_clk_train = true;
     std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
-
 
     //Circular Buffer Tracking
     bool m_use_circ_buf = false;
@@ -155,6 +153,7 @@ private:
 
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;
+    bool m_trace_warn_big_done = false;
 };
 
 }
