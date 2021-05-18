@@ -421,6 +421,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -645,6 +646,7 @@ GEN 3x16        2               true            false
 <h3>PCIe Topology Considerations<a class="headerlink" href="#pcie-topology-considerations" title="Permalink to this headline">¶</a></h3>
 <p>For best performance peer devices wanting to exchange data should be under the same PCIe switch.</p>
 <p>If IOMMU is enabled then all peer-to-peer transfers are routed through the root complex which will degrade performance significantly.</p>
+<p>To measure peak P2P performance with two Alveo cards, it needs to use indentical configuration of both them. This means same type of Alveo and running same verson of shell. Also both card should be under the same PCIe switch. Second, it has been known that P2P read has better throughput comparing to P2P write. Thus, P2P read should be used in benchmark to get the peak performance.</p>
 </div>
 </div>
 <div class="section" id="p2p-data-transfer-between-fpga-cards">
@@ -908,7 +910,7 @@ Latency(ns)</p></th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on April 16, 2021.
+        Last updated on May 18, 2021.
       </span>
 
     </p>

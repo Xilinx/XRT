@@ -1,7 +1,4 @@
 var searchData=
 [
-  ['shared',['shared',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6a9e81e7b963c71363e2fb3eefcfecfc0e',1,'xrt::kernel']]],
-  ['streaming',['streaming',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525faabb0256a318439745ab0b343d64b9ba0',1,'xrt::xclbin::mem']]],
-  ['streaming_5fconnection',['streaming_connection',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e',1,'xrt::xclbin::mem']]],
-  ['svm',['svm',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1dda924ff83ff1e671bacfb07ff12b845703',1,'xrt::bo']]]
+  ['offline',['offline',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca',1,'xrt::info']]]
 ];
