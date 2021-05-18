@@ -45,9 +45,14 @@ static boost::property_tree::ptree
 mac_addresses(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
-  auto mac_contiguous_num = xrt_core::device_query<qr::mac_contiguous_num>(dev);
-  auto mac_addr_first = xrt_core::device_query<qr::mac_addr_first>(dev);
-  
+  try {
+    auto mac_contiguous_num = xrt_core::device_query<qr::mac_contiguous_num>(dev);
+    auto mac_addr_first = xrt_core::device_query<qr::mac_addr_first>(dev);
+  }
+  catch (const xrt_core::query::no_such_key&) {
+    // Ignoring if not available: Edge Case 
+  }
+
   //new flow
   if (mac_contiguous_num && !mac_addr_first.empty()) {
     std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
@@ -156,32 +161,26 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
  
   try { 
     auto raw = xrt_core::device_query<qr::clock_freq_topology_raw>(dev);
-    if(!raw.empty()) {
-      boost::property_tree::ptree pt_clocks;
-      auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
-      for(int i = 0; i < clock_topology->m_count; i++) {
-        boost::property_tree::ptree clock;
-        clock.add("id", clock_topology->m_clock_freq[i].m_name);
-        clock.add("description", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
-        clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
-        pt_clocks.push_back(std::make_pair("", clock));
-      }
-      pt_platform.put_child("clocks", pt_clocks);
-    }
   }
   catch (const xrt_core::query::no_such_key&) {
     // Ignoring if not available: Edge Case 
   }
+  if(!raw.empty()) {
+    boost::property_tree::ptree pt_clocks;
+    auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
+    for(int i = 0; i < clock_topology->m_count; i++) {
+      boost::property_tree::ptree clock;
+      clock.add("id", clock_topology->m_clock_freq[i].m_name);
+      clock.add("description", XBUtilities::parse_clock_id(clock_topology->m_clock_freq[i].m_name));
+      clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
+      pt_clocks.push_back(std::make_pair("", clock));
+    }
+    pt_platform.put_child("clocks", pt_clocks);
+  }
 
- 
-  try { 
-    auto macs = mac_addresses(dev);
-    if(!macs.empty())
-      pt_platform.put_child("macs", macs);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    // Ignoring if not available: Edge Case
-  }
+  auto macs = mac_addresses(dev);
+  if(!macs.empty())
+    pt_platform.put_child("macs", macs);
     
   ptree.push_back(std::make_pair("", pt_platform));
  
