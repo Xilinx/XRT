@@ -45,7 +45,7 @@ static boost::property_tree::ptree
 mac_addresses(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
-  uint64_t mac_contiguous_num;
+  uint64_t mac_contiguous_num = 0;
   std::string mac_addr_first;
   try {
     mac_contiguous_num = xrt_core::device_query<qr::mac_contiguous_num>(dev);
