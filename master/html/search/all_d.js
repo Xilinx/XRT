@@ -1,5 +1,6 @@
 var searchData=
 [
+  ['offline',['offline',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa27a21354321dfbc28f0cb17b995bb9ca',1,'xrt::info']]],
   ['offset',['offset',['../classxrt_1_1kernel.html#ac08ab6cbafa0b1ad09f8c0a6941a0c68',1,'xrt::kernel']]],
   ['operator_20bool',['operator bool',['../classxrt_1_1bo.html#ae1d3edf6c9a7a60e4975f631a39809dd',1,'xrt::bo::operator bool()'],['../classxrt_1_1run.html#aa768dd562f3d84242644134c79c83e46',1,'xrt::run::operator bool()']]],
   ['operator_28_29',['operator()',['../classxrt_1_1run.html#a66b075fdd181319c5edbdd4e04db109f',1,'xrt::run::operator()()'],['../classxrt_1_1kernel.html#a602dcd5ff860f31695abdf74d24116f9',1,'xrt::kernel::operator()()']]],

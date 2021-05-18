@@ -24,7 +24,7 @@ xocl
 
 Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use Linux *drm_mm* for allocation of memory and Linux *drm_gem* framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA/QDMA PCIe memory mapped DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
 
-xocl also supports PCIe Slave Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section :ref:`sb.rst` provides more information.
+xocl also supports PCIe Host Memory Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section :ref:`hm.rst` provides more information.
 
 zocl
 ----

@@ -396,6 +396,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -505,7 +506,7 @@ device in all future interaction with XRT.</p>
 <p>count of devices found</p>
 <dl class="c function">
 <dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen (unsigned int deviceIndex, const char * logFileName, enum xclVerbosityLevel level)</code></dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen (unsigned int deviceIndex, const char * unused1, enum xclVerbosityLevel unused2)</code></dt>
 <dd><p>Open a device and obtain its handle.</p>
 </dd></dl>
 
@@ -513,9 +514,9 @@ device in all future interaction with XRT.</p>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">deviceIndex</span></code></dt><dd><p>Slot number of device 0 for first device, 1 for the second device…</p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">logFileName</span></code></dt><dd><p>Log file to use for optional logging</p>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">unused1</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">level</span></code></dt><dd><p>Severity level of messages to log</p>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">unused2</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
 </dl>
 <p><strong>Return</strong></p>
@@ -944,14 +945,34 @@ This operation is backed by Linux DMA-BUF framework</p>
 <p><strong>Return</strong></p>
 <p>0 on success</p>
 <p>This is the prefered method for obtaining BO property information.</p>
+<dl class="c function">
+<dt>
+<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclIPName2Index (xclDeviceHandle handle, const char * ipName)</code></dt>
+<dd><p>Obtain IP index by IP name</p>
+</dd></dl>
+
+<p><strong>Parameters</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ipName</span></code></dt><dd><p>IP name. usually “&lt;kernel name&gt;:&lt;instance name&gt;”</p>
+</dd>
+</dl>
+<p><strong>Return</strong></p>
+<p>IP index or appropriate error number</p>
+<p><code class="xref c c-func docutils literal notranslate"><span class="pre">xclIPName2Index()</span></code> should be used to obtain unique index of IP as understood by other XRT APIs
+like <code class="xref c c-func docutils literal notranslate"><span class="pre">xclOpenContext()</span></code>.</p>
 <p><strong>XRT Unmanaged DMA APIs</strong></p>
 <hr class="docutils" />
 <p>Unmanaged DMA APIs are for exclusive use by the debuggers and
-tools. The APIs allow clinets to read/write from/to absolute device
+tools. The APIs allow clients to read/write from/to absolute device
 address. No checks are performed if a buffer was allocated before
 at the specified location or if the address is valid. Users who
-want to take over the full memory managemnt of the device may use
-this API to synchronize their buffers between host and device.</p>
+want to take over the full memory managemnt of the device memory
+should instead use XRT sub-buffer infrastructure for fine grained
+placement of buffers as it also provides better DMA performancce
+and richer set of features like mmap/munmap, etc.</p>
+<p>The unmanaged APIs are planned to be be deprecated in future.</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread (xclDeviceHandle handle, unsigned int flags, void * buf, size_t size, uint64_t offset)</code></dt>
@@ -974,9 +995,8 @@ this API to synchronize their buffers between host and device.</p>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>This API may be used to perform DMA operation from absolute
-location specified. Users may use this if they want to perform
-their own device memory management – not using the buffer object
-(BO) framework defined before.</p>
+location specified. As stated before this API is for use by
+debuggers and profilers. Do not use it in your application.</p>
 <dl class="c function">
 <dt>
 <code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite (xclDeviceHandle handle, unsigned int flags, const void * buf, size_t size, uint64_t offset)</code></dt>
@@ -999,9 +1019,8 @@ their own device memory management – not using the buffer object
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>This API may be used to perform DMA operation to an absolute
-location specified. Users may use this if they want to perform
-their own device memory management – not using the buffer object
-(BO) framework defined before.</p>
+location specified. As stated before this API is for use by
+debuggers and profilers. Do not use it in your application.</p>
 <p><strong>XRT Compute Unit Execution Management APIs</strong></p>
 <p>These APIs are under development. These functions will be used to
 start compute units and wait for them to finish.</p>
@@ -1068,229 +1087,6 @@ value has same semantics as poll system call.  If return value is &gt;
 that if you perform wait for the same handle from multiple threads,
 you may lose wakeup for some of them. So, use different handle in
 different threads.</p>
-<p><strong>XRT Stream Queue APIs</strong></p>
-<p>These functions are used for next generation DMA Engine, QDMA. QDMA
-provides not only memory mapped DMA which moves data between host
-memory and board memory, but also stream DMA which moves data
-between host memory and kernel directly. XDMA memory mapped DMA
-APIs are also supported on QDMA. New stream APIs are provided here
-for preview and may be revised in a future release. These can only
-be used with platforms with QDMA engine under the hood. The higher
-level OpenCL based streaming APIs offer more refined interfaces and
-compatibility between releases and each stream maps to a QDMA queue
-underneath.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclCreateWriteQueue (xclDeviceHandle handle, struct xclQueueContext * q_ctx, uint64_t * q_hdl)</code></dt>
-<dd><p>Create Write Queue</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclQueueContext</span> <span class="pre">*</span> <span class="pre">q_ctx</span></code></dt><dd><p>Queue Context</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<p>Create write queue based on information provided in Queue
-context. Queue handle is generated if creation successes.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclCreateReadQueue (xclDeviceHandle handle, struct xclQueueContext * q_ctx, uint64_t * q_hdl)</code></dt>
-<dd><p>Create Read Queue</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclQueueContext</span> <span class="pre">*</span> <span class="pre">q_ctx</span></code></dt><dd><p>Queue Context</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<p>Create read queue based on information provided in Queue
-context. Queue handle is generated if creation successes.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclDestroyQueue (xclDeviceHandle handle, uint64_t q_hdl)</code></dt>
-<dd><p>Destroy Queue</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<p>Destroy read or write queue and release all queue resources.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC void* xclAllocQDMABuf (xclDeviceHandle handle, size_t size, uint64_t * buf_hdl)</code></dt>
-<dd><p>Allocate DMA buffer</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Buffer size</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">*</span> <span class="pre">buf_hdl</span></code></dt><dd><p>Buffer handle</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<p>Allocate DMA buffer which is used for queue read and write.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclFreeQDMABuf (xclDeviceHandle handle, uint64_t buf_hdl)</code></dt>
-<dd><p>Free DMA buffer</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">buf_hdl</span></code></dt><dd><p>Buffer handle</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or appropriate error number</p>
-<p>Free DMA buffer allocated by xclAllocQDMABuf.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclWriteQueue (xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest * wr_req)</code></dt>
-<dd><p>write data to queue</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">wr_req</span></code></dt><dd><p>Queue request</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Number of bytes been written or appropriate error number</p>
-<p>Move data from host memory to board. The destination is determined
-by flow id and route id which are provided to
-xclCreateWriteQueue. it returns number of bytes been moved or error
-code.  By default, this function returns only when the entire buf
-has been written, or error. If XCL_QUEUE_REQ_NONBLOCKING flag is
-used, it returns immediately and xclPollCompletion needs to be used
-to determine if the data transmission is completed.  If
-XCL_QUEUE_REQ_EOT flag is used, end of transmit signal will be
-added at the end of this tranmission.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclReadQueue (xclDeviceHandle handle, uint64_t q_hdl, struct xclQueueRequest * rd_req)</code></dt>
-<dd><p>read data from queue</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclQueueRequest</span> <span class="pre">*</span> <span class="pre">rd_req</span></code></dt><dd><p>read request</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Number of bytes been read or appropriate error number</p>
-<p>Move data from board to host memory. The source is determined by
-flow id and route id which are provided to xclCreateReadQueue. It
-returns number of bytes been moved or error code.  This function
-returns until all the requested bytes is read or error happens. If
-XCL_QUEUE_REQ_NONBLOCKING flag is used, it returns immediately and
-xclPollCompletion needs to be used to determine if the data
-trasmission is completed.  If XCL_QUEUE_REQ_EOT flag is used, data
-transmission for the current read request completes immediatly once
-end of transmit signal is received.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclPollQueue (xclDeviceHandle handle, uint64_t q_hdl, int min_compl, int max_compl, struct xclReqCompletion * comps, int * actual_compl, int timeout)</code></dt>
-<dd><p>poll a single read/write queue completion</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">min_compl</span></code></dt><dd><p>Unblock only when receiving min_compl completions</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">max_compl</span></code></dt><dd><p>Max number of completion with one poll</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclReqCompletion</span> <span class="pre">*</span> <span class="pre">comps</span></code></dt><dd><p>Completed request array</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">actual_compl</span></code></dt><dd><p>Number of requests been completed</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">timeout</span></code></dt><dd><p>Timeout</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Number of events or appropriate error number</p>
-<p>Poll completion events of non-blocking read/write requests. Once
-this function returns, an array of completed requests is returned.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclSetQueueOpt (xclDeviceHandle handle, uint64_t q_hdl, int type, uint32_t val)</code></dt>
-<dd><p>Set a single read/write queue’s option</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">q_hdl</span></code></dt><dd><p>Queue handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">type</span></code></dt><dd><p>option type</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint32_t</span> <span class="pre">val</span></code></dt><dd><p>option value</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Number of events or appropriate error number</p>
-<p>Set option of a read or write queue.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclPollCompletion (xclDeviceHandle handle, int min_compl, int max_compl, struct xclReqCompletion * comps, int * actual_compl, int timeout)</code></dt>
-<dd><p>poll read/write queue completion</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">min_compl</span></code></dt><dd><p>Unblock only when receiving min_compl completions</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">max_compl</span></code></dt><dd><p>Max number of completion with one poll</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclReqCompletion</span> <span class="pre">*</span> <span class="pre">comps</span></code></dt><dd><p>Completed request array</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">*</span> <span class="pre">actual_compl</span></code></dt><dd><p>Number of requests been completed</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">timeout</span></code></dt><dd><p>Timeout</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>Number of events or appropriate error number</p>
-<p>Poll completion events of non-blocking read/write requests. Once
-this function returns, an array of completed requests is returned.</p>
 </div>
 
 
@@ -1322,7 +1118,7 @@ this function returns, an array of completed requests is returned.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on April 16, 2021.
+        Last updated on May 18, 2021.
       </span>
 
     </p>

@@ -147,12 +147,12 @@ XRT OpenCL introduces a new buffer extension Flag ``XCL_MEM_EXT_HOST_ONLY`` that
     cl::Buffer buffer_in (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
     cl::Buffer buffer_out(context,CL_MEM_WRITE_ONLY |CL_MEM_EXT_PTR_XILINX, size, &host_buffer_ext);
 
-In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``XCL_BO_FLAGS_HOST_ONLY`` as shown in the example below
+In XRT Native APIs the ``xrt::bo`` object should be created with the flag ``xrt::bo::flags::host_only`` as shown in the example below
 
 .. code-block:: c++
 
-    auto buffer_in  = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(0)); 
-    auto buffer_out = xrt::bo(device, size,XCL_BO_FLAGS_HOST_ONLY,kernel.group_id(1)); 
+    xrt::bo buffer_in (device, size, xrt::bo::flags::host_only, kernel.group_id(0)); 
+    xrt::bo buffer_out(device, size, xrt::bo::flags::host_only, kernel.group_id(1)); 
 
 Also ensure to follow coding guideline as stated below
 

@@ -408,6 +408,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
@@ -1137,6 +1138,11 @@
 <dl class="cpp enumerator">
 <dt id="_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE">
 <span id="_CPPv3N3xrt6xclbin3mem11memory_type20streaming_connectionE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type20streaming_connectionE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa61a2f203e2ab90e668be5b244ff0215e"></span><em class="property">enumerator </em><code class="sig-name descname">streaming_connection</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="cpp enumerator">
+<dt id="_CPPv4N3xrt6xclbin3mem11memory_type4hostE">
+<span id="_CPPv3N3xrt6xclbin3mem11memory_type4hostE"></span><span id="_CPPv2N3xrt6xclbin3mem11memory_type4hostE"></span><span class="target" id="classxrt_1_1xclbin_1_1mem_1a4ae64153a1751d25c9b8e95fb3c7525fa67b3dba8bc6778101892eb77249db32e"></span><em class="property">enumerator </em><code class="sig-name descname">host</code><a class="headerlink" href="#_CPPv4N3xrt6xclbin3mem11memory_type4hostE" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 </dd></dl>
@@ -1990,12 +1996,12 @@
 
 <dl class="c function">
 <dt>
-<code class="sig-name descname">XRT_INFO_PARAM_TRAITS ( device::name,  std::string)</code></dt>
+<code class="sig-name descname">XRT_INFO_PARAM_TRAITS ( device::bdf,  std::string)</code></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">device::name</span></code></dt><dd><p><em>undescribed</em></p>
+<dt><code class="docutils literal notranslate"><span class="pre">device::bdf</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">std::string</span></code></dt><dd><p><em>undescribed</em></p>
 </dd>
@@ -2885,7 +2891,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on April 16, 2021.
+        Last updated on May 18, 2021.
       </span>
 
     </p>
