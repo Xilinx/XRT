@@ -266,7 +266,7 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void 
-ReportCu::writeReport( const xrt_core::device* _pDevice,
+ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
                        const boost::property_tree::ptree& _pt, 
                        const std::vector<std::string>& /*_elementsFilter*/,
                        std::ostream & _output) const
@@ -280,7 +280,7 @@ ReportCu::writeReport( const xrt_core::device* _pDevice,
     for(auto& kv : pt_cu1) {
     const boost::property_tree::ptree& cu1 = kv.second;
     std::string uuid = cu1.get_child("uuid").get<std::string>("uuid");
-    _output << "  "+uuid << std::endl;
+    _output << "  " + uuid << std::endl;
     }
   }
 
