@@ -817,7 +817,6 @@ namespace xdp {
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
       counter->start();
-
     }
 
     // 3. For every tile, restart trace and reset timer
