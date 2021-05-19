@@ -129,7 +129,14 @@ populate_cus(const xrt_core::device *device)
     }
   }
 
-  return pt;
+  boost::property_tree::ptree ptree;
+  try {
+    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
+    boost::algorithm::to_upper(uuid);
+    ptree.put("xclbin_uuid", uuid);
+  } catch (...) {  }
+  ptree.add_child("compute_units", pt);
+  return ptree;
 }
 
 int 
@@ -225,7 +232,14 @@ populate_cus_new(const xrt_core::device *device)
     }
   }
 
-  return pt;
+  boost::property_tree::ptree ptree;
+  try {
+    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
+    boost::algorithm::to_upper(uuid);
+    ptree.put("xclbin_uuid", uuid);
+  } catch (...) {  }
+  ptree.add_child("compute_units", pt);
+  return ptree;
 }
 
 void
@@ -267,8 +281,12 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree empty_ptree;
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
+  _output << "Xclbin UUID" << std::endl;
+  _output << "  " + _pt.get_child("compute_units").get<std::string>("xclbin_uuid", "N/A") << std::endl;
+  _output << std::endl;
+
   //check if a valid CU report is generated
-  const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
+  const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units").get_child("compute_units", empty_ptree);
   if(pt_cu.empty())
     return;
 
