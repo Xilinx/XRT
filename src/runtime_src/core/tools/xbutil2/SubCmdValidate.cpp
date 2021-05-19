@@ -285,7 +285,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { test_dir.parent_path().string(), 
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      constexpr static int MAX_TEST_DURATION = 120;
+      constexpr static int MAX_TEST_DURATION = 300; //5 minutes
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
