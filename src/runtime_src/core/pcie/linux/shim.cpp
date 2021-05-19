@@ -1683,6 +1683,14 @@ int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned in
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
 
+    // New KDS does not support xclExecBufWithWaitList(). Only allow it to go through if
+    // driver is in old KDS mode.
+    static bool newkds = xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice);
+    if (newkds) {
+        xrt_logmsg(XRT_ERROR, "xclExecBufWithWaitList() is no longer supported.");
+        return -ENOTSUP;
+    }
+
     if (num_bo_in_wait_list > MAX_DEPS) {
         xrt_logmsg(XRT_ERROR, "%s, Incorrect argument. Max num of BOs in wait_list: %d",
             __func__, MAX_DEPS);
