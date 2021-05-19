@@ -2014,13 +2014,39 @@ static void icap_calib(struct icap *icap, bool retain)
 
 }
 
-static int icap_reset_ddr_gate_pin(struct icap *icap)
+static int icap_iores_write32(struct icap *icap, uint32_t id, uint32_t offset, uint32_t val)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_DDR4_RESET_GATE, 0, 1);
+	// try PRP first then BLD
+	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP, id, offset, val);
+
+	if (err)
+		err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_BLD, id, offset, val);
+
+
+	return err;
+}
+
+static int icap_iores_read32(struct icap *icap, uint32_t id, uint32_t offset, uint32_t *val)
+{
+	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
+	int err = 0;
+
+	// try PRP first then BLD
+	err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_PRP, id, offset, val);
+	if (err)
+		err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_BLD, id, offset, val);
+
+	return err;
+}
+
+static int icap_reset_ddr_gate_pin(struct icap *icap)
+{
+	int err = 0;
+
+	err = icap_iores_write32(icap, IORES_DDR4_RESET_GATE, 0, 1);
 
 	ICAP_INFO(icap, "%s ret %d", __func__, err);
 	return err;
@@ -2028,11 +2054,9 @@ static int icap_reset_ddr_gate_pin(struct icap *icap)
 
 static int icap_release_ddr_gate_pin(struct icap *icap)
 {
-	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	int err = 0;
 
-	err = xocl_iores_write32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-		IORES_DDR4_RESET_GATE, 0, 0);
+	err = icap_iores_write32(icap, IORES_DDR4_RESET_GATE, 0, 0);
 
 	ICAP_INFO(icap, "%s ret %d", __func__, err);
 	return err;
@@ -3359,7 +3383,6 @@ static ssize_t data_retention_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	xdev_handle_t xdev = xocl_get_xdev(to_platform_device(dev));
 	u32 val = 0, ack;
 	int err;
 
@@ -3368,8 +3391,8 @@ static ssize_t data_retention_show(struct device *dev,
 		goto done;
 	}
 
-	err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-			IORES_DDR4_RESET_GATE, 0, &ack);
+	err = icap_iores_read32(icap, IORES_DDR4_RESET_GATE, 0, &ack);
+
 	if (err)
 		return err;
 
@@ -3384,7 +3407,6 @@ static ssize_t data_retention_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct icap *icap = platform_get_drvdata(to_platform_device(dev));
-	xdev_handle_t xdev = xocl_get_xdev(to_platform_device(dev));
 	u32 val, ack;
 	int err = 0;
 
@@ -3392,8 +3414,7 @@ static ssize_t data_retention_store(struct device *dev,
 		goto done;
 
 	/* Must have ddr gate pin */
-	err = xocl_iores_read32(xdev, XOCL_SUBDEV_LEVEL_PRP,
-			IORES_DDR4_RESET_GATE, 0, &ack);
+	err = icap_iores_read32(icap, IORES_DDR4_RESET_GATE, 0, &ack);
 	if (err) {
 		xocl_err(&to_platform_device(dev)->dev,
 			"%d", err);
