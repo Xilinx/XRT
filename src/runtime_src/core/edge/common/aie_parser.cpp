@@ -29,7 +29,7 @@ namespace {
 
 namespace pt = boost::property_tree;
 using tile_type = xrt_core::edge::aie::tile_type;
-using gmio_type = xrt_core::edge::aie::gmio_type;
+//using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
 
 inline void
@@ -343,7 +343,7 @@ get_profile_counter(const pt::ptree& aie_meta)
   return counters;
 }
 
-std::vector<gmio_type>
+std::vector<adf::trace_gmio_config>
 get_trace_gmio(const pt::ptree& aie_meta)
 {
   auto trace_gmios = aie_meta.get_child_optional("aie_metadata.TraceGMIOs");
@@ -351,18 +351,18 @@ get_trace_gmio(const pt::ptree& aie_meta)
     return {};
   }
 
-  std::vector<gmio_type> gmios;
+  std::vector<adf::trace_gmio_config> gmios;
 
   for (auto& gmio_node : trace_gmios.get()) {
-    gmio_type gmio;
+    adf::trace_gmio_config gmio;
 
     gmio.id = gmio_node.second.get<uint32_t>("id");
     //gmio.name = gmio_node.second.get<std::string>("name");
     //gmio.type = gmio_node.second.get<uint16_t>("type");
-    gmio.shim_col = gmio_node.second.get<uint16_t>("shim_column");
-    gmio.channel_number = gmio_node.second.get<uint16_t>("channel_number");
-    gmio.stream_id = gmio_node.second.get<uint16_t>("stream_id");
-    gmio.burst_len = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
+    gmio.shimColumn = gmio_node.second.get<uint16_t>("shim_column");
+    gmio.channelNum = gmio_node.second.get<uint16_t>("channel_number");
+    gmio.streamId = gmio_node.second.get<uint16_t>("stream_id");
+    gmio.burstLength = gmio_node.second.get<uint16_t>("burst_length_in_16byte");
 
     gmios.emplace_back(std::move(gmio));
   }
@@ -506,12 +506,12 @@ get_profile_counters(const xrt_core::device* device)
   return ::get_profile_counter(aie_meta);
 }
 
-std::vector<gmio_type>
+std::vector<adf::trace_gmio_config>
 get_trace_gmios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<gmio_type>();
+    return std::vector<adf::trace_gmio_config>();
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);

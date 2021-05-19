@@ -664,4 +664,77 @@ err_code gmio_api::wait()
     return err_code::ok;
 }
 
+trace_gmio_api::trace_gmio_api(const trace_gmio_config* pConfig) : pGMIOConfig(pConfig), isConfigured(false)
+{}
+
+#if 0
+err_code trace_gmio_api::configure()
+{
+  if (!pGMIOConfig)
+    return errorMsg(err_code::internal_error, "ERROR: trace_gmio_api::configure: Invalid GMIO configuration.");
+
+     XAie_DevInst* devInst = aieObj->getDevInst();
+
+      XAie_LocType shimTile = XAie_TileLoc(traceGMIO->shimColumn, 0);
+      XAie_DmaDescInit(devInst, &(shimDmaObj->desc), shimTile);
+
+      // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+      //       // Enable shim DMA channel, need to start first so the status is correct
+      //
+
+      uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
+      XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
+
+      XAie_DmaChannelEnable(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir);
+
+      // Set AXI burst length
+      XAie_DmaSetAxi(&(shimDmaObj->desc), 0, traceGMIO->burstLength, 0, 0, 0);
+
+      XAie_MemInst memInst;
+      XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
+      xclBufferExportHandle boExportHandle = xclExportBO(deviceHandle, buffers[i].boHandle);
+      if(XRT_NULL_BO_EXPORT == boExportHandle) {
+        throw std::runtime_error("Unable to export BO while attaching to AIE Driver");
+      }
+      XAie_MemAttach(devInst,  &memInst, 0, 0, 0, prop, boExportHandle);
+
+      char* vaddr = reinterpret_cast<char *>(mmap(NULL, bufAllocSz, PROT_READ | PROT_WRITE, MAP_SHARED, boExportHandle, 0));
+      XAie_DmaSetAddrLen(&(shimDmaObj->desc), (uint64_t)vaddr, bufAllocSz);
+
+      XAie_DmaEnableBd(&(shimDmaObj->desc));
+
+      // For trace, use bd# 0 for S2MM0, use bd# 4 for S2MM1
+      //       int bdNum = channelNumber * 4;
+      //             // Write to shim DMA BD AxiMM registers
+      //                   XAie_DmaWriteBd(devInst, &(shimDmaObj->desc), XAie_TileLoc(traceGMIO->shimColumn, 0), bdNum);
+      //
+      //                         // Enqueue BD
+      //                               XAie_DmaChannelPushBdToQueue(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir, bdNum);
+
+  int driverStatus = AieRC::XAIE_OK; //0
+  traceGmioTileLoc = XAie_TileLoc(pGMIOConfig->shimColumn, 0);
+  driverStatus |= XAie_DmaDescInit(config_manager::s_pDevInst, &shimDmaInst, gmioTileLoc);
+  //enable shim DMA channel, need to start first so the status is correct
+  driverStatus |= XAie_DmaChannelEnable(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM));
+  driverStatus |= XAie_DmaGetMaxQueueSize(config_manager::s_pDevInst, gmioTileLoc, &dmaStartQMaxSize);
+
+  //decide 4 BD numbers to use for this GMIO based on channel number (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
+  for (int j = 0; j < dmaStartQMaxSize; j++)
+  {
+      int bdNum = pGMIOConfig->channelNum * dmaStartQMaxSize + j;
+      availableBDs.push(bdNum);
+
+      //set AXI burst length, this won't change during runtime
+      driverStatus |= XAie_DmaSetAxi(&shimDmaInst, 0 /*Smid*/, pGMIOConfig->burstLength /*BurstLen*/, 0 /*Qos*/, 0 /*Cache*/, 0 /*Secure*/);
+      debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "GMIO id " << pGMIOConfig->id << " assigned BD num " << bdNum).str());
+  }
+
+  if (driverStatus != AieRC::XAIE_OK)
+      return errorMsg(err_code::aie_driver_error, "ERROR: adf::trace_gmio_api::configure: AIE driver error.");
+
+  isConfigured = true;
+  return err_code::ok;
+}
+#endif
+
 }

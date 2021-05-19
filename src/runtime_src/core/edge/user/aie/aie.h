@@ -78,13 +78,17 @@ public:
     ~Aie();
     Aie(const std::shared_ptr<xrt_core::device>& device);
 
-    std::vector<ShimDMA> shim_dma;   // shim DMA
+    std::vector<ShimDMA> shim_dma;   // shim DMA // not used anymore, should be cleanedup
 
     /* This is the collections of gmios that are used. */
     std::unordered_map<std::string, adf::gmio_config> gmio_configs;
     std::unordered_map<std::string, std::shared_ptr<adf::gmio_api>> gmio_apis;
 
     std::unordered_map<std::string, adf::plio_config> plio_configs;
+
+    // Collection of TraceGMIOs
+    std::vector<adf::trace_gmio_config> trace_gmio_configs;
+    std::vector<std::shared_ptr<adf::trace_gmio_api>> trace_gmio_apis;
 
     XAie_DevInst *getDevInst();
 

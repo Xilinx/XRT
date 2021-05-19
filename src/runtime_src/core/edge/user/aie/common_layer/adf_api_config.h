@@ -142,6 +142,18 @@ struct plio_config
     short streamId;
 };
 
+struct trace_gmio_config
+{
+  uint32_t id;
+  std::string name;
+  std::string logicalName;
+  uint16_t type;
+  uint16_t shimColumn;
+  uint16_t channelNum;
+  uint16_t streamId;
+  uint16_t burstLength;
+};
+
 struct trace_unit_config
 {
     /// tile column

@@ -165,7 +165,7 @@ struct gmio_type
  *
  * @device: device with loaded meta data
  */
-std::vector<gmio_type>
+std::vector<adf::trace_gmio_config>
 get_trace_gmios(const xrt_core::device* device);
 
 }}} // aie, edge, xrt_core
