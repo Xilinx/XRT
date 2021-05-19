@@ -75,8 +75,8 @@ ReportPcieInfo::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-22s : %s\n") % "Sub Device" % pt_pcie.get<std::string>("sub_device");
   _output << boost::format("  %-22s : %s\n") % "Sub Vendor" % pt_pcie.get<std::string>("sub_vendor");
   _output << boost::format("  %-22s : Gen%sx%s\n") % "PCIe" % pt_pcie.get<std::string>("link_speed_gbit_sec") % pt_pcie.get<std::string>("express_lane_width_count");
-  _output << boost::format("  %-22s : %s\n") % "DMA Thread Count" % pt_pcie.get<std::string>("dma_thread_count");
-  _output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity");
+  _output << boost::format("  %-22s : %s\n") % "DMA Thread Count" % pt_pcie.get<std::string>("dma_thread_count", "0");
+  _output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity", "0");
   _output << boost::format("  %-22s : %s Bytes\n") % "Shared Host Memory" % pt_pcie.get<std::string>("host_mem_size_bytes", "0");
   _output << boost::format("  %-22s : %s Bytes\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
   _output << std::endl;
