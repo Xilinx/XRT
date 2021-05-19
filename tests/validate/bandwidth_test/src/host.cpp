@@ -213,10 +213,10 @@ int main(int argc, char** argv) {
         double mbpersec;
 
         usduration =
-            (double)(std::chrono::duration_cast<std::chrono::microseconds>(timeEnd - timeStart).count() / reps);
+            (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
 
         dnsduration = (double)usduration;
-        dsduration = dnsduration / ((double)1000000);
+        dsduration = dnsduration / ((double)1000000000);
         bpersec = (DATA_SIZE * NUM_KERNEL) / dsduration;
         mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
 
