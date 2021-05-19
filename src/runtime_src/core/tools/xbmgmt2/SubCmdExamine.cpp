@@ -137,7 +137,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     // when json is specified, make sure an accompanying output file is also specified
     if (!vm["format"].defaulted() && sOutput.empty())
-      throw xrt_core::error("ERROR: Please specify an output file to redirect the json to.");
+      throw xrt_core::error("Please specify an output file to redirect the json to");
 
     // Output file
     if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 
