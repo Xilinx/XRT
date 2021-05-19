@@ -136,11 +136,113 @@ void zocl_free_userptr_bo(struct drm_gem_object *gem_obj)
 }
 
 static struct drm_zocl_bo *
+zocl_create_cma_mem(struct drm_device *dev, size_t size)
+{
+	struct drm_gem_cma_object *cma_obj;
+	struct drm_zocl_bo *bo;
+
+	/* Allocate from CMA buffer */
+	cma_obj = drm_gem_cma_create(dev, size);
+	if (IS_ERR(cma_obj))
+		return ERR_PTR(-ENOMEM);
+
+	bo = to_zocl_bo(&cma_obj->base);
+
+	return bo;
+}
+
+static struct drm_zocl_bo *
+zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
+{
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct drm_zocl_bo *bo = NULL;
+	struct zocl_mem *head_mem = mem;
+	int err = -ENOMEM;
+
+	bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+	if (IS_ERR(bo))
+		return ERR_PTR(-ENOMEM);
+
+	err = drm_gem_object_init(dev, &bo->gem_base, size);
+	if (err) {
+		kfree(bo);
+		return ERR_PTR(err);
+	}
+
+	bo->mm_node = kzalloc(sizeof(struct drm_mm_node),
+			GFP_KERNEL);
+	if (IS_ERR(bo->mm_node)) {
+		kfree(bo);
+		drm_gem_object_release(&bo->gem_base);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	mutex_lock(&zdev->mm_lock);
+
+	do { 
+		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
+			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev, size);
+			if (!IS_ERR(cma_bo)) {
+				/* Get the memory in CMA memory region */
+				mutex_unlock(&zdev->mm_lock);
+				kfree(bo->mm_node);
+				kfree(bo);
+				drm_gem_object_release(&bo->gem_base);
+				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
+				return cma_bo;
+			}
+		}
+		else {
+			err = drm_mm_insert_node_generic(mem->zm_mm,
+				bo->mm_node, size, PAGE_SIZE, 0, 0);
+			if (!err) {
+				/* Got memory from this Range memory manager */
+				break;
+			}
+		}
+
+		/* No memory left to this memory manager.
+		 * Try to allocate from similer memory manger link list
+		 */
+		mem = list_entry(mem->zm_mm_list.next, typeof(*mem), zm_mm_list);
+
+	} while (&mem->zm_mm_list != &head_mem->zm_mm_list);
+	
+	if (err) {
+		DRM_ERROR("Fail to allocate BO: size %ld\n",
+				(long)size);
+		mutex_unlock(&zdev->mm_lock);
+		kfree(bo->mm_node);
+		kfree(bo);
+		drm_gem_object_release(&bo->gem_base);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	mutex_unlock(&zdev->mm_lock);
+
+	/*
+	 * Set up a kernel mapping for direct BO access.
+	 * We don't have to fail BO allocation if we can
+	 * not establish the kernel mapping. We just can not
+	 * access BO directly from kernel.
+	 */
+	bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
+
+	err = drm_gem_create_mmap_offset(&bo->gem_base);
+	if (err) {
+		DRM_ERROR("Fail to create BO mmap offset.\n");
+		zocl_free_bo(&bo->gem_base);
+		return ERR_PTR(err);
+	}
+
+	return bo;
+}
+
+static struct drm_zocl_bo *
 zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 {
 	size_t size = PAGE_ALIGN(unaligned_size);
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct drm_gem_cma_object *cma_obj;
 	struct drm_zocl_bo *bo;
 	int err;
 
@@ -156,64 +258,16 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (err < 0)
 			goto free;
 	} else if (user_flags & ZOCL_BO_FLAGS_CMA) {
-		/* Allocate from CMA buffer */
-		cma_obj = drm_gem_cma_create(dev, size);
-		if (IS_ERR(cma_obj))
-			return ERR_PTR(-ENOMEM);
-
-		bo = to_zocl_bo(&cma_obj->base);
+		bo = zocl_create_cma_mem(dev, size);
 	} else {
 		/* We are allocating from a separate BANK, i.e. PL-DDR or LPDDR */
 		unsigned int bank = GET_MEM_BANK(user_flags);
 
 		if (bank >= zdev->num_mem || !zdev->mem[bank].zm_used ||
-		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_PL_LP_DDR)
+		    zdev->mem[bank].zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
 			return ERR_PTR(-EINVAL);
 
-		bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-		if (IS_ERR(bo))
-			return ERR_PTR(-ENOMEM);
-
-		err = drm_gem_object_init(dev, &bo->gem_base, size);
-		if (err) {
-			kfree(bo);
-			return ERR_PTR(err);
-		}
-
-		bo->mm_node = kzalloc(sizeof(struct drm_mm_node),
-		    GFP_KERNEL);
-		if (IS_ERR(bo->mm_node)) {
-			kfree(bo);
-			return ERR_PTR(-ENOMEM);
-		}
-
-		mutex_lock(&zdev->mm_lock);
-		err = drm_mm_insert_node_generic(zdev->mem[bank].zm_mm,
-		    bo->mm_node, size, PAGE_SIZE, 0, 0);
-		if (err) {
-			DRM_ERROR("Fail to allocate BO: size %ld\n",
-			    (long)size);
-			mutex_unlock(&zdev->mm_lock);
-			kfree(bo->mm_node);
-			kfree(bo);
-			return ERR_PTR(-ENOMEM);
-		}
-		mutex_unlock(&zdev->mm_lock);
-
-		/*
-		 * Set up a kernel mapping for direct BO access.
-		 * We don't have to fail BO allocation if we can
-		 * not establish the kernel mapping. We just can not
-		 * access BO directly from kernel.
-		 */
-		bo->vmapping = memremap(bo->mm_node->start, size, MEMREMAP_WC);
-
-		err = drm_gem_create_mmap_offset(&bo->gem_base);
-		if (err) {
-			DRM_ERROR("Fail to create BO mmap offset.\n");
-			zocl_free_bo(&bo->gem_base);
-			return ERR_PTR(err);
-		}
+		bo = zocl_create_range_mem(dev, size, &zdev->mem[bank]);
 	}
 
 	if (user_flags & ZOCL_BO_FLAGS_EXECBUF) {
@@ -905,7 +959,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 	 * its usage.
 	 */
 	if (bank < zdev->num_mem &&
-	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_PL_LP_DDR) {
+	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_RANGE_ALLOC) {
 		update_bank = bank;
 	} else {
 		for (i = 0; i < zdev->num_mem; i++) {
@@ -943,7 +997,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 {
 	struct zocl_mem *memp;
-	int i;
+	int i, j;
 
 	if (!mtopo)
 		return;
@@ -967,16 +1021,35 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		/* In mem_topology, size is in KB */
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
+		INIT_LIST_HEAD(&memp->zm_mm_list);
 
-		if (!strstr(md->m_tag, "MIG") && !strstr(md->m_tag, "LPDDR")) {
+		if (strstr(md->m_tag, "DDR") && (memp->zm_base_addr == 0x0)) {
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
 
 		memp->zm_mm = vzalloc(sizeof(struct drm_mm));
-		memp->zm_type = ZOCL_MEM_TYPE_PL_LP_DDR;
-
+		memp->zm_type = ZOCL_MEM_TYPE_RANGE_ALLOC;
+	
 		drm_mm_init(memp->zm_mm, memp->zm_base_addr, memp->zm_size);
+	}
+
+	/* Create a link list for similar memory manager */
+	for (i = 0; i < zdev->num_mem; i++) {
+		memp = &zdev->mem[i];
+		if (!memp->zm_used)
+			continue;
+
+		for (j = 0; j < zdev->num_mem; j++) {
+			if ((i == j) || !mtopo->m_mem_data[j].m_used)
+				continue;
+
+			if (strstr(mtopo->m_mem_data[i].m_tag, mtopo->m_mem_data[j].m_tag) && 
+					list_empty(&zdev->mem[j].zm_mm_list)) {
+				list_add_tail(&zdev->mem[j].zm_mm_list, &memp->zm_mm_list);
+				memp = &zdev->mem[j];
+			}
+		}
 	}
 }
 
