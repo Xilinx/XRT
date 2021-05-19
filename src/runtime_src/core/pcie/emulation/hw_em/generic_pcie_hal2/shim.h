@@ -37,6 +37,7 @@
 #include "mem_model.h"
 #include "mbscheduler.h"
 #include "mbscheduler_hwemu.h"
+#include "xgq_hwemu.h"
 #endif
 
 #include <sys/param.h>
@@ -344,6 +345,7 @@ using addr_type = uint64_t;
       exec_core* mCore;
       MBScheduler* mMBSch;
       hwemu::xocl_scheduler* m_scheduler;
+      hwemu::xocl_xgq* m_xgq;
 
       // Information extracted from platform linker (for profile/debug)
       bool mIsDebugIpLayoutRead = false;
