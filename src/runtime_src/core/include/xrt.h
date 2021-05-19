@@ -755,25 +755,6 @@ int
 xclExecBuf(xclDeviceHandle handle, xclBufferHandle cmdBO);
 
 /**
- * xclExecBufWithWaitList() - Submit an execution request to the embedded (or software) scheduler
- *
- * @handle:              Device handle
- * @cmdBO:               BO handle containing command packet
- * @num_bo_in_wait_list: Number of BO handles in wait list
- * @bo_wait_list:        BO handles that must complete execution before cmdBO is started
- * Return:               0 or standard error number
- *
- * Submit an exec buffer for execution. The BO handles in the wait
- * list must complete execution before cmdBO is started.  The BO
- * handles in the wait list must have beeen submitted prior to this
- * call to xclExecBufWithWaitList.
- */
-XCL_DRIVER_DLLESPEC
-int
-xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
-                       size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
-
-/**
  * xclExecWait() - Wait for one or more execution events on the device
  *
  * @handle:                  Device handle

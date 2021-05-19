@@ -254,6 +254,13 @@ xclPollCompletion(xclDeviceHandle handle, int min_compl, int max_compl,
 
 /* End XRT Stream Queue APIs */
 
+/* Not supported */
+XRT_DEPRECATED
+XCL_DRIVER_DLLESPEC
+int
+xclExecBufWithWaitList(xclDeviceHandle handle, xclBufferHandle cmdBO,
+                       size_t num_bo_in_wait_list, xclBufferHandle *bo_wait_list);
+
 #ifdef __cplusplus
 }
 #endif
