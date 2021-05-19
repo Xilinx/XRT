@@ -715,6 +715,7 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 		xcmd = ecmd->xcmd;
 		ert_post_process(ert_user, ecmd);
 		ert_release_slot(ert_user, ecmd);
+		set_xcmd_timestamp(xcmd, ecmd->status);
 		xcmd->cb.notify_host(xcmd, ecmd->status);
 		xcmd->cb.free(xcmd);
 		ert_user_free_cmd(ecmd);
@@ -1231,6 +1232,7 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 
 			iowrite32(epkt->header, ert_user->cq_base + slot_addr);
 		}
+		set_xcmd_timestamp(xcmd, KDS_RUNNING);
 
 		/*
 		 * Always try to trigger interrupt to embedded scheduler.

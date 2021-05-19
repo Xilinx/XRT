@@ -47,8 +47,7 @@ class shim {
   static const int BUFFER_ALIGNMENT = 0x80; // TODO: UKP
 public:
   ~shim();
-  shim(unsigned index, const char *logfileName,
-           xclVerbosityLevel verbosity);
+  shim(unsigned index);
 
   int mapKernelControl(const std::vector<std::pair<uint64_t, size_t>>& offsets);
   void *getVirtAddressOfApture(xclAddressSpace space, const uint64_t phy_addr, uint64_t& offset);
@@ -155,7 +154,6 @@ private:
   const int mBoardNumber = -1;
   std::ofstream mLogStream;
   std::ifstream mVBNV;
-  xclVerbosityLevel mVerbosity;
   int mKernelFD;
   static std::map<uint64_t, uint32_t *> mKernelControl;
   std::unique_ptr<xrt_core::bo_cache> mCmdBOCache;

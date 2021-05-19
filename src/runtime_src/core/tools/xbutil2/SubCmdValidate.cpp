@@ -285,7 +285,8 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { test_dir.parent_path().string(), 
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, os_stdout, os_stderr, true);
+      constexpr static int MAX_TEST_DURATION = 60;
+      int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
       }
@@ -319,10 +320,11 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
                                       "-d", std::to_string(_dev.get()->get_device_id()) };
     int exit_code;    
     try {
+      constexpr static int MAX_TEST_DURATION = 60;
       if (py.find(".exe") != std::string::npos)
-        exit_code = XBU::runScript("", xrtTestCasePath, args, os_stdout, os_stderr, true);
+        exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       else
-        exit_code = XBU::runScript("python", xrtTestCasePath, args, os_stdout, os_stderr, true);
+        exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
 
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
@@ -817,6 +819,17 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   // get DDR bank count from mem_topology if possible
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
+
+  std::vector<std::string> dma_thr ;
+
+  try {
+   dma_thr = xrt_core::device_query<xrt_core::query::dma_threads_raw>(_dev);
+  } catch(...){}
+
+  if (dma_thr.size() == 0){
+    _ptTest.put("status", "skipped");
+    return ;
+  }
 
   auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
   size_t totalSize = 0;

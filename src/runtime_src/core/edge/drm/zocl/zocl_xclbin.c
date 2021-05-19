@@ -238,9 +238,12 @@ zocl_read_sect(enum axlf_section_kind kind, void *sect,
 
 	err = xrt_xclbin_section_info(axlf_full, kind, &offset, &size);
 	if (err) {
-		DRM_WARN("get section %s err: %d ",
+		DRM_INFO("skip kind %d(%s) return code: %d", kind,
 		    xrt_xclbin_kind_to_string(kind), err);
 		return 0;
+	} else {
+		DRM_INFO("found kind %d(%s)", kind,
+		    xrt_xclbin_kind_to_string(kind));
 	}
 
 	*sect_tmp = vmalloc(size);
@@ -477,14 +480,18 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	size = zocl_offsetof_sect(BITSTREAM_PARTIAL_PDI, &section_buffer,
 	    axlf, xclbin);
 	if (size > 0) {
+		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_partial(zdev, section_buffer, size);
+		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
 	}
 
 	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
 	if (size > 0) {
+		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_partial(zdev, section_buffer, size);
+		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
 	}
@@ -728,7 +735,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		return -EFAULT;
 	}
 
-	/* After this lock till unlock is an atomic context */ 
+	/* After this lock till unlock is an atomic context */
 	write_lock(&zdev->attr_rwlock);
 
 	/*
@@ -740,8 +747,10 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
 		if (is_aie_only(axlf)) {
+			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
 			    client);
+			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				DRM_WARN("read xclbin: fail to load AIE");
 			else {
@@ -794,15 +803,17 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * Perform dtbo overlay for both static and rm region
 		 * axlf should have dtbo in PARTITION_METADATA section and
 		 * bitstream in BITSTREAM section.
-		 */ 
+		 */
+		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA);
+		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 
 	} else
 #endif
 	if (zdev->pr_isolation_addr) {
-	/* For PR support platform, device-tree has configured addr */
+		/* For PR support platform, device-tree has configured addr */
 		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU_PR) {
@@ -820,21 +831,29 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			 * Make sure we load PL bitstream first,
 			 * if there is one, before loading AIE PDI.
 			 */
+			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
+			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin,
 			    BITSTREAM_PARTIAL_PDI);
+			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
+			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 		}
 	} else if (is_aie_only(axlf)) {
+		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
+		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 
@@ -847,7 +866,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * Load full bitstream, enabled in xrt runtime config
 		 * and xclbin has full bitstream and its not hw emulation
 		 */
+		write_unlock(&zdev->attr_rwlock);
 		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 	}

@@ -146,7 +146,7 @@ class ip_impl
 
       ip = ips.front();
 
-      auto all_cus = xrt_core::xclbin::get_cus(ip_layout);  // sort order
+      auto all_cus = device->get_cus(xclbin_uuid);  // sort order
       auto itr = std::find(all_cus.begin(), all_cus.end(), ip->m_base_address);
       if (itr == all_cus.end())
         throw xrt_core::internal_error("unexpected error");

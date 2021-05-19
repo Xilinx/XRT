@@ -41,6 +41,7 @@ namespace xdp {
 
     // The number of files created by this writer (in continuous offload)
     uint32_t fileNum ;
+    static bool warnFileNum;
 
   protected:
     // Connection to the database where all the information is stored

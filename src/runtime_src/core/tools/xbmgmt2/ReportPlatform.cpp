@@ -48,7 +48,7 @@ ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
  * before adding them to the property tree
  */
 static boost::property_tree::ptree
-mac_addresses(const xrt_core::device * dev, const BoardInfo& info)
+mac_addresses(const BoardInfo& info)
 {
   boost::property_tree::ptree ptree;
   auto mac_contiguous_num = info.mMacContiguousNum;
@@ -260,7 +260,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_platform.put_child("available_partitions", pt_available_partitions);
   }
   
-  auto macs = mac_addresses(device, info);
+  auto macs = mac_addresses(info);
   if(!macs.empty())
     pt_platform.put_child("macs", macs);
 

@@ -61,8 +61,6 @@ public:
     XDP_EXPORT
     void stop_offload();
 
-    inline OffloadThreadStatus get_status() { return status ; }
-
 public:
     XDP_EXPORT
     virtual bool read_trace_init(bool circ_buf = false);
@@ -87,9 +85,6 @@ public:
     void read_trace() {
       m_read_trace(true);
     };
-    bool circular_buffer_overwrite_detected() {
-      return m_circ_buf_overwrite_detected;
-    }
     DeviceTraceLogger* getDeviceTraceLogger() {
       return deviceTraceLogger;
     };
@@ -98,6 +93,10 @@ public:
       min_offload_rate = m_circ_buf_min_rate;
       requested_offload_rate = m_circ_buf_cur_rate;
       return m_use_circ_buf;
+    };
+    inline OffloadThreadStatus get_status() {
+      std::lock_guard<std::mutex> lock(status_lock);
+      return status;
     };
     inline bool continuous_offload() { return continuous ; }
     inline void set_continuous(bool value = true) { continuous = value ; }
@@ -114,12 +113,14 @@ protected:
     DeviceIntf* dev_intf;
 private:
     DeviceTraceLogger* deviceTraceLogger;
-
     std::vector<xclTraceResults> m_trace_vector = {};
     std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;
     uint64_t m_trbuf_offset = 0;
+    bool m_trbuf_full = false;
+    bool trbuf_offload_done = false;
+    uint64_t m_trbuf_addr = 0;
 
 protected:
     bool m_initialized = false;
@@ -131,19 +132,17 @@ private:
     void read_trace_fifo(bool force=true);
     void read_trace_s2mm(bool force=true);
     uint64_t read_trace_s2mm_partial();
-    void config_s2mm_reader(uint64_t wordCount);
+    bool config_s2mm_reader(uint64_t wordCount);
     bool init_s2mm(bool circ_buf);
     void reset_s2mm();
     bool should_continue();
     void train_clock_continuous();
     void offload_device_continuous();
-
-    bool m_trbuf_full = false;
+    void offload_finished();
 
     // Clock Training Params
     bool m_force_clk_train = true;
     std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
-
 
     //Circular Buffer Tracking
     bool m_use_circ_buf = false;
@@ -151,10 +150,10 @@ private:
     // 100 mb of trace per second
     uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
     uint64_t m_circ_buf_cur_rate = 0;
-    bool m_circ_buf_overwrite_detected = false;
 
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;
+    bool m_trace_warn_big_done = false;
 };
 
 }

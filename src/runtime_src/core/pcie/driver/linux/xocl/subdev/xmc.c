@@ -4920,11 +4920,37 @@ xmc_qsfp_diag_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 	return count;
 }
 
+/*
+ * The CMC_OP_QSFP_I2C_BYTE_READ|WRITE always fill first 256 bytes if
+ * page and level set to 0, however if we request offset beyond lower page 0
+ * we want exact data at offset location, thus we should pass correct
+ * page,level and offset instead of always set page,level to 0.
+ */
+static void
+xmc_qsfp_i2c_count_offset(struct xocl_xmc *xmc, loff_t off,
+	u32 *page, u32 *level, u32 *offset)
+{
+	if (off < 128) {
+		*page = 0;
+		*level = 0;
+		*offset = off;
+	} else {
+		/* set page, level and skip first 0-127 bytes */
+		*page = (off >> 7) - 1;
+		*level = 1;
+		*offset = (off % 128) + 128;
+	}
+
+	xocl_dbg(&xmc->pdev->dev, "page %d, level %d, offset %d",
+		*page, *level, *offset);
+}
+
 static ssize_t
 xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
 {
 	/* current protocl only support one byte */
-	int page = 0, level = 0;
+	u32 page, level, offset;
+	/* current protocl only support one byte */
 	u32 data_size = sizeof(u8);
 	int ret = 0;
 
@@ -4933,6 +4959,7 @@ xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 
 	/* we don't limit the offset for reading */
 	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld port %d", off, count, port);
+	xmc_qsfp_i2c_count_offset(xmc, off, &page, &level, &offset);
 
 	mutex_lock(&xmc->mbx_lock);
 
@@ -4942,7 +4969,7 @@ xmc_qsfp_i2c_read(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size
 	xmc->mbx_pkt.qsfp_byte.port = port;
 	xmc->mbx_pkt.qsfp_byte.page = page;
 	xmc->mbx_pkt.qsfp_byte.level = level;
-	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
+	xmc->mbx_pkt.qsfp_byte.offset = offset;
 	ret = xmc_send_pkt(xmc);
 	if (ret) {
 		xocl_info(&xmc->pdev->dev, "send pkt ret %d", ret);
@@ -4973,7 +5000,7 @@ out:
 static inline ssize_t
 xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, size_t count)
 {
-	int page = 0, level = 0;
+	u32 page, level, offset;
 	int ret = 0;
 	size_t max_data_size;
 	/* current protocl only support one byte */
@@ -4984,6 +5011,7 @@ xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 
 	/* we don't limit the offset for reading */
 	xocl_dbg(&xmc->pdev->dev, "off %lld count %ld port %d", off, count, port);
+	xmc_qsfp_i2c_count_offset(xmc, off, &page, &level, &offset);
 
 	max_data_size = XMC_PKT_MAX_PAYLOAD_SZ * sizeof(u32) -
 		offsetof(struct xmc_pkt_qsfp_byte_rw_op, data);
@@ -5004,7 +5032,7 @@ xmc_qsfp_i2c_write(struct xocl_xmc *xmc, int port, char *buffer, loff_t off, siz
 	xmc->mbx_pkt.qsfp_byte.port = port;
 	xmc->mbx_pkt.qsfp_byte.page = page;
 	xmc->mbx_pkt.qsfp_byte.level = level;
-	xmc->mbx_pkt.qsfp_byte.offset = off / data_size;
+	xmc->mbx_pkt.qsfp_byte.offset = offset;
 	memcpy(xmc->mbx_pkt.qsfp_byte.data, buffer, data_size);
 
 	xocl_dbg(&xmc->pdev->dev, "write 0x%x\n", buffer[0]);

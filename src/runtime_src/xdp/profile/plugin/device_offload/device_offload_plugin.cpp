@@ -338,6 +338,8 @@ namespace xdp {
       if (offloader->continuous_offload())
       {
         offloader->stop_offload() ;
+        // To avoid a race condition, wait until the offloader has stopped
+        while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
       }
       else
       {
@@ -365,17 +367,10 @@ namespace xdp {
       events.mark("Trace FIFO Full");
     }
 
-    if (offloader->has_ts2mm()) {
-      if (offloader->trace_buffer_full()) {
+    if (offloader->has_ts2mm() && offloader->trace_buffer_full()) {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
         xrt::profile::user_event events;
         events.mark("Trace Buffer Full");
-      }
-      if (offloader->circular_buffer_overwrite_detected()) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
-        xrt::profile::user_event events;
-        events.mark("Trace Buffer Overwrite Detected");
-      }
     }
   }
 

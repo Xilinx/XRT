@@ -796,6 +796,7 @@ command_queue_fetch(size_type slot_idx)
   auto val = read_reg(slot_addr);
  
   if (val & AP_START) {
+    DMSGF("slot idx 0x%x header 0x%x\r\n", slot_idx, val);
     write_reg(slot_addr,0x0);// clear command queue
     if (echo) {
       notify_host(slot_idx);
@@ -805,6 +806,7 @@ command_queue_fetch(size_type slot_idx)
     slot_cache[slot_idx] = val;
     addr_type addr = cu_section_addr(slot_addr);
     slot.cu_idx = read_reg(addr);
+    slot.opcode = opcode(val);
     slot.header_value = val;
     slot.regmap_addr = regmap_section_addr(val,slot_addr);
     slot.regmap_size = regmap_size(val);

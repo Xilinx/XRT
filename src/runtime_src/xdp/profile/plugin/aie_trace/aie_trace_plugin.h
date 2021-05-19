@@ -59,6 +59,9 @@ namespace xdp {
       void setFlushMetrics(uint64_t deviceId, void* handle);
 
     private:
+      // Runtime or compile-time specified trace metrics?
+      bool runtimeMetrics = true;
+
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;
 

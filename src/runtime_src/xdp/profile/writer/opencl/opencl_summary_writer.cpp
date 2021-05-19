@@ -34,6 +34,7 @@
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 #ifdef _WIN32
 /* Disable warning for use of localtime */
@@ -432,6 +433,11 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeKernelExecutionSummary()
   {
+    // On Edge hardware emulation, the numbers in the kernel execution summary
+    //  don't align with the other numbers we display, so don't print this
+    //  table.
+    if (getFlowMode() == HW_EMU && isEdge()) return ;
+
     // Caption
     fout << "Kernel Execution" ;
     if (getFlowMode() == HW_EMU)
@@ -1459,6 +1465,11 @@ namespace xdp {
 
   void OpenCLSummaryWriter::writeTopKernelExecution()
   {
+    // On Edge hardware emulation, the numbers for the top kernel executions
+    //  don't align with the other numbers we display, so don't print this
+    //  table.
+    if (getFlowMode() == HW_EMU && isEdge()) return ;
+
     // Caption
     fout << "Top Kernel Execution" << std::endl ;
 
@@ -1626,8 +1637,8 @@ namespace xdp {
     
     // Columns
     fout << "Parameter" << ","
-	 << "Element"   << ","
-	 << "Value"     << "," << std::endl ;
+         << "Element"   << ","
+         << "Value"     << "," << std::endl ;
 
     for (auto rule : guidanceRules)
     {
@@ -1637,6 +1648,8 @@ namespace xdp {
 
   bool OpenCLSummaryWriter::write(bool openNewFile)
   {
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", 
+                            "OpenCLSummaryWriter: write contents");
     writeHeader() ;                                 fout << std::endl ;
     writeAPICallSummary() ;                         fout << std::endl ;
     writeKernelExecutionSummary() ;                 fout << std::endl ;

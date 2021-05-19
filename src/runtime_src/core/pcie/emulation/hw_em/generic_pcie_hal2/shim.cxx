@@ -1070,11 +1070,6 @@ namespace xclhwemhal2 {
       }
 #endif
     }
-    else {
-      std::string dMsg = "ERROR: [HW-EMU 22] Invalid " + sim_path + " constructed. Please make sure to create the xclbin with hw_emu.debugMode=wdb.";
-      logMessage(dMsg, 0);
-      return -1;
-    }
 
     if (mLogStream.is_open())
       mLogStream << __func__ << " Child process launched... " << std::endl;
@@ -2764,8 +2759,10 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     PRINTENDFUNC;
     return -1;
   }
-
-  if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
+   
+  // Disabling the m2m for timebeing as it is not working as expected. So still data is getting transferred thru DMA.
+  // Will enable this logic unless we have a clarity from the m2m hw_emu kernel. Please do not remove this code 
+  /*if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
 
     char hostBuf[M2M_KERNEL_ARGS_SIZE];
     std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
@@ -2798,7 +2795,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
 
     PRINTENDFUNC;
     return 0;
-  }
+  }*/
 
   // source buffer is host_only and destination buffer is device_only
   if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {

@@ -241,8 +241,12 @@ static ssize_t
 kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
 
-	return show_kds_stat(&XDEV(xdev)->kds, buf);
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_stat(&XDEV(xdev)->kds, buf);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
 }
 static DEVICE_ATTR_RO(kds_stat);
 
@@ -250,8 +254,12 @@ static ssize_t
 kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
 
-	return show_kds_custat_raw(&XDEV(xdev)->kds, buf);
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_custat_raw(&XDEV(xdev)->kds, buf);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
 }
 static DEVICE_ATTR_RO(kds_custat_raw);
 
@@ -259,8 +267,12 @@ static ssize_t
 kds_scustat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	ssize_t ret;
 
-	return show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
+	mutex_lock(&xdev->dev_lock);
+	ret = show_kds_scustat_raw(&XDEV(xdev)->kds, buf);
+	mutex_unlock(&xdev->dev_lock);
+	return ret;
 }
 static DEVICE_ATTR_RO(kds_scustat_raw);
 

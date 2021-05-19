@@ -31,6 +31,12 @@
 #include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 
+#ifdef _WIN32
+# pragma warning( disable : 4189 4100 )
+# pragma comment(lib, "Ws2_32.lib")
+/* need to link the lib for the following to work */
+#define le16toh(x) ((((((uint16_t)(x)) >> 8))|((((uint16_t)(x)) << 8)))
+#endif
 
 #define INVALID_ID      0xffff
 

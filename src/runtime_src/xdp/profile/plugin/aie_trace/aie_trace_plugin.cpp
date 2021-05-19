@@ -38,6 +38,35 @@
 #define NUM_MEMORY_TRACE_EVENTS 8
 #define CORE_BROADCAST_EVENT_BASE 107
 
+namespace {
+  static void* fetchAieDevInst(void* devHandle)
+  {
+    auto drv = ZYNQ::shim::handleCheck(devHandle);
+    if (!drv)
+      return nullptr ;
+    auto aieArray = drv->getAieArray() ;
+    if (!aieArray)
+      return nullptr ;
+    return aieArray->getDevInst() ;
+  }
+
+  static void* allocateAieDevice(void* devHandle)
+  {
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    if (!aieDevInst)
+      return nullptr ;
+    return new xaiefal::XAieDev(aieDevInst, false) ;
+  }
+
+  static void deallocateAieDevice(void* aieDevice)
+  {
+    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    if (object != nullptr)
+      delete object ;
+  }
+} // end anonymous namespace
+
 namespace xdp {
 
   AieTracePlugin::AieTracePlugin()
@@ -156,19 +185,33 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
-    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+    if (!runtimeMetrics) {
+      std::stringstream msg;
+      msg << "Found compiler trace option of " << compilerOptions.event_trace 
+          << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+      return true;
+    }
+
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    xaiefal::XAieDev* aieDevice =
+      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-          "Unable to get AIE device. There will be no AIE event trace.");
+          "Unable to get AIE device. AIE event trace will not be available.");
       return false;
     }
 
     // Get AIE tiles and metric set
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. If metrics were not specified at compile-time, then AIE event trace will not be available.");
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       return false;
     }
 
@@ -205,7 +248,6 @@ namespace xdp {
 
     // Capture all tiles across all graphs
     // NOTE: future releases will support the specification of tile subsets
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
     std::vector<xrt_core::edge::aie::tile_type> tiles;
     for (auto& graph : graphs) {
@@ -253,13 +295,15 @@ namespace xdp {
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
 
-        perfCounter->changeThreshold( coreCounterEventValues.at(i) );
-
-        // Set reset event based on counter number
         // NOTE: store events for later use in trace
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
+        // Following function is broken on FAL so we need to directly call aie driver api
+        // perfCounter->changeThreshold(coreCounterEventValues.at(i));
+        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_CORE_MOD, idx, coreCounterEventValues.at(i));
 
+        // Set reset event based on counter number
         perfCounter->changeRstEvent(mod, counterEvent);
         coreEvents.push_back(counterEvent);
 
@@ -272,7 +316,6 @@ namespace xdp {
 
         // Update config file
         uint8_t phyEvent = 0;
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
         auto& cfg = cfgTile->core_trace_config.pc[idx];
         XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
         cfg.start_event = phyEvent;
@@ -296,11 +339,13 @@ namespace xdp {
         ret = perfCounter->reserve();
         if (ret != XAIE_OK) break;
 
-        perfCounter->changeThreshold( memoryCounterEventValues.at(i) );
-
         // Set reset event based on counter number
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
+        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
+        // Following function is broken on FAL so we need to directly call aie driver api
+        // perfCounter->changeThreshold(memoryCounterEventValues.at(i));
+        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_MEM_MOD, idx, memoryCounterEventValues.at(i));
 
         perfCounter->changeRstEvent(mod, counterEvent);
         memoryEvents.push_back(counterEvent);
@@ -313,7 +358,6 @@ namespace xdp {
 
         // Update config file
         uint8_t phyEvent = 0;
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
         auto& cfg = cfgTile->memory_trace_config.pc[idx];
         XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
         cfg.start_event = phyEvent;
@@ -562,6 +606,9 @@ namespace xdp {
 
   void AieTracePlugin::updateAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -646,10 +693,12 @@ namespace xdp {
     }
 
     // Create runtime config file
-    std::string configFile = "aie_event_runtime_config.json";
-    writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
-                                               deviceId, metricSet));
-    (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
+    if (runtimeMetrics) {
+      std::string configFile = "aie_event_runtime_config.json";
+      writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
+                                                 deviceId, metricSet));
+      (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
+    }
 
     // Create trace output files
     for(uint64_t n = 0; n < numAIETraceOutput; n++) {
@@ -711,8 +760,11 @@ namespace xdp {
 
   void AieTracePlugin::setFlushMetrics(uint64_t deviceId, void* handle)
   {
-    auto aieDevInst = (db->getStaticInfo()).getAieDevInst(handle);
-    auto aieDevice  = (db->getStaticInfo()).getAieDevice(handle);
+    XAie_DevInst* aieDevInst =
+      static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
+    xaiefal::XAieDev* aieDevice =
+      static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
+
     if (!aieDevInst || !aieDevice) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no flushing of AIE event trace.");
@@ -721,22 +773,23 @@ namespace xdp {
 
     // New start & end events for trace control and counters
     coreTraceStartEvent = XAIE_EVENT_TIMER_SYNC_CORE;
-	  coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
+    //coreTraceStartEvent = XAIE_EVENT_TRUE_CORE;
+    coreTraceEndEvent   = XAIE_EVENT_TIMER_VALUE_REACHED_CORE;
 
     // Timer trigger value: 300* 1020*1020 = 312,120,000 = 0x129A92C0
     // NOTES: Each packet has 7 payload words (one word: 32bits)
     //        We need 64 packets, so we need 7 * 64 = 448 words.
     //        Existing counters generates 1.5 words for every perf counter 2 triggers.
     //        Thus, 300 (299 exactly,, but 300 would have no harm) perf 2 counter events.
-    uint32_t timerTrigValueLow  = 0x92C0;
-    uint32_t timerTrigValueHigh = 0x129A;
+    uint32_t timerTrigValueLow  = 0x129A92C0;
+    uint32_t timerTrigValueHigh = 0x0;
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
 
     // Reconfigure profile counters
     for (int i=0; i < coreCounters.size(); ++i) {
-      // 1. For every tile, change trace start/stop and timer
+      // 1. For every tile, stop trace & change trace start/stop and timer
       auto& tile = coreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
@@ -749,12 +802,9 @@ namespace xdp {
         prevRow        = row;
         auto& core     = aieDevice->tile(col, row + 1).core();
         auto coreTrace = core.traceControl();
-        coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
 
-        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
-        XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
-                                  timerTrigValueLow, timerTrigValueHigh);
-        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
+        coreTrace->stop();
+        coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
       }
 
       // 2. For every counter, change start/stop events
@@ -768,10 +818,34 @@ namespace xdp {
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
       counter->start();
     }
+
+    // 3. For every tile, restart trace and reset timer
+    prevCol = 0;
+    prevRow = 0;
+    for (int i=0; i < coreCounters.size(); ++i) {
+      auto& tile = coreCounterTiles.at(i);
+      auto  col  = tile.col;
+      auto  row  = tile.row;
+      if ((col != prevCol) || (row != prevRow)) {
+        prevCol        = col;
+        prevRow        = row;
+        auto& core     = aieDevice->tile(col, row + 1).core();
+        auto coreTrace = core.traceControl();
+        coreTrace->start();
+
+        XAie_LocType tileLocation = XAie_TileLoc(col, row + 1);
+        XAie_SetTimerTrigEventVal(aieDevInst, tileLocation, XAIE_CORE_MOD,
+                                  timerTrigValueLow, timerTrigValueHigh);
+        XAie_ResetTimer(aieDevInst, tileLocation, XAIE_CORE_MOD);
+      }
+    }
   }
 
   void AieTracePlugin::flushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -787,6 +861,9 @@ namespace xdp {
 
   void AieTracePlugin::finishFlushAIEDevice(void* handle)
   {
+    if (handle == nullptr)
+      return;
+    
     char pathBuf[512];
     memset(pathBuf, 0, 512);
     xclGetDebugIPlayoutPath(handle, pathBuf, 512);
@@ -795,9 +872,9 @@ namespace xdp {
 
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
 
-    if(deviceIdToHandle[deviceId] != handle) {
+    auto itr =  deviceIdToHandle.find(deviceId);
+    if ((itr == deviceIdToHandle.end()) || (itr->second != handle))
       return;
-    }
 
     // Set metrics to flush the trace FIFOs
     // NOTE: The data mover uses a burst length of 256, so we need 64 more 

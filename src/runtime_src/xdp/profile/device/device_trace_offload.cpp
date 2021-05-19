@@ -18,6 +18,8 @@
 
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
+#include "core/common/message.h"
+#include "experimental/xrt_profile.h"
 
 namespace xdp {
 
@@ -50,8 +52,10 @@ DeviceTraceOffload::~DeviceTraceOffload()
 
 void DeviceTraceOffload::offload_device_continuous()
 {
-  if (!m_initialized && !read_trace_init(true))
+  if (!m_initialized && !read_trace_init(true)) {
+    offload_finished();
     return;
+  }
 
   while (should_continue()) {
     train_clock();
@@ -62,8 +66,7 @@ void DeviceTraceOffload::offload_device_continuous()
   // Do a final forced read
   m_read_trace(true);
   read_trace_end();
-
-  status = OffloadThreadStatus::STOPPED;
+  offload_finished();
 }
 
 void DeviceTraceOffload::train_clock_continuous()
@@ -73,7 +76,7 @@ void DeviceTraceOffload::train_clock_continuous()
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
 
-  status = OffloadThreadStatus::STOPPED;
+  offload_finished();
 }
 
 bool DeviceTraceOffload::should_continue()
@@ -101,6 +104,13 @@ void DeviceTraceOffload::stop_offload()
   std::lock_guard<std::mutex> lock(status_lock);
   if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPING;
+}
+
+void DeviceTraceOffload::offload_finished()
+{
+  std::lock_guard<std::mutex> lock(status_lock);
+  if (status == OffloadThreadStatus::STOPPED) return ;
+  status = OffloadThreadStatus::STOPPED;
 }
 
 void DeviceTraceOffload::train_clock()
@@ -161,7 +171,7 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 {
   // reset flags
   m_trbuf_full = false;
-  m_circ_buf_overwrite_detected = false;
+  trbuf_offload_done = false;
 
   if (has_ts2mm()) {
     m_initialized = init_s2mm(circ_buf);
@@ -175,6 +185,15 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
 
 void DeviceTraceOffload::read_trace_end()
 {
+  // If we use circular buffer then, final trace read
+  // might stop at trace buffer boundry and to read the entire
+  // trace, we need one last read
+  if (m_use_circ_buf && m_trbuf_sz == m_trbuf_alloc_sz) {
+    debug_stream
+      << "Try to read left over circular buffer data" << std::endl;
+    m_read_trace(true);
+  }
+
   // Trace logger will clear it's state and add approximations 
   // for pending events
   m_trace_vector.clear();
@@ -202,7 +221,9 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   // There's enough data available
   m_wordcount_old = wordcount;
 
-  config_s2mm_reader(wordcount);
+  if (!config_s2mm_reader(wordcount))
+    return;
+
   uint64_t nBytes = m_trbuf_sz - m_trbuf_offset;
 
   auto start = std::chrono::steady_clock::now();
@@ -211,10 +232,16 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   debug_stream
     << "Elapsed time in microseconds for sync : "
     << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count()
-    << " µs" << std::endl;
+    << " µs" << " nBytes : " << nBytes << std::endl;
 
   if (!host_buf)
     return;
+
+  // Print warning if processing large amount of trace
+  if (nBytes > TS2MM_WARN_BIG_BUF_SIZE && !m_trace_warn_big_done) {
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BIG_BUF);
+    m_trace_warn_big_done = true;
+  }
 
   dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
   deviceTraceLogger->processTraceData(m_trace_vector);
@@ -224,8 +251,11 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
     m_trbuf_full = true;
 }
 
-void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
+bool DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
 {
+  if (trbuf_offload_done)
+    return false;
+
   auto bytes_written = wordCount * TRACE_PACKET_SIZE;
   auto bytes_read = m_rollover_count*m_trbuf_alloc_sz + m_trbuf_sz;
 
@@ -233,17 +263,24 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
   if (bytes_written > bytes_read + m_trbuf_alloc_sz) {
     // Don't read any data
     m_trbuf_offset = m_trbuf_sz;
-    m_circ_buf_overwrite_detected = true;
+    trbuf_offload_done = true;
+
+    // Add warnings and user markers
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE);
+    xrt::profile::user_event events;
+    events.mark("Trace Buffer Overwrite Detected");
+
     stop_offload();
-    return;
+    return false;
   }
 
   // Start Offload from previous offset
   m_trbuf_offset = m_trbuf_sz;
   if (m_trbuf_offset == m_trbuf_alloc_sz) {
     if (!m_use_circ_buf) {
+      trbuf_offload_done = true;
       stop_offload();
-      return;
+      return false;
     }
     m_rollover_count++;
     m_trbuf_offset = 0;
@@ -259,9 +296,12 @@ void DeviceTraceOffload::config_s2mm_reader(uint64_t wordCount)
     << "DeviceTraceOffload::config_s2mm_reader "
     << "Reading from 0x"
     << std::hex << m_trbuf_offset << " to 0x" << m_trbuf_sz << std::dec
-    << " Written : " << wordCount * 8
-    << " rollover count : " << m_rollover_count
+    << " Bytes Read : " << bytes_read
+    << " Bytes Written : " << bytes_written
+    << " Rollovers : " << m_rollover_count
     << std::endl;
+
+  return true;
 }
 
 bool DeviceTraceOffload::init_s2mm(bool circ_buf)
@@ -297,8 +337,8 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf)
   }
 
   // Data Mover will write input stream to this address
-  uint64_t bufAddr = dev_intf->getDeviceAddr(m_trbuf);
-  dev_intf->initTS2MM(m_trbuf_alloc_sz, bufAddr, m_use_circ_buf);
+  m_trbuf_addr = dev_intf->getDeviceAddr(m_trbuf);
+  dev_intf->initTS2MM(m_trbuf_alloc_sz, m_trbuf_addr, m_use_circ_buf);
   return true;
 }
 
@@ -307,6 +347,11 @@ void DeviceTraceOffload::reset_s2mm()
   debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (!m_trbuf)
     return;
+
+  // Need to re-inititlize datamover with circular buffer off for reset to work properly
+  if (m_use_circ_buf)
+    dev_intf->initTS2MM(0, m_trbuf_addr, 0);
+
   dev_intf->resetTS2MM();
   dev_intf->freeTraceBuf(m_trbuf);
   m_trbuf = 0;

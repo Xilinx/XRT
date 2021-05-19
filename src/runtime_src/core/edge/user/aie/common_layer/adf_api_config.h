@@ -40,6 +40,7 @@ struct driver_config
 struct aiecompiler_options
 {
     bool broadcast_enable_core;
+    std::string event_trace;
 };
 
 struct graph_config
