@@ -75,15 +75,27 @@ namespace hwemu {
     }
   }
 
-  void xgq_queue::iowrite32(uint32_t addr, uint32_t data)
+  void xgq_queue::iowrite32_ctrl(uint32_t addr, uint32_t data)
   {
     device->xclWrite(XCL_ADDR_KERNEL_CTRL, addr, (void*)(&data), 4);
   }
 
-  uint32_t xgq_queue::ioread32(uint32_t addr)
+  uint32_t xgq_queue::ioread32_ctrl(uint32_t addr)
   {
     uint32_t value;
     device->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void*)(&value), 4);
+    return value;
+  }
+
+  void xgq_queue::iowrite32_mem(uint32_t addr, uint32_t data)
+  {
+    device->xclWrite(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&data), 4);
+  }
+
+  uint32_t xgq_queue::ioread32_mem(uint32_t addr)
+  {
+    uint32_t value;
+    device->xclRead(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&value), 4);
     return value;
   }
 
@@ -94,7 +106,7 @@ namespace hwemu {
 
     uint64_t addr = sub_base + (sub_tail & 0x7FF) * slot_size;
     for (int i = xcmd->sq_buf.size() - 1; i >= 0; i--)
-      iowrite32(addr + i * 4, xcmd->sq_buf.at(i));
+      iowrite32_mem(addr + i * 4, xcmd->sq_buf.at(i));
 
     sub_tail++;
 
@@ -104,23 +116,23 @@ namespace hwemu {
   void xgq_queue::read_completion(xrt_com_queue_entry& ccmd)
   {
     for (uint32_t i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
-      ccmd.data[i] = ioread32(com_base + com_tail * XRT_COM_Q1_SLOT_SIZE + i * 4);
+      ccmd.data[i] = ioread32_mem(com_base + com_tail * XRT_COM_Q1_SLOT_SIZE + i * 4);
   }
 
   void xgq_queue::update_doorbell()
   {
-    iowrite32(xgq_sub_base, sub_tail - 1);
+    iowrite32_ctrl(xgq_sub_base, sub_tail - 1);
   }
 
   void xgq_queue::clear_sub_slot_state(uint64_t sub_slot)
   {
-    iowrite32(xgq_sub_base + sub_slot, 0);
+    iowrite32_mem(xgq_sub_base + sub_slot, 0);
   }
 
   uint16_t xgq_queue::check_doorbell()
   {
     while (1) {
-      uint32_t data = ioread32(xgq_com_base);
+      uint32_t data = ioread32_ctrl(xgq_com_base);
       if (data & 0x1000)
         return data & 0xFFFF;
     }
@@ -140,7 +152,7 @@ namespace hwemu {
       update_doorbell();
       pending_cmds.clear();
       com_cv.notify_all();
-   }
+    }
 
     return 0;
   }
