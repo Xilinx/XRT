@@ -581,7 +581,14 @@ public:
            ? static_cast<char*>(parent->get_host_ptr())+offset
            : nullptr)
   , m_parent(parent),m_offset(offset)
-  {}
+  {
+    // sub buffer inherits parent CL_MEM_ALLOC_HOST_PTR and creates
+    // its own ubuf even though it shares the buffer hbuf with parent
+    auto phbuf = static_cast<const char*>(m_parent->get_host_ptr());
+    auto shbuf = static_cast<const char*>(get_host_ptr());
+    if (shbuf && (phbuf + m_offset != shbuf))
+      set_extra_sync();
+  }
 
   virtual size_t
   get_sub_buffer_offset() const
@@ -632,6 +639,7 @@ public:
     }
     return false;
   }
+
 private:
   void
   make_resident(const device* device)

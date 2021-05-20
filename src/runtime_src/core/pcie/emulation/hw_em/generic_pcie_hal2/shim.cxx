@@ -448,8 +448,9 @@ namespace xclhwemhal2 {
     }
     if(xclemulation::config::getInstance()->isNewMbscheduler()) {
         m_scheduler = new hwemu::xocl_scheduler(this);
-    }
-    else {
+    } else if (xclemulation::config::getInstance()->isXgqMode()) {
+        m_xgq = new hwemu::xocl_xgq(this);
+    } else {
         mCore = new exec_core;
         mMBSch = new MBScheduler(this);
         mMBSch->init_scheduler_thread();
@@ -3056,8 +3057,16 @@ int HwEmShim::xclExecBuf(unsigned int cmdBO)
       ret = m_scheduler->add_exec_buffer(bo);
       PRINTENDFUNC;
       return ret;
-  }
-  else {
+  } else if (xclemulation::config::getInstance()->isXgqMode()) {
+      if (!m_xgq || !bo)
+      {
+          PRINTENDFUNC;
+          return ret;
+      }
+      ret = m_xgq->add_exec_buffer(bo);
+      PRINTENDFUNC;
+      return ret;
+  } else {
     if(!mMBSch || !bo)
     {
       PRINTENDFUNC;

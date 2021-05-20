@@ -60,6 +60,7 @@ namespace xclemulation{
     mLaunchWaveform = debug_mode::off;
     mDontRun = false;
     mNewMbscheduler = true;
+    mXgqMode = false;
     mSimDir = "";
     mUserPreSimScript = "";
     mPacketSize = 0x800000;
@@ -156,6 +157,10 @@ namespace xclemulation{
       {
         setNewMbscheduler(getBoolValue(value,false));
       }
+      else if(name == "xgq_mode")
+      {
+        setXgqMode(getBoolValue(value,false));
+      }
       else if (name == "user_pre_sim_script") {
         std::string absolutePath = getAbsolutePath(value, getExecutablePath());
         setUserPreSimScript(absolutePath);
@@ -213,7 +218,7 @@ namespace xclemulation{
       }
       else if (name == "enable_prep_target" || name == "enable_debug" || name == "aie_sim_options") {
         //Do nothing: Added to bypass the WARNING that is issued below stating "invalid xrt.ini option" 
-      } 
+      }
       else if(name == "sim_dir")
       {
         setSimDir(value);
