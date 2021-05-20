@@ -191,13 +191,12 @@ namespace xdp {
   {
     // Catch when compile-time trace is specified (e.g., --event-trace=functions)
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    //auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    //runtimeMetrics = (compilerOptions.event_trace == "runtime");
-    runtimeMetrics = true;
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
 
     if (!runtimeMetrics) {
       std::stringstream msg;
-      msg << "Found compiler trace option of " << "functions" 
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
           << ". No runtime AIE metrics will be changed.";
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       return true;
