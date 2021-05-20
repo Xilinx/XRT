@@ -27,7 +27,6 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
-#include <boost/algorithm/hex.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
 
