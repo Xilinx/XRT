@@ -469,9 +469,9 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     std::cout << "Cold reboot machine to load the new image on device(s).\n";
     std::cout << "****************************************************\n";
   } else if (need_warm_reboot) {
-    std::cout << "****************************************************\n";
-    std::cout << "Warm reboot machine to load the new SC image on device(s).\n";
-    std::cout << "****************************************************\n";
+    std::cout << "******************************************************************\n";
+    std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
+    std::cout << "******************************************************************\\n";
   }
 
   if (success != boardsToUpdate.size()) {
