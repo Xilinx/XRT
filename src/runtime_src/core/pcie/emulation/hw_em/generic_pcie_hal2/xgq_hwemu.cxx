@@ -126,7 +126,7 @@ namespace hwemu {
 
   void xgq_queue::clear_sub_slot_state(uint64_t sub_slot)
   {
-    iowrite32_mem(xgq_sub_base + sub_slot, 0);
+    iowrite32_mem(sub_base + sub_slot, 0);
   }
 
   uint16_t xgq_queue::check_doorbell()
