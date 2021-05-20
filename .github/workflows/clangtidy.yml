@@ -1,4 +1,7 @@
-on: workflow_dispatch
+on:
+  # scheduled workflows run on the latest commit on the default or base branch
+  schedule:
+    - cron: '0 4 * * 1/2'
     
 jobs:
   clangtidy:
