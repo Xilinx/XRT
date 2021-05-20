@@ -46,7 +46,7 @@ namespace xclhwemhal2 {
   class HwEmShim;
 }
 
-#define XRT_QUEUE1_SUB_BASE    0x80000000
+#define XRT_QUEUE1_SUB_BASE    0x0
 #define XRT_QUEUE1_COM_BASE    (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
 
 #define XRT_XGQ_SUB_BASE       0x1040000
@@ -70,8 +70,10 @@ namespace hwemu {
    * @clear_sub_slot_state():   clear the first word of a submission queue
    *                            entry so that consumer can wait for the state
    *                            field for next command in this slot
-   * @iowrite32():              write 32 bits to an IO address
-   * @ioread32():               read 32 bits value from an IO address
+   * @iowrite32_ctrl():         write 32 bits to an IO CTRL address
+   * @iowrite32_mem():          write 32 bits to an IO MEM address
+   * @ioread32_ctrl():          read 32 bits value from an IO CTRL address
+   * @ioread32_mem():           read 32 bits value from an IO MEM address
    *
    * @pending_cmds:             a list of commands waiting to be submitted
    * @submitted_cmds:           a hash map of commands sent but not yet
@@ -93,8 +95,10 @@ namespace hwemu {
       int      submit_cmd(xgq_cmd *xcmd);
       void     read_completion(xrt_com_queue_entry& ccmd);
       void     clear_sub_slot_state(uint64_t sub_slot);
-      void     iowrite32(uint32_t addr, uint32_t data);
-      uint32_t ioread32(uint32_t addr);
+      void     iowrite32_ctrl(uint32_t addr, uint32_t data);
+      void     iowrite32_mem(uint32_t addr, uint32_t data);
+      uint32_t ioread32_ctrl(uint32_t addr);
+      uint32_t ioread32_mem(uint32_t addr);
 
       uint16_t        qid;
       uint16_t        nslot;
