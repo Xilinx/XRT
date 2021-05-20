@@ -331,9 +331,11 @@ isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa
 {
   if (!current.dsaname().empty()) {
     same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
-    same_bmc = (current.bmcVerIsFixed() || 
-      (current.bmcVer.compare("INACTIVE") == 0) ||
-      (candidate.bmc_ver() == current.bmc_ver())) && !XBU::getForce();
+    same_bmc = !XBU::getForce() && 
+     (current.bmcVerIsFixed() ||
+     (current.bmcVer.compare("INACTIVE") == 0) ||
+     (candidate.bmc_ver() == current.bmc_ver()));
+
   }
 }
 

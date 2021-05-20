@@ -27,6 +27,7 @@ namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
+#include <boost/algorithm/hex.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
 
@@ -48,18 +49,24 @@ ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
  * before adding them to the property tree
  */
 static boost::property_tree::ptree
-mac_addresses(const BoardInfo& info)
+mac_addresses(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
-  auto mac_contiguous_num = info.mMacContiguousNum;
-  auto format_mac_addr = [](const char* a) {
-    return boost::str(boost::format("%02x:%02x:%02x:%02x:%02x:%02x") 
-                        % a[0] % a[1] % a[2] % a[3] % a[4] % a[5]);
-  };
-  auto mac_addr_first = format_mac_addr(info.mMacAddrFirst);
-  
+  uint64_t mac_contiguous_num = 0;
+  std::string mac_addr_first;
+  try {
+    mac_contiguous_num = xrt_core::device_query<xrt_core::query::mac_contiguous_num>(dev);
+    mac_addr_first = xrt_core::device_query<xrt_core::query::mac_addr_first>(dev);
+  }
+  catch (...) {  }
+
   //new flow
-  if (mac_contiguous_num && !info.mMacAddrFirst) {
+  if (mac_contiguous_num && !mac_addr_first.empty()) {
+    // finding the contiguous mac address
+    // 00:00:00:00:00:01
+    // mac_prefix = 00:00:00:00:00
+    // mac_base = 01 (gets increased by 1)
+    // mac_base_val = 00:00:00:00:00:02
     std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
     std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
     std::stringstream ss;
@@ -75,18 +82,20 @@ mac_addresses(const BoardInfo& info)
     } 
   }
   else { //old flow
-    auto populate_mac_addr = [&](std::string addr) {
-      boost::property_tree::ptree ptaddr;
-      if(!addr.empty() && addr.compare("Unassigned") != 0){
-        ptaddr.add("address", info.mMacAddr0);
-        ptree.push_back(std::make_pair("", ptaddr));
+    std::vector<std::string> mac_addr;
+    try {	  
+      mac_addr = xrt_core::device_query<xrt_core::query::mac_addr_list>(dev);
+    }
+    catch (...) {  }
+    for (const auto& a : mac_addr) {
+      boost::property_tree::ptree addr;
+      if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
+        addr.add("address", a);
+        ptree.push_back(std::make_pair("", addr));
       }
-    };
-    populate_mac_addr(info.mMacAddr0);
-    populate_mac_addr(info.mMacAddr1);
-    populate_mac_addr(info.mMacAddr2);
-    populate_mac_addr(info.mMacAddr3);
-   }
+    }
+  }
+
   return ptree;
 }
 
@@ -260,7 +269,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_platform.put_child("available_partitions", pt_available_partitions);
   }
   
-  auto macs = mac_addresses(info);
+  auto macs = mac_addresses(device);
   if(!macs.empty())
     pt_platform.put_child("macs", macs);
 
@@ -365,15 +374,10 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   const boost::property_tree::ptree& macs = _pt.get_child("platform.macs", pt_empty);
   if(!macs.empty()) {
     _output << std::endl;
-    unsigned int macCount = 0;
-
-    for(auto& km : macs) {
-      const boost::property_tree::ptree& pt_mac = km.second;
-      if( macCount++ == 0) 
-        _output << fmtBasic % "Mac Addresses" % pt_mac.get<std::string>("address");
-      else
-        _output << fmtBasic % "" % pt_mac.get<std::string>("address");
-    }
+    std::string formattedStr;
+    
+    for(auto & km : macs) 
+      formattedStr += boost::str(fmtBasic % (formattedStr.empty() ? "Mac Address" : "") % km.second.get<std::string>("address", "N/A"));
   }
 
   _output << shell_status(_pt.get<bool>("platform.status.shell", false), 

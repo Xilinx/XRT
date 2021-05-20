@@ -31,13 +31,6 @@
 #include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 
-#ifdef _WIN32
-# pragma warning( disable : 4189 4100 )
-# pragma comment(lib, "Ws2_32.lib")
-/* need to link the lib for the following to work */
-#define le16toh(x) (((((uint16_t)(x)) >> 8))|((((uint16_t)(x)) << 8)))
-#endif
-
 #define INVALID_ID      0xffff
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
@@ -253,31 +246,18 @@ int Flasher::getBoardInfo(BoardInfo& board)
         info[BDINFO_CONFIG_MODE][0] : '\0';
     board.mFanPresence = info.find(BDINFO_FAN_PRESENCE) != info.end() ?
         info[BDINFO_FAN_PRESENCE][0] : '\0';
-    if (info.find(BDINFO_MAC_DYNAMIC) != info.end() &&
-        info[BDINFO_MAC_DYNAMIC].size() == 8) {
-        uint16_t count;
-
-        memcpy(&count, &info[BDINFO_MAC_DYNAMIC][0], sizeof(uint16_t));
-        board.mMacContiguousNum = le16toh(count);
-
-	for (unsigned i = 2; i < 8; i++) {
-            board.mMacAddrFirst[i-2] = info[BDINFO_MAC_DYNAMIC][i];
-	}
-    } else {
-        board.mMacContiguousNum = 0;
-        board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
-            std::move(charVec2String(info[BDINFO_MAC0])) :
-	    std::move(std::string("Unassigned"));
-        board.mMacAddr1 = charVec2String(info[BDINFO_MAC1]).compare(unassigned_mac) ? 
-            std::move(charVec2String(info[BDINFO_MAC1])) :
-	    std::move(std::string("Unassigned"));
-        board.mMacAddr2 = charVec2String(info[BDINFO_MAC2]).compare(unassigned_mac) ? 
-            std::move(charVec2String(info[BDINFO_MAC2])) :
-	    std::move(std::string("Unassigned"));
-        board.mMacAddr3 = charVec2String(info[BDINFO_MAC3]).compare(unassigned_mac) ? 
-            std::move(charVec2String(info[BDINFO_MAC3])) :
-	    std::move(std::string("Unassigned"));
-    }
+    board.mMacAddr0 = charVec2String(info[BDINFO_MAC0]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC0])) :
+	std::move(std::string("Unassigned"));
+    board.mMacAddr1 = charVec2String(info[BDINFO_MAC1]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC1])) :
+	std::move(std::string("Unassigned"));
+    board.mMacAddr2 = charVec2String(info[BDINFO_MAC2]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC2])) :
+	std::move(std::string("Unassigned"));
+    board.mMacAddr3 = charVec2String(info[BDINFO_MAC3]).compare(unassigned_mac) ? 
+        std::move(charVec2String(info[BDINFO_MAC3])) :
+	std::move(std::string("Unassigned"));
     board.mMaxPower = info.find(BDINFO_MAX_PWR) != info.end() ?
         int2PowerString(info[BDINFO_MAX_PWR][0]) : "N/A";
     board.mName = std::move(charVec2String(info[BDINFO_NAME]));
