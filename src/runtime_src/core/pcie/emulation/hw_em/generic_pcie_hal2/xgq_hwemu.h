@@ -145,7 +145,6 @@ namespace hwemu {
       uint32_t    payload_size();
       uint32_t    xcmd_size();
 
-      xocl_xgq              *xgqp;
       uint16_t              cmdid;
       std::vector<uint32_t> sq_buf;
       struct ert_packet     *ert_pkt;
