@@ -786,8 +786,10 @@ namespace xdp {
     //        We need 64 packets, so we need 7 * 64 = 448 words.
     //        Existing counters generates 1.5 words for every perf counter 2 triggers.
     //        Thus, 300 (299 exactly,, but 300 would have no harm) perf 2 counter events.
-    uint32_t timerTrigValueLow  = 0x129A92C0;
-    uint32_t timerTrigValueHigh = 0x0;
+    //uint32_t timerTrigValueLow  = 0x129A92C0;
+    //uint32_t timerTrigValueLow  = 0x4A6A4B00;
+    uint32_t timerTrigValueLow  = 0x29A92C00;
+    uint32_t timerTrigValueHigh = 0x1;
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
