@@ -3,11 +3,11 @@
 XRT Controlled Kernel Execution Models
 --------------------------------------
 
-XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs (without handling the control interface of the kernels explicitly inside the host code).  
+XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs, such as ``clEnququeTask`` API or ``xrt::run`` class object, without the need of handling the control interface of the kernels explicitly inside the host code.  
 
 In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly in order to take advantage of the automatic execution flow managed by the XRT.
 
-At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.
+At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The XRT managed kernel's control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.
 
 The two primary supported excution models are:
 
@@ -39,7 +39,7 @@ Below we will discuss each kernel execution model in detail.
 Sequentially Executed Kernel
 ============================
 
-The AP_CTRL_HS style kernel is the legacy execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+The sequential execution model is implemented by AP_CTRL_HS style kernel. Currently this is a legacy supported model, it was default execution mode prior to 2019.1 release. The idea of sequentially executed model is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
 
 **Mode of operation**
 
@@ -70,7 +70,7 @@ The signals ap_start and ap_done must be connected to the AXI_LITE control and s
 Parallel Execution Model
 ========================
 
-Parallel execution model is current default execution model supported by the HLS flow. 
+Parallel execution model is current default execution model supported through the HLS flow. 
 
 The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
 
@@ -89,7 +89,7 @@ Assume there are five concurrent kernel execution requests from the host and the
 
 START1=>START2=>START3=>DONE1=>START4=>DONE2=>START5=>DONE3=>DONE4=>DONE5
 
-**Note:** As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model.
+**Note:** As noted in the above sequence, the parallel execution model only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by through this execution model.
 
 **Output synchronization**
 
@@ -119,7 +119,7 @@ To execute the kernel in parallel fashion, the host code should be able to fill 
 Note Regarding user-managed kernel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The RTL kernels which are developed with arbitrary execution models must be managed explicitly by the user using native XRT API.
+The RTL kernels which are developed with any other arbitrary execution models must be managed explicitly by the user using native XRT API. The ``xrt::ip`` class and its member functions are needed to control/read/write these types of kernels. See the API details in https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel 
 
 Note regarding the un-managed kernel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
