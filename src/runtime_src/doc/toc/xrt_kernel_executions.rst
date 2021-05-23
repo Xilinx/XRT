@@ -1,7 +1,7 @@
 .. _xrt_kernel_executions.rst:
 
-Supported Kernel Execution Models
----------------------------------
+XRT controlled Kernel Execution Models
+--------------------------------------
 
 XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs (without handling the control interface of the kernels explicitly inside the host code).  
 
@@ -114,24 +114,14 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
 
 Host Code Consideration
 ~~~~~~~~~~~~~~~~~~~~~~~
-The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
+To execute the kernel in parallel fashion, the host code should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
 
 
+**Note Regarding user-managed kernel**: The RTL kernels which are developed with arbitrary execution models must be managed explicitly by the user using native XRT API.
 
-==========================================
-AP_CTRL_NONE (Continuously Running Kernel)
-==========================================
+**Note regarding the un-managed kernel**: The kernels can also be implemented without any control interfaces. These kernels purely works on the availability of the data at its interface. Hence these kernels cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
 
-Sometimes the kernel does not need to be controlled by the host. For example, if the kernel is only communicating through the stream, it only works when the data is available at its input through the stream, and the kernel stalls when there is no data to process, waiting for new data to arrive through the stream to start working again. These type of kernels has no control signal connected to the AXI4-Lite Slave interface.
-
-**Important points to remember**
-
-1. Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.
-2. There is no need to start the kernel by ``clEnqueueTask`` or ``clEnqueueNDRangeKernel`` from the host.
-3. Host communicates with a continuously running kernel by the stream read and write requests, if necessary.
-4. Dont use ``clSetKernelArg`` to pass scalar argument to ap_ctrl_none kernel, only use ``xclRegWrite`` (API implemented in 2019.2) API.
-
-**Note:** To read and write register values from the AXI4-Lite Slave interface, the new APIs ``xclRegRead``/``xclRegWrite`` must be used (replacing obsolated APIs ``xclRead``/``xclWrite``). These APIs require exclusive CU context reservation via API ``xclOpenContext`` as shown in the code sample below.
+However, these kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. the new APIs ``xclRegRead``/``xclRegWrite`` must be used (replacing obsolated APIs ``xclRead``/``xclWrite``). These APIs require exclusive CU context reservation via API ``xclOpenContext`` as shown in the code sample below.
 
 .. code-block:: c
 
