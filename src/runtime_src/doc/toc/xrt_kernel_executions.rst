@@ -3,15 +3,16 @@
 Supported Kernel Execution Models
 ---------------------------------
 
-XRT can support a few well-defined kernel execution models.  In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly.
+XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs (without handling the control interface of the kernels explicitly inside the host code).  
+
+In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly in order to take advantage of the automatic execution flow managed by the XRT.
 
 At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.
 
-The list of primary supported excution models are:
+The two primary supported excution models are:
 
-1. ``AP_CTRL_HS``
-2. ``AP_CTRL_CHAIN``
-3. ``AP_CTRL_NONE``
+1. Sequential execution model
+2. Parallel execution model
 
 The ``IP_LAYOUT`` section of the kernel ``xclbin`` metadata contains the kernel execution model information. The ``xclbinutil`` utility command can be used to retrieve the execution model information from a ``.xclbin`` file.
 
@@ -34,11 +35,11 @@ The ``IP_LAYOUT`` section of the kernel ``xclbin`` metadata contains the kernel 
 
 Below we will discuss each kernel execution model in detail.
 
-=========================================
-AP_CTRL_HS (Sequentially Executed Kernel)
-=========================================
+============================
+Sequentially Executed Kernel
+============================
 
-The AP_CTRL_HS style kernel is the most sophisticated execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+The AP_CTRL_HS style kernel is the legacy execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
 
 Mode of operation
 ~~~~~~~~~~~~~~~~~
@@ -65,11 +66,13 @@ The signals ap_start and ap_done must be connected to the AXI_LITE control and s
   1         ap_done            Asserted by the kernel when it is finished producing the output data
 ====== ===================== =======================================================================
 
-================================
-AP_CTRL_CHAIN (Pipelined Kernel)
-================================
+========================
+Parallel Execution Model
+========================
 
-AP_CTRL_CHAIN is an improved version of AP_CTRL_HS where the kernel is designed in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
+Parallel execution model is current default execution model supported by the HLS flow. 
+
+The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
 
 Mode of operation
 ~~~~~~~~~~~~~~~~~
