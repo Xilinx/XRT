@@ -1,6 +1,6 @@
 .. _xrt_kernel_executions.rst:
 
-XRT controlled Kernel Execution Models
+XRT Controlled Kernel Execution Models
 --------------------------------------
 
 XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs (without handling the control interface of the kernels explicitly inside the host code).  
