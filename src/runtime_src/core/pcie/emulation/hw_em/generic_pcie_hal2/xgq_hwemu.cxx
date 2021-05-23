@@ -201,7 +201,7 @@ namespace hwemu {
   xgq_cmd::xgq_cmd()
   {
     cmdid = ++next_uid; //! Assign unique ID for each new command
-    ert_pkt = NULL;
+    ert_pkt = nullptr;
   }
 
   uint32_t xgq_cmd::opcode()
