@@ -119,11 +119,11 @@ To execute the kernel in parallel fashion, the host code should be able to fill 
 Note Regarding user-managed kernel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The RTL kernels which are developed with any other arbitrary execution models must be managed explicitly by the user using native XRT API. The ``xrt::ip`` class and its member functions are needed to control/read/write these types of kernels. See the API details in https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel 
+The RTL kernels which are implemented as any other arbitrary execution models must be managed explicitly by the user using native XRT API. The ``xrt::ip`` class and its member functions are needed to control/read/write these types of kernels. See the API details in https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel 
 
 Note regarding the un-managed kernel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The kernels can also be implemented without any control interfaces. These kernels purely works on the availability of the data at its interface. Hence these kernels cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
+The kernels can also be implemented without any control interfaces. As these kernels purely works on the availability of the data at its interface, they cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
 
-However, these kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. The user can read/write to those kernels by native XRT APIs (similar to example shown by the user-managed kernel above). 
+These kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. The user can read/write to those kernels by native XRT APIs (``xrt::ip::read_register``, ``xrt::ip::write_register``). 
