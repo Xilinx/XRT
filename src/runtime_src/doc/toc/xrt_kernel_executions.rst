@@ -41,8 +41,8 @@ Sequentially Executed Kernel
 
 The AP_CTRL_HS style kernel is the legacy execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
 
-Mode of operation
-~~~~~~~~~~~~~~~~~
+**Mode of operation**
+
 
 .. image:: ap_ctrl_hs_2.PNG
    :align: center
@@ -55,8 +55,8 @@ Assume there are three concurrent kernel execution requests from the host. The k
 
 START1=>DONE1=>START2=>DONE2=>START3=>DONE3
 
-Control Signal Topology
-~~~~~~~~~~~~~~~~~~~~~~~
+**Control Signal Topology**
+
 The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.
 
 ====== ===================== =======================================================================
@@ -74,8 +74,7 @@ Parallel execution model is current default execution model supported by the HLS
 
 The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
 
-Mode of operation
-~~~~~~~~~~~~~~~~~
+**Mode of operation**
 
 .. image:: ap_ctrl_chain_2.PNG
    :align: center
@@ -99,8 +98,8 @@ START1=>START2=>START3=>DONE1=>START4=>DONE2=>START5=>DONE3=>DONE4=>DONE5
 
 The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.
 
-Control Signal Topology
-~~~~~~~~~~~~~~~~~~~~~~~
+**Control Signal Topology**
+
 The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.
 
 ====== ===================== =======================================================================
@@ -112,20 +111,19 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
   4         ap_continue        Asserted by the XRT to allow kernel keep running
 ====== ===================== =======================================================================
 
-Host Code Consideration
-~~~~~~~~~~~~~~~~~~~~~~~
+**Host Code Consideration**
+
 To execute the kernel in parallel fashion, the host code should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
 
 
-**Note Regarding user-managed kernel**: The RTL kernels which are developed with arbitrary execution models must be managed explicitly by the user using native XRT API.
+Note Regarding user-managed kernel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Note regarding the un-managed kernel**: The kernels can also be implemented without any control interfaces. These kernels purely works on the availability of the data at its interface. Hence these kernels cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
+The RTL kernels which are developed with arbitrary execution models must be managed explicitly by the user using native XRT API.
 
-However, these kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. the new APIs ``xclRegRead``/``xclRegWrite`` must be used (replacing obsolated APIs ``xclRead``/``xclWrite``). These APIs require exclusive CU context reservation via API ``xclOpenContext`` as shown in the code sample below.
+Note regarding the un-managed kernel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: c
+The kernels can also be implemented without any control interfaces. These kernels purely works on the availability of the data at its interface. Hence these kernels cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
 
-   xclOpenContext(device_handle, xclbin_id, cu_index, false);
-   xclRegRead(device_handle, cu_index, offset, &data);
-   xclRegWrite(device_handle, cu_index, offset, data);
-   xclCloseContext(device_handle, xclbin_id, cu_index);
+However, these kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. The user can read/write to those kernels by native XRT APIs (similar to example shown by the user-managed kernel above). 
