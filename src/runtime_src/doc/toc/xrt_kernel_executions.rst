@@ -20,7 +20,9 @@ Below we will discuss each kernel execution model in detail.
 Sequential Execution Model
 ==========================
 
-The sequential execution model is implemented by AP_CTRL_HS style kernel. Currently this is a legacy supported model, it was default execution mode prior to 2019.1 release. The idea of sequentially executed model is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+Sequential execution model is legacy (prior to 2019.1 release) default execution model supported through the HLS flow. The user can create this implemtation by specifying AP_CTRL_HS pragma at the kernel interface. 
+
+The idea of sequentially executed model is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
 
 **Mode of operation**
 
