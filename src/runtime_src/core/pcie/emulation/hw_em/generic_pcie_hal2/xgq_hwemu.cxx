@@ -57,6 +57,7 @@ namespace hwemu {
     sub_tail = 0x1000; // temp solution to indicate a new entry by setting bit 5 to 1
     com_head = 0;
     com_tail = 0;
+    qid = 0;
 
     sub_thread = new std::thread(&xgq_queue::submit_worker, this);
     com_thread = new std::thread(&xgq_queue::complete_worker, this);
@@ -200,6 +201,7 @@ namespace hwemu {
   xgq_cmd::xgq_cmd()
   {
     cmdid = ++next_uid; //! Assign unique ID for each new command
+    ert_pkt = nullptr;
   }
 
   uint32_t xgq_cmd::opcode()

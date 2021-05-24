@@ -1689,6 +1689,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
           delete m_scheduler;
           m_scheduler = nullptr;
       }
+      if(m_xgq)
+      {
+          delete m_xgq;
+          m_xgq = nullptr;
+      }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
         mLogStream.close();
@@ -1759,6 +1764,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       {
           delete m_scheduler;
           m_scheduler = nullptr;
+      }
+      if(m_xgq)
+      {
+          delete m_xgq;
+          m_xgq = nullptr;
       }
       return 0;
     }
@@ -1866,6 +1876,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         delete m_scheduler;
         m_scheduler = nullptr;
     }
+    if(m_xgq)
+    {
+        delete m_xgq;
+        m_xgq = nullptr;
+    }
 
     return 0;
   }
@@ -1913,6 +1928,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
         delete m_scheduler;
         m_scheduler = nullptr;
+    }
+    if(m_xgq)
+    {
+        delete m_xgq;
+        m_xgq = nullptr;
     }
     if(mDataSpace)
     {
@@ -2076,6 +2096,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mCore = nullptr;
     mMBSch = nullptr;
     m_scheduler = nullptr;
+    m_xgq = nullptr;
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
     mMemoryProfilingNumberSlots = 0;
