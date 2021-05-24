@@ -28,6 +28,13 @@ file(GLOB COMMON_EM_SRC_FILES
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
+
+# Bypass binary targets if clangtidy is enabled,
+# same targets are defined for DC
+if (${XRT_CLANGTIDY_REVIEW})
+  return()
+endif()
+
 add_library(common_em_objects OBJECT ${COMMON_EM_SRC_FILES} ${ProtoHeaders} ${ProtoSources})
 
 set(CURR_SOURCE "")

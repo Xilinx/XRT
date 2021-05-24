@@ -28,6 +28,13 @@ file(GLOB EM_SRC_FILES
   )
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
+
+# Bypass binary targets if clangtidy is enabled,
+# same targets are defined for DC
+if (${XRT_CLANGTIDY_REVIEW})
+  return()
+endif()
+
 add_library(sw_emu_objects OBJECT ${EM_SRC_FILES})
 add_dependencies(sw_emu_objects edge_emulation_generated_code)
 

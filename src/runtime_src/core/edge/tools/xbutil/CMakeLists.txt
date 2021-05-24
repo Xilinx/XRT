@@ -11,6 +11,12 @@ file(GLOB XRT_EDGE_TOOLS_XBUTIL_FILES
   "*.cpp"
   )
 
+# Bypass binary targets if clangtidy is enabled,
+# same targets are defined for DC
+if (${XRT_CLANGTIDY_REVIEW})
+  return()
+endif()
+
 add_executable(xbutil ${XRT_EDGE_TOOLS_XBUTIL_FILES})
 
 if (DEFINED XRT_AIE_BUILD)

@@ -33,6 +33,12 @@ if (DEFINED ENV{XRT_NATIVE_BUILD})
   set(XRT_NATIVE_BUILD $ENV{XRT_NATIVE_BUILD})
 endif()
 
+if (DEFINED ENV{XRT_CLANGTIDY_REVIEW})
+  set(XRT_CLANGTIDY_REVIEW "yes")
+  set(XRT_AIE_BUILD "yes")
+  add_compile_options("-DXRT_ENABLE_AIE")
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
   set (CMAKE_BUILD_TYPE RelWithDebInfo)
 endif (NOT CMAKE_BUILD_TYPE)
