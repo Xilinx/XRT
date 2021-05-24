@@ -44,6 +44,7 @@
 #include <list>
 #include <mutex>
 #include <thread>
+#include <vector>
 
 #include "em_defines.h"
 #include "ert.h"
