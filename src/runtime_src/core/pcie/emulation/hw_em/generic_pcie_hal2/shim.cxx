@@ -198,42 +198,6 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
-  void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content)
-  {
-    std::ofstream out(path);
-    out << content << std::endl;
-    out.close();
-  }
-
-  std::string HwEmShim::modifyContent(const std::string& simulatorName, std::string& content)
-  {
-    if (simulatorName == "xcelium") {
-      // Append "-gui " to  xmsim command line if not already present
-      if (content.find("-gui ") == std::string::npos) {
-        content.replace(content.find("xmsim "), 6, "xmsim -gui ");
-      }
-    } else if (simulatorName == "questa") {
-      // Questa always generates simulate.sh with "-c " which is batch mode. Replace "-c " with "-gui " to run in GUI mode
-      if (content.find("-c ") != std::string::npos) {
-        content.replace(content.find("-c "), 3, "-gui ");
-      }
-    }
-    return content;
-  }
-
-  void HwEmShim::writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName )
-  {
-    // Write the contents of this file into a string
-    std::string content = loadFileContentsToString(simPath + "/simulate.sh");
-    // Modify as per simulator name
-    content = modifyContent(simulatorName, content);
-    // overwrite the file with modified string
-    writeStringIntoFile(simPath + "/simulate.sh", content);
-    // give permissions
-    std::string filePath = simPath + "/simulate.sh";
-    systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
-  }
-
   void HwEmShim::parseHLSPrintf(const std::string& simPath)
   {
     std::ifstream ifs(simPath + "/simulate.log");
@@ -793,11 +757,12 @@ namespace xclhwemhal2 {
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 	        if (simulatorType == "xsim") {
-            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-            << " --protoinst " << protoFileName;
-            launcherArgs = launcherArgs + cmdLineOption.str();
+                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                << " --protoinst " << protoFileName;
+                launcherArgs = launcherArgs + cmdLineOption.str();
 	        } else {
-	          writeNewSimulateScript(sim_path, simulatorType);
+                cmdLineOption << " gui ";
+                launcherArgs = launcherArgs + cmdLineOption.str();
 	        }
         }
 
