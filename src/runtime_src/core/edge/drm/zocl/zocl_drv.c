@@ -867,11 +867,11 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	/* Platform did not initialize dma_mask, try to set 64-bit DMA first */
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
 	if (ret) {
-		/* If seting 64-bit DMA mask fails, fall back to 32-bit DMA mask */
+		/* If setting 64-bit DMA mask fails, fall back to 32-bit DMA mask */
 		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
 		if (ret) {
-			dev_err(&pdev->dev,"DMA configuration failed: 0x%x\n", ret);
-			return -EINVAL;
+			DRM_ERROR(&pdev->dev,"DMA configuration failed: 0x%x\n", ret);
+			return ret;
 		}
 	}
 #endif
