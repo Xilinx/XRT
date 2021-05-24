@@ -870,7 +870,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		/* If setting 64-bit DMA mask fails, fall back to 32-bit DMA mask */
 		ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
 		if (ret) {
-			DRM_ERROR(&pdev->dev,"DMA configuration failed: 0x%x\n", ret);
+			DRM_ERROR("DMA configuration failed: 0x%x\n", ret);
 			return ret;
 		}
 	}
