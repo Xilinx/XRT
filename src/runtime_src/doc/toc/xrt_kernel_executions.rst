@@ -99,13 +99,13 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
 To execute the kernel in parallel fashion, the host code should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
 
 
-Note Regarding user-managed kernel
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note regarding the User-managed kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The RTL kernels which are implemented as any other arbitrary execution models must be managed explicitly by the user using native XRT API. The ``xrt::ip`` class and its member functions are needed to control/read/write these types of kernels. See the API details in https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel 
 
-Note regarding the un-managed kernel
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note regarding the Un-managed kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The kernels can also be implemented without any control interfaces. As these kernels purely works on the availability of the data at its interface, they cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
 
