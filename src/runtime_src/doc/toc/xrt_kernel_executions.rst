@@ -12,7 +12,7 @@ At the low level, the kernels are controlled by the XRT through the control and 
 The two primary supported excution models are:
 
 1. Sequential execution model
-2. Parallel execution model
+2. Pipelined execution model
 
 Below we will discuss each kernel execution model in detail.
 
@@ -50,10 +50,10 @@ The signals ap_start and ap_done must be connected to the AXI_LITE control and s
 ====== ===================== =======================================================================
 
 ========================
-Parallel Execution Model
+Pipelined Execution Model
 ========================
 
-Parallel execution model is current default execution model supported through the HLS flow. 
+Pipelined execution model is current default execution model supported through the HLS flow. 
 
 The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
 
