@@ -14,25 +14,6 @@ The two primary supported excution models are:
 1. Sequential execution model
 2. Parallel execution model
 
-The ``IP_LAYOUT`` section of the kernel ``xclbin`` metadata contains the kernel execution model information. The ``xclbinutil`` utility command can be used to retrieve the execution model information from a ``.xclbin`` file.
-
-.. code-block:: none
-
-   xclbinutil --info --input binary_container_1.xclbin --dump-section IP_LAYOUT:json:ip_layout_info.json
-
-.. code-block:: json
-
-   {
-    "ip_layout": {
-        "m_count": "5",
-        "m_ip_data": {
-            "ip_data": {
-                "m_type": "IP_KERNEL",
-                "m_int_enable": "0",
-                "m_interrupt_id": "0",
-                "m_ip_control": "AP_CTRL_HS",
-
-
 Below we will discuss each kernel execution model in detail.
 
 ==========================
