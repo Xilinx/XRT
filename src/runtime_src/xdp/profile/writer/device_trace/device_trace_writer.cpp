@@ -116,7 +116,7 @@ namespace xdp {
          << cu->getName() << std::endl;
 
     if(xdp::getFlowMode() == xdp::HW_EMU) {
-      size_t pos = xclbin->name.find('.');
+      size_t pos = xclbin->name.find(".xclbin");
       fout << "Optional_Function_Internal,User Functions,Function activity in accelerator " << cu->getName() 
            << "," << rowCount
            << "," << (db->getStaticInfo()).getDeviceName(deviceId) << "-0"
