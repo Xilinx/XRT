@@ -101,10 +101,7 @@ size_t IOCtlAIM::readCounter(xclCounterResults& counterResults, uint32_t s)
   if(out_stream)
     (*out_stream) << " IOCtlAIM::readCounter " << std::endl;
 
-  uint32_t sampleInterval = 0;
-  if (s==0 && getDevice()) {
-    counterResults.SampleIntervalUsec = static_cast<float>(sampleInterval / (getDevice()->getDeviceClock()));
-  }
+  counterResults.SampleIntervalUsec = 0 ;
 
   struct aim_counters counter = { 0 };
   ioctl(driver_FD, AIM_IOC_READCNT, &counter);

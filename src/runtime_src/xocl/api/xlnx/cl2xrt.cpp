@@ -28,16 +28,19 @@ namespace xrt { namespace opencl {
 xrt::device
 get_xrt_device(cl_device_id device)
 {
-  auto xdevice = xocl::xocl(device)->get_xrt_device();
-  if (!xdevice)
-    throw xrt_core::error(ENODEV, "OpenCL context has not been created, xrt::device does not exist");
-  return xdevice;
+  if (auto xdevice = xocl::xocl(device)->get_xrt_device())
+    return xdevice;
+
+  throw xrt_core::error(ENODEV, "OpenCL context has not been created, xrt::device does not exist");
 }
 
 xrt::bo
 get_xrt_bo(cl_device_id device, cl_mem mem)
 {
-  return xocl::xocl(mem)->get_buffer_object_or_null(xocl::xocl(device));
+  if (auto bo = xocl::xocl(mem)->get_buffer_object_or_null(xocl::xocl(device)))
+    return bo;
+
+  throw xrt_core::error("OpenCL memory object is not associated with a buffer object");
 }
 
 xrt::kernel

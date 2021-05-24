@@ -105,15 +105,18 @@ namespace xdp {
     for (auto o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
 
-      if(offloader->continuous_offload()) {
-        offloader->stop_offload();
-        // To avoid a race condition, wait until the thread is stopped
-        while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-      } else {
-        offloader->read_trace();
-        offloader->read_trace_end();
+      try {
+        if(offloader->continuous_offload()) {
+          offloader->stop_offload();
+          // To avoid a race condition, wait until the thread is stopped
+          while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+        } else {
+          offloader->read_trace();
+          offloader->read_trace_end();
+        }
+        checkTraceBufferFullness(offloader, o.first);
+      } catch (std::exception& /*e*/) {
       }
-      checkTraceBufferFullness(offloader, o.first);
     }
   }
 
@@ -140,16 +143,17 @@ namespace xdp {
 
     if (offloaders.find(deviceId) != offloaders.end())
     {
-      auto offloader = std::get<0>(offloaders[deviceId]) ;
-      if (offloader->continuous_offload())
-      {
-        offloader->stop_offload() ;
-        // To avoid a race condition, wait until the offloader has stopped
-        while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-      }
-      else
-      {
-        offloader->read_trace() ;
+      try {
+        auto offloader = std::get<0>(offloaders[deviceId]) ;
+        if (offloader->continuous_offload()) {
+          offloader->stop_offload() ;
+          // To avoid a race condition, wait until the offloader has stopped
+          while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+        }
+        else {
+          offloader->read_trace() ;
+        }
+      } catch (std::exception& /*e*/) {
       }
     }
     readCounters() ;
