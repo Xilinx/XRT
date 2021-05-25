@@ -145,8 +145,8 @@ show_device_conf(xrt_core::device* device)
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Security level" % sec_level;
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
   try {
@@ -170,8 +170,8 @@ show_device_conf(xrt_core::device* device)
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
     std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
   std::cout << std::flush;
