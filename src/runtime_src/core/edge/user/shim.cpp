@@ -926,18 +926,30 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
-  // In new kds, driver determines CU index
+  uint32_t kds_mode;
   try {
-    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
-      if (stat.name == name)
-        return stat.index;
-
-    xclLog(XRT_ERROR, "%s not found", name);
-    return -ENOENT;
-  }
-  catch (const xrt_core::query::no_such_key&) {
+    kds_mode = xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice);
+  } catch (...){
+    kds_mode = 0;
   }
 
+  //if kds_mode is enabled, then use kds_cu_stat to get the ip index. Otherwise
+  //use old mechanism to get the cu index
+
+  // In new kds, driver determines CU index
+  if (kds_mode == 1)
+  {
+    try {
+      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
+        if (stat.name == name)
+          return stat.index;
+
+      xclLog(XRT_ERROR, "%s not found", name);
+      return -ENOENT;
+    }
+    catch (const xrt_core::query::no_such_key&) {
+    }
+  }
   // Old kds is enabled
   std::string errmsg;
   std::vector<char> buf;
