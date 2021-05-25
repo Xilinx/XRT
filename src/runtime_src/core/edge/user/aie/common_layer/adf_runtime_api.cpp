@@ -112,6 +112,8 @@ err_code graph_api::run()
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
         {
+            // Clear disable event occurred bit of Enable_Event
+            XAie_ClearCoreDisableEventOccurred(config_manager::s_pDevInst, coreTiles[i]);
             //Set Enable_Event to XAIE_EVENT_BROADCAST_7_CORE. The resources have been acquired by aiecompiler.
             XAie_CoreConfigureEnableEvent(config_manager::s_pDevInst, coreTiles[i], XAIE_EVENT_BROADCAST_7_CORE);
         }
@@ -125,7 +127,7 @@ err_code graph_api::run()
         driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&StartTime));
         do {
             driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&CurrentTime));
-        } while ((CurrentTime - StartTime) <= 250);
+        } while ((CurrentTime - StartTime) <= 150);
 
         XAie_StartTransaction(config_manager::s_pDevInst, XAIE_TRANSACTION_ENABLE_AUTO_FLUSH);
         for (int i = 0; i < numCores; i++)
