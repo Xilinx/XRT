@@ -1724,6 +1724,14 @@ int shim::xclExecWait(int timeoutMilliSec)
 }
 
 /*
+ * getfd()
+ */
+int shim::xclGetFd()
+{
+    return mUserHandle;
+}
+
+/*
  * xclOpenContext
  */
 int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const
