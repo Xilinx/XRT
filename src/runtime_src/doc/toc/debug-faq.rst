@@ -121,9 +121,14 @@ When board is in crashed state PCIe read operations start returning
 metrics. For example ``Temp`` would be very high. Boards in crashed state
 may be recovered with PCIe hot reset ::
 
-  xbutil reset -h
+  xbutil reset
 
 If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in `Validating a Working Setup`_
+
+If for some reason communication between xocl driver and management driver gets disrupted, ``xbutil reset`` may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge
+
+1) unload xocl driver (also shut down VM if xocl is running on a VM)
+2) Run ``xbmgmt reset --hot``
 
 XRT Scheduling Options
 ~~~~~~~~~~~~~~~~~~~~~~
