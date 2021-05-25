@@ -17,6 +17,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <poll.h>
 
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
@@ -31,6 +32,7 @@
 #include <thread>
 #include <algorithm>
 #include "core/common/config_reader.h"
+#include "core/pcie/linux/shim.h"
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -258,24 +260,32 @@ void xma_thread2() {
 
     bool expected = false;
     bool desired = true;
-    int32_t session_index = 0;
-    int32_t num_sessions = -1;
+
+    std::vector<pollfd> all_pollfd;
+    all_pollfd.reserve(MAX_XILINX_DEVICES);
+
+    for (XmaHwDevice& hw_device: g_xma_singleton->hwcfg.devices) {
+        xocl::shim *drv = xocl::shim::handleCheck(hw_device.handle);
+        if (!drv) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Device handle error: %d", hw_device.dev_index);
+            return;
+        }
+        all_pollfd.emplace_back(pollfd{});
+        auto& tmp_fd = all_pollfd.back();
+        tmp_fd.fd = (int) drv->xclGetFd();
+        tmp_fd.events = POLLIN;
+        tmp_fd.revents = 0;
+    }
+
     while (!g_xma_singleton->xma_exit) {
-        num_sessions = g_xma_singleton->all_sessions_vec.size();
-        if (num_sessions == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            continue;
-        }
-        if (session_index >= num_sessions) {
-            session_index = 0;
-        }
-        XmaHwSessionPrivate *priv2 = (XmaHwSessionPrivate*) g_xma_singleton->all_sessions_vec[session_index].hw_session.private_do_not_use;
         if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
+        } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE1) {
+            ::poll(all_pollfd.data(), all_pollfd.size(), 500);
+            //xclExecWait(priv2->dev_handle, 100);
         } else {
-            xclExecWait(priv2->dev_handle, 100);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        session_index++;
 
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
