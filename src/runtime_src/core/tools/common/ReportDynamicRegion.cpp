@@ -17,7 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include <boost/algorithm/string.hpp>
-#include "ReportCu.h"
+#include "ReportDynamicRegion.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
 #include "core/common/utils.h"
@@ -129,7 +129,14 @@ populate_cus(const xrt_core::device *device)
     }
   }
 
-  return pt;
+  boost::property_tree::ptree ptree;
+  try {
+    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
+    boost::algorithm::to_upper(uuid);
+    ptree.put("xclbin_uuid", uuid);
+  } catch (...) {  }
+  ptree.add_child("compute_units", pt);
+  return ptree;
 }
 
 int 
@@ -225,11 +232,18 @@ populate_cus_new(const xrt_core::device *device)
     }
   }
 
-  return pt;
+  boost::property_tree::ptree ptree;
+  try {
+    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
+    boost::algorithm::to_upper(uuid);
+    ptree.put("xclbin_uuid", uuid);
+  } catch (...) {  }
+  ptree.add_child("compute_units", pt);
+  return ptree;
 }
 
 void
-ReportCu::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
+ReportDynamicRegion::getPropertyTreeInternal(const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data, 
@@ -238,7 +252,7 @@ ReportCu::getPropertyTreeInternal(const xrt_core::device * _pDevice,
 }
 
 void 
-ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice, 
+ReportDynamicRegion::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
   uint32_t kds_mode;
@@ -250,16 +264,18 @@ ReportCu::getPropertyTree20202( const xrt_core::device * _pDevice,
     // When kds_mode doesn't present, xocl driver supports old KDS
     kds_mode = 0;
   }
-
+  boost::property_tree::ptree pt_dynamic_region;
   // There can only be 1 root node
   if (kds_mode == 0) // Old kds
-      _pt.add_child("compute_units", populate_cus(_pDevice));
+    pt_dynamic_region.push_back(std::make_pair("", populate_cus(_pDevice)));
   else // new kds
-      _pt.add_child("compute_units", populate_cus_new(_pDevice));
+    pt_dynamic_region.push_back(std::make_pair("", populate_cus_new(_pDevice)));
+  
+  _pt.add_child("dynamic_regions", pt_dynamic_region);
 }
 
 void 
-ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
                        const boost::property_tree::ptree& _pt, 
                        const std::vector<std::string>& /*_elementsFilter*/,
                        std::ostream & _output) const
@@ -268,49 +284,57 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
 
   //check if a valid CU report is generated
-  const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
-  if(pt_cu.empty())
+  const boost::property_tree::ptree& pt_dfx = _pt.get_child("dynamic_regions", empty_ptree);
+  if(pt_dfx.empty())
     return;
 
-  _output << "Compute Units" << std::endl;
-  _output << "  PL Compute Units" << std::endl;
-  _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
-  try {
-    int index = 0;
-    for(auto& kv : pt_cu) {
-      const boost::property_tree::ptree& cu = kv.second;
-      if(cu.get<std::string>("type").compare("PL") != 0)
-        continue;
-      std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-      uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-      _output << cuFmt % index++ %
-	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
-    }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
-  }
-  _output << std::endl;
+  for(auto& k_dfx : pt_dfx) {
+    const boost::property_tree::ptree& dfx = k_dfx.second;
+    _output << "Xclbin UUID" << std::endl;
+    _output << "  " + dfx.get<std::string>("xclbin_uuid", "N/A") << std::endl;
+    _output << std::endl;
 
-  //PS kernel report
-  _output << "  PS Compute Units" << std::endl;
-  _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
-  try {
-    int index = 0;
-    for(auto& kv : pt_cu) {
-      const boost::property_tree::ptree& cu = kv.second;
-      if(cu.get<std::string>("type").compare("PS") != 0)
-        continue;
-      std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-      uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-      _output << cuFmt % index++ %
-	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
+    const boost::property_tree::ptree& pt_cu = dfx.get_child("compute_units", empty_ptree);
+    _output << "Compute Units" << std::endl;
+    _output << "  PL Compute Units" << std::endl;
+    _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
+    try {
+      int index = 0;
+      for(auto& kv : pt_cu) {
+        const boost::property_tree::ptree& cu = kv.second;
+        if(cu.get<std::string>("type").compare("PL") != 0)
+          continue;
+        std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
+        uint32_t status_val = std::stoul(cu_status, nullptr, 16);
+        _output << cuFmt % index++ %
+          cu.get<std::string>("name") % cu.get<std::string>("base_address") %
+          cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
+      }
     }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
+    catch( std::exception const& e) {
+      _output << "ERROR: " <<  e.what() << std::endl;
+    }
+    _output << std::endl;
+
+    //PS kernel report
+    _output << "  PS Compute Units" << std::endl;
+    _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
+    try {
+      int index = 0;
+      for(auto& kv : pt_cu) {
+        const boost::property_tree::ptree& cu = kv.second;
+        if(cu.get<std::string>("type").compare("PS") != 0)
+          continue;
+        std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
+        uint32_t status_val = std::stoul(cu_status, nullptr, 16);
+        _output << cuFmt % index++ %
+          cu.get<std::string>("name") % cu.get<std::string>("base_address") %
+          cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
+      }
+    }
+    catch( std::exception const& e) {
+      _output << "ERROR: " <<  e.what() << std::endl;
+    }
   }
 
   _output << std::endl;
