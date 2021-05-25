@@ -137,7 +137,7 @@ update_shell(unsigned int index, const std::string& flashType,
 static std::string 
 getBDF(unsigned int index)
 {
-  auto dev =xrt_core::get_mgmtpf_device(index);
+  auto dev = xrt_core::get_mgmtpf_device(index);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
@@ -312,12 +312,30 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 
 }
 
+/*
+ * bmcVer (shown as [SC=version]) can be 3 status:
+ *   1) regular SC version;
+ *        example: [SC=4.1.7]
+ *   2) INACTIVE;
+ *        exmaple: [SC=INACTIVE], this means no xmc subdev, we should not
+ *        attemp to flash the SC;
+ *   3) UNKNOWN;
+ *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
+ *        not normal, we still allow flashing SC.
+ *   4) FIXED SC version;
+ *        example: [SC=4.1.7(FIXED)], this means SC is running on slave mgmt pf
+ *        and cannot be updated throught this pf, SC version cannot be changed.
+ */
 static void 
 isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
 {
   if (!current.dsaname().empty()) {
     same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
-    same_bmc = (current.bmcVerIsFixed() || (candidate.bmc_ver() == current.bmc_ver()));
+    same_bmc = !XBU::getForce() && 
+     (current.bmcVerIsFixed() ||
+     (current.bmcVer.compare("INACTIVE") == 0) ||
+     (candidate.bmc_ver() == current.bmc_ver()));
+
   }
 }
 
@@ -343,10 +361,8 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 
   // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
   // so do not update
-  if (current.bmcVer.empty())
+  if (current.bmc_ver().empty())
     same_bmc = true;
-  else
-    same_bmc = (candidate.bmcVer == current.bmcVer) && !XBU::getForce();
   
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -403,7 +419,7 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     // Always update Arista devices
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
     if (vendor == ARISTA_ID)
-        same_shell = false;
+      same_shell = false;
 
     if (XBU::getForce()) {
       same_shell = false;
@@ -585,7 +601,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
 
