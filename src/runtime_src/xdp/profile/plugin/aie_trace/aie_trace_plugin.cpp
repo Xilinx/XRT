@@ -763,7 +763,8 @@ namespace xdp {
 
           if (aieTraceBufSize > deviceMemorySize) {
             aieTraceBufSize = deviceMemorySize;
-            std::string msg2 = "AIE trace buffer size is too big for device memory. Limiting to " + std::to_string(deviceMemorySize) + "." ;
+            std::string msg2 = "AIE trace buffer size is too big for device memory. Limiting to " 
+                + std::to_string(deviceMemorySize) + "." ;
             xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg2);
           }
         }
@@ -784,8 +785,8 @@ namespace xdp {
 
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
-                                              isPLIO,          // isPLIO 
-                                              aieTraceBufSize,   // total trace buffer size
+                                              isPLIO,              // isPLIO?
+                                              aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
     if(!aieTraceOffloader->initReadTrace()) {
