@@ -112,7 +112,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
                                                                         "  hot          - Hot reset (default)\n")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
@@ -152,22 +152,6 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   XBU::verbose(boost::str(boost::format("  Reset: %s") % resetType));
 
   // -- process "device" option -----------------------------------------------
-  // enforce device specification
-  if(devices.empty()) {
-    std::cerr << std::endl
-              << "ERROR: Device not specified." << std::endl
-              << "Specifying a device via '--device' is required to apply a reset." << std::endl << std::endl
-              << "The following devices are available to use:" << std::endl;
-
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& dev = kd.second;
-      std::cerr << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
-    }
-    std::cerr << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
@@ -180,6 +164,19 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
+  }
+
+  // enforce 1 device specification
+  if(deviceCollection.size() != 1) {
+    std::cerr << "\nERROR: Multiple device reset is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   
   xrt_core::query::reset_type type = XBU::str_to_reset_obj(resetType);

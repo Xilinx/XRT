@@ -1530,7 +1530,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   const std::string formatRunValues = XBU::create_suboption_list_string(testNameDescription);
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  std::vector<std::string> device  = {"all"};
+  std::vector<std::string> device;
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
   std::string sOutput = "";
@@ -1539,8 +1539,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Commmon Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The device of interest. This is specified as follows:\n"
-                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)\n"
-                                                                           "  all   - Examines all known devices (default)")
+                                                                           "  <BDF> - Bus:Device.Function (e.g., 0000:d8:00.0)")
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
@@ -1635,6 +1634,19 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
+  }
+
+  // enforce 1 device specification
+  if(deviceCollection.empty() || deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Collect all of the tests of interests
