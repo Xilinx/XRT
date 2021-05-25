@@ -114,7 +114,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
-    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat)->default_value("json"), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
+    ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
@@ -163,18 +163,21 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     reportNames.push_back("host");
 
   // -- DRC checks --
+  // when json is specified, make sure an accompanying output file is also specified
+  if (!sFormat.empty() && sOutput.empty()) {
+    std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  if(sFormat.empty())
+    sFormat = "json";
+
   // Examine the output format
   Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) {
     std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % sFormat << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-
-  // when json is specified, make sure an accompanying output file is also specified
-  if (!vm["format"].defaulted() && sOutput.empty()) {
-    std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

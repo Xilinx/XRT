@@ -329,6 +329,7 @@ static int
 updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot, bool& warm_reboot)
 {
   reboot = false;
+  warm_reboot = false;
 
   Flasher flasher(boardIdx);
 
@@ -436,7 +437,8 @@ auto_flash(xrt_core::device_collection& deviceCollection)
 
     // Perform DSA and BMC updating
     for (auto& p : boardsToUpdate) {
-      bool reboot, warm_reboot;
+      bool reboot = false;
+      bool warm_reboot = false;
       std::cout << std::endl;
       try {
         updateShellAndSC(p.first, p.second, reboot, warm_reboot);
