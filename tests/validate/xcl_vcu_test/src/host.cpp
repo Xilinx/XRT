@@ -20,7 +20,7 @@
 #include "plugin_common.h"
 #include "input_out_frame_dump.h"
 
-#define VCU_SK_DECODER_ID 1
+#define VCU_SK_DECODER_ID 0
 #define VCU_SK_ENCODER_ID 32
 
 int main(int argc, char** argv) {
