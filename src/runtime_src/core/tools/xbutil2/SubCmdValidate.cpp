@@ -285,7 +285,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { test_dir.parent_path().string(), 
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      constexpr static int MAX_TEST_DURATION = 60;
+      constexpr static int MAX_TEST_DURATION = 300; //5 minutes
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
@@ -842,8 +842,15 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       break;
   }
 
+  auto is_host_mem = [](std::string tag) {
+    return tag.compare(0,4,"HOST") == 0;
+  };
+
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     auto midx = std::distance(mem_topo->m_mem_data, &mem);
+    if(is_host_mem(std::string(reinterpret_cast<const char*>(mem.m_tag))))
+      continue;
+
     if (mem.m_type == MEM_STREAMING)
       continue;
 
@@ -1215,12 +1222,12 @@ static void
 print_status(test_status status, std::ostream & _ostream)
 {
   if (status == test_status::failed)
-    _ostream<< "Validation failed";
+    _ostream << "Validation failed";
   else
     _ostream << "Validation completed";
   if (status == test_status::warning)
-    _ostream<< ", but with warnings";
-  _ostream<< std::endl;
+    _ostream << ", but with warnings";
+  _ostream << ". Please run the command '--verbose' option for more details" << std::endl;
 }
 
 /*

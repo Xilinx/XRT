@@ -344,9 +344,10 @@ isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa
  * Helper method for auto_flash
  */
 static int 
-updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
+updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot, bool& warm_reboot)
 {
   reboot = false;
+  warm_reboot = false;
 
   Flasher flasher(boardIdx);
 
@@ -374,6 +375,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
     std::cout << programFmt % flasher.sGetDBDF() % "Updating SC firmware flash image";
     try {
       update_SC(boardIdx, candidate.file);
+      warm_reboot = true;
     } catch (const xrt_core::error& e) {
       std::cout << "NOTE: Skipping SC flash: " << e.what() << std::endl;
     }
@@ -436,6 +438,7 @@ auto_flash(xrt_core::device_collection& deviceCollection)
   // Continue to flash whatever we have collected in boardsToUpdate.
   uint16_t success = 0;
   bool needreboot = false;
+  bool need_warm_reboot = false;
   std::stringstream report_status;
   if (!boardsToUpdate.empty()) {
 
@@ -445,16 +448,18 @@ auto_flash(xrt_core::device_collection& deviceCollection)
 
     // Perform DSA and BMC updating
     for (auto& p : boardsToUpdate) {
-      bool reboot;
+      bool reboot = false;
+      bool warm_reboot = false;
       std::cout << std::endl;
       try {
-        updateShellAndSC(p.first, p.second, reboot);
+        updateShellAndSC(p.first, p.second, reboot, warm_reboot);
         report_status << boost::format("  [%s] : Successfully flashed\n") % getBDF(p.first);
         success++;
       } catch (const xrt_core::error& e) {
         std::cerr << boost::format("ERROR: %s\n") % e.what();
       }
       needreboot |= reboot;
+      need_warm_reboot |= warm_reboot;
     }
   }
   std::cout << "----------------------------------------------------\n";
@@ -476,6 +481,10 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on device(s).\n";
     std::cout << "****************************************************\n";
+  } else if (need_warm_reboot) {
+    std::cout << "******************************************************************\n";
+    std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
+    std::cout << "******************************************************************\\n";
   }
 
   if (success != boardsToUpdate.size()) {

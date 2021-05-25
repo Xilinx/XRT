@@ -83,7 +83,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices;
   std::vector<std::string> reportNames;
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "json";
+  std::string sFormat = "";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -149,6 +149,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
     if (schemaVersion == Report::SchemaVersion::unknown) 
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
+
+    // when json is specified, make sure an accompanying output file is also specified
+    if (!sFormat.empty() && sOutput.empty())
+      throw xrt_core::error("Please specify an output file to redirect the json to");
+
+    if(sFormat.empty())
+      sFormat = "json";
 
     // Output file
     if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 

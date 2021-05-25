@@ -105,7 +105,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices;       // Default values determined later in the flow
   std::vector<std::string> reportNames;   // Default values determined later in the flow
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "json";
+  std::string sFormat = "";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -163,6 +163,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     reportNames.push_back("host");
 
   // -- DRC checks --
+  // when json is specified, make sure an accompanying output file is also specified
+  if (!sFormat.empty() && sOutput.empty()) {
+    std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  if(sFormat.empty())
+    sFormat = "json";
+
   // Examine the output format
   Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) {
