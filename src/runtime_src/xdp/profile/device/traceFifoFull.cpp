@@ -25,8 +25,6 @@
 #include<cstring>
 #include <bitset>
 
-#include "xdp/profile/core/rt_util.h"
-
 namespace xdp {
 
 TraceFifoFull::TraceFifoFull(Device* handle /** < [in] the xrt or hal device handle */,
