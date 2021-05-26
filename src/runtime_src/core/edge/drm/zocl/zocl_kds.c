@@ -348,7 +348,15 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	else if (ecmd->opcode == ERT_START_CU)
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	else if (ecmd->opcode == ERT_EXEC_WRITE)
-		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+	{
+		/* third argument in following function is representing number of
+		 * words to skip when configuring CU. This should be consistent
+		 * for both edge/DC, but due to performance and siome use cases,
+		 * this has veen decided that , DC flows skip 6 words whereas
+		 * edge flows doesnt skip any words.
+		 */
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd, 0);
+	}
 	else if (ecmd->opcode == ERT_START_FA)
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	xcmd->cb.notify_host = notify_execbuf;
