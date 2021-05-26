@@ -747,7 +747,7 @@ namespace xdp {
       std::ifstream ifs;
       ifs.open("/proc/meminfo");
       while (getline(ifs, line)) {
-        if (line.find("CmaFree") == std::string::npos)
+        if (line.find("CmaTotal") == std::string::npos)
           continue;
           
         // Memory sizes are always expressed in kB
