@@ -1149,7 +1149,7 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 }
 
 void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
-			  struct kds_command *xcmd)
+			  struct kds_command *xcmd, u32 skip)
 {
 	xcmd->opcode = OP_START;
 
@@ -1169,8 +1169,8 @@ void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 * In ert_start_kernel_cmd, the CU register map size is
 	 * (count - (1 + extra_cu_masks)) and skip 6 words for exec_write cmd.
 	 */
-	xcmd->isize = (ecmd->count - xcmd->num_mask - 6) * sizeof(u32);
-	memcpy(xcmd->info, &ecmd->data[6 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->isize = (ecmd->count - xcmd->num_mask - skip) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[skip + ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
 }

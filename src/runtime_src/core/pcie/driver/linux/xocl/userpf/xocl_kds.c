@@ -548,7 +548,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		/* third argument in following function is representing number of
+		 * words to skip when writing to CU. This should be consistent
+		 * for both edge/DC, but Due to performance and some use cases
+		 * this is been decided that, DC flows skips first 6 words
+		 * whereas edge flows doesnt skip any words
+		 */
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd, 6);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
