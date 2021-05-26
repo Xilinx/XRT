@@ -33,6 +33,7 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <memory>
+#include <cmath>
 
 #define NUM_CORE_TRACE_EVENTS   8
 #define NUM_MEMORY_TRACE_EVENTS 8
@@ -749,24 +750,23 @@ namespace xdp {
         if (line.find("CmaFree") == std::string::npos)
           continue;
           
+        // Memory sizes are always expressed in kB
         std::vector<std::string> cmaVector;
         boost::split(cmaVector, line, boost::is_any_of(":"));
         auto deviceMemorySize = std::stoull(cmaVector.at(1)) * 1024;
         if (deviceMemorySize == 0)
           break;
 
+        // Limit size of trace buffer is requested amount is too high
         double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
         if (percentSize >= 80.0) {
-          std::string msg = "Requested AIE trace buffer is " + std::to_string(percentSize) + "% of free device memory."
-              + " You may run into errors (e.g., bad alloc) depending upon the memory usage of your application.";
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+          uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
+          aieTraceBufSize = newAieTraceBufSize;
 
-          if (aieTraceBufSize > deviceMemorySize) {
-            aieTraceBufSize = deviceMemorySize;
-            std::string msg2 = "AIE trace buffer size is too big for device memory. Limiting to " 
-                + std::to_string(deviceMemorySize) + "." ;
-            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg2);
-          }
+          std::string msg = "Requested AIE trace buffer is " + std::to_string(percentSize) + "% of free device memory."
+              + " You may run into errors (e.g., bad alloc) depending upon memory usage of your application."
+              + " Limiting to " + std::to_string(newAieTraceBufSize) + ".";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
         else {
           std::string msg = "Requested AIE trace buffer is " + std::to_string(percentSize) + "% of device memory.";
@@ -774,6 +774,7 @@ namespace xdp {
         }
         break;
       }
+      ifs.close();
     }
     catch (...) {
         // Do nothing
