@@ -230,7 +230,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     }
 
     // enforce 1 device specification if multiple reports are requested
-    if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 && reportNames.front().compare("host") != 0)) {
+    if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
       std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
       std::cout << "List of available devices:" << std::endl;
       boost::property_tree::ptree available_devices = XBU::get_available_devices(true);

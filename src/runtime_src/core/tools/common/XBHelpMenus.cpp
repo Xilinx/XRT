@@ -720,8 +720,10 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       consoleStream << dev_desc;
       consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
+      auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+
       for (auto &report : reportsToProcess) {
-        if (report->isDeviceRequired() == false)
+        if (report->isDeviceRequired() == false || !is_ready)
           continue;
 
         boost::property_tree::ptree ptReport;
