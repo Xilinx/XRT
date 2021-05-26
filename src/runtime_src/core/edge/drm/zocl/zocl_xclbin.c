@@ -980,7 +980,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			write_lock(&zdev->attr_rwlock);
 			goto out0;
 		}
-		ret = zocl_kds_update(zdev);
+		ret = zocl_kds_update(zdev, &axlf_obj->kds_cfg);
 		if (ret) {
 			write_lock(&zdev->attr_rwlock);
 			goto out0;
