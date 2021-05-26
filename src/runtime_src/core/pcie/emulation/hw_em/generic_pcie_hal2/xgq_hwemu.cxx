@@ -54,7 +54,7 @@ namespace hwemu {
   {
     stop = false;
     sub_head = 0;
-    sub_tail = 0x1000; // temp solution to indicate a new entry by setting bit 5 to 1
+    sub_tail = 1;
     com_head = 0;
     com_tail = 0;
     qid = 0;
@@ -105,7 +105,7 @@ namespace hwemu {
     if (xcmd->xcmd_size() > slot_size)
       return -EINVAL;
 
-    uint64_t addr = sub_base + (sub_tail & 0x7FF) * slot_size;
+    uint64_t addr = sub_base + (sub_tail & XRT_QUEUE1_SLOT_MASK) * slot_size;
     for (int i = xcmd->sq_buf.size() - 1; i >= 0; i--)
       iowrite32_mem(addr + i * 4, xcmd->sq_buf.at(i));
 
@@ -114,10 +114,11 @@ namespace hwemu {
     return 0;
   }
 
-  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd)
+  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd, uint32_t tail)
   {
+    auto slot = tail & XRT_QUEUE1_SLOT_MASK;
     for (uint32_t i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
-      ccmd.data[i] = ioread32_mem(com_base + com_tail * XRT_COM_Q1_SLOT_SIZE + i * 4);
+      ccmd.data[i] = ioread32_mem(com_base + slot * XRT_COM_Q1_SLOT_SIZE + i * 4);
   }
 
   void xgq_queue::update_doorbell()
@@ -134,8 +135,8 @@ namespace hwemu {
   {
     while (1) {
       uint32_t data = ioread32_ctrl(xgq_com_base);
-      if (data & 0x1000)
-        return data & 0xFFFF;
+      if (data != com_tail)
+        return data;
     }
   }
 
@@ -166,10 +167,12 @@ namespace hwemu {
 
       while (!submitted_cmds.empty()) {
         auto tail = check_doorbell();
-        uint16_t slot;
-        for (slot = com_tail; slot <= (tail & 0x7FF); slot++) {
+        uint32_t slot = com_tail;
+        for (;;) {
+          slot++;
+
           xrt_com_queue_entry ccmd;
-          read_completion(ccmd);
+          read_completion(ccmd, slot);
 
           auto scmd = submitted_cmds[ccmd.cid];
           if (scmd == nullptr) {
@@ -181,12 +184,16 @@ namespace hwemu {
           scmd->set_state(ERT_CMD_STATE_COMPLETED);
 
           // Update submission queue header
-          for (uint64_t sub_slot = sub_tail; sub_slot <= ccmd.sqhead; sub_slot++)
-            clear_sub_slot_state(sub_slot);
-          sub_head = ccmd.sqhead;
+          uint64_t sub_slot;
+          for (sub_slot = sub_tail; (sub_slot & XRT_QUEUE1_SLOT_MASK) != ccmd.sqhead; sub_slot++)
+            clear_sub_slot_state(sub_slot & XRT_QUEUE1_SLOT_MASK);
+          sub_head = sub_slot;
 
           xgqp->cmd_pool.destroy(scmd);
           submitted_cmds.erase(ccmd.cid);
+
+          if (slot == tail)
+            break;
         }
         com_tail = slot;
       }
