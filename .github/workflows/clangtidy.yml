@@ -16,7 +16,7 @@ jobs:
       id: cache-sha
       with:
         path: sha
-        key: commit-${{ github.sha }}
+        key: clangtidy-${{ github.sha }}
     - name: Install dependencies
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |
