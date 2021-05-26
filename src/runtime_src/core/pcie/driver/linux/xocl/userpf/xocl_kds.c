@@ -122,8 +122,8 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 
 	if (ret_src != ret_dst) {
 		/* One of them is not local BO, perform P2P copy */
-		xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
-		return 1;
+		int err = xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
+		return err < 0 ? err : 1;
 	}
 
 	/* Both BOs are local, copy via cdma CU */
