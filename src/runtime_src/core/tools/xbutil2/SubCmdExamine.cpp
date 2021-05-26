@@ -152,7 +152,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   if (devices.size() != 0 && reportNames.size() == 0) {
     reportNames.push_back("platform");
-    reportNames.push_back("compute-units");
+    reportNames.push_back("dynamic-regions");
   }
 
   // Determine default values

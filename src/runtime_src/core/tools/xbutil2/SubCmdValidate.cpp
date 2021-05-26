@@ -904,6 +904,17 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
 void
 p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  uint32_t no_dma = 0;
+  try {
+    no_dma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
+  } catch(...) { }
+
+  if(no_dma != 0) {
+    logger(_ptTest, "Details", "Not supported on NoDMA platform");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   if(!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
@@ -956,6 +967,17 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  uint32_t no_dma = 0;
+  try {
+    no_dma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
+  } catch(...) { }
+
+  if(no_dma != 0) {
+    logger(_ptTest, "Details", "Not supported on NoDMA platform");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   if(!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
@@ -1016,6 +1038,17 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  uint32_t no_dma = 0;
+  try {
+    no_dma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
+  } catch(...) { }
+
+  if(no_dma != 0) {
+    logger(_ptTest, "Details", "Not supported on NoDMA platform");
+    _ptTest.put("status", "skipped");
+    return;
+  }
+
   uint64_t host_mem_size = 0;
   try {
     host_mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(_dev);
