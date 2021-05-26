@@ -197,8 +197,9 @@ Special Case
 
 There is special case where download xclbin from within user VM is not required.
 
-In this special case, neither MSD/MPD nor plugins are required since there is no real xclbin download happening. xclbins can be preloaded
-either by hypervisor or by a service domain (VM) where the mgmt PF is assigned. The apps in user VM are running without any change, ie
-xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid of the running xclbin with a XCL_MAILBOX_REQ_PEER_DATA
-mailbox opcode to xclmgmt, and if the uuid matches the one of the xclbin being downloaded, the ioctl returns success without real xclbin
+In this special case, neither MSD/MPD nor plugins are required since no xclbin download is allowed from guest. xclbins can be preloaded
+either by hypervisor or dom0 type VM where the mgmt PF is assigned. The apps in user VM run without any change, i.e.
+xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid of the preloaded xclbin with a XCL_MAILBOX_REQ_PEER_DATA
+mailbox opcode to xclmgmt, and if the uuid matches with that of the xclbin requested for download, the ioctl returns immediately with success.
+If the uuids don't match, download request in the guest fails.
 download happening.

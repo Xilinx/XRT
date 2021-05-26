@@ -189,11 +189,11 @@ master and the specific AXI bus is not impacted -- to protect the Shell. The AXI
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
 xclmgmt driver then starts taking recovery action. xclmgmt posts a XCL_MAILBOX_REQ_FIREWALL message to xocl using
 MailBox to inform the peer about FireWall trip. xocl can suggest a reset by sending a XCL_MAILBOX_REQ_HOT_RESET message
-to xclmgmt on MailBox. Note that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus.
+to xclmgmt via mailBox. Note that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus.
 DFX partition will be unavailable till device is reset. **A reboot of host is not required to reset the device.**
 
-On board that has multiple FPGA devices on one board and supports card level reset like u30, message exchanges on mailbox are exactly
-the same to single FPGA board, but the firewall trip on one FPGA device will result in all FPGA devices on same board being reset.
+Alveo boards with multiple FPGA devices on the same board like U30 support card level reset. Mailbox usage by each device on the card
+is similar to that of single device cards, however firewall trip in one device will trigger reset to all devices on the card.
 
 AXI Firewall in Slave Interface (SI) mode also protects the host from errant transactions initiated by kernels over
 Slave Bridge. For example if an AXI master kernel in the Dynamic Region issues a non compliant AXI transaction like
@@ -285,12 +285,13 @@ function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox
 has the ability to throttle requests coming from xocl driver. 
 
 xclmgmt driver has twofold security protections on the h/w mailbox. From packet layer, xclmgmt monitors 
-the receiving packet rates and set a threshold. If the receiving packet rates exceeds the threshold, a
-malicious behavior, ie, DoS is considered occurring from xocl, and the whole mailbox will be disabled. Only
-a hot reset on the FPGA device from xclmgmt can recover it. Frow message layer, xclmgmt can sets all the
-mailbox opcodes it doesn't expect to see. If seen, they will be discarded.
+the receiving packet rates and can enforce a threshold. If the receiving packet rates exceeds the threshold,
+the mailbox is disabled which prevents the guest from sending any more commands over mailbox. Only
+a hot reset on the FPGA device from xclmgmt can recover it. From message layer,system administrator can configure
+the xclmgmt driver to ignore specific mailbox opcodes.
 
-Admin can set the disabled mailbox opcodes like following,
+Here is an example how System administrator managing the privileged management physical function driver xclmgmt
+can configure the mailbox to ignore specific opcodes using xbmgmt utility.
 
 .. code-block:: bash
 
