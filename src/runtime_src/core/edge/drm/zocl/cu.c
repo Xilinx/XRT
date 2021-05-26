@@ -160,6 +160,10 @@ static int cu_probe(struct platform_device *pdev)
 
 	if (info->intr_enable) {
 		zcu->irq = zdev->irq[info->intr_id];
+		/* Currently requesting irq if it's enable in cu config.
+		 * Not disabling it further, even user wants to use 
+		 * polling.
+		 */
 		err = request_irq(zcu->irq, cu_isr, 0,
 			  zcu->irq_name, zcu);
 		if (err) {
