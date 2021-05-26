@@ -338,7 +338,7 @@ namespace xdp {
           msg << n << ": " << numTileCounters[n] << " tiles";
           if (n != NUM_COUNTERS) msg << ", ";
 
-          (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n]);
+          (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], isCore);
         }
         xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       }

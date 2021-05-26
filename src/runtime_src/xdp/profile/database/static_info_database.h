@@ -358,7 +358,8 @@ class aie_cfg_tile
 
     std::vector<AIECounter*>     aieList;
     std::vector<TraceGMIO*>      gmioList;
-    std::map<uint32_t, uint32_t> aieCountersMap;
+    std::map<uint32_t, uint32_t> aieCoreCountersMap;
+    std::map<uint32_t, uint32_t> aieMemoryCountersMap;
     std::map<uint32_t, uint32_t> aieCoreEventsMap;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList;
@@ -536,8 +537,11 @@ class aie_cfg_tile
            uint8_t start, uint8_t end, uint8_t reset,
            double freq, const std::string& mod,
            const std::string& aieName) ;
-    void addAIECounterResources(uint32_t numCounters, uint32_t numTiles) {
-      aieCountersMap[numCounters] = numTiles;
+    void addAIECounterResources(uint32_t numCounters, uint32_t numTiles, bool isCore) {
+      if (isCore)
+        aieCoreCountersMap[numCounters] = numTiles;
+      else
+        aieMemoryCountersMap[numCounters] = numTiles;
     }
     void addAIECoreEventResources(uint32_t numEvents, uint32_t numTiles) {
       aieCoreEventsMap[numEvents] = numTiles;
@@ -952,9 +956,15 @@ class aie_cfg_tile
     }
 
     inline std::map<uint32_t, uint32_t>&
-    getAIECounterResources(uint64_t deviceId)
+    getAIECoreCounterResources(uint64_t deviceId)
     {
-      return deviceInfo[deviceId]->aieCountersMap;
+      return deviceInfo[deviceId]->aieCoreCountersMap;
+    }
+
+    inline std::map<uint32_t, uint32_t>&
+    getAIEMemoryCounterResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieMemoryCountersMap;
     }
 
     inline std::map<uint32_t, uint32_t>&
@@ -1002,10 +1012,10 @@ class aie_cfg_tile
                 freq, mod, aieName) ;
     }
 
-    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles) {
+    inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles, bool isCore) {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
-      deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles) ;
+      deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles, isCore) ;
     }
     
     inline void addAIECoreEventResources(uint64_t deviceId, uint32_t numEvents, uint32_t numTiles) {
