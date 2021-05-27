@@ -320,8 +320,8 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 
 	zocl_bo = to_zocl_bo(gem_obj);
 	if (!zocl_bo_execbuf(zocl_bo)) {
-		ret = -EINVAL;
-		goto out;
+		DRM_ERROR("Command buffer is not exec buf\n");
+		return -EINVAL;
 	}
 
 	ecmd = (struct ert_packet *)zocl_bo->cma_base.vaddr;
@@ -337,18 +337,21 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		goto out;
 	}
 	xcmd->cb.free = kds_free_command;
+	xcmd->cb.notify_host = notify_execbuf;
+	xcmd->execbuf = (u32 *)ecmd;
+	xcmd->gem_obj = gem_obj;
 
 	//print_ecmd_info(ecmd);
 
-	/* TODO: one ecmd to one xcmd now. Maybe we will need
-	 * one ecmd to multiple xcmds
-	 */
-	if (ecmd->opcode == ERT_CONFIGURE)
-		cfg_ecmd2xcmd(to_cfg_pkg(ecmd), xcmd);
-	else if (ecmd->opcode == ERT_START_CU)
+	switch(ecmd->opcode) {
+	case ERT_CONFIGURE:
+		xcmd->status = KDS_COMPLETED;
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		goto out1;
+	case ERT_START_CU:
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-	else if (ecmd->opcode == ERT_EXEC_WRITE)
-	{
+		break;
+	case ERT_EXEC_WRITE:
 		/* third argument in following function is representing number of
 		 * words to skip when configuring CU. This should be consistent
 		 * for both edge/DC, but due to performance and siome use cases,
@@ -356,16 +359,28 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		 * edge flows doesnt skip any words.
 		 */
 		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd, 0);
-	}
-	else if (ecmd->opcode == ERT_START_FA)
+		break;
+	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
-	xcmd->cb.notify_host = notify_execbuf;
-	xcmd->gem_obj = gem_obj;
+		break;
+	default:
+		DRM_ERROR("Unsupport command\n");
+		ret = -EINVAL;
+		goto out1;
+	}
 
 	/* Now, we could forget execbuf */
 	ret = kds_add_command(&zdev->kds, xcmd);
+	return ret;
 
+out1:
+	xcmd->cb.free(xcmd);
 out:
+	/* Don't forget to put gem object if error happen */
+	if (ret < 0) {
+		//kfree(ecmd);
+		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
+	}
 	return ret;
 }
 
