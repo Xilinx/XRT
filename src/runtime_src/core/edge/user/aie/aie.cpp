@@ -92,10 +92,9 @@ Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 
     /* Initialize trace_gmio api instances */
     trace_gmio_configs = xrt_core::edge::aie::get_trace_gmios(device.get());
-    for (auto trace_gmio_config : trace_gmio_configs)
+    for (auto &trace_gmio_config : trace_gmio_configs)
     {
         auto p_trace_gmio_api = std::make_shared<adf::trace_gmio_api>(const_cast<const adf::trace_gmio_config*>(&trace_gmio_config));
-//        p_trace_gmio_api->configure();
         trace_gmio_apis.push_back(p_trace_gmio_api);
     }
 }
