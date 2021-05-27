@@ -41,21 +41,21 @@ xbmgmt program
 
 Update the Base partition (applicable for 1RP platform too)
 
-.. code-block:: 
+.. code-block:: shell
 
     xbmgmt program [--device|-d] <management bdf> --update [--force|-f]
 
 
 Program a Shell Partition for 2RP platform
 
-.. code-block:: 
+.. code-block:: shell
 
     xbmgmt program [--device| -d] <management bdf> --partition <partition file with path>  
 
 
 Revert to golden image
 
-.. code-block:: 
+.. code-block:: shell
 
     xbmgmt program --revert-to-golden
 
@@ -77,7 +77,7 @@ Revert to golden image
 **Example commands**
 
 
-.. code-block::
+.. code-block:: shell
  
      #Update the base partition 
      xbmgmt program --device 0000:d8:00.0 --update 
@@ -96,7 +96,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 **The supported options**
 
 
-.. code-block::
+.. code-block:: shell
 
     xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
  
@@ -126,7 +126,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 **Example commands** 
 
 
-.. code-block:: 
+.. code-block:: shell
 
     #Reports Scanning of all the devices
     xbmgmt examine 
@@ -146,7 +146,7 @@ This ``xbmgmt reset`` command can be used to reset one or more devices.
 
 **The supported options**
 
-.. code-block:: 
+.. code-block:: shell
 
     xbmgmt reset [--device| -d] <management bdf> [--type| -t] <reset type>
 
@@ -170,7 +170,7 @@ This ``xbmgmt reset`` command can be used to reset one or more devices.
 **Example commands** 
 
 
-.. code-block::
+.. code-block:: shell
  
     # Reset a single device entirely (default hot reset)
     xbmgmt reset --device 0000:65:00.0

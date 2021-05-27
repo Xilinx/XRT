@@ -202,7 +202,7 @@ class run
   /**
    * operator < () - Weak ordering
    *
-   * @rhs
+   * @param rhs
    *  Object to compare with
    * @return
    *  True if object is ordered less that compared with other
