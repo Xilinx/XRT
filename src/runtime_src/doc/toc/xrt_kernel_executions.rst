@@ -1,47 +1,31 @@
 .. _xrt_kernel_executions.rst:
 
-Supported Kernel Execution Models
----------------------------------
+XRT Controlled Kernel Execution Models
+--------------------------------------
 
-XRT can support a few well-defined kernel execution models.  In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly.
+XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs, such as ``clEnququeTask`` API or ``xrt::run`` class object, without the need of handling the control interface of the kernels explicitly inside the host code.  
 
-At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.
+In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly in order to take advantage of the automatic execution flow managed by the XRT.
 
-The list of primary supported excution models are:
+At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The XRT managed kernel's control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.
 
-1. ``AP_CTRL_HS``
-2. ``AP_CTRL_CHAIN``
-3. ``AP_CTRL_NONE``
+The two primary supported excution models are:
 
-The ``IP_LAYOUT`` section of the kernel ``xclbin`` metadata contains the kernel execution model information. The ``xclbinutil`` utility command can be used to retrieve the execution model information from a ``.xclbin`` file.
-
-.. code-block:: none
-
-   xclbinutil --info --input binary_container_1.xclbin --dump-section IP_LAYOUT:json:ip_layout_info.json
-
-.. code-block:: json
-
-   {
-    "ip_layout": {
-        "m_count": "5",
-        "m_ip_data": {
-            "ip_data": {
-                "m_type": "IP_KERNEL",
-                "m_int_enable": "0",
-                "m_interrupt_id": "0",
-                "m_ip_control": "AP_CTRL_HS",
-
+1. Sequential execution model
+2. Pipelined execution model
 
 Below we will discuss each kernel execution model in detail.
 
-=========================================
-AP_CTRL_HS (Sequentially Executed Kernel)
-=========================================
+==========================
+Sequential Execution Model
+==========================
 
-The AP_CTRL_HS style kernel is the most sophisticated execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+Sequential execution model is legacy (prior to 2019.1 release) default execution model supported through the HLS flow. The user can create this implemtation by specifying AP_CTRL_HS pragma at the kernel interface. 
 
-Mode of operation
-~~~~~~~~~~~~~~~~~
+The idea of sequentially executed model is the simple one-point synchronization scheme between the host and the kernel using two signals: **ap_start** and **ap_done**. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.
+
+**Mode of operation**
+
 
 .. image:: ap_ctrl_hs_2.PNG
    :align: center
@@ -54,8 +38,8 @@ Assume there are three concurrent kernel execution requests from the host. The k
 
 START1=>DONE1=>START2=>DONE2=>START3=>DONE3
 
-Control Signal Topology
-~~~~~~~~~~~~~~~~~~~~~~~
+**Control Signal Topology**
+
 The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.
 
 ====== ===================== =======================================================================
@@ -65,14 +49,15 @@ The signals ap_start and ap_done must be connected to the AXI_LITE control and s
   1         ap_done            Asserted by the kernel when it is finished producing the output data
 ====== ===================== =======================================================================
 
-================================
-AP_CTRL_CHAIN (Pipelined Kernel)
-================================
+=========================
+Pipelined Execution Model
+=========================
 
-AP_CTRL_CHAIN is an improved version of AP_CTRL_HS where the kernel is designed in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
+Pipelined execution model is current default execution model supported through the HLS flow. 
 
-Mode of operation
-~~~~~~~~~~~~~~~~~
+The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals **ap_start** and **ap_ready**) and output synchronization (**ap_done** and **ap_continue**). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.
+
+**Mode of operation**
 
 .. image:: ap_ctrl_chain_2.PNG
    :align: center
@@ -87,7 +72,7 @@ Assume there are five concurrent kernel execution requests from the host and the
 
 START1=>START2=>START3=>DONE1=>START4=>DONE2=>START5=>DONE3=>DONE4=>DONE5
 
-**Note:** As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model.
+**Note:** As noted in the above sequence, the pipelined execution model only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by through this execution model.
 
 **Output synchronization**
 
@@ -96,8 +81,8 @@ START1=>START2=>START3=>DONE1=>START4=>DONE2=>START5=>DONE3=>DONE4=>DONE5
 
 The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.
 
-Control Signal Topology
-~~~~~~~~~~~~~~~~~~~~~~~
+**Control Signal Topology**
+
 The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.
 
 ====== ===================== =======================================================================
@@ -109,30 +94,19 @@ The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AX
   4         ap_continue        Asserted by the XRT to allow kernel keep running
 ====== ===================== =======================================================================
 
-Host Code Consideration
-~~~~~~~~~~~~~~~~~~~~~~~
-The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
+**Host Code Consideration**
+
+To execute the kernel in pipelined fashion, the host code should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API ``clEnqueueMigrateMemObjects`` to explicitly migrate the buffer before the kernel execution.
 
 
+Note regarding the User-managed kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-==========================================
-AP_CTRL_NONE (Continuously Running Kernel)
-==========================================
+The RTL kernels which are implemented as any other arbitrary execution models must be managed explicitly by the user using native XRT API. The ``xrt::ip`` class and its member functions are needed to control/read/write these types of kernels. See the API details in https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel 
 
-Sometimes the kernel does not need to be controlled by the host. For example, if the kernel is only communicating through the stream, it only works when the data is available at its input through the stream, and the kernel stalls when there is no data to process, waiting for new data to arrive through the stream to start working again. These type of kernels has no control signal connected to the AXI4-Lite Slave interface.
+Note regarding the Un-managed kernels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Important points to remember**
+The kernels can also be implemented without any control interfaces. As these kernels purely works on the availability of the data at its interface, they cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again. 
 
-1. Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.
-2. There is no need to start the kernel by ``clEnqueueTask`` or ``clEnqueueNDRangeKernel`` from the host.
-3. Host communicates with a continuously running kernel by the stream read and write requests, if necessary.
-4. Dont use ``clSetKernelArg`` to pass scalar argument to ap_ctrl_none kernel, only use ``xclRegWrite`` (API implemented in 2019.2) API.
-
-**Note:** To read and write register values from the AXI4-Lite Slave interface, the new APIs ``xclRegRead``/``xclRegWrite`` must be used (replacing obsolated APIs ``xclRead``/``xclWrite``). These APIs require exclusive CU context reservation via API ``xclOpenContext`` as shown in the code sample below.
-
-.. code-block:: c
-
-   xclOpenContext(device_handle, xclbin_id, cu_index, false);
-   xclRegRead(device_handle, cu_index, offset, &data);
-   xclRegWrite(device_handle, cu_index, offset, data);
-   xclCloseContext(device_handle, xclbin_id, cu_index);
+These kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. The user can read/write to those kernels by native XRT APIs (``xrt::ip::read_register``, ``xrt::ip::write_register``). 

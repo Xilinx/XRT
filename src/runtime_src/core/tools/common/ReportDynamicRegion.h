@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportCu_h_
-#define __ReportCu_h_
+#ifndef __ReportDynamicRegion_h_
+#define __ReportDynamicRegion_h_
 
 // Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportCu : public Report {
+class ReportDynamicRegion : public Report {
  public:
-  ReportCu() : Report("compute-units", "Information of the compute units", true /*deviceRequired*/) { /*empty*/ };
+  ReportDynamicRegion() : Report("dynamic-regions", "Information about the xclbin and the compute units", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

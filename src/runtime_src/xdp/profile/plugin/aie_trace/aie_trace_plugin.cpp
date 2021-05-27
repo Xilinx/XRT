@@ -113,8 +113,10 @@ namespace xdp {
     // functions_all_stalls: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
     // all: "traced_events": [120, 119, 118, 117, 116, 115, 5, 6]
     //
-    // NOTE: core events listed here are broadcast by the resource manager
-    // NOTE: these are supplemented with counter events as those are dependent on counter #
+    // NOTE 1: Core events listed here are broadcast by the resource manager
+    // NOTE 2: These are supplemented with counter events as those are dependent on counter #
+    // NOTE 3: For now, 'all' is the same as 'functions_all_stalls'. Combo events (required 
+    //         for all) have limited support in the resource manager.
     memoryEventSets = {
       {"functions",                {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE}},
       {"functions_partial_stalls", {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
@@ -123,7 +125,9 @@ namespace xdp {
       {"functions_all_stalls",     {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
                                     XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
                                     XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}},
-      {"all",                      {XAIE_EVENT_GROUP_CORE_STALL_CORE, XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}}
+      {"all",                      {XAIE_EVENT_INSTR_CALL_CORE,       XAIE_EVENT_INSTR_RETURN_CORE,
+                                    XAIE_EVENT_MEMORY_STALL_CORE,     XAIE_EVENT_STREAM_STALL_CORE, 
+                                    XAIE_EVENT_CASCADE_STALL_CORE,    XAIE_EVENT_LOCK_STALL_CORE}}
     };
 
     // **** Core Module Counters ****
@@ -189,9 +193,10 @@ namespace xdp {
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
     runtimeMetrics = (compilerOptions.event_trace == "runtime");
+
     if (!runtimeMetrics) {
       std::stringstream msg;
-      msg << "Found compiler trace option of " << compilerOptions.event_trace 
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
           << ". No runtime AIE metrics will be changed.";
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
       return true;
@@ -781,8 +786,10 @@ namespace xdp {
     //        We need 64 packets, so we need 7 * 64 = 448 words.
     //        Existing counters generates 1.5 words for every perf counter 2 triggers.
     //        Thus, 300 (299 exactly,, but 300 would have no harm) perf 2 counter events.
-    uint32_t timerTrigValueLow  = 0x129A92C0;
-    uint32_t timerTrigValueHigh = 0x0;
+    //uint32_t timerTrigValueLow  = 0x129A92C0;
+    //uint32_t timerTrigValueLow  = 0x4A6A4B00;
+    uint32_t timerTrigValueLow  = 0x29A92C00;
+    uint32_t timerTrigValueHigh = 0x1;
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
@@ -877,9 +884,10 @@ namespace xdp {
       return;
 
     // Set metrics to flush the trace FIFOs
-    // NOTE: The data mover uses a burst length of 256, so we need 64 more 
-    // dummy packets to ensure all execution trace gets written to DDR.
-    if (xrt_core::config::get_aie_trace_flush()) {
+    // NOTE 1: The data mover uses a burst length of 128, so we need dummy packets
+    //         to ensure all execution trace gets written to DDR.
+    // NOTE 2: This flush mechanism is only valid for runtime event trace
+    if (runtimeMetrics && xrt_core::config::get_aie_trace_flush()) {
       setFlushMetrics(deviceId, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(10));
     }

@@ -48,12 +48,20 @@ namespace xdp {
 
   const char* getToolVersion()
   {
-    return "2020.2" ;
+    return "2021.1" ;
   }
 
-  const char* getXRTVersion()
+  std::string getXRTVersion()
   {
-    return "2.6.0" ;	// To Do
+    static std::string version = "" ;
+    if (version != "") return version ;
+
+    boost::property_tree::ptree xrtInfo ;
+    xrt_core::get_xrt_build_info(xrtInfo) ;
+
+    version = xrtInfo.get<std::string>("version", "N/A") ;
+
+    return version ;
   }
 
   // This function can only be called after the system singleton has

@@ -122,8 +122,8 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 
 	if (ret_src != ret_dst) {
 		/* One of them is not local BO, perform P2P copy */
-		xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
-		return 1;
+		int err = xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
+		return err < 0 ? err : 1;
 	}
 
 	/* Both BOs are local, copy via cdma CU */
@@ -548,7 +548,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		/* third argument in following function is representing number of
+		 * words to skip when writing to CU. This should be consistent
+		 * for both edge/DC, but Due to performance and some use cases
+		 * this is been decided that, DC flows skips first 6 words
+		 * whereas edge flows doesnt skip any words
+		 */
+		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd, 6);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);

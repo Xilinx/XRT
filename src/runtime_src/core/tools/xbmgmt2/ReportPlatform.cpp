@@ -39,6 +39,65 @@ ReportPlatform::getPropertyTreeInternal( const xrt_core::device * device,
   getPropertyTree20202(device, pt);
 }
 
+/**
+ * New flow for exposing mac addresses
+ * qr::mac_contiguous_num is the total number of mac addresses
+ * avaliable contiguously starting from qr::mac_addr_first
+ * 
+ * Old flow: Query the four sysfs nodes we have and validate them
+ * before adding them to the property tree
+ */
+static boost::property_tree::ptree
+mac_addresses(const xrt_core::device * dev)
+{
+  boost::property_tree::ptree ptree;
+  uint64_t mac_contiguous_num = 0;
+  std::string mac_addr_first;
+  try {
+    mac_contiguous_num = xrt_core::device_query<xrt_core::query::mac_contiguous_num>(dev);
+    mac_addr_first = xrt_core::device_query<xrt_core::query::mac_addr_first>(dev);
+  }
+  catch (...) {  }
+
+  //new flow
+  if (mac_contiguous_num && !mac_addr_first.empty()) {
+    // finding the contiguous mac address
+    // 00:00:00:00:00:01
+    // mac_prefix = 00:00:00:00:00
+    // mac_base = 01 (gets increased by 1)
+    // mac_base_val = 00:00:00:00:00:02
+    std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
+    std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
+    std::stringstream ss;
+    uint32_t mac_base_val = 0;
+    ss << std::hex << mac_base;
+    ss >> mac_base_val;
+
+    for (uint32_t i = 0; i < (uint32_t)mac_contiguous_num; i++) {
+      boost::property_tree::ptree addr;
+      auto base = boost::format("%02X") % (mac_base_val + i);
+      addr.add("address", mac_prefix + ":" + base.str());
+      ptree.push_back(std::make_pair("", addr));
+    } 
+  }
+  else { //old flow
+    std::vector<std::string> mac_addr;
+    try {	  
+      mac_addr = xrt_core::device_query<xrt_core::query::mac_addr_list>(dev);
+    }
+    catch (...) {  }
+    for (const auto& a : mac_addr) {
+      boost::property_tree::ptree addr;
+      if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
+        addr.add("address", a);
+        ptree.push_back(std::make_pair("", addr));
+      }
+    }
+  }
+
+  return ptree;
+}
+
 /*
  * helper function for getPropertyTree20202()
  */
@@ -111,7 +170,13 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   //create information tree for a device
   pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
-  pt_platform.put("hardware.serial_num", info.mSerialNum);
+  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? "N/A" : info.mSerialNum);
+  boost::property_tree::ptree dev_prop;
+  dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
+  dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
+  dev_prop.put("config_mode", info.mConfigMode);
+  dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
+  pt_platform.add_child("device_properties", dev_prop);
 
   //Flashable partition running on FPGA
 
@@ -162,13 +227,15 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_current_shell.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
     pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   }
-
+  
   std::string sc_ver;
   try {
     sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
-  } catch (...) {}
-  if(sc_ver.empty())
-    sc_ver = info.mBMCVer;
+  } catch (...) {
+    auto board = f.getOnBoardDSA();
+    sc_ver = board.bmc_ver();
+  }    
+  
   pt_current_shell.put("sc_version", sc_ver);
   pt_platform.add_child("current_shell", pt_current_shell);
 
@@ -201,6 +268,9 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_platform.put_child("available_partitions", pt_available_partitions);
   }
   
+  auto macs = mac_addresses(device);
+  if(!macs.empty())
+    pt_platform.put_child("macs", macs);
 
   // There can only be 1 root node
   pt.add_child("platform", pt_platform);
@@ -233,6 +303,14 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Flash properties\n";
   _output << fmtBasic % "Type" % _pt.get<std::string>("platform.flash_type", "N/A");
   _output << fmtBasic % "Serial Number" % _pt.get<std::string>("platform.hardware.serial_num", "N/A");
+  _output << std::endl;
+
+  const boost::property_tree::ptree& dev_properties = _pt.get_child("platform.device_properties");
+  _output << "Device properties\n";
+  _output << fmtBasic % "Type" % dev_properties.get<std::string>("board_type", "N/A");
+  _output << fmtBasic % "Name" % dev_properties.get<std::string>("board_name", "N/A");
+  _output << fmtBasic % "Config Mode" % dev_properties.get<std::string>("config_mode", "N/A");
+  _output << fmtBasic % "Max Power" % dev_properties.get<std::string>("max_power_watts", "N/A");
   _output << std::endl;
 
   _output << "Flashable partitions running on FPGA\n";
@@ -290,6 +368,15 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Logic UUID" % plp.get<std::string>("logic-uuid", "N/A");
     _output << fmtBasic % "Interface UUID" % plp.get<std::string>("interface-uuid", "N/A");
     _output << std::endl;
+  }
+
+  const boost::property_tree::ptree& macs = _pt.get_child("platform.macs", pt_empty);
+  if(!macs.empty()) {
+    _output << std::endl;
+    std::string formattedStr;
+    
+    for(auto & km : macs) 
+      formattedStr += boost::str(fmtBasic % (formattedStr.empty() ? "Mac Address" : "") % km.second.get<std::string>("address", "N/A"));
   }
 
   _output << shell_status(_pt.get<bool>("platform.status.shell", false), 

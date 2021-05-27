@@ -1516,6 +1516,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	char kname[64];
 	char *kname_p;
 	int err = 0, i;
+	int inst = 0;
 
 	/* Let CU controller know the dynamic resources */
 	for (i = 0; i < ip_layout->m_count; ++i) {
@@ -1549,7 +1550,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 			continue;
 		}
 
-		info.inst_idx = i;
+		info.inst_idx = inst++;
 		info.addr = ip->m_base_address;
 		info.size = krnl_info->range;
 		info.num_res = subdev_info.num_res;

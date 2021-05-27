@@ -31,7 +31,6 @@
 #include <boost/algorithm/string.hpp>
 #include "boost/filesystem.hpp"
 
-
 #define INVALID_ID      0xffff
 
 #define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
@@ -409,7 +408,7 @@ DSAInfo Flasher::getOnBoardDSA()
     if (rc == 0)
         bmc = info.mBMCVer; // Successfully read BMC version
     else if (rc == -EOPNOTSUPP)
-        bmc.clear(); // BMC is not supported on DSA
+        bmc = "INACTIVE"; // BMC is not supported on DSA, state is inactive
     else
         bmc = "UNKNOWN"; // BMC not ready, set it to an invalid version string
 
