@@ -42,14 +42,33 @@ class device;
 namespace xrt {
 
 namespace info {
-
-/**    
- * @enum info::device - device information parameters.
+/*!
+ * @enum device 
  *
+ * @brief
+ * Device information parameters
  *
- * Use with \ref xrt::device::get_info() to retrieve properties of the
+ * @details
+ * Use with `xrt::device::get_info()` to retrieve properties of the
  * device.  The type of the device properties is compile time defined
  * with param traits.
+ *
+ * @var bdf 
+ *  BDF for device (std::string)
+ * @var interface_uuid
+ *  Interface UUID when device is programmed with 2RP shell (`xrt::uuid`)
+ * @var kdma
+ *  Number of KDMA engines (std::uint32_t)
+ * @var max_clock_frequency_mhz
+ *  Max clock frequency (unsigned long)
+ * @var m2m
+ *  True if device contains m2m (bool)
+ * @var name
+ *  Name (VBNV) of device (std::string)
+ * @var nodma
+ *  True if device is a NoDMA device (bool)
+ * @var offline
+ *  True if device is offline and in process of being reset (bool)
  */
 enum class device : unsigned int {
   bdf,
@@ -62,7 +81,8 @@ enum class device : unsigned int {
   offline,
 };
 
-/**
+/// @cond 
+/*
  * Return type for xrt::device::get_info()
  */
 XRT_INFO_PARAM_TRAITS(device::bdf, std::string);
@@ -73,9 +93,16 @@ XRT_INFO_PARAM_TRAITS(device::m2m, bool);
 XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
 XRT_INFO_PARAM_TRAITS(device::offline, bool);
+/// @endcond 
 
 } // info
-  
+
+/*!
+ * @class device
+ *
+ * @brief
+ * xrt::device represents used for acceleration.
+ */
 class device
 {
 public:
@@ -100,7 +127,7 @@ public:
   /**
    * device() - Constructor from string
    *
-   * @param str
+   * @param bdf
    *  String identifying the device to open.  
    *
    * If the string is in BDF format it matched against devices

@@ -31,31 +31,60 @@
 
 namespace xrt {
 
+/*!  
+ * @class ip
+ *
+ * @brief
+ * xrt::ip represent the custom IP
+ *
+ * @details The ip can be controlled through read- and write register
+ * only.  If the IP supports interrupt notification, then xrt::ip
+ * objects supports enabling and control of underlying IP interrupt.
+ *
+ * In order to construct an ip object, the following requirements must be met:
+ *
+ *   - The custom IP must appear in IP_LAYOUT section of xclbin.
+ *   - The custom IP must have a base address such that it can be controlled
+ *     through register access at offsets from base address.
+ *   - The custom IP must have an address range so that write and read access 
+ *     to base address offset can be validated.
+ *   - XRT supports exclusive access only for the custom IP, this is to other 
+ *     processes from accessing the same IP at the same time.
+ */
 class ip_impl;
 class ip : public detail::pimpl<ip_impl>
 {
 public:
-  /**
-   * class interrupt - IP interrupt object
+  /*!
+   * @class interrupt
+   *
+   * @brief
+   * xrt::ip::interrupt represents an IP interrupt event.
    *
    * This class represents an IP interrupt event.  The interrupt
    * object is contructed via `xrt::ip::create_interrupt_notify()`.
    * The object can be used to enable and disable IP interrupts
-   * and can be used to wait for an interrupt to occur.
+   * and to wait for an interrupt to occur.
    *
-   * Upon construction IP interrupt is automatically enabled.
+   * Upon construction, the IP interrupt is automatically enabled.
    */
   class interrupt_impl;
   class interrupt : public detail::pimpl<interrupt_impl>
   {
   public:
+    /// @cond
     explicit
     interrupt(std::shared_ptr<interrupt_impl> handle)
       : detail::pimpl<interrupt_impl>(std::move(handle))
     {}
+    /// @endcond
 
     /**
      * enable() - Enable interrupt
+     *
+     * Enables the IP interrupt if not already enabled.  The
+     * IP interrupt is automatically enabled when the interrupt
+     * object is created.
      */
     XCL_DRIVER_DLLESPEC
     void
@@ -63,6 +92,8 @@ public:
  
     /**
      * disable() - Disable interrupt
+     *
+     * Disables the IP interrupt notification from IP.
      */
     XCL_DRIVER_DLLESPEC
     void
@@ -96,9 +127,9 @@ public:
    * @param name
    *  Name of IP to construct
    *
-   * The IP is opened with exclusive access meaning that no other xrt::ip
-   * objects can use the same IP, nor will other process be able to use the
-   * IP while one process has been granted access.
+   * The IP is opened with exclusive access meaning that no other
+   * xrt::ip objects can use the same IP, nor will another process be
+   * able to use the IP while one process has been granted access.
    *
    * Constructor throws on error.
    */
@@ -139,7 +170,7 @@ public:
    * create_interrupt_notify() - Create xrt::ip::interrupt object
    *
    * @return
-   *  xrt::ip::event object can be used to control IP interrupt.
+   *  xrt::ip::interrupt object can be used to control IP interrupt.
    *
    * This function creates an xrt::ip::interrupt object that can be
    * used to control and wait for IP interrupt.   On successful
