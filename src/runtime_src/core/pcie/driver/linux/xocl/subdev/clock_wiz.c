@@ -1153,6 +1153,7 @@ static uint64_t clock_wiz_get_data(struct platform_device *pdev,
 	enum data_kind kind)
 {
 	struct clock_wiz *clock_w = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(clock_w->cw_pdev);
 	uint64_t target = 0;
 	u32 freq = 0;
 
@@ -1169,15 +1170,15 @@ static uint64_t clock_wiz_get_data(struct platform_device *pdev,
 		target = clock_wiz_get_freq_impl(clock_w, 2);
 		break;
 	case FREQ_COUNTER_0:
-		xocl_clock_get_freq_counter(clock_w, &freq, 0);
+		xocl_clock_get_freq_counter(xdev, &freq, 0);
 		target = freq;
 		break;
 	case FREQ_COUNTER_1:
-		xocl_clock_get_freq_counter(clock_w, &freq, 1);
+		xocl_clock_get_freq_counter(xdev, &freq, 1);
 		target = freq;
 		break;
 	case FREQ_COUNTER_2:
-		xocl_clock_get_freq_counter(clock_w, &freq, 2);
+		xocl_clock_get_freq_counter(xdev, &freq, 2);
 		target = freq;
 		break;
 	default:
@@ -1193,6 +1194,7 @@ static ssize_t clock_wiz_freqs_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct clock_wiz *clock_w = platform_get_drvdata(to_platform_device(dev));
+	xdev_handle_t xdev = xocl_get_xdev(clock_w->cw_pdev);
 	ssize_t cnt = 0;
 	int i;
 	u32 freq, request_in_khz, tolerance;
@@ -1203,12 +1205,12 @@ static ssize_t clock_wiz_freqs_show(struct device *dev,
 
 		freq = clock_wiz_get_freq_impl(clock_w, i);
 
-		if (xocl_clock_get_freq_counter(clock_w, &freq_counter, i) !=
+		if (xocl_clock_get_freq_counter(xdev, &freq_counter, i) !=
 			-ENODEV) {
-			request_in_khz = freq*1000;
-			tolerance = freq*50;
+			request_in_khz = freq * 1000;
+			tolerance = freq * 50;
 
-			if (abs(freq_counter-request_in_khz) > tolerance)
+			if (abs(freq_counter - request_in_khz) > tolerance)
 				CLOCK_W_INFO(clock_w, "Frequency mismatch, "
 					"Should be %u khz, Now is %ukhz",
 					request_in_khz, freq_counter);
