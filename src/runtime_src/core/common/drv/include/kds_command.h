@@ -111,7 +111,8 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
 void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
-			  struct kds_command *xcmd);
+			  struct kds_command *xcmd,
+			  u32 skip);
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			struct kds_command *xcmd);
 int cu_mask_to_cu_idx(struct kds_command *xcmd, uint8_t *cus);

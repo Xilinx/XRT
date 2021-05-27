@@ -337,7 +337,7 @@ public:
     // memory, but we still recommend user to perform explicit BO sync
     // operation just in case the HW changes in the future.
     // if (get_flags() != bo::flags::host_only)
-    device->sync_bo(handle, dir, sz, offset + get_offset());
+    device->sync_bo(handle, dir, sz, offset);
   }
 
   virtual uint64_t
@@ -369,9 +369,8 @@ public:
 
   virtual size_t get_size()      const { return size;    }
   virtual void*  get_hbuf()      const { return nullptr; }
-  virtual bool   is_sub_buffer() const { return false;   }
+  virtual bool   is_sub()        const { return false;   }
   virtual bool   is_imported()   const { return false;   }
-  virtual size_t get_offset()    const { return 0;       }
 };
 
 
@@ -519,7 +518,6 @@ class buffer_nodma : public bo_impl
 {
   buffer_kbuf m_host_only;
   buffer_dbuf m_device_only;
-  void* m_ubuf = nullptr;   // currently not supported (alloc_ubuf throws)
 
   void
   valid_or_error(size_t sz, size_t offset)
@@ -530,45 +528,18 @@ class buffer_nodma : public bo_impl
       throw xrt_core::system_error(EINVAL, "offset exceeds buffer size");
   }
 
-  void
-  sync_to_ubuf(size_t sz, size_t offset)
-  {
-    if (!m_ubuf)
-      return;
-    valid_or_error(sz, offset);
-    auto hbuf = static_cast<char*>(m_host_only.get_hbuf()) + offset;
-    auto ubuf = static_cast<char*>(m_ubuf) + offset;
-    std::memcpy(ubuf, hbuf, sz);
-  }
-
-  void
-  sync_to_hbuf(size_t sz, size_t offset)
-  {
-    if (!m_ubuf)
-      return;
-    valid_or_error(sz, offset);
-    auto hbuf = static_cast<char*>(m_host_only.get_hbuf()) + offset;
-    auto ubuf = static_cast<char*>(m_ubuf) + offset;
-    std::memcpy(hbuf, ubuf, sz);
-  }
-
 public:
-  buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz, void* ubuf)
-    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz), m_ubuf(ubuf)
+  buffer_nodma(xclDeviceHandle dhdl, xclBufferHandle hbuf, xclBufferHandle dbuf, size_t sz)
+    : bo_impl(sz), m_host_only(dhdl, hbuf, sz), m_device_only(dhdl, dbuf, sz)
   {
     device = xrt_core::get_userpf_device(dhdl);
     handle = dbuf;
-
-    if (m_ubuf) {
-      auto fmt = boost::format("Host pointer '0x%x' leads to extra memcpy for NoDMA platforms") % ubuf;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",  fmt.str());
-    }
   }
 
   void*
   get_hbuf() const override
   {
-    return m_ubuf ? m_ubuf : m_host_only.get_hbuf();
+    return m_host_only.get_hbuf();
   }
 
   // sync is M2M copy between host and device bo
@@ -577,14 +548,12 @@ public:
   sync(xclBOSyncDirection dir, size_t sz, size_t offset) override
   {
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE) {
-      sync_to_hbuf(sz, offset);
       // dst, src, size, dst_offset, src_offset
       device->copy_bo(m_device_only.get_xcl_handle(), m_host_only.get_xcl_handle(), sz, offset, offset);
     }
     else {
       // dst, src, size, dst_offset, src_offset
       device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, offset, offset);
-      sync_to_ubuf(sz, offset);
     }
   }
 
@@ -596,9 +565,7 @@ public:
 
     // Copy dst (this) dbuf to dst (this) hbuf
     device->copy_bo(m_host_only.get_xcl_handle(), m_device_only.get_xcl_handle(), sz, dst_offset, dst_offset);
-    sync_to_ubuf(sz, dst_offset);
   }
-    
 };
 
 // class buffer_sub - Sub buffer
@@ -606,35 +573,29 @@ public:
 // Sub-buffer created from parent buffer
 class buffer_sub : public bo_impl
 {
-  std::shared_ptr<bo_impl> parent;  // participate in ownership of parent
-  size_t offset;
-  void* hbuf;
+  std::shared_ptr<bo_impl> m_parent;  // participate in ownership of parent
+  size_t m_offset;
+  void* m_hbuf;
 
 public:
   buffer_sub(std::shared_ptr<bo_impl> par, size_t size, size_t off)
     : bo_impl(par.get(), size)
-    , parent(std::move(par))
-    , offset(off)
-    , hbuf(static_cast<char*>(parent->get_hbuf()) + offset)
+    , m_parent(std::move(par))
+    , m_offset(off)
+    , m_hbuf(static_cast<char*>(m_parent->get_hbuf()) + m_offset)
   {
-    if (size + offset > parent->get_size())
+    if (size + m_offset > m_parent->get_size())
       throw xrt_core::error(-EINVAL, "sub buffer size and offset");
-  }
-
-  size_t
-  get_offset() const override
-  {
-    return offset;
   }
 
   void*
   get_hbuf() const override
   {
-    return hbuf;
+    return m_hbuf;
   }
 
   bool
-  is_sub_buffer() const override
+  is_sub() const override
   {
     return true;
   }
@@ -642,7 +603,18 @@ public:
   uint64_t
   get_address() const override
   {
-    return bo_impl::get_address() + offset;
+    return bo_impl::get_address() + m_offset;
+  }
+
+  void
+  sync(xclBOSyncDirection dir, size_t sz, size_t offset) override
+  {
+    size_t off = offset + m_offset;
+    if (off + sz > m_parent->get_size())
+      throw xrt_core::error(-EINVAL, "Invalid offset and size when syncing sub buffer");
+
+    // sync through parent buffer, which handles nodma case also
+    m_parent->sync(dir, sz, off);
   }
 };
 
@@ -738,7 +710,7 @@ alloc_dbuf(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp, void* userptr=nullptr)
+alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
 {
   constexpr size_t align = 64;
   if (sz % align)
@@ -748,7 +720,7 @@ alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp,
   try {
     auto hbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_HOST_ONLY, grp);
     auto dbuf_handle = alloc_bo(dhdl, sz, XCL_BO_FLAGS_DEV_ONLY, grp);
-    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz, userptr);
+    auto boh = std::make_shared<xrt::buffer_nodma>(dhdl, hbuf_handle, dbuf_handle, sz);
     return boh;
   }
   catch (const std::exception& ex) {
@@ -797,7 +769,7 @@ alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-sub_buffer(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
+alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
@@ -923,7 +895,7 @@ bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
-	   sub_buffer, parent.handle, size, offset))
+	   alloc_sub, parent.handle, size, offset))
 {}
 
 bo::
@@ -1075,7 +1047,7 @@ xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
   try {
     return xdp::native::profiling_wrapper(__func__, [phdl, sz, offset]{
       const auto& parent = get_boh(phdl);
-      auto boh = sub_buffer(parent, sz, offset);
+      auto boh = alloc_sub(parent, sz, offset);
       bo_cache[boh.get()] = boh;
       return boh.get();
     });

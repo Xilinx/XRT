@@ -2,6 +2,9 @@ on:
   # scheduled workflows run on the latest commit on the default or base branch
   schedule:
     - cron: '0 4 * * 1/2'
+  
+  # allow manual dispatch
+  workflow_dispatch:  
     
 jobs:
   clangtidy:
@@ -16,7 +19,7 @@ jobs:
       id: cache-sha
       with:
         path: sha
-        key: commit-${{ github.sha }}
+        key: clangtidy-${{ github.sha }}
     - name: Install dependencies
       if: steps.cache-sha.outputs.cache-hit != 'true'
       run: |

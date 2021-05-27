@@ -80,10 +80,10 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   const std::string formatOptionValues = XBU::create_suboption_list_string(Report::getSchemaDescriptionVector());
 
   // Option Variables
-  std::vector<std::string> devices = {"all"};
-  std::vector<std::string> reportNames = {"platform"};
+  std::vector<std::string> devices;
+  std::vector<std::string> reportNames;
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "json";
+  std::string sFormat = "";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -121,6 +121,21 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     return;
   }
 
+  // Determine report level
+  if (devices.size() == 0 && reportNames.size() == 0)
+    reportNames.push_back("host");
+
+  if (devices.size() != 0 && reportNames.size() == 0) {
+    reportNames.push_back("platform");
+  }
+
+  // Determine default values
+  if (devices.size() == 0)
+    devices.push_back("all");
+
+  if (reportNames.size() == 0)
+    reportNames.push_back("host");
+
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
@@ -129,6 +144,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   try {
     // Collect the reports to be processed
     XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
+
+    // when json is specified, make sure an accompanying output file is also specified
+    if (!sFormat.empty() && sOutput.empty())
+      throw xrt_core::error("Please specify an output file to redirect the json to");
+
+    if(sFormat.empty())
+      sFormat = "json";
 
     // Output Format
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
@@ -158,6 +180,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         for (const auto & report : missingReports) 
           std::cout << boost::format("         - %s\n") % report;
       }
+    }
+
+    // enforce 1 device specification if multiple reports are requested
+    if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
+      std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
+      std::cout << "List of available devices:" << std::endl;
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+      for(auto& kd : available_devices) {
+        boost::property_tree::ptree& _dev = kd.second;
+        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+      }
+      std::cout << std::endl;
+      return;
     }
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier

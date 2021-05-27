@@ -38,6 +38,12 @@
 #ifndef __XGQ_H__
 #define __XGQ_H__
 
+#if defined(__KERNEL__)
+# include <linux/types.h>
+#else
+# include <stdint.h>
+#endif
+
 #define XRT_SUB_Q1_SLOT_SIZE	512
 #define XRT_QUEUE1_SLOT_NUM	4
 

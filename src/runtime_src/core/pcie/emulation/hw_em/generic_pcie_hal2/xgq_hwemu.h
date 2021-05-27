@@ -35,12 +35,20 @@
  *
  */
 
-#pragma once
+#ifndef __XGQ_HWEMU_H__
+#define __XGQ_HWEMU_H__
 
-#include "xgq.h"
-
-#include <list>
 #include <boost/pool/object_pool.hpp>
+#include <condition_variable>
+#include <cstdint>
+#include <list>
+#include <mutex>
+#include <thread>
+#include <vector>
+
+#include "em_defines.h"
+#include "ert.h"
+#include "xgq.h"
 
 namespace xclhwemhal2 {
   class HwEmShim;
@@ -145,7 +153,6 @@ namespace hwemu {
       uint32_t    payload_size();
       uint32_t    xcmd_size();
 
-      xocl_xgq              *xgqp;
       uint16_t              cmdid;
       std::vector<uint32_t> sq_buf;
       struct ert_packet     *ert_pkt;
@@ -178,3 +185,5 @@ namespace hwemu {
   };
 
 }  // namespace hwemu
+
+#endif
