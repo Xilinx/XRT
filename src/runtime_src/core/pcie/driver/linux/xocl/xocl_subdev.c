@@ -88,6 +88,11 @@ failed:
 	return ret;
 }
 
+static bool is_valid_override_idx(int override_idx)
+{
+	return (override_idx >= 0) && (override_idx < XOCL_SUBDEV_MAX_INST);
+}
+
 static struct xocl_subdev *xocl_subdev_info2dev(xdev_handle_t xdev_hdl,
 		struct xocl_subdev_info *sdev_info)
 {
@@ -97,7 +102,9 @@ static struct xocl_subdev *xocl_subdev_info2dev(xdev_handle_t xdev_hdl,
 	int i;
 
 	if (sdev_info->override_idx != -1)
-		return &core->subdevs[devid][sdev_info->override_idx];
+		return is_valid_override_idx(sdev_info->override_idx) ?
+			&core->subdevs[devid][sdev_info->override_idx] :
+			NULL;
 	else if (!sdev_info->multi_inst)
 		return &core->subdevs[devid][0];
 
