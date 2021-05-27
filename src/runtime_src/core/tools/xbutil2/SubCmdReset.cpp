@@ -100,7 +100,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("type,r", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
+    ("type,t", boost::program_options::value<decltype(resetType)>(&resetType)->notifier(supported), "The type of reset to perform. Types resets available:\n"
                                                                        "  user         - Hot reset (default)\n"
                                                                        /*"  aie          - Reset Aie array\n"*/
                                                                        /*"  kernel       - Kernel communication links\n"*/

@@ -41,39 +41,38 @@ namespace xrt {
  * @class xclbin
  *
  * @brief
- * xrt::xclbin represents an xclbin, provides APIs for inspection it.
+ * xrt::xclbin represents an xclbin and provides APIs to access meta data.
  *
  * @details
- * The xclbin object is typically constructed by the user with a file,
- * or it can be constructed from cached meta data obtained from driver
- * or elsewhere.
+ * The xclbin object is constructed by the user from a file.
  * 
- * If the xclbin object is constructed from a complete xclbin, then it
+ * When the xclbin object is constructed from a complete xclbin, then it
  * can be used by xrt::device to program the xclbin onto the device.
  *
- * If the xclbin was created from cached meta data, then the xclbin 
- * can be used for partial introspection primarily.
+ * **First-class objects and class navigation**
  *
- * First-class objects and class navigation
+ * All meta data is rooted at xrt::xclbin.
  *
- * All meta data is rooted at xrt::xclbin .  From the xclbin object
+ * \image{inline} html xclbin_navigation.png "xclbin navigation"
+ *
+ * From the xclbin object
  * xrt::xclbin::kernel or xrt::xclbin::ip objects can be constructed.
  * 
  * The xrt:xclbin::kernel is a concept modelled only in the xclbin XML
  * metadata, it corresponds to a function that can be executed by one
  * or more compute units modelled by xrt::xclbin::ip objects.  An
- * xrt::xclbin::ip object corresponds to an entry the xclbin IP_LAYOUT
- * section, so the xrt::xclbin::kernel object is just a grouping of
- * one or more of these.
+ * xrt::xclbin::ip object corresponds to an entry in the xclbin
+ * IP_LAYOUT section, so the xrt::xclbin::kernel object is just a
+ * grouping of one or more of these.
  *
- * In many cases the kernel concept is not needed, thus
+ * In some cases the kernel concept is not needed, thus
  * xrt::xclbin::ip objects corresponding to entries in the xclbin
  * IP_LAYOUT sections can be accessed directly.
  *
  * An xrt::xclbin::arg object corresponds to one or more entries in
  * the xclbin CONNECTIVITY section decorated with additional meta data
  * (offset, size, type, etc) from the XML section if available.  An
- * argument object represents a specific kernel or ip argument, and if
+ * argument object represents a specific kernel or ip argument. If
  * the argument is a global buffer, then it may connect to one or more
  * memory objects.
  *
@@ -90,7 +89,7 @@ public:
    * @brief
    * xrt::xclbin::mem represents a physical device memory bank
    *
-   * @detail
+   * @details
    * A memory object is constructed from an entry in the MEM_TOPOLOGY
    * section of an xclbin.
    */
@@ -101,8 +100,8 @@ public:
     /**
      * @enum memory_type - type of memory 
      *
-     * @detail
-     * See \ref xclbin.h
+     * @details
+     * See `xclbin.h`
      */
     enum class memory_type : uint8_t {
       ddr3                 = MEM_DDR3,
@@ -199,7 +198,7 @@ public:
    * @brief
    * class arg - xrt::xclbin::arg represents a compute unit argument
    *
-   * @detail 
+   * @details 
    * The argument object constructed from the xclbin connectivity
    * section.  An argument is connected to a memory bank or a memory
    * group, which dictates where in device memory a global buffer
@@ -286,7 +285,7 @@ public:
    * @brief 
    * xrt::xclbin::ip represents a IP in an xclbin.
    *
-   * @detail
+   * @details
    * The ip corresponds to an entry in the IP_LAYOUT section of the
    * xclbin.  
    */
@@ -363,7 +362,7 @@ public:
    * @brief
    * xrt::xclbin::kernel represents a kernel in an xclbin.
    *
-   * @detail
+   * @details
    * The kernel corresponds to an entry in the XML meta data section
    * of the xclbin combined with meta data from other xclbin sections.
    * The kernel object is implicitly constructed from the xclbin
@@ -459,12 +458,14 @@ public:
   xclbin()
   {}
 
+  /// @cond
   /**
    * xclbin() - Construct from handle
    */
   xclbin(std::shared_ptr<xclbin_impl> handle)
     : detail::pimpl<xclbin_impl>(handle)
   {}
+  /// @endcond
 
   /**
    * xclbin() - Constructor from an xclbin filename
@@ -472,8 +473,7 @@ public:
    * @param filename
    *  Path to the xclbin file
    *
-   * The xclbin file must be accessible by the application. An
-   * exception is thrown file not found
+   * Throws if file not found.
    */
   XCL_DRIVER_DLLESPEC
   explicit
@@ -497,6 +497,8 @@ public:
    *
    * @param top
    *  Raw data of xclbin file as axlf*
+   *
+   * The argument axlf is copied by the constructor.
    */
   XCL_DRIVER_DLLESPEC
   explicit
@@ -520,7 +522,7 @@ public:
    * get_kernel() - Get a kernel by name from xclbin
    *
    * @param name
-   *  Name of kernel to get
+   *  Name of kernel to get.
    * @return
    *  The matching kernel from the xclbin or error
    *  if no matching kernel is found.
@@ -537,7 +539,7 @@ public:
    * get_ips() - Get a list of IPs from the xclbin
    *
    * @return
-   *  A list of xrt::xclbin::ip objects from xclbin
+   *  A list of xrt::xclbin::ip objects from xclbin.
    *
    * The returned xrt::xclbin::ip objects are extracted from the
    * IP_LAYOUT section of the xclbin.
@@ -550,7 +552,7 @@ public:
    * get_ip() - Get a list of IPs from the xclbin
    *
    * @return
-   *  A list of xrt::xclbin::ip objects from xclbin
+   *  A list of xrt::xclbin::ip objects from xclbin.
    *
    * The returned xrt::xclbin::ip object is extracted from the
    * IP_LAYOUT section of the xclbin.
@@ -563,7 +565,7 @@ public:
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin
    *
    * @return 
-   *  Name of XSA (vbnv name)
+   *  Name of XSA (vbnv name).
    *
    * An exception is thrown if the data is missing.
    */

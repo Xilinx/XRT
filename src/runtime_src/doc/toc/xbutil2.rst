@@ -44,7 +44,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil program [--device|-d] <user bdf> [--program|-p] <xclbin>
 
@@ -64,7 +64,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 **Example commands** 
 
 
-.. code-block:: 
+.. code-block:: shell
 
     #Programming a only available device with a xclbin 
     xbutil program --program my_kernel.xclbin
@@ -87,7 +87,7 @@ The command ``xbutil validate`` validates the card installation by running preco
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
    xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format>
  
@@ -123,7 +123,7 @@ The command ``xbutil validate`` validates the card installation by running preco
 **Example commands**
 
 
-.. code-block:: 
+.. code-block:: shell
 
     # For a single device run all the tests 
     xbutil validate
@@ -147,7 +147,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
@@ -186,7 +186,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 **Example commands**
 
 
-.. code-block:: 
+.. code-block:: shell
 
     # Examine all the devices and produces all the reports
     xbutil examine
@@ -205,7 +205,7 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 
 **The supported options**
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil reset [--device| -d] <user bdf> [--type| -t] <reset type>
 
@@ -223,7 +223,7 @@ This ``xbutil reset`` command can be used to reset one or more devices.
 **Example commands**
 
 
-.. code-block::
+.. code-block:: shell
  
     xbutil reset --device 0000:65:00.1
     
@@ -242,27 +242,27 @@ As a disclaimer, the formats of these commands can change significantly as we kn
 
 Read from Memory
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil advanced [--device| -d] <user bdf> --read-mem <address> <size> [--output] <output file>
 
 Fill Memory with binary value
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size> [--fill] <binary data> 
 
 
 Fill Memory from a file content
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size>  [--input] <file>
 
 
 P2P Enable, disable or valiadte
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil advanced [--device| -d] <user bdf> --p2p [enable|disable|validate]
 
@@ -300,7 +300,7 @@ P2P Enable, disable or valiadte
 **Example commands**
 
 
-.. code-block::
+.. code-block:: shell
  
     xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30
     

@@ -536,36 +536,29 @@ namespace xclhwemhal2 {
       if (mLogStream.is_open())
          mLogStream << __func__ << " Creating the DDRMemoryManager Object with RTD section info" << std::endl;
 
-      int tmpIdx = 0;
       for (auto it : mMembanks)
       {
-        tmpIdx++;
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
-
-        if (it.tag.find("HOST")) {
-          host_sptag_idx = tmpIdx;
-        }
       }
-
-      for (auto it : mDDRMemoryManager)
+      for (auto it:mDDRMemoryManager)
       {
-        std::string tag = it->tag();
+              std::string tag = it->tag();
 
-        if (tag.empty() || tag.find("MBG") == std::string::npos) {
-          continue;
-        }
+              if(tag.empty() || tag.find("MBG") == std::string::npos)
+        	      continue;
 
-        for (auto it2 : mDDRMemoryManager)
-        {
-          if (it2->size() != 0 && it2 != it &&
-            it->start() <= it2->start() &&
-            (it->start() + it->size()) >= (it2->start() + it2->size()))
-          {
-            //add child memories
-            it->mChildMemories.push_back(it2);
-          }
-        }
+              for (auto it2:mDDRMemoryManager)
+              {
+        	      if(it2->size() !=0 &&
+			 it2 != it &&
+        		 it->start() <= it2->start() &&
+        		 (it->start() + it->size()) >= (it2->start() + it2->size()))
+        	      {
+			      //add child memories
+			      it->mChildMemories.push_back(it2);
+        	      }
+              }
       }
     }
 
@@ -1409,7 +1402,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mMemModel->readDevMem(src,dest,size);
       return size;
     }
-
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << skip << std::endl;
@@ -1504,19 +1496,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = -1;    
-
-    if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
-      result = mDDRMemoryManager[host_sptag_idx]->alloc(size, paddingFactor, chunks);
-    }
-    else {
-      result = mDDRMemoryManager[flags]->alloc(size, paddingFactor, chunks);
-    }
-
-    if (result == xclemulation::MemoryManager::mNull) {
+    uint64_t result = mDDRMemoryManager[flags]->alloc(size, paddingFactor,chunks);
+    if(result == xclemulation::MemoryManager::mNull)
       return result;
-    }
-
     uint64_t finalValidAddress = result+(paddingFactor*size);
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
@@ -2070,7 +2052,6 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     buf = nullptr;
     buf_size = 0;
     binaryCounter = 0;
-    host_sptag_idx = -1;
     sock = nullptr;
 
     deviceName = "device"+std::to_string(deviceIndex);
