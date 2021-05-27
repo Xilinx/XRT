@@ -54,7 +54,7 @@ namespace hwemu {
   {
     stop = false;
     sub_head = 0;
-    sub_tail = 1;
+    sub_tail = 0;
     com_head = 0;
     com_tail = 0;
     qid = 0;
@@ -123,7 +123,7 @@ namespace hwemu {
 
   void xgq_queue::update_doorbell()
   {
-    iowrite32_ctrl(xgq_sub_base, sub_tail - 1);
+    iowrite32_ctrl(xgq_sub_base, sub_tail);
   }
 
   void xgq_queue::clear_sub_slot_state(uint64_t sub_slot)
@@ -169,8 +169,6 @@ namespace hwemu {
         auto tail = check_doorbell();
         uint32_t slot = com_tail;
         for (;;) {
-          slot++;
-
           xrt_com_queue_entry ccmd;
           read_completion(ccmd, slot);
 
@@ -192,6 +190,7 @@ namespace hwemu {
           xgqp->cmd_pool.destroy(scmd);
           submitted_cmds.erase(ccmd.cid);
 
+	  slot++;
           if (slot == tail)
             break;
         }
