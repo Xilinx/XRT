@@ -757,21 +757,30 @@ namespace xdp {
         if (deviceMemorySize == 0)
           break;
 
-        // Limit size of trace buffer is requested amount is too high
         double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
+        std::streamsize origPrecision = std::cout.precision();
+        std::stringstream percentSizeStr;
+        percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
+
+        // Limit size of trace buffer is requested amount is too high
         if (percentSize >= 80.0) {
           uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
           aieTraceBufSize = newAieTraceBufSize;
 
-          std::string msg = "Requested AIE trace buffer is " + std::to_string(percentSize) + "% of free device memory."
-              + " You may run into errors (e.g., bad alloc) depending upon memory usage of your application."
-              + " Limiting to " + std::to_string(newAieTraceBufSize) + ".";
+          std::stringstream newBufSizeStr;
+          newBufSizeStr << std::fixed << std::setprecision(3) << (newAieTraceBufSize / (1024.0 * 1024.0));
+          
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory."
+              + " You may run into errors depending upon memory usage of your application."
+              + " Limiting to " + newBufSizeStr.str() + " MB.";
           xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
         }
         else {
-          std::string msg = "Requested AIE trace buffer is " + std::to_string(percentSize) + "% of device memory.";
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
           xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
         }
+
+        std::setprecision(origPrecision);
         break;
       }
       ifs.close();
