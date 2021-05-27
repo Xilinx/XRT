@@ -1198,24 +1198,10 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
-enum CLOCK_COUNTER_TYPE {
-        CCT_K1 = 0,
-        CCT_K2 = 1,
-        CCT_NUM = 2,
-};
-
-struct clock_counter_info {
-        size_t start;
-        size_t end;
-        size_t size;
-};
-
 struct xocl_clock_counter_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*get_freq_counter)(struct platform_device *pdev,
 		u32 *value, int id);
-	void (*reconfig_counters)(struct platform_device *pdev,
-		struct clock_counter_info *clk_counter);
 };
 #define CLOCK_C_DEV_INFO(xdev, idx)					\
 	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx).info
@@ -1250,14 +1236,6 @@ static inline int xocl_clock_c_ops_level(xdev_handle_t xdev)
 	CLOCK_C_OPS(xdev, __idx)->get_freq_counter(CLOCK_C_DEV(xdev, __idx),	\
 		value, id) : -ENODEV); 						\
 })
-#define	xocl_clock_reconfig_counters(xdev, clk_counter)				\
-({ \
-	int __idx = xocl_clock_c_ops_level(xdev);				\
-	(CLOCK_C_CB(xdev, __idx, reconfig_counters) ?				\
-	CLOCK_C_OPS(xdev, __idx)->reconfig_counters(CLOCK_C_DEV(xdev, __idx),	\
-		clk_counter) : -ENODEV); 					\
-})
-
 
 struct xocl_clock_wiz_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -2234,7 +2212,6 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
 int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
-bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob, struct clock_counter_info *clk_counter);
 
 /* debug functions */
 struct xocl_dbg_reg {

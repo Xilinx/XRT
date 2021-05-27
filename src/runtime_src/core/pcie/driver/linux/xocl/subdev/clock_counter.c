@@ -135,23 +135,6 @@ static u32 clock_counter_get_freq_impl(struct clock_counter *clock_c,
 	return freq;
 }
 
-static void clock_counter_reconfig(struct platform_device *pdev,
-                                         struct clock_counter_info *clk_counter)
-{
-	struct clock_counter *clock_c = platform_get_drvdata(pdev);
-
-	mutex_lock(&clock_c->cc_lock);
-	if (clk_counter[CCT_K1].start)
-		clock_c->cc_freq_counters[CCT_K1] =
-			ioremap_nocache(clk_counter[CCT_K1].start,
-						clk_counter[CCT_K1].size);
-	if (clk_counter[CCT_K2].start)
-		clock_c->cc_freq_counters[CCT_K2] =
-			ioremap_nocache(clk_counter[CCT_K2].start,
-						clk_counter[CCT_K2].size);
-	mutex_unlock(&clock_c->cc_lock);
-}
-
 static int clock_counter_get_freq(struct platform_device *pdev,
 	u32 *value, int id)
 {
@@ -282,7 +265,6 @@ static struct attribute_group clock_counter_attr_group = {
 
 static struct xocl_clock_counter_funcs clock_counter_ops = {
 	.get_freq_counter = clock_counter_get_freq,
-	.reconfig_counters = clock_counter_reconfig,
 };
 
 static int clock_counter_remove(struct platform_device *pdev)
