@@ -86,10 +86,6 @@ public:
 
     std::unordered_map<std::string, adf::plio_config> plio_configs;
 
-    // Collection of TraceGMIOs
-    std::vector<adf::trace_gmio_config> trace_gmio_configs;
-    std::vector<std::shared_ptr<adf::trace_gmio_api>> trace_gmio_apis;
-
     XAie_DevInst *getDevInst();
 
     void

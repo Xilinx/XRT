@@ -93,23 +93,6 @@ private:
     std::queue<size_t> availableBDs;
 };
 
-class trace_gmio_api
-{
-public:
-    trace_gmio_api(const trace_gmio_config* pConfig)
-      : pGMIOConfig(pConfig)
-    {} 
-    virtual ~trace_gmio_api() {}
-
-    // GMIO shim DMA physical configuration compiled by the AIE compiler
-    const trace_gmio_config* pGMIOConfig;
-
-    // C_RTS Shim DMA to where this GMIO object is mapped
-    XAie_DmaDesc shimDmaInst;
-    XAie_LocType traceGmioTileLoc;
-
-};
-
 err_code checkRTPConfigForUpdate(const rtp_config* pRTPConfig, const graph_config* pGraphConfig, size_t numBytes, bool isRunning = false);
 err_code checkRTPConfigForRead(const rtp_config* pRTPConfig, const graph_config* pGraphConfig, size_t numBytes);
 
