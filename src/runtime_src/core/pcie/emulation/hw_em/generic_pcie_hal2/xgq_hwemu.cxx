@@ -190,7 +190,7 @@ namespace hwemu {
           xgqp->cmd_pool.destroy(scmd);
           submitted_cmds.erase(ccmd.cid);
 
-	  slot++;
+          slot++;
           if (slot == tail)
             break;
         }
