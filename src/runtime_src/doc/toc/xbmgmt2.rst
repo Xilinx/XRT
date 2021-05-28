@@ -25,6 +25,48 @@ The next-generation ``xbmgmt`` commands are
 xbmgmt dump
 ~~~~~~~~~~~
 
+The ``xbmgmt dump`` command dump out content of the specified option 
+
+**The supported options**
+
+Dumping the output of system configuration.
+
+.. code-block:: shell
+
+    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename>
+    
+
+Dumping the output of programmed system image
+
+.. code-block:: shell
+
+    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .ini extension>
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device 
+    
+    - <management bdf> : The Bus:Device.Function of the device of interest
+
+
+- The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
+--The ``--config`` (or ``-c``) option dumps the output of system configuration.
+- The ``--output`` (or ``-o``) spcifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
+    
+
+**Example commands** 
+
+
+.. code-block:: shell
+
+      
+    #Dump programmed system image data
+    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.txt
+    
+    #Dump system configaration 
+    xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini
+
 
 xbmgmt examine
 ~~~~~~~~~~~~~~
