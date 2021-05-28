@@ -198,8 +198,13 @@ void runTestThread(arg_t &arg)
     // CU name shoue be "hello:hello_1" or "verify:verify_1"
     std::string cu_name = krnl.name + ":" + krnl.name + "_1";
     krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
-    if (krnl.cu_idx < 0)
-        throw std::runtime_error(cu_name + " not found");
+    if (krnl.cu_idx < 0) {
+        // CU name of hello kernel on older shells is "hello:hello_cu0"
+        cu_name = krnl.name + ":" + krnl.name + "_cu0";
+        krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
+        if (krnl.cu_idx < 0)
+            throw std::runtime_error(cu_name + " not found");
+    }
 
     if (xclOpenContext(handle, uuid, krnl.cu_idx, true))
         throw std::runtime_error("Cound not open context");
