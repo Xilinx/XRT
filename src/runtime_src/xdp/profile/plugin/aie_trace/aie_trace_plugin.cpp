@@ -758,11 +758,10 @@ namespace xdp {
           break;
 
         double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
-        std::streamsize origPrecision = std::cout.precision();
         std::stringstream percentSizeStr;
         percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
 
-        // Limit size of trace buffer is requested amount is too high
+        // Limit size of trace buffer if requested amount is too high
         if (percentSize >= 80.0) {
           uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
           aieTraceBufSize = newAieTraceBufSize;
@@ -779,8 +778,6 @@ namespace xdp {
           std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
           xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
         }
-
-        std::setprecision(origPrecision);
         break;
       }
       ifs.close();
