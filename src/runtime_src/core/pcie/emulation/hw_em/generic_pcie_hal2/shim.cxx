@@ -539,13 +539,11 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
-        std::string tag = it.tag;
-        int32_t index = it.index;
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
 
-        std::size_t found = tag.find("HOST");
+        std::size_t found = it.tag.find("HOST");
         if (found != std::string::npos) {
-          host_sptag_idx = index;
+          host_sptag_idx = it.index;
         }
       }
 
@@ -553,17 +551,21 @@ namespace xclhwemhal2 {
       {
         std::string tag = it->tag();
 
-        if (tag.empty() || tag.find("MBG") == std::string::npos) {
+        //continue if not MBG group
+        if (tag.find("MBG") == std::string::npos) {
           continue;
         }
 
+        // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the 
+        // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
         for (auto it2 : mDDRMemoryManager)
         {
           if (it2->size() != 0 && it2 != it &&
             it->start() <= it2->start() &&
             (it->start() + it->size()) >= (it2->start() + it2->size()))
           {
-            //add child memories
+            //add HBM child memories to MBG large group[
             it->mChildMemories.push_back(it2);
           }
         }
