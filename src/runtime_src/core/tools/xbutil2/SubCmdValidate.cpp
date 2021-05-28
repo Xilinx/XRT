@@ -1150,7 +1150,7 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
   { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
   { create_init_test("DMA", "Run dma test", "verify.xclbin"), dmaTest },
-  { create_init_test("iops", "Run xcl_iops test", "verify.xclbin"), iopsTest },
+  { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
   { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
   { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
   { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },

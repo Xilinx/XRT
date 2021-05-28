@@ -19,7 +19,6 @@
 #define XDP_SOURCE
 
 #include "xdp_hal_plugin_interface.h"
-#include "xdp_hal_plugin.h"
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/hal_api_calls.h"
