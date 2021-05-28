@@ -52,7 +52,7 @@ Dumping the output of programmed system image
 
 - The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
 - The ``--config`` (or ``-c``) option dumps the output of system configuration.
-- The ``--output`` (or ``-o``) spcifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
+- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
     
 
 **Example commands** 
@@ -96,12 +96,12 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
     - ``mechanical``: Mechanical sensors on and surrounding the device
     - ``platform``: Platform information
 
-- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text formt will be shown in stdout
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
     - ``JSON``: The report is shown in latest JSON schema
     - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
 
-- The ``--output`` (or ``-o``) spcifies the output file to direct the output
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
     
 
 **Example commands** 
