@@ -51,7 +51,7 @@ Dumping the output of programmed system image
 
 
 - The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
---The ``--config`` (or ``-c``) option dumps the output of system configuration.
+- The ``--config`` (or ``-c``) option dumps the output of system configuration.
 - The ``--output`` (or ``-o``) spcifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
     
 
