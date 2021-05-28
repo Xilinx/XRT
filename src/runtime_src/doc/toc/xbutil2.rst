@@ -91,12 +91,12 @@ The command ``xbutil validate`` validates the installed card by running precompi
     - ``vcu``: Run decoder test (only applicable for specific platform). 
     - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)   
   
-- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text formt will be shown in stdout
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
     - ``JSON``: The report is shown in latest JSON schema
     - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
     
-- The ``--output`` (or ``-o``) spcifies the output file to direct the output
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
 
 
 **Example commands**
@@ -154,12 +154,12 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     - ``qspi-status``: QSPI write protection status
     - ``thermal``: Reports thermal sensors present on the device
 
-- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text formt will be shown in stdout
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
     - ``JSON``: The report is shown in latest JSON schema
     - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
 
-- The ``--output`` (or ``-o``) spcifies the output file to direct the output
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
 
 
 
