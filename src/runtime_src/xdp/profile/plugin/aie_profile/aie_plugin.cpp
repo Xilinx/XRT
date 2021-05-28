@@ -306,14 +306,15 @@ namespace xdp {
           }
 
           // Set masks for group events
+          // NOTE: Writing to group error enable register is blocked, so ignoring
           if (startEvents.at(i) == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_DMA_MASK);
           else if (startEvents.at(i) == XAIE_EVENT_GROUP_LOCK_MEM)
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_LOCK_MASK);
           else if (startEvents.at(i) == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CONFLICT_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
+          //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
+          //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
