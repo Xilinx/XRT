@@ -540,9 +540,7 @@ namespace xclhwemhal2 {
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
         mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
-
-        std::size_t found = it.tag.find("HOST");
-        if (found != std::string::npos) {
+        if (it.tag.find("HOST") != std::string::npos) {
           host_sptag_idx = it.index;
         }
       }
