@@ -36,44 +36,43 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 
 .. code-block:: shell
 
-    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to program
     
-    - <none> : Optional for a single device system. 
-    - <management bdf>+ : Mandetory for multiple device system, has to be specified with one or more device management bdf information 
-    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
-  
-    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device management bdf information. 
-    - ``platform``: Reports platform related informati      
-    - ``verbose``: Reports all
-    
-- The ``--format`` (or ``-f``) can be used to specify the output format
-    
-    - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json``: The output is shown in json-2020.2 
-- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
-        
-    - <filename> : The output file to be dumped
+    - <management bdf> : The Bus:Device.Function of the device of interest
 
+- The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
+          
+    -  ``all``: All known reports are produced
+    - ``firewall``: Firewall status
+    - ``host``: Host information
+    - ``mailbox``: Mailbox metrics of the device
+    - ``mechanical``: Mechanical sensors on and surrounding the device
+    - ``platform``: Platform information
+
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text formt will be shown in stdout
+    
+    - ``JSON``: The report is shown in latest JSON schema
+    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
+
+- The ``--output`` (or ``-o``) spcifies the output file to direct the output
+    
 
 **Example commands** 
 
 
 .. code-block:: shell
 
-    #Reports Scanning of all the devices
-    xbmgmt examine 
-    
+      
     #Report all the information for a specific device
-    xbmgmt examine --d 0000:d8:00.0 -r verbose
+    xbmgmt examine --device 0000:d8:00.0 --report all
     
     #Reports platform information of two devices and dump to a file
-    xbmgmt examine -d 0000:b3:00.0 0000:65:00.0 --report platform --format json --output output output.json
+    xbmgmt examine --device 0000:b3:00.0 --report platform --format JSON --output output.json
 
 
 
