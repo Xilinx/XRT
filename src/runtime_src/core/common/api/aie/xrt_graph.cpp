@@ -320,10 +320,14 @@ xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* g
     graph_cache[hdl.get()] = hdl;
     return hdl.get();
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 xrtGraphHandle
@@ -334,10 +338,14 @@ xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, cons
     graph_cache[hdl.get()] = hdl;
     return hdl.get();
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 xrtGraphHandle
@@ -348,10 +356,14 @@ xrtGraphOpenShared(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const c
     graph_cache[hdl.get()] = hdl;
     return hdl.get();
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 void
@@ -362,6 +374,7 @@ xrtGraphClose(xrtGraphHandle graph_hdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -378,12 +391,12 @@ xrtGraphReset(xrtGraphHandle graph_hdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 uint64_t
@@ -395,12 +408,12 @@ xrtGraphTimeStamp(xrtGraphHandle graph_hdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -413,12 +426,12 @@ xrtGraphRun(xrtGraphHandle graph_hdl, int iterations)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -430,12 +443,12 @@ xrtGraphWaitDone(xrtGraphHandle graph_hdl, int timeoutMilliSec)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -448,12 +461,12 @@ xrtGraphWait(xrtGraphHandle graph_hdl, uint64_t cycle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -466,12 +479,12 @@ xrtGraphSuspend(xrtGraphHandle graph_hdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -484,12 +497,12 @@ xrtGraphResume(xrtGraphHandle graph_hdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -502,12 +515,12 @@ xrtGraphEnd(xrtGraphHandle graph_hdl, uint64_t cycle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -520,12 +533,12 @@ xrtGraphUpdateRTP(xrtGraphHandle graph_hdl, const char* port, const char* buffer
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -538,12 +551,12 @@ xrtGraphReadRTP(xrtGraphHandle graph_hdl, const char* port, char* buffer, size_t
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 xrtDeviceHandle
@@ -556,6 +569,7 @@ xrtAIEDeviceOpen(unsigned int index)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -573,6 +587,7 @@ xrtAIEDeviceOpenExclusive(unsigned int index)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -590,6 +605,7 @@ xrtAIEDeviceOpenShared(unsigned int index)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -612,12 +628,12 @@ xrtSyncBOAIE(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -635,12 +651,12 @@ xrtResetAIEArray(xrtDeviceHandle handle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -670,12 +686,12 @@ xrtSyncBOAIENB(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioNa
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 /**
@@ -695,12 +711,12 @@ xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 /**
@@ -730,12 +746,12 @@ xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, 
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 /**
@@ -755,12 +771,12 @@ xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 /**
@@ -782,10 +798,10 @@ xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
