@@ -133,11 +133,11 @@ Revert to golden image
 
 .. code-block:: shell
  
-     #Update the base partition 
-     xbmgmt program --device 0000:d8:00.0 --update 
+     #Program the base partition 
+     xbmgmt program --device 0000:d8:00.0 --base
      
      #Program the shell partition
-     xbmgmt program --device 0000:d8:00.0 --partition <partition file with path>
+     xbmgmt program --device 0000:d8:00.0 --shell <partition file with path>
  
      xbmgmt program --device 0000:d8:00.0 --revert-to-golden
 
