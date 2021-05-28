@@ -32,6 +32,54 @@ MODULE_PARM_DESC(kds_mode,
 
 int kds_echo = 0;
 
+static void zocl_kds_dma_complete(void *arg, int ret)
+{
+	struct kds_command *xcmd = (struct kds_command *)arg;
+	zocl_dma_handle_t *dma_handle = (zocl_dma_handle_t *)xcmd->priv;
+
+	xcmd->status = KDS_COMPLETED;
+	if (ret)
+		xcmd->status = KDS_ERROR;
+	xcmd->cb.notify_host(xcmd, xcmd->status);
+	xcmd->cb.free(xcmd);
+
+	kfree(dma_handle);
+}
+
+static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
+			    struct ert_start_copybo_cmd *ecmd,
+			    struct kds_command *xcmd)
+{
+	struct drm_device *dev = zdev->ddev;
+	zocl_dma_handle_t *dma_handle;
+	struct drm_zocl_copy_bo args = {
+		.dst_handle = ecmd->dst_bo_hdl,
+		.src_handle = ecmd->src_bo_hdl,
+		.size = ert_copybo_size(ecmd),
+		.dst_offset = ert_copybo_dst_offset(ecmd),
+		.src_offset = ert_copybo_src_offset(ecmd),
+	};
+	int ret = 0;
+
+	dma_handle = kmalloc(sizeof(zocl_dma_handle_t), GFP_KERNEL);
+	if (!dma_handle)
+		return -ENOMEM;
+
+	memset(dma_handle, 0, sizeof(zocl_dma_handle_t));
+
+	ret = zocl_dma_channel_instance(dma_handle, zdev);
+	if (ret)
+		return ret;
+
+	/* We must set up callback for async dma operations. */
+	dma_handle->dma_func = zocl_kds_dma_complete;
+	dma_handle->dma_arg = xcmd;
+	xcmd->priv = dma_handle;
+
+	ret = zocl_copy_bo_async(dev, filp, dma_handle, &args);
+	return ret;
+}
+
 static inline void
 zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
 {
@@ -363,6 +411,11 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
+	case ERT_START_COPYBO:
+		ret = copybo_ecmd2xcmd(zdev, filp, to_copybo_pkg(ecmd), xcmd);
+		if (ret)
+			goto out1;
+		goto out;
 	default:
 		DRM_ERROR("Unsupport command\n");
 		ret = -EINVAL;
@@ -378,7 +431,6 @@ out1:
 out:
 	/* Don't forget to put gem object if error happen */
 	if (ret < 0) {
-		//kfree(ecmd);
 		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
 	}
 	return ret;
