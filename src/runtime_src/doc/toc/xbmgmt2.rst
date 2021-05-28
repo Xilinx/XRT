@@ -136,7 +136,7 @@ Revert to golden image
 xbmgmt reset
 ~~~~~~~~~~~~
 
-This ``xbmgmt reset`` command can be used to reset device. 
+The ``xbmgmt reset`` command can be used to reset device. 
 
 
 **The supported options**
