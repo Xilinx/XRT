@@ -778,6 +778,7 @@ namespace xdp {
           std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
           xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
         }
+        
         break;
       }
       ifs.close();
