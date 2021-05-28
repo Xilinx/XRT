@@ -101,7 +101,7 @@ namespace hwemu {
       void     update_doorbell();
       uint16_t check_doorbell();
       int      submit_cmd(xgq_cmd *xcmd);
-      void     read_completion(xrt_com_queue_entry& ccmd);
+      void     read_completion(xrt_com_queue_entry& ccmd, uint32_t tail);
       void     clear_sub_slot_state(uint64_t sub_slot);
       void     iowrite32_ctrl(uint32_t addr, uint32_t data);
       void     iowrite32_mem(uint32_t addr, uint32_t data);
@@ -114,11 +114,11 @@ namespace hwemu {
 
       uint64_t        xgq_sub_base;
       uint64_t        xgq_com_base;
-      uint64_t        sub_head;
-      uint64_t        sub_tail;
+      uint32_t        sub_head;
+      uint32_t        sub_tail;
       uint64_t        sub_base;
-      uint64_t        com_head;
-      uint64_t        com_tail;
+      uint32_t        com_head;
+      uint32_t        com_tail;
       uint64_t        com_base;
 
       std::list<xgq_cmd*>          pending_cmds;
