@@ -3,34 +3,77 @@
 xbmgmt (Next Generation)
 ========================
 
-The next generation of the ``xbmgmt`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbmgmt`` in a future release of XRT. This document describes the usage of this new version of the tool.
+This document describes the new next-generation ``xbmgmt`` commands. These new commands are default from 21.1 release.   
 
-To invoke the new version please set the following environment variable
-
-.. code::
-
-    export XRT_TOOLS_NEXTGEN=true
+P.S: Legacy ``xbmgmt`` commands are still available and can be invoked by ``xbmgmt --legacy <command>``.
 
 
-The xbmgmt command options are
+**Global options**: These are the global options can be used with any command. 
 
-    - ``xbmgmt program``
+ - ``--verbose``: Turn on verbosity and shows more outputs whenever applicable
+ - ``--batch``: Enable batch mode
+ - ``--force``: When possible, force an operation
+
+The next-generation ``xbmgmt`` commands are
+
+    - ``xbmgmt dump``
     - ``xbmgmt examine``
+    - ``xbmgmt program``
     - ``xbmgmt reset``
 
-**A note about multidevice system**: All the ``xbmgmt`` command supports a ``--device`` (or ``-d``) switch to specify the target device of interest. The ``xbmgmt`` commands accept the PCIe management function bdf as an argument of ``--device`` switch. The user can check the management function bdf from ``xbmgmt examine`` command.
 
-.. code:: 
+xbmgmt dump
+~~~~~~~~~~~
 
-    xbmgmt examine
+
+xbmgmt examine
+~~~~~~~~~~~~~~
+
+The ``xbmgmt examine`` command reports detail status information of the specified device
+
+**The supported options**
+
+
+.. code-block:: shell
+
+    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+ 
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device to be validate 
     
-    Device : [0000:b3:00.0]
-    ....
-    ....
-    Device : [0000:65:00.0]
+    - <none> : Optional for a single device system. 
+    - <management bdf>+ : Mandetory for multiple device system, has to be specified with one or more device management bdf information 
+    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
+- The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
+  
+    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device management bdf information. 
+    - ``platform``: Reports platform related informati      
+    - ``verbose``: Reports all
+    
+- The ``--format`` (or ``-f``) can be used to specify the output format
+    
+    - ``text`` (**default**): The output is shown in the text format, default behavior
+    - ``json``: The output is shown in json-2020.2 
+- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
+        
+    - <filename> : The output file to be dumped
 
 
-The above output showing management function bdfs of the two devices (``0000:b3:00.0`` and ``0000:65:00.0``) can be used with ``--device`` switch.
+**Example commands** 
+
+
+.. code-block:: shell
+
+    #Reports Scanning of all the devices
+    xbmgmt examine 
+    
+    #Report all the information for a specific device
+    xbmgmt examine --d 0000:d8:00.0 -r verbose
+    
+    #Reports platform information of two devices and dump to a file
+    xbmgmt examine -d 0000:b3:00.0 0000:65:00.0 --report platform --format json --output output output.json
 
 
 
@@ -88,94 +131,32 @@ Revert to golden image
      xbmgmt program --device 0000:d8:00.0 --revert-to-golden
 
 
-xbmgmt examine
-~~~~~~~~~~~~~~
-
-The ``xbmgmt examine`` command reports detail status information of the specified device
-
-**The supported options**
-
-
-.. code-block:: shell
-
-    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
- 
-
-**The details of the supported options**
-
-- The ``--device`` (or ``-d``) specifies the target device to be validate 
-    
-    - <none> : Optional for a single device system. 
-    - <management bdf>+ : Mandetory for multiple device system, has to be specified with one or more device management bdf information 
-    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
-  
-    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device management bdf information. 
-    - ``platform``: Reports platform related informati      
-    - ``verbose``: Reports all
-    
-- The ``--format`` (or ``-f``) can be used to specify the output format
-    
-    - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json``: The output is shown in json-2020.2 
-- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
-        
-    - <filename> : The output file to be dumped
-
-
-**Example commands** 
-
-
-.. code-block:: shell
-
-    #Reports Scanning of all the devices
-    xbmgmt examine 
-    
-    #Report all the information for a specific device
-    xbmgmt examine --d 0000:d8:00.0 -r verbose
-    
-    #Reports platform information of two devices and dump to a file
-    xbmgmt examine -d 0000:b3:00.0 0000:65:00.0 --report platform --format json --output output output.json
 
 
 xbmgmt reset
 ~~~~~~~~~~~~
 
-This ``xbmgmt reset`` command can be used to reset one or more devices. 
+This ``xbmgmt reset`` command can be used to reset device. 
 
 
 **The supported options**
 
 .. code-block:: shell
 
-    xbmgmt reset [--device| -d] <management bdf> [--type| -t] <reset type>
+    xbmgmt reset [--device| -d] <management bdf> 
 
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) specifies the target device to reset
     
-    - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
-    
-    - ``hot`` (**default**): Complete reset of the device
-    - ``kernel``: Reset the kernel communication link
-    - ``ert``: Reset the management processor
-    - ``ecc``: Reset ecc memory
-    - ``soft-kernel``: Reset soft kernel
-         
+    - <management bdf> : The Bus:Device.Function of the device of interest
     
 
-**Example commands** 
+**Example commands**
 
 
 .. code-block:: shell
  
-    # Reset a single device entirely (default hot reset)
     xbmgmt reset --device 0000:65:00.0
-    
-    # Reset kernel communication link of two devices
-    xbmgmt reset --device 0000:65:00.0 0000:5e:00.0 --type kernel
-
 
