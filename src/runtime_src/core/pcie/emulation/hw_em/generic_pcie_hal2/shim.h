@@ -232,6 +232,7 @@ using addr_type = uint64_t;
       unsigned int getDsaVersion();
       bool isCdmaEnabled();
       uint64_t getCdmaBaseAddress(unsigned int index);
+      std::shared_ptr<xrt_core::device> getMCoreDevice();
 
       bool isXPR()           { return bXPR; }
       void setXPR(bool _xpr) { bXPR = _xpr; }

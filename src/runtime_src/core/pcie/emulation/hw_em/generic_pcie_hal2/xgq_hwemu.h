@@ -149,13 +149,21 @@ namespace hwemu {
 
       uint32_t    opcode();
       void        set_state(enum ert_cmd_state state);
-      int         convert_bo(xclemulation::drm_xocl_bo *bo);
       uint32_t    payload_size();
+      bool        is_ertpkt();
+
+      int         convert_bo(xclemulation::drm_xocl_bo *bo);
+      int         load_xclbin(xrt::bo& xbo, char *buf, size_t size);
+
       uint32_t    xcmd_size();
 
       uint16_t              cmdid;
       std::vector<uint32_t> sq_buf;
       struct ert_packet     *ert_pkt;
+      int                   rval;
+
+      std::mutex              cmd_mutex;
+      std::condition_variable cmd_cv;
 
       //! Static member varibale
       //  to get the unique ID for each command
@@ -175,6 +183,7 @@ namespace hwemu {
       ~xocl_xgq();
 
       int    add_exec_buffer(xclemulation::drm_xocl_bo *buf);
+      int    load_xclbin(char *buf, size_t size);
 
       // TODO support multiple queues
       xgq_queue queue;

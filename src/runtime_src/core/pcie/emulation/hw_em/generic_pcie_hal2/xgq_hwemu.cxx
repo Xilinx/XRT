@@ -121,6 +121,10 @@ namespace hwemu {
       ccmd.data[i] = ioread32_mem(com_base + slot * XRT_COM_Q1_SLOT_SIZE + i * 4);
   }
 
+  // Update XGQ submission queue tail pointer.
+  // The sub_tail is a 32 bits integer that points to the first empty slot
+  // in the queue. The consumer should mask this value with (slot_size - 1)
+  // and handle new slots to right before this slot.
   void xgq_queue::update_doorbell()
   {
     iowrite32_ctrl(xgq_sub_base, sub_tail);
@@ -150,6 +154,7 @@ namespace hwemu {
         // TODO Handle submission queue full
         submit_cmd(xcmd);
         submitted_cmds[xcmd->cmdid] = xcmd;
+        std::cout << "Info: command " << xcmd->cmdid << " submitted." << std::endl;
       }
       update_doorbell();
       pending_cmds.clear();
@@ -174,12 +179,12 @@ namespace hwemu {
 
           auto scmd = submitted_cmds[ccmd.cid];
           if (scmd == nullptr) {
-            printf("Error: completion command not found.\n");
+            std::cout << "Error: completion command not found." << std::endl;
             return -ENODEV;
-          }
+          } else
+            std::cout << "Info: command " << scmd->cmdid << " completed." << std::endl;
 
           // TODO Error handling
-          scmd->set_state(ERT_CMD_STATE_COMPLETED);
 
           // Update submission queue header
           uint64_t sub_slot;
@@ -187,7 +192,18 @@ namespace hwemu {
             clear_sub_slot_state(sub_slot & XRT_QUEUE1_SLOT_MASK);
           sub_head = sub_slot;
 
-          xgqp->cmd_pool.destroy(scmd);
+          if (scmd->is_ertpkt()) {
+            if (ccmd.cstate == XRT_CMD_STATE_COMPLETED)
+              scmd->set_state(ERT_CMD_STATE_COMPLETED);
+            else
+              scmd->set_state(ERT_CMD_STATE_ERROR);
+            xgqp->cmd_pool.destroy(scmd);
+          } else {
+            scmd->rval = ccmd.cstate == XRT_CMD_STATE_COMPLETED ? 0 : -1;
+            // Notify command completion
+            scmd->cmd_cv.notify_all();
+          }
+
           submitted_cmds.erase(ccmd.cid);
 
           slot++;
@@ -208,6 +224,12 @@ namespace hwemu {
   {
     cmdid = ++next_uid; //! Assign unique ID for each new command
     ert_pkt = nullptr;
+    rval = 0;
+  }
+
+  bool xgq_cmd::is_ertpkt()
+  {
+    return (!(ert_pkt == nullptr));
   }
 
   uint32_t xgq_cmd::opcode()
@@ -276,9 +298,29 @@ namespace hwemu {
         break;
 
       default:
-        printf("Error: Unknown command.\n");
+        std::cout << "Error: Unknown command." << std::endl;
         return -EINVAL;
     }
+
+    return 0;
+  }
+
+  int xgq_cmd::load_xclbin(xrt::bo& xbo, char *buf, size_t size)
+  {
+    auto data = xbo.map();
+    memcpy(data, buf, size);
+    uint32_t paddr = static_cast<uint32_t>(xbo.address());
+
+    sq_buf.resize(sizeof(xrt_cmd_load_xclbin));
+    xrt_cmd_load_xclbin *cmdp = reinterpret_cast<xrt_cmd_load_xclbin *>(sq_buf.data());
+
+    cmdp->opcode = XRT_CMD_OP_LOAD_XCLBIN;
+    cmdp->state = 1;
+    cmdp->cid = cmdid;
+    cmdp->count = sizeof(xrt_cmd_load_xclbin) - XGQ_SUB_HEADER_SIZE;
+    cmdp->address = paddr;
+    cmdp->size = size;
+    cmdp->addr_type = XRT_CMD_ADD_TYPE_SLAVEBRIDGE;
 
     return 0;
   }
@@ -309,6 +351,36 @@ namespace hwemu {
     queue.sub_cv.notify_all();
 
     return 0;
+  }
+
+  int xocl_xgq::load_xclbin(char *buf, size_t size)
+  {
+    xrt::device xdev(device->getMCoreDevice());
+    xrt::bo xbo(xdev, size, xrt::bo::flags::host_only, 0);
+
+    xgq_cmd *xcmd = cmd_pool.construct();
+    if (!xcmd)
+      return 1;
+
+    if (xcmd->load_xclbin(xbo, buf, size))
+      return 1;
+
+    {
+      std::lock_guard<std::mutex> lk(queue.queue_mutex);
+      queue.pending_cmds.push_back(xcmd);
+    }
+    queue.sub_cv.notify_all();
+
+    {
+      // Wait for command completion
+      std::unique_lock<std::mutex> lk(xcmd->cmd_mutex);
+      xcmd->cmd_cv.wait(lk);
+    }
+
+    int rval = xcmd->rval;
+    cmd_pool.destroy(xcmd);
+
+    return rval;
   }
 
 } // namespace hwemu
