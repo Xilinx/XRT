@@ -113,7 +113,7 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
     #Report all the information for a specific device
     xbmgmt examine --device 0000:d8:00.0 --report all
     
-    #Reports platform information of two devices and dump to a file
+    #Reports platform information in JSON format
     xbmgmt examine --device 0000:b3:00.0 --report platform --format JSON --output output.json
 
 
