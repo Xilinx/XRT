@@ -304,7 +304,7 @@ namespace xdp {
             phyStartEvent += BASE_MEMORY_COUNTER;
             phyEndEvent += BASE_MEMORY_COUNTER;
           }
-
+          
           // Set masks for group events
           // NOTE: Writing to group error enable register is blocked, so ignoring
           if (startEvents.at(i) == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
