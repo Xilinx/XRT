@@ -199,7 +199,7 @@ void runTestThread(arg_t &arg)
     std::string cu_name = krnl.name + ":" + krnl.name + "_1";
     krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
     if (krnl.cu_idx < 0) {
-        // CU name of hello kernel on older shells is "hello:hello_cu0"
+        // hello:hello_cu0 is U2 shell special
         cu_name = krnl.name + ":" + krnl.name + "_cu0";
         krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
         if (krnl.cu_idx < 0)
