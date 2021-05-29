@@ -2483,10 +2483,14 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 xrtKernelHandle
@@ -2498,10 +2502,14 @@ xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const c
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2515,12 +2523,12 @@ xrtKernelClose(xrtKernelHandle khdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 xrtRunHandle
@@ -2531,10 +2539,14 @@ xrtRunOpen(xrtKernelHandle khdl)
       return api::xrtRunOpen(khdl);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2547,12 +2559,12 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 uint32_t
@@ -2565,12 +2577,12 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return std::numeric_limits<uint32_t>::max();
   }
+  return std::numeric_limits<uint32_t>::max();
 }
 
 int
@@ -2585,12 +2597,12 @@ xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2605,12 +2617,12 @@ xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 xrtRunHandle
@@ -2631,10 +2643,14 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
     va_end(args);
     return result;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2648,12 +2664,12 @@ xrtRunClose(xrtRunHandle rhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 ert_cmd_state
@@ -2663,6 +2679,10 @@ xrtRunState(xrtRunHandle rhdl)
     return xdp::native::profiling_wrapper(__func__, [rhdl]{
       return api::xrtRunState(rhdl);
     });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -2678,10 +2698,14 @@ xrtRunWait(xrtRunHandle rhdl)
       return api::xrtRunWait(rhdl, 0);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return ERT_CMD_STATE_ABORT;
   }
+  return ERT_CMD_STATE_ABORT;
 }
 
 ert_cmd_state
@@ -2692,10 +2716,14 @@ xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
       return api::xrtRunWait(rhdl, timeout_ms);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return ERT_CMD_STATE_ABORT;
   }
+  return ERT_CMD_STATE_ABORT;
 }
 
 int
@@ -2712,12 +2740,12 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2731,12 +2759,12 @@ xrtRunStart(xrtRunHandle rhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2757,12 +2785,12 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2778,12 +2806,12 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2804,12 +2832,12 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2825,12 +2853,12 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2846,12 +2874,12 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 void

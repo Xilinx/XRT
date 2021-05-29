@@ -33,6 +33,7 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <memory>
+#include <cmath>
 
 #define NUM_CORE_TRACE_EVENTS   8
 #define NUM_MEMORY_TRACE_EVENTS 8
@@ -664,7 +665,7 @@ namespace xdp {
       std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle) ;
       if (device != nullptr) {
         for (auto& gmio : xrt_core::edge::aie::get_trace_gmios(device.get())) {
-          (db->getStaticInfo()).addTraceGMIO(deviceId, gmio.id, gmio.shim_col, gmio.channel_number, gmio.stream_id, gmio.burst_len) ;
+          (db->getStaticInfo()).addTraceGMIO(deviceId, gmio.id, gmio.shimColumn, gmio.channelNum, gmio.streamId, gmio.burstLength) ;
         }
       }
       (db->getStaticInfo()).setIsGMIORead(deviceId, true);
@@ -721,36 +722,79 @@ namespace xdp {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
     }
 
-    // Create AIE Trace Offloader
-    uint64_t aieTraceBufSz = GetTS2MMBufSize(true /*isAIETrace*/);
-    bool     isPLIO = ((db->getStaticInfo()).getNumTracePLIO(deviceId)) ? true : false;
+    // Ensure trace buffer size is appropriate
+    uint64_t aieTraceBufSize = GetTS2MMBufSize(true /*isAIETrace*/);
+    bool isPLIO = (db->getStaticInfo()).getNumTracePLIO(deviceId) ? true : false;
 
-#if 0
-    uint8_t memIndex = 0;
-    if(isPLIO) { // check only one memory for PLIO and for GMIO , assume bank 0 for now
-      memIndex = deviceIntf->getAIETs2mmMemIndex(0);
-    }
+    // First, check against memory bank size
+    // NOTE: Check first buffer for PLIO; assume bank 0 for GMIO
+    uint8_t memIndex = isPLIO ? deviceIntf->getAIETs2mmMemIndex(0) : 0;
     Memory* memory = (db->getStaticInfo()).getMemory(deviceId, memIndex);
-    if(nullptr == memory) {
-      std::string msg = "Information about memory index " + std::to_string(memIndex)
-                         + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-      return;
+    if (memory != nullptr) {
+      uint64_t fullBankSize = memory->size * 1024;
+      
+      if ((fullBankSize > 0) && (aieTraceBufSize > fullBankSize)) {
+        aieTraceBufSize = fullBankSize;
+        std::string msg = "Requested AIE trace buffer is too big for memory resource. Limiting to " + std::to_string(fullBankSize) + "." ;
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      }
     }
-    uint64_t aieMemorySz = (((db->getStaticInfo()).getMemory(deviceId, memIndex))->size) * 1024;
-    if(aieMemorySz > 0 && aieTraceBufSz > aieMemorySz) {
-      aieTraceBufSz = aieMemorySz;
-      std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(aieMemorySz) + " instead." ;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+
+    // Second, check against amount dedicated as device memory (Linux only)
+#ifndef _WIN32
+    try {
+      std::string line;
+      std::ifstream ifs;
+      ifs.open("/proc/meminfo");
+      while (getline(ifs, line)) {
+        if (line.find("CmaTotal") == std::string::npos)
+          continue;
+          
+        // Memory sizes are always expressed in kB
+        std::vector<std::string> cmaVector;
+        boost::split(cmaVector, line, boost::is_any_of(":"));
+        auto deviceMemorySize = std::stoull(cmaVector.at(1)) * 1024;
+        if (deviceMemorySize == 0)
+          break;
+
+        double percentSize = (100.0 * aieTraceBufSize) / deviceMemorySize;
+        std::stringstream percentSizeStr;
+        percentSizeStr << std::fixed << std::setprecision(3) << percentSize;
+
+        // Limit size of trace buffer if requested amount is too high
+        if (percentSize >= 80.0) {
+          uint64_t newAieTraceBufSize = (uint64_t)std::ceil(0.8 * deviceMemorySize);
+          aieTraceBufSize = newAieTraceBufSize;
+
+          std::stringstream newBufSizeStr;
+          newBufSizeStr << std::fixed << std::setprecision(3) << (newAieTraceBufSize / (1024.0 * 1024.0));
+          
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory."
+              + " You may run into errors depending upon memory usage of your application."
+              + " Limiting to " + newBufSizeStr.str() + " MB.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+        }
+        else {
+          std::string msg = "Requested AIE trace buffer is " + percentSizeStr.str() + "% of device memory.";
+          xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+        }
+        
+        break;
+      }
+      ifs.close();
+    }
+    catch (...) {
+        // Do nothing
     }
 #endif
 
+    // Create AIE Trace Offloader
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
-                                              isPLIO,          // isPLIO 
-                                              aieTraceBufSz,   // total trace buffer size
+                                              isPLIO,              // isPLIO?
+                                              aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
     if(!aieTraceOffloader->initReadTrace()) {
