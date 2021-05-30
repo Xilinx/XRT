@@ -21,6 +21,7 @@
 #include <mutex>
 #include <sys/stat.h>
 #include <sys/file.h>
+#include <linux/pci.h>
 #include "pcidev.h"
 
 namespace pcidev {
@@ -87,6 +88,9 @@ pci_device::
 pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string flash_type)
   : user_bar_index(ubar), flash_offset(flash_off), flash_type_str(flash_type)
 {
+	 
+  uint32_t pcmd = 0;
+  char sysfsname[20] = {0};
   uint16_t dom = 0, b, d, f;
   if (sscanf(sysfs.c_str(), "%hx:%hx.%hx", &b, &d, &f) < 3 &&
     sscanf(sysfs.c_str(), "%hx:%hx:%hx.%hx", &dom, &b, &d, &f) < 4)
@@ -97,6 +101,34 @@ pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string fla
   dev = d;
   func = f;
   user_bar_size = 0;
+
+  std::snprintf(sysfsname, sizeof(sysfsname), "%04x:%02x:%02x.%x",
+    domain, bus, dev, func);
+  std::string conffile("/sys/bus/pci/devices/");
+  conffile += sysfsname;
+  conffile += "/config";
+  
+  int conf_handle = ::open(conffile.c_str(), O_RDWR | O_SYNC);
+  if (conf_handle < 0) {
+    throw std::runtime_error("Failed to open  " + conffile);
+  }
+
+  lseek(conf_handle, 4, SEEK_SET);
+  int readbytes = ::read(conf_handle, &pcmd, 4);
+
+  if (readbytes < 0) {
+    throw std::runtime_error("Failed to read  " + conffile);
+  }
+
+  pcmd = pcmd | PCI_COMMAND_MEMORY;
+  lseek(conf_handle, 4, SEEK_SET);
+
+  int writebytes =::write(conf_handle, &pcmd, 4);
+  if (writebytes < 0) {
+    throw std::runtime_error("Failed to write  " + conffile);
+  }
+
+  close(conf_handle);
 }
 
 pci_device::
