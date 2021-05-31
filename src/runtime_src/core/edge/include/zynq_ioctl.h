@@ -387,6 +387,16 @@ struct kernel_info {
 };
 
 /**
+ * struct drm_zocl_kds - KDS user configuration
+ *
+ * @polling:	poll for command completion
+ */
+struct drm_zocl_kds {
+	uint32_t polling:1;
+	uint32_t unused:31;
+};
+
+/**
  * struct drm_zocl_axlf - Read xclbin (AXLF) device image and map CUs (experimental)
  * used with DRM_IOCTL_ZOCL_READ_AXLF ioctl
  *
@@ -396,10 +406,11 @@ struct kernel_info {
  * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
-	struct axlf 	*za_xclbin_ptr;
-	uint32_t	za_flags;
-	int		za_ksize;
-	char		*za_kernels;
+	struct axlf 		*za_xclbin_ptr;
+	uint32_t		za_flags;
+	int			za_ksize;
+	char			*za_kernels;
+	struct drm_zocl_kds	kds_cfg;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32
