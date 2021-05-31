@@ -534,6 +534,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
     };
 
+  axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
   if (!xrt_core::xclbin::is_pdi_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);

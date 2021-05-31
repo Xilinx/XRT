@@ -14,6 +14,7 @@
 
 #include "kds_core.h"
 #include "zocl_error.h"
+#include "zocl_ioctl.h"
 
 #define zocl_err(dev, fmt, args...)     \
 	dev_err(dev, "%s: "fmt, __func__, ##args)
@@ -157,5 +158,5 @@ struct drm_zocl_dev {
 	int			full_overlay_id;
 };
 
-int zocl_kds_update(struct drm_zocl_dev *zdev);
+int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_kds *cfg);
 #endif
