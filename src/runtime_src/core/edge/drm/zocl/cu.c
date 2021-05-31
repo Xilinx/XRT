@@ -15,6 +15,8 @@
 struct zocl_cu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
+	u32			 irq;
+	char			*irq_name;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -73,6 +75,17 @@ static struct attribute *cu_attrs[] = {
 static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
 };
+
+irqreturn_t cu_isr(int irq, void *arg)
+{
+	struct zocl_cu *zcu = arg;
+
+	xrt_cu_clear_intr(&zcu->base);
+
+	up(&zcu->base.sem_cu);
+
+	return IRQ_HANDLED;
+}
 
 static int cu_probe(struct platform_device *pdev)
 {
@@ -139,6 +152,27 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
+	zcu->irq_name = kzalloc(20, GFP_KERNEL);
+	if (!zcu->irq_name)
+		return -ENOMEM;
+
+	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
+
+	if (info->intr_enable) {
+		zcu->irq = zdev->irq[info->intr_id];
+		/* Currently requesting irq if it's enable in cu config.
+		 * Not disabling it further, even user wants to use 
+		 * polling.
+		 */
+		err = request_irq(zcu->irq, cu_isr, 0,
+			  zcu->irq_name, zcu);
+		if (err) {
+			DRM_WARN("Failed to initial CU interrupt. "
+			    "Fall back to polling\n");
+			info->intr_enable = 0;
+		}
+	}
+
 	switch (info->model) {
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&zcu->base);
@@ -191,6 +225,9 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	}
 
+	if (info->intr_enable)
+		free_irq(zcu->irq, zcu);
+
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
 	zocl_kds_del_cu(zdev, &zcu->base);
 
@@ -201,7 +238,8 @@ static int cu_remove(struct platform_device *pdev)
 		vfree(info->args);
 
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
-
+	
+	kfree(zcu->irq_name);
 	kfree(zcu);
 
 	return 0;
