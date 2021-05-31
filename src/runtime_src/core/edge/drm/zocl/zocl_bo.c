@@ -657,6 +657,29 @@ out:
 	return rc;
 }
 
+int zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
+			      struct drm_zocl_dev *zdev)
+{
+	dma_cap_mask_t dma_mask;
+
+	if (!dma_handle->dma_chan && ZOCL_PLATFORM_ARM64) {
+		/* If zdev_dma_chan is NULL, we haven't initialized it yet. */
+		if (!zdev->zdev_dma_chan) {
+			dma_cap_zero(dma_mask);
+			dma_cap_set(DMA_MEMCPY, dma_mask);
+			zdev->zdev_dma_chan =
+			    dma_request_channel(dma_mask, 0, NULL);
+			if (!zdev->zdev_dma_chan) {
+				DRM_WARN("no DMA Channel available.\n");
+				return -EBUSY;
+			}
+		}
+		dma_handle->dma_chan = zdev->zdev_dma_chan;
+	}
+
+	return dma_handle->dma_chan ? 0 : -EINVAL;
+}
+
 int zocl_copy_bo_async(struct drm_device *dev,
 		struct drm_file *filp,
 		zocl_dma_handle_t *dma_handle,
