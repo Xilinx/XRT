@@ -578,7 +578,7 @@ static void zocl_detect_fa_cmdmem(struct drm_zocl_dev *zdev)
 	zdev->kds.cmdmem.size = size;
 }
 
-int zocl_kds_update(struct drm_zocl_dev *zdev)
+int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_kds *cfg)
 {
 	struct drm_zocl_bo *bo = NULL;
 	int i;
@@ -594,7 +594,9 @@ int zocl_kds_update(struct drm_zocl_dev *zdev)
 	}
 
 	zocl_detect_fa_cmdmem(zdev);
-	zdev->kds.cu_intr = 0;
+	
+	// Default supporting interrupt mode
+	zdev->kds.cu_intr_cap = 1;	
 
 	for (i = 0; i < zdev->kds.cu_mgmt.num_cus; i++) {
 		struct xrt_cu *xcu;
@@ -609,6 +611,13 @@ int zocl_kds_update(struct drm_zocl_dev *zdev)
 		}
 		update_cu_idx_in_apt(zdev, apt_idx, i);
 	}
+
+	// Check for polling mode and enable CU interrupt if polling_mode is false
+	if (cfg->polling)
+		zdev->kds.cu_intr = 0;
+	else
+		zdev->kds.cu_intr = 1;
+
 
 	return kds_cfg_update(&zdev->kds);
 }
