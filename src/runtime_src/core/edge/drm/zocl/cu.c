@@ -118,10 +118,13 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
-	if (!args) {
-		err = -ENOMEM;
-		goto err1;
+	if(krnl_info->anums)
+	{
+		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+		if (!args) {
+			err = -ENOMEM;
+			goto err1;
+		}
 	}
 
 	for (i = 0; i < krnl_info->anums; i++) {
