@@ -265,9 +265,11 @@ public:
 
     // try copying with kdma
     try {
-      xrt_core::kernel_int::copy_bo_with_kdma
-        (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
-      return;
+      if (xrt_core::config::get_cdma()) {
+        xrt_core::kernel_int::copy_bo_with_kdma
+          (device, sz, get_xcl_handle(), dst_offset, src->get_xcl_handle(), src_offset);
+        return;
+      }
     }
     catch (const std::exception& ex) {
       auto fmt = boost::format("Reverting to host copy of buffers (%s)") % ex.what();
