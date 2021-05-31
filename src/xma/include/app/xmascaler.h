@@ -156,8 +156,8 @@ void xma_scaler_default_filter_coeff_set(XmaScalerFilterProperties *props);
  *  and the capabilities of the hardware accelerator.
  *
  *  @props Pointer to a XmaScalerProperties structure that
- * contains the key configuration properties needed for
- * finding available hardware resource.
+ *  contains the key configuration properties needed for
+ *  finding available hardware resource.
  *
  *  RETURN:      Not NULL on success
  *        
