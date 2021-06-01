@@ -2276,10 +2276,19 @@ namespace xdp {
     auto infos = (t->db->getStaticInfo()).getDeviceInfos() ;
     for (auto device : infos)
     {
-      auto& counters = (t->db->getStaticInfo()).getAIECounterResources(device->deviceId) ;
-      for (auto const& counter : counters)
+      auto& coreCounters = (t->db->getStaticInfo()).getAIECoreCounterResources(device->deviceId) ;
+      for (auto const& counter : coreCounters)
       {
-        (t->fout) << "AIE_COUNTER_RESOURCES" << ","
+        (t->fout) << "AIE_CORE_COUNTER_RESOURCES" << ","
+	                << counter.first << ","
+	                << counter.second << ","
+	                << std::endl ;
+      }
+
+      auto& memoryCounters = (t->db->getStaticInfo()).getAIEMemoryCounterResources(device->deviceId) ;
+      for (auto const& counter : memoryCounters)
+      {
+        (t->fout) << "AIE_MEMORY_COUNTER_RESOURCES" << ","
 	                << counter.first << ","
 	                << counter.second << ","
 	                << std::endl ;
