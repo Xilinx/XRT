@@ -174,6 +174,7 @@ class run
                std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
 
+  /// @cond
   /**
    * set_event() - Add event for enqueued operations
    *
@@ -182,10 +183,13 @@ class run
    *
    * This function is used when a run object is enqueued in an event
    * graph.  The event must be notified upon completion of the run.
+   *
+   * This is an experimental API using a WIP feature.
    */
   XCL_DRIVER_DLLESPEC
   void
   set_event(const std::shared_ptr<event_impl>& event) const;
+  /// @endcond
 
   /**
    * operator bool() - Check if run handle is valid
