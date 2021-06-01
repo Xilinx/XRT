@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -711,10 +714,12 @@ partition is not fully AXI-compliant or deadlocks/stalls/hangs during operation.
 partition fails, AXI Firewall <em>trips</em> – it starts completing AXI transactions on behalf of the slave so the
 master and the specific AXI bus is not impacted – to protect the Shell. The AXI Firewall starts completing
 all transactions on behalf of misbehaving slave while also notifying the mgmt driver about the trip. The
-xclmgmt driver then starts taking recovery action. xclmgmt posts a message to xocl using MailBox to inform
-the peer about FireWall trip. xocl can suggest a reset by sending a reset command to xclmgmt on MailBox. Note
-that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus. DFX
-partition will be unavailable till device is reset. <strong>A reboot of host is not required to reset the device.</strong></p>
+xclmgmt driver then starts taking recovery action. xclmgmt posts a XCL_MAILBOX_REQ_FIREWALL message to xocl using
+MailBox to inform the peer about FireWall trip. xocl can suggest a reset by sending a XCL_MAILBOX_REQ_HOT_RESET message
+to xclmgmt via mailBox. Note that even if no reset is performed the AXI Protocol Firewall will continue to protect the host PCIe bus.
+DFX partition will be unavailable till device is reset. <strong>A reboot of host is not required to reset the device.</strong></p>
+<p>Alveo boards with multiple FPGA devices on the same board like U30 support card level reset. Mailbox usage by each device on the card
+is similar to that of single device cards, however firewall trip in one device will trigger reset to all devices on the card.</p>
 <p>AXI Firewall in Slave Interface (SI) mode also protects the host from errant transactions initiated by kernels over
 Slave Bridge. For example if an AXI master kernel in the Dynamic Region issues a non compliant AXI transaction like
 starting a burst transfer but stalling afterwards, the AXI Firewall (SI) will complete the transaction on behalf of the
@@ -821,8 +826,47 @@ can crash PCIe bus</p></td>
 <h2>Mailbox<a class="headerlink" href="#mailbox" title="Permalink to this headline">¶</a></h2>
 <p>Mailbox is used for communication between user physical function driver, xocl and management physical
 function driver, xclmgmt. The Mailbox hardware design and xclmgmt driver mailbox handling implementation
-has the ability to throttle requests coming from xocl driver which protects it from a potential DoS
-initiated by a malicious xocl driver. <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
+has the ability to throttle requests coming from xocl driver.</p>
+<p>xclmgmt driver has twofold security protections on the h/w mailbox. From packet layer, xclmgmt monitors
+the receiving packet rates and can enforce a threshold. If the receiving packet rates exceeds the threshold,
+the mailbox is disabled which prevents the guest from sending any more commands over mailbox. Only
+a hot reset on the FPGA device from xclmgmt can recover it. From message layer,system administrator can configure
+the xclmgmt driver to ignore specific mailbox opcodes.</p>
+<p>Here is an example how System administrator managing the privileged management physical function driver xclmgmt
+can configure the mailbox to ignore specific opcodes using xbmgmt utility.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># In host</span>
+Host&gt;$ sudo xbmgmt dump --config --output /tmp/config.ini -d bdf
+
+<span class="c1"># Edit the dumped ini file and change the value to key &#39;mailbox_channel_disable&#39;</span>
+<span class="c1"># eg. if both xclbin download and reset are to be disabled, one can set</span>
+<span class="c1"># mailbox_channel_disable=0x120</span>
+<span class="c1"># where 0x120 is 1 &lt;&lt; XCL_MAILBOX_REQ_LOAD_XCLBIN |</span>
+<span class="c1">#                1 &lt;&lt; XCL_MAILBOX_REQ_HOT_RESET</span>
+<span class="c1"># as defined as below</span>
+<span class="c1"># XCL_MAILBOX_REQ_UNKNOWN =             0,</span>
+<span class="c1"># XCL_MAILBOX_REQ_TEST_READY =          1,</span>
+<span class="c1"># XCL_MAILBOX_REQ_TEST_READ =           2,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOCK_BITSTREAM =      3,</span>
+<span class="c1"># XCL_MAILBOX_REQ_UNLOCK_BITSTREAM =    4,</span>
+<span class="c1"># XCL_MAILBOX_REQ_HOT_RESET =           5,</span>
+<span class="c1"># XCL_MAILBOX_REQ_FIREWALL =            6,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =   7,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOAD_XCLBIN =         8,</span>
+<span class="c1"># XCL_MAILBOX_REQ_RECLOCK =             9,</span>
+<span class="c1"># XCL_MAILBOX_REQ_PEER_DATA =           10,</span>
+<span class="c1"># XCL_MAILBOX_REQ_USER_PROBE =          11,</span>
+<span class="c1"># XCL_MAILBOX_REQ_MGMT_STATE =          12,</span>
+<span class="c1"># XCL_MAILBOX_REQ_CHG_SHELL =           13,</span>
+<span class="c1"># XCL_MAILBOX_REQ_PROGRAM_SHELL =       14,</span>
+<span class="c1"># XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =   15,</span>
+
+Host&gt;$ vi /tmp/config.ini
+
+<span class="c1"># Load config</span>
+Host&gt;$ xbmgmt advanced --load-conf --input<span class="o">=</span>/tmp/config.ini -d bdf
+</pre></div>
+</div>
+<p><a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
 </div>
 <div class="section" id="device-reset-and-recovery">
 <h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
@@ -833,6 +877,10 @@ message as defined in <a class="reference internal" href="mailbox.main.html#mail
 <p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
 and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
 sending them a SIGBUS.</p>
+<p>On some Alveo boards like u30, there are multiple FPGA devices supported with help of pcie bifurcation. The
+reset in this case is card level reset, which means, a reset issued from one FPGA device will result in all
+FPGAs on same board being reset. Both xocl and xclmgmt drivers can identify other FPGA devices on same board
+and handle the reset accordingly.</p>
 </div>
 <div class="section" id="shell-update">
 <h2>Shell Update<a class="headerlink" href="#shell-update" title="Permalink to this headline">¶</a></h2>
@@ -844,7 +892,7 @@ platform from the updated image.</p>
 <div class="section" id="compute-kernel-execution-models">
 <h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Permalink to this headline">¶</a></h2>
 <p>XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
-interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html#xrt-kernel-executions-rst"><span class="std std-ref">Supported Kernel Execution Models</span></a>. These well understood models do not require
+interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html#xrt-kernel-executions-rst"><span class="std std-ref">XRT Controlled Kernel Execution Models</span></a>. These well understood models do not require
 direct register access from user space. To execute a compute kernel XRT has a well defined <em>exec command buffer</em>
 API and a <em>wait for exec completion</em> API. These operations are exposed as ioctls by the xocl driver.</p>
 </div>
@@ -879,7 +927,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

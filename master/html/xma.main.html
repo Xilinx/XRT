@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -482,8 +485,8 @@
 <p><strong>XMA Plugin Interface</strong></p>
 <p>The interface used by XMA kernel plugin developers</p>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_alloc">
-XmaBufferObj <code class="sig-name descname">xma_plg_buffer_alloc</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, size_t <em>size</em>, bool <em>device_only_buffer</em>, int32_t *<em>return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_alloc">
+<span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_alloc</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n"><span class="pre">device_only_buffer</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">return_code</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Allocate device memory This function allocates memory on the FPGA DDR and provides a BufferObject to the memory that can be used for copying data from the host to device memory or from the device to the host. BufferObject contains paddr, device index, ddr bank, etc. paddr (the physical address) is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
 </dd></dl>
 
@@ -501,8 +504,8 @@ XmaBufferObj <code class="sig-name descname">xma_plg_buffer_alloc</code><span cl
 <p><strong>Return</strong></p>
 <p>BufferObject on success;</p>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_alloc_arg_num">
-XmaBufferObj <code class="sig-name descname">xma_plg_buffer_alloc_arg_num</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, size_t <em>size</em>, bool <em>device_only_buffer</em>, int32_t <em>arg_num</em>, int32_t *<em>return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc_arg_num" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_alloc_arg_num">
+<span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_alloc_arg_num</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n"><span class="pre">device_only_buffer</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">arg_num</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">return_code</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc_arg_num" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Allocate device memory This function allocates memory on the FPGA DDR bank connected to the supplied kernel argument number and provides a BufferObject to the memory that can be used for copying data from the host to device memory or from the device to the host. BufferObject contains paddr, device index, ddr bank, etc. paddr (the physical address) is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
 </dd></dl>
 
@@ -522,8 +525,8 @@ XmaBufferObj <code class="sig-name descname">xma_plg_buffer_alloc_arg_num</code>
 <p><strong>Return</strong></p>
 <p>BufferObject on success;</p>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_alloc_ddr">
-XmaBufferObj <code class="sig-name descname">xma_plg_buffer_alloc_ddr</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, size_t <em>size</em>, bool <em>device_only_buffer</em>, int32_t <em>ddr_index</em>, int32_t *<em>return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc_ddr" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_alloc_ddr">
+<span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_alloc_ddr</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="n"><span class="pre">device_only_buffer</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">ddr_index</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">return_code</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_alloc_ddr" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Allocate device memory This function allocates memory on the FPGA DDR bank as supplied in ddr_index argument. It provides a BufferObject to the memory that can be used for copying data from the host to device memory or from the device to the host. BufferObject contains paddr, device index, ddr bank, etc. paddr (the physical address) is necessary for setting the AXI register map with physical pointers so that the kernel knows where key input and output buffers are located. This function knows which DDR bank is associated with this session and therefore automatically selects the correct DDR bank.</p>
 </dd></dl>
 
@@ -544,8 +547,8 @@ Check index to use in xclbin or by command “xbutil query”</p>
 <p><strong>Return</strong></p>
 <p>BufferObject on success;</p>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_free">
-void <code class="sig-name descname">xma_plg_buffer_free</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, XmaBufferObj <em>b_obj</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_free">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_free</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="n"><span class="pre">b_obj</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_free" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Free a device buffer This function frees a previous allocated buffer that was obtained using the <strong>ref</strong> <a class="reference internal" href="#c.xma_plg_buffer_alloc" title="xma_plg_buffer_alloc"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc()</span></code></a> function.</p>
 </dd></dl>
 
@@ -558,8 +561,8 @@ void <code class="sig-name descname">xma_plg_buffer_free</code><span class="sig-
 </dd>
 </dl>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_write">
-int32_t <code class="sig-name descname">xma_plg_buffer_write</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, XmaBufferObj <em>b_obj</em>, size_t <em>size</em>, size_t <em>offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_write">
+<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_write</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="n"><span class="pre">b_obj</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">offset</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_write" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Write data from host to device buffer This function copies data from host memory to device memory.</p>
 </dd></dl>
 
@@ -579,8 +582,8 @@ int32_t <code class="sig-name descname">xma_plg_buffer_write</code><span class="
 <p>XMA_SUCCESS on success
 XMA_ERROR on failure</p>
 <dl class="c function">
-<dt id="c.xma_plg_buffer_read">
-int32_t <code class="sig-name descname">xma_plg_buffer_read</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, XmaBufferObj <em>b_obj</em>, size_t <em>size</em>, size_t <em>offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_buffer_read">
+<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_buffer_read</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">XmaBufferObj</span></span><span class="w"> </span><span class="n"><span class="pre">b_obj</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">size</span></span>, <span class="n"><span class="pre">size_t</span></span><span class="w"> </span><span class="n"><span class="pre">offset</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_buffer_read" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Read data from device memory and copy to host memory</p>
 </dd></dl>
 
@@ -600,8 +603,8 @@ int32_t <code class="sig-name descname">xma_plg_buffer_read</code><span class="s
 <p>XMA_SUCCESS on success
 XMA_ERROR on failure</p>
 <dl class="c function">
-<dt id="c.xma_plg_channel_id">
-int32_t <code class="sig-name descname">xma_plg_channel_id</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_channel_id" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_channel_id">
+<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_channel_id</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_channel_id" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Query channel_id assigned to this plugin session</p>
 </dd></dl>
 
@@ -614,8 +617,8 @@ int32_t <code class="sig-name descname">xma_plg_channel_id</code><span class="si
 <p>Assigned channel_id on success
 XMA_ERROR on failure</p>
 <dl class="c function">
-<dt id="c.xma_plg_is_work_item_done">
-int32_t <code class="sig-name descname">xma_plg_is_work_item_done</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, uint32_t <em>timeout_in_ms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_is_work_item_done">
+<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_is_work_item_done</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="n"><span class="pre">timeout_in_ms</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_is_work_item_done" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>This function checks if at least one work item previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a> has completed. If the supplied timeout expires before a work item has completed, this function returns an error.</p>
 </dd></dl>
 
@@ -630,8 +633,8 @@ int32_t <code class="sig-name descname">xma_plg_is_work_item_done</code><span cl
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on timeout</p>
 <dl class="c function">
-<dt id="c.xma_plg_work_item_return_code">
-int32_t <code class="sig-name descname">xma_plg_work_item_return_code</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, XmaCUCmdObj *<em>cmd_obj_array</em>, int32_t <em>num_cu_objs</em>, uint32_t *<em>num_cu_errors</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_work_item_return_code" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_work_item_return_code">
+<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_work_item_return_code</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="n"><span class="pre">XmaCUCmdObj</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">cmd_obj_array</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">num_cu_objs</span></span>, <span class="n"><span class="pre">uint32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">num_cu_errors</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_work_item_return_code" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>This function gets return code of completed cu cmds previously submitted via <a class="reference internal" href="#c.xma_plg_schedule_work_item" title="xma_plg_schedule_work_item"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item()</span></code></a>. If any cu cmd hasn’t completed yet, this function returns an error.</p>
 </dd></dl>
 
@@ -650,8 +653,8 @@ int32_t <code class="sig-name descname">xma_plg_work_item_return_code</code><spa
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR if a cu cmd has not completed yet</p>
 <dl class="c function">
-<dt id="c.xma_plg_schedule_work_item">
-XmaCUCmdObj <code class="sig-name descname">xma_plg_schedule_work_item</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em>, void *<em>regmap</em>, int32_t <em>regmap_size</em>, int32_t *<em>return_code</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_schedule_work_item">
+<span class="n"><span class="pre">XmaCUCmdObj</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_schedule_work_item</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">regmap</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">regmap_size</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">return_code</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_schedule_work_item" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>This function schedules a request to the XRT scheduler for execution of a kernel based on the supplied kernel register map Work items are processed in FIFO order. For dataflow kernels with channels work items for a given channel are processed in FIFO order. After calling <code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_schedule_work_item_with_args()</span></code> one or more times, the caller can invoke <a class="reference internal" href="#c.xma_plg_is_work_item_done" title="xma_plg_is_work_item_done"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_plg_is_work_item_done()</span></code></a> to wait for one item of work to complete. pointer to regamp contains aruments to be supplied to kernel regmap must start from offset 0 of register map of a kernel</p>
 </dd></dl>
 
@@ -673,8 +676,8 @@ So xma_plg_kernel_lock_regmap is not required before this call</p>
 <p>CuCmd Object</p>
 <p>XMA_ERROR on failure</p>
 <dl class="c function">
-<dt id="c.xma_plg_get_dev_handle">
-void *<code class="sig-name descname">xma_plg_get_dev_handle</code><span class="sig-paren">(</span>XmaSession <em>s_handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_get_dev_handle" title="Permalink to this definition">¶</a><br /></dt>
+<dt class="sig sig-object c" id="c.xma_plg_get_dev_handle">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_plg_get_dev_handle</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaSession</span></span><span class="w"> </span><span class="n"><span class="pre">s_handle</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_plg_get_dev_handle" title="Permalink to this definition">¶</a><br /></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -717,7 +720,7 @@ void *<code class="sig-name descname">xma_plg_get_dev_handle</code><span class="
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

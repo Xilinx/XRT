@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -480,7 +483,7 @@
   <div class="section" id="zocl-driver-interfaces">
 <span id="zocl-ioctl-main-rst"></span><h1>ZOCL Driver Interfaces<a class="headerlink" href="#zocl-driver-interfaces" title="Permalink to this headline">¶</a></h1>
 <p><strong>A GEM style driver for Xilinx edge based accelerators</strong></p>
-<p>This file defines ioctl command codes and associated structures for interacting with
+<p>File <em>zynq_ioctl.h</em> defines ioctl command codes and associated structures for interacting with
 <em>zocl</em> driver for Xilinx FPGA platforms(Zynq/ZynqMP/Versal).</p>
 <p>Accelerator memory allocation is modeled as buffer objects (bo). zocl
 supports both SMMU based shared virtual memory and CMA based shared physical memory
@@ -595,8 +598,8 @@ units.</p></td>
 </tbody>
 </table>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_create_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_create_bo</span></span></dt>
 <dd><p>Create buffer object used with DRM_IOCTL_ZOCL_CREATE_BO ioctl</p>
 </dd></dl>
 
@@ -618,8 +621,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_userptr_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_userptr_bo</span></span></dt>
 <dd><p>Create buffer object with user’s pointer used with DRM_IOCTL_ZOCL_USERPTR_BO ioctl</p>
 </dd></dl>
 
@@ -644,8 +647,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_map_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_map_bo</span></span></dt>
 <dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_ZOCL_MAP_BO ioctl</p>
 </dd></dl>
 
@@ -667,8 +670,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_sync_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sync_bo</span></span></dt>
 <dd><p>Synchronize the buffer in the requested direction via cache flush/invalidation. used with DRM_ZOCL_SYNC_BO ioctl.</p>
 </dd></dl>
 
@@ -693,8 +696,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_info_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_info_bo</span></span></dt>
 <dd><p>Obtain information about buffer object used with DRM_IOCTL_ZOCL_INFO_BO ioctl</p>
 </dd></dl>
 
@@ -719,8 +722,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_host_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_host_bo</span></span></dt>
 <dd><p>Get the buffer handle of given physical address used with DRM_IOCTL_ZOCL_GET_HOST_BO ioctl</p>
 </dd></dl>
 
@@ -742,8 +745,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_pwrite_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_pwrite_bo</span></span></dt>
 <dd><p>Update bo with user’s data used with DRM_IOCTL_ZOCL_PWRITE_BO ioctl</p>
 </dd></dl>
 
@@ -771,8 +774,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_pread_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_pread_bo</span></span></dt>
 <dd><p>Read data from bo used with DRM_IOCTL_ZOCL_PREAD_BO ioctl</p>
 </dd></dl>
 
@@ -800,8 +803,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_info_cu</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_info_cu</span></span></dt>
 <dd><p>Get information about Compute Unit (experimental) used with DRM_IOCTL_ZOCL_INFO_CU ioctl</p>
 </dd></dl>
 
@@ -823,8 +826,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_execbuf</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_execbuf</span></span></dt>
 <dd><p>Submit a command buffer for execution on a compute unit (experimental) used with DRM_IOCTL_ZOCL_EXECBUF ioctl</p>
 </dd></dl>
 
@@ -843,8 +846,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct argument_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">argument_info</span></span></dt>
 <dd><p>Kernel argument information</p>
 </dd></dl>
 
@@ -869,8 +872,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct kernel_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">kernel_info</span></span></dt>
 <dd><p>Kernel information</p>
 </dd></dl>
 
@@ -892,8 +895,25 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_axlf</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_kds</span></span></dt>
+<dd><p>KDS user configuration</p>
+</dd></dl>
+
+<p><strong>Definition</strong></p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_kds {
+  uint32_t polling:1;
+};
+</pre></div>
+</div>
+<p><strong>Members</strong></p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt><dd><p>poll for command completion</p>
+</dd>
+</dl>
+<dl class="c type">
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_axlf</span></span></dt>
 <dd><p>Read xclbin (AXLF) device image and map CUs (experimental) used with DRM_IOCTL_ZOCL_READ_AXLF ioctl</p>
 </dd></dl>
 
@@ -918,8 +938,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_sk_getcmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_getcmd</span></span></dt>
 <dd><p>Get the soft kernel command (experimental) used with DRM_IOCTL_ZOCL_SK_GETCMD ioctl</p>
 </dd></dl>
 
@@ -947,8 +967,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_aie_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_aie_cmd</span></span></dt>
 <dd><p>Get the aie command used with DRM_IOCTL_ZOCL_AIE_GETCMD and DRM_IOCTL_ZOCL_AIE_PUTCMD ioctl</p>
 </dd></dl>
 
@@ -970,8 +990,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_sk_create</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_create</span></span></dt>
 <dd><p>Create a soft kernel (experimental) used with DRM_IOCTL_ZOCL_SK_CREATE ioctl</p>
 </dd></dl>
 
@@ -990,8 +1010,8 @@ units.</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_zocl_sk_report</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_zocl_sk_report</span></span></dt>
 <dd><p>Report the Soft Kernel State (experimental) used with DRM_IOCTL_ZOCL_SK_REPORT ioctl</p>
 </dd></dl>
 
@@ -1040,7 +1060,7 @@ units.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -389,8 +391,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -403,6 +405,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -647,7 +650,7 @@ diagram only calls out the initialization and processing stages:</p>
 <li><p>The FFmpeg Command Line application that is used to create a processing graph</p></li>
 <li><p>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</p></li>
 <li><p>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</p></li>
-<li><p>The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel</p></li>
+<li><p>The XMA Lower Edge plugin responsible for interfacing with the Vitis Video Kernel</p></li>
 <li><p>The XMA Video Kernel responsible for accelerating the encoding function</p></li>
 </ul>
 <p>While this sequence diagram only shows five components, more complex systems
@@ -655,7 +658,7 @@ can be developed that include multiple accelerators with the associated XMA
 plugin and FFmpeg plugin. In fact, adding new processing blocks is controlled
 entirely by the FFmpeg command line and the presence of the requested
 accelerator kernels. No additional development is required if all of the
-SDAccel kernels are available along with the associated plugins.  In this
+Vitis kernels are available along with the associated plugins.  In this
 example, an FFmpeg command is invoked that ingests an MP4 file encoded as H.264
 and re-encodes the file as H.264 at a lower bit rate. As a result, the main()
 function of the FFmpeg command is invoked and this calls the xma_initialize()
@@ -671,7 +674,7 @@ The xma_enc_session_create() function uses available resource based on the
 properties supplied and, invokes the XMA
 plugin initialization function. The XMA plugin initialization function
 allocates any required input and output buffers on the device and performs
-initialization of the SDAccel kernel if needed.
+initialization of the Vitis kernel if needed.
 Default session ddr_bank can be provided in properties supplied to xma_enc_session_create() function. If this ddr_bank_index is -1 then XMA will automatically select default sesion ddr_bank to be used else user provided dr_bank is selected as default session ddr_bank.
 Plugins may use ddr_bank other than default session ddr_bank. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num().
 Also cu_name or cu_index can be provided in properties supplied to xma_enc_session_create() function. If cu_index is -1 then cu_name is used to use CU for the session.</p>
@@ -746,7 +749,7 @@ should be used to start the kernel with supplied kernel arguments</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

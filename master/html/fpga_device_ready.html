@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,9 +55,13 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Accessing vsec within VM" href="vsec.html" />
+    <link rel="prev" title="MSD/MPD and Plugins" href="cloud_vendor_support.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -341,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -380,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -390,10 +394,15 @@
 <li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Cloud Support</span></p>
-<ul>
+<ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">FPGA device readiness within user VM</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#with-msd-mpd-or-plugins-used">With MSD/MPD or Plugins used</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#without-msd-mpd-or-plugins-used">Without MSD/MPD or Plugins used</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -408,9 +417,9 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/xbtools_map_old.rst.txt"
+				  <li class="toctree-l1"><a href="_sources/fpga_device_ready.rst.txt"
 						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbtools_map_old.rst"
+					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/fpga_device_ready.rst"
 						   rel="nofollow">View on GitHub</a></li>						
 				</ul>
           
@@ -456,13 +465,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Legacy to new map</li>
+      <li>FPGA device readiness within user VM</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/xbtools_map_old.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/fpga_device_ready.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -475,292 +484,52 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="legacy-to-new-map">
-<span id="xbtools-map-rst"></span><h1>Legacy to new map<a class="headerlink" href="#legacy-to-new-map" title="Permalink to this headline">¶</a></h1>
-<p>This document maps the legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands to the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. It lists out the new <code class="docutils literal notranslate"><span class="pre">xbutil</span></code>/<code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> calls that replace the existing calls.</p>
-<p>Note: The new utilities are complete redesign and architecture, hence there may not be exact 1-to-1 mapping. However, help menus of these new utilities are also very descriptive so please refer to them whenever needed.</p>
-<div class="section" id="xbutil">
-<h2>Xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 21%" />
-<col style="width: 21%" />
-<col style="width: 30%" />
-<col style="width: 28%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Subcommand
-Legacy</p></th>
-<th class="head"><p>Subcommand
-New</p></th>
-<th class="head"><p>Option
-Legacy</p></th>
-<th class="head"><p>Option
-New</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>reset</p></td>
-<td><p>reset</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-odd"><td><p>validate</p></td>
-<td><p>validate</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>-q</p></td>
-<td><p>–run quick</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>(N/A)</p></td>
-<td><p>–run
-&lt;testname&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>(N/A)</p></td>
-<td><p>–format</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>(N/A)</p></td>
-<td><p>–output</p></td>
-</tr>
-<tr class="row-even"><td><p>scan</p></td>
-<td><p>examine</p></td>
-<td></td>
-<td></td>
-</tr>
-<tr class="row-odd"><td><p>query</p></td>
-<td><p>examine</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>(N/A)</p></td>
-<td><p>–report all</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td></td>
-<td><p>–report
-&lt;lists&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>(N/A)</p></td>
-<td><p>–output</p></td>
-</tr>
-<tr class="row-odd"><td><p>dump</p></td>
-<td><p>examine</p></td>
-<td><p>(N/A)</p></td>
-<td><p>–format</p></td>
-</tr>
-<tr class="row-even"><td><p>top</p></td>
-<td><p>top</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-odd"><td><p>program</p></td>
-<td><p>program</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>-p &lt;xclbin&gt;</p></td>
-<td><p>–user
-&lt;xclbin&gt;</p></td>
-</tr>
-<tr class="row-odd"><td><p>p2p</p></td>
-<td><p>advanced</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>–enable,
-–disable,
-–validate</p></td>
-<td><p>–p2p
-&lt;ENABLE,
-DISABLE,
-VALIDATE&gt;</p></td>
-</tr>
-</tbody>
-</table>
-<div class="section" id="misc-subcommands">
-<h3>Misc subcommands<a class="headerlink" href="#misc-subcommands" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 31%" />
-<col style="width: 69%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Subcommand
-Legacy</p></th>
-<th class="head"><p>Subcommand
-New</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>clock</p></td>
-<td><p>Obsoleted</p></td>
-</tr>
-<tr class="row-odd"><td><p>dmatest</p></td>
-<td><p>validate –run DMA</p></td>
-</tr>
-<tr class="row-even"><td><p>m2mtest</p></td>
-<td><p>validate –run “Memory to memory DMA”</p></td>
-</tr>
-<tr class="row-odd"><td><p>version</p></td>
-<td><p>examine</p></td>
-</tr>
-<tr class="row-even"><td><p>status</p></td>
-<td><p>examine -r debug-ip-status</p></td>
-</tr>
-<tr class="row-odd"><td><p>mem –read</p></td>
-<td><p>advanced –read-mem</p></td>
-</tr>
-<tr class="row-even"><td><p>mem –write</p></td>
-<td><p>advanced –write-mem</p></td>
-</tr>
-<tr class="row-odd"><td><p>host_mem</p></td>
-<td><p>Under construction</p></td>
-</tr>
-</tbody>
-</table>
+  <div class="section" id="fpga-device-readiness-within-user-vm">
+<span id="fpga-device-ready-rst"></span><h1>FPGA device readiness within user VM<a class="headerlink" href="#fpga-device-readiness-within-user-vm" title="Permalink to this headline">¶</a></h1>
+<p>To make the FPGA in user VM ready to use, the mgmt side has to be ready first. Beside that, depending on how
+the FPGA is deployed, there are still other factors to be considered.</p>
+<div class="section" id="with-msd-mpd-or-plugins-used">
+<h2>With MSD/MPD or Plugins used<a class="headerlink" href="#with-msd-mpd-or-plugins-used" title="Permalink to this headline">¶</a></h2>
+<p>In this case, <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has to be opened from guest VM, and  MPD service must be active in the guest VM.</p>
+<p>For MSD/MPD, the MSD service must be active also either from hypervisor or dom0 type VM where the mgmt PF of the FPGA
+is assigned.</p>
+<p>For Plugins, the vendor specific plugin package has to be installed</p>
 </div>
-</div>
-<div class="section" id="xbmgmt">
-<h2>Xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h2>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 29%" />
-<col style="width: 32%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Subcommand
-Legacy</p></th>
-<th class="head"><p>Subcommand
-New</p></th>
-<th class="head"><p>Option
-Legacy</p></th>
-<th class="head"><p>Option
-New</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>flash</p></td>
-<td><p>program</p></td>
-<td><p>-d &lt;device_id&gt;
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>–update</p></td>
-<td><p>–base</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>–update
-–shell &lt;name&gt;</p></td>
-<td><p>N/A</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>–factory_reset</p></td>
-<td><p>–revert-to-golden</p></td>
-</tr>
-<tr class="row-even"><td><p>partition</p></td>
-<td><p>program</p></td>
-<td><p>–name &lt;name&gt;</p></td>
-<td><p>–shell &lt;name&gt;</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>–path &lt;&gt;</p></td>
-<td><p>–user &lt;&gt;</p></td>
-</tr>
-<tr class="row-even"><td><p>(N/A)</p></td>
-<td><p>examine</p></td>
-<td><p>N/A</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>N/A</p></td>
-<td><p>–report all</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>N/A</p></td>
-<td><p>–report &lt;list&gt;</p></td>
-</tr>
-<tr class="row-odd"><td></td>
-<td></td>
-<td><p>N/A</p></td>
-<td><p>–format</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>N/A</p></td>
-<td><p>–output</p></td>
-</tr>
-<tr class="row-odd"><td><p>reset</p></td>
-<td><p>reset</p></td>
-<td><p>-d &lt;device_id&gt;,
--d &lt;bdf&gt;</p></td>
-<td><p>-d &lt;bdf&gt;</p></td>
-</tr>
-<tr class="row-even"><td></td>
-<td></td>
-<td><p>N/A</p></td>
-<td><p>–type &lt;type&gt;</p></td>
-</tr>
-</tbody>
-</table>
-<div class="section" id="id1">
-<h3>Misc subcommands<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 53%" />
-<col style="width: 47%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Subcommand
-Legacy</p></th>
-<th class="head"><p>Subcommand
-New</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>flash –scan</p></td>
-<td><p>examine</p></td>
-</tr>
-<tr class="row-odd"><td><p>partition –scan</p></td>
-<td><p>examine</p></td>
-</tr>
-<tr class="row-even"><td><p>version</p></td>
-<td><p>examine -r host</p></td>
-</tr>
-</tbody>
-</table>
+<div class="section" id="without-msd-mpd-or-plugins-used">
+<h2>Without MSD/MPD or Plugins used<a class="headerlink" href="#without-msd-mpd-or-plugins-used" title="Permalink to this headline">¶</a></h2>
+<p>In this case, <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> is still being used, but there is no open to the mailbox subdevice from user,
+and MPD service is inactive.
+To make the FPGA device ready, the XCL_MAILBOX_REQ_LOAD_XCLBIN opcode has to be disabled in xclmgmt.
+System administrator managing the privileged management physical function driver xclmgmt can disable specific opcodes
+using xbmgmt utility as follows.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># In host</span>
+Host&gt;$ sudo xbmgmt dump --config --output /tmp/config.ini -d bdf
+
+<span class="c1"># Edit the dumped ini file and change the value to key &#39;mailbox_channel_disable&#39;</span>
+<span class="c1"># mailbox_channel_disable=0x100,</span>
+<span class="c1"># where 0x100 is 1 &lt;&lt; XCL_MAILBOX_REQ_LOAD_XCLBIN, as defined as below</span>
+<span class="c1"># XCL_MAILBOX_REQ_UNKNOWN =             0,</span>
+<span class="c1"># XCL_MAILBOX_REQ_TEST_READY =          1,</span>
+<span class="c1"># XCL_MAILBOX_REQ_TEST_READ =           2,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOCK_BITSTREAM =      3,</span>
+<span class="c1"># XCL_MAILBOX_REQ_UNLOCK_BITSTREAM =    4,</span>
+<span class="c1"># XCL_MAILBOX_REQ_HOT_RESET =           5,</span>
+<span class="c1"># XCL_MAILBOX_REQ_FIREWALL =            6,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR =   7,</span>
+<span class="c1"># XCL_MAILBOX_REQ_LOAD_XCLBIN =         8,</span>
+<span class="c1"># XCL_MAILBOX_REQ_RECLOCK =             9,</span>
+<span class="c1"># XCL_MAILBOX_REQ_PEER_DATA =           10,</span>
+<span class="c1"># XCL_MAILBOX_REQ_USER_PROBE =          11,</span>
+<span class="c1"># XCL_MAILBOX_REQ_MGMT_STATE =          12,</span>
+<span class="c1"># XCL_MAILBOX_REQ_CHG_SHELL =           13,</span>
+<span class="c1"># XCL_MAILBOX_REQ_PROGRAM_SHELL =       14,</span>
+<span class="c1"># XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =   15,</span>
+
+Host&gt;$ vi /tmp/config.ini
+
+<span class="c1"># Load config</span>
+Host&gt;$ xbmgmt advanced --load-conf --input<span class="o">=</span>/tmp/config.ini -d bdf
+</pre></div>
 </div>
 </div>
 </div>
@@ -779,13 +548,22 @@ New</p></th>
 	  
 	  <!-- Sphinx Page Footer block -->
   
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="vsec.html" class="btn btn-neutral float-right" title="Accessing vsec within VM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="cloud_vendor_support.html" class="btn btn-neutral float-left" title="MSD/MPD and Plugins" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
 
   <hr/>
 
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

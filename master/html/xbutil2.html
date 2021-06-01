@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,10 +55,12 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Xbmgmt Next Generation" href="xbmgmt2.html" />
+    <link rel="next" title="xbmgmt (Next Generation)" href="xbmgmt2.html" />
     <link rel="prev" title="xbmgmt" href="xbmgmt.html" /> 
 	</head>
 	<body>
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,15 +384,14 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Xbutil Next Generation</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbutil (Next Generation)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-program">xbutil program</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-validate">xbutil validate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-examine">xbutil examine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-reset">xbutil reset</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil-advanced">xbutil advanced</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -403,6 +404,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -465,7 +467,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Xbutil Next Generation</li>
+      <li>xbutil (Next Generation)</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -485,214 +487,190 @@
            <div itemprop="articleBody">
             
   <div class="section" id="xbutil-next-generation">
-<span id="xbutil2-rst"></span><h1>Xbutil Next Generation<a class="headerlink" href="#xbutil-next-generation" title="Permalink to this headline">¶</a></h1>
-<p>The next generation of the <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> in a future release of XRT. This document describes the usage of this new version of the tool.</p>
-<p>To invoke the new version please set the following environment variable</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>export XRT_TOOLS_NEXTGEN=true
-</pre></div>
-</div>
-<p>The xbutil command options are</p>
+<span id="xbutil2-rst"></span><h1>xbutil (Next Generation)<a class="headerlink" href="#xbutil-next-generation" title="Permalink to this headline">¶</a></h1>
+<p>This document describes the new next-generation <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands. These new commands are default from 21.1 release.</p>
+<p>P.S: Legacy <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands are still available and can be invoked by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">--legacy</span> <span class="pre">&lt;command&gt;</span></code>.</p>
+<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation</p></li>
+</ul>
+</div></blockquote>
+<p>The next-generation <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands are</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">validate</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">advanced</span></code></p></li>
 </ul>
 </div></blockquote>
-<p><strong>A note about multidevice system</strong>: All the <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> command supports a <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) switch to specify the target device of interest. The <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> command accept the PCIe user function bdf as an argument of <code class="docutils literal notranslate"><span class="pre">--device</span></code> switch. The user can check the user function bdf from <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> command.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil examine
-....
-....
-Devices present
-[0000:b3:00.1] : xilinx_u200_xdma_201830_2
-[0000:65:00.1] : xilinx_u50_gen3x16_xdma_201920_3
-</pre></div>
-</div>
-<p>The above output shows two devices and their user function bdf (<code class="docutils literal notranslate"><span class="pre">0000:b3:00.1</span></code> and <code class="docutils literal notranslate"><span class="pre">0000:65:00.1</span></code>) can be used with the <code class="docutils literal notranslate"><span class="pre">--device</span></code> switch</p>
 <div class="section" id="xbutil-program">
 <h2>xbutil program<a class="headerlink" href="#xbutil-program" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil program [--device|-d] &lt;user bdf&gt; [--program|-p] &lt;xclbin&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;xclbin&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
 <ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to be programmed</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>&lt;none&gt; : Optional for a single device system.</p></li>
-<li><p>&lt;user bdf&gt;+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: To specify all devices <code class="docutils literal notranslate"><span class="pre">–-device</span> <span class="pre">all</span></code>  or <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">all</span></code>  can be used</p></li>
+<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--program</span></code> (or <code class="docutils literal notranslate"><span class="pre">-p</span></code>) is required to specify the .xclbin file</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--user</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>) is required to specify the .xclbin file</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>&lt;xclbin file&gt; : The xclbin file to be used to program the device</p></li>
+<li><p>&lt;xclbin file&gt; : The xclbin file with full-path to program the device</p></li>
 </ul>
 </div></blockquote>
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>#Programming a only available device with a xclbin
-xbutil program --program my_kernel.xclbin
-
-#Multiple Devices, program all the devices
-xbutil program --device all --program my_kernel.xclbin
-
-#Multiple Device, programing a single device
-xbutil program --device 0000:03:00.1 --program my_kernel.xclbin
-
-#Multiple Device, programing two devices
-xbutil program --device 0000:03:00.1 0000:d8:00.1 --program my_kernel.xclbin
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil program --device <span class="m">0000</span>:b3:00.1 --user ./my_kernel.xclbin
 </pre></div>
 </div>
 </div>
 <div class="section" id="xbutil-validate">
 <h2>xbutil validate<a class="headerlink" href="#xbutil-validate" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">validate</span></code> validates the card installation by running precompiled basic tests.</p>
+<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil validate [--device| -d] &lt;user bdf&gt; [--run| -r] &lt;test&gt; [--format| -f] &lt;report format&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--run<span class="p">|</span> -r<span class="o">]</span> &lt;test&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
 <ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to be validate</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to validate</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>&lt;none&gt; : Optional for a single device system.</p></li>
-<li><p>&lt;user bdf&gt;+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: To specify all devices <code class="docutils literal notranslate"><span class="pre">–-device</span> <span class="pre">all</span></code>  or <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">all</span></code>  can be used</p></li>
+<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the perticular test to execute</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the perticular test(s) to execute</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">all</span></code> (<strong>default</strong>): runs all the tests listed below</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Kernel</span> <span class="pre">version</span></code>: Check if the kernel version is supported by XRT</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Aux</span> <span class="pre">connection</span></code>: Check if auxiliary power is connected</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PCIE</span> <span class="pre">link</span></code>: Check if PCIE link is active</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SC</span> <span class="pre">version</span></code>: Check if SC firmware is up-to-date</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Verify</span> <span class="pre">kernel</span></code>: Run ‘Hello World’ kernel test</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">DMA</span></code>: Run dma test</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">iops</span></code>: Run test to measure performance of scheduler (number of <cite>hello world</cite> kernel execution per second)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Bandwidth</span> <span class="pre">kernel</span></code>: Run ‘bandwidth kernel’ and check the throughput</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Peer</span> <span class="pre">to</span> <span class="pre">peer</span> <span class="pre">bar</span></code>: Run P2P test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Memory</span> <span class="pre">to</span> <span class="pre">memory</span> <span class="pre">DMA</span></code>: Run M2M test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Host</span> <span class="pre">memory</span> <span class="pre">bandwidth</span> <span class="pre">test</span></code>: Run ‘bandwidth kernel’ when slave bridge is enabled</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">quick</span></code>: Run first five tests (Kernel version, Aux connection, PCIE link, SC version and Verify kernel)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Peer</span> <span class="pre">to</span> <span class="pre">peer</span> <span class="pre">bar</span></code>: Run peer-to-peer test</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Memory</span> <span class="pre">to</span> <span class="pre">memory</span> <span class="pre">DMA</span></code>: Run zero copy memory to memory data transfer test</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Host</span> <span class="pre">memory</span> <span class="pre">bandwidth</span> <span class="pre">test</span></code>: Run ‘bandwidth kernel’ when host memory is enabled</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bist</span></code>: Run BIST test</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vcu</span></code>: Run decoder test (only applicable for specific platform).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">quick</span></code>: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">text</span></code> (<strong>default</strong>): The report is shown in the text format, default behavior</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">json</span></code>: The report is shown in json-2020.2</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
 </ul>
 </div></blockquote>
 </li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># For a single device run all the tests
-xbutil validate
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all the tests</span>
+xbutil validate --device <span class="m">0000</span>:b3:00.1
 
-# For a multiple device system run all the tests on all the devices
-xbutil validate --device all
+<span class="c1"># Run &quot;DMA&quot; test, produce text output in stdout</span>
+xbutil validate --device <span class="m">0000</span>:b3:00.1 --run DMA
 
-# For a multiple device system run &quot;DMA&quot; program on a specific device
-xbutil valiadate --device 0000:d8:00.1 --run DMA
-
-# For a multiple device system run &quot;DMA&quot; and &quot;Validate Kernel&quot; program on two devices and generates Json format
-xbutil validate --device 0000:d8:00.1 0000:03:00.1 --run DMA &quot;Verify Kernel&quot; --format json-2021.2
+<span class="c1"># Run &quot;DMA&quot; and &quot;Validate Kernel&quot; test and generates Json format</span>
+xbutil validate --device <span class="m">0000</span>:b3:00.1 --run DMA <span class="s2">&quot;Verify Kernel&quot;</span> --format JSON --output xyz.json
 </pre></div>
 </div>
 </div>
 <div class="section" id="xbutil-examine">
 <h2>xbutil examine<a class="headerlink" href="#xbutil-examine" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device(s),</p>
+<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device,</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil examine [--device|-d] &lt;user bdf&gt; [--report| -r] &lt;report of interest&gt; [--format| -f] &lt;report format&gt; [--output| -o] &lt;filename&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil examine <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
 <ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to be validate</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to examine</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>&lt;none&gt; : Optional for a single device system.</p></li>
-<li><p>&lt;user bdf&gt;+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>:To specify all devices <code class="docutils literal notranslate"><span class="pre">–-device</span> <span class="pre">all</span></code>  or <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">all</span></code>  can be used</p></li>
+<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
 </ul>
 </div></blockquote>
 </li>
 <li><p>The <code class="docutils literal notranslate"><span class="pre">--report</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) switch can be used to view specific report(s) of interest from the following options</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">scan</span></code> (<strong>default</strong>): Shows System Configuration, XRT and Device user bdf information.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">aie</span></code>: Reports AIE kernels metadata from the .xclbin</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">electrical</span></code>: Reports  Electrical and power sensors present on the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">aieshim</span></code>: Reports AIE shim tile status</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: All known reports are generated</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">debug-ip-status</span></code>: Reports information related to Debug-IPs inserted during the kernel compilation</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dynamic-regions</span></code>: Information about the xclbin and the compute units (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">electrical</span></code>: Reports  Electrical and power sensors present on the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: Asyncronus Error present on the device</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">firewall</span></code>: Reports the current firewall status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: Reports the host configuration and drivers</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fan</span></code>: Reports fans present on the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: Reports the host configuration and drivers (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is not provided)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">memory</span></code>: Reports memory topology of the XCLBIN (if XCLBIN is already loaded)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pcie-info</span></code> : Pcie information of the device</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platforms flashed on the device (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">qspi-status</span></code>: QSPI write protection status</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">thermal</span></code>: Reports thermal sensors present on the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">verbose</span></code>: Reports everything</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) can be used to specify the output format</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">text</span></code> (<strong>default</strong>): The output is shown in the text format, default behavior</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">json</span></code>: The output is shown in json-2020.2</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) can be used to dump output in a file instead of stdout</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;filename&gt; : The output file to be dumped</p></li>
-</ul>
-</div></blockquote>
-</li>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># Examine all the devices and produces all the reports
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Shows ``xbutil examine --host``</span>
 xbutil examine
 
+<span class="c1"># Reports electrical information in the stdout</span>
+xbutil examine --device <span class="m">0000</span>:b3:00.1 --report electrical
 
-# Examine a specific device and report electrical information in the stdout
-xbutil examine --device 0000:d8:00.0 --run electrical
-
-# Example a list of devices and reports a list of information and dump in a file json format
-xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --format json --output my_reports.json
+<span class="c1"># Reports &quot;electrical&quot; and &quot;firewall&quot; and dump in json format</span>
+xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical firewall --format JSON --output n.json
 </pre></div>
 </div>
 </div>
 <div class="section" id="xbutil-reset">
 <h2>xbutil reset<a class="headerlink" href="#xbutil-reset" title="Permalink to this headline">¶</a></h2>
-<p>This <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> command can be used to reset one or more devices.</p>
+<p>This <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> command can be used to reset device.</p>
 <p><strong>The supported options</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil reset [--device| -d] &lt;user bdf&gt; [--type| -t] &lt;reset type&gt;
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--type<span class="p">|</span> -t<span class="o">]</span> &lt;reset type&gt;
 </pre></div>
 </div>
 <p><strong>The details of the supported options</strong></p>
 <ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) used to specify the device to be reset</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to reset</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>&lt;user bdf&gt;+ : Mandetory, has to be specified with one or more device user bdf</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: To specify all devices <code class="docutils literal notranslate"><span class="pre">–-device</span> <span class="pre">all</span></code>  or <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">all</span></code>  can be used</p></li>
+<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--type</span></code> (or <code class="docutils literal notranslate"><span class="pre">-t</span></code>) can be used to specify the reset type. Currently supported reset type</p>
+<li><p>The <code class="docutils literal notranslate"><span class="pre">--type</span></code> (or <code class="docutils literal notranslate"><span class="pre">-t</span></code>) can be used to specify the reset type. Currently only supported reset type is</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">hot</span></code> (<strong>default</strong>): Complete reset of the device</p></li>
@@ -701,102 +679,7 @@ xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --fo
 </li>
 </ul>
 <p><strong>Example commands</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil reset --device 0000:65:00.1
-
-xbutil reset --device 0000:65:00.1 --type hot
-</pre></div>
-</div>
-</div>
-<div class="section" id="xbutil-advanced">
-<h2>xbutil advanced<a class="headerlink" href="#xbutil-advanced" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">advanced</span></code> commands are the group of commands only recommended for the advanced users.</p>
-<p>As a disclaimer, the formats of these commands can change significantly as we know more about the advnced use-cases.</p>
-<p><strong>The supported options</strong></p>
-<p>Read from Memory</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil advanced [--device| -d] &lt;user bdf&gt; --read-mem &lt;address&gt; &lt;size&gt; [--output] &lt;output file&gt;
-</pre></div>
-</div>
-<p>Fill Memory with binary value</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil advanced [--device| -d] &lt;user bdf&gt; --write-mem &lt;address&gt; &lt;size&gt; [--fill] &lt;binary data&gt;
-</pre></div>
-</div>
-<p>Fill Memory from a file content</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil advanced [--device| -d] &lt;user bdf&gt; --write-mem &lt;address&gt; &lt;size&gt;  [--input] &lt;file&gt;
-</pre></div>
-</div>
-<p>P2P Enable, disable or valiadte</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil advanced [--device| -d] &lt;user bdf&gt; --p2p [enable|disable|validate]
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) used to specify the device to be reset</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt;+ : Mandetory, has to be specified with one or more device user bdf</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: To specify all devices <code class="docutils literal notranslate"><span class="pre">–-device</span> <span class="pre">all</span></code>  or <code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">all</span></code>  can be used</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--read-mem</span></code> is used to read from perticular memory location. It has to use with following arguments</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;address&gt; &lt;number of bytes&gt; : The read location and the size of the read.</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> can be used with <code class="docutils literal notranslate"><span class="pre">--read-mem</span></code> to dump the read data to a file instead of console</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;filename&gt; : When specified the output of <code class="docutils literal notranslate"><span class="pre">--read-mem</span></code> commands are dumped into the user provided file</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--write-mem</span></code> is used to write to the perticular memory location. It has to use with following arguments</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;address&gt; &lt;number of bytes&gt; : The write location and the size of the write.</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--fill</span></code> can be used with <code class="docutils literal notranslate"><span class="pre">--write-mem</span></code> to fill the memory location with a perticular binary value</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;uint8&gt; : The filled value in byte</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--input</span></code> can be used with <code class="docutils literal notranslate"><span class="pre">--write-mem</span></code> to write the memory location from a file content</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;binary file&gt; : The binary file</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--p2p</span></code> can be used to enable, disable or validate p2p operation</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>enable: Enable the p2p</p></li>
-<li><p>disable: Disable the p2p</p></li>
-<li><p>validate: Validate the p2p</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30
-
-xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30 --output foo.bin
-
-xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x10 --fill 0xAA
-
-xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x20 --input foo.bin
-
-xbutil advanced --device 0000:65:00.1 --p2p enable
-
-xbutil advanced --device 0000:65:00.1 --p2p disble
-
-xbutil advanced --device 0000:65:00.1 --p2p validate
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil reset --device <span class="m">0000</span>:65:00.1
 </pre></div>
 </div>
 </div>
@@ -818,7 +701,7 @@ xbutil advanced --device 0000:65:00.1 --p2p validate
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xbmgmt2.html" class="btn btn-neutral float-right" title="Xbmgmt Next Generation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xbmgmt2.html" class="btn btn-neutral float-right" title="xbmgmt (Next Generation)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xbmgmt.html" class="btn btn-neutral float-left" title="xbmgmt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -831,7 +714,7 @@ xbutil advanced --device 0000:65:00.1 --p2p validate
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,19 +345,13 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Supported Kernel Execution Models</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#ap-ctrl-hs-sequentially-executed-kernel">AP_CTRL_HS (Sequentially Executed Kernel)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#mode-of-operation">Mode of operation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#control-signal-topology">Control Signal Topology</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">XRT Controlled Kernel Execution Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sequential-execution-model">Sequential Execution Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pipelined-execution-model">Pipelined Execution Model</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#note-regarding-the-user-managed-kernels">Note regarding the User-managed kernels</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#note-regarding-the-un-managed-kernels">Note regarding the Un-managed kernels</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#ap-ctrl-chain-pipelined-kernel">AP_CTRL_CHAIN (Pipelined Kernel)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id1">Mode of operation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id2">Control Signal Topology</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#host-code-consideration">Host Code Consideration</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="#ap-ctrl-none-continuously-running-kernel">AP_CTRL_NONE (Continuously Running Kernel)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
@@ -396,8 +392,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -410,6 +406,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -472,7 +469,7 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>Supported Kernel Execution Models</li>
+      <li>XRT Controlled Kernel Execution Models</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -491,37 +488,22 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="supported-kernel-execution-models">
-<span id="xrt-kernel-executions-rst"></span><h1>Supported Kernel Execution Models<a class="headerlink" href="#supported-kernel-execution-models" title="Permalink to this headline">¶</a></h1>
-<p>XRT can support a few well-defined kernel execution models.  In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly.</p>
-<p>At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.</p>
-<p>The list of primary supported excution models are:</p>
+  <div class="section" id="xrt-controlled-kernel-execution-models">
+<span id="xrt-kernel-executions-rst"></span><h1>XRT Controlled Kernel Execution Models<a class="headerlink" href="#xrt-controlled-kernel-execution-models" title="Permalink to this headline">¶</a></h1>
+<p>XRT manages a few well-defined kernel execution models by hiding the implementation details from the user. The user executes the kernel by OpenCL or native XRT APIs, such as <code class="docutils literal notranslate"><span class="pre">clEnququeTask</span></code> API or <code class="docutils literal notranslate"><span class="pre">xrt::run</span></code> class object, without the need of handling the control interface of the kernels explicitly inside the host code.</p>
+<p>In HLS flow, depending on the pragma embedded inside the kernel code, the HLS generates RTL that resonates with XRT supported models. However, for RTL kernel, as the user has the flexibility to create kernel the way they want, it is important for RTL user to understand the XRT supported execution model and design their RTL kernel interface accordingly in order to take advantage of the automatic execution flow managed by the XRT.</p>
+<p>At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The XRT managed kernel’s control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.</p>
+<p>The two primary supported excution models are:</p>
 <ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_HS</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_CHAIN</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">AP_CTRL_NONE</span></code></p></li>
+<li><p>Sequential execution model</p></li>
+<li><p>Pipelined execution model</p></li>
 </ol>
-<p>The <code class="docutils literal notranslate"><span class="pre">IP_LAYOUT</span></code> section of the kernel <code class="docutils literal notranslate"><span class="pre">xclbin</span></code> metadata contains the kernel execution model information. The <code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> utility command can be used to retrieve the execution model information from a <code class="docutils literal notranslate"><span class="pre">.xclbin</span></code> file.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xclbinutil --info --input binary_container_1.xclbin --dump-section IP_LAYOUT:json:ip_layout_info.json
-</pre></div>
-</div>
-<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
- <span class="nt">&quot;ip_layout&quot;</span><span class="p">:</span> <span class="p">{</span>
-     <span class="nt">&quot;m_count&quot;</span><span class="p">:</span> <span class="s2">&quot;5&quot;</span><span class="p">,</span>
-     <span class="nt">&quot;m_ip_data&quot;</span><span class="p">:</span> <span class="p">{</span>
-         <span class="nt">&quot;ip_data&quot;</span><span class="p">:</span> <span class="p">{</span>
-             <span class="nt">&quot;m_type&quot;</span><span class="p">:</span> <span class="s2">&quot;IP_KERNEL&quot;</span><span class="p">,</span>
-             <span class="nt">&quot;m_int_enable&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
-             <span class="nt">&quot;m_interrupt_id&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
-             <span class="nt">&quot;m_ip_control&quot;</span><span class="p">:</span> <span class="s2">&quot;AP_CTRL_HS&quot;</span><span class="p">,</span>
-</pre></div>
-</div>
 <p>Below we will discuss each kernel execution model in detail.</p>
-<div class="section" id="ap-ctrl-hs-sequentially-executed-kernel">
-<h2>AP_CTRL_HS (Sequentially Executed Kernel)<a class="headerlink" href="#ap-ctrl-hs-sequentially-executed-kernel" title="Permalink to this headline">¶</a></h2>
-<p>The AP_CTRL_HS style kernel is the most sophisticated execution model through XRT (It was the only supported kernel type by XRT before 2019.1). The idea of AP_CTRL_HS is the simple one-point synchronization scheme between the host and the kernel using two signals: <strong>ap_start</strong> and <strong>ap_done</strong>. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.</p>
-<div class="section" id="mode-of-operation">
-<h3>Mode of operation<a class="headerlink" href="#mode-of-operation" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="sequential-execution-model">
+<h2>Sequential Execution Model<a class="headerlink" href="#sequential-execution-model" title="Permalink to this headline">¶</a></h2>
+<p>Sequential execution model is legacy (prior to 2019.1 release) default execution model supported through the HLS flow. The user can create this implemtation by specifying AP_CTRL_HS pragma at the kernel interface.</p>
+<p>The idea of sequentially executed model is the simple one-point synchronization scheme between the host and the kernel using two signals: <strong>ap_start</strong> and <strong>ap_done</strong>. This execution mode allows the kernel only be restarted after it is completed the current execution. So when there are multiple kernel execution requests from the host, the kernel gets executed in sequential order, serving only one execution request at a time.</p>
+<p><strong>Mode of operation</strong></p>
 <img alt="_images/ap_ctrl_hs_2.PNG" class="align-center" src="_images/ap_ctrl_hs_2.PNG" />
 <ol class="arabic simple">
 <li><p>The XRT driver writes a 1 in ap_start to start the kernel</p></li>
@@ -530,9 +512,7 @@
 </ol>
 <p>Assume there are three concurrent kernel execution requests from the host. The kernel executions will happen sequentially as below, serving one request at a time</p>
 <p>START1=&gt;DONE1=&gt;START2=&gt;DONE2=&gt;START3=&gt;DONE3</p>
-</div>
-<div class="section" id="control-signal-topology">
-<h3>Control Signal Topology<a class="headerlink" href="#control-signal-topology" title="Permalink to this headline">¶</a></h3>
+<p><strong>Control Signal Topology</strong></p>
 <p>The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
 <table class="docutils align-default">
 <colgroup>
@@ -558,12 +538,11 @@
 </tbody>
 </table>
 </div>
-</div>
-<div class="section" id="ap-ctrl-chain-pipelined-kernel">
-<h2>AP_CTRL_CHAIN (Pipelined Kernel)<a class="headerlink" href="#ap-ctrl-chain-pipelined-kernel" title="Permalink to this headline">¶</a></h2>
-<p>AP_CTRL_CHAIN is an improved version of AP_CTRL_HS where the kernel is designed in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals <strong>ap_start</strong> and <strong>ap_ready</strong>) and output synchronization (<strong>ap_done</strong> and <strong>ap_continue</strong>). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.</p>
-<div class="section" id="id1">
-<h3>Mode of operation<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="pipelined-execution-model">
+<h2>Pipelined Execution Model<a class="headerlink" href="#pipelined-execution-model" title="Permalink to this headline">¶</a></h2>
+<p>Pipelined execution model is current default execution model supported through the HLS flow.</p>
+<p>The kernel is implemented through AP_CTRL_CHAIN pragma. The kernel is implemented in such a way it can allow multiple kernel executions to get overlapped and running in a pipelined fashion. To achieve this host to kernel synchronization point is broken into two places: input synchronization (dictated by the signals <strong>ap_start</strong> and <strong>ap_ready</strong>) and output synchronization (<strong>ap_done</strong> and <strong>ap_continue</strong>). This execution mode allows the kernel to be restarted even if the kernel is working on the current (one or more) execution(s). So when there are multiple kernel execution requests from the host, the kernel gets executed in a pipelined or overlapping fashion, serving multiple execution requests at a time.</p>
+<p><strong>Mode of operation</strong></p>
 <img alt="_images/ap_ctrl_chain_2.PNG" class="align-center" src="_images/ap_ctrl_chain_2.PNG" />
 <p><strong>Input synchronization</strong></p>
 <ol class="arabic simple">
@@ -573,16 +552,14 @@
 </ol>
 <p>Assume there are five concurrent kernel execution requests from the host and the kernel can work on three execution requests in a pipelined fashion. The kernel executions will happen sequentially as below, serving maximum three requests at a time.</p>
 <p>START1=&gt;START2=&gt;START3=&gt;DONE1=&gt;START4=&gt;DONE2=&gt;START5=&gt;DONE3=&gt;DONE4=&gt;DONE5</p>
-<p><strong>Note:</strong> As noted in the above sequence, the AP_CTRL_CHAIN only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by AP_CTRL_CHAIN execution model.</p>
+<p><strong>Note:</strong> As noted in the above sequence, the pipelined execution model only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by through this execution model.</p>
 <p><strong>Output synchronization</strong></p>
 <ol class="arabic simple">
 <li><p>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</p></li>
 <li><p>The XRT driver writes a 1 in ap_continue to keep kernel running</p></li>
 </ol>
 <p>The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.</p>
-</div>
-<div class="section" id="id2">
-<h3>Control Signal Topology<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
+<p><strong>Control Signal Topology</strong></p>
 <p>The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
 <table class="docutils align-default">
 <colgroup>
@@ -615,28 +592,16 @@
 </tr>
 </tbody>
 </table>
+<p><strong>Host Code Consideration</strong></p>
+<p>To execute the kernel in pipelined fashion, the host code should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API <code class="docutils literal notranslate"><span class="pre">clEnqueueMigrateMemObjects</span></code> to explicitly migrate the buffer before the kernel execution.</p>
+<div class="section" id="note-regarding-the-user-managed-kernels">
+<h3>Note regarding the User-managed kernels<a class="headerlink" href="#note-regarding-the-user-managed-kernels" title="Permalink to this headline">¶</a></h3>
+<p>The RTL kernels which are implemented as any other arbitrary execution models must be managed explicitly by the user using native XRT API. The <code class="docutils literal notranslate"><span class="pre">xrt::ip</span></code> class and its member functions are needed to control/read/write these types of kernels. See the API details in <a class="reference external" href="https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel">https://xilinx.github.io/XRT/master/html/xrt_native_apis.html#user-managed-kernel</a></p>
 </div>
-<div class="section" id="host-code-consideration">
-<h3>Host Code Consideration<a class="headerlink" href="#host-code-consideration" title="Permalink to this headline">¶</a></h3>
-<p>The host code exercising a AP_CTRL_CHAIN kernel should be able to fill the input queue with multiple execution requests well ahead to take the advantage of pipelined nature of the kernel. For example, considering OpenCL host code, it should use out-of-order command queue for multiple kernel execution requests. The host code should also use API <code class="docutils literal notranslate"><span class="pre">clEnqueueMigrateMemObjects</span></code> to explicitly migrate the buffer before the kernel execution.</p>
-</div>
-</div>
-<div class="section" id="ap-ctrl-none-continuously-running-kernel">
-<h2>AP_CTRL_NONE (Continuously Running Kernel)<a class="headerlink" href="#ap-ctrl-none-continuously-running-kernel" title="Permalink to this headline">¶</a></h2>
-<p>Sometimes the kernel does not need to be controlled by the host. For example, if the kernel is only communicating through the stream, it only works when the data is available at its input through the stream, and the kernel stalls when there is no data to process, waiting for new data to arrive through the stream to start working again. These type of kernels has no control signal connected to the AXI4-Lite Slave interface.</p>
-<p><strong>Important points to remember</strong></p>
-<ol class="arabic simple">
-<li><p>Consider a kernel with AP_CTRL_NONE only when it has no memory mapped input and output.</p></li>
-<li><p>There is no need to start the kernel by <code class="docutils literal notranslate"><span class="pre">clEnqueueTask</span></code> or <code class="docutils literal notranslate"><span class="pre">clEnqueueNDRangeKernel</span></code> from the host.</p></li>
-<li><p>Host communicates with a continuously running kernel by the stream read and write requests, if necessary.</p></li>
-<li><p>Dont use <code class="docutils literal notranslate"><span class="pre">clSetKernelArg</span></code> to pass scalar argument to ap_ctrl_none kernel, only use <code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> (API implemented in 2019.2) API.</p></li>
-</ol>
-<p><strong>Note:</strong> To read and write register values from the AXI4-Lite Slave interface, the new APIs <code class="docutils literal notranslate"><span class="pre">xclRegRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclRegWrite</span></code> must be used (replacing obsolated APIs <code class="docutils literal notranslate"><span class="pre">xclRead</span></code>/<code class="docutils literal notranslate"><span class="pre">xclWrite</span></code>). These APIs require exclusive CU context reservation via API <code class="docutils literal notranslate"><span class="pre">xclOpenContext</span></code> as shown in the code sample below.</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">xclOpenContext</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">xclbin_id</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">,</span> <span class="nb">false</span><span class="p">);</span>
-<span class="n">xclRegRead</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">data</span><span class="p">);</span>
-<span class="n">xclRegWrite</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">,</span> <span class="n">offset</span><span class="p">,</span> <span class="n">data</span><span class="p">);</span>
-<span class="n">xclCloseContext</span><span class="p">(</span><span class="n">device_handle</span><span class="p">,</span> <span class="n">xclbin_id</span><span class="p">,</span> <span class="n">cu_index</span><span class="p">);</span>
-</pre></div>
+<div class="section" id="note-regarding-the-un-managed-kernels">
+<h3>Note regarding the Un-managed kernels<a class="headerlink" href="#note-regarding-the-un-managed-kernels" title="Permalink to this headline">¶</a></h3>
+<p>The kernels can also be implemented without any control interfaces. As these kernels purely works on the availability of the data at its interface, they cannot be controlled (executed) from the host-code. In general these kernels are only communicating through the stream, they only work when the data is available at their input through the stream, and they stall when there is no data to process, waiting for new data to arrive through the stream to start working again.</p>
+<p>These kernels may have scalar inputs and outputs connected through the AXI4-Lite Slave interface. The user can read/write to those kernels by native XRT APIs (<code class="docutils literal notranslate"><span class="pre">xrt::ip::read_register</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::ip::write_register</span></code>).</p>
 </div>
 </div>
 </div>
@@ -670,7 +635,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>
