@@ -933,7 +933,7 @@ namespace xdp {
     // NOTE 2: This flush mechanism is only valid for runtime event trace
     if (runtimeMetrics && xrt_core::config::get_aie_trace_flush()) {
       setFlushMetrics(deviceId, handle);
-      std::this_thread::sleep_for(std::chrono::microseconds(10));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     if(aieOffloaders.find(deviceId) != aieOffloaders.end()) {
