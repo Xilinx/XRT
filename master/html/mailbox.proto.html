@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -480,8 +483,8 @@
   <div class="section" id="mailbox-inter-domain-communication-protocol">
 <span id="mailbox-proto-rst"></span><h1>Mailbox Inter-domain Communication Protocol<a class="headerlink" href="#mailbox-inter-domain-communication-protocol" title="Permalink to this headline">¶</a></h1>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">enum xcl_mailbox_request</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">xcl_mailbox_request</span></span></dt>
 <dd><p>List of all mailbox request OPCODE. Some OP code requires arguments, which is defined as corresponding data structures below. Response to the request usually is a int32_t containing the error code. Some responses are more complicated and require a data structure, which is also defined below in this file.</p>
 </dd></dl>
 
@@ -524,8 +527,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_req_bitstream_lock</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_req_bitstream_lock</span></span></dt>
 <dd><p>MAILBOX_REQ_LOCK_BITSTREAM and MAILBOX_REQ_UNLOCK_BITSTREAM payload type</p>
 </dd></dl>
 
@@ -544,8 +547,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">enum xcl_group_kind</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">xcl_group_kind</span></span></dt>
 <dd><p>Groups of data that can be fetched from mgmt side</p>
 </dd></dl>
 
@@ -567,8 +570,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_board_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_board_info</span></span></dt>
 <dd><p>Data structure used to fetch BDINFO group</p>
 </dd></dl>
 
@@ -579,8 +582,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_sensor</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_sensor</span></span></dt>
 <dd><p>Data structure used to fetch SENSOR group</p>
 </dd></dl>
 
@@ -591,8 +594,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_pr_region</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_pr_region</span></span></dt>
 <dd><p>Data structure used to fetch ICAP group</p>
 </dd></dl>
 
@@ -603,8 +606,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mig_ecc</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mig_ecc</span></span></dt>
 <dd><p>Data structure used to fetch MIG_ECC group</p>
 </dd></dl>
 
@@ -615,8 +618,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_firewall</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_firewall</span></span></dt>
 <dd><p>Data structure used to fetch FIREWALL group</p>
 </dd></dl>
 
@@ -627,8 +630,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_dna</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_dna</span></span></dt>
 <dd><p>Data structure used to fetch DNA group</p>
 </dd></dl>
 
@@ -639,8 +642,8 @@
 </div>
 <p><strong>Members</strong></p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_subdev_peer</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_subdev_peer</span></span></dt>
 <dd><p>MAILBOX_REQ_PEER_DATA payload type</p>
 </dd></dl>
 
@@ -659,8 +662,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_conn</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_conn</span></span></dt>
 <dd><p>MAILBOX_REQ_USER_PROBE payload type</p>
 </dd></dl>
 
@@ -685,8 +688,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_conn_resp</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_conn_resp</span></span></dt>
 <dd><p>MAILBOX_REQ_USER_PROBE response payload type</p>
 </dd></dl>
 
@@ -711,8 +714,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_peer_state</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_peer_state</span></span></dt>
 <dd><p>MAILBOX_REQ_MGMT_STATE payload type</p>
 </dd></dl>
 
@@ -728,8 +731,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_bitstream_kaddr</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_bitstream_kaddr</span></span></dt>
 <dd><p>MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type</p>
 </dd></dl>
 
@@ -745,8 +748,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_clock_freqscaling</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_clock_freqscaling</span></span></dt>
 <dd><p>MAILBOX_REQ_RECLOCK payload type</p>
 </dd></dl>
 
@@ -765,8 +768,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_req</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_req</span></span></dt>
 <dd><p>mailbox request message header</p>
 </dd></dl>
 
@@ -788,8 +791,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_sw_chan</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_sw_chan</span></span></dt>
 <dd><p>mailbox software channel message metadata. This defines the interface between daemons (MPD and MSD) and mailbox’s read or write callbacks. A mailbox message (either a request or response) is wrapped by this data structure as payload. A sw_chan is passed between mailbox driver and daemon via read / write driver callbacks. And it is also passed between MPD and MSD via vendor defined interface (TCP socket, etc).</p>
 </dd></dl>
 
@@ -814,8 +817,8 @@
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct xcl_mailbox_p2p_bar_addr</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_p2p_bar_addr</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -855,7 +858,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

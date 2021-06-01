@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -432,8 +434,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -446,6 +448,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -601,13 +604,11 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p>Load compiled kernel binary (or XCLBIN) onto the device</p></li>
 </ul>
 <p>The simplest code to load an XCLBIN as below</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>10
-11
-12</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">dev_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="n">dev_index</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">10 </span>     <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">dev_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="lineno">11 </span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="n">dev_index</span><span class="p">);</span>
+<span class="lineno">12 </span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The above code block shows</p>
 <ul class="simple">
 <li><p>The <code class="docutils literal notranslate"><span class="pre">xrt::device</span></code> class’s constructor is used to open the device (enumerated as 0)</p></li>
@@ -615,15 +616,14 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::device::load_xclbin</span></code> returns the XCLBIN UUID, which is required to open the kernel (refer the Kernel Section).</p></li>
 </ul>
 <p>The class constructor <code class="docutils literal notranslate"><span class="pre">xrt::device::device(const</span> <span class="pre">std::string&amp;</span> <span class="pre">bdf)</span></code> also supports opening a device object from a Pcie BDF passed as a string.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>10</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="s">&quot;0000:03:00.1&quot;</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">10 </span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="s">&quot;0000:03:00.1&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::device::get_info()</span></code> is a useful member function to obtain necessary information about a device. Some of the information such as Name, BDF can be used to select a specific device to load an XCLBIN</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>10
-11</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;device name:     &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">xrt</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">name</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
-     <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;device bdf:      &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">xrt</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">bdf</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">10 </span>     <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;device name:     &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">xrt</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">name</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+<span class="lineno">11 </span>     <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;device bdf:      &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">device</span><span class="p">.</span><span class="n">get_info</span><span class="o">&lt;</span><span class="n">xrt</span><span class="o">::</span><span class="n">info</span><span class="o">::</span><span class="n">device</span><span class="o">::</span><span class="n">bdf</span><span class="o">&gt;</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="buffers">
 <h2>Buffers<a class="headerlink" href="#buffers" title="Permalink to this headline">¶</a></h2>
@@ -637,17 +637,13 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <h3>1. Buffer allocation and deallocation<a class="headerlink" href="#buffer-allocation-and-deallocation" title="Permalink to this headline">¶</a></h3>
 <p>The C++ interface for buffers as below</p>
 <p>The class constructor <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> is mainly used to allocates a buffer object 4K aligned. By default, a regular buffer is created (optionally the user can create other types of buffers by providing a flag).</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15
-16
-17
-18
-19</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">bank_grp_arg0</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="c1">// Memory bank index for kernel argument 0</span>
-     <span class="k">auto</span> <span class="n">bank_grp_arg1</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// Memory bank index for kernel argument 1</span>
-
-     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span><span class="n">bank_grp_arg0</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_arg1</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">15 </span>     <span class="k">auto</span> <span class="n">bank_grp_arg0</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span> <span class="c1">// Memory bank index for kernel argument 0</span>
+<span class="lineno">16 </span>     <span class="k">auto</span> <span class="n">bank_grp_arg1</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span> <span class="c1">// Memory bank index for kernel argument 1</span>
+<span class="lineno">17 </span>
+<span class="lineno">18 </span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span><span class="n">bank_grp_arg0</span><span class="p">);</span>
+<span class="lineno">19 </span>     <span class="k">auto</span> <span class="n">output_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_arg1</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>In the above code <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> buffer objects are created using the class constructor. Please note the following</p>
 <ul class="simple">
 <li><p>As no special flags are used a regular buffer will be created. Regular buffer is most common type of buffer that has a host backing pointer allocated by user space in heap memory and a device buffer allocated in the specified memory bank.</p></li>
@@ -671,34 +667,25 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::flags::cacheable</span></code>: Cacheable buffer can be used when the host CPU frequently accessing the buffer (applicable for edge platform).</p></li>
 </ul>
 <p>The below example shows creating a P2P buffer on a device memory bank connected to argument 3 of the kernel.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">p2p_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_byte</span><span class="p">,</span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">p2p</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">15 </span>     <span class="k">auto</span> <span class="n">p2p_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_byte</span><span class="p">,</span><span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">p2p</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="creating-buffers-from-the-user-pointer">
 <h4>Creating Buffers from the user pointer<a class="headerlink" href="#creating-buffers-from-the-user-pointer" title="Permalink to this headline">¶</a></h4>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::bo()</span></code> constructor can also be called using a pointer provided by the user. The user pointer must be aligned to 4K boundary.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15
-16
-17
-18
-19
-20
-21
-22
-23
-24</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// Host Memory pointer aligned to 4K boundary</span>
-     <span class="kt">int</span> <span class="o">*</span><span class="n">host_ptr</span><span class="p">;</span>
-     <span class="n">posix_memalign</span><span class="p">(</span><span class="o">&amp;</span><span class="n">host_ptr</span><span class="p">,</span><span class="mi">4096</span><span class="p">,</span><span class="n">MAX_LENGTH</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
-
-     <span class="c1">// Sample example filling the allocated host memory</span>
-     <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">MAX_LENGTH</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
-     <span class="n">host_ptr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>  <span class="c1">// whatever</span>
-     <span class="p">}</span>
-
-     <span class="k">auto</span> <span class="n">mybuf</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">host_ptr</span><span class="p">,</span> <span class="n">MAX_LENGTH</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">15 </span>     <span class="c1">// Host Memory pointer aligned to 4K boundary</span>
+<span class="lineno">16 </span>     <span class="kt">int</span> <span class="o">*</span><span class="n">host_ptr</span><span class="p">;</span>
+<span class="lineno">17 </span>     <span class="n">posix_memalign</span><span class="p">(</span><span class="o">&amp;</span><span class="n">host_ptr</span><span class="p">,</span><span class="mi">4096</span><span class="p">,</span><span class="n">MAX_LENGTH</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">));</span>
+<span class="lineno">18 </span>
+<span class="lineno">19 </span>     <span class="c1">// Sample example filling the allocated host memory</span>
+<span class="lineno">20 </span>     <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">MAX_LENGTH</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">21 </span>     <span class="n">host_ptr</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>  <span class="c1">// whatever</span>
+<span class="lineno">22 </span>     <span class="p">}</span>
+<span class="lineno">23 </span>
+<span class="lineno">24 </span>     <span class="k">auto</span> <span class="n">mybuf</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">host_ptr</span><span class="p">,</span> <span class="n">MAX_LENGTH</span><span class="o">*</span><span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">3</span><span class="p">));</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 </div>
 <div class="section" id="data-transfer-using-buffers">
@@ -724,25 +711,17 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo::read()</span></code></p></li>
 </ol>
 <p>Code example of transferring data from the host to the device</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>20
-21
-22
-23
-24
-25
-26
-27
-28</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
-     <span class="c1">// Prepare the input data</span>
-     <span class="kt">int</span> <span class="n">buff_data</span><span class="p">[</span><span class="n">data_size</span><span class="p">];</span>
-     <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">buff_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
-     <span class="p">}</span>
-
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">buff_data</span><span class="p">);</span>
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">20 </span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+<span class="lineno">21 </span>     <span class="c1">// Prepare the input data</span>
+<span class="lineno">22 </span>     <span class="kt">int</span> <span class="n">buff_data</span><span class="p">[</span><span class="n">data_size</span><span class="p">];</span>
+<span class="lineno">23 </span>     <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span> <span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">24 </span>         <span class="n">buff_data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+<span class="lineno">25 </span>     <span class="p">}</span>
+<span class="lineno">26 </span>
+<span class="lineno">27 </span>     <span class="n">input_buffer</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="n">buff_data</span><span class="p">);</span>
+<span class="lineno">28 </span>     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>Note the C++ <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::bo::write</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::bo::read</span></code> etc has overloaded version that can be used for partial buffer sync/read/write by specifying the size and the offset. For the above code example, the full buffer size and offset=0 are assumed as default arguments.</p>
 <p>Also note that if the buffer is created through the user-pointer, the <code class="docutils literal notranslate"><span class="pre">xrt::bo::write</span></code> or <code class="docutils literal notranslate"><span class="pre">xrt::bo::read</span></code> is not required before or after the <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync</span></code> call.</p>
 </div>
@@ -750,30 +729,23 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <h4>II. Data transfer between host and device by Buffer map API<a class="headerlink" href="#ii-data-transfer-between-host-and-device-by-buffer-map-api" title="Permalink to this headline">¶</a></h4>
 <p>The API <code class="docutils literal notranslate"><span class="pre">xrt::bo::map()</span></code> allows mapping the host-side buffer backing pointer to a user pointer. The host code can subsequently exercise the user pointer for the data reads and writes. However, after writing to the mapped pointer (or before reading from the mapped pointer) the API <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync()</span></code> should be used with direction flag for the DMA operation.</p>
 <p>Code example of transferring data from the host to the device by this approach</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>20
-21
-22
-23
-24
-25
-26
-27</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">input_buffer_mapped</span> <span class="o">=</span> <span class="n">input_buffer</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="p">();</span>
-
-     <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">input_buffer_mapped</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
-     <span class="p">}</span>
-
-     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">20 </span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">bank_grp_idx_0</span><span class="p">);</span>
+<span class="lineno">21 </span>     <span class="k">auto</span> <span class="n">input_buffer_mapped</span> <span class="o">=</span> <span class="n">input_buffer</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">*&gt;</span><span class="p">();</span>
+<span class="lineno">22 </span>
+<span class="lineno">23 </span>     <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="n">i</span><span class="o">=</span><span class="mi">0</span><span class="p">;</span><span class="n">i</span><span class="o">&lt;</span><span class="n">data_size</span><span class="p">;</span><span class="o">++</span><span class="n">i</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">24 </span>         <span class="n">input_buffer_mapped</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+<span class="lineno">25 </span>     <span class="p">}</span>
+<span class="lineno">26 </span>
+<span class="lineno">27 </span>     <span class="n">input_buffer</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="n">XCL_BO_SYNC_BO_TO_DEVICE</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="iii-data-transfer-between-the-buffers-by-copy-api">
 <h4>III. Data transfer between the buffers by copy API<a class="headerlink" href="#iii-data-transfer-between-the-buffers-by-copy-api" title="Permalink to this headline">¶</a></h4>
 <p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html#m2m-rst"><span class="std std-ref">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>25</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">dst_buffer</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src_buffer</span><span class="p">,</span> <span class="n">copy_size_in_bytes</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">25 </span>     <span class="n">dst_buffer</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src_buffer</span><span class="p">,</span> <span class="n">copy_size_in_bytes</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The API <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> also has overloaded versions to provide a different offset than 0 for both the source and the destination buffer.</p>
 </div>
 </div>
@@ -788,11 +760,10 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::bo()</span></code> constructor: Allocate a BO imported from exported buffer handle</p></li>
 </ul>
 <p>Consider the situation of exporting buffer from device 1 to device 2.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>18
-19</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">buffer_exported</span> <span class="o">=</span> <span class="n">buffer_device_1</span><span class="p">.</span><span class="n">export_buffer</span><span class="p">();</span>
-     <span class="k">auto</span> <span class="n">buffer_device_2</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device_2</span><span class="p">,</span> <span class="n">buffer_exported</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">18 </span>     <span class="k">auto</span> <span class="n">buffer_exported</span> <span class="o">=</span> <span class="n">buffer_device_1</span><span class="p">.</span><span class="n">export_buffer</span><span class="p">();</span>
+<span class="lineno">19 </span>     <span class="k">auto</span> <span class="n">buffer_device_2</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device_2</span><span class="p">,</span> <span class="n">buffer_exported</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>In the above example</p>
 <ul class="simple">
 <li><p>The buffer buffer_device_1 is a buffer allocated on device 1</p></li>
@@ -804,15 +775,12 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <h4>Sub-buffer support<a class="headerlink" href="#sub-buffer-support" title="Permalink to this headline">¶</a></h4>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> class constructor can also be used to allocate a sub-buffer from a parent buffer by specifying a start offset and the size.</p>
 <p>In the example below a sub-buffer is created from a parent buffer of size 4 bytes starting from its offset 0</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>18
-19
-20
-21</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">size_t</span> <span class="n">sub_buffer_size</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
-     <span class="kt">size_t</span> <span class="n">sub_buffer_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-
-     <span class="k">auto</span> <span class="n">sub_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">parent_buffer</span><span class="p">,</span> <span class="n">sub_buffer_size</span><span class="p">,</span> <span class="n">sub_buffer_offset</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">18 </span>     <span class="kt">size_t</span> <span class="n">sub_buffer_size</span> <span class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="lineno">19 </span>     <span class="kt">size_t</span> <span class="n">sub_buffer_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="lineno">20 </span>
+<span class="lineno">21 </span>     <span class="k">auto</span> <span class="n">sub_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">parent_buffer</span><span class="p">,</span> <span class="n">sub_buffer_size</span><span class="p">,</span> <span class="n">sub_buffer_offset</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="buffer-information">
 <h4>Buffer information<a class="headerlink" href="#buffer-information" title="Permalink to this headline">¶</a></h4>
@@ -838,56 +806,48 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <div class="section" id="obtaining-kernel-object-from-xclbin">
 <h3>Obtaining kernel object from XCLBIN<a class="headerlink" href="#obtaining-kernel-object-from-xclbin" title="Permalink to this headline">¶</a></h3>
 <p>The kernel object is created from the device, XCLBIN UUID and the kernel name using <code class="docutils literal notranslate"><span class="pre">xrt::kernel()</span></code> constructor as shown below</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
+<span class="lineno">36 </span>     <span class="k">auto</span> <span class="n">krnl</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="n">name</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p><strong>Note</strong>: A single kernel object (when created by a kernel name) can be used to execute multiple CUs as long as CUs are having identical interface connectivity. If all the CUs of the kernel are not having identical connectivity, XRT assigns a subset of CUs (one or more CUs with identical connectivity) to the created kernel object and discards the rest of the CUs (discarded CUs are not used during the execution of a kernel).  For this type of situation creating a kernel object using mangled CU names can be more useful.</p>
 <p>As an example, assume a kernel name is foo having 3 CUs foo_1, foo_2, foo_3. The CUs foo_1 and foo_2 are connected to DDR bank 0, but the CU foo_3 is connected to DDR bank 1.</p>
 <ul class="simple">
 <li><p>Opening kernel object for foo_1 and foo_2 (as they have identical interface connection)</p></li>
 </ul>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">krnl_obj_1_2</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1,foo_2}&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="n">krnl_obj_1_2</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1,foo_2}&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <ul class="simple">
 <li><p>Opening kernel object for foo_3</p></li>
 </ul>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">krnl_obj_3</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_3}&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="n">krnl_obj_3</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">kernel</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_3}&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="getting-bank-group-index-of-the-kernel-argument">
 <h3>Getting bank group index of the kernel argument<a class="headerlink" href="#getting-bank-group-index-of-the-kernel-argument" title="Permalink to this headline">¶</a></h3>
 <p>We have seen in the Buffer creation section that it is required to provide the buffer location during the buffer creation. The member function <code class="docutils literal notranslate"><span class="pre">xrt::kernel::group_id()</span></code> returns the memory bank index (or id) of a specific argument of the kernel. This id is passed as a parameter of <code class="docutils literal notranslate"><span class="pre">xrt::bo()</span></code> constructor to create the buffer on the same memory bank.</p>
 <p>Let us review the example below where the buffer is allocated for the kernel’s first (argument index 0) argument.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>15</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">15 </span>     <span class="k">auto</span> <span class="n">input_buffer</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">buffer_size_in_bytes</span><span class="p">,</span> <span class="n">kernel</span><span class="p">.</span><span class="n">group_id</span><span class="p">(</span><span class="mi">0</span><span class="p">));</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>If the kernel bank index is ambiguous then <code class="docutils literal notranslate"><span class="pre">kernel.group_id()</span></code> returns the last memory bank index in the list it maintains. This is the case when the kernel has multiple CU with different connectivity for that argument. For example, let’s assume a kernel argument (argument 0) is connected to memory bank 0, 1, 2 (for 3 CUs), then <code class="docutils literal notranslate"><span class="pre">kernel.group_id(0)</span></code> will return the last index from the group {0,1,2}, i.e. 2. As a result the buffer is created on the memory bank 2, so the buffer cannot be used for the CU0 and CU1.</p>
 <p>However, in the above situation, the user can always create 3 distinct kernel objects corresponds to 3 CUs (by using the <code class="docutils literal notranslate"><span class="pre">{kernel_name:{cu_name(s)}}</span></code> for xrt::kernel constructor) to execute the CUs by separate <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> objects.</p>
 </div>
 <div class="section" id="executing-the-kernel">
 <h3>Executing the kernel<a class="headerlink" href="#executing-the-kernel" title="Permalink to this headline">¶</a></h3>
 <p>Execution of the kernel is associated with a <strong>Run</strong> object. The kernel can be executed by the <code class="docutils literal notranslate"><span class="pre">xrt::kernel::operator()</span></code> that takes all the kernel arguments in order. The kernel execution API returns a run object corresponding to the execution.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>50
-51
-52
-53
-54
-55
-56
-57</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// 1st kernel execution</span>
-     <span class="k">auto</span> <span class="n">run</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">buf_a</span><span class="p">,</span> <span class="n">buf_b</span><span class="p">,</span> <span class="n">scalar_1</span><span class="p">);</span>
-     <span class="n">run</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
-
-     <span class="c1">// 2nd kernel execution with just changing 3rd argument</span>
-     <span class="n">run</span><span class="p">.</span><span class="n">set_arg</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">scalar_2</span><span class="p">);</span> <span class="c1">// Arguments are specified starting from 0</span>
-     <span class="n">run</span><span class="p">.</span><span class="n">start</span><span class="p">();</span>
-     <span class="n">run</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">50 </span>     <span class="c1">// 1st kernel execution</span>
+<span class="lineno">51 </span>     <span class="k">auto</span> <span class="n">run</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">buf_a</span><span class="p">,</span> <span class="n">buf_b</span><span class="p">,</span> <span class="n">scalar_1</span><span class="p">);</span>
+<span class="lineno">52 </span>     <span class="n">run</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
+<span class="lineno">53 </span>
+<span class="lineno">54 </span>     <span class="c1">// 2nd kernel execution with just changing 3rd argument</span>
+<span class="lineno">55 </span>     <span class="n">run</span><span class="p">.</span><span class="n">set_arg</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="n">scalar_2</span><span class="p">);</span> <span class="c1">// Arguments are specified starting from 0</span>
+<span class="lineno">56 </span>     <span class="n">run</span><span class="p">.</span><span class="n">start</span><span class="p">();</span>
+<span class="lineno">57 </span>     <span class="n">run</span><span class="p">.</span><span class="n">wait</span><span class="p">();</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::kernel</span></code> class provides <strong>overloaded operator ()</strong> to execute the kernel with a comma-separated list of arguments.</p>
 <p>The above c++ code block is demonstrating</p>
 <ul class="simple">
@@ -916,22 +876,20 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <div class="section" id="creating-xrt-ip-object-from-xclbin">
 <h3>Creating <code class="docutils literal notranslate"><span class="pre">xrt::ip</span></code> object from XCLBIN<a class="headerlink" href="#creating-xrt-ip-object-from-xclbin" title="Permalink to this headline">¶</a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::ip</span></code> object creation is very similar to creating a kernel.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">ip</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">ip</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;ip_name&quot;</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
+<span class="lineno">36 </span>     <span class="k">auto</span> <span class="n">ip</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">ip</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;ip_name&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>An ip object can only be opened in exclusive mode. That means at a time, only one thread/process can access IP at the same time. This is required for a safety reason because multiple threads/processes reading/writing to the AXI-Lite registers at the same time potentially leads to a race situation.</p>
 </div>
 <div class="section" id="allocating-buffers-for-the-ip-inputs-outputs">
 <h3>Allocating buffers for the IP inputs/outputs<a class="headerlink" href="#allocating-buffers-for-the-ip-inputs-outputs" title="Permalink to this headline">¶</a></h3>
 <p>Similar to XRT managed kernel <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> objects are used to create buffers for IP ports. However, the memory bank location must be specified explicitly by providing enumerated index of the memory bank.</p>
 <p>Below is a example of creating two buffers. Note the last argument of <code class="docutils literal notranslate"><span class="pre">xrt::bo</span></code> is the enumerated index of the memory bank as seen by the XRT (in this example index 8 corresponds to the host-memory bank). The bank index can be obtained by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">--report</span> <span class="pre">memory</span></code> command.</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">buf_in_a</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">DATA_SIZE</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="mi">8</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">buf_in_b</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">DATA_SIZE</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="mi">8</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="k">auto</span> <span class="n">buf_in_a</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">DATA_SIZE</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="mi">8</span><span class="p">);</span>
+<span class="lineno">36 </span>     <span class="k">auto</span> <span class="n">buf_in_b</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">DATA_SIZE</span><span class="p">,</span> <span class="n">xrt</span><span class="o">::</span><span class="n">bo</span><span class="o">::</span><span class="n">flags</span><span class="o">::</span><span class="n">host_only</span><span class="p">,</span> <span class="mi">8</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="reading-and-write-cu-mapped-registers">
 <h3>Reading and write CU mapped registers<a class="headerlink" href="#reading-and-write-cu-mapped-registers" title="Permalink to this headline">¶</a></h3>
@@ -940,21 +898,15 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::ip::read_register</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">xrt::ip::write_register</span></code></p></li>
 </ul>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="kt">int</span> <span class="n">read_data</span><span class="p">;</span>
-     <span class="kt">int</span> <span class="n">write_data</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
-
-     <span class="k">auto</span> <span class="n">ip</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">ip</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">);</span>
-
-     <span class="n">read_data</span> <span class="o">=</span> <span class="n">ip</span><span class="p">.</span><span class="n">read_register</span><span class="p">(</span><span class="n">READ_OFFSET</span><span class="p">);</span>
-     <span class="n">ip</span><span class="p">.</span><span class="n">write_register</span><span class="p">(</span><span class="n">WRITE_OFFSET</span><span class="p">,</span><span class="n">write_data</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="kt">int</span> <span class="n">read_data</span><span class="p">;</span>
+<span class="lineno">36 </span>     <span class="kt">int</span> <span class="n">write_data</span> <span class="o">=</span> <span class="mi">7</span><span class="p">;</span>
+<span class="lineno">37 </span>
+<span class="lineno">38 </span>     <span class="k">auto</span> <span class="n">ip</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">ip</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;foo:{foo_1}&quot;</span><span class="p">);</span>
+<span class="lineno">39 </span>
+<span class="lineno">40 </span>     <span class="n">read_data</span> <span class="o">=</span> <span class="n">ip</span><span class="p">.</span><span class="n">read_register</span><span class="p">(</span><span class="n">READ_OFFSET</span><span class="p">);</span>
+<span class="lineno">41 </span>     <span class="n">ip</span><span class="p">.</span><span class="n">write_register</span><span class="p">(</span><span class="n">WRITE_OFFSET</span><span class="p">,</span><span class="n">write_data</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>In the above code block</p>
 <ul class="simple">
 <li><p>The CU named “foo_1” (name syntax: “kernel_name:{cu_name}”) is opened exclusively.</p></li>
@@ -969,33 +921,25 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <div class="section" id="graph-opening-and-closing">
 <h3>Graph Opening and Closing<a class="headerlink" href="#graph-opening-and-closing" title="Permalink to this headline">¶</a></h3>
 <p>The <code class="docutils literal notranslate"><span class="pre">xrt::graph</span></code> object can be opened using the uuid of the currently loaded XCLBIN file as shown below</p>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
-     <span class="k">auto</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">graph</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="k">auto</span> <span class="n">xclbin_uuid</span> <span class="o">=</span> <span class="n">device</span><span class="p">.</span><span class="n">load_xclbin</span><span class="p">(</span><span class="s">&quot;kernel.xclbin&quot;</span><span class="p">);</span>
+<span class="lineno">36 </span>     <span class="k">auto</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">graph</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The graph object can be used to execute the graph function on the AIE tiles.</p>
 </div>
 <div class="section" id="reset-functions">
 <h3>Reset Functions<a class="headerlink" href="#reset-functions" title="Permalink to this headline">¶</a></h3>
 <p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::reset()</span></code> is used to reset a specified graph by disabling tiles and enabling tile reset.</p>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>45
-46
-47
-48
-49
-50
-51
-52</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="c1">// load XCLBIN</span>
-     <span class="p">...</span>
-
-     <span class="k">auto</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">graph</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
-     <span class="c1">// Graph Reset</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">45 </span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">46 </span>
+<span class="lineno">47 </span>     <span class="c1">// load XCLBIN</span>
+<span class="lineno">48 </span>     <span class="p">...</span>
+<span class="lineno">49 </span>
+<span class="lineno">50 </span>     <span class="k">auto</span> <span class="n">graph</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">graph</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">xclbin_uuid</span><span class="p">,</span> <span class="s">&quot;graph_name&quot;</span><span class="p">);</span>
+<span class="lineno">51 </span>     <span class="c1">// Graph Reset</span>
+<span class="lineno">52 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::aie::device::reset_array()</span></code> is used to reset the whole AIE array. But after this AIE reset functionality is called, the PDI get lost, so a special AIE only XCLBIN has be loaded (This flow is for advanced user only).</p>
 </div>
 <div class="section" id="graph-execution">
@@ -1025,111 +969,66 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 </div></blockquote>
 </li>
 </ul>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
-
-     <span class="c1">// run the graph for 3 iteration</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
-
-     <span class="c1">// Wait till the graph is done</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use graph::wait if you want to execute the graph again</span>
-
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">end</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use graph::end if you are done with the graph execution</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="c1">// start from reset state</span>
+<span class="lineno">36 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="lineno">37 </span>
+<span class="lineno">38 </span>     <span class="c1">// run the graph for 3 iteration</span>
+<span class="lineno">39 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="lineno">40 </span>
+<span class="lineno">41 </span>     <span class="c1">// Wait till the graph is done</span>
+<span class="lineno">42 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use graph::wait if you want to execute the graph again</span>
+<span class="lineno">43 </span>
+<span class="lineno">44 </span>
+<span class="lineno">45 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+<span class="lineno">46 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">end</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>  <span class="c1">// Use graph::end if you are done with the graph execution</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p><strong>Timeout wait scheme</strong></p>
 <p>As shown in the above example <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait(0)</span></code> performs a busy-wait and suspend the execution till the graph is not done. If desired a timeout version of the wait can be achieved by <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait(std::chrono::milliseconds)</span></code> which can be used to wait for some specified number of milliseconds, and if the graph is not done do something else in the meantime. An example is shown below</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
-
-     <span class="c1">// run the graph for 100 iteration</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
-
-      <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
-
-        <span class="k">try</span> <span class="p">{</span>
-           <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
-        <span class="p">}</span>
-        <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">system_error</span><span class="o">&amp;</span> <span class="n">ex</span><span class="p">)</span> <span class="p">{</span>
-
-           <span class="k">if</span> <span class="p">(</span><span class="n">ex</span><span class="p">.</span><span class="n">code</span><span class="p">().</span><span class="n">value</span><span class="p">()</span> <span class="o">==</span> <span class="n">ETIME</span><span class="p">)</span> <span class="p">{</span>
-
-              <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Timeout, reenter......&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-              <span class="c1">// Do something</span>
-
-           <span class="p">}</span>
-       <span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="c1">// start from reset state</span>
+<span class="lineno">36 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="lineno">37 </span>
+<span class="lineno">38 </span>     <span class="c1">// run the graph for 100 iteration</span>
+<span class="lineno">39 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">100</span><span class="p">);</span>
+<span class="lineno">40 </span>
+<span class="lineno">41 </span>      <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">42 </span>
+<span class="lineno">43 </span>        <span class="k">try</span> <span class="p">{</span>
+<span class="lineno">44 </span>           <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+<span class="lineno">45 </span>        <span class="p">}</span>
+<span class="lineno">46 </span>        <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">system_error</span><span class="o">&amp;</span> <span class="n">ex</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">47 </span>
+<span class="lineno">48 </span>           <span class="k">if</span> <span class="p">(</span><span class="n">ex</span><span class="p">.</span><span class="n">code</span><span class="p">().</span><span class="n">value</span><span class="p">()</span> <span class="o">==</span> <span class="n">ETIME</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">49 </span>
+<span class="lineno">50 </span>              <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Timeout, reenter......&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="lineno">51 </span>              <span class="c1">// Do something</span>
+<span class="lineno">52 </span>
+<span class="lineno">53 </span>           <span class="p">}</span>
+<span class="lineno">54 </span>       <span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="infinite-graph-execution">
 <h4>Infinite Graph Execution<a class="headerlink" href="#infinite-graph-execution" title="Permalink to this headline">¶</a></h4>
 <p>The graph runs infinitely if <code class="docutils literal notranslate"><span class="pre">xrt::graph::run()</span></code> is called with iteration argument 0. While a graph running infinitely the APIs <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait()</span></code>, <code class="docutils literal notranslate"><span class="pre">xrt::graph::suspend()</span></code> and <code class="docutils literal notranslate"><span class="pre">xrt::graph::end()</span></code> can be used to suspend/end the graph operation after some number of AIE cycles. The API <code class="docutils literal notranslate"><span class="pre">xrt::graph::resume()</span></code> is used to execute the infinitely running graph again.</p>
-<div class="highlight-c notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
-
-     <span class="c1">// run the graph infinitely</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">3000</span><span class="p">);</span>  <span class="c1">// Suspends the graph after 3000 AIE cycles from the previous start</span>
-
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">resume</span><span class="p">();</span> <span class="c1">// Restart the suspended graph again to run forever</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">suspend</span><span class="p">();</span> <span class="c1">// Suspend the graph immediately</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">resume</span><span class="p">();</span> <span class="c1">// Restart the suspended graph again to run forever</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">end</span><span class="p">(</span><span class="mi">5000</span><span class="p">);</span>  <span class="c1">// End the graph operation after 5000 AIE cycles from the previous start</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="lineno">39 </span>     <span class="c1">// start from reset state</span>
+<span class="lineno">40 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="lineno">41 </span>
+<span class="lineno">42 </span>     <span class="c1">// run the graph infinitely</span>
+<span class="lineno">43 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">44 </span>
+<span class="lineno">45 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">3000</span><span class="p">);</span>  <span class="c1">// Suspends the graph after 3000 AIE cycles from the previous start</span>
+<span class="lineno">46 </span>
+<span class="lineno">47 </span>
+<span class="lineno">48 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">resume</span><span class="p">();</span> <span class="c1">// Restart the suspended graph again to run forever</span>
+<span class="lineno">49 </span>
+<span class="lineno">50 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">suspend</span><span class="p">();</span> <span class="c1">// Suspend the graph immediately</span>
+<span class="lineno">51 </span>
+<span class="lineno">52 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">resume</span><span class="p">();</span> <span class="c1">// Restart the suspended graph again to run forever</span>
+<span class="lineno">53 </span>
+<span class="lineno">54 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">end</span><span class="p">(</span><span class="mi">5000</span><span class="p">);</span>  <span class="c1">// End the graph operation after 5000 AIE cycles from the previous start</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>In the example above</p>
 <ul>
 <li><p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::run(0)</span></code> is used to execute the graph infinitely</p></li>
@@ -1157,33 +1056,21 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <h3>Measuring AIE cycle consumed by the Graph<a class="headerlink" href="#measuring-aie-cycle-consumed-by-the-graph" title="Permalink to this headline">¶</a></h3>
 <p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::get_timestamp()</span></code> can be used to determine AIE cycle consumed between a graph start and stop.</p>
 <p>Here in this example, the AIE cycle consumed by 3 iteration is calculated</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="c1">// start from reset state</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
-
-     <span class="kt">uint64_t</span> <span class="n">begin_t</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
-
-     <span class="c1">// run the graph for 3 iteration</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="kt">uint64_t</span> <span class="n">end_t</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
-
-     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;Number of AIE cycles consumed in the 3 iteration is: &quot;</span><span class="o">&lt;&lt;</span> <span class="n">end_t</span><span class="o">-</span><span class="n">begin_t</span><span class="p">;</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="c1">// start from reset state</span>
+<span class="lineno">36 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="lineno">37 </span>
+<span class="lineno">38 </span>     <span class="kt">uint64_t</span> <span class="n">begin_t</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
+<span class="lineno">39 </span>
+<span class="lineno">40 </span>     <span class="c1">// run the graph for 3 iteration</span>
+<span class="lineno">41 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="lineno">42 </span>
+<span class="lineno">43 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">44 </span>
+<span class="lineno">45 </span>     <span class="kt">uint64_t</span> <span class="n">end_t</span> <span class="o">=</span> <span class="n">graph</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
+<span class="lineno">46 </span>
+<span class="lineno">47 </span>     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;Number of AIE cycles consumed in the 3 iteration is: &quot;</span><span class="o">&lt;&lt;</span> <span class="n">end_t</span><span class="o">-</span><span class="n">begin_t</span><span class="p">;</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 </div>
 <div class="section" id="rtp-runtime-parameter-control">
 <h3>RTP (Runtime Parameter) control<a class="headerlink" href="#rtp-runtime-parameter-control" title="Permalink to this headline">¶</a></h3>
@@ -1192,37 +1079,23 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <li><p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::update()</span></code> to update the RTP</p></li>
 <li><p>The member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::read()</span></code> to read the RTP.</p></li>
 </ul>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
-
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
-
-     <span class="kt">float</span> <span class="n">increment</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="s">&quot;mm.mm0.in[2]&quot;</span><span class="p">,</span> <span class="n">increment</span><span class="p">);</span>
-
-     <span class="c1">// Do more things</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">16</span><span class="p">);</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="c1">// Read RTP</span>
-     <span class="kt">float</span> <span class="n">increment_out</span><span class="p">;</span>
-     <span class="n">graph</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;mm.mm0.inout[0]&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">increment_out</span><span class="p">);</span>
-     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;</span><span class="se">\n</span><span class="s"> RTP value read&lt;&lt;increment_out;</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">reset</span><span class="p">();</span>
+<span class="lineno">36 </span>
+<span class="lineno">37 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="lineno">38 </span>
+<span class="lineno">39 </span>     <span class="kt">float</span> <span class="n">increment</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">;</span>
+<span class="lineno">40 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="s">&quot;mm.mm0.in[2]&quot;</span><span class="p">,</span> <span class="n">increment</span><span class="p">);</span>
+<span class="lineno">41 </span>
+<span class="lineno">42 </span>     <span class="c1">// Do more things</span>
+<span class="lineno">43 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="mi">16</span><span class="p">);</span>
+<span class="lineno">44 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">45 </span>
+<span class="lineno">46 </span>     <span class="c1">// Read RTP</span>
+<span class="lineno">47 </span>     <span class="kt">float</span> <span class="n">increment_out</span><span class="p">;</span>
+<span class="lineno">48 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;mm.mm0.inout[0]&quot;</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">increment_out</span><span class="p">);</span>
+<span class="lineno">49 </span>     <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span class="o">&lt;&lt;</span><span class="s">&quot;</span><span class="se">\n</span><span class="s"> RTP value read&lt;&lt;increment_out;</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>In the above example, the member function <code class="docutils literal notranslate"><span class="pre">xrt::graph::update()</span></code> and <code class="docutils literal notranslate"><span class="pre">xrt::graph::read()</span></code> are used to update and read the RTP values respectively. Note the function arguments</p>
 <ul class="simple">
 <li><p>The hierarchical name of the RTP port</p></li>
@@ -1232,43 +1105,26 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <div class="section" id="dma-operation-to-and-from-global-memory-io">
 <h3>DMA operation to and from Global Memory IO<a class="headerlink" href="#dma-operation-to-and-from-global-memory-io" title="Permalink to this headline">¶</a></h3>
 <p>The AIE buffer class <code class="docutils literal notranslate"><span class="pre">xrt::aie::bo</span></code> supports member function <code class="docutils literal notranslate"><span class="pre">xrt::aie::bo::sync()</span></code> that can be used to synchronize the buffer contents between global memory and AIE. The following code shows a sample example</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>35
-36
-37
-38
-39
-40
-41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="c1">// Buffer from global memory (GM) to AIE</span>
-     <span class="k">auto</span> <span class="n">in_bo</span>  <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-
-     <span class="c1">// Buffer from AIE to global memory (GM)</span>
-     <span class="k">auto</span> <span class="n">out_bo</span>  <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
-
-     <span class="k">auto</span> <span class="n">inp_bo_map</span> <span class="o">=</span> <span class="n">in_bo</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">float</span> <span class="o">*&gt;</span><span class="p">();</span>
-     <span class="k">auto</span> <span class="n">out_bo_map</span> <span class="o">=</span> <span class="n">out_bo</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">float</span> <span class="o">*&gt;</span><span class="p">();</span>
-
-     <span class="c1">// Prepare input data</span>
-     <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">my_float_array</span><span class="p">,</span><span class="n">my_float_array</span><span class="o">+</span><span class="n">SIZE</span><span class="p">,</span><span class="n">inp_bo_map</span><span class="p">);</span>
-
-
-     <span class="n">in_bo</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="s">&quot;in_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_GMIO_TO_AIE</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span><span class="mi">0</span><span class="p">);</span>
-
-     <span class="n">out_bo</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="s">&quot;out_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_AIE_TO_GMIO</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">35 </span>     <span class="k">auto</span> <span class="n">device</span> <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">device</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">36 </span>
+<span class="lineno">37 </span>     <span class="c1">// Buffer from global memory (GM) to AIE</span>
+<span class="lineno">38 </span>     <span class="k">auto</span> <span class="n">in_bo</span>  <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="lineno">39 </span>
+<span class="lineno">40 </span>     <span class="c1">// Buffer from AIE to global memory (GM)</span>
+<span class="lineno">41 </span>     <span class="k">auto</span> <span class="n">out_bo</span>  <span class="o">=</span> <span class="n">xrt</span><span class="o">::</span><span class="n">aie</span><span class="o">::</span><span class="n">bo</span> <span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span> <span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+<span class="lineno">42 </span>
+<span class="lineno">43 </span>     <span class="k">auto</span> <span class="n">inp_bo_map</span> <span class="o">=</span> <span class="n">in_bo</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">float</span> <span class="o">*&gt;</span><span class="p">();</span>
+<span class="lineno">44 </span>     <span class="k">auto</span> <span class="n">out_bo_map</span> <span class="o">=</span> <span class="n">out_bo</span><span class="p">.</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">float</span> <span class="o">*&gt;</span><span class="p">();</span>
+<span class="lineno">45 </span>
+<span class="lineno">46 </span>     <span class="c1">// Prepare input data</span>
+<span class="lineno">47 </span>     <span class="n">std</span><span class="o">::</span><span class="n">copy</span><span class="p">(</span><span class="n">my_float_array</span><span class="p">,</span><span class="n">my_float_array</span><span class="o">+</span><span class="n">SIZE</span><span class="p">,</span><span class="n">inp_bo_map</span><span class="p">);</span>
+<span class="lineno">48 </span>
+<span class="lineno">49 </span>
+<span class="lineno">50 </span>     <span class="n">in_bo</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="s">&quot;in_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_GMIO_TO_AIE</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span><span class="mi">0</span><span class="p">);</span>
+<span class="lineno">51 </span>
+<span class="lineno">52 </span>     <span class="n">out_bo</span><span class="p">.</span><span class="n">sync</span><span class="p">(</span><span class="s">&quot;out_sink&quot;</span><span class="p">,</span> <span class="n">XCL_BO_SYNC_BO_AIE_TO_GMIO</span><span class="p">,</span> <span class="n">SIZE</span> <span class="o">*</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">float</span><span class="p">),</span> <span class="mi">0</span><span class="p">);</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The above code shows</p>
 <ul>
 <li><p>Input and output buffer (<code class="docutils literal notranslate"><span class="pre">in_bo</span></code> and <code class="docutils literal notranslate"><span class="pre">out_bo</span></code>) to the graph are created and mapped to the user space</p></li>
@@ -1306,47 +1162,28 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 </ul>
 <p><strong>NOTE</strong>: The asynchronous error retrieving APIs are at an early stage of development and only supports AIE related asynchronous errors. Full support for all other asynchronous errors is planned in a future release.</p>
 <p>Example code</p>
-<div class="highlight-c++ notranslate"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>41
-42
-43
-44
-45
-46
-47
-48
-49
-50
-51
-52
-53
-54
-55
-56
-57
-58
-59
-60</pre></div></td><td class="code"><div class="highlight"><pre><span></span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">runInteration</span><span class="p">);</span>
-
-     <span class="k">try</span> <span class="p">{</span>
-        <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="p">);</span>
-     <span class="p">}</span>
-     <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">system_error</span><span class="o">&amp;</span> <span class="n">ex</span><span class="p">)</span> <span class="p">{</span>
-
-        <span class="k">if</span> <span class="p">(</span><span class="n">ex</span><span class="p">.</span><span class="n">code</span><span class="p">().</span><span class="n">value</span><span class="p">()</span> <span class="o">==</span> <span class="n">ETIME</span><span class="p">)</span> <span class="p">{</span>
-           <span class="n">xrt</span><span class="o">::</span><span class="n">error</span> <span class="n">error</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">XRT_ERROR_CLASS_AIE</span><span class="p">);</span>
-
-           <span class="k">auto</span> <span class="n">errCode</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">get_error_code</span><span class="p">();</span>
-           <span class="k">auto</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
-           <span class="k">auto</span> <span class="n">err_str</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">to_string</span><span class="p">();</span>
-
-           <span class="cm">/* code to deal with this specific error */</span>
-           <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">err_str</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
-        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-         <span class="cm">/* Something else */</span>
-        <span class="p">}</span>
-     <span class="p">}</span>
+<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">41 </span>     <span class="n">graph</span><span class="p">.</span><span class="n">run</span><span class="p">(</span><span class="n">runInteration</span><span class="p">);</span>
+<span class="lineno">42 </span>
+<span class="lineno">43 </span>     <span class="k">try</span> <span class="p">{</span>
+<span class="lineno">44 </span>        <span class="n">graph</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">timeout</span><span class="p">);</span>
+<span class="lineno">45 </span>     <span class="p">}</span>
+<span class="lineno">46 </span>     <span class="k">catch</span> <span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">system_error</span><span class="o">&amp;</span> <span class="n">ex</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">47 </span>
+<span class="lineno">48 </span>        <span class="k">if</span> <span class="p">(</span><span class="n">ex</span><span class="p">.</span><span class="n">code</span><span class="p">().</span><span class="n">value</span><span class="p">()</span> <span class="o">==</span> <span class="n">ETIME</span><span class="p">)</span> <span class="p">{</span>
+<span class="lineno">49 </span>           <span class="n">xrt</span><span class="o">::</span><span class="n">error</span> <span class="n">error</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">XRT_ERROR_CLASS_AIE</span><span class="p">);</span>
+<span class="lineno">50 </span>
+<span class="lineno">51 </span>           <span class="k">auto</span> <span class="n">errCode</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">get_error_code</span><span class="p">();</span>
+<span class="lineno">52 </span>           <span class="k">auto</span> <span class="n">timestamp</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">get_timestamp</span><span class="p">();</span>
+<span class="lineno">53 </span>           <span class="k">auto</span> <span class="n">err_str</span> <span class="o">=</span> <span class="n">error</span><span class="p">.</span><span class="n">to_string</span><span class="p">();</span>
+<span class="lineno">54 </span>
+<span class="lineno">55 </span>           <span class="cm">/* code to deal with this specific error */</span>
+<span class="lineno">56 </span>           <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">err_str</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="lineno">57 </span>        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+<span class="lineno">58 </span>         <span class="cm">/* Something else */</span>
+<span class="lineno">59 </span>        <span class="p">}</span>
+<span class="lineno">60 </span>     <span class="p">}</span>
 </pre></div>
-</td></tr></table></div>
+</div>
 <p>The above code shows</p>
 <ul class="simple">
 <li><p>After timeout occurs from <code class="docutils literal notranslate"><span class="pre">xrt::graph::wait()</span></code> the member functions <code class="docutils literal notranslate"><span class="pre">xrt::error</span></code> class are called to retrieve asynchronous error code and timestamp</p></li>
@@ -1384,7 +1221,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

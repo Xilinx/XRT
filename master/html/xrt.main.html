@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -484,8 +487,8 @@
 exported by Xilinx Runtime (XRT) Library. XRT is part of software
 stack which is integrated into Xilinx reference platform.</p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">typedef xclDeviceHandle</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">typedef</span> <span class="pre">xclDeviceHandle</span></span></dt>
 <dd><p>opaque device handle</p>
 </dd></dl>
 
@@ -496,8 +499,8 @@ device in all future interaction with XRT.</p>
 <p><strong>XRT Device Management APIs</strong></p>
 <hr class="docutils" />
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC unsigned int xclProbe ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">xclProbe</span> <span class="pre">()</span></span></dt>
 <dd><p>Enumerate devices found in the system</p>
 </dd></dl>
 
@@ -505,8 +508,8 @@ device in all future interaction with XRT.</p>
 <p><strong>Return</strong></p>
 <p>count of devices found</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclDeviceHandle xclOpen (unsigned int deviceIndex, const char * unused1, enum xclVerbosityLevel unused2)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclDeviceHandle</span> <span class="pre">xclOpen</span> <span class="pre">(unsigned</span> <span class="pre">int</span> <span class="pre">deviceIndex,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">unused1,</span> <span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">unused2)</span></span></dt>
 <dd><p>Open a device and obtain its handle.</p>
 </dd></dl>
 
@@ -522,8 +525,8 @@ device in all future interaction with XRT.</p>
 <p><strong>Return</strong></p>
 <p>Device handle</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC void xclClose (xclDeviceHandle handle)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void</span> <span class="pre">xclClose</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle)</span></span></dt>
 <dd><p>Close an opened device</p>
 </dd></dl>
 
@@ -533,8 +536,8 @@ device in all future interaction with XRT.</p>
 </dd>
 </dl>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclGetDeviceInfo2 (xclDeviceHandle handle, struct xclDeviceInfo2 * info)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetDeviceInfo2</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
 <dd><p>Obtain various bits of information from the device</p>
 </dd></dl>
 
@@ -548,8 +551,8 @@ device in all future interaction with XRT.</p>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclGetUsageInfo (xclDeviceHandle handle, struct xclDeviceUsage * info)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetUsageInfo</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
 <dd><p>Obtain usage information from the device</p>
 </dd></dl>
 
@@ -563,8 +566,8 @@ device in all future interaction with XRT.</p>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclGetErrorStatus (xclDeviceHandle handle, struct xclErrorStatus * info)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetErrorStatus</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
 <dd><p>Obtain error information from the device</p>
 </dd></dl>
 
@@ -578,8 +581,8 @@ device in all future interaction with XRT.</p>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclLoadXclBin (xclDeviceHandle handle, const struct axlf * buffer)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclLoadXclBin</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer)</span></span></dt>
 <dd><p>Download FPGA image (xclbin) to the device</p>
 </dd></dl>
 
@@ -596,8 +599,8 @@ device in all future interaction with XRT.</p>
 encapsulated inside xclbin as a section. xclbin may also contains
 other sections which are suitably handled by the driver.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclGetSectionInfo (xclDeviceHandle handle, void * info, size_t * size, enum axlf_section_kind kind, int index)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetSectionInfo</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">info,</span> <span class="pre">size_t</span> <span class="pre">*</span> <span class="pre">size,</span> <span class="pre">enum</span> <span class="pre">axlf_section_kind</span> <span class="pre">kind,</span> <span class="pre">int</span> <span class="pre">index)</span></span></dt>
 <dd><p>Get Information from sysfs about the downloaded xclbin sections</p>
 </dd></dl>
 
@@ -620,8 +623,8 @@ other sections which are suitably handled by the driver.</p>
 of the axlf_section_kind data being queried. The info and the size contain the return
 binary value of the subsection and its size.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclReClock2 (xclDeviceHandle handle, unsigned short region, const unsigned short * targetFreqMHz)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclReClock2</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">region,</span> <span class="pre">const</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">*</span> <span class="pre">targetFreqMHz)</span></span></dt>
 <dd><p>Configure PR region frequncies</p>
 </dd></dl>
 
@@ -638,8 +641,8 @@ the PR region</p>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclOpenContext (xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclOpenContext</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex,</span> <span class="pre">bool</span> <span class="pre">shared)</span></span></dt>
 <dd><p>Create shared/exclusive context on compute units</p>
 </dd></dl>
 
@@ -663,8 +666,8 @@ client has not already setup up a context on that hardware IP.
 Shared contexts can be concurrently allocated by many
 processes on the same compute units.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclCloseContext (xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclCloseContext</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex)</span></span></dt>
 <dd><p>Close previously opened context</p>
 </dd></dl>
 
@@ -681,8 +684,8 @@ processes on the same compute units.</p>
 <p>0 on success or appropriate error number</p>
 <p>Close a previously allocated shared/exclusive context for a hardware IP.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclLogMsg (xclDeviceHandle handle, enum xrtLogMsgLevel level, const char * tag, const char * format,  ...)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclLogMsg</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">enum</span> <span class="pre">xrtLogMsgLevel</span> <span class="pre">level,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">tag,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format,</span>&#160; <span class="pre">...)</span></span></dt>
 <dd><p>Send message to log file as per settings in ini file.</p>
 </dd></dl>
 
@@ -706,8 +709,8 @@ processes on the same compute units.</p>
 <p>Buffer management APIs are used for managing device memory and migrating buffers
 between host and device memory</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocBO (xclDeviceHandle handle, size_t size, int unused, unsigned int flags)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclAllocBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">unused,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
 <dd><p>Allocate a BO of requested size with appropriate flags</p>
 </dd></dl>
 
@@ -725,8 +728,8 @@ between host and device memory</p>
 <p><strong>Return</strong></p>
 <p>BO handle</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclBufferHandle xclAllocUserPtrBO (xclDeviceHandle handle, void * userptr, size_t size, unsigned int flags)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclAllocUserPtrBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">userptr,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
 <dd><p>Allocate a BO using userptr provided by the user</p>
 </dd></dl>
 
@@ -744,8 +747,8 @@ between host and device memory</p>
 <p><strong>Return</strong></p>
 <p>BO handle</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC void xclFreeBO (xclDeviceHandle handle, xclBufferHandle boHandle)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void</span> <span class="pre">xclFreeBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle)</span></span></dt>
 <dd><p>Free a previously allocated BO</p>
 </dd></dl>
 
@@ -757,8 +760,8 @@ between host and device memory</p>
 </dd>
 </dl>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC size_t xclWriteBO (xclDeviceHandle handle, xclBufferHandle boHandle, const void * src, size_t size, size_t seek)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xclWriteBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">seek)</span></span></dt>
 <dd><p>Copy-in user data to host backing storage of BO</p>
 </dd></dl>
 
@@ -781,8 +784,8 @@ between host and device memory</p>
 memory. <code class="docutils literal notranslate"><span class="pre">seek</span></code> specifies how many bytes to skip at the beginning
 of the BO before copying-in <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes of host buffer.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC size_t xclReadBO (xclDeviceHandle handle, xclBufferHandle boHandle, void * dst, size_t size, size_t skip)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xclReadBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">skip)</span></span></dt>
 <dd><p>Copy-out user data from host backing storage of BO</p>
 </dd></dl>
 
@@ -806,8 +809,8 @@ buffer. <code class="docutils literal notranslate"><span class="pre">skip</span>
 beginning of the BO before copying-out <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes of device
 buffer.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC void* xclMapBO (xclDeviceHandle handle, xclBufferHandle boHandle, bool write)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void*</span> <span class="pre">xclMapBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">bool</span> <span class="pre">write)</span></span></dt>
 <dd><p>Memory map BO into user’s address space</p>
 </dd></dl>
 
@@ -825,8 +828,8 @@ buffer.</p>
 <p>Map the contents of the buffer object into host memory
 To unmap the buffer call <code class="xref c c-func docutils literal notranslate"><span class="pre">xclUnmapBO()</span></code>.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclUnmapBO (xclDeviceHandle handle, xclBufferHandle boHandle, void * addr)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclUnmapBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">addr)</span></span></dt>
 <dd><p>Unmap a BO that was previously mapped with xclMapBO</p>
 </dd></dl>
 
@@ -840,8 +843,8 @@ To unmap the buffer call <code class="xref c c-func docutils literal notranslate
 </dd>
 </dl>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclSyncBO (xclDeviceHandle handle, xclBufferHandle boHandle, enum xclBOSyncDirection dir, size_t size, size_t offset)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclSyncBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">enum</span> <span class="pre">xclBOSyncDirection</span> <span class="pre">dir,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">offset)</span></span></dt>
 <dd><p>Synchronize buffer contents in requested direction</p>
 </dd></dl>
 
@@ -864,8 +867,8 @@ To unmap the buffer call <code class="xref c c-func docutils literal notranslate
 on the memory model this may require DMA to/from device or CPU
 cache flushing/invalidation</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclCopyBO (xclDeviceHandle handle, xclBufferHandle dstBoHandle, xclBufferHandle srcBoHandle, size_t size, size_t dst_offset, size_t src_offset)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclCopyBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">dstBoHandle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">srcBoHandle,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">dst_offset,</span> <span class="pre">size_t</span> <span class="pre">src_offset)</span></span></dt>
 <dd><p>Copy device buffer contents to another buffer</p>
 </dd></dl>
 
@@ -891,8 +894,8 @@ device to device or device to host.  Always perform WRITE to
 achieve better performance, destination buffer can be on device or
 host require DMA from device</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclBufferExportHandle xclExportBO (xclDeviceHandle handle, xclBufferHandle boHandle)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferExportHandle</span> <span class="pre">xclExportBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle)</span></span></dt>
 <dd><p>Obtain DMA-BUF file descriptor for a BO</p>
 </dd></dl>
 
@@ -909,8 +912,8 @@ host require DMA from device</p>
 accepts DMA-BUF fd This operation is backed by Linux DMA-BUF
 framework</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC xclBufferHandle xclImportBO (xclDeviceHandle handle, xclBufferExportHandle fd, unsigned int flags)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclImportBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferExportHandle</span> <span class="pre">fd,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
 <dd><p>Obtain BO handle for a BO represented by DMA-BUF file descriptor</p>
 </dd></dl>
 
@@ -928,8 +931,8 @@ framework</p>
 <p>Import a BO exported by another device.     *
 This operation is backed by Linux DMA-BUF framework</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclGetBOProperties (xclDeviceHandle handle, xclBufferHandle boHandle, struct xclBOProperties * properties)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetBOProperties</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">struct</span> <span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties)</span></span></dt>
 <dd><p>Obtain xclBOProperties struct for a BO</p>
 </dd></dl>
 
@@ -946,8 +949,8 @@ This operation is backed by Linux DMA-BUF framework</p>
 <p>0 on success</p>
 <p>This is the prefered method for obtaining BO property information.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclIPName2Index (xclDeviceHandle handle, const char * ipName)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclIPName2Index</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ipName)</span></span></dt>
 <dd><p>Obtain IP index by IP name</p>
 </dd></dl>
 
@@ -974,8 +977,8 @@ placement of buffers as it also provides better DMA performancce
 and richer set of features like mmap/munmap, etc.</p>
 <p>The unmanaged APIs are planned to be be deprecated in future.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPread (xclDeviceHandle handle, unsigned int flags, void * buf, size_t size, uint64_t offset)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">ssize_t</span> <span class="pre">xclUnmgdPread</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">uint64_t</span> <span class="pre">offset)</span></span></dt>
 <dd><p>Perform unmanaged device memory read operation</p>
 </dd></dl>
 
@@ -998,8 +1001,8 @@ and richer set of features like mmap/munmap, etc.</p>
 location specified. As stated before this API is for use by
 debuggers and profilers. Do not use it in your application.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC ssize_t xclUnmgdPwrite (xclDeviceHandle handle, unsigned int flags, const void * buf, size_t size, uint64_t offset)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">ssize_t</span> <span class="pre">xclUnmgdPwrite</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags,</span> <span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">uint64_t</span> <span class="pre">offset)</span></span></dt>
 <dd><p>Perform unmanaged device memory read operation</p>
 </dd></dl>
 
@@ -1025,8 +1028,8 @@ debuggers and profilers. Do not use it in your application.</p>
 <p>These APIs are under development. These functions will be used to
 start compute units and wait for them to finish.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclExecBuf (xclDeviceHandle handle, xclBufferHandle cmdBO)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclExecBuf</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">cmdBO)</span></span></dt>
 <dd><p>Submit an execution request to the embedded (or software) scheduler</p>
 </dd></dl>
 
@@ -1043,31 +1046,8 @@ start compute units and wait for them to finish.</p>
 defined by struct ert_packet which is defined in file <em>ert.h</em>. The
 BO should been allocated with DRM_XOCL_BO_EXECBUF flag.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclExecBufWithWaitList (xclDeviceHandle handle, xclBufferHandle cmdBO, size_t num_bo_in_wait_list, xclBufferHandle * bo_wait_list)</code></dt>
-<dd><p>Submit an execution request to the embedded (or software) scheduler</p>
-</dd></dl>
-
-<p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">cmdBO</span></code></dt><dd><p>BO handle containing command packet</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">num_bo_in_wait_list</span></code></dt><dd><p>Number of BO handles in wait list</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">*</span> <span class="pre">bo_wait_list</span></code></dt><dd><p>BO handles that must complete execution before cmdBO is started</p>
-</dd>
-</dl>
-<p><strong>Return</strong></p>
-<p>0 or standard error number</p>
-<p>Submit an exec buffer for execution. The BO handles in the wait
-list must complete execution before cmdBO is started.  The BO
-handles in the wait list must have beeen submitted prior to this
-call to xclExecBufWithWaitList.</p>
-<dl class="c function">
-<dt>
-<code class="sig-name descname">XCL_DRIVER_DLLESPEC int xclExecWait (xclDeviceHandle handle, int timeoutMilliSec)</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclExecWait</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">int</span> <span class="pre">timeoutMilliSec)</span></span></dt>
 <dd><p>Wait for one or more execution events on the device</p>
 </dd></dl>
 
@@ -1118,7 +1098,7 @@ different threads.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

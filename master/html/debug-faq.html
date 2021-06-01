@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -342,7 +344,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -381,8 +383,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -395,6 +397,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -605,10 +608,15 @@ messages in <code class="docutils literal notranslate"><span class="pre">dmesg</
 <code class="docutils literal notranslate"><span class="pre">0XFF</span></code>. In this state <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> query would show bizarre
 metrics. For example <code class="docutils literal notranslate"><span class="pre">Temp</span></code> would be very high. Boards in crashed state
 may be recovered with PCIe hot reset</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil reset -h
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil reset
 </pre></div>
 </div>
 <p>If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in <a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></p>
+<p>If for some reason communication between xocl driver and management driver gets disrupted, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge</p>
+<ol class="arabic simple">
+<li><p>unload xocl driver (also shut down VM if xocl is running on a VM)</p></li>
+<li><p>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span> <span class="pre">--hot</span></code></p></li>
+</ol>
 </div>
 <div class="section" id="xrt-scheduling-options">
 <h2>XRT Scheduling Options<a class="headerlink" href="#xrt-scheduling-options" title="Permalink to this headline">¶</a></h2>
@@ -660,7 +668,7 @@ kds=false
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

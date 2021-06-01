@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -480,7 +483,7 @@
   <div class="section" id="xocl-pcie-user-physical-function-driver-interfaces">
 <span id="xocl-ioctl-main-rst"></span><h1>XOCL (PCIe User Physical Function) Driver Interfaces<a class="headerlink" href="#xocl-pcie-user-physical-function-driver-interfaces" title="Permalink to this headline">¶</a></h1>
 <p><strong>A GEM style driver for Xilinx PCIe based accelerators</strong></p>
-<p>This file defines ioctl command codes and associated structures for interacting with
+<p>File <em>xocl_ioctl.h</em> defines ioctl command codes and associated structures for interacting with
 <em>xocl</em> PCI driver for Xilinx FPGA platforms.</p>
 <p>Device memory allocation is modeled as buffer objects (bo). For each bo driver tracks the host pointer
 backed by scatter gather list – which provides backing storage on host – and the corresponding device
@@ -620,8 +623,8 @@ xclbin image</p></td>
 </tbody>
 </table>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_create_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_create_bo</span></span></dt>
 <dd><p>Create buffer object used with DRM_IOCTL_XOCL_CREATE_BO ioctl</p>
 </dd></dl>
 
@@ -646,8 +649,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_userptr_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_userptr_bo</span></span></dt>
 <dd><p>Create buffer object with user’s pointer used with DRM_IOCTL_XOCL_USERPTR_BO ioctl</p>
 </dd></dl>
 
@@ -675,8 +678,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_map_kern_mem</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_map_kern_mem</span></span></dt>
 <dd><p>Map a buffer object to linux kernel memory (sgl or virtual address) used with DRM_IOCTL_XOCL_MAP_KERN_MEM ioctl. WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
 </dd></dl>
 
@@ -701,8 +704,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_map_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_map_bo</span></span></dt>
 <dd><p>Prepare a buffer object for mmap used with DRM_IOCTL_XOCL_MAP_BO ioctl</p>
 </dd></dl>
 
@@ -724,8 +727,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_sync_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_sync_bo</span></span></dt>
 <dd><p>Synchronize the buffer in the requested direction between device and host used with DRM_IOCTL_XOCL_SYNC_BO ioctl</p>
 </dd></dl>
 
@@ -753,8 +756,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_sync_bo_cb</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_sync_bo_cb</span></span></dt>
 <dd><p>Synchronize the buffer in the requested direction between device and host used with DRM_IOCTL_XOCL_SYNC_BO_CB ioctl (linux kernel only) WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
 </dd></dl>
 
@@ -788,8 +791,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_info_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_info_bo</span></span></dt>
 <dd><p>Obtain information about an allocated buffer obbject used with DRM_IOCTL_XOCL_INFO_BO IOCTL</p>
 </dd></dl>
 
@@ -814,8 +817,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_copy_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_copy_bo</span></span></dt>
 <dd><p>Device memory to memory copy bo used with DRM_IOCTL_XOCL_COPY_BO IOCTL</p>
 </dd></dl>
 
@@ -843,8 +846,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct argument_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">argument_info</span></span></dt>
 <dd><p>Kernel argument information</p>
 </dd></dl>
 
@@ -869,8 +872,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct kernel_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">kernel_info</span></span></dt>
 <dd><p>Kernel information</p>
 </dd></dl>
 
@@ -895,8 +898,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_kinfo_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_kinfo_bo</span></span></dt>
 <dd><p>Get a buffer object’s kernel virtual address used with DRM_IOCTL_XOCL_KINFO_BO ioctl. WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
 </dd></dl>
 
@@ -924,8 +927,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_kds</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_kds</span></span></dt>
 <dd><p>KDS user configuration</p>
 </dd></dl>
 
@@ -962,8 +965,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_axlf</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_axlf</span></span></dt>
 <dd><p>load xclbin (AXLF) device image used with DRM_IOCTL_XOCL_READ_AXLF ioctl</p>
 </dd></dl>
 
@@ -987,8 +990,8 @@ xclbin image</p></td>
 <p><strong>NOTE</strong></p>
 <p>This ioctl will be removed in next release</p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_pwrite_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_pwrite_bo</span></span></dt>
 <dd><p>Update bo with user’s data used with DRM_IOCTL_XOCL_PWRITE_BO ioctl</p>
 </dd></dl>
 
@@ -1016,8 +1019,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_pread_bo</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_pread_bo</span></span></dt>
 <dd><p>Read data from bo used with DRM_IOCTL_XOCL_PREAD_BO ioctl</p>
 </dd></dl>
 
@@ -1045,8 +1048,8 @@ xclbin image</p></td>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_ctx</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_ctx</span></span></dt>
 <dd><p>Open or close a context on a compute unit on device used with DRM_XOCL_CTX ioctl</p>
 </dd></dl>
 
@@ -1075,8 +1078,8 @@ the request is being made</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_pwrite_unmgd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_pwrite_unmgd</span></span></dt>
 <dd><p>unprotected write to device memory used with DRM_IOCTL_XOCL_PWRITE_UNMGD ioctl</p>
 </dd></dl>
 
@@ -1104,8 +1107,8 @@ the request is being made</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_pread_unmgd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_pread_unmgd</span></span></dt>
 <dd><p>unprotected read from device memory used with DRM_IOCTL_XOCL_PREAD_UNMGD ioctl</p>
 </dd></dl>
 
@@ -1133,8 +1136,8 @@ the request is being made</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_usage_stat</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_usage_stat</span></span></dt>
 <dd><p>obtain device memory usage and DMA statistics used with DRM_IOCTL_XOCL_USAGE_STAT ioctl</p>
 </dd></dl>
 
@@ -1162,8 +1165,8 @@ the request is being made</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_execbuf</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_execbuf</span></span></dt>
 <dd><p>Submit a command buffer for execution on a compute unit used with DRM_IOCTL_XOCL_EXECBUF ioctl</p>
 </dd></dl>
 
@@ -1186,8 +1189,8 @@ for automatic event dependency handling by ERT</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_execbuf_cb</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_execbuf_cb</span></span></dt>
 <dd><p>Submit a command buffer for execution on a compute unit used with DRM_IOCTL_XOCL_EXECBUF_CB ioctl with a callback (linux kernel only) WARNING: INTERNAL USE ONLY. NOT FOR PUBLIC CONSUMPTION. For use with Linux kernel space specific IOCTLs.</p>
 </dd></dl>
 
@@ -1216,8 +1219,8 @@ for automatic event dependency handling by ERT</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_user_intr</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_user_intr</span></span></dt>
 <dd><p>Register user’s eventfd for MSIX interrupt used with DRM_IOCTL_XOCL_USER_INTR ioctl</p>
 </dd></dl>
 
@@ -1239,8 +1242,8 @@ for automatic event dependency handling by ERT</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_reclock_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_reclock_info</span></span></dt>
 <dd><p>perform clock scaling</p>
 </dd></dl>
 
@@ -1259,8 +1262,8 @@ for automatic event dependency handling by ERT</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct drm_xocl_alloc_cma_info</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">drm_xocl_alloc_cma_info</span></span></dt>
 <dd><p>Alloc buffer on host memory</p>
 </dd></dl>
 
@@ -1312,7 +1315,7 @@ for automatic event dependency handling by ERT</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
         <script src="_static/underscore.js"></script>
         <script src="_static/doctools.js"></script>
-        <script src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,6 +55,8 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -343,7 +345,7 @@
 <p class="caption"><span class="caption-text">Use Model and Features</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">Supported Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
 <li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
@@ -382,8 +384,8 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">Xbutil Next Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">Xbmgmt Next Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -396,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cloud_vendor_support.html">MSD/MPD and Plugins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
 <li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Security</span></p>
@@ -479,12 +482,12 @@
             
   <div class="section" id="embedded-runtime-library">
 <span id="ert-main-rst"></span><h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
-<p><strong>Xilinx SDAccel Embedded Runtime definition</strong></p>
+<p><strong>XRT Embedded Runtime definition</strong></p>
 <p>Header file <em>ert.h</em> defines data structures used by Emebdded Runtime (ERT) and
 XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code> API.</p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_packet</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_packet</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -502,8 +505,8 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_start_kernel_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_start_kernel_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -525,8 +528,8 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 and extra_cu_masks per header field, followed by a CU register map of size
 (count - (1 + extra_cu_masks)) uint32_t words.</p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_init_kernel_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_init_kernel_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -561,8 +564,8 @@ if cu_run_timeout is set to 0, this field is undefined.</p>
 a mandatory CU mask, and extra_cu_masks per header field, followed by a
 CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_configure_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_configure_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -613,8 +616,8 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_configure_sk_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_configure_sk_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -632,8 +635,8 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_unconfigure_sk_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_unconfigure_sk_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -654,8 +657,8 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_abort_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_abort_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -670,8 +673,8 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 </dl>
 <dl class="c type">
-<dt>
-<code class="sig-name descname">struct ert_validate_cmd</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_validate_cmd</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -686,22 +689,22 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </dd>
 </dl>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_WORD_SIZE ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_WORD_SIZE</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_STATUS_REGISTER_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_STATUS_REGISTER_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MicroBlaze write, host reads.  MB(W) / HOST(COR)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CU_DMA_ENABLE_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CU_DMA_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -712,16 +715,16 @@ writes the slot index to the CU DMA REGISTER.  HW is notified when
 the register is written and now does the DMA transfer of CU regmap
 map from command to CU, while MB continues its work. MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CQ_SLOT_SIZE_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CQ_SLOT_SIZE_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>configurable per xclbin. MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CU_OFFSET_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CU_OFFSET_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -729,32 +732,32 @@ map from command to CU, while MB continues its work. MB(W) / HW(R)</p>
 <p>example a 64K regmap is 2^16 so 16 is written to the CU_OFFSET_ADDR.
 MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CQ_NUMBER_OF_SLOTS_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CQ_NUMBER_OF_SLOTS_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CU_BASE_ADDRESS_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CU_BASE_ADDRESS_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>CU_BASE_ADDRESS is the address of the first CU. MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CQ_BASE_ADDRESS_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CQ_BASE_ADDRESS_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MB(W) / HW(R)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CU_ISR_HANDLER_ENABLE_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CU_ISR_HANDLER_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -763,8 +766,8 @@ MB(W) / HW(R)</p>
 the interrupt and writes the index of the CU that completed into
 the CU_STATUS_REGISTER (HW(W)/MB(COR)) as a bitmask</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CQ_STATUS_ENABLE_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CQ_STATUS_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -772,8 +775,8 @@ the CU_STATUS_REGISTER (HW(W)/MB(COR)) as a bitmask</p>
 <p>MB to indicate the presense of a new command in some slot.  The
 slot index is written to the CQ_STATUS_REGISTER (HOST(W)/MB(R))</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_NUMBER_OF_CU_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_NUMBER_OF_CU_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -781,8 +784,8 @@ slot index is written to the CQ_STATUS_REGISTER (HOST(W)/MB(R))</p>
 <p>xclbin.  This is an optimization that allows HW to only check CU
 completion on actual CUs.</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_HOST_INTERRUPT_ENABLE_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_HOST_INTERRUPT_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -790,34 +793,34 @@ completion on actual CUs.</p>
 <p>When enabled writing to STATUS_REGISTER causes an interrupt in HOST.
 MB(W)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_INTC_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_INTC_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>This value is per hardware BSP (XPAR_INTC_SINGLE_BASEADDR)</p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_CUISR_LUT_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_CUISR_LUT_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_EXIT_CMD ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_EXIT_CMD</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_HLS_MODULE_IDLE ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_HLS_MODULE_IDLE</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <dl class="c function">
-<dt>
-<code class="sig-name descname">ERT_INTC_IPR_ADDR ()</code></dt>
+<dt class="sig sig-object c">
+<span class="sig-name descname"><span class="pre">ERT_INTC_IPR_ADDR</span> <span class="pre">()</span></span></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -854,7 +857,7 @@ MB(W)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on May 18, 2021.
+        Last updated on June 01, 2021.
       </span>
 
     </p>

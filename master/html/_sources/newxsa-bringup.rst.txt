@@ -1,7 +1,7 @@
 New XSA Bringup
 ---------------
 
-To fullfill the different requirements, new XSAs are invented based on existing SDAccel XSAs. The first thing to verify the new XSA with XRT is to attach XRT drivers with it and see how it works. Then it might need to customizing and making changes in XRT to support the new XSA.
+To fullfill the different requirements, new XSAs are invented based on existing Vitis XSAs. The first thing to verify the new XSA with XRT is to attach XRT drivers with it and see how it works. Then it might need to customizing and making changes in XRT to support the new XSA.
 
 This section focuses on how to modify XRT drivers to identify the new XSA and how to customize XRT drivers for new XSA.
 
