@@ -44,12 +44,12 @@
 # include <stdint.h>
 #endif
 
-#define XRT_SUB_Q1_SLOT_SIZE	512
-#define XRT_QUEUE1_SLOT_NUM	4
-#define XRT_QUEUE1_SLOT_MASK	(XRT_QUEUE1_SLOT_NUM - 1)
+#define XRT_SUB_Q1_SLOT_SIZE	512	// NOLINT
+#define XRT_QUEUE1_SLOT_NUM	4	// NOLINT
+#define XRT_QUEUE1_SLOT_MASK	(XRT_QUEUE1_SLOT_NUM - 1)	// NOLINT
 
-#define XRT_Q1_SUB_SIZE		(XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
-#define XRT_Q1_COM_SIZE		(XRT_COM_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
+#define XRT_Q1_SUB_SIZE		(XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
+#define XRT_Q1_COM_SIZE		(XRT_COM_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
 
 enum xrt_cmd_opcode {
 	XRT_CMD_OP_LOAD_XCLBIN		= 0x0,
@@ -95,9 +95,9 @@ struct xrt_sub_queue_entry {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NONLINT
 	};
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 /**
@@ -129,12 +129,12 @@ struct xrt_com_queue_entry {
 			uint16_t cid;
 			uint16_t cstate;
 		};
-		uint32_t data[4];
+		uint32_t data[4]; // NOLINT
 	};
 };
 
-#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_sub_queue_entry) - 4)
-#define XRT_COM_Q1_SLOT_SIZE	(sizeof(struct xrt_com_queue_entry))
+#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_sub_queue_entry) - 4) // NOLINT
+#define XRT_COM_Q1_SLOT_SIZE	(sizeof(struct xrt_com_queue_entry)) // NOLINT
 
 /**
  * struct xrt_cmd_load_xclbin: load XCLBIN command
@@ -156,7 +156,7 @@ struct xrt_cmd_load_xclbin {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
 	uint64_t address;
 	uint32_t size;
@@ -173,9 +173,9 @@ struct xrt_cmd_configure {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 /**
@@ -196,10 +196,10 @@ struct xrt_cmd_start_cuidx {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
 	uint32_t cu_idx;	/* cu index to start */
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 struct xrt_cmd_exit_ert {
@@ -211,7 +211,7 @@ struct xrt_cmd_exit_ert {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
 };
 

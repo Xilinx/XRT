@@ -46,6 +46,7 @@
 #include <thread>
 #include <vector>
 
+#include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
 #include "xgq.h"

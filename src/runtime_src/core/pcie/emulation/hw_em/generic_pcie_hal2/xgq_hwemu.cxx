@@ -260,7 +260,7 @@ namespace hwemu {
       case ERT_CONFIGURE:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_configure *cmdp = reinterpret_cast<xrt_cmd_configure *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_configure *>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_CONFIGURE;
           cmdp->state = 1;
@@ -273,7 +273,7 @@ namespace hwemu {
       case ERT_START_CU:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_start_cuidx *cmdp = reinterpret_cast<xrt_cmd_start_cuidx *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_start_cuidx *>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_START_PL_CUIDX;
           cmdp->state = 1;
@@ -288,7 +288,7 @@ namespace hwemu {
       case ERT_EXIT:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_exit_ert *cmdp = reinterpret_cast<xrt_cmd_exit_ert*>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_exit_ert*>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_EXIT_ERT;
           cmdp->state = 1;
@@ -309,10 +309,10 @@ namespace hwemu {
   {
     auto data = xbo.map();
     memcpy(data, buf, size);
-    uint32_t paddr = static_cast<uint32_t>(xbo.address());
+    auto paddr = static_cast<uint32_t>(xbo.address());
 
     sq_buf.resize(sizeof(xrt_cmd_load_xclbin));
-    xrt_cmd_load_xclbin *cmdp = reinterpret_cast<xrt_cmd_load_xclbin *>(sq_buf.data());
+    auto *cmdp = reinterpret_cast<xrt_cmd_load_xclbin *>(sq_buf.data());
 
     cmdp->opcode = XRT_CMD_OP_LOAD_XCLBIN;
     cmdp->state = 1;
