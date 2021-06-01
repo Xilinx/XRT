@@ -154,10 +154,10 @@ struct gmio_type
 
   uint32_t        id;
   uint16_t        type;
-  uint16_t        shim_col;
-  uint16_t        channel_number;
-  uint16_t        stream_id;
-  uint16_t        burst_len;
+  uint16_t        shimColumn;
+  uint16_t        channelNum;
+  uint16_t        streamId;
+  uint16_t        burstLength;
 };
 
 /**
