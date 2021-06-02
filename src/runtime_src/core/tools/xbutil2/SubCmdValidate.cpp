@@ -252,6 +252,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
+  constexpr static int MAX_TEST_DURATION = 300; //5 minutes
 
   if(json_exists()) {
     //map old testcase names to new testcase names
@@ -285,7 +286,6 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     std::vector<std::string> args = { test_dir.parent_path().string(), 
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
-      constexpr static int MAX_TEST_DURATION = 300; //5 minutes
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
@@ -320,7 +320,6 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
                                       "-d", std::to_string(_dev.get()->get_device_id()) };
     int exit_code;    
     try {
-      constexpr static int MAX_TEST_DURATION = 60;
       if (py.find(".exe") != std::string::npos)
         exit_code = XBU::runScript("", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       else
@@ -995,14 +994,6 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     return;
   }
 
-  int nodma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
-
-  if (nodma == 1 ) {
-    logger(_ptTest, "Details","M2M Test is not available");
-    _ptTest.put("status", "skipped");
-    return;
-  }
-
   std::vector<mem_data> used_banks;
   const size_t bo_size = 256L * 1024 * 1024;
   auto membuf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(_dev);
@@ -1038,17 +1029,6 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  uint32_t no_dma = 0;
-  try {
-    no_dma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
-  } catch(...) { }
-
-  if(no_dma != 0) {
-    logger(_ptTest, "Details", "Not supported on NoDMA platform");
-    _ptTest.put("status", "skipped");
-    return;
-  }
-
   uint64_t host_mem_size = 0;
   try {
     host_mem_size = xrt_core::device_query<xrt_core::query::host_mem_size>(_dev);
