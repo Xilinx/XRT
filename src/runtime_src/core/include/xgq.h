@@ -44,12 +44,12 @@
 # include <stdint.h>
 #endif
 
-#define XRT_SUB_Q1_SLOT_SIZE	512
-#define XRT_QUEUE1_SLOT_NUM	4
-#define XRT_QUEUE1_SLOT_MASK	(XRT_QUEUE1_SLOT_NUM - 1)
+#define XRT_SUB_Q1_SLOT_SIZE	512	// NOLINT
+#define XRT_QUEUE1_SLOT_NUM	4	// NOLINT
+#define XRT_QUEUE1_SLOT_MASK	(XRT_QUEUE1_SLOT_NUM - 1)	// NOLINT
 
-#define XRT_Q1_SUB_SIZE		(XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
-#define XRT_Q1_COM_SIZE		(XRT_COM_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
+#define XRT_Q1_SUB_SIZE		(XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
+#define XRT_Q1_COM_SIZE		(XRT_COM_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
 
 enum xrt_cmd_opcode {
 	XRT_CMD_OP_LOAD_XCLBIN		= 0x0,
@@ -61,6 +61,16 @@ enum xrt_cmd_opcode {
 
 	XRT_CMD_OP_BARRIER		= 0x200,
 	XRT_CMD_OP_EXIT_ERT		= 0x201,
+};
+
+enum xrt_cmd_addr_type {
+	XRT_CMD_ADD_TYPE_DEVICE		= 0x0,
+	XRT_CMD_ADD_TYPE_SLAVEBRIDGE	= 0x1,
+};
+
+enum xrt_cmd_state {
+	XRT_CMD_STATE_COMPLETED		= 0x0,
+	XRT_CMD_STATE_ERROR		= 0x1,
 };
 
 /**
@@ -85,9 +95,9 @@ struct xrt_sub_queue_entry {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NONLINT
 	};
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 /**
@@ -119,12 +129,40 @@ struct xrt_com_queue_entry {
 			uint16_t cid;
 			uint16_t cstate;
 		};
-		uint32_t data[4];
+		uint32_t data[4]; // NOLINT
 	};
 };
 
-#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_sub_queue_entry) - 4)
-#define	XRT_COM_Q1_SLOT_SIZE	(sizeof(struct xrt_com_queue_entry))
+#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_sub_queue_entry) - 4) // NOLINT
+#define XRT_COM_Q1_SLOT_SIZE	(sizeof(struct xrt_com_queue_entry)) // NOLINT
+
+/**
+ * struct xrt_cmd_load_xclbin: load XCLBIN command
+ *
+ * @address:	XCLBIN address
+ * @size:	XCLBIN size in Byte
+ * @addr_type:	Address tyep
+ *
+ * This command is used to load XCLBIN to device through XGQ.
+ * This is an indirect command that XCLBIN blob's address is
+ * embedded.
+ */
+struct xrt_cmd_load_xclbin {
+	union {
+		struct {
+			uint32_t opcode:16; /* [15-0]   */
+			uint32_t count:15;  /* [30-16] */
+			uint32_t state:1;   /* [31] */
+			uint16_t cid;
+			uint16_t rsvd;
+		};
+		uint32_t header[2]; // NOLINT
+	};
+	uint64_t address;
+	uint32_t size;
+	uint32_t addr_type:4;
+	uint32_t rsvd1:28;
+};
 
 struct xrt_cmd_configure {
 	union {
@@ -135,9 +173,9 @@ struct xrt_cmd_configure {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 /**
@@ -158,10 +196,10 @@ struct xrt_cmd_start_cuidx {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
 	uint32_t cu_idx;	/* cu index to start */
-	uint32_t data[1];
+	uint32_t data[1]; // NOLINT
 };
 
 struct xrt_cmd_exit_ert {
@@ -173,7 +211,7 @@ struct xrt_cmd_exit_ert {
 			uint16_t cid;
 			uint16_t rsvd;
 		};
-		uint32_t header[2];
+		uint32_t header[2]; // NOLINT
 	};
 };
 
