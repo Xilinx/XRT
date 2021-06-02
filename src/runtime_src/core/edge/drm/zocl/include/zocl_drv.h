@@ -204,6 +204,8 @@ int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
 bool zocl_can_dma_performed(struct drm_device *dev, struct drm_file *filp,
 	struct drm_zocl_copy_bo *args, uint64_t *dst_paddr,
 	uint64_t *src_paddr);
+int zocl_dma_channel_instance(zocl_dma_handle_t *dma_handle,
+			      struct drm_zocl_dev *zdev);
 
 void zocl_describe(const struct drm_zocl_bo *obj);
 

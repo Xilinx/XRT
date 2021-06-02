@@ -387,7 +387,7 @@ using addr_type = uint64_t;
       std::string simulatorType;
       std::string sim_path;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
-      unsigned host_sptag_idx;
+      unsigned int host_sptag_idx;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

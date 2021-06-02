@@ -229,7 +229,7 @@ Emulation Group
 |                           |                            |     but save wdb file                             |
 |                           |                            |   - gui: Launch simulator waveform GUI, and save  |
 |                           |                            |     wdb file                                      |
-|                           |                            |   = gdb: Launch gdb mode                          |
+|                           |                            |   - gdb: Launch gdb mode                          |
 |                           |                            |                                                   |
 |                           |                            |Default: off                                       |
 |                           |                            |                                                   |

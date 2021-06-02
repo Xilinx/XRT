@@ -1,91 +1,71 @@
 .. _xbmgmt2.rst:
 
-Xbmgmt Next Generation
-======================
+xbmgmt (Next Generation)
+========================
 
-The next generation of the ``xbmgmt`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbmgmt`` in a future release of XRT. This document describes the usage of this new version of the tool.
+This document describes the new next-generation ``xbmgmt`` commands. These new commands are default from 21.1 release.   
 
-To invoke the new version please set the following environment variable
-
-.. code::
-
-    export XRT_TOOLS_NEXTGEN=true
+P.S: Legacy ``xbmgmt`` commands are still available and can be invoked by ``xbmgmt --legacy <command>``.
 
 
-The xbmgmt command options are
+**Global options**: These are the global options can be used with any command. 
 
-    - ``xbmgmt program``
+ - ``--verbose``: Turn on verbosity and shows more outputs whenever applicable
+ - ``--batch``: Enable batch mode
+ - ``--force``: When possible, force an operation
+
+The next-generation ``xbmgmt`` commands are
+
+    - ``xbmgmt dump``
     - ``xbmgmt examine``
+    - ``xbmgmt program``
     - ``xbmgmt reset``
 
-**A note about multidevice system**: All the ``xbmgmt`` command supports a ``--device`` (or ``-d``) switch to specify the target device of interest. The ``xbmgmt`` commands accept the PCIe management function bdf as an argument of ``--device`` switch. The user can check the management function bdf from ``xbmgmt examine`` command.
 
-.. code:: 
+xbmgmt dump
+~~~~~~~~~~~
 
-    xbmgmt examine
+The ``xbmgmt dump`` command dump out content of the specified option 
+
+**The supported options**
+
+Dumping the output of system configuration.
+
+.. code-block:: shell
+
+    xbmgmt dump [--device| -d] <management bdf> [--config| -c] [--output| -o] <filename>
     
-    Device : [0000:b3:00.0]
-    ....
-    ....
-    Device : [0000:65:00.0]
 
+Dumping the output of programmed system image
 
-The above output showing management function bdfs of the two devices (``0000:b3:00.0`` and ``0000:65:00.0``) can be used with ``--device`` switch.
+.. code-block:: shell
 
-
-
-xbmgmt program
-~~~~~~~~~~~~~~
-
-**The supported usecases with options**
-
-Update the Base partition (applicable for 1RP platform too)
-
-.. code-block:: 
-
-    xbmgmt program [--device|-d] <management bdf> --update [--force|-f]
-
-
-Program a Shell Partition for 2RP platform
-
-.. code-block:: 
-
-    xbmgmt program [--device| -d] <management bdf> --partition <partition file with path>  
-
-
-Revert to golden image
-
-.. code-block:: 
-
-    xbmgmt program --revert-to-golden
+    xbmgmt dump [--device| -d] <management bdf> [--flash| -f] [--output| -o] <filename with .ini extension>
 
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) specifies the target device 
     
-    - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--update`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card's existing base partition is already up-to-date, or in a higher version, or a different platform's partition. 
-- The ``--force`` option can be used with ``--update`` to update the base partition forcefully for the above cases when it is not updated by itself. 
-- The ``--partition`` option is used to program shell partition, applicable for 2RP platform only.
+    - <management bdf> : The Bus:Device.Function of the device of interest
+
+
+- The ``--flash`` (or ``-f``) option dumps the output of programmed system image.
+- The ``--config`` (or ``-c``) option dumps the output of system configuration.
+- The ``--output`` (or ``-o``) specifies the output file to direct the dumped output. For ``--config`` the output file must have extension .ini
     
-    - <partiton file with path>: 
-- The ``--revert-to-golden`` command is used to reverts the flash image back to the golden version of the card.	
+
+**Example commands** 
 
 
-**Example commands**
+.. code-block:: shell
 
-
-.. code-block::
- 
-     #Update the base partition 
-     xbmgmt program --device 0000:d8:00.0 --update 
-     
-     #Program the shell partition
-     xbmgmt program --device 0000:d8:00.0 --partition <partition file with path>
- 
-     xbmgmt program --device 0000:d8:00.0 --revert-to-golden
+      
+    #Dump programmed system image data
+    xbmgmt dump --device 0000:b3:00.0 --flash -o /tmp/flash_dump.txt
+    
+    #Dump system configaration 
+    xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini
 
 
 xbmgmt examine
@@ -96,86 +76,139 @@ The ``xbmgmt examine`` command reports detail status information of the specifie
 **The supported options**
 
 
-.. code-block::
+.. code-block:: shell
 
-    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -u] <filename>
+    xbmgmt examine [--device| -d] <management bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to program
     
-    - <none> : Optional for a single device system. 
-    - <management bdf>+ : Mandetory for multiple device system, has to be specified with one or more device management bdf information 
-    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--report`` (or ``-r``) switch is optional, by default the device scanning information is provided, supported other options 
-  
-    - ``scan`` (**default**): scan option shows System Configuration, XRT and Device management bdf information. 
-    - ``platform``: Reports platform related informati      
-    - ``verbose``: Reports all
-    
-- The ``--format`` (or ``-f``) can be used to specify the output format
-    
-    - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json``: The output is shown in json-2020.2 
-- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
-        
-    - <filename> : The output file to be dumped
+    - <management bdf> : The Bus:Device.Function of the device of interest
 
+- The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
+          
+    -  ``all``: All known reports are produced
+    - ``firewall``: Firewall status
+    - ``host``: Host information
+    - ``mailbox``: Mailbox metrics of the device
+    - ``mechanical``: Mechanical sensors on and surrounding the device
+    - ``platform``: Platform information
+
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
+    
+    - ``JSON``: The report is shown in latest JSON schema
+    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
+
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
+    
 
 **Example commands** 
 
 
-.. code-block:: 
+.. code-block:: shell
 
-    #Reports Scanning of all the devices
-    xbmgmt examine 
-    
+      
     #Report all the information for a specific device
-    xbmgmt examine --d 0000:d8:00.0 -r verbose
+    xbmgmt examine --device 0000:d8:00.0 --report all
     
-    #Reports platform information of two devices and dump to a file
-    xbmgmt examine -d 0000:b3:00.0 0000:65:00.0 --report platform --format json --output output output.json
+    #Reports platform information in JSON format
+    xbmgmt examine --device 0000:b3:00.0 --report platform --format JSON --output output.json
+
+
+
+xbmgmt program
+~~~~~~~~~~~~~~
+
+**The supported usecases and their options**
+
+Program the Base partition (applicable for 1RP platform too)
+
+.. code-block:: shell
+
+    xbmgmt program [--device|-d] <management bdf> [--base|-b] 
+
+Program the Shell Partition for 2RP platform
+
+.. code-block:: shell
+
+    xbmgmt program [--device| -d] <management bdf> [--shell|-s] <shell partition file with path>  
+
+
+Program the user partition with an XCLBIN file
+
+.. code-block:: shell
+
+    xbmgmt program [--device| -d] <management bdf> [--user|-u] <XCLBIN file with path>  
+
+
+Revert to golden image
+
+.. code-block:: shell
+
+    xbmgmt program [--device| -d] <management bdf> --revert-to-golden
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device to program
+    
+    - <management bdf> : The Bus:Device.Function of the device of interest
+ 
+- The ``--base`` option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card's existing base partition is already up-to-date, or in a higher version, or a different platform's partition. 
+
+- The ``--shell`` option is used to program shell partition, applicable for 2RP platform only. The user can get the full path of installed shell partition in the system from the json file generated by ``xbmgmt examine -r platform --format json --output <output>.json`` command 
+
+    - <shell partition with path> : The shell partition with full path to program the shell partition
+
+- The ``--user`` (or ``-u``) is required to specify the .xclbin file
+    
+    - <xclbin file> : The xclbin file with full-path to program the device
+    
+- The ``--revert-to-golden`` command is used to reverts the flash image back to the golden version of the card.	
+
+
+**Example commands**
+
+
+.. code-block:: shell
+ 
+     #Program the base partition 
+     xbmgmt program --device 0000:d8:00.0 --base
+     
+     #Program the shell partition
+     xbmgmt program --device 0000:d8:00.0 --shell <partition file with path>
+ 
+     xbmgmt program --device 0000:d8:00.0 --revert-to-golden
+
+
 
 
 xbmgmt reset
 ~~~~~~~~~~~~
 
-This ``xbmgmt reset`` command can be used to reset one or more devices. 
+The ``xbmgmt reset`` command can be used to reset device. 
 
 
 **The supported options**
 
-.. code-block:: 
+.. code-block:: shell
 
-    xbmgmt reset [--device| -d] <management bdf> [--type| -t] <reset type>
+    xbmgmt reset [--device| -d] <management bdf> 
 
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) specifies the target device to reset
     
-    - <management bdf>+ : Mandetory, has to be specified with one or more device management bdf  
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
-    
-    - ``hot`` (**default**): Complete reset of the device
-    - ``kernel``: Reset the kernel communication link
-    - ``ert``: Reset the management processor
-    - ``ecc``: Reset ecc memory
-    - ``soft-kernel``: Reset soft kernel
-         
+    - <management bdf> : The Bus:Device.Function of the device of interest
     
 
-**Example commands** 
+**Example commands**
 
 
-.. code-block::
+.. code-block:: shell
  
-    # Reset a single device entirely (default hot reset)
     xbmgmt reset --device 0000:65:00.0
-    
-    # Reset kernel communication link of two devices
-    xbmgmt reset --device 0000:65:00.0 0000:5e:00.0 --type kernel
-
 
