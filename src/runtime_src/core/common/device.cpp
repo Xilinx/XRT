@@ -59,6 +59,9 @@ is_sw_emulation()
 static std::vector<size_t>
 compute_memidx_encoding(const ::mem_topology* mem_topology)
 {
+  if ( mem_topology == nullptr )
+    return {};
+
   // The resulting encoding midx -> eidx
   std::vector<size_t> enc(mem_topology->m_count, std::numeric_limits<size_t>::max());
 
