@@ -55,11 +55,11 @@ namespace xclhwemhal2 {
   class HwEmShim;
 }
 
-#define XRT_QUEUE1_SUB_BASE    0x0
-#define XRT_QUEUE1_COM_BASE    (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
+constexpr uint64_t XRT_QUEUE1_SUB_BASE = 0x7B000; // hard code for now 512K - 20K
+constexpr uint64_t XRT_QUEUE1_COM_BASE = (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM);
 
-#define XRT_XGQ_SUB_BASE       0x1040000
-#define XRT_XGQ_COM_BASE       0x1030000
+constexpr uint64_t XRT_XGQ_SUB_BASE = 0x1040000;
+constexpr uint64_t XRT_XGQ_COM_BASE = 0x1030000;
 
 namespace hwemu {
 

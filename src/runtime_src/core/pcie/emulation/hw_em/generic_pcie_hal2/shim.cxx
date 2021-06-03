@@ -414,7 +414,7 @@ namespace xclhwemhal2 {
         m_scheduler = new hwemu::xocl_scheduler(this);
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         m_xgq = new hwemu::xocl_xgq(this);
-        if (m_xgq) {
+        if (m_xgq && pdi && pdiSize > 0) {
             returnValue = m_xgq->load_xclbin(pdi, pdiSize);
         }
     } else {
