@@ -469,7 +469,7 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
-		err = xocl_clock_get_freq_counter_khz(xdev, &freq, idx);
+		err = xocl_clock_get_freq_counter(xdev, &freq, idx);
 		if (err)
 			ICAP_WARN(icap, "clock subdev returns %d.", err);
 	} else {
@@ -2222,26 +2222,16 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	 *    2) DDR SRSR IP and MIG
 	 *    3) MIG calibration
 	 */
-	/* If xclbin has clock metadata, refresh all clock freq */
-	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK);
+	/* If xclbin has clock metadata, refresh all clock subdevs */
+	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK_WIZ);
+	if (!err)
+		err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin,
+			XOCL_SUBDEV_CLOCK_COUNTER);
+
 	if (!err) {
 		err = icap_refresh_clock_freq(icap, xclbin);
 		if (err)
 			ICAP_ERR(icap, "not able to refresh clock freq");
-	} else if (err == -EEXIST) {
-		/* Try locating the ep_freq_cnt_aclk_kernel_* endpoints in xclbin
-		 * On u2 raptor2 shells (1RP or 2RP or 0RP), these endpoints are
-		 * available in ULP (i.e. in xclbin) but not in BLP+PLP
-		 */
-		const struct axlf_section_header *header = NULL;
-		header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
-		if (header) {
-			struct clock_counter_info clk_counter[CCT_NUM] = { {0} };
-			bool present = xocl_fdt_get_freq_cnt_eps(xdev,
-					(char *)xclbin + header->m_sectionOffset, clk_counter);
-			if (present)
-				xocl_clock_reconfig_counters(xdev, clk_counter);
-		}
 	}
 
 	icap_calib(icap, retention);

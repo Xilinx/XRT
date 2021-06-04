@@ -32,10 +32,10 @@
 
 namespace zynqaie {
 
-XAie_InstDeclare(DevInst, &ConfigPtr);   // Declare global device instance
-
 Aie::Aie(const std::shared_ptr<xrt_core::device>& device)
 {
+    DevInst = {0};
+    devInst = nullptr;
     adf::driver_config driver_config = xrt_core::edge::aie::get_driver_config(device.get());
 
     XAie_SetupConfig(ConfigPtr,

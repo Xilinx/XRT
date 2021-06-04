@@ -414,6 +414,9 @@ namespace xclhwemhal2 {
         m_scheduler = new hwemu::xocl_scheduler(this);
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         m_xgq = new hwemu::xocl_xgq(this);
+        if (m_xgq && pdi && pdiSize > 0) {
+            returnValue = m_xgq->load_xclbin(pdi, pdiSize);
+        }
     } else {
         mCore = new exec_core;
         mMBSch = new MBScheduler(this);
@@ -2218,6 +2221,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       }
     }
     return 0;
+  }
+
+  std::shared_ptr<xrt_core::device> HwEmShim::getMCoreDevice()
+  {
+    return mCoreDevice;
   }
 
   bool HwEmShim::isLegacyErt()
