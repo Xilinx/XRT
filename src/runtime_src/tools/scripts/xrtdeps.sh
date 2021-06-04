@@ -114,14 +114,14 @@ rh_package_list()
 
         RH_LIST+=(systemd-devel)
 
-        if [ $FLAVOR != "centos" ]; then
-            RH_LIST+=(\
-            opencv \
-            )
-        else
-            #fix cmake issue in centos 8.* 
+        if [ $FLAVOR == "centos" ]; then
+            #fix cmake issue in centos 8.*
             RH_LIST+=(\
             libarchive \
+            )
+        else
+            RH_LIST+=(\
+            opencv \
             )
         fi
 
