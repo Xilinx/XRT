@@ -16,7 +16,7 @@ include_directories(
   )
 endif()
 
-# ====== File directory definitions for both Linux and Windows =========
+# ====== File directory definitions for both Linux and Windows ================
 
 set(XRT_XDP_APPDEBUG_DIR               "${CMAKE_CURRENT_SOURCE_DIR}/appdebug")
 set(XRT_XDP_DEBUG_DIR                  "${CMAKE_CURRENT_SOURCE_DIR}/debug")
