@@ -144,9 +144,9 @@ if [[ ${XRT_PROG} == "xbmgmt" ]] && [[ -t 1 ]]; then
     documentation page:
     
     https://xilinx.github.io/XRT/master/html/xbtools_map.html
- 
-    Please do update the scripts and tools to no longer use this
-    deprecated legacy sub-command and/or option."
+
+    Please update your scripts and tools to use the next generation
+    sub-commands and options."
     echo "---------------------------------------------------------------------"
 fi
 
