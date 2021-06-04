@@ -177,12 +177,24 @@ namespace device_offload {
     // No warnings at this level
   }
 
+  int device_offload_error_function()
+  {
+    if(xrt_core::config::get_aie_trace()) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "Enabling both AIE Trace and OpenCL Device Trace is not supported now. Only AIE Trace will be enabled.");
+      return 1;
+    }
+    return 0 ;
+  }
+
+
   void load()
   {
     static xrt_core::module_loader 
       xdp_device_offload_loader("xdp_device_offload_plugin",
 				register_device_offload_functions,
-				device_offload_warning_function) ;
+				device_offload_warning_function,
+				device_offload_error_function) ;
   }
 
 } // end namespace device_offload
