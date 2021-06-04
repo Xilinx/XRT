@@ -447,7 +447,7 @@ prep_centos8()
     echo "Enabling PowerTools and AppStream repo for CentOS8 ..."
     #minor version of CentOs
     MINOR=`cat /etc/centos-release | awk -F. '{ print $2 }'`
-    if [ $MINOR -gt "1" ]; then
+    if [ $MINOR -gt "2" ]; then
         yum config-manager --set-enabled powertools
         yum config-manager --set-enabled appstream
     else
