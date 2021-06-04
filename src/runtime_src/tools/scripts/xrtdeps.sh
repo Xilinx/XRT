@@ -84,7 +84,6 @@ rh_package_list()
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
-     opencv \
      openssl-devel \
      pciutils \
      perl \
@@ -431,8 +430,6 @@ prep_centos8()
     	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 	     yum check-update
     fi
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
     echo "Enabling PowerTools repo for CentOS8 ..."
     yum install -y dnf-plugins-core
     yum config-manager --set-enabled PowerTools

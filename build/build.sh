@@ -6,15 +6,19 @@ OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
+CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
-    CMAKE=cmake3
-    if [[ ! -x "$(command -v $CMAKE)" ]]; then
-        echo "$CMAKE is not installed, please run xrtdeps.sh"
-        exit 1
+if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
+    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
+        CMAKE=cmake3
+        if [[ ! -x "$(command -v $CMAKE)" ]]; then
+            echo "$CMAKE is not installed, please run xrtdeps.sh"
+            exit 1
+        fi
     fi
 fi
+
 
 if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     # On ARM64 Ubuntu use GCC version 8 if available since default
