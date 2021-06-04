@@ -5,6 +5,7 @@
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 namespace xdp {
 namespace hal {
@@ -39,6 +40,11 @@ namespace device_offload {
 
   int error_function()
   {
+    if(xrt_core::config::get_aie_trace()) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+          "Enabling both AIE Trace and PL Trace is not supported now. Only AIE Trace will be enabled.");
+      return 1;
+    }
     return 0 ;
   }
 } // end namespace device_offload
