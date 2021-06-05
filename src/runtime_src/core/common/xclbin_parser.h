@@ -46,6 +46,15 @@ struct kernel_argument
   direction dir;
 };
 
+struct kernel_properties
+{
+  enum class mailbox_type { none, in , out, inout };
+  using restart_type = size_t;
+  std::string name;
+  restart_type counted_auto_restart = 0;
+  mailbox_type mailbox = mailbox_type::none;
+};
+
 struct kernel_object
 {
   std::string name;
@@ -258,6 +267,7 @@ XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname);
 
+
 /**
  * get_kernel_arguments() - Get argument meta data for a kernel
  *
@@ -267,6 +277,29 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
 XRT_CORE_COMMON_EXPORT
 std::vector<kernel_argument>
 get_kernel_arguments(const axlf* top, const std::string& kname);
+
+/**
+ * get_kernel_properties() -  Get kernel property meta data
+ *
+ * @xml_data: XML metadata from xclbin
+ * @xml_size: Size of XML metadata from xclbin
+ * @kname : Name of kernel
+ * Return: Properties for kernel extracted from XML meta data
+ */
+XRT_CORE_COMMON_EXPORT 
+kernel_properties
+get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& kname);
+
+/**
+ * get_kernel_properties() -  Get kernel property meta data
+ *
+ * @top : Full axlf
+ * @kname : Name of kernel
+ * Return: Properties for kernel extracted from XML meta data
+ */
+XRT_CORE_COMMON_EXPORT 
+kernel_properties
+get_kernel_properties(const axlf* top, const std::string& kname);
 
 /**
  * get_kernels() - Get meta data for all kernels
