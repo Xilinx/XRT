@@ -206,7 +206,19 @@ fi
 # Friendly message if running in a terminal
 if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
     echo "---------------------------------------------------------------------"
-    echo "Legacy xbutil is being deprecated, consider moving to next-gen xbutil"
+    echo "Deprecation Warning:
+    The given legacy sub-command and/or option has been deprecated
+    to be obsoleted in the next release.
+ 
+    Further information regarding the legacy deprecated sub-commands
+    and options along with their mappings to the next generation
+    sub-commands and options can be found on the Xilinx Runtime (XRT)
+    documentation page:
+    
+    https://xilinx.github.io/XRT/master/html/xbtools_map.html
+
+    Please update your scripts and tools to use the next generation
+    sub-commands and options."
     echo "---------------------------------------------------------------------"
 fi
 
