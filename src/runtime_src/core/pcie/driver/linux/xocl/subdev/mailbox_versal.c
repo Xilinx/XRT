@@ -52,7 +52,6 @@ struct mailbox_versal {
 	irqreturn_t             (*mbv_irq_handler)(void *arg);
 	void 			*mbv_irq_arg;
 
-	struct mutex		mbv_lock;
 };
 
 static inline void mailbox_versal_reg_wr(struct mailbox_versal *mbv,
@@ -68,27 +67,23 @@ static inline u32 mailbox_versal_reg_rd(struct mailbox_versal *mbv, u32 *reg)
 	return val;
 }
 
+/* Interrupt context */
 static int mailbox_versal_set(struct platform_device *pdev, u32 data)
 {
 	return 0;
 }
 
+/* Interrupt context */
 static int mailbox_versal_get(struct platform_device *pdev, u32 *data)
 {
 	struct mailbox_versal *mbv = platform_get_drvdata(pdev);
 	u32 st;
 
-	mutex_lock(&mbv->mbv_lock);
-
 	st = mailbox_versal_reg_rd(mbv, &mbv->mbv_regs->mbr_status);
-	if (st & STATUS_EMPTY) {
-		mutex_unlock(&mbv->mbv_lock);
+	if (st & STATUS_EMPTY)
 		return -ENOMSG;
-	}
 
 	*data = mailbox_versal_reg_rd(mbv, &mbv->mbv_regs->mbr_rddata);
-
-	mutex_unlock(&mbv->mbv_lock);
 
 	return 0;
 }
@@ -269,7 +264,6 @@ static int mailbox_versal_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mbv);
 	mbv->mbv_pdev = pdev;
 
-	mutex_init(&mbv->mbv_lock);
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
 	mbv->mbv_regs = ioremap_nocache(res->start, res->end - res->start + 1);
