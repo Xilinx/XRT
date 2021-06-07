@@ -544,6 +544,10 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     bool desired = true;
     int32_t bo_idx = -1;
     //With KDS2.0 ensure no outstanding command
+    while (!priv1->cmd_submit_locked.compare_exchange_weak(expected, desired)) {
+        std::this_thread::yield();
+        expected = false;
+    }
     while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
         priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
@@ -570,6 +574,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         priv1->execbo_locked = false;
         if (itr > 15) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -617,14 +622,6 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (regmap_size >> 2) + 4;
 
-    //With KDS2.0 ensure no outstanding command
-    if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Unexpected error. There is an outstanding cmd.", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
-        priv1->execbo_locked = false;
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
-
     if (priv1->num_cu_cmds != 0) {
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -639,6 +636,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                         "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -649,6 +647,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                         "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -697,6 +696,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu", priv1->CU_cmds.size());
     //Release execbo lock only after the command is fully populated and inserted in the command list
     priv1->execbo_locked = false;
+    priv1->cmd_submit_locked = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
 }
@@ -786,6 +786,10 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     bool desired = true;
     int32_t bo_idx = -1;
     //With KDS2.0 ensure no outstanding command
+    while (!priv1->cmd_submit_locked.compare_exchange_weak(expected, desired)) {
+        std::this_thread::yield();
+        expected = false;
+    }
     while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
         priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
@@ -812,6 +816,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "No available execbo found");
         if (itr > 15) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Unable to find free execbo to use\n");
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -858,14 +863,6 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (regmap_size >> 2) + 4;
     
-    //With KDS2.0 ensure no outstanding command
-    if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Unexpected error. There is an outstanding cmd.", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
-        priv1->execbo_locked = false;
-        if (return_code) *return_code = XMA_ERROR;
-        return cmd_obj_error;
-    }
-
     if (priv1->num_cu_cmds != 0) {
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -880,6 +877,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                         "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -890,6 +888,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
                         "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
+            priv1->cmd_submit_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
         }
@@ -935,6 +934,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     //xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "2. Num of cmds in-progress = %lu", priv1->CU_cmds.size());
     //Release execbo lock only after the command is fully populated and inserted in the command list
     priv1->execbo_locked = false;
+    priv1->cmd_submit_locked = false;
     if (return_code) *return_code = XMA_SUCCESS;
     return cmd_obj;
 }

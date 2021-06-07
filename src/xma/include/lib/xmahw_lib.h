@@ -189,6 +189,7 @@ typedef struct XmaHwSessionPrivate
     std::vector<uint32_t> execbo_to_check;
     bool     using_work_item_done;
     bool     using_cu_cmd_status;
+    std::atomic<bool> cmd_submit_locked;
     std::atomic<bool> execbo_locked;
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated;
@@ -212,6 +213,7 @@ typedef struct XmaHwSessionPrivate
     cmd_idle_ticks = 0;
     cmd_busy_ticks_tmp = 0;
     cmd_idle_ticks_tmp = 0;
+    cmd_submit_locked = false;
     execbo_locked = false;
     num_execbo_allocated = -1;
     using_work_item_done = false;
