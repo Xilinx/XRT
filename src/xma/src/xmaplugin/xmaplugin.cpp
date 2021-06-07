@@ -546,7 +546,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     //With KDS2.0 ensure no outstanding command
     while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
-        priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(1));
+        priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
     }
 
     // Find an available execBO buffer
@@ -788,7 +788,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     //With KDS2.0 ensure no outstanding command
     while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
         std::unique_lock<std::mutex> lk(priv1->m_mutex);
-        priv1->work_item_done_1plus.wait_for(lk, std::chrono::milliseconds(1));
+        priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
     }
 
     // Find an available execBO buffer
