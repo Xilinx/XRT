@@ -572,6 +572,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		char *vaddr = NULL;
 		struct drm_zocl_bo *bo;
 		uint64_t bsize = 0;
+		uint64_t flags = 0;
 		if (zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
 			err = of_overlay_remove(&zdev->partial_overlay_id);
 			if (err < 0) {
@@ -605,11 +606,14 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		}
 		vaddr = bo->cma_base.vaddr;
 		memcpy(vaddr,bsection_buffer,bsize);
-
+		
+		flags = zdev->fpga_mgr->flags;
+		zdev->fpga_mgr->flags |= FPGA_MGR_CONFIG_DMA_BUF;
 		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
 		err = of_overlay_fdt_apply((void *)section_buffer, size, &id);
 		if (err < 0) {
 			DRM_WARN("Failed to create overlay (err=%d)\n", err);
+			zdev->fpga_mgr->flags = flags;
 			zdev->fpga_mgr->dmabuf = NULL;
 			zocl_drm_free_bo(bo);
 			vfree(bsection_buffer);
@@ -622,6 +626,8 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		else
 			zdev->full_overlay_id = id;
 
+		/* Restore the flags */
+		zdev->fpga_mgr->flags = flags;
 		zdev->fpga_mgr->dmabuf = NULL;
 		zocl_drm_free_bo(bo);
 		vfree(bsection_buffer);
