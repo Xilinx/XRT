@@ -2768,9 +2768,9 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     return -1;
   }
    
-  // Enabling the copy buffer thru the M2M under the env control. Once the issues regarding this
-  // is resolved from the sim_m2m kernel, we will remove this env control.
-  if (getenv("ENABLE_M2M_KERNEL")) {
+  // Enabling the copy buffer thru the M2M under the INI option enable_m2m and its default is false.
+  // Once the issues regarding this is resolved from the sim_m2m kernel, we will remove this ini option.
+  if (xclemulation::config::getInstance()->isM2MEnabled()) {
     if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];

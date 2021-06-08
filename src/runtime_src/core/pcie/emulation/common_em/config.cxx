@@ -80,6 +80,7 @@ namespace xclemulation{
     mLegacyErt = ertmode::none;
     mCuBaseAddrForce=-1;
     mIsSharedFmodel=true;
+    mIsM2MEnabled = false;
     mTimeOutScale=TIMEOUT_SCALE::NA;
     mIsPlatformDataAvailable = false;
   }
@@ -211,6 +212,9 @@ namespace xclemulation{
       else if(name == "enable_shared_memory")
       {
         mIsSharedFmodel=getBoolValue(value,true);
+      }
+      else if (name == "enable_m2m") {
+        mIsM2MEnabled = getBoolValue(value, false);
       }
       else if(name == "keep_run_dir")
       {
