@@ -31,26 +31,30 @@ stream output of the streaming kernel and writes result into global memory.
 
 out = [in1 + in2 + adder] * in3
 
+The incr kernel is built as an AP_CTRL_CHAIN kernel with mailbox and
+restart counter using:
+
+   config_interface -s_axilite_mailbox both
+   config_interface -s_axilite_auto_restart_counter 1
+
+The test harness allows the user to specify how many times the
+pipeline should be iterated.  The scalar adder to the 'incr' kernel is
+incremented in each iteration. The final output is validated against
+its expected value and if different, then prints the difference
+between the expected scalar 'adder' and adder actually used by 'incr'
+kernel and the value of expected 'adder' along with the value of the
+adder used by 'incr' kernel.
+
 This example illustrates counted auto-restart on the incr streaming
 kernel and the use of mailbox to change the adder value of incr.
 
 Since incr is a streaming kernel, it is stalled while waiting for
-input from first stage adder.  Since the mailbox values are not picked
-up by the streaming kernel before it starts running actually
-controlling the value of the adder for the purpose of comparing the
-final result is not easy.
+input from first stage adder.  The values written to mailbox are not
+picked up by the streaming kernel before it starts running.
 
-This example prints the difference between the expected 'adder' and
-adder actually used by incr kernel and prints the value of expected
-'adder' along with the value of the actual adder used by incr kernel.
-
-This a POC example, while the xclbin is compiled with 'incr' using
-
-config_interface -s_axilite_mailbox both
-config_interface -s_axilite_auto_restart_counter 1
-
+While the 'incr' kernel is compiled with mailbox and restart counter,
 the xclbin contains no meta data to reflect mailbox and counter. As a
-POC work-around, xrt.ini can be used to specify which kernels have
+POC work-around, xrt.ini is used to specify which kernels have
 what features.
 
 % cat xrt.ini
@@ -62,10 +66,9 @@ Syntax being "/kname1/kname2/.../" where knameN is the name of the
 kernel (not the name of a compute unit).  Undefined behavior if this
 convention is not followed or if the provided kernel names identifies
 kernels without the specified features.
-
 ****************************************************************/
 
-// % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o mailbox.exe main.cpp -lxrt_coreutil -luuid -pthread
+// % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o use_mailbox.exe use_mailbox.cpp -lxrt_coreutil -luuid -pthread
 // % mailbox.exe -k <xclbin> [--iter <iterations>]
 // The incr kernel scalar 'adder' argument is incremented by 1 in each iteration.
 // See xclbin.mk for building xclbin for desired platform
@@ -117,19 +120,19 @@ adjust_for_hw_emulation()
 static void
 run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 {
-  // add(add_in1, add_in2, nullptr, data_size)
+  // add(in1, in2, nullptr, data_size)
   xrt::kernel add(device, uuid, "krnl_stream_vadd");
-  xrt::bo add_in1(device, data_size_bytes, add.group_id(0));
-  auto add_in1_data = add_in1.map<int*>();
-  xrt::bo add_in2(device, data_size_bytes, add.group_id(1));
-  auto add_in2_data = add_in2.map<int*>();
+  xrt::bo in1(device, data_size_bytes, add.group_id(0));
+  auto in1_data = in1.map<int*>();
+  xrt::bo in2(device, data_size_bytes, add.group_id(1));
+  auto in2_data = in2.map<int*>();
 
-  // mult(mult_in1, nullptr, mult_out, data_size)
+  // mult(in3, nullptr, out, data_size)
   xrt::kernel mult(device, uuid, "krnl_stream_vmult");
-  xrt::bo mult_in1(device, data_size_bytes, mult.group_id(0));
-  auto mult_in1_data = mult_in1.map<int*>();
-  xrt::bo mult_out(device, data_size_bytes, mult.group_id(2));
-  auto mult_out_data = mult_out.map<int*>();
+  xrt::bo in3(device, data_size_bytes, mult.group_id(0));
+  auto in3_data = in3.map<int*>();
+  xrt::bo out(device, data_size_bytes, mult.group_id(2));
+  auto out_data = out.map<int*>();
 
   // incr(nullptr, nullptr, adder)
   xrt::kernel incr(device, uuid, "krnl_stream_vdatamover");
@@ -144,70 +147,64 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
   // input
   auto incr_run = incr(xrt::autostart{iter}, nullptr, nullptr, adder);
 
-  // create mailbox to programatically update the incr kernel
+  // create mailbox to programatically update the incr scalar adder
   xrt::mailbox incr_mbox(incr_run);
 
-  // while validation of pipeline output is not possible we still
-  // compute the expected output if the adder had been synced up
-  // accordingly by the incr kernel
+  // computed expected result
   std::vector<int> sw_out_data(data_size);
 
+  bool error = false;   // indicates error in any of the iterations
   for (unsigned int cnt = 0; cnt < iter; ++cnt) {
+
+    std::cout << "iteration: " << cnt << " adder: " << adder << '\n';
 
     // Create the test data and software result
     for(size_t i = 0; i < data_size; ++i) {
-      add_in1_data[i] = static_cast<int>(i);
-      add_in2_data[i] = 2 * static_cast<int>(i);
-      mult_in1_data[i] = static_cast<int>(i);
-      mult_out_data[i] = 0;
-      sw_out_data[i] = (add_in1_data[i] + add_in2_data[i] + adder) * mult_in1_data[i];
+      in1_data[i] = static_cast<int>(i);
+      in2_data[i] = 2 * static_cast<int>(i);
+      in3_data[i] = static_cast<int>(i);
+      out_data[i] = 0;
+      sw_out_data[i] = (in1_data[i] + in2_data[i] + adder) * in3_data[i];
     }
 
     // sync test data to kernel
-    add_in1.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    add_in2.sync(XCL_BO_SYNC_BO_TO_DEVICE);
-    mult_in1.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    in1.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    in2.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+    in3.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
     // start the pipeline
-    add_run(add_in1, add_in2, nullptr, data_size);
-    mult_run(mult_in1, nullptr, mult_out, data_size);
+    add_run(in1, in2, nullptr, data_size);
+    mult_run(in3, nullptr, out, data_size);
 
-    // at any time before or after kernel execution it is
-    // safe to update the mailbox part of incr, so update
-    // it with the next value of adder
-    incr_mbox.set_arg(2, ++adder); // update the mailbox
-
-    // wait for at least the adder to complete, this should
-    // ensure that the streaming incr kernel is either running
-    // or also done
+    // wait for the pipeline to finish
     add_run.wait();
-
-    // now it is safe to write the mailbox content to hw, the
-    // write will not be picked up until the next iteration
-    // of the pipeline (incr), it will not modify adder while
-    // incr is currently running.
-    incr_mbox.write();  // requests sync of mailbox to hw
-
-    // now wait for this iteration of the pipeline to complete
-    // by waiting for the multiplier to be done
     mult_run.wait();
 
+    // prepare for next iteration, update the mailbox with the next
+    // value of 'adder'.
+    incr_mbox.set_arg(2, ++adder); // update the mailbox
+
+    // write the mailbox content to hw, the write will not be picked
+    // up until the next iteration of the pipeline (incr).
+    incr_mbox.write();  // requests sync of mailbox to hw
+
     // sync result from device to host
-    mult_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     // compare with expected scalar adder
     auto prev = 0;  // expected difference
     for (size_t i = 0 ; i < data_size; i++) {
-      if (mult_out_data[i] != sw_out_data[i]) {
+      if (out_data[i] != sw_out_data[i]) {
+        error = true;
         // check what the adder value actually was
-        if (mult_in1_data[i] == 0)
+        if (in3_data[i] == 0)
           continue;  // don't divide by 0
 
-        auto diff = (sw_out_data[i] - mult_out_data[i]) / mult_in1_data[i];
+        auto diff = (sw_out_data[i] - out_data[i]) / in3_data[i];
         auto sw_adder = adder - 1;        // the expected adder
         auto hw_adder = sw_adder - diff;  // the actual adder used
         if (prev != (sw_adder - hw_adder)) {
-          std::cout << "iteration = " << cnt
+          std::cout << "error in iteration = " << cnt
                     << " diff = " << diff
                     << " sw_adder = " << sw_adder
                     << " hw_adder = " << hw_adder << '\n';
@@ -216,6 +213,8 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
       }
     }
   }
+  if (error)
+    throw std::runtime_error("result mismatch");
 }
 
 static void
