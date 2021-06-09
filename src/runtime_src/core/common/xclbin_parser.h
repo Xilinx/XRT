@@ -53,6 +53,7 @@ struct kernel_properties
   std::string name;
   restart_type counted_auto_restart = 0;
   mailbox_type mailbox = mailbox_type::none;
+  size_t address_range = 0;
 };
 
 struct kernel_object
