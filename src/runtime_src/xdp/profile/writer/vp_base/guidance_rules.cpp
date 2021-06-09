@@ -569,10 +569,16 @@ namespace {
 
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
-      auto& counters =
-        db->getStaticInfo().getAIECounterResources(device->deviceId) ;
-      for (auto const& counter : counters) {
-        fout << "AIE_COUNTER_RESOURCES," << counter.first << ","
+      auto& coreCounters =
+        db->getStaticInfo().getAIECoreCounterResources(device->deviceId) ;
+      for (auto const& counter : coreCounters) {
+        fout << "AIE_CORE_COUNTER_RESOURCES," << counter.first << ","
+             << counter.second << ",\n" ;
+      }
+      auto& memoryCounters =
+        db->getStaticInfo().getAIEMemoryCounterResources(device->deviceId) ;
+      for (auto const& counter : memoryCounters) {
+        fout << "AIE_MEMORY_COUNTER_RESOURCES," << counter.first << ","
              << counter.second << ",\n" ;
       }
     }
