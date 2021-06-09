@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/aie_profile/aie_plugin.h"
 #include "xdp/profile/writer/aie_profile/aie_writer.h"
 
@@ -40,6 +41,7 @@ namespace xdp {
       : XDPPlugin()
   {
     db->registerPlugin(this);
+    db->registerInfo(info::aie_profile);
     getPollingInterval();
 
     //

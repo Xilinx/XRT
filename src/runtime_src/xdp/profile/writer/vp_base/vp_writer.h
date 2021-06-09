@@ -56,6 +56,7 @@ namespace xdp {
     XDP_EXPORT virtual void refreshFile() ;
   public:
     XDP_EXPORT VPWriter(const char* filename) ;
+    XDP_EXPORT VPWriter(const char* filename, VPDatabase* inst) ;
     XDP_EXPORT virtual ~VPWriter() ;
 
     virtual bool isRunSummaryWriter() { return false ; }

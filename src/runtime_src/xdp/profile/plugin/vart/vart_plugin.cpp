@@ -18,6 +18,7 @@
 
 #include <cstring>
 #include "xdp/profile/plugin/vart/vart_plugin.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 #define MAX_PATH_SZ 512
 
@@ -26,6 +27,7 @@ namespace xdp {
   VARTPlugin::VARTPlugin() : XDPPlugin()
   {
     db->registerPlugin(this);
+    db->registerInfo(info::vart);
 
     //std::string version = "1.0" ;
     //std::string creationTime = xdp::getCurrentDateTime();

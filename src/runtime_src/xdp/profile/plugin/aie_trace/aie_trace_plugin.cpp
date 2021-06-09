@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/aie_trace/aie_trace_plugin.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_writer.h"
 #include "xdp/profile/writer/aie_trace/aie_trace_config_writer.h"
@@ -49,6 +50,7 @@ namespace xdp {
                 : XDPPlugin()
   {
     db->registerPlugin(this);
+    db->registerInfo(info::aie_trace);
 
     // Pre-defined metric sets
     metricSets = {"functions", "functions_partial_stalls", "functions_all_stalls", "all"};

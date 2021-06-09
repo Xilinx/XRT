@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,25 +14,31 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef GUIDANCE_RULES_DOT_H
+#define GUIDANCE_RULES_DOT_H
 
-#include "xdp/profile/plugin/system_compiler/system_compiler_plugin.h"
-#include "xdp/profile/plugin/vp_base/info.h"
+#include <vector>
+#include <functional>
+#include <fstream>
+
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/writer/vp_base/ini_parameters.h"
 
 namespace xdp {
 
-  SystemCompilerPlugin::SystemCompilerPlugin() : XDPPlugin()
+  class GuidanceRules
   {
-    db->registerPlugin(this);
-    db->registerInfo(info::system_compiler);
+  private:
+    std::vector<std::function<void (VPDatabase*, std::ofstream&)>> rules ;
 
-    db->getStaticInfo().addOpenedFile("profile_summary.csv", "PROFILE_SUMMARY");
-    db->getStaticInfo().addOpenedFile("sc_trace.csv", "VP_TRACE");
-  }
+    IniParameters iniParameters ;
+  public:
+    GuidanceRules() ;
+    ~GuidanceRules() ;
 
-  SystemCompilerPlugin::~SystemCompilerPlugin()
-  {
-  }
-
+    void write(VPDatabase* db, std::ofstream& fout) ;
+  } ;
 
 } // end namespace xdp
+
+#endif

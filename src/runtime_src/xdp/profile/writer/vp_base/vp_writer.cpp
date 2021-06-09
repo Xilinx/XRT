@@ -21,9 +21,14 @@
 
 namespace xdp {
 
-  VPWriter::VPWriter(const char* filename) : 
-    basename(filename), currentFileName(filename), fileNum(1),
-    db(VPDatabase::Instance()), fout(filename)
+  VPWriter::VPWriter(const char* filename) :
+    VPWriter(filename, VPDatabase::Instance())
+  {
+  }
+
+  VPWriter::VPWriter(const char* filename, VPDatabase* inst) :
+    basename(filename), currentFileName(filename), fileNum(1), db(inst),
+    fout(filename)
   {
   }
 

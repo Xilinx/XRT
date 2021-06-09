@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,25 +14,35 @@
  * under the License.
  */
 
-#define XDP_SOURCE
+#ifndef INI_PARAMETERS_DOT_H
+#define INI_PARAMETERS_DOT_H
 
-#include "xdp/profile/plugin/system_compiler/system_compiler_plugin.h"
-#include "xdp/profile/plugin/vp_base/info.h"
+#include <vector>
+#include <string>
+#include <sstream>
+#include <fstream>
 
 namespace xdp {
 
-  SystemCompilerPlugin::SystemCompilerPlugin() : XDPPlugin()
+  class IniParameters
   {
-    db->registerPlugin(this);
-    db->registerInfo(info::system_compiler);
+  private:
+    std::vector<std::string> settings ;
+  public:
+    IniParameters() ;
+    ~IniParameters() ;
 
-    db->getStaticInfo().addOpenedFile("profile_summary.csv", "PROFILE_SUMMARY");
-    db->getStaticInfo().addOpenedFile("sc_trace.csv", "VP_TRACE");
-  }
+    template <typename Arg>
+    void addParameter(const char* name, Arg&& arg)
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING," << name << "," << arg << "," ;
+      settings.push_back(setting.str()) ;
+    }
 
-  SystemCompilerPlugin::~SystemCompilerPlugin()
-  {
-  }
-
+    void write(std::ofstream& fout);
+  } ;
 
 } // end namespace xdp
+
+#endif
