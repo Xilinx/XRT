@@ -5,14 +5,13 @@ xbutil (Next Generation)
 
 This document describes the new next-generation ``xbutil`` commands. These new commands are default from 21.1 release.   
 
-P.S: Legacy ``xbutil`` commands are still available and can be invoked by ``xbutil --legacy <command>``.
-
 
 **Global options**: These are the global options can be used with any command. 
 
  - ``--verbose``: Turn on verbosity and shows more outputs whenever applicable
  - ``--batch``: Enable batch mode
  - ``--force``: When possible, force an operation
+ - ``--help`` : Get help message
 
 The next-generation ``xbutil`` commands are
 

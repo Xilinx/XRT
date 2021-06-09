@@ -1639,14 +1639,14 @@ Copy full content of specified src buffer object to this buffer object </p>
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernel6kernelEv">
-<span id="_CPPv3N3xrt6kernel6kernelEv"></span><span id="_CPPv2N3xrt6kernel6kernelEv"></span><span id="xrt::kernel::kernel"></span><span class="target" id="classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"><span class="std std-ref">kernel()</span></a> - Construct for empty kernel </p>
+<span id="_CPPv3N3xrt6kernel6kernelEv"></span><span id="_CPPv2N3xrt6kernel6kernelEv"></span><span id="xrt::kernel::kernel"></span><span class="target" id="classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Construct for empty kernel </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode">
 <span id="_CPPv3N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode"></span><span id="_CPPv2N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode"></span><span id="xrt::kernel::kernel__xrt::deviceCR.xrt::uuidCR.ssCR.cu_access_mode"></span><span class="target" id="classxrt_1_1kernel_1a32cc9ecb08ec3c5da84d3d6b10b3a074"></span><span class="sig-name descname"><span class="n"><span class="pre">kernel</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt6deviceE" title="xrt::device"><span class="n"><span class="pre">device</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">device</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">xrt</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="#_CPPv4N3xrt4uuidE" title="xrt::uuid"><span class="n"><span class="pre">uuid</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">xclbin_id</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">std</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">string</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">name</span></span>, <span class="n"><span class="pre">cu_access_mode</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">mode</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="n"><span class="pre">cu_access_mode</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">shared</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt6kernel6kernelERKN3xrt6deviceERKN3xrt4uuidERKNSt6stringE14cu_access_mode" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a80de053578d27cb63e23c6709cff0173"><span class="std std-ref">kernel()</span></a> - Constructor from a device and xclbin</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1kernel_1a1f819540d433c87f27067166ab1e8bff"><span class="std std-ref">kernel()</span></a> - Constructor from a device and xclbin</p>
 <p>
 The kernel name must uniquely identify compatible kernel instances (compute units). Optionally specify which kernel instance(s) to open using “kernelname:{instancename1,instancename2,…}” syntax. The compute units are default opened with shared access, meaning that other kernels and other process will have shared access to same compute units. </p>
 <dl class="field-list simple">
@@ -1756,15 +1756,15 @@ Throws std::out_or_range if offset is outside the kernel address space</p>
 <p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-functions">Public Functions</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3run3runEv">
-<span id="_CPPv3N3xrt3run3runEv"></span><span id="_CPPv2N3xrt3run3runEv"></span><span id="xrt::run::run"></span><span class="target" id="classxrt_1_1run_1a6f7f3132bc020367a216b644d3db3c4f"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">run</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run3runEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1a6f7f3132bc020367a216b644d3db3c4f"><span class="std std-ref">run()</span></a> - Construct empty run object</p>
+<span id="_CPPv3N3xrt3run3runEv"></span><span id="_CPPv2N3xrt3run3runEv"></span><span id="xrt::run::run"></span><span class="target" id="classxrt_1_1run_1a43f61719426fff8f5f24f0d550e0f29f"></span><span class="sig-name descname"><span class="n"><span class="pre">run</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">default</span></span><a class="headerlink" href="#_CPPv4N3xrt3run3runEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a43f61719426fff8f5f24f0d550e0f29f"><span class="std std-ref">run()</span></a> - Construct empty run object</p>
 <p>Can be used as lvalue in assignment. </p>
 </dd></dl>
 
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3run3runERK6kernel">
 <span id="_CPPv3N3xrt3run3runERK6kernel"></span><span id="_CPPv2N3xrt3run3runERK6kernel"></span><span id="xrt::run::run__kernelCR"></span><span class="target" id="classxrt_1_1run_1a519b58fe315478c16889ceab6597a76a"></span><span class="k"><span class="pre">explicit</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">run</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><a class="reference internal" href="#_CPPv4N3xrt6kernelE" title="xrt::kernel"><span class="n"><span class="pre">kernel</span></span></a><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">krnl</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run3runERK6kernel" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1a6f7f3132bc020367a216b644d3db3c4f"><span class="std std-ref">run()</span></a> - Construct run object from a kernel object</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1a43f61719426fff8f5f24f0d550e0f29f"><span class="std std-ref">run()</span></a> - Construct run object from a kernel object</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>krnl</strong> – Kernel object representing the kernel to execute </p>
@@ -1775,8 +1775,35 @@ Throws std::out_or_range if offset is outside the kernel address space</p>
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N3xrt3run5startEv">
 <span id="_CPPv3N3xrt3run5startEv"></span><span id="_CPPv2N3xrt3run5startEv"></span><span id="xrt::run::start"></span><span class="target" id="classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">start</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run5startEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref">start()</span></a> - Start execution of a run.</p>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref">start()</span></a> - Start one execution of a run.</p>
 <p>This function is asynchronous, run status must be expclicit checked or <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1afaf1ff8225e15d8802401982f62321e5"><span class="std std-ref"><span class="pre">wait()</span></span></a></code> must be used to wait for the run to complete. </p>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3run5startERK9autostart">
+<span id="_CPPv3N3xrt3run5startERK9autostart"></span><span id="_CPPv2N3xrt3run5startERK9autostart"></span><span id="xrt::run::start__autostartCR"></span><span class="target" id="classxrt_1_1run_1af4d538a36fb17a6b7dc58e9c9fd4cda6"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">start</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">autostart</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">iterations</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run5startERK9autostart" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1ada025d6709796a6ea20182e5b720a96b"><span class="std std-ref">start()</span></a> - Start auto-restart execution of a run</p>
+<p>
+An iteration count of zero means that the kernel should run forever, or until explicitly stopped using <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ae133bb9766ad5daac80bbad0bc748720"><span class="std std-ref"><span class="pre">stop()</span></span></a></code>.</p>
+<p>This function is asynchronous, run status must be expclicit checked or <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1afaf1ff8225e15d8802401982f62321e5"><span class="std std-ref"><span class="pre">wait()</span></span></a></code> must be used to wait for the run to complete.</p>
+<p>The kernel run object is complete only after all iterations have completed, or until run object has been explicitly stopped.</p>
+<p>Changing kernel arguments <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1a8a86a2d453010753756d590e2032e21a"><span class="std std-ref"><span class="pre">set_arg()</span></span></a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
+<p>Currently autostart is only supported for kernels with one compute unit which must be opened in exclusive mode. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>iterations</strong> – 
+ Number of times to iterate the same run. </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N3xrt3run4stopEv">
+<span id="_CPPv3N3xrt3run4stopEv"></span><span id="_CPPv2N3xrt3run4stopEv"></span><span id="xrt::run::stop"></span><span class="target" id="classxrt_1_1run_1ae133bb9766ad5daac80bbad0bc748720"></span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">stop</span></span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3xrt3run4stopEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1run_1ae133bb9766ad5daac80bbad0bc748720"><span class="std std-ref">stop()</span></a> - Stop kernel run object at next safe iteration</p>
+<p>If the kernel run object has been started by specifying an iteration count or by specifying default iteration count, then this function can be used to stop the iteration early. </p>
+<p>The function is synchronous and waits for the kernel run object to complete.</p>
+<p>If the kernel is not iterating, then calling this funciton is the same as calling <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1afaf1ff8225e15d8802401982f62321e5"><span class="std std-ref"><span class="pre">wait()</span></span></a></code>. </p>
 </dd></dl>
 
 <dl class="cpp function">
@@ -1961,6 +1988,25 @@ Use this API to explicitly set all kernel arguments and start kernel execution. 
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>args</strong> – Kernel arguments</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4IDpEN3xrt3runclEvRR9autostartDpRR4Args">
+<span id="_CPPv3IDpEN3xrt3runclERR9autostartDpRR4Args"></span><span id="_CPPv2IDpEN3xrt3runclERR9autostartDpRR4Args"></span><span class="k"><span class="pre">template</span></span><span class="p"><span class="pre">&lt;</span></span><span class="k"><span class="pre">typename</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="sig-name descname"><span class="n"><span class="pre">Args</span></span></span><span class="p"><span class="pre">&gt;</span></span><br /><span class="target" id="classxrt_1_1run_1a516813415547dd39c27d0219277f2513"></span><span class="k"><span class="pre">inline</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="k"><span class="pre">operator</span></span><span class="o"><span class="pre">()</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">autostart</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">count</span></span>, <a class="reference internal" href="#_CPPv4IDpEN3xrt3runclEvRR9autostartDpRR4Args" title="xrt::run::operator()::Args"><span class="n"><span class="pre">Args</span></span></a><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">&amp;</span></span><span class="p"><span class="pre">...</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">args</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4IDpEN3xrt3runclEvRR9autostartDpRR4Args" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>operator() - Set all kernel arguments and start the run</p>
+<p>
+Use this API to explicitly set all kernel arguments and start kernel execution for specified number of iterations.</p>
+<p>An iteration count of ‘1’ invokes the kernel once and is the same as calling the operator without specifying <code class="docutils literal notranslate"><span class="pre">autostart</span></code>.</p>
+<p>The run is complete only after all iterations have completed or when the kernel has been explicitly stopped using <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1run_1ae133bb9766ad5daac80bbad0bc748720"><span class="std std-ref"><span class="pre">stop()</span></span></a></code>.</p>
+<p>Currently autostart is only supported for kernels with one compute unit which must be opened in exclusive mode. </p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>count</strong> – Iteration count specifying number of iterations of the run </p></li>
+<li><p><strong>args</strong> – Kernel arguments</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -3268,7 +3314,7 @@ Support states are: ERT_CMD_STATE_COMPLETED (to be extended)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on June 01, 2021.
+        Last updated on June 08, 2021.
       </span>
 
     </p>
