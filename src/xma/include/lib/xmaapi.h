@@ -42,6 +42,7 @@ typedef struct XmaSingleton
 {
     XmaHwCfg          hwcfg;
     bool              xma_initialized;
+    bool              kds_old;
     uint32_t          cpu_mode;
     std::mutex            m_mutex;
     std::atomic<uint32_t> num_decoders;
