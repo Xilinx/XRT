@@ -2369,6 +2369,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	 * without creating mem topo, memory corruption could happen
 	 */
 	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 
 	err = __icap_peer_xclbin_download(icap, xclbin);
 
@@ -2397,7 +2398,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_max_host_mem_aperture(icap);
 
 	/* Initialize Group Topology and Group Connectivity */
-	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
+	//icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
 
 	icap_probe_urpdev_all(pdev, xclbin);
