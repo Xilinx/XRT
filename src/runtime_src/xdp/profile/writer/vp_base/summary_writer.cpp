@@ -22,6 +22,11 @@
 
 #include "core/common/config_reader.h"
 
+#ifdef _WIN32
+/* Disable warning for use of localtime */
+#pragma warning(disable : 4996)
+#endif
+
 namespace xdp {
 
   SummaryWriter::SummaryWriter(const char* filename) 
@@ -1620,7 +1625,7 @@ namespace xdp {
     }
   }
 
-  bool SummaryWriter::write(bool openNewFile)
+  bool SummaryWriter::write(bool /*openNewFile*/)
   {
     // Every summary has to have a header
     writeHeader() ;                                      fout << "\n" ;
