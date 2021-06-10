@@ -107,27 +107,26 @@ pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string fla
   std::string conffile("/sys/bus/pci/devices/");
   conffile += sysfsname;
   conffile += "/config";
-  
+
   int conf_handle = ::open(conffile.c_str(), O_RDWR | O_SYNC);
   if (conf_handle < 0) {
     throw std::runtime_error("Failed to open  " + conffile);
   }
 
-  lseek(conf_handle, 4, SEEK_SET);
-  int readbytes = ::read(conf_handle, &pcmd, 4);
+  if(lseek(conf_handle, 4, SEEK_SET) != 4)
+    throw std::runtime_error("Failed to set file pointer for  " + conffile);
 
-  if (readbytes < 0) {
+  if(::read(conf_handle, &pcmd, 4) < 0)
     throw std::runtime_error("Failed to read  " + conffile);
-  }
 
   pcmd = pcmd | PCI_COMMAND_MEMORY;
-  lseek(conf_handle, 4, SEEK_SET);
 
-  int writebytes =::write(conf_handle, &pcmd, 4);
-  if (writebytes < 0) {
+  if(lseek(conf_handle, 4, SEEK_SET) != 4)
+    throw std::runtime_error("Failed to set file pointer for  " + conffile);
+
+  if(::write(conf_handle, &pcmd, 4) < 0)
     throw std::runtime_error("Failed to write  " + conffile);
-  }
-
+  
   close(conf_handle);
 }
 
