@@ -67,6 +67,7 @@ typedef struct XmaSingleton
 
   XmaSingleton() {
     xma_initialized = false;
+    kds_old = false;
     num_decoders = 0;
     num_encoders = 0;
     num_scalers = 0;
