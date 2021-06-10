@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,28 +14,35 @@
  * under the License.
  */
 
-#ifndef VP_SUMMARY_WRITER_DOT_H
-#define VP_SUMMARY_WRITER_DOT_H
+#ifndef INI_PARAMETERS_DOT_H
+#define INI_PARAMETERS_DOT_H
 
-#include "xdp/profile/writer/vp_base/vp_writer.h"
-
-#include "xdp/config.h"
+#include <vector>
+#include <string>
+#include <sstream>
+#include <fstream>
 
 namespace xdp {
 
-  class VPSummaryWriter : public VPWriter
+  class IniParameters
   {
   private:
-    VPSummaryWriter() = delete ;
-
-  protected:
-    XDP_EXPORT virtual void switchFiles() ;
+    std::vector<std::string> settings ;
   public:
-    XDP_EXPORT VPSummaryWriter(const char* filename) ;
-    XDP_EXPORT VPSummaryWriter(const char* filename, VPDatabase* inst);
-    XDP_EXPORT ~VPSummaryWriter() ;
+    IniParameters() ;
+    ~IniParameters() ;
+
+    template <typename Arg>
+    void addParameter(const char* name, Arg&& arg)
+    {
+      std::stringstream setting ;
+      setting << "XRT_INI_SETTING," << name << "," << arg << "," ;
+      settings.push_back(setting.str()) ;
+    }
+
+    void write(std::ofstream& fout);
   } ;
-  
-}
+
+} // end namespace xdp
 
 #endif

@@ -20,15 +20,19 @@
 
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
+#include "xdp/profile/writer/vp_base/summary_writer.h"
+#include "core/common/config_reader.h"
 
 namespace xdp {
 
   bool VPDatabase::live ;
 
   VPDatabase::VPDatabase() :
-    stats(this), staticdb(this), dyndb(this), numDevices(0)
+    stats(this), staticdb(this), dyndb(this), pluginInfo(0), numDevices(0)
   {
     VPDatabase::live = true ;
+
+    summary = new SummaryWriter("summary.csv", this) ;
   }
 
   // The database and all the plugins are singletons and can be
@@ -42,6 +46,14 @@ namespace xdp {
     for (auto p : plugins)
     {
       p->writeAll(false) ;
+    }
+
+    // After all the plugins have written their data, we can dump the
+    //  generic summary
+    if (summary != nullptr) {
+      staticdb.addOpenedFile("summary.csv", "PROFILE_SUMMARY") ;
+      summary->write(false) ;
+      delete summary ;
     }
 
     plugins.clear();

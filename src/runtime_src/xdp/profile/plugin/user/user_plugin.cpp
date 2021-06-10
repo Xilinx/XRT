@@ -16,12 +16,14 @@
 
 #include "xdp/profile/plugin/user/user_plugin.h"
 #include "xdp/profile/writer/user/user_events_trace_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 namespace xdp {
 
   UserEventsPlugin::UserEventsPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::user) ;
 
     writers.push_back(new UserEventsTraceWriter("user_events.csv")) ;
     (db->getStaticInfo()).addOpenedFile("user_events.csv", "VP_TRACE") ;
