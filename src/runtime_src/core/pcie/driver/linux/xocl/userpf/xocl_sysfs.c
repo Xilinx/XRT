@@ -79,10 +79,10 @@ static ssize_t xocl_errors_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	struct xcl_errors *err = xdev->core.errors;
 	if (!err)
-		return -ENOENT;
+		return sprintf(buf, "%s\n", "Error: Device errors not found");
 	//TODO
 
-	return 0;
+	return sprintf(buf, "%s\n", "TODO: To show errors");
 }
 static DEVICE_ATTR_RO(xocl_errors);
 
