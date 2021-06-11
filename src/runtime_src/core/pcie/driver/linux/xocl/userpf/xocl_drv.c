@@ -211,7 +211,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			xdev->core.drm = NULL;
 		}
 		xocl_fini_sysfs(xdev);
-		xocl_fini_errors(xdev);
+		xocl_fini_errors(&xdev->core);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
 		if (!xrt_reset_syncup)
@@ -295,7 +295,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	}
 
 	xocl_fini_sysfs(xdev);
-	xocl_fini_errors(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	ret = xocl_subdev_offline_all(xdev);
 	if (ret) {
@@ -917,7 +917,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		xdev->core.drm = NULL;
 	}
 	xocl_fini_sysfs(xdev);
-	xocl_fini_errors(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	xocl_subdev_offline_all(xdev);
 	xocl_subdev_destroy_all(xdev);
@@ -1105,7 +1105,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
-	xocl_fini_errors(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	xocl_subdev_destroy_all(xdev);
 
