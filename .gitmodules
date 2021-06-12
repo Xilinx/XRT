@@ -1,0 +1,3 @@
+[submodule "XilinxBoardStore"]
+	path = XilinxBoardStore
+	url = https://github.com/abalasa/XilinxBoardStore.git
