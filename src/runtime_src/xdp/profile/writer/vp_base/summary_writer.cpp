@@ -1639,8 +1639,8 @@ namespace xdp {
       if (getFlowMode() == SW_EMU) {
         writeSoftwareEmulationComputeUnitUtilization() ; fout << "\n" ;
       }
-      // OpenCL specific device tables
-      if (db->infoAvailable(info::device_offload)) {
+      else if (db->infoAvailable(info::device_offload)) {
+        // OpenCL specific device tables
         writeComputeUnitUtilization() ;                  fout << "\n" ;
         writeDataTransferHostToGlobalMemory() ;          fout << "\n" ;
       }
