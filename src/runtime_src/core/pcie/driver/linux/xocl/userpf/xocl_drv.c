@@ -24,6 +24,7 @@
 #include <linux/iommu.h>
 #include <linux/pagemap.h>
 #include "../xocl_drv.h"
+#include "xocl_errors.h"
 #include "common.h"
 #include "version.h"
 
@@ -1101,6 +1102,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	xocl_subdev_destroy_all(xdev);
 
@@ -1587,11 +1589,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
-	/* TODO
-	 * initialize xocl_errors
-	 * xocl_init_errors(&xdev->core);
-	 */
-
+	/* initialize xocl_errors */
+	xocl_init_errors(&xdev->core);
 
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
