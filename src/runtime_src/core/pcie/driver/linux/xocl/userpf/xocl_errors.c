@@ -42,7 +42,9 @@ int
 xocl_init_errors(struct xocl_dev_core *core)
 {
 	mutex_init(&core->errors_lock);
+	mutex_lock(&core->errors_lock);
 	core->errors = vzalloc(sizeof(struct xcl_errors));
+	xocl_clear_all_error_record(core);
 	mutex_unlock(&core->errors_lock);
 
 	if (!core->errors)
@@ -58,8 +60,7 @@ xocl_fini_errors(struct xocl_dev_core *core)
 	if (!err)
 		return;
 
-	mutex_init(&core->errors_lock);
-	xocl_clear_all_error_record(core);
+	mutex_lock(&core->errors_lock);
 	vfree(core->errors);
 	core->errors = NULL;
 	mutex_unlock(&core->errors_lock);
