@@ -327,7 +327,7 @@ static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
 
 	/* Set timeout 1MB per 30 seconds for flash operation on device side */
 	ret = xfer_versal_transfer(xv, kdata, data_len, XRT_XFR_PKT_FLAGS_PDI,
-	    data_len / 1024 / 1024 * 30);
+	    (data_len / (1024 / 1024)) * 30);
 
 done:
 	mutex_lock(&xv->xv_lock);
