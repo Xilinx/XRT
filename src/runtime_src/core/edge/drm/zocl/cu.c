@@ -172,7 +172,7 @@ static int cu_probe(struct platform_device *pdev)
 		if (err) {
 			DRM_WARN("Failed to initial CU interrupt. "
 			    "Fall back to polling\n");
-			info->intr_enable = 0;
+			zcu->base.info.intr_enable = 0;
 		}
 	}
 

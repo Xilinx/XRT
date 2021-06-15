@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/noc/noc_plugin.h"
 #include "xdp/profile/writer/noc/noc_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 #include "core/common/system.h"
 #include "core/common/time.h"
@@ -32,7 +33,7 @@ namespace xdp {
       : XDPPlugin(), mKeepPolling(true)
   {
     db->registerPlugin(this);
-   
+    db->registerInfo(info::noc);
     // Just like HAL and power profiling, go through devices 
     //  that exist and open a file for each
     uint64_t index = 0;

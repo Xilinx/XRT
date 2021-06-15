@@ -57,6 +57,13 @@ namespace xdp {
     //  destroyed at the end of execution.
     std::list<XDPPlugin*> plugins ;
 
+    // The database itself keeps track of the generic summary
+    VPWriter* summary ;
+
+    // Additionally, for summary generation, the database must expose
+    //  what plugins were loaded and what information is available
+    uint64_t pluginInfo ;
+
     // A map of Device SysFs Path to Device Id
     std::map<std::string, uint64_t> devices;
     uint64_t numDevices;
@@ -79,6 +86,8 @@ namespace xdp {
     // Functions that plugins call on startup and destruction
     inline void registerPlugin(XDPPlugin* p)   { plugins.push_back(p) ; }
     inline void unregisterPlugin(XDPPlugin* p) { plugins.remove(p) ; }
+    inline void registerInfo(uint64_t info)    { pluginInfo |= info ; }
+    inline bool infoAvailable(uint64_t info)   { return (pluginInfo&info)!=0; }
 
     XDP_EXPORT uint64_t addDevice(const std::string&);
     XDP_EXPORT uint64_t getDeviceId(const std::string&);

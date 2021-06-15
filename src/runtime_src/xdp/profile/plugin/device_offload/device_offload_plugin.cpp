@@ -23,6 +23,7 @@
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
 #include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
@@ -89,6 +90,7 @@ namespace xdp {
     if (!active) return ; 
 
     db->registerPlugin(this) ;
+    db->registerInfo(info::device_offload);
 
     // Get the profiling continuous offload options from xrt.ini
     //  Device offload continuous offload and dumping is only supported

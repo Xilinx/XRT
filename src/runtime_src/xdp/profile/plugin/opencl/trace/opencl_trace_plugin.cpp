@@ -16,6 +16,7 @@
 
 #include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_trace_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "core/common/config_reader.h"
 
 #ifdef _WIN32
@@ -29,6 +30,7 @@ namespace xdp {
     XDPPlugin()
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::opencl_trace) ;
 
     // Add a single writer for the OpenCL host trace
     writers.push_back(new OpenCLTraceWriter("opencl_trace.csv")) ;

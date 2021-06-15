@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,28 +14,31 @@
  * under the License.
  */
 
-#ifndef VP_SUMMARY_WRITER_DOT_H
-#define VP_SUMMARY_WRITER_DOT_H
+#ifndef GUIDANCE_RULES_DOT_H
+#define GUIDANCE_RULES_DOT_H
 
-#include "xdp/profile/writer/vp_base/vp_writer.h"
+#include <vector>
+#include <functional>
+#include <fstream>
 
-#include "xdp/config.h"
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/writer/vp_base/ini_parameters.h"
 
 namespace xdp {
 
-  class VPSummaryWriter : public VPWriter
+  class GuidanceRules
   {
   private:
-    VPSummaryWriter() = delete ;
+    std::vector<std::function<void (VPDatabase*, std::ofstream&)>> rules ;
 
-  protected:
-    XDP_EXPORT virtual void switchFiles() ;
+    IniParameters iniParameters ;
   public:
-    XDP_EXPORT VPSummaryWriter(const char* filename) ;
-    XDP_EXPORT VPSummaryWriter(const char* filename, VPDatabase* inst);
-    XDP_EXPORT ~VPSummaryWriter() ;
+    GuidanceRules() ;
+    ~GuidanceRules() ;
+
+    void write(VPDatabase* db, std::ofstream& fout) ;
   } ;
-  
-}
+
+} // end namespace xdp
 
 #endif
