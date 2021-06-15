@@ -86,7 +86,6 @@ static ssize_t xocl_errors_show(struct device *dev,
 	for (i = 0; i < err->num_err; i++) {
 		size += sprintf(buf + size, "Error# %d: PID: %d, Timestamp: %llu, Class: %llu, Module: %llu, Severity: %llu, Code: %llu\n", 
 			i, err->errors[i].pid, err->errors[i].ts, XRT_ERROR_CLASS(err->errors[i].err_code),
-			XRT_ERROR_CLASS(err->errors[i].err_code),
 			XRT_ERROR_MODULE(err->errors[i].err_code),
 			XRT_ERROR_SEVERITY(err->errors[i].err_code),
 			XRT_ERROR_NUM(err->errors[i].err_code));
