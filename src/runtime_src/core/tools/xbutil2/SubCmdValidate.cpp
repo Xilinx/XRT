@@ -429,14 +429,66 @@ p2ptest_chunk(xclDeviceHandle handle, char *boptr, uint64_t dev_addr, uint64_t s
   return true;
 }
 
+static bool
+p2ptest_chunk_no_dma(xclDeviceHandle handle, char *boptr, size_t bo_size, int bank)
+{
+  xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P |bank);
+  if (boh == NULLBO) {
+    return false;
+  }
+
+  boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  if (boptr == nullptr) {
+    free_unmap_bo(handle, boh, boptr, bo_size);
+    return false;
+  }
+
+  memset(boptr, 'A', bo_size);
+
+  if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
+    free_unmap_bo(handle, boh, boptr, bo_size);
+    return false;
+  }
+
+  if (!p2ptest_set_or_cmp(boptr, bo_size, 'A', false)){
+    return false;
+  }
+
+  boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P|bank);
+  if (boh == NULLBO) {
+    return false;
+  }
+
+  boptr = reinterpret_cast<char *> (xclMapBO(handle, boh, true));
+  if (boptr == nullptr) {
+    free_unmap_bo(handle, boh, boptr, bo_size);
+    return false;
+  }
+
+  memset(boptr, 'B', bo_size);
+
+  if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
+    free_unmap_bo(handle, boh, boptr, bo_size);
+    return false;
+  }
+
+  if (!p2ptest_set_or_cmp(boptr, bo_size, 'B', false)){
+    return false;
+  }
+
+  return true;
+}
+
+
 /*
  * helper function for P2P test
  */
 static bool
 p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::string m_tag, 
-             unsigned int mem_idx, uint64_t addr, uint64_t bo_size)
+             unsigned int mem_idx, uint64_t addr, uint64_t bo_size, uint32_t no_dma)
 {
   const size_t chunk_size = 16 * 1024 * 1024; //16 MB
+  const size_t mem_size = 1 * 1024 * 1024 * 1024; //1 GB
 
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
   if (boh == NULLBO) {
@@ -452,10 +504,24 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
     return false;
   }
 
+  
   int counter = 0;
+
   XBU::ProgressBar run_test("Running Test on " + m_tag, 1024, XBU::is_escape_codes_disabled(), std::cout);
-  for(uint64_t c = 0; c < bo_size; c += chunk_size) {
-    if(!p2ptest_chunk(handle, boptr + c, addr + c, chunk_size)) {
+  if(no_dma != 0) {
+   if(!p2ptest_chunk_no_dma(handle, boptr,  mem_size,  mem_idx)){
+      _ptTest.put("status", "failed");
+      logger(_ptTest, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
+      free_unmap_bo(handle, boh, boptr, bo_size);
+      run_test.finish(false, "");
+      std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+      return false;
+   }
+   run_test.update(++counter);
+  } else {   
+
+    for(uint64_t c = 0; c < bo_size; c += chunk_size) {
+       if(!p2ptest_chunk(handle, boptr + c, addr + c, chunk_size)) {
       _ptTest.put("status", "failed");
       logger(_ptTest, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
       free_unmap_bo(handle, boh, boptr, bo_size);
@@ -465,6 +531,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
     }
     run_test.update(++counter);
   }
+ }
   free_unmap_bo(handle, boh, boptr, bo_size);
   run_test.finish(true, "");
   std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
@@ -908,11 +975,6 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     no_dma = xrt_core::device_query<xrt_core::query::nodma>(_dev);
   } catch(...) { }
 
-  if(no_dma != 0) {
-    logger(_ptTest, "Details", "Not supported on NoDMA platform");
-    _ptTest.put("status", "skipped");
-    return;
-  }
 
   if(!search_and_program_xclbin(_dev, _ptTest)) {
     return;
@@ -952,7 +1014,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for(const auto& x : sup_list) {
       if(mem_tag.find(x) != std::string::npos && mem.m_used) {
-        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10))
+        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
           break;
         logger(_ptTest, "Details", mem_tag +  " validated");
       }
