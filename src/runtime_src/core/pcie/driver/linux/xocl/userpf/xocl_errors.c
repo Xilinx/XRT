@@ -44,12 +44,13 @@ xocl_init_errors(struct xocl_dev_core *core)
 	mutex_init(&core->errors_lock);
 	mutex_lock(&core->errors_lock);
 	core->errors = vzalloc(sizeof(struct xcl_errors));
+	if (!core->errors) {
+		mutex_unlock(&core->errors_lock);
+		return -ENOMEM;
+	}
+
 	xocl_clear_all_error_record(core);
 	mutex_unlock(&core->errors_lock);
-
-	if (!core->errors)
-		return -ENOMEM;
-
 	return 0;
 }
 
