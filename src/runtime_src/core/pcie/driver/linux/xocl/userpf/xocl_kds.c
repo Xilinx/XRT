@@ -418,6 +418,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 				     struct drm_xocl_bo *xobj,
 				     struct ert_packet *ecmd)
 {
+	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct ert_packet *orig;
 	int pkg_size;
 
@@ -441,6 +442,11 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 
 	if (get_size_with_timestamps_or_zero(ecmd) > xobj->base.size) {
 		userpf_err(xdev, "no space for timestamp in exec buf\n");
+		return false;
+	}
+
+	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
 
@@ -951,6 +957,8 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
 	/* cfg->slot_size is for debug purpose */
 	/* ecmd->slot_size	= cfg->slot_size; */
+	/* Record slot size so that KDS could validate command */
+	kds->ert->slot_size = ecmd->slot_size;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {
