@@ -1769,14 +1769,6 @@ namespace xdp {
       return ;
 
     fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
-    fout << "COLUMN:Start Time (ms),float,blah,\n" ;
-    fout << "COLUMN:Buffer Size (KB),float,blah,\n" ;
-    if (getFlowMode() == HW) {
-      fout << "COLUMN:Duration (ms),float,blah,\n" ;
-      fout << "COLUMN:Writing Rate(MB/s),float,blah,\n";
-    }
-
-    fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
     fout << "COLUMN:Start Time (ms),float,Start time of write transfer (in ms),\n" ;
     fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
