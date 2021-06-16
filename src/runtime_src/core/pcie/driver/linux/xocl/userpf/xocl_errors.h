@@ -20,6 +20,9 @@
 #include "common.h"
 #include "xocl_drv.h"
 
+void
+xocl_clear_all_error_record(struct xocl_dev_core *core);
+
 int
 xocl_insert_error_record(struct xocl_dev_core *core, struct xclErrorLast *err_last);
 

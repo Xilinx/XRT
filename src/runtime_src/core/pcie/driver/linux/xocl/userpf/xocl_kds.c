@@ -9,6 +9,7 @@
 
 #include <linux/workqueue.h>
 #include "common.h"
+#include "xocl_errors.h"
 #include "kds_core.h"
 /* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
@@ -420,7 +421,10 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 {
 	struct ert_packet *orig;
 	int pkg_size;
+	struct xcl_errors *err;
+	struct xclErrorLast err_last;
 
+	err = xdev->core.errors;
 	orig = (struct ert_packet *)xobj->vmapping;
 	orig->state = ERT_CMD_STATE_NEW;
 	ecmd->header = orig->header;
@@ -428,6 +432,10 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
 	if (xobj->base.size < pkg_size) {
 		userpf_err(xdev, "payload size bigger than exec buf\n");
+		err_last.pid = pid_nr(task_tgid(current));
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_NUM_KDS_EXEC;
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return false;
 	}
 

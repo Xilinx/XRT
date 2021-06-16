@@ -16,7 +16,7 @@
  */
 #include "xocl_errors.h"
 
-static void
+void
 xocl_clear_all_error_record(struct xocl_dev_core *core)
 {
 	struct xcl_errors *err = core->errors;
@@ -33,7 +33,16 @@ xocl_insert_error_record(struct xocl_dev_core *core, struct xclErrorLast *err_la
 	struct xcl_errors *err = core->errors;
 	if (!err)
 		return -ENOENT;
-	//TODO
+	mutex_lock(&core->errors_lock);
+	if (err->num_err == XCL_ERROR_CAPACITY) {
+		/* Drop oldest error. Latest error will be the last one */
+		memmove(err->errors, &err->errors[1], (XCL_ERROR_CAPACITY-1)*sizeof(xclErrorLast));
+		err->errors[err->num_err-1] = *err_last;
+	} else {
+		err->errors[err->num_err] = *err_last;
+		err->num_err++;
+	}
+	mutex_unlock(&core->errors_lock);
 
 	return 0;
 }
