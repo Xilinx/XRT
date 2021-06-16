@@ -343,9 +343,6 @@ namespace xdp {
   void
   SummaryWriter::writeAPICalls(APIType type)
   {
-    // Columns
-    fout << "API Name,Number Of Calls,Total Time (ms),Minimum Time (ms),"
-	 << "Average Time (ms),Maximum Time (ms),\n" ;
  
     // For each function call, across all of the threads, 
     //  consolidate all the information into what we need
@@ -402,6 +399,7 @@ namespace xdp {
     for (auto row : rows) {
       auto averageTime = 
 	(double)(std::get<1>(row.second)) / (double)(std::get<0>(row.second)) ;
+      if (type != OPENCL) fout << "ENTRY:" ;
       fout << row.first                      << ","     // API Name
 	   << std::get<0>(row.second)        << ","     // Number of calls
 	   << (std::get<1>(row.second)/1e06) << ","     // Total time
@@ -413,20 +411,35 @@ namespace xdp {
 
   void SummaryWriter::writeOpenCLAPICalls()
   {
-    // Caption
+    // Title
     fout << "OpenCL API Calls\n" ;
+    // Columns
+    fout << "API Name,Number Of Calls,Total Time (ms),Minimum Time (ms),"
+	 << "Average Time (ms),Maximum Time (ms),\n" ;
     writeAPICalls(OPENCL) ;
   }
 
   void SummaryWriter::writeNativeAPICalls()
   {
-    fout << "Native API Calls\n" ;
+    fout << "TITLE:Native API Calls\n" ;
+    fout << "COLUMN:API Name,string,Name of Native XRT API,\n" ;
+    fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
+    fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
+    fout << "COLUMN:Minimum Time (ms),float,Minimum execution time (in ms),\n";
+    fout << "COLUMN:Average Time (ms),float,Average execution time (in ms),\n";
+    fout << "COLUMN:Maximum Time (ms),float,Maximum execution time (in ms),\n";
     writeAPICalls(NATIVE) ;
   }
 
   void SummaryWriter::writeHALAPICalls()
   {
-    fout << "HAL API Calls\n" ;
+    fout << "TITLE:HAL API Calls\n" ;
+    fout << "COLUMN:API Name,string,Name of HAL XRT API,\n" ;
+    fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
+    fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
+    fout << "COLUMN:Minimum Time (ms),float,Minimum execution time (in ms),\n";
+    fout << "COLUMN:Average Time (ms),float,Average execution time (in ms),\n";
+    fout << "COLUMN:Maximum Time (ms),float,Maximum execution time (in ms),\n";
     writeAPICalls(HAL) ;
   }
 
@@ -463,6 +476,13 @@ namespace xdp {
 
   void SummaryWriter::writeKernelExecutionSummary()
   {
+    // We can get kernel executions from purely host information
+    std::map<std::string, TimeStatistics> kernelExecutions = 
+      (db->getStats()).getKernelExecutionStats() ;
+
+    if (kernelExecutions.size() == 0)
+      return ;
+
     // Caption
     fout << "Kernel Execution" ;
     if (getFlowMode() == HW_EMU) {
@@ -473,10 +493,6 @@ namespace xdp {
     // Column headers
     fout << "Kernel,Number Of Enqueues,Total Time (ms),Minimum Time (ms),"
 	 << "Average Time (ms),Maximum Time (ms),\n" ; 
-
-    // We can get kernel executions from purely host information
-    std::map<std::string, TimeStatistics> kernelExecutions = 
-      (db->getStats()).getKernelExecutionStats() ;
 
     for (auto execution : kernelExecutions) {
       fout << execution.first                         << ","
@@ -490,6 +506,9 @@ namespace xdp {
 
   void SummaryWriter::writeTopKernelExecution()
   {
+    if (db->getStats().getTopKernelExecutions().size() == 0)
+      return ;
+
     // Caption
     fout << "Top Kernel Execution\n";
 
@@ -515,6 +534,9 @@ namespace xdp {
 
   void SummaryWriter::writeTopMemoryWrites()
   {
+    if (db->getStats().getTopHostWrites().size() == 0)
+      return ;
+
     // Caption
     fout << "Top Memory Writes: Host to Global Memory\n" ;
 
@@ -546,6 +568,9 @@ namespace xdp {
 
   void SummaryWriter::writeTopMemoryReads()
   {
+    if (db->getStats().getTopHostReads().size() == 0)
+      return ;
+
     // Caption
     fout << "Top Memory Reads: Host to Global Memory\n" ;
 
@@ -577,6 +602,13 @@ namespace xdp {
 
   void SummaryWriter::writeSoftwareEmulationComputeUnitUtilization()
   {
+    std::map<std::tuple<std::string, std::string, std::string>,
+	     TimeStatistics> cuStats = 
+      (db->getStats()).getComputeUnitExecutionStats() ;
+
+    if (cuStats.size() == 0)
+      return ;
+
     // Caption
     fout << "Compute Unit Utilization\n" ;
 
@@ -585,10 +617,6 @@ namespace xdp {
 	 << "Number Of Calls,Dataflow Execution,Max Overlapping Executions,"
 	 << "Dataflow Acceleration,Total Time (ms),Minimum Time (ms),"
 	 << "Average Time (ms),Maximum Time (ms),Clock Frequency (MHz),\n" ;
-
-    std::map<std::tuple<std::string, std::string, std::string>,
-	     TimeStatistics> cuStats = 
-      (db->getStats()).getComputeUnitExecutionStats() ;
 
     for (auto stat : cuStats) {
       std::string cuName          = (std::get<0>(stat.first)) ;
@@ -631,6 +659,10 @@ namespace xdp {
 
   void SummaryWriter::writeComputeUnitUtilization()
   {
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+
+    // Check if we need to output this table at all...
+
     // Caption
     fout << "Compute Unit Utilization" ;
     if (getFlowMode() == HW_EMU)
@@ -662,8 +694,6 @@ namespace xdp {
     //  aligned between the two.  We have to make sure this information
     //  is accessible.
     
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
-
     // For every device that is connected...
     for (auto device : infos)
     {
@@ -778,6 +808,14 @@ namespace xdp {
 
   void SummaryWriter::writeDataTransferHostToGlobalMemory()
   {
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
+      (db->getStats()).getHostReads() ;
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites =
+      (db->getStats()).getHostWrites() ;
+
+    if (hostReads.size() == 0 && hostWrites.size() == 0)
+      return ;
+
     // Caption
     fout << "Data Transfer: Host to Global Memory" << std::endl ;
 
@@ -791,11 +829,6 @@ namespace xdp {
 	 << "Total Time (ms)"                   << ","
 	 << "Average Time (ms)"                 << "," 
 	 << std::endl ;
-
-    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
-      (db->getStats()).getHostReads() ;
-    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites =
-      (db->getStats()).getHostWrites() ;
 
     for (auto read : hostReads)
     {
@@ -873,6 +906,133 @@ namespace xdp {
     }
   }
 
+  void SummaryWriter::writeHostReadsFromGlobalMemory()
+  {
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostReads =
+      (db->getStats()).getHostReads() ;
+    if (hostReads.size() == 0) return ;
+
+    fout << "TITLE:Host Reads from Global Memory\n" ;
+    fout << "COLUMN:Number of Reads,int,"
+         << "Number of host reads (note: may contain OpenCL printf transfers),"
+         << "\n" ;
+    fout << "COLUMN:Maximum Buffer Size (KB),float,"
+         << "Maximum buffer size of host reads,\n";
+    fout << "COLUMN:Minimum Buffer Size (KB),float,"
+         << "Minimum buffer size of host reads,\n";
+    fout << "COLUMN:Average Buffer Size (KB),float,"
+         << "Average buffer size of host reads: "
+         << "Average Size = (Total KB) / (Number of Transfers),\n";
+
+    if (getFlowMode() == HW) {
+      fout << "COLUMN:Transfer Rate (MB/s),float,"
+           << "Rate of host reads (in MB/s): "
+           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
+      fout << "COLUMN:Average Bandwidth Utilization (%),float,"
+           << "Average bandwidth of host reads: "
+           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
+      fout << "COLUMN:Maximum Time (ms),float,"
+           << "Maximum time of a single host read,\n" ;
+      fout << "COLUMN:Minimum Time (ms),float,"
+           << "Minimum time of a single host read,\n" ;
+      fout << "COLUMN:Total Time (ms),float,"
+           << "Combined time of all host reads,\n" ;
+      fout << "COLUMN:Average Time (ms),float,"
+           << "Average of read durations (in ms),\n" ;
+    }
+
+    for (auto read : hostReads)
+    {
+      auto contextAndDevice = read.first ;
+      auto deviceId = contextAndDevice.second ;
+      auto stats = read.second ;
+
+      fout << "ENTRY:" << stats.count << "," ;
+      fout << ((double)(stats.maxSize) / 1000.0) << "," ;
+      fout << ((double)(stats.minSize) / 1000.0) << "," ;
+      fout << ((double)(stats.averageSize) / 1000.0) << "," ;
+      if (getFlowMode() == HW) {
+        double totalTimeInS  = (double)(stats.totalTime / 1e09);
+        double totalSizeInMB = (double)(stats.totalSize / 1e06);
+        double transferRate  = totalSizeInMB / totalTimeInS; 
+	double maxReadBW =
+	  (db->getStaticInfo()).getMaxReadBW(deviceId) ;
+	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+
+	fout << transferRate << "," ;
+	fout << aveBWUtil << "," ;
+	fout << (stats.maxTime / 1e06) << "," ;
+	fout << (stats.minTime / 1e06) << "," ;
+	fout << (stats.totalTime / 1e06) << "," ;
+	fout << (stats.averageTime / 1e06) << "," ;
+      }
+      fout << "\n" ;
+    }
+  }
+
+  void SummaryWriter::writeHostWritesToGlobalMemory()
+  {
+    std::map<std::pair<uint64_t, uint64_t>, BufferStatistics> hostWrites =
+      (db->getStats()).getHostWrites() ;
+    if (hostWrites.size() == 0) return ;
+
+    fout << "TITLE:Host Writes to Global Memory\n" ;
+    fout << "COLUMN:Number of Writes,int,"
+         << "Number of host writes,\n" ;
+    fout << "COLUMN:Maximum Buffer Size (KB),float,"
+         << "Maximum buffer size of host writes,\n";
+    fout << "COLUMN:Minimum Buffer Size (KB),float,"
+         << "Minimum buffer size of host writes,\n";
+    fout << "COLUMN:Average Buffer Size (KB),float,"
+         << "Average buffer size of host writes: "
+         << "Average Size = (Total KB) / (Number of Transfers),\n";
+
+    if (getFlowMode() == HW) {
+      fout << "COLUMN:Transfer Rate (MB/s),float,"
+           << "Rate of host writes (in MB/s): "
+           << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
+      fout << "COLUMN:Average Bandwidth Utilization (%),float,"
+           << "Average bandwidth of host writes: "
+           << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
+      fout << "COLUMN:Maximum Time (ms),float,"
+           << "Maximum time of a single host write,\n" ;
+      fout << "COLUMN:Minimum Time (ms),float,"
+           << "Minimum time of a single host write,\n" ;
+      fout << "COLUMN:Total Time (ms),float,"
+           << "Combined time of all host write,\n" ;
+      fout << "COLUMN:Average Time (ms),float,"
+           << "Average of write durations (in ms),\n" ;
+    }
+
+    for (auto write : hostWrites)
+    {
+      auto contextAndDevice = write.first ;
+      auto deviceId = contextAndDevice.second ;
+      auto stats = write.second ;
+
+      fout << "ENTRY:" << stats.count << "," ;
+      fout << ((double)(stats.maxSize) / 1000.0) << "," ;
+      fout << ((double)(stats.minSize) / 1000.0) << "," ;
+      fout << ((double)(stats.averageSize) / 1000.0) << "," ;
+      if (getFlowMode() == HW) {
+        double totalTimeInS  = (double)(stats.totalTime / 1e09);
+        double totalSizeInMB = (double)(stats.totalSize / 1e06);
+        double transferRate  = totalSizeInMB / totalTimeInS; 
+	double maxReadBW =
+	  (db->getStaticInfo()).getMaxReadBW(deviceId) ;
+	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+
+	fout << transferRate << "," ;
+	fout << aveBWUtil << "," ;
+	fout << (stats.maxTime / 1e06) << "," ;
+	fout << (stats.minTime / 1e06) << "," ;
+	fout << (stats.totalTime / 1e06) << "," ;
+	fout << (stats.averageTime / 1e06) << "," ;
+      }
+      fout << "\n" ;
+    }
+  }
+
   void SummaryWriter::writeStreamDataTransfers()
   {
     std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos() ;
@@ -916,8 +1076,6 @@ namespace xdp {
          << "Link Starve (%)"         << ","
          << "Link Stall (%)"          << "," 
          << std::endl ;
-    
-    //std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
     
     for (auto device : infos) 
     {
@@ -1258,11 +1416,26 @@ namespace xdp {
     if (infos.size() == 0) return ;
     bool printTable = false ;
     for (auto device : infos) {
-      if (device->hasKDMAMonitor()) {
-	printTable = true ;
-	break ;
+      for (auto xclbin : device->loadedXclbins) {
+        uint64_t AIMIndex = 0 ;
+        for (auto monitor : xclbin->aimList) {
+          if (monitor->name.find("Memory to Memory") != std::string::npos) {
+            xclCounterResults values =
+	      (db->getDynamicInfo()).getCounterResults(device->deviceId,
+                                                       xclbin->uuid) ;
+            if (values.WriteTranx[AIMIndex] > 0 ||
+                values.ReadTranx[AIMIndex] > 0) {
+              printTable = true ;
+              break ;
+	    }
+	  }
+          ++AIMIndex ;
+	}
+        if (printTable) break ;
       }
+      if (printTable) break ;
     }
+
     if (!printTable) return ;
 
     // Caption
@@ -1279,108 +1452,91 @@ namespace xdp {
 	 << "Average Latency (ns)"     << ","
 	 << std::endl ;
 
-    for (auto device : infos)
-    {
-      for (auto xclbin : device->loadedXclbins)
-	{
-      uint64_t AIMIndex = 0 ;
-      for (auto monitor : device->currentXclbin()->aimList)
-      {
-	if (monitor->name.find("Memory to Memory") != std::string::npos)
-	{
-	  // This is the monitor we are looking for
-	  xclCounterResults values =
-	    (db->getDynamicInfo()).getCounterResults(device->deviceId, xclbin->uuid) ;
+    for (auto device : infos) {
+      for (auto xclbin : device->loadedXclbins) {
+        uint64_t AIMIndex = 0 ;
+        for (auto monitor : xclbin->aimList) {
+	  if (monitor->name.find("Memory to Memory") != std::string::npos) {
+            // This is the monitor we are looking for
+	    xclCounterResults values =
+	      (db->getDynamicInfo()).getCounterResults(device->deviceId,
+                                                       xclbin->uuid) ;
+            if (values.WriteTranx[AIMIndex] > 0) {
+	      uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	      double totalWriteTime =
+	        (double)(totalWriteBusyCycles) / (1000.0*xclbin->clockRateMHz);
+              double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
+	        (double)(values.WriteBytes[AIMIndex]) / (1000.0*totalWriteTime);
 
-	  if (values.WriteTranx[AIMIndex] > 0)
-	  {
-	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
-	    double totalWriteTime =
-	      (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
-	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+              fout << device->getUniqueDeviceName() << "," << "WRITE" << ","
+                   << values.WriteTranx[AIMIndex] << "," ;
+	      if (getFlowMode() == HW_EMU) {
+	        fout << "N/A" << "," ;
+              }
+	      else {
+	        fout << writeTransferRate << "," ;
+	      }
+	      fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+              if (getFlowMode() == HW_EMU) {
+                fout << "N/A" << "," ;
+              }
+	      else {
+	        fout << (totalWriteTime / 1e06) << "," ;
+	      }
+	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
+	      if (getFlowMode() == HW_EMU) {
+	        fout << "N/A" << "," << std::endl ;
+	      }
+	      else {
+	        fout << ((1000.0 * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
+	      }
+	    }
+	    if (values.ReadTranx[AIMIndex] > 0) {
+  	      uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	      double totalReadTime =
+	        (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz);
+	      double readTransferRate = (totalReadTime == 0.0) ? 0 :
+	        (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
 
-	    fout << device->getUniqueDeviceName() << ","
-		 << "WRITE" << ","
-		 << values.WriteTranx[AIMIndex] << "," ;
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," ;
-	    }
-	    else
-	    {
-	      fout << writeTransferRate << "," ;
-	    }
+	      fout << device->getUniqueDeviceName() << ","
+	  	   << "READ" << ","
+		   << values.ReadTranx[AIMIndex] << "," ;
+	      if (getFlowMode() == HW_EMU) {
+	        fout << "N/A" << "," ;
+	      }
+	      else {
+	        fout << readTransferRate << "," ;
+	      }
 
-	    fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+	      fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
 
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," ;
-	    }
-	    else
-	    {
-	      fout << (totalWriteTime / 1e06) << "," ;
-	    }
-	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," << std::endl ;
-	    }
-	    else
-	    {
-	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
+	      if (getFlowMode() == HW_EMU) {
+	        fout << "N/A" << "," ;
+	      }
+	      else {
+	        fout << (totalReadTime / 1e06) << "," ;
+	      }
+	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
+	      if (getFlowMode() == HW_EMU) {
+	        fout << "N/A" << "," << std::endl ;
+	      }
+	      else {
+	        fout << ((1000.0 * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
+	      }
 	    }
 	  }
-	  if (values.ReadTranx[AIMIndex] > 0)
-	  {
-	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
-	    double totalReadTime =
-	      (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
-	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
-
-	    fout << device->getUniqueDeviceName() << ","
-		 << "READ" << ","
-		 << values.ReadTranx[AIMIndex] << "," ;
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," ;
-	    }
-	    else
-	    {
-	      fout << readTransferRate << "," ;
-	    }
-
-	    fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
-
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," ;
-	    }
-	    else
-	    {
-	      fout << (totalReadTime / 1e06) << "," ;
-	    }
-	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
-	    if (getFlowMode() == HW_EMU)
-	    {
-	      fout << "N/A" << "," << std::endl ;
-	    }
-	    else
-	    {
-	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
-	    }
-	  }
-	}
-	++AIMIndex ;
+	  ++AIMIndex ;
+        }
       }
-	}
     }
   }
 
   void SummaryWriter::writeDataTransferKernelsToGlobalMemory()
   {
+    // Only print out if information exists
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+    if (infos.size() == 0) return ;
+
     // Caption
     fout << "Data Transfer: Kernels to Global Memory\n" ;
 
@@ -1396,8 +1552,6 @@ namespace xdp {
 	 << "Average Size (KB)"                 << ","
 	 << "Average Latency (ns)"              << "," 
 	 << std::endl ;
-
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
     for (auto device : infos)
     {
@@ -1495,6 +1649,9 @@ namespace xdp {
 
   void SummaryWriter::writeTopDataTransferKernelAndGlobal()
   {
+    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
+    if (infos.size() == 0) return ;
+
     // Caption
     fout << "Top Data Transfer: Kernels to Global Memory" << std::endl ;
 
@@ -1509,8 +1666,6 @@ namespace xdp {
 	 << "Total Read (MB)"            << ","
 	 << "Total Transfer Rate (MB/s)" << "," 
 	 << std::endl ;
-
-    std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
 
     for (auto device : infos)
     {
@@ -1579,6 +1734,73 @@ namespace xdp {
     }
   }
 
+  void SummaryWriter::writeTopSyncReads()
+  {
+    if (db->getStats().getTopHostReads().size() == 0)
+      return ;
+
+    fout << "TITLE:Top Memory Reads: Host from Global Memory\n" ;
+    fout << "COLUMN:Start Time (ms),float,Start time of read transfer (in ms),\n" ;
+    fout << "COLUMN:Buffer Size (KB),float,Size of read transfer (in KB),\n" ;
+    if (getFlowMode() == HW) {
+      fout << "COLUMN:Duration (ms),float,Duration of read transfer (in ms),\n" ;
+      fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of reads: Reading Rate = (Buffer Size) / (Duration),\n";
+    }
+
+    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
+	 iter != (db->getStats()).getTopHostReads().end() ;
+	 ++iter) {
+      fout << "ENTRY:" ;
+      fout << (double)((*iter).startTime) / 1.0e6 << "," ;
+      fout << (double)((*iter).size) / 1000.0 << "," ;
+      if (getFlowMode() == HW) {
+        double durationMS = (double)((*iter).duration) / 1.0e6 ;
+        double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+        fout << durationMS << "," ;
+        fout << rate << "," ;
+      }
+      fout << "\n" ;
+    }    
+  }
+
+  void SummaryWriter::writeTopSyncWrites()
+  {
+    if (db->getStats().getTopHostWrites().size() == 0)
+      return ;
+
+    fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
+    fout << "COLUMN:Start Time (ms),float,blah,\n" ;
+    fout << "COLUMN:Buffer Size (KB),float,blah,\n" ;
+    if (getFlowMode() == HW) {
+      fout << "COLUMN:Duration (ms),float,blah,\n" ;
+      fout << "COLUMN:Writing Rate(MB/s),float,blah,\n";
+    }
+
+    fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
+    fout << "COLUMN:Start Time (ms),float,Start time of write transfer (in ms),\n" ;
+    fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
+    if (getFlowMode() == HW) {
+      fout << "COLUMN:Duration (ms),float,Duration of write transfer (in ms),\n" ;
+      fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
+    }
+
+    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
+	 iter != (db->getStats()).getTopHostWrites().end() ;
+	 ++iter) {
+
+      fout << "ENTRY:" ;
+      fout << (double)((*iter).startTime) / 1.0e6 << "," ;
+      fout << (double)((*iter).size) / 1000.0 << "," ;
+      if (getFlowMode() == HW) {
+        double durationMS = (double)((*iter).duration) / 1.0e6 ;
+        double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+        fout << durationMS << "," ;
+        fout << rate << "," ;
+      }
+      fout << "\n" ;
+    }
+  }
+
   void SummaryWriter::writeUserLevelEvents()
   {
     if (!db->getStats().eventInformationPresent()) return ;
@@ -1639,15 +1861,17 @@ namespace xdp {
       if (getFlowMode() == SW_EMU) {
         writeSoftwareEmulationComputeUnitUtilization() ; fout << "\n" ;
       }
-      // OpenCL specific device tables
-      if (db->infoAvailable(info::device_offload)) {
-        writeComputeUnitUtilization() ;                  fout << "\n" ;
+      else if (db->infoAvailable(info::device_offload)) {
+        // OpenCL specific device tables
         writeDataTransferHostToGlobalMemory() ;          fout << "\n" ;
       }
     }
 
     // Generic device tables
     if (db->infoAvailable(info::device_offload)) {
+      if (getFlowMode() != SW_EMU) {
+        writeComputeUnitUtilization() ;                  fout << "\n" ;
+      }
       writeDataTransferDMA() ;                           fout << "\n" ;
       writeDataTransferDMABypass() ;                     fout << "\n" ;
       writeStreamDataTransfers() ;                       fout << "\n" ;
@@ -1664,11 +1888,14 @@ namespace xdp {
 
     if (db->infoAvailable(info::native)) {
       writeNativeAPICalls() ;                            fout << "\n" ;
+      writeHostReadsFromGlobalMemory() ;                 fout << "\n" ;
+      writeHostWritesToGlobalMemory() ;                  fout << "\n" ;
+      writeTopSyncReads() ;                              fout << "\n" ; 
+      writeTopSyncWrites() ;                             fout << "\n" ;
     }
 
     if (db->infoAvailable(info::hal)) {
       writeHALAPICalls() ;                               fout << "\n" ;
-      //writeHALTransfers() ;                              fout << "\n" ;
     }
 
     // Generate all the applicable guidance rules

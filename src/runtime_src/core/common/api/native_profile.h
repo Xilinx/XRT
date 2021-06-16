@@ -19,6 +19,7 @@
 
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
+#include "core/include/xrt.h"
 
 /**
  * This file contains the callback mechanisms for connecting the
@@ -33,18 +34,24 @@ bool load() ;
 void register_functions(void* handle) ;
 void warning_function() ;
 
-// An instance of the native_api_call_logger class will be created
+// An instance of the api_call_logger class will be created
 //  in every function we are monitoring.  The constructor marks the
 //  start time, and the destructor marks the end time
 class api_call_logger
 {
- private:
+ protected:
   uint64_t m_funcid ;
   const char* m_fullname = nullptr ;
-
  public:
-  api_call_logger(const char* function) ;
-  ~api_call_logger() ;
+  api_call_logger(const char* function);
+  virtual ~api_call_logger();
+} ;
+
+class generic_api_call_logger : public api_call_logger
+{
+ public:
+  generic_api_call_logger(const char* function) ;
+  ~generic_api_call_logger() ;
 } ;
 
 template <typename Callable, typename ...Args>
@@ -52,7 +59,32 @@ auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
   if (xrt_core::config::get_native_xrt_trace()) {
-    api_call_logger log_object(function) ;
+    generic_api_call_logger log_object(function) ;
+    return f(std::forward<Args>(args)...) ;
+  }
+  return f(std::forward<Args>(args)...) ;
+}
+
+// Specializations of the logger for capturing different information
+//  for use in summary tables.
+
+class sync_logger : public api_call_logger
+{
+ private:
+  bool m_is_write ;
+  size_t m_buffer_size ;
+
+ public:
+  sync_logger(const char* function, bool w, size_t s);
+  ~sync_logger() ;
+} ;
+
+template <typename Callable, typename ...Args>
+auto
+profiling_wrapper_sync(const char* function, xclBOSyncDirection dir, size_t size, Callable&& f, Args&&...args)
+{
+  if (xrt_core::config::get_native_xrt_trace()) {
+    sync_logger log_object(function, (dir == XCL_BO_SYNC_BO_TO_DEVICE), size);
     return f(std::forward<Args>(args)...) ;
   }
   return f(std::forward<Args>(args)...) ;

@@ -57,7 +57,6 @@ namespace xdp {
 
     // OpenCL specific device tables
     void writeSoftwareEmulationComputeUnitUtilization() ;
-    void writeComputeUnitUtilization() ;
     void writeComputeUnitStallInformation() ;
     void writeDataTransferHostToGlobalMemory() ;
 
@@ -68,6 +67,7 @@ namespace xdp {
     void writeDataTransferKernelsToGlobalMemory() ;
     void writeTopDataTransferKernelAndGlobal() ;
     void writeDataTransferGlobalMemoryToGlobalMemory() ;
+    void writeComputeUnitUtilization() ;
 
     // User event tables
     void writeUserLevelEvents() ;
@@ -75,6 +75,10 @@ namespace xdp {
 
     // Native XRT tables
     void writeNativeAPICalls() ;
+    void writeHostReadsFromGlobalMemory() ;
+    void writeHostWritesToGlobalMemory() ;
+    void writeTopSyncReads() ;
+    void writeTopSyncWrites() ;
 
     // HAL tables
     void writeHALAPICalls() ;

@@ -33,11 +33,17 @@ bool load()
   return true ;
 }
 
+// Callbacks for generic start/stop function tracking
 std::function<void (const char*, unsigned long long int)> function_start_cb ;
 std::function<void (const char*, unsigned long long int, unsigned long long int)> function_end_cb ;
+
+// Callbacks for individual functions to track start/stop and statistics
+std::function<void (const char*, unsigned long long int)> sync_start_cb ;
+std::function<void (const char*, unsigned long long int, unsigned long long int, bool, unsigned long long int)> sync_end_cb ;
   
 void register_functions(void* handle)
 {
+  // Generic callbacks
   typedef void (*ftype)(const char*, unsigned long long int) ;
   function_start_cb =
     (ftype)(xrt_core::dlsym(handle, "native_function_start")) ;
@@ -48,6 +54,16 @@ void register_functions(void* handle)
   function_end_cb = (etype)(xrt_core::dlsym(handle, "native_function_end")) ;
   if (xrt_core::dlerror() != nullptr)
     function_end_cb = nullptr ;
+
+  // Sync callbacks
+  sync_start_cb = (ftype)(xrt_core::dlsym(handle, "native_sync_start")) ;
+  if (xrt_core::dlerror() != nullptr)
+    sync_start_cb = nullptr ;
+
+  typedef void (*estype)(const char*, unsigned long long int, unsigned long long int, bool, unsigned long long int) ;
+  sync_end_cb = (estype)(xrt_core::dlsym(handle, "native_sync_end")) ;
+  if (xrt_core::dlerror() != nullptr)
+    sync_end_cb = nullptr ;
 }
 
 void warning_function()
@@ -60,21 +76,51 @@ api_call_logger(const char* function)
   // Since all api_call_logger objects exist inside the profiling_wrapper
   // we don't need to check the config reader here (it's done already)
   static bool s_load_native = load() ;
+  if (s_load_native) return ;
+}
 
-  if (function_start_cb && s_load_native) {
+api_call_logger::
+~api_call_logger()
+{
+}
+
+generic_api_call_logger::
+generic_api_call_logger(const char* function)
+  : api_call_logger(function)
+{
+  if (function_start_cb) {
     m_funcid = xrt_core::utils::issue_id() ;
     function_start_cb(m_fullname, m_funcid) ;
   }
 }
 
-api_call_logger::
-~api_call_logger()
+generic_api_call_logger::
+~generic_api_call_logger()
 {
   unsigned long long int timestamp =
     static_cast<unsigned long long int>(xrt_core::time_ns());
 
   if (function_end_cb) {
     function_end_cb(m_fullname, m_funcid, timestamp) ;
+  }
+}
+
+sync_logger::sync_logger(const char* function, bool w, size_t s)
+  : api_call_logger(function), m_is_write(w), m_buffer_size(s)
+{
+  if (sync_start_cb) {
+    m_funcid = xrt_core::utils::issue_id() ;
+    sync_start_cb(m_fullname, m_funcid) ;
+  }
+}
+
+sync_logger::~sync_logger()
+{
+  unsigned long long int timestamp =
+    static_cast<unsigned long long int>(xrt_core::time_ns());
+
+  if (sync_end_cb) {
+    sync_end_cb(m_fullname, m_funcid, timestamp, m_is_write, static_cast<unsigned long long int>(m_buffer_size)) ;
   }
 }
 
