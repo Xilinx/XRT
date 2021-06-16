@@ -1237,6 +1237,12 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
 
+	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
+		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
+			 pdev->cfg_size);
+		return -EINVAL;
+	}
+
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
 	if (!lro) {

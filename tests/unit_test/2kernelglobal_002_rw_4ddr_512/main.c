@@ -163,7 +163,7 @@ int opencl_setup(const char *xclbinfilename, cl_platform_id *platform_id,
             //u280 (or u50, u2) has lower single-bank bandwidth 
             if(strstr(cl_device_name, "u280")!=NULL ||
                 strstr(cl_device_name, "u50")!=NULL ||
-                strstr(cl_device_name, "samsung")!=NULL)
+                strstr(cl_device_name, "u2")!=NULL)
                 threshold = 12000;
         }
     }

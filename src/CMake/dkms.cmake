@@ -67,6 +67,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_ioctl.c
   xocl/userpf/xocl_sysfs.c
   xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl_errors.h
   xocl/userpf/xocl_errors.c
   xocl/userpf/xocl_kds.c
   xocl/userpf/xocl.dracut.conf

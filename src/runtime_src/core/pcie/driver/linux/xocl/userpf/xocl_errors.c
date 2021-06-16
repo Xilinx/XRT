@@ -14,8 +14,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-#include "common.h"
-#include "xocl_drv.h"
+#include "xocl_errors.h"
 
 static void
 xocl_clear_all_error_record(struct xocl_dev_core *core)
@@ -24,12 +23,8 @@ xocl_clear_all_error_record(struct xocl_dev_core *core)
 	if (!err)
 		return;
 
-	mutex_lock(&core->errors_lock);
-
 	memset(err->errors, 0, sizeof(err->errors));
 	err->num_err = 0;
-
-	mutex_unlock(&core->errors_lock);
 }
 
 int
@@ -46,11 +41,16 @@ xocl_insert_error_record(struct xocl_dev_core *core, struct xclErrorLast *err_la
 int
 xocl_init_errors(struct xocl_dev_core *core)
 {
-	/*TODO
-	 * mutex_init(core->errors_lock);
-	 */
-	core->errors = NULL;
+	mutex_init(&core->errors_lock);
+	mutex_lock(&core->errors_lock);
+	core->errors = vzalloc(sizeof(struct xcl_errors));
+	if (!core->errors) {
+		mutex_unlock(&core->errors_lock);
+		return -ENOMEM;
+	}
 
+	xocl_clear_all_error_record(core);
+	mutex_unlock(&core->errors_lock);
 	return 0;
 }
 
@@ -60,6 +60,10 @@ xocl_fini_errors(struct xocl_dev_core *core)
 	struct xcl_errors *err = core->errors;
 	if (!err)
 		return;
-	//TODO
+
+	mutex_lock(&core->errors_lock);
+	vfree(core->errors);
+	core->errors = NULL;
+	mutex_unlock(&core->errors_lock);
 }
 
