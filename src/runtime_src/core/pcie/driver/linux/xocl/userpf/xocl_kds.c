@@ -946,6 +946,9 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	regmap_size = kds_get_max_regmap_size(kds);
 	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
 		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
+
+	if (ecmd->slot_size > MAX_CQ_SLOT_SIZE)
+		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
 	/* cfg->slot_size is for debug purpose */
 	/* ecmd->slot_size	= cfg->slot_size; */
 
