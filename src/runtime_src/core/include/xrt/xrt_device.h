@@ -60,6 +60,10 @@ enum class device : unsigned int {
   name,
   nodma,
   offline,
+  power_rails,
+  thermals,
+  power_consumption,
+  fans
 };
 
 /**
@@ -73,6 +77,10 @@ XRT_INFO_PARAM_TRAITS(device::m2m, bool);
 XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
 XRT_INFO_PARAM_TRAITS(device::offline, bool);
+XRT_INFO_PARAM_TRAITS(device::power_rails, std::string);
+XRT_INFO_PARAM_TRAITS(device::thermals, std::string);
+XRT_INFO_PARAM_TRAITS(device::power_consumption, std::string);
+XRT_INFO_PARAM_TRAITS(device::fans, std::string);
 
 } // info
   
