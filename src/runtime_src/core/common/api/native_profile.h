@@ -43,15 +43,21 @@ class api_call_logger
   uint64_t m_funcid ;
   const char* m_fullname = nullptr ;
  public:
-  api_call_logger(const char* function);
-  virtual ~api_call_logger();
+  explicit api_call_logger(const char* function);
+  virtual ~api_call_logger() = default ;
 } ;
 
 class generic_api_call_logger : public api_call_logger
 {
+ private:
+  generic_api_call_logger() = delete ;
+  generic_api_call_logger(const generic_api_call_logger& x) = delete ;
+  generic_api_call_logger(generic_api_call_logger&& x) = delete ;
+  void operator=(const generic_api_call_logger& x) = delete ;
+  void operator=(generic_api_call_logger&& x) = delete ;
  public:
-  generic_api_call_logger(const char* function) ;
-  ~generic_api_call_logger() ;
+  explicit generic_api_call_logger(const char* function) ;
+  ~generic_api_call_logger() override ;
 } ;
 
 template <typename Callable, typename ...Args>
@@ -74,9 +80,15 @@ class sync_logger : public api_call_logger
   bool m_is_write ;
   size_t m_buffer_size ;
 
+  sync_logger() = delete ;
+  sync_logger(const generic_api_call_logger& x) = delete ;
+  sync_logger(generic_api_call_logger&& x) = delete ;
+  void operator=(const sync_logger& x) = delete ;
+  void operator=(sync_logger&& x) = delete ;
+
  public:
-  sync_logger(const char* function, bool w, size_t s);
-  ~sync_logger() ;
+  explicit sync_logger(const char* function, bool w, size_t s);
+  ~sync_logger() override ;
 } ;
 
 template <typename Callable, typename ...Args>
