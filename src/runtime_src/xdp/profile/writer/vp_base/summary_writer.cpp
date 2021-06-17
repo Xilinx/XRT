@@ -402,10 +402,10 @@ namespace xdp {
       if (type != OPENCL) fout << "ENTRY:" ;
       fout << row.first                      << ","     // API Name
 	   << std::get<0>(row.second)        << ","     // Number of calls
-	   << (std::get<1>(row.second)/1e06) << ","     // Total time
-	   << (std::get<2>(row.second)/1e06) << ","     // Minimum time
-	   << (averageTime/1e06)             << ","     // Average time
-	   << (std::get<3>(row.second)/1e06) << ",\n" ; // Maximum time
+	   << (std::get<1>(row.second)/one_million) << ","     // Total time
+	   << (std::get<2>(row.second)/one_million) << ","     // Minimum time
+	   << (averageTime/one_million)             << ","     // Average time
+	   << (std::get<3>(row.second)/one_million) << ",\n" ; // Maximum time
     }
   }
 
@@ -497,10 +497,10 @@ namespace xdp {
     for (auto execution : kernelExecutions) {
       fout << execution.first                         << ","
 	   << (execution.second).numExecutions        << ","
-	   << ((execution.second).totalTime / 1e06)   << ","
-	   << ((execution.second).minTime / 1e06)     << ","
-	   << ((execution.second).averageTime / 1e06) << ","
-	   << ((execution.second).maxTime / 1e06)     << ",\n" ;
+	   << ((execution.second).totalTime / one_million)   << ","
+	   << ((execution.second).minTime / one_million)     << ","
+	   << ((execution.second).averageTime / one_million) << ","
+	   << ((execution.second).maxTime / one_million)     << ",\n" ;
     }
   }
 
@@ -525,8 +525,8 @@ namespace xdp {
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << "," 
 	   << (*iter).deviceName << ","
-	   << (double)((*iter).startTime) / 1.0e6 << ","
-	   << (double)((*iter).duration) / 1.0e6 << ","
+	   << (double)((*iter).startTime) / one_million << ","
+	   << (double)((*iter).duration) / one_million << ","
 	   << (*iter).globalWorkSize << ","
 	   << (*iter).localWorkSize << ",\n" ;
     }
@@ -547,18 +547,18 @@ namespace xdp {
     for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
 	 iter != (db->getStats()).getTopHostWrites().end() ;
 	 ++iter) {
-      double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double durationMS = (double)((*iter).duration) / one_million ;
+      double rate = ((double)((*iter).size) / one_thousand) * durationMS ;
 
       fout << (*iter).address << ","
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << ","
-	   << (double)((*iter).startTime) / 1.0e6 << "," ;
+	   << (double)((*iter).startTime) / one_million << "," ;
       if (getFlowMode() == HW)
 	fout << durationMS << "," ;
       else
 	fout << "N/A," ;
-      fout << (double)((*iter).size) / 1000.0 << "," ;
+      fout << (double)((*iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW)
 	fout << rate << ",\n" ;
       else
@@ -581,18 +581,18 @@ namespace xdp {
     for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
 	 iter != (db->getStats()).getTopHostReads().end() ;
 	 ++iter) {
-      double durationMS = (double)((*iter).duration) / 1.0e6 ;
-      double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+      double durationMS = (double)((*iter).duration) / one_million ;
+      double rate = ((double)((*iter).size) / one_thousand) * durationMS ;
 
       fout << (*iter).address << "," 
 	   << (*iter).contextId << ","
 	   << (*iter).commandQueueId << ","
-	   << (double)((*iter).startTime) / 1.0e6 << "," ;
+	   << (double)((*iter).startTime) / one_million << "," ;
       if (getFlowMode() == HW)
 	fout << durationMS << "," ;
       else
 	fout << "N/A," ;
-      fout << (double)((*iter).size) / 1000.0 << "," ;
+      fout << (double)((*iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW)
 	fout << rate << ",\n" ;
       else
@@ -649,10 +649,10 @@ namespace xdp {
 	   << "No"                                << ","
 	   << 0                                   << "," // TODO?
 	   << speedup_string                      << ","
-	   << (totalTime / 1e06)                  << ","
-	   << (minTime / 1e06)                    << ","
-	   << (averageTime / 1e06)                << ","
-	   << (maxTime / 1e06)                    << ","
+	   << (totalTime / one_million)                  << ","
+	   << (minTime / one_million)                    << ","
+	   << (averageTime / one_million)                << ","
+	   << (maxTime / one_million)                    << ","
 	   << 300                                 << ",\n" ;
     }
   }
@@ -732,7 +732,7 @@ namespace xdp {
 	    std::string globalWorkDimensions = cuCall.first ;
 
 	    auto kernelClockMHz = xclbin->clockRateMHz ;
-	    double deviceCyclesMsec = (double)(kernelClockMHz) * 1000.0 ;
+	    double deviceCyclesMsec = (double)(kernelClockMHz) * one_thousand ;
 
 	    double cuRunTimeMsec =
 	      (double)(values.CuBusyCycles[amSlotID]) / deviceCyclesMsec ;
@@ -755,10 +755,10 @@ namespace xdp {
 		 << dataflowEnabled << ","
 		 << values.CuMaxParallelIter[amSlotID] << ","
 		 << speedup_string << ","
-		 << cuRunTimeMsec << "," //<< (totalTime / 1e06) << ","
-		 << cuMinExecCyclesMsec << "," //<< (minTime / 1e06) << ","
-		 << cuRunTimeAvgMsec << "," //<< (averageTime /1e06) << ","
-		 << cuMaxExecCyclesMsec << "," //<< (maxTime / 1e06) << "," 
+		 << cuRunTimeMsec << "," //<< (totalTime / one_million) << ","
+		 << cuMinExecCyclesMsec << "," //<< (minTime / one_million) << ","
+		 << cuRunTimeAvgMsec << "," //<< (averageTime /one_million) << ","
+		 << cuMaxExecCyclesMsec << "," //<< (maxTime / one_million) << "," 
 		 << (xclbin->clockRateMHz) << ","
 		 << std::endl ;
 	  }
@@ -792,7 +792,7 @@ namespace xdp {
 	uint64_t j = 0 ;      
 	for (auto cu : (xclbin->cus))
 	{
-          double deviceCyclesMsec = (double)(xclbin->clockRateMHz * 1000.0);
+          double deviceCyclesMsec = (double)(xclbin->clockRateMHz * one_thousand);
 
 	  fout << (cu.second)->getName()     << "," 
 	       << values.CuExecCount[j]      << ","
@@ -842,28 +842,28 @@ namespace xdp {
 	     << (read.second).count << ","
 	     << "N/A" << ","
 	     << "N/A" << ","
-	     << ((double)((read.second).averageSize) / 1000.0) << ","
+	     << ((double)((read.second).averageSize) / one_thousand) << ","
 	     << "N/A" << ","
 	     << "N/A" << "," << std::endl ;
       }
       else
       {
-        double totalTimeInS  = (double)((read.second).totalTime / 1e09);
-        double totalSizeInMB = (double)((read.second).totalSize / 1e06);
+        double totalTimeInS  = (double)((read.second).totalTime / one_billion);
+        double totalSizeInMB = (double)((read.second).totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxReadBW =
 	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
-	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
 
 	fout << contextName << ":" << numDevices << ","
 	     << "READ" << ","
 	     << (read.second).count << ","
 	     << transferRate << ","
 	     << aveBWUtil << ","
-	     << ((double)((read.second).averageSize) / 1000.0) << ","
-	     << ((read.second).totalTime / 1e06) << ","
-	     << ((read.second).averageTime / 1e06) << "," << std::endl ;
+	     << ((double)((read.second).averageSize) / one_thousand) << ","
+	     << ((read.second).totalTime / one_million) << ","
+	     << ((read.second).averageTime / one_million) << "," << std::endl ;
       }
     }
 
@@ -880,28 +880,28 @@ namespace xdp {
 	     << (write.second).count << ","
 	     << "N/A" << ","
 	     << "N/A" << ","
-	     << ((double)((write.second).averageSize) / 1000.0) << ","
+	     << ((double)((write.second).averageSize) / one_thousand) << ","
 	     << "N/A" << ","
 	     << "N/A" << "," << std::endl ;
       }
       else
       {
-        double totalTimeInS  = (double)((write.second).totalTime / 1e09);
-        double totalSizeInMB = (double)((write.second).totalSize / 1e06);
+        double totalTimeInS  = (double)((write.second).totalTime / one_billion);
+        double totalSizeInMB = (double)((write.second).totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
 	double maxWriteBW =
 	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
-	double aveBWUtil = (100.0 * transferRate) / maxWriteBW ;
+	double aveBWUtil = (one_hundred * transferRate) / maxWriteBW ;
 
 	fout << contextName << ":" << numDevices << "," 
 	     << "WRITE" << ","
 	     << (write.second).count << ","
 	     << transferRate << ","
 	     << aveBWUtil << ","
-	     << ((double)((write.second).averageSize) / 1000.0) << ","
-	     << ((write.second).totalTime / 1e06) << ","
-	     << ((write.second).averageTime / 1e06) << "," << std::endl ;
+	     << ((double)((write.second).averageSize) / one_thousand) << ","
+	     << ((write.second).totalTime / one_million) << ","
+	     << ((write.second).averageTime / one_million) << "," << std::endl ;
       }
     }
   }
@@ -948,23 +948,23 @@ namespace xdp {
       auto stats = read.second ;
 
       fout << "ENTRY:" << stats.count << "," ;
-      fout << ((double)(stats.maxSize) / 1000.0) << "," ;
-      fout << ((double)(stats.minSize) / 1000.0) << "," ;
-      fout << ((double)(stats.averageSize) / 1000.0) << "," ;
+      fout << ((double)(stats.maxSize) / one_thousand) << "," ;
+      fout << ((double)(stats.minSize) / one_thousand) << "," ;
+      fout << ((double)(stats.averageSize) / one_thousand) << "," ;
       if (getFlowMode() == HW) {
-        double totalTimeInS  = (double)(stats.totalTime / 1e09);
-        double totalSizeInMB = (double)(stats.totalSize / 1e06);
+        auto totalTimeInS  = (double)(stats.totalTime / one_billion);
+        auto totalSizeInMB = (double)(stats.totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 	double maxReadBW =
 	  (db->getStaticInfo()).getMaxReadBW(deviceId) ;
-	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
 
 	fout << transferRate << "," ;
 	fout << aveBWUtil << "," ;
-	fout << (stats.maxTime / 1e06) << "," ;
-	fout << (stats.minTime / 1e06) << "," ;
-	fout << (stats.totalTime / 1e06) << "," ;
-	fout << (stats.averageTime / 1e06) << "," ;
+	fout << (stats.maxTime / one_million) << "," ;
+	fout << (stats.minTime / one_million) << "," ;
+	fout << (stats.totalTime / one_million) << "," ;
+	fout << (stats.averageTime / one_million) << "," ;
       }
       fout << "\n" ;
     }
@@ -1011,23 +1011,23 @@ namespace xdp {
       auto stats = write.second ;
 
       fout << "ENTRY:" << stats.count << "," ;
-      fout << ((double)(stats.maxSize) / 1000.0) << "," ;
-      fout << ((double)(stats.minSize) / 1000.0) << "," ;
-      fout << ((double)(stats.averageSize) / 1000.0) << "," ;
+      fout << ((double)(stats.maxSize) / one_thousand) << "," ;
+      fout << ((double)(stats.minSize) / one_thousand) << "," ;
+      fout << ((double)(stats.averageSize) / one_thousand) << "," ;
       if (getFlowMode() == HW) {
-        double totalTimeInS  = (double)(stats.totalTime / 1e09);
-        double totalSizeInMB = (double)(stats.totalSize / 1e06);
+        auto totalTimeInS  = (double)(stats.totalTime / one_billion);
+        auto totalSizeInMB = (double)(stats.totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 	double maxReadBW =
 	  (db->getStaticInfo()).getMaxReadBW(deviceId) ;
-	double aveBWUtil = (100.0 * transferRate) / maxReadBW ;
+	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
 
 	fout << transferRate << "," ;
 	fout << aveBWUtil << "," ;
-	fout << (stats.maxTime / 1e06) << "," ;
-	fout << (stats.minTime / 1e06) << "," ;
-	fout << (stats.totalTime / 1e06) << "," ;
-	fout << (stats.averageTime / 1e06) << "," ;
+	fout << (stats.maxTime / one_million) << "," ;
+	fout << (stats.minTime / one_million) << "," ;
+	fout << (stats.totalTime / one_million) << "," ;
+	fout << (stats.averageTime / one_million) << "," ;
       }
       fout << "\n" ;
     }
@@ -1117,14 +1117,14 @@ namespace xdp {
             }
             
             double transferTime = busyCycles / xclbin->clockRateMHz ;
-            double transferRate = (transferTime == 0.0) ? 0 : values.StrDataBytes[asmMonitorId] / transferTime ;
+            double transferRate = (transferTime == zero) ? 0 : values.StrDataBytes[asmMonitorId] / transferTime ;
             
             double linkStarve = (0 == busyCycles) ? 0 : 
-                (double)(values.StrStarveCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
+                (double)(values.StrStarveCycles[asmMonitorId]) / (double)(busyCycles) * one_hundred ;
             double linkStall = (0 == busyCycles) ? 0 : 
-                (double)(values.StrStallCycles[asmMonitorId]) / (double)(busyCycles) * 100.0 ;
-            double linkUtil = 100.0 - linkStarve - linkStall ;
-            double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / 1000.0;
+                (double)(values.StrStallCycles[asmMonitorId]) / (double)(busyCycles) * one_hundred ;
+            double linkUtil = one_hundred - linkStarve - linkStall ;
+            double avgSizeInKB = ((values.StrDataBytes[asmMonitorId] / numTranx)) / one_thousand;
             
             fout << device->getUniqueDeviceName() << ","
                  << masterPort << ","
@@ -1193,9 +1193,9 @@ namespace xdp {
 	  {
 	    uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
 	    double totalWriteTime =
-	      (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	    double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
-	      (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+	      (double)(totalWriteBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	    double writeTransferRate = (totalWriteTime == zero) ? 0 :
+	      (double)(values.WriteBytes[AIMIndex]) / (one_thousand * totalWriteTime);
 
 	    fout << device->getUniqueDeviceName() << ","
 		 << "WRITE" << ","
@@ -1209,7 +1209,7 @@ namespace xdp {
 	      fout << writeTransferRate << "," ;
 	    }
 
-	    fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
 
 	    if (getFlowMode() == HW_EMU)
 	    {
@@ -1217,25 +1217,25 @@ namespace xdp {
 	    }
 	    else
 	    {
-	      fout << (totalWriteTime / 1e06) << "," ;
+	      fout << (totalWriteTime / one_million) << "," ;
 	    }
-	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
+	    fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
+	      fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	  if (values.ReadTranx[AIMIndex] > 0)
 	  {
 	    uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
 	    double totalReadTime =
-	      (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	    double readTransferRate = (totalReadTime == 0.0) ? 0 :
-	      (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+	      (double)(totalReadBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	    double readTransferRate = (totalReadTime == zero) ? 0 :
+	      (double)(values.ReadBytes[AIMIndex]) / (one_thousand * totalReadTime);
 
 	    fout << device->getUniqueDeviceName() << ","
 		 << "READ" << ","
@@ -1249,7 +1249,7 @@ namespace xdp {
 	      fout << readTransferRate << "," ;
 	    }
 
-	    fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
 
 	    if (getFlowMode() == HW_EMU)
 	    {
@@ -1257,16 +1257,16 @@ namespace xdp {
 	    }
 	    else
 	    {
-	      fout << (totalReadTime / 1e06) << "," ;
+	      fout << (totalReadTime / one_million) << "," ;
 	    }
-	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
+	    fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
 	    if (getFlowMode() == HW_EMU)
 	    {
 	      fout << "N/A" << "," << std::endl ;
 	    }
 	    else
 	    {
-	      fout << ((1000.0 * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
+	      fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	    }
 	  }
 	}
@@ -1340,9 +1340,9 @@ namespace xdp {
             if (values.WriteTranx[AIMIndex] > 0) {
               uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
 	      double totalWriteTime =
-	        (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	      double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
-	        (double)(values.WriteBytes[AIMIndex]) / (1000.0 * totalWriteTime);
+	        (double)(totalWriteBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	      double writeTransferRate = (totalWriteTime == zero) ? 0 :
+	        (double)(values.WriteBytes[AIMIndex]) / (one_thousand * totalWriteTime);
 
               fout << device->getUniqueDeviceName() << "," << "WRITE" << ","
                    << values.WriteTranx[AIMIndex] << "," ;
@@ -1353,28 +1353,28 @@ namespace xdp {
                 fout << writeTransferRate << "," ;
 	      }
 
-	      fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+	      fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
 
 	      if (getFlowMode() == HW_EMU) {
   	        fout << "N/A" << "," ;
 	      }
 	      else {
- 	        fout << (totalWriteTime / 1e06) << "," ;
+ 	        fout << (totalWriteTime / one_million) << "," ;
 	      }
-	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
+	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," << std::endl ;
 	      }
 	      else {
-	        fout << ((1000.0 * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
+	        fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	      }
 	    }
 	    if (values.ReadTranx[AIMIndex] > 0) {
  	      uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
 	      double totalReadTime =
-	        (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	      double readTransferRate = (totalReadTime == 0.0) ? 0 :
-	        (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+	        (double)(totalReadBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	      double readTransferRate = (totalReadTime == zero) ? 0 :
+	        (double)(values.ReadBytes[AIMIndex]) / (one_thousand * totalReadTime);
 
 	      fout << device->getUniqueDeviceName() << ","
 	 	   << "READ" << ","
@@ -1386,20 +1386,20 @@ namespace xdp {
 	        fout << readTransferRate << "," ;
 	      }
 
-	      fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+	      fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
 
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," ;
 	      }
 	      else {
-	        fout << (totalReadTime / 1e06) << "," ;
+	        fout << (totalReadTime / one_million) << "," ;
 	      }
-	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
+	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," << std::endl ;
 	      }
 	      else {
-	        fout << ((1000.0 * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
+	        fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	      }
 	    }
 	  }
@@ -1464,9 +1464,9 @@ namespace xdp {
             if (values.WriteTranx[AIMIndex] > 0) {
 	      uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
 	      double totalWriteTime =
-	        (double)(totalWriteBusyCycles) / (1000.0*xclbin->clockRateMHz);
-              double writeTransferRate = (totalWriteTime == 0.0) ? 0 :
-	        (double)(values.WriteBytes[AIMIndex]) / (1000.0*totalWriteTime);
+	        (double)(totalWriteBusyCycles) / (one_thousand*xclbin->clockRateMHz);
+              double writeTransferRate = (totalWriteTime == zero) ? 0 :
+	        (double)(values.WriteBytes[AIMIndex]) / (one_thousand*totalWriteTime);
 
               fout << device->getUniqueDeviceName() << "," << "WRITE" << ","
                    << values.WriteTranx[AIMIndex] << "," ;
@@ -1476,27 +1476,27 @@ namespace xdp {
 	      else {
 	        fout << writeTransferRate << "," ;
 	      }
-	      fout << ((double)(values.WriteBytes[AIMIndex] / 1.0e6)) << "," ;
+	      fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
               if (getFlowMode() == HW_EMU) {
                 fout << "N/A" << "," ;
               }
 	      else {
-	        fout << (totalWriteTime / 1e06) << "," ;
+	        fout << (totalWriteTime / one_million) << "," ;
 	      }
-	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / 1000.0 << "," ;
+	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," << std::endl ;
 	      }
 	      else {
-	        fout << ((1000.0 * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
+	        fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << "," << std::endl ;
 	      }
 	    }
 	    if (values.ReadTranx[AIMIndex] > 0) {
   	      uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
 	      double totalReadTime =
-	        (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz);
-	      double readTransferRate = (totalReadTime == 0.0) ? 0 :
-	        (double)(values.ReadBytes[AIMIndex]) / (1000.0 * totalReadTime);
+	        (double)(totalReadBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	      double readTransferRate = (totalReadTime == zero) ? 0 :
+	        (double)(values.ReadBytes[AIMIndex]) / (one_thousand * totalReadTime);
 
 	      fout << device->getUniqueDeviceName() << ","
 	  	   << "READ" << ","
@@ -1508,20 +1508,20 @@ namespace xdp {
 	        fout << readTransferRate << "," ;
 	      }
 
-	      fout << ((double)(values.ReadBytes[AIMIndex] / 1.0e6)) << "," ;
+	      fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
 
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," ;
 	      }
 	      else {
-	        fout << (totalReadTime / 1e06) << "," ;
+	        fout << (totalReadTime / one_million) << "," ;
 	      }
-	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / 1000.0 << "," ;
+	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
 	      if (getFlowMode() == HW_EMU) {
 	        fout << "N/A" << "," << std::endl ;
 	      }
 	      else {
-	        fout << ((1000.0 * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
+	        fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << "," << std::endl ;
 	      }
 	    }
 	  }
@@ -1576,9 +1576,9 @@ namespace xdp {
 	  uint64_t totalWriteBusyCycles = values.WriteBusyCycles[monitorId] ;
 
 	  double totalReadTime = 
-	    (double)(totalReadBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
+	    (double)(totalReadBusyCycles) / (one_thousand * xclbin->clockRateMHz) ;
 	  double totalWriteTime =
-	    (double)(totalWriteBusyCycles) / (1000.0 * xclbin->clockRateMHz) ;
+	    (double)(totalWriteBusyCycles) / (one_thousand * xclbin->clockRateMHz) ;
 
 	  // Use the name of the monitor to determine the port and memory
 	  std::string portName   = "" ;
@@ -1602,11 +1602,11 @@ namespace xdp {
 	    }
 	  }
 	  if (writeTranx > 0) {
-	    double transferRate = (totalWriteTime == 0.0) ? 0 :
-	      (double)(values.WriteBytes[monitorId]) / (1000.0 * totalWriteTime);
+	    double transferRate = (totalWriteTime == zero) ? 0 :
+	      (double)(values.WriteBytes[monitorId]) / (one_thousand * totalWriteTime);
 	    double aveBW =
-	      (100.0 * transferRate) / xclbin->maxWriteBW ;
-	    if (aveBW > 100.0) aveBW = 100.0 ;
+	      (one_hundred * transferRate) / xclbin->maxWriteBW ;
+	    if (aveBW > one_hundred) aveBW = one_hundred ;
 
 	    fout << device->getUniqueDeviceName() << ","
 		 << xclbin->cus[monitor->cuIndex]->getName() << "/"
@@ -1617,16 +1617,16 @@ namespace xdp {
 		 << writeTranx << ","
 		 << transferRate << ","
 		 << aveBW << ","
-		 << (double)(values.WriteBytes[monitorId] / writeTranx) / 1000.0 << ","
+		 << (double)(values.WriteBytes[monitorId] / writeTranx) / one_thousand << ","
 		 << (values.WriteLatency[monitorId] / writeTranx) << "," 
 		 << std::endl ;
 	  }
 	  if (readTranx > 0) {
-	      double transferRate = (totalReadTime == 0.0) ? 0 :
-		(double)(values.ReadBytes[monitorId]) / (1000.0 * totalReadTime);
+	      double transferRate = (totalReadTime == zero) ? 0 :
+		(double)(values.ReadBytes[monitorId]) / (one_thousand * totalReadTime);
 	      double aveBW =
-		(100.0 * transferRate) / xclbin->maxReadBW ;
-	      if (aveBW > 100.0) aveBW = 100.0 ;
+		(one_hundred * transferRate) / xclbin->maxReadBW ;
+	      if (aveBW > one_hundred) aveBW = one_hundred ;
 
 	      fout << device->getUniqueDeviceName() << ","
 		   << xclbin->cus[monitor->cuIndex]->getName() << "/"
@@ -1637,7 +1637,7 @@ namespace xdp {
 		   << readTranx << ","
 		   << transferRate << ","
 		   << aveBW << ","
-		   << (double)(values.ReadBytes[monitorId] / readTranx) / 1000.0 << ","
+		   << (double)(values.ReadBytes[monitorId] / readTranx) / one_thousand << ","
 		   << (values.ReadLatency[monitorId] / readTranx) << "," 
 		   << std::endl ;
 	  }
@@ -1705,15 +1705,15 @@ namespace xdp {
 	      aveBytesPerTransfer =
 		(double)(totalReadBytes + totalWriteBytes)/(double)(numTransfers);
 	      // TODO: Fix bit width calculation here
-	      transferEfficiency = (100.0 * aveBytesPerTransfer) / 4096 ; 
+	      transferEfficiency = (one_hundred * aveBytesPerTransfer) / 4096 ; 
 	      totalDataTransfer = totalReadBytes + totalWriteBytes ;
 	      auto totalBusyCycles =
 		values.ReadBusyCycles[AIMIndex]+values.WriteBusyCycles[AIMIndex];
 	      double totalTimeMSec = 
-		(double)(totalBusyCycles) /(1000.0 * xclbin->clockRateMHz) ;
+		(double)(totalBusyCycles) /(one_thousand * xclbin->clockRateMHz) ;
 	      totalTransferRate =
-		(totalTimeMSec == 0) ? 0.0 :
-		(double)(totalDataTransfer) / (1000.0 * totalTimeMSec) ;
+		(totalTimeMSec == 0) ? zero :
+		(double)(totalDataTransfer) / (one_thousand * totalTimeMSec) ;
 	    }
 	  }
 
@@ -1724,9 +1724,9 @@ namespace xdp {
 		 << numTransfers << ","
 		 << aveBytesPerTransfer << ","
 		 << transferEfficiency << ","
-		 << (double)(totalDataTransfer) / 1.0e6 << ","
-		 << (double)(totalWriteBytes) / 1.0e6 << ","
-		 << (double)(totalReadBytes) / 1.0e6 << ","
+		 << (double)(totalDataTransfer) / one_million << ","
+		 << (double)(totalWriteBytes) / one_million << ","
+		 << (double)(totalReadBytes) / one_million << ","
 		 << totalTransferRate << "," << std::endl ;
 	  }
 	}
@@ -1747,15 +1747,13 @@ namespace xdp {
       fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of reads: Reading Rate = (Buffer Size) / (Duration),\n";
     }
 
-    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostReads().begin() ;
-	 iter != (db->getStats()).getTopHostReads().end() ;
-	 ++iter) {
+    for (auto& iter : db->getStats().getTopHostReads()) {
       fout << "ENTRY:" ;
-      fout << (double)((*iter).startTime) / 1.0e6 << "," ;
-      fout << (double)((*iter).size) / 1000.0 << "," ;
+      fout << (double)((iter).startTime) / one_million << "," ;
+      fout << (double)((iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW) {
-        double durationMS = (double)((*iter).duration) / 1.0e6 ;
-        double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+        double durationMS = (double)((iter).duration) / one_million ;
+        double rate = ((double)((iter).size) / one_thousand) * durationMS ;
         fout << durationMS << "," ;
         fout << rate << "," ;
       }
@@ -1776,16 +1774,13 @@ namespace xdp {
       fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
     }
 
-    for (std::list<BufferTransferStats>::iterator iter = (db->getStats()).getTopHostWrites().begin() ;
-	 iter != (db->getStats()).getTopHostWrites().end() ;
-	 ++iter) {
-
+    for (auto& iter : db->getStats().getTopHostWrites()) {
       fout << "ENTRY:" ;
-      fout << (double)((*iter).startTime) / 1.0e6 << "," ;
-      fout << (double)((*iter).size) / 1000.0 << "," ;
+      fout << (double)((iter).startTime) / one_million << "," ;
+      fout << (double)((iter).size) / one_thousand << "," ;
       if (getFlowMode() == HW) {
-        double durationMS = (double)((*iter).duration) / 1.0e6 ;
-        double rate = ((double)((*iter).size) / 1000.0) * durationMS ;
+        double durationMS = (double)((iter).duration) / one_million ;
+        double rate = ((double)((iter).size) / one_thousand) * durationMS ;
         fout << durationMS << "," ;
         fout << rate << "," ;
       }
@@ -1831,10 +1826,10 @@ namespace xdp {
       fout << label       << ","
 	   << tooltip     << ","
 	   << iter.second << ","
-	   << (double)minDurations[iter.first] / 1e06 << ","
-	   << (double)maxDurations[iter.first] / 1e06 << ","
-	   << (double)totalDurations[iter.first] / 1e06<< ","
-	   << ((double)totalDurations[iter.first]/(double)(iter.second)) / 1e06 << ","
+	   << (double)minDurations[iter.first] / one_million << ","
+	   << (double)maxDurations[iter.first] / one_million << ","
+	   << (double)totalDurations[iter.first] / one_million<< ","
+	   << ((double)totalDurations[iter.first]/(double)(iter.second)) / one_million << ","
 	   << std::endl ;
     }
   }

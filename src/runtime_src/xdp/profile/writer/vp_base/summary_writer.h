@@ -84,6 +84,13 @@ namespace xdp {
     void writeHALAPICalls() ;
     void writeHALTransfers() ;
 
+    // Handy values used for conversion
+    const double zero         = 0.0 ;
+    const double one_hundred  = 100.0 ;
+    const double one_thousand = 1000.0 ;
+    const double one_million  = 1.0e06 ;
+    const double one_billion  = 1.0e09 ;
+
   public:
     XDP_EXPORT SummaryWriter(const char* filename) ;
     XDP_EXPORT SummaryWriter(const char* filename, VPDatabase* inst) ;
