@@ -48,7 +48,7 @@ void native_function_start(const char* functionName, unsigned long long int func
   (db->getDynamicInfo()).addUnsortedEvent(event);
   (db->getDynamicInfo()).markStart(static_cast<uint64_t>(functionID), event->getEventId()) ;
 
-  db->getStats().logFunctionCallStart(functionName, xrt_core::time_ns());
+  db->getStats().logFunctionCallStart(functionName, static_cast<double>(xrt_core::time_ns()));
   event->setTimestamp(static_cast<double>(xrt_core::time_ns())) ;
 }
 
@@ -56,7 +56,7 @@ extern "C"
 void native_function_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp)
 {
   xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
-  db->getStats().logFunctionCallEnd(functionName, timestamp) ;
+  db->getStats().logFunctionCallEnd(functionName, static_cast<double>(timestamp)) ;
 
   uint64_t start =
     (db->getDynamicInfo()).matchingStart(static_cast<uint64_t>(functionID)) ;
@@ -88,7 +88,7 @@ void native_sync_start(const char* functionName, unsigned long long int function
     xdp::nativeTimestamps[static_cast<uint64_t>(functionID)] = xrt_core::time_ns() ;
   }
 
-  db->getStats().logFunctionCallStart(functionName, xrt_core::time_ns());
+  db->getStats().logFunctionCallStart(functionName, static_cast<double>(xrt_core::time_ns()));
   event->setTimestamp(static_cast<double>(xrt_core::time_ns())) ;
 }
 
@@ -96,7 +96,7 @@ extern "C"
 void native_sync_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp, bool isWrite, unsigned long long int size)
 {
   xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
-  db->getStats().logFunctionCallEnd(functionName, timestamp) ;
+  db->getStats().logFunctionCallEnd(functionName, static_cast<double>(timestamp)) ;
 
   uint64_t startTimestamp = 0 ;
   uint64_t transferTime = 0 ;
