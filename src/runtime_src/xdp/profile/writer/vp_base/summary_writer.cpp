@@ -422,6 +422,7 @@ namespace xdp {
   void SummaryWriter::writeNativeAPICalls()
   {
     fout << "TITLE:Native API Calls\n" ;
+    fout << "SECTION:API Calls,Native API Calls\n" ;
     fout << "COLUMN:API Name,string,Name of Native XRT API,\n" ;
     fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
     fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
@@ -434,6 +435,7 @@ namespace xdp {
   void SummaryWriter::writeHALAPICalls()
   {
     fout << "TITLE:HAL API Calls\n" ;
+    fout << "SECTION:API Calls,HAL API Calls\n" ;
     fout << "COLUMN:API Name,string,Name of HAL XRT API,\n" ;
     fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
     fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
@@ -913,6 +915,7 @@ namespace xdp {
     if (hostReads.size() == 0) return ;
 
     fout << "TITLE:Host Reads from Global Memory\n" ;
+    fout << "SECTION:Host Data Transfer,Host Reads from Global Memory\n" ;
     fout << "COLUMN:Number of Reads,int,"
          << "Number of host reads (note: may contain OpenCL printf transfers),"
          << "\n" ;
@@ -977,6 +980,7 @@ namespace xdp {
     if (hostWrites.size() == 0) return ;
 
     fout << "TITLE:Host Writes to Global Memory\n" ;
+    fout << "SECTION:Host Data Transfer,Host Writes to Global Memory\n" ;
     fout << "COLUMN:Number of Writes,int,"
          << "Number of host writes,\n" ;
     fout << "COLUMN:Maximum Buffer Size (KB),float,"
@@ -1740,6 +1744,7 @@ namespace xdp {
       return ;
 
     fout << "TITLE:Top Memory Reads: Host from Global Memory\n" ;
+    fout << "SECTION:Host Data Transfer,Top Memory Reads\n" ;
     fout << "COLUMN:Start Time (ms),float,Start time of read transfer (in ms),\n" ;
     fout << "COLUMN:Buffer Size (KB),float,Size of read transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
@@ -1767,6 +1772,7 @@ namespace xdp {
       return ;
 
     fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
+    fout << "SECTION:Host Data Transfer,Top Memory Writes\n" ;
     fout << "COLUMN:Start Time (ms),float,Start time of write transfer (in ms),\n" ;
     fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
