@@ -16,11 +16,14 @@
 
 #define XDP_SOURCE
 
+#include "core/common/config_reader.h"
+
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
 
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_plugin.h"
 #include "xdp/profile/writer/opencl/opencl_summary_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 #ifdef _WIN32
 /* Disable warning for use of std::getenv */
@@ -33,8 +36,10 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
 
-    writers.push_back(new OpenCLSummaryWriter("opencl_summary.csv")) ;
-    (db->getStaticInfo()).addOpenedFile("opencl_summary.csv", "PROFILE_SUMMARY") ;
+    // Summary file now handled by generic summary writer in database
+    //writers.push_back(new OpenCLSummaryWriter("opencl_summary.csv")) ;
+    //(db->getStaticInfo()).addOpenedFile("opencl_summary.csv", "PROFILE_SUMMARY") ;
+    db->registerInfo(info::opencl_counters) ;
 
     // If the OpenCL device offload plugin isn't already loaded, this
     //  call will load the HAL device offload plugin and it will take

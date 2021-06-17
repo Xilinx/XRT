@@ -28,6 +28,11 @@ namespace xdp {
   {
   }
 
+  VPSummaryWriter::VPSummaryWriter(const char* filename, VPDatabase* inst) :
+    VPWriter(filename, inst)
+  {
+  }
+
   VPSummaryWriter::~VPSummaryWriter()
   {
   }

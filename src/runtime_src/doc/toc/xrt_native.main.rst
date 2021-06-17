@@ -11,12 +11,15 @@ Configuration APIs
    :members:
 
 
-Device and XCLBIN APIs
-~~~~~~~~~~~~~~~~~~~~~~
+Device APIs
+~~~~~~~~~~~
 
 .. doxygenclass:: xrt::device
    :project: XRT
    :members:
+
+XCLBIN APIs
+~~~~~~~~~~~
 
 .. doxygenclass:: xrt::xclbin
    :project: XRT
@@ -39,6 +42,27 @@ Kernel APIs
    :members:
 
 .. doxygenclass:: xrt::run
+   :project: XRT
+   :members:
+
+Custom IP APIs
+~~~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::ip
+   :project: XRT
+   :members:
+
+Info APIs
+~~~~~~~~~
+
+.. doxygennamespace:: xrt::info
+   :project: XRT
+   :members:
+   
+UUID APIs
+~~~~~~~~~
+
+.. doxygenclass:: xrt::uuid
    :project: XRT
    :members:
 

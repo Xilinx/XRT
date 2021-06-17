@@ -46,12 +46,12 @@ xrtIniStringSet(const char* key, const char* value)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -63,10 +63,10 @@ xrtIniUintSet(const char* key, unsigned int value)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }

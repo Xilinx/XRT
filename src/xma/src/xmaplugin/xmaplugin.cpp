@@ -543,6 +543,11 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     int32_t bo_idx = -1;
+    //With KDS2.0 ensure no outstanding command
+    while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
+        std::unique_lock<std::mutex> lk(priv1->m_mutex);
+        priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
+    }
 
     // Find an available execBO buffer
     uint32_t itr = 0;
@@ -611,6 +616,14 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (regmap_size >> 2) + 4;
+
+    //With KDS2.0 ensure no outstanding command
+    if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Unexpected error. Outstanding cmd found.", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+        priv1->execbo_locked = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
 
     if (priv1->num_cu_cmds != 0) {
 #ifdef __GNUC__
@@ -772,6 +785,11 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     bool expected = false;
     bool desired = true;
     int32_t bo_idx = -1;
+    //With KDS2.0 ensure no outstanding command
+    while (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
+        std::unique_lock<std::mutex> lk(priv1->m_mutex);
+        priv1->kernel_done_or_free.wait_for(lk, std::chrono::milliseconds(1));
+    }
 
     // Find an available execBO buffer
     uint32_t itr = 0;
@@ -840,6 +858,14 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
     cu_cmd->count = (regmap_size >> 2) + 4;
     
+    //With KDS2.0 ensure no outstanding command
+    if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Unexpected error. Outstanding cmd found.", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
+        priv1->execbo_locked = false;
+        if (return_code) *return_code = XMA_ERROR;
+        return cmd_obj_error;
+    }
+
     if (priv1->num_cu_cmds != 0) {
 #ifdef __GNUC__
 # pragma GCC diagnostic push
@@ -1308,7 +1334,7 @@ int32_t xma_plg_work_item_return_code(XmaSession s_handle, XmaCUCmdObj* cmd_obj_
             return XMA_ERROR;
         }
         cmd.cmd_finished = true;
-        cmd.return_code = 0;
+        //cmd.return_code = 0; As return_code is now shared with cmd_id1
         cmd.cmd_state = static_cast<XmaCmdState>(xma_cmd_state::completed);
         cmd.do_not_use1 = nullptr;
         auto itr_tmp2 = priv1->CU_error_cmds.find(cmd.cmd_id1);

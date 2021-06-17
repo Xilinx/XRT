@@ -27,9 +27,9 @@
 #ifdef XRT_ENABLE_AIE
 #include <sys/mman.h>
 #include "core/include/xrt.h"
-#include "core/edge/user/aie/aie.h"
 #include "core/edge/user/shim.h"
 #endif
+#include "core/common/message.h"
 
 // Default dma chunk size
 #define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
@@ -68,6 +68,8 @@ bool AIETraceOffload::initReadTrace()
     memIndex = deviceIntf->getAIETs2mmMemIndex(0); // all the AIE Ts2mm s will have same memory index selected
   } else {
     memIndex = 0;  // for now
+    gmioDMAInsts.clear();
+    gmioDMAInsts.resize(numStream);
   }
   for(uint64_t i = 0; i < numStream ; ++i) {
     buffers[i].boHandle = deviceIntf->allocTraceBuf(bufAllocSz, memIndex);
@@ -90,22 +92,25 @@ bool AIETraceOffload::initReadTrace()
       }
       zynqaie::Aie* aieObj = drv->getAieArray();
 
-      zynqaie::ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
-
       XAie_DevInst* devInst = aieObj->getDevInst();
 
-      XAie_LocType shimTile = XAie_TileLoc(traceGMIO->shimColumn, 0);
-      XAie_DmaDescInit(devInst, &(shimDmaObj->desc), shimTile);
+      gmioDMAInsts[i].gmioTileLoc = XAie_TileLoc(traceGMIO->shimColumn, 0);
+
+      int driverStatus = XAIE_OK;
+      driverStatus = XAie_DmaDescInit(devInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc);
+      if(XAIE_OK != driverStatus) {
+        throw std::runtime_error("Initialization of DMA Descriptor failed while setting up SHIM DMA channel for GMIO Trace offload");
+      }
 
       // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
       // Enable shim DMA channel, need to start first so the status is correct
       uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
       XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
 
-      XAie_DmaChannelEnable(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir);
+      XAie_DmaChannelEnable(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir);
 
       // Set AXI burst length
-      XAie_DmaSetAxi(&(shimDmaObj->desc), 0, traceGMIO->burstLength, 0, 0, 0);
+      XAie_DmaSetAxi(&(gmioDMAInsts[i].shimDmaInst), 0, traceGMIO->burstLength, 0, 0, 0);
 
       XAie_MemInst memInst;
 	  XAie_MemCacheProp prop = XAIE_MEM_CACHEABLE;
@@ -116,17 +121,17 @@ bool AIETraceOffload::initReadTrace()
       XAie_MemAttach(devInst,  &memInst, 0, 0, 0, prop, boExportHandle);
 
       char* vaddr = reinterpret_cast<char *>(mmap(NULL, bufAllocSz, PROT_READ | PROT_WRITE, MAP_SHARED, boExportHandle, 0));
-      XAie_DmaSetAddrLen(&(shimDmaObj->desc), (uint64_t)vaddr, bufAllocSz);
+      XAie_DmaSetAddrLen(&(gmioDMAInsts[i].shimDmaInst), (uint64_t)vaddr, bufAllocSz);
 
-      XAie_DmaEnableBd(&(shimDmaObj->desc));
+      XAie_DmaEnableBd(&(gmioDMAInsts[i].shimDmaInst));
 
       // For trace, use bd# 0 for S2MM0, use bd# 4 for S2MM1
       int bdNum = channelNumber * 4;
       // Write to shim DMA BD AxiMM registers
-      XAie_DmaWriteBd(devInst, &(shimDmaObj->desc), XAie_TileLoc(traceGMIO->shimColumn, 0), bdNum);
+      XAie_DmaWriteBd(devInst, &(gmioDMAInsts[i].shimDmaInst), gmioDMAInsts[i].gmioTileLoc, bdNum);
 
       // Enqueue BD
-      XAie_DmaChannelPushBdToQueue(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir, bdNum);
+      XAie_DmaChannelPushBdToQueue(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir, bdNum);
 
 #endif
     }
@@ -154,19 +159,14 @@ void AIETraceOffload::endReadTrace()
         return ;
       }
       zynqaie::Aie* aieObj = drv->getAieArray();
-
-      zynqaie::ShimDMA* shimDmaObj = &(aieObj->shim_dma[traceGMIO->shimColumn]);
-
       XAie_DevInst* devInst = aieObj->getDevInst();
-
-      XAie_LocType shimTile = XAie_TileLoc(traceGMIO->shimColumn, 0);
 
       // channelNumber: (0-S2MM0,1-S2MM1,2-MM2S0,3-MM2S1)
       // Enable shim DMA channel, need to start first so the status is correct
       uint16_t channelNumber = (traceGMIO->channelNumber > 1) ? (traceGMIO->channelNumber - 2) : traceGMIO->channelNumber;
       XAie_DmaDirection dir = (traceGMIO->channelNumber > 1) ? DMA_MM2S : DMA_S2MM;
 
-      XAie_DmaChannelReset(devInst, XAie_TileLoc(traceGMIO->shimColumn, 0), channelNumber, dir, DMA_CHANNEL_RESET);
+      XAie_DmaChannelDisable(devInst, gmioDMAInsts[i].gmioTileLoc, channelNumber, dir);
 #endif
       
     }

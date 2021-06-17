@@ -227,7 +227,8 @@ enum {
 #define	XOCL_XIIC		"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP		"icap"
-#define	XOCL_CLOCK		"clock"
+#define	XOCL_CLOCK_WIZ		"clock_wizard"
+#define	XOCL_CLOCK_COUNTER	"clock_freq_counter"
 #define	XOCL_AXIGATE		"axigate"
 #define	XOCL_MIG		"mig"
 #define	XOCL_XMC		"xmc"
@@ -294,7 +295,8 @@ enum subdev_id {
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_XFER_VERSAL,
-	XOCL_SUBDEV_CLOCK,
+	XOCL_SUBDEV_CLOCK_WIZ,
+	XOCL_SUBDEV_CLOCK_COUNTER,
 	XOCL_SUBDEV_AIM,
 	XOCL_SUBDEV_AM,
 	XOCL_SUBDEV_ASM,
@@ -1189,22 +1191,40 @@ struct xocl_subdev_map {
 		}
 
 
-#define XOCL_RES_CLOCK_LEGACY				\
+#define XOCL_RES_CLOCK_WIZ_LEGACY			\
 	((struct resource []) {				\
 		__RES_CLOCK_K1,				\
 		__RES_CLOCK_K2,				\
-		__RES_CLKFREQ_K1_K2			\
 	 })
 
-#define XOCL_DEVINFO_CLOCK_LEGACY			\
+#define XOCL_RES_CLOCK_COUNTER_LEGACY			\
+	((struct resource []) {				\
+		__RES_CLKFREQ_K1_K2,			\
+	 })
+
+#define XOCL_DEVINFO_CLOCK_WIZ_LEGACY			\
 	{						\
-		XOCL_SUBDEV_CLOCK,			\
-		XOCL_CLOCK,				\
-		XOCL_RES_CLOCK_LEGACY,			\
-		ARRAY_SIZE(XOCL_RES_CLOCK_LEGACY),	\
+		XOCL_SUBDEV_CLOCK_WIZ,			\
+		XOCL_CLOCK_WIZ,				\
+		XOCL_RES_CLOCK_WIZ_LEGACY,		\
+		ARRAY_SIZE(XOCL_RES_CLOCK_WIZ_LEGACY),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
+
+#define XOCL_DEVINFO_CLOCK_COUNTER_LEGACY		\
+	{						\
+		XOCL_SUBDEV_CLOCK_COUNTER,		\
+		XOCL_CLOCK_COUNTER,			\
+		XOCL_RES_CLOCK_COUNTER_LEGACY,		\
+		ARRAY_SIZE(XOCL_RES_CLOCK_COUNTER_LEGACY),\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define XOCL_DEVINFO_CLOCK_LEGACY			\
+		XOCL_DEVINFO_CLOCK_WIZ_LEGACY,		\
+		XOCL_DEVINFO_CLOCK_COUNTER_LEGACY
 
 #define __RES_PRP_IORES_MGMT				\
 		{					\
@@ -1277,24 +1297,43 @@ struct xocl_subdev_map {
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
 
-#define XOCL_RES_CLOCK_HBM				\
+#define XOCL_RES_CLOCK_WIZ_HBM				\
     ((struct resource []) {	     			\
 	__RES_CLOCK_K1,					\
 	__RES_CLOCK_K2,					\
 	__RES_CLOCK_HBM,				\
+     })
+
+#define XOCL_RES_CLOCK_COUNTER_HBM			\
+    ((struct resource []) {	     			\
 	__RES_CLKFREQ_K1_K2,				\
 	__RES_CLKFREQ_HBM,				\
      })
 
-#define XOCL_DEVINFO_CLOCK_HBM				\
+#define XOCL_DEVINFO_CLOCK_WIZ_HBM			\
      {							\
-	 XOCL_SUBDEV_CLOCK,				\
-	 XOCL_CLOCK,					\
-	 XOCL_RES_CLOCK_HBM,				\
-	 ARRAY_SIZE(XOCL_RES_CLOCK_HBM),		\
+	 XOCL_SUBDEV_CLOCK_WIZ,				\
+	 XOCL_CLOCK_WIZ,				\
+	 XOCL_RES_CLOCK_WIZ_HBM,			\
+	 ARRAY_SIZE(XOCL_RES_CLOCK_WIZ_HBM),		\
 	 .level = XOCL_SUBDEV_LEVEL_PRP,		\
 	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,	 	\
      }
+
+#define XOCL_DEVINFO_CLOCK_COUNTER_HBM			\
+     {							\
+	 XOCL_SUBDEV_CLOCK_COUNTER,			\
+	 XOCL_CLOCK_COUNTER,				\
+	 XOCL_RES_CLOCK_COUNTER_HBM,			\
+	 ARRAY_SIZE(XOCL_RES_CLOCK_COUNTER_HBM),	\
+	 .level = XOCL_SUBDEV_LEVEL_PRP,		\
+	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,	 	\
+     }
+
+#define XOCL_DEVINFO_CLOCK_HBM				\
+		XOCL_DEVINFO_CLOCK_WIZ_HBM,		\
+		XOCL_DEVINFO_CLOCK_COUNTER_HBM		\
+	
 
 #define XOCL_RES_PRP_IORES_MGMT_SMARTN			\
 	((struct resource []) {				\

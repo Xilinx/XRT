@@ -67,6 +67,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_ioctl.c
   xocl/userpf/xocl_sysfs.c
   xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl_errors.h
   xocl/userpf/xocl_errors.c
   xocl/userpf/xocl_kds.c
   xocl/userpf/xocl.dracut.conf
@@ -202,7 +203,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/xiic.c
   xocl/subdev/mailbox.c
   xocl/subdev/icap.c
-  xocl/subdev/clock.c
+  xocl/subdev/clock_wiz.c
+  xocl/subdev/clock_counter.c
   xocl/subdev/iores.c
   xocl/subdev/axigate.c
   xocl/subdev/mig.c

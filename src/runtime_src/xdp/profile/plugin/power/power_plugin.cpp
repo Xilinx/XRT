@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/power/power_plugin.h"
 #include "xdp/profile/writer/power/power_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
 #include "core/common/config_reader.h"
@@ -57,6 +58,7 @@ namespace xdp {
     XDPPlugin(), keepPolling(true), pollingInterval(20)
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::power) ;
 
     pollingInterval = xrt_core::config::get_power_profile_interval_ms() ;
    

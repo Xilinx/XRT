@@ -22,7 +22,6 @@ set(XRT_XDP_APPDEBUG_DIR               "${CMAKE_CURRENT_SOURCE_DIR}/appdebug")
 set(XRT_XDP_DEBUG_DIR                  "${CMAKE_CURRENT_SOURCE_DIR}/debug")
 set(XRT_XDP_PROFILE_DIR                "${CMAKE_CURRENT_SOURCE_DIR}/profile")
 set(XRT_XDP_PROFILE_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin")
-set(XRT_XDP_PROFILE_XMA_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/xma")
 set(XRT_XDP_PROFILE_OCL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/ocl")
 set(XRT_XDP_PROFILE_HAL_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal")
 set(XRT_XDP_PROFILE_HAL_API_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/hal_api_interface")
@@ -134,11 +133,6 @@ file(GLOB XRT_XDP_PROFILE_OCL_PLUGIN_FILES
   "${XRT_XDP_PROFILE_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_OCL_PLUGIN_DIR}/*.cpp"
-  )
-
-file(GLOB XRT_XDP_PROFILE_XMA_PLUGIN_FILES
-  "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.h"
-  "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/*.cpp"
   )
 
 file(GLOB XRT_XDP_PROFILE_HAL_PLUGIN_FILES
@@ -395,11 +389,6 @@ install (TARGETS xdp_debug_plugin
                  xdp_noc_plugin
                  xdp_vart_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
-)
-
-install (FILES "${XRT_XDP_PROFILE_XMA_PLUGIN_DIR}/xma_profile.h"
-  DESTINATION ${XRT_INSTALL_INCLUDE_DIR}
-  COMPONENT ${XRT_DEV_COMPONENT}
 )
 
 # Only install these files for PCIe device for now, which is .

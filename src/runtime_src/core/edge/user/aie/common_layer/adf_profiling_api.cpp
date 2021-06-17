@@ -479,8 +479,6 @@ err_code profiling::stop(std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquire
         }
         else if (auto pBroadcastRsc = dynamic_cast<xaiefal::XAieBroadcast*>(acquiredResource.get()))
         {
-            //FIXME xaiefal::XAieBroadcast::getChannel is in the latest petalinux but not yet in internal_platform
-            /*
             std::vector<XAie_LocType> tileLocs;
             XAie_ModuleType startModule, endModule;
             u8 broadcastId = (u8)pBroadcastRsc->getBc();
@@ -522,7 +520,6 @@ err_code profiling::stop(std::vector<std::shared_ptr<xaiefal::XAieRsc>>& acquire
                 //east shim tile switch A
                 driverStatus |= XAie_EventBroadcastUnblockDir(config_manager::s_pDevInst, eastTileLoc, XAIE_PL_MOD, XAIE_EVENT_SWITCH_A, (u8)broadcastId, XAIE_EVENT_BROADCAST_EAST | XAIE_EVENT_BROADCAST_NORTH | XAIE_EVENT_BROADCAST_SOUTH); // unblock east, north & south
             }
-            */
         }
 
         if (!fal_util::release(acquiredResource))

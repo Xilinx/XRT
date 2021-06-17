@@ -23,6 +23,7 @@
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/device/tracedefs.h"
 
 #include "xdp/profile/database/database.h"
@@ -37,6 +38,7 @@ namespace xdp {
   HALPlugin::HALPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::hal) ;
 
     std::string version = "1.1" ;
 

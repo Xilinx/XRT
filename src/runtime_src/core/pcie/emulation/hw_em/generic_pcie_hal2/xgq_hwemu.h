@@ -46,6 +46,7 @@
 #include <thread>
 #include <vector>
 
+#include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
 #include "xgq.h"
@@ -54,11 +55,11 @@ namespace xclhwemhal2 {
   class HwEmShim;
 }
 
-#define XRT_QUEUE1_SUB_BASE    0x0
-#define XRT_QUEUE1_COM_BASE    (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM)
+constexpr uint64_t XRT_QUEUE1_SUB_BASE = 0x7B000; // hard code for now 512K - 20K
+constexpr uint64_t XRT_QUEUE1_COM_BASE = (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM);
 
-#define XRT_XGQ_SUB_BASE       0x1040000
-#define XRT_XGQ_COM_BASE       0x1030000
+constexpr uint64_t XRT_XGQ_SUB_BASE = 0x1040000;
+constexpr uint64_t XRT_XGQ_COM_BASE = 0x1030000;
 
 namespace hwemu {
 
@@ -101,7 +102,7 @@ namespace hwemu {
       void     update_doorbell();
       uint16_t check_doorbell();
       int      submit_cmd(xgq_cmd *xcmd);
-      void     read_completion(xrt_com_queue_entry& ccmd);
+      void     read_completion(xrt_com_queue_entry& ccmd, uint32_t tail);
       void     clear_sub_slot_state(uint64_t sub_slot);
       void     iowrite32_ctrl(uint32_t addr, uint32_t data);
       void     iowrite32_mem(uint32_t addr, uint32_t data);
@@ -114,11 +115,11 @@ namespace hwemu {
 
       uint64_t        xgq_sub_base;
       uint64_t        xgq_com_base;
-      uint64_t        sub_head;
-      uint64_t        sub_tail;
+      uint32_t        sub_head;
+      uint32_t        sub_tail;
       uint64_t        sub_base;
-      uint64_t        com_head;
-      uint64_t        com_tail;
+      uint32_t        com_head;
+      uint32_t        com_tail;
       uint64_t        com_base;
 
       std::list<xgq_cmd*>          pending_cmds;
@@ -149,13 +150,21 @@ namespace hwemu {
 
       uint32_t    opcode();
       void        set_state(enum ert_cmd_state state);
-      int         convert_bo(xclemulation::drm_xocl_bo *bo);
       uint32_t    payload_size();
+      bool        is_ertpkt();
+
+      int         convert_bo(xclemulation::drm_xocl_bo *bo);
+      int         load_xclbin(xrt::bo& xbo, char *buf, size_t size);
+
       uint32_t    xcmd_size();
 
       uint16_t              cmdid;
       std::vector<uint32_t> sq_buf;
       struct ert_packet     *ert_pkt;
+      int                   rval;
+
+      std::mutex              cmd_mutex;
+      std::condition_variable cmd_cv;
 
       //! Static member varibale
       //  to get the unique ID for each command
@@ -175,6 +184,7 @@ namespace hwemu {
       ~xocl_xgq();
 
       int    add_exec_buffer(xclemulation::drm_xocl_bo *buf);
+      int    load_xclbin(char *buf, size_t size);
 
       // TODO support multiple queues
       xgq_queue queue;

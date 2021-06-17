@@ -95,7 +95,9 @@ py::class_<xrt::device>(m, "device")
 py::class_<xrt::run>(m, "run")
     .def(py::init<>())
     .def(py::init<const xrt::kernel &>())
-    .def("start", &xrt::run::start)
+    .def("start", [](xrt::run& r){
+                       r.start();
+                    })
     .def("set_arg", [](xrt::run &r, int i, xrt::bo & item){
                         r.set_arg(i, item);
                     })

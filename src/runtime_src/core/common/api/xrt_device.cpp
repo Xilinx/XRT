@@ -329,6 +329,7 @@ xrtDeviceOpen(unsigned int index)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -346,6 +347,7 @@ xrtDeviceOpenByBDF(const char* bdf)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -364,12 +366,12 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -385,12 +387,12 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -406,12 +408,12 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -426,12 +428,12 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -446,12 +448,12 @@ xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -467,12 +469,12 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return 1;
   }
+  return -1;
 }
 
 xclDeviceHandle
@@ -486,6 +488,7 @@ xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -510,6 +513,7 @@ xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());

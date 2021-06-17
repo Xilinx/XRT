@@ -54,7 +54,7 @@ namespace hwemu {
   {
     stop = false;
     sub_head = 0;
-    sub_tail = 0x1000; // temp solution to indicate a new entry by setting bit 5 to 1
+    sub_tail = 0;
     com_head = 0;
     com_tail = 0;
     qid = 0;
@@ -105,7 +105,7 @@ namespace hwemu {
     if (xcmd->xcmd_size() > slot_size)
       return -EINVAL;
 
-    uint64_t addr = sub_base + (sub_tail & 0x7FF) * slot_size;
+    uint64_t addr = sub_base + (sub_tail & XRT_QUEUE1_SLOT_MASK) * slot_size;
     for (int i = xcmd->sq_buf.size() - 1; i >= 0; i--)
       iowrite32_mem(addr + i * 4, xcmd->sq_buf.at(i));
 
@@ -114,15 +114,20 @@ namespace hwemu {
     return 0;
   }
 
-  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd)
+  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd, uint32_t tail)
   {
+    auto slot = tail & XRT_QUEUE1_SLOT_MASK;
     for (uint32_t i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
-      ccmd.data[i] = ioread32_mem(com_base + com_tail * XRT_COM_Q1_SLOT_SIZE + i * 4);
+      ccmd.data[i] = ioread32_mem(com_base + slot * XRT_COM_Q1_SLOT_SIZE + i * 4);
   }
 
+  // Update XGQ submission queue tail pointer.
+  // The sub_tail is a 32 bits integer that points to the first empty slot
+  // in the queue. The consumer should mask this value with (slot_size - 1)
+  // and handle new slots to right before this slot.
   void xgq_queue::update_doorbell()
   {
-    iowrite32_ctrl(xgq_sub_base, sub_tail - 1);
+    iowrite32_ctrl(xgq_sub_base, sub_tail);
   }
 
   void xgq_queue::clear_sub_slot_state(uint64_t sub_slot)
@@ -134,8 +139,8 @@ namespace hwemu {
   {
     while (1) {
       uint32_t data = ioread32_ctrl(xgq_com_base);
-      if (data & 0x1000)
-        return data & 0xFFFF;
+      if (data != com_tail)
+        return data;
     }
   }
 
@@ -149,6 +154,7 @@ namespace hwemu {
         // TODO Handle submission queue full
         submit_cmd(xcmd);
         submitted_cmds[xcmd->cmdid] = xcmd;
+        std::cout << "Info: command " << xcmd->cmdid << " submitted." << std::endl;
       }
       update_doorbell();
       pending_cmds.clear();
@@ -166,27 +172,43 @@ namespace hwemu {
 
       while (!submitted_cmds.empty()) {
         auto tail = check_doorbell();
-        uint16_t slot;
-        for (slot = com_tail; slot <= (tail & 0x7FF); slot++) {
+        uint32_t slot = com_tail;
+        for (;;) {
           xrt_com_queue_entry ccmd;
-          read_completion(ccmd);
+          read_completion(ccmd, slot);
 
           auto scmd = submitted_cmds[ccmd.cid];
           if (scmd == nullptr) {
-            printf("Error: completion command not found.\n");
+            std::cout << "Error: completion command not found." << std::endl;
             return -ENODEV;
-          }
+          } else
+            std::cout << "Info: command " << scmd->cmdid << " completed." << std::endl;
 
           // TODO Error handling
-          scmd->set_state(ERT_CMD_STATE_COMPLETED);
 
           // Update submission queue header
-          for (uint64_t sub_slot = sub_tail; sub_slot <= ccmd.sqhead; sub_slot++)
-            clear_sub_slot_state(sub_slot);
-          sub_head = ccmd.sqhead;
+          uint64_t sub_slot;
+          for (sub_slot = sub_tail; (sub_slot & XRT_QUEUE1_SLOT_MASK) != ccmd.sqhead; sub_slot++)
+            clear_sub_slot_state(sub_slot & XRT_QUEUE1_SLOT_MASK);
+          sub_head = sub_slot;
 
-          xgqp->cmd_pool.destroy(scmd);
+          if (scmd->is_ertpkt()) {
+            if (ccmd.cstate == XRT_CMD_STATE_COMPLETED)
+              scmd->set_state(ERT_CMD_STATE_COMPLETED);
+            else
+              scmd->set_state(ERT_CMD_STATE_ERROR);
+            xgqp->cmd_pool.destroy(scmd);
+          } else {
+            scmd->rval = ccmd.cstate == XRT_CMD_STATE_COMPLETED ? 0 : -1;
+            // Notify command completion
+            scmd->cmd_cv.notify_all();
+          }
+
           submitted_cmds.erase(ccmd.cid);
+
+          slot++;
+          if (slot == tail)
+            break;
         }
         com_tail = slot;
       }
@@ -202,6 +224,12 @@ namespace hwemu {
   {
     cmdid = ++next_uid; //! Assign unique ID for each new command
     ert_pkt = nullptr;
+    rval = 0;
+  }
+
+  bool xgq_cmd::is_ertpkt()
+  {
+    return (!(ert_pkt == nullptr));
   }
 
   uint32_t xgq_cmd::opcode()
@@ -232,7 +260,7 @@ namespace hwemu {
       case ERT_CONFIGURE:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_configure *cmdp = reinterpret_cast<xrt_cmd_configure *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_configure *>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_CONFIGURE;
           cmdp->state = 1;
@@ -245,7 +273,7 @@ namespace hwemu {
       case ERT_START_CU:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_start_cuidx *cmdp = reinterpret_cast<xrt_cmd_start_cuidx *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_start_cuidx *>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_START_PL_CUIDX;
           cmdp->state = 1;
@@ -260,7 +288,7 @@ namespace hwemu {
       case ERT_EXIT:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          xrt_cmd_exit_ert *cmdp = reinterpret_cast<xrt_cmd_exit_ert*>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xrt_cmd_exit_ert*>(sq_buf.data());
 
           cmdp->opcode = XRT_CMD_OP_EXIT_ERT;
           cmdp->state = 1;
@@ -270,9 +298,29 @@ namespace hwemu {
         break;
 
       default:
-        printf("Error: Unknown command.\n");
+        std::cout << "Error: Unknown command." << std::endl;
         return -EINVAL;
     }
+
+    return 0;
+  }
+
+  int xgq_cmd::load_xclbin(xrt::bo& xbo, char *buf, size_t size)
+  {
+    auto data = xbo.map();
+    memcpy(data, buf, size);
+    auto paddr = static_cast<uint32_t>(xbo.address());
+
+    sq_buf.resize(sizeof(xrt_cmd_load_xclbin));
+    auto *cmdp = reinterpret_cast<xrt_cmd_load_xclbin *>(sq_buf.data());
+
+    cmdp->opcode = XRT_CMD_OP_LOAD_XCLBIN;
+    cmdp->state = 1;
+    cmdp->cid = cmdid;
+    cmdp->count = sizeof(xrt_cmd_load_xclbin) - XGQ_SUB_HEADER_SIZE;
+    cmdp->address = paddr;
+    cmdp->size = size;
+    cmdp->addr_type = XRT_CMD_ADD_TYPE_SLAVEBRIDGE;
 
     return 0;
   }
@@ -303,6 +351,36 @@ namespace hwemu {
     queue.sub_cv.notify_all();
 
     return 0;
+  }
+
+  int xocl_xgq::load_xclbin(char *buf, size_t size)
+  {
+    xrt::device xdev(device->getMCoreDevice());
+    xrt::bo xbo(xdev, size, xrt::bo::flags::host_only, 0);
+
+    xgq_cmd *xcmd = cmd_pool.construct();
+    if (!xcmd)
+      return 1;
+
+    if (xcmd->load_xclbin(xbo, buf, size))
+      return 1;
+
+    {
+      std::lock_guard<std::mutex> lk(queue.queue_mutex);
+      queue.pending_cmds.push_back(xcmd);
+    }
+    queue.sub_cv.notify_all();
+
+    {
+      // Wait for command completion
+      std::unique_lock<std::mutex> lk(xcmd->cmd_mutex);
+      xcmd->cmd_cv.wait(lk);
+    }
+
+    int rval = xcmd->rval;
+    cmd_pool.destroy(xcmd);
+
+    return rval;
   }
 
 } // namespace hwemu

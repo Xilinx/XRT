@@ -84,7 +84,6 @@ rh_package_list()
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
-     opencv \
      openssl-devel \
      pciutils \
      perl \
@@ -111,10 +110,20 @@ rh_package_list()
         )
     fi
 
-    # Centos8
     if [ $MAJOR == 8 ]; then
 
         RH_LIST+=(systemd-devel)
+
+        if [ $FLAVOR == "centos" ]; then
+            #fix cmake issue in centos 8.*
+            RH_LIST+=(\
+            libarchive \
+            )
+        else
+            RH_LIST+=(\
+            opencv \
+            )
+        fi
 
         if [ $docker == 0 ]; then
             RH_LIST+=(\
@@ -130,6 +139,7 @@ rh_package_list()
          libudev-devel \
          kernel-devel-$(uname -r) \
          kernel-headers-$(uname -r) \
+         opencv \
          openssl-static \
          protobuf-static \
         )
@@ -415,8 +425,8 @@ prep_rhel8()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	 yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        yum check-update
     fi
 
     echo "Enabling CodeReady-Builder repository..."
@@ -428,15 +438,23 @@ prep_centos8()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	     yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        yum check-update
     fi
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-    echo "Enabling PowerTools repo for CentOS8 ..."
+
     yum install -y dnf-plugins-core
-    yum config-manager --set-enabled PowerTools
-    yum config-manager --set-enabled AppStream
+
+    echo "Enabling PowerTools and AppStream repo for CentOS8 ..."
+    #minor version of CentOs
+    MINOR=`cat /etc/centos-release | awk -F. '{ print $2 }'`
+    if [ $MINOR -gt "2" ]; then
+        yum config-manager --set-enabled powertools
+        yum config-manager --set-enabled appstream
+    else
+        yum config-manager --set-enabled PowerTools
+        yum config-manager --set-enabled AppStream
+    fi
+      
 }
 
 prep_centos()

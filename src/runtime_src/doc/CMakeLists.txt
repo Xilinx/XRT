@@ -9,6 +9,8 @@ file(GLOB XRT_ZOCL_IOCTL_H ${XRT_RUNTIME_SRC_DIR}/core/edge/include/zynq_ioctl.h
 file(GLOB XRT_DEVICE_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h)
 file(GLOB XRT_BO_H         ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h)
 file(GLOB XRT_KERNEL_H     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h)
+file(GLOB XRT_UUID_H       ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h)
+file(GLOB XRT_IP_H         ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ip.h)
 file(GLOB XRT_XCLBIN_H     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h)
 file(GLOB XRT_INI_H        ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h)
 file(GLOB XRT_XRT_H        ${XRT_RUNTIME_SRC_DIR}/core/include/xrt.h)
@@ -49,6 +51,8 @@ else()
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_device.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_bo.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_kernel.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/xrt/xrt_uuid.h
+    ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ip.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_xclbin.h
     ${XRT_RUNTIME_SRC_DIR}/core/include/experimental/xrt_ini.h
     )
@@ -64,6 +68,7 @@ else()
     COMMAND echo "EXTRACT_ALL = YES" >> ${DOXYFILE}
     COMMAND echo "PREDEFINED = __cplusplus XCL_DRIVER_DLLESPEC=" >> ${DOXYFILE}
     COMMAND echo "EXPAND_AS_DEFINED = XCL_DRIVER_DLLESPEC" >> ${DOXYFILE}
+    COMMAND echo "IMAGE_PATH = ${XRT_DOC_TOC_DIR}" >> ${DOXYFILE}
     COMMAND echo "INPUT = ${DOXY_INPUT}" >> ${DOXYFILE}
     COMMAND ${DOXYGEN_EXECUTABLE}
     )
@@ -105,6 +110,18 @@ else ()
   add_custom_command(OUTPUT core/xrt_kernel.rst
     DEPENDS ${XRT_KERNEL_H}
     COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_KERNEL_H} > core/xrt_kernel.rst
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_uuid.rst
+    DEPENDS ${XRT_UUID_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_UUID_H} > core/xrt_uuid.rst
+    VERBATIM
+    )
+
+  add_custom_command(OUTPUT core/xrt_ip.rst
+    DEPENDS ${XRT_IP_H}
+    COMMAND ${KERNELDOC_EXECUTABLE} -rst ${XRT_IP_H} > core/xrt_ip.rst
     VERBATIM
     )
 
@@ -197,6 +214,8 @@ else ()
     core/xrt_device.rst
     core/xrt_bo.rst
     core/xrt_kernel.rst
+    core/xrt_uuid.rst
+    core/xrt_ip.rst
     core/xrt_xclbin.rst
     core/xrt_ini.rst
     core/xrt.rst
