@@ -42,25 +42,51 @@ using namespace xclhwemhal2;
 
 namespace hwemu {
 
-  xgq_queue::xgq_queue(HwEmShim* in_dev, xocl_xgq* in_xgqp, uint16_t in_nslot, uint32_t in_slot_size, uint64_t in_xgq_sub_base, uint64_t in_xgq_com_base, uint64_t in_sub_base, uint64_t in_com_base)
+  void xgq_hwemu_mem_write32(uint64_t io_hdl, uint64_t addr, uint32_t val)
+  {
+    auto device = reinterpret_cast<xclhwemhal2::HwEmShim *>(io_hdl);
+    device->xclWrite(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&val), 4);
+  }
+
+  uint32_t xgq_hwemu_mem_read32(uint64_t io_hdl, uint64_t addr)
+  {
+    uint32_t value;
+    auto device = reinterpret_cast<xclhwemhal2::HwEmShim *>(io_hdl);
+    device->xclRead(XCL_ADDR_SPACE_DEVICE_RAM, addr, (void*)(&value), 4);
+    return value;
+  }
+
+  void xgq_hwemu_reg_write32(uint64_t io_hdl, uint64_t addr, uint32_t val)
+  {
+    auto device = reinterpret_cast<xclhwemhal2::HwEmShim *>(io_hdl);
+    device->xclWrite(XCL_ADDR_KERNEL_CTRL, addr, (void*)(&val), 4);
+  }
+
+  uint32_t xgq_hwemu_reg_read32(uint64_t io_hdl, uint64_t addr)
+  {
+    uint32_t value;
+    auto device = reinterpret_cast<xclhwemhal2::HwEmShim *>(io_hdl);
+    device->xclRead(XCL_ADDR_KERNEL_CTRL, addr, (void *)(&value), 4);
+    return value;
+  }
+
+  xgq_queue::xgq_queue(HwEmShim* in_dev, xocl_xgq* in_xgqp, uint16_t in_nslot, uint32_t in_slot_size, uint64_t in_xgq_sub_base, uint64_t in_xgq_com_base)
     : device(in_dev)
     , xgqp(in_xgqp)
     , nslot(in_nslot)
     , slot_size(in_slot_size)
     , xgq_sub_base(in_xgq_sub_base)
     , xgq_com_base(in_xgq_com_base)
-    , sub_base(in_sub_base)
-    , com_base(in_com_base)
   {
     stop = false;
-    sub_head = 0;
-    sub_tail = 0;
-    com_head = 0;
-    com_tail = 0;
     qid = 0;
 
     sub_thread = new std::thread(&xgq_queue::submit_worker, this);
     com_thread = new std::thread(&xgq_queue::complete_worker, this);
+
+    size_t ring_len = XRT_QUEUE1_RING_LENGTH;
+    auto devp = reinterpret_cast<uint64_t>(device);
+    xgq_alloc(&queue, false, devp, XRT_QUEUE1_RING_BASE, &ring_len, slot_size, xgq_sub_base, xgq_com_base);
   }
 
   xgq_queue::~xgq_queue()
@@ -105,20 +131,24 @@ namespace hwemu {
     if (xcmd->xcmd_size() > slot_size)
       return -EINVAL;
 
-    uint64_t addr = sub_base + (sub_tail & XRT_QUEUE1_SLOT_MASK) * slot_size;
-    for (int i = xcmd->sq_buf.size() - 1; i >= 0; i--)
-      iowrite32_mem(addr + i * 4, xcmd->sq_buf.at(i));
+    uint64_t slot_addr = 0;
+    int rval = xgq_produce(&queue, &slot_addr);
+    if (rval)
+      return rval;
 
-    sub_tail++;
+    for (int i = xcmd->sq_buf.size() - 1; i >= 0; i--)
+      iowrite32_mem(slot_addr + i * 4, xcmd->sq_buf.at(i));
 
     return 0;
   }
 
-  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd, uint32_t tail)
+  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd, uint64_t addr)
   {
-    auto slot = tail & XRT_QUEUE1_SLOT_MASK;
     for (uint32_t i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
-      ccmd.data[i] = ioread32_mem(com_base + slot * XRT_COM_Q1_SLOT_SIZE + i * 4);
+      ccmd.data[i] = ioread32_mem(addr + i * 4);
+
+    // Write 0 to first word to make sure the cmd state is not NEW
+    iowrite32_mem(addr, 0);
   }
 
   // Update XGQ submission queue tail pointer.
@@ -127,21 +157,7 @@ namespace hwemu {
   // and handle new slots to right before this slot.
   void xgq_queue::update_doorbell()
   {
-    iowrite32_ctrl(xgq_sub_base, sub_tail);
-  }
-
-  void xgq_queue::clear_sub_slot_state(uint64_t sub_slot)
-  {
-    iowrite32_mem(sub_base + sub_slot, 0);
-  }
-
-  uint16_t xgq_queue::check_doorbell()
-  {
-    while (1) {
-      uint32_t data = ioread32_ctrl(xgq_com_base);
-      if (data != com_tail)
-        return data;
-    }
+    xgq_notify_peer_produced(&queue);
   }
 
   int xgq_queue::submit_worker()
@@ -152,7 +168,11 @@ namespace hwemu {
 
       for (auto& xcmd : pending_cmds) {
         // TODO Handle submission queue full
-        submit_cmd(xcmd);
+        int rval = submit_cmd(xcmd);
+	if (rval) {
+          std::cout << "Error: fail to submit command " << xcmd->cmdid << ": rval is " << rval << std::endl;
+          break;
+        }
         submitted_cmds[xcmd->cmdid] = xcmd;
         std::cout << "Info: command " << xcmd->cmdid << " submitted." << std::endl;
       }
@@ -171,46 +191,36 @@ namespace hwemu {
       com_cv.wait(lck, [this] { return !submitted_cmds.empty(); });
 
       while (!submitted_cmds.empty()) {
-        auto tail = check_doorbell();
-        uint32_t slot = com_tail;
-        for (;;) {
-          xrt_com_queue_entry ccmd;
-          read_completion(ccmd, slot);
+        uint64_t slot_addr = 0;
+        int rval = xgq_consume(&queue, &slot_addr);
+        if (rval)
+          continue;
 
-          auto scmd = submitted_cmds[ccmd.cid];
-          if (scmd == nullptr) {
-            std::cout << "Error: completion command not found." << std::endl;
-            return -ENODEV;
-          } else
-            std::cout << "Info: command " << scmd->cmdid << " completed." << std::endl;
+        xrt_com_queue_entry ccmd;
+        read_completion(ccmd, slot_addr);
 
-          // TODO Error handling
+        auto scmd = submitted_cmds[ccmd.cid];
+        if (scmd == nullptr) {
+          std::cout << "Error: completion command not found." << std::endl;
+          return -ENODEV;
+        } else
+          std::cout << "Info: command " << scmd->cmdid << " completed." << std::endl;
 
-          // Update submission queue header
-          uint64_t sub_slot;
-          for (sub_slot = sub_tail; (sub_slot & XRT_QUEUE1_SLOT_MASK) != ccmd.sqhead; sub_slot++)
-            clear_sub_slot_state(sub_slot & XRT_QUEUE1_SLOT_MASK);
-          sub_head = sub_slot;
-
-          if (scmd->is_ertpkt()) {
-            if (ccmd.cstate == XRT_CMD_STATE_COMPLETED)
-              scmd->set_state(ERT_CMD_STATE_COMPLETED);
-            else
-              scmd->set_state(ERT_CMD_STATE_ERROR);
-            xgqp->cmd_pool.destroy(scmd);
-          } else {
-            scmd->rval = ccmd.cstate == XRT_CMD_STATE_COMPLETED ? 0 : -1;
-            // Notify command completion
-            scmd->cmd_cv.notify_all();
-          }
-
-          submitted_cmds.erase(ccmd.cid);
-
-          slot++;
-          if (slot == tail)
-            break;
+        if (scmd->is_ertpkt()) {
+          if (ccmd.cstate == XRT_CMD_STATE_COMPLETED)
+            scmd->set_state(ERT_CMD_STATE_COMPLETED);
+          else
+            scmd->set_state(ERT_CMD_STATE_ERROR);
+          xgqp->cmd_pool.destroy(scmd);
+        } else {
+          scmd->rval = ccmd.cstate == XRT_CMD_STATE_COMPLETED ? 0 : -1;
+          // Notify command completion
+          scmd->cmd_cv.notify_all();
         }
-        com_tail = slot;
+
+        submitted_cmds.erase(ccmd.cid);
+
+        xgq_notify_peer_consumed(&queue);
       }
     }
 
@@ -326,7 +336,7 @@ namespace hwemu {
   }
 
   xocl_xgq::xocl_xgq(HwEmShim* dev)
-    : queue(dev, this, XRT_QUEUE1_SLOT_NUM, XRT_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE, XRT_QUEUE1_SUB_BASE, XRT_QUEUE1_COM_BASE)
+    : queue(dev, this, XRT_QUEUE1_SLOT_NUM, XRT_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE)
   {
     device = dev;
   }

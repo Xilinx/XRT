@@ -49,14 +49,17 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
+#include "xgq_hwemu_plat.h"
 #include "xgq.h"
+
+#define ____cacheline_aligned_in_smp
 
 namespace xclhwemhal2 {
   class HwEmShim;
 }
 
-constexpr uint64_t XRT_QUEUE1_SUB_BASE = 0x7B000; // hard code for now 512K - 20K
-constexpr uint64_t XRT_QUEUE1_COM_BASE = (XRT_QUEUE1_SUB_BASE + XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM);
+constexpr uint64_t XRT_QUEUE1_RING_BASE = 0x7B000;
+constexpr uint32_t XRT_QUEUE1_RING_LENGTH = 0x5000; // hard code for now 20K
 
 constexpr uint64_t XRT_XGQ_SUB_BASE = 0x1040000;
 constexpr uint64_t XRT_XGQ_COM_BASE = 0x1030000;
@@ -76,9 +79,6 @@ namespace hwemu {
    * @check_doorbell():         check com_tail in completion XGQ doorbell
    * @submit_cmd():             put a command into submission queue entry
    * @read_completion():        read a completion entry from completion queue
-   * @clear_sub_slot_state():   clear the first word of a submission queue
-   *                            entry so that consumer can wait for the state
-   *                            field for next command in this slot
    * @iowrite32_ctrl():         write 32 bits to an IO CTRL address
    * @iowrite32_mem():          write 32 bits to an IO MEM address
    * @ioread32_ctrl():          read 32 bits value from an IO CTRL address
@@ -91,7 +91,7 @@ namespace hwemu {
   class xgq_queue
   {
     public:
-      xgq_queue(xclhwemhal2::HwEmShim*, xocl_xgq*, uint16_t, uint32_t, uint64_t, uint64_t, uint64_t, uint64_t);
+      xgq_queue(xclhwemhal2::HwEmShim*, xocl_xgq*, uint16_t, uint32_t, uint64_t, uint64_t);
       ~xgq_queue();
 
       xclhwemhal2::HwEmShim*   device;
@@ -100,10 +100,8 @@ namespace hwemu {
       int      submit_worker();
       int      complete_worker();
       void     update_doorbell();
-      uint16_t check_doorbell();
       int      submit_cmd(xgq_cmd *xcmd);
-      void     read_completion(xrt_com_queue_entry& ccmd, uint32_t tail);
-      void     clear_sub_slot_state(uint64_t sub_slot);
+      void     read_completion(xrt_com_queue_entry& ccmd, uint64_t addr);
       void     iowrite32_ctrl(uint32_t addr, uint32_t data);
       void     iowrite32_mem(uint32_t addr, uint32_t data);
       uint32_t ioread32_ctrl(uint32_t addr);
@@ -115,12 +113,6 @@ namespace hwemu {
 
       uint64_t        xgq_sub_base;
       uint64_t        xgq_com_base;
-      uint32_t        sub_head;
-      uint32_t        sub_tail;
-      uint64_t        sub_base;
-      uint32_t        com_head;
-      uint32_t        com_tail;
-      uint64_t        com_base;
 
       std::list<xgq_cmd*>          pending_cmds;
       std::map<uint64_t, xgq_cmd*> submitted_cmds;
@@ -131,6 +123,8 @@ namespace hwemu {
       std::condition_variable sub_cv;
       std::thread*            com_thread;
       std::condition_variable com_cv;
+
+      struct xgq       queue;
   };
 
   /**
