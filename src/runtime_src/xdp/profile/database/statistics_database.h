@@ -49,18 +49,12 @@ namespace xdp {
     uint64_t count ; // Number of buffer transfers
     uint64_t minSize ; // Minimum number of bytes transferred at once
     uint64_t maxSize ; // Maximum number of bytes transferred at once
-    //uint64_t contextId ;
-    //std::string deviceName
-    //uint64_t numDevices ;
-    //uint64_t bitWidth ;
     uint64_t totalSize ; // Total number of bytes transferred
     double averageSize ; // Average number of bytes per transfer
     uint64_t totalTime ;
     double averageTime ;
     uint64_t maxTime ;
     uint64_t minTime ;
-    //double averageTransferRate ;
-    //double clockFreqMhz ;
 
     BufferStatistics() : 
       count(0),

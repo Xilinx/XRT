@@ -25,4 +25,10 @@ void native_function_start(const char* functionName, unsigned long long int func
 extern "C"
 void native_function_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp) ;
 
+extern "C"
+void native_sync_start(const char* functionName, unsigned long long int functionID) ;
+
+extern "C"
+void native_sync_end(const char* functionName, unsigned long long int functionID, unsigned long long int timestamp, bool isWrite, unsigned long long int size);
+
 #endif

@@ -937,7 +937,7 @@ void
 bo::
 sync(xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return xdp::native::profiling_wrapper("xrt::bo::sync",
+  return xdp::native::profiling_wrapper_sync("xrt::bo::sync", dir, size,
     [this, dir, size, offset]{
       handle->sync(dir, size, offset);
     });
@@ -1146,7 +1146,7 @@ int
 xrtBOSync(xrtBufferHandle bhdl, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   try {
-    return xdp::native::profiling_wrapper(__func__,
+    return xdp::native::profiling_wrapper_sync(__func__, dir, size,
     [bhdl, dir, size, offset]{
       get_boh(bhdl)->sync(dir, size, offset);
       return 0;

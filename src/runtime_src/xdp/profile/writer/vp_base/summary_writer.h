@@ -57,7 +57,6 @@ namespace xdp {
 
     // OpenCL specific device tables
     void writeSoftwareEmulationComputeUnitUtilization() ;
-    void writeComputeUnitUtilization() ;
     void writeComputeUnitStallInformation() ;
     void writeDataTransferHostToGlobalMemory() ;
 
@@ -68,6 +67,7 @@ namespace xdp {
     void writeDataTransferKernelsToGlobalMemory() ;
     void writeTopDataTransferKernelAndGlobal() ;
     void writeDataTransferGlobalMemoryToGlobalMemory() ;
+    void writeComputeUnitUtilization() ;
 
     // User event tables
     void writeUserLevelEvents() ;
@@ -75,10 +75,21 @@ namespace xdp {
 
     // Native XRT tables
     void writeNativeAPICalls() ;
+    void writeHostReadsFromGlobalMemory() ;
+    void writeHostWritesToGlobalMemory() ;
+    void writeTopSyncReads() ;
+    void writeTopSyncWrites() ;
 
     // HAL tables
     void writeHALAPICalls() ;
     void writeHALTransfers() ;
+
+    // Handy values used for conversion
+    const double zero         = 0.0 ;
+    const double one_hundred  = 100.0 ;
+    const double one_thousand = 1000.0 ;
+    const double one_million  = 1.0e06 ;
+    const double one_billion  = 1.0e09 ;
 
   public:
     XDP_EXPORT SummaryWriter(const char* filename) ;
