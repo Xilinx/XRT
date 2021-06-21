@@ -39,15 +39,6 @@
 
 namespace {
 
-static bool
-is_sw_emulation()
-{
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
-  return swem;
-}
-
-
 // Encode / compress memory connections, a mapping from mem_topology
 // memory index to encoded index.  The compressed indices facilitate
 // small sized std::bitset for representing kernel argument
@@ -81,9 +72,7 @@ compute_memidx_encoding(const ::mem_topology* mem_topology)
       continue;
     
     // skip types that are of no interest for global connection
-    // however in software emulation the connectivity seciton
-    // can be incorrect see (CR-1086919) so keep even these.
-    if (!is_sw_emulation() && (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION))
+    if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
       continue;
 
     membanks.emplace_back(&mem, midx);
