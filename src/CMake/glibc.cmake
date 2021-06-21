@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # get glibc version for use in CPACK_*_XRT_PACKAGE_DEPENDS
 # source: https://gist.github.com/likema/f5c04dad837d2f5068ae7a8860c180e7
 execute_process(

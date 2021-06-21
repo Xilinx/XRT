@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 add_custom_command(
  OUTPUT bsp.extracted
  COMMAND ${CMAKE_COMMAND} -E make_directory bsp

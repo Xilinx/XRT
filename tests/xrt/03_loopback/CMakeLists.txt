@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 set(TESTNAME "03_loopback")
 
 add_executable(03_loopback main.cpp)
