@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 include_directories(
   ${Boost_INCLUDE_DIRS}
   ${XRT_SRC_DIR}/include/1_2

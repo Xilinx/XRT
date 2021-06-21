@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 find_program(COVBUILD /tools/batonroot/coverity/8.7.0/cov-analysis-8.7.0/bin/cov-build)
 
 
