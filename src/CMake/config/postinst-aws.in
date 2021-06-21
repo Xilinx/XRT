@@ -1,11 +1,14 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 nm /opt/xilinx/xrt/lib/libaws_mpd_plugin.so |grep 'fpga_mgmt' > /dev/null 2>&1
 if [ $? -eq 1 ]; then
     if [ -n "`dkms status -m xrt-aws -v @XRT_VERSION_STRING@`" ]; then
         echo "Unloading old XRT Linux kernel modules"
         modprobe -r awsmgmt
-        
+
         echo "Unregistering old XRT Linux kernel module sources @XRT_VERSION_STRING@ from dkms"
         dkms remove -m xrt-aws -v @XRT_VERSION_STRING@ --all
         find /lib/modules -type f -name awsmgmt.ko -delete
@@ -19,7 +22,7 @@ if [ $? -eq 1 ]; then
     if [ $? -eq 0 ]; then
         echo "Finished xrt-aws common.postinst"
         install -m 644 /usr/src/xrt-aws-@XRT_VERSION_STRING@/driver/aws/mgmt/10-awsmgmt.rules /etc/udev/rules.d
-        
+
         echo "Loading new XRT AWS Linux kernel modules"
         udevadm control --reload-rules
         modprobe awsmgmt
