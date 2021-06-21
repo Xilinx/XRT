@@ -69,5 +69,8 @@ static inline uint32_t xgq_reg_read32(uint64_t io_hdl, uint64_t addr)
   return hwemu::xgq_hwemu_reg_read32(io_hdl, addr);
 }
 
+#define XGQ_IMPL
+#include "xgq_impl.h"
+
 #endif
 

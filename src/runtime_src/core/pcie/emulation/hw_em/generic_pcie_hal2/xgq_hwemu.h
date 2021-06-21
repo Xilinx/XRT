@@ -49,8 +49,8 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
-#include "xgq_hwemu_plat.h"
 #include "xgq.h"
+#include "xgq_hwemu_plat.h"
 
 #define ____cacheline_aligned_in_smp
 
