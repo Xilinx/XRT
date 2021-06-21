@@ -251,31 +251,26 @@ void xma_thread1() {
     xclLogMsg(NULL, XRT_INFO, "XMA-Session-Stats", "--------\n");
 }
 
-void xma_thread2() {
+void xma_thread2(uint32_t hw_dev_index) {
     std::promise<bool> p;
-    g_xma_singleton->thread2_future = p.get_future();
+    g_xma_singleton->all_thread2_futures.emplace_back(p.get_future());
     p.set_value_at_thread_exit(true);
 
     bool expected = false;
     bool desired = true;
-    int32_t session_index = 0;
     int32_t num_sessions = -1;
+    xclDeviceHandle dev_handle = g_xma_singleton->hwcfg.devices[hw_dev_index].handle;
     while (!g_xma_singleton->xma_exit) {
         num_sessions = g_xma_singleton->all_sessions_vec.size();
         if (num_sessions == 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(30));
             continue;
         }
-        if (session_index >= num_sessions) {
-            session_index = 0;
-        }
-        XmaHwSessionPrivate *priv2 = (XmaHwSessionPrivate*) g_xma_singleton->all_sessions_vec[session_index].hw_session.private_do_not_use;
         if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         } else {
-            xclExecWait(priv2->dev_handle, 100);
+            xclExecWait(dev_handle, 100);
         }
-        session_index++;
 
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {
             if (g_xma_singleton->xma_exit) {
@@ -435,10 +430,15 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 
     g_xma_singleton->xma_thread1 = std::thread(xma_thread1);
-    g_xma_singleton->xma_thread2 = std::thread(xma_thread2);
+    g_xma_singleton->all_thread2.reserve(MAX_XILINX_DEVICES);
+    g_xma_singleton->all_thread2_futures.reserve(MAX_XILINX_DEVICES);
+    uint32_t num_devices = g_xma_singleton->hwcfg.devices.size();
+    for (uint32_t i = 0; i < num_devices; i++) {
+        g_xma_singleton->all_thread2.emplace_back(std::thread(xma_thread2, i));
+        g_xma_singleton->all_thread2.back().detach();
+    }
     //Detach threads to let them run independently
     g_xma_singleton->xma_thread1.detach();
-    g_xma_singleton->xma_thread2.detach();
 
     g_xma_singleton->xma_initialized = true;
     return XMA_SUCCESS;
@@ -455,8 +455,10 @@ void xma_exit(void)
                         g_xma_singleton->thread1_future.wait();
                 } catch (...) {}
                 try {
-                    if (g_xma_singleton->thread2_future.valid())
-                        g_xma_singleton->thread2_future.wait();
+                    for (auto& thread2_f: g_xma_singleton->all_thread2_futures) {
+                        if (thread2_f.valid())
+                          thread2_f.wait();
+                    }
                 } catch (...) {}
             }
         }

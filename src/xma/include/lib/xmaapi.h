@@ -59,9 +59,9 @@ typedef struct XmaSingleton
 
     std::atomic<bool> xma_exit;
     std::thread       xma_thread1;
-    std::thread       xma_thread2;
+    std::vector<std::thread> all_thread2;
     std::future<bool> thread1_future;
-    std::future<bool> thread2_future;
+    std::vector<std::future<bool>> all_thread2_futures;
 
     uint32_t          reserved[4];
 
@@ -90,8 +90,10 @@ typedef struct XmaSingleton
             thread1_future.wait_for(std::chrono::milliseconds(400));
         } catch (...) {}
         try {
-          if (thread2_future.valid())
-            thread2_future.wait_for(std::chrono::milliseconds(400));
+          for (auto& thread2_f: all_thread2_futures) {
+            if (thread2_f.valid())
+              thread2_f.wait_for(std::chrono::milliseconds(400));
+          }
         } catch (...) {}
       }
     } catch (...) {}
