@@ -51,18 +51,12 @@
 /*
  * Generic XGQ implementation.
  *
- * One XGQ consists of one submission (SQ) and one completion ring (CQ) buffer shared by one client
- * and one server. Client send request through SQ to server, which processes it and send back
- * response through CQ.
+ * Each platform should define its own xgq_XXX_plat.h where the platform
+ * specific operations are implemented. Afterwards, XGQ_IMPL should be
+ * defined and xgq_impl.h should be included there.
+ *
+ * Note: This file (xgq_impl.h) should only be included by xgq_XXX_plat.h.
  */
-
-#define XGQ_ALLOC_MAGIC			0x5847513F	/* XGQ? */
-#define XGQ_ATTACH_MAGIC		0x58475121	/* XGQ! */
-#define XGQ_MAJOR			1
-#define XGQ_MINOR			0
-#define XGQ_MIN_NUM_SLOTS		4
-#define XGQ_RING_LEN(nslots, slotsz)	\
-	(sizeof(struct xgq_header) + (nslots) * ((slotsz) + sizeof(struct xrt_com_queue_entry)))
 
 #ifndef XGQ_IMPL
 #define ____cacheline_aligned_in_smp
@@ -71,6 +65,19 @@ static inline void xgq_reg_write32(uint64_t hdl, uint64_t addr, uint32_t val) {}
 static inline uint32_t xgq_mem_read32(uint64_t hdl, uint64_t addr) {}
 static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr) {}
 #endif
+
+/*
+ * One XGQ consists of one submission (SQ) and one completion ring (CQ) buffer shared by one client
+ * and one server. Client send request through SQ to server, which processes it and send back
+ * response through CQ.
+  */
+#define XGQ_ALLOC_MAGIC			0x5847513F	/* XGQ? */
+#define XGQ_ATTACH_MAGIC		0x58475121	/* XGQ! */
+#define XGQ_MAJOR			1
+#define XGQ_MINOR			0
+#define XGQ_MIN_NUM_SLOTS		4
+#define XGQ_RING_LEN(nslots, slotsz)	\
+	(sizeof(struct xgq_header) + (nslots) * ((slotsz) + sizeof(struct xrt_com_queue_entry)))
 
 /*
  * Meta data shared b/w client and server of XGQ
