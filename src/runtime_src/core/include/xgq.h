@@ -42,6 +42,8 @@
 # include <linux/types.h>
 #else
 # include <stdint.h>
+# include <stddef.h>
+# include <errno.h>
 #endif
 
 #define XRT_SUB_Q1_SLOT_SIZE	512	// NOLINT
@@ -372,7 +374,7 @@ static inline bool xgq_can_produce(struct xgq *xgq)
 	if (!xgq_ring_full(ring))
 		return true;
 	xgq_ring_read_consumed(xgq->io_hdl, ring);
-	return xgq_ring_full(ring);
+	return !xgq_ring_full(ring);
 }
 
 static inline bool xgq_can_consume(struct xgq *xgq)

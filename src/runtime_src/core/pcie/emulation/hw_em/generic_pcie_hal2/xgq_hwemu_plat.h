@@ -38,6 +38,8 @@
 #ifndef __XGQ_HWEMU_PLAT_H__
 #define __XGQ_HWEMU_PLAT_H__
 
+#include <cstdint>
+
 #define ____cacheline_aligned_in_smp
 
 namespace hwemu {
