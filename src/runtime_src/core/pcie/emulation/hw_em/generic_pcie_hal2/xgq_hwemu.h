@@ -52,8 +52,6 @@
 #include "xgq.h"
 #include "xgq_hwemu_plat.h"
 
-#define ____cacheline_aligned_in_smp
-
 namespace xclhwemhal2 {
   class HwEmShim;
 }
