@@ -478,6 +478,11 @@ namespace xdp {
 
   void SummaryWriter::writeKernelExecutionSummary()
   {
+    // On Edge hardware emuation, the numbers for the top kernel executions
+    //  don't align with the other numbers we display, so don't print this
+    //  table.
+    if (getFlowMode() == HW_EMU && isEdge()) return ;
+
     // We can get kernel executions from purely host information
     std::map<std::string, TimeStatistics> kernelExecutions = 
       (db->getStats()).getKernelExecutionStats() ;
@@ -508,6 +513,11 @@ namespace xdp {
 
   void SummaryWriter::writeTopKernelExecution()
   {
+    // On Edge hardware emuation, the numbers for the top kernel executions
+    //  don't align with the other numbers we display, so don't print this
+    //  table.
+    if (getFlowMode() == HW_EMU && isEdge()) return ;
+
     if (db->getStats().getTopKernelExecutions().size() == 0)
       return ;
 
