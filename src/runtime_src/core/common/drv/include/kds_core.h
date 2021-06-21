@@ -92,6 +92,7 @@ struct kds_cu_mgmt {
 
 /* ERT core */
 struct kds_ert {
+	u32			slot_size;
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
