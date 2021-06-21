@@ -19,7 +19,7 @@
 #include <vector>
 #include "plugin_dec.h"
 
-#define TEST_INSTANCE_ID 1
+#define TEST_INSTANCE_ID 0
 
 int main(int argc, char** argv) {
   if (argc < 2) {
