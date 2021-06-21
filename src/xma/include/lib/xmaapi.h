@@ -82,19 +82,18 @@ typedef struct XmaSingleton
   }
 
   ~XmaSingleton() {
+    xma_exit = true;
+    if (!xma_initialized) {
+      return;
+    }
     try {
-      xma_exit = true;
-      if (xma_initialized) {
-        try {
-          if (thread1_future.valid())
-            thread1_future.wait_for(std::chrono::milliseconds(400));
-        } catch (...) {}
-        try {
-          for (auto& thread2_f: all_thread2_futures) {
-            if (thread2_f.valid())
-              thread2_f.wait_for(std::chrono::milliseconds(400));
-          }
-        } catch (...) {}
+      if (thread1_future.valid())
+        thread1_future.wait_for(std::chrono::milliseconds(400));
+    } catch (...) {}
+    try {
+      for (const auto& thread2_f: all_thread2_futures) {
+        if (thread2_f.valid())
+          thread2_f.wait_for(std::chrono::milliseconds(400));
       }
     } catch (...) {}
   }

@@ -440,21 +440,21 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
 
 void xma_exit(void)
 {
+    if (!g_xma_singleton) {
+        return;
+    }
+    g_xma_singleton->xma_exit = true;
+    if (!g_xma_singleton->xma_initialized) {
+        return;
+    }
     try {
-        if (g_xma_singleton) {
-            g_xma_singleton->xma_exit = true;
-            if (g_xma_singleton->xma_initialized) {
-                try {
-                    if (g_xma_singleton->thread1_future.valid())
-                        g_xma_singleton->thread1_future.wait();
-                } catch (...) {}
-                try {
-                    for (auto& thread2_f: g_xma_singleton->all_thread2_futures) {
-                        if (thread2_f.valid())
-                          thread2_f.wait();
-                    }
-                } catch (...) {}
-            }
+        if (g_xma_singleton->thread1_future.valid())
+            g_xma_singleton->thread1_future.wait();
+    } catch (...) {}
+    try {
+        for (const auto& thread2_f: g_xma_singleton->all_thread2_futures) {
+            if (thread2_f.valid())
+              thread2_f.wait();
         }
     } catch (...) {}
 }
