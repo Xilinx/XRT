@@ -49,7 +49,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
-#include "xgq.h"
+#include "xgq_cmd.h"
 #include "xgq_hwemu_plat.h"
 
 namespace xclhwemhal2 {

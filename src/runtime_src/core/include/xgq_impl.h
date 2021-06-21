@@ -46,7 +46,7 @@
 # include <errno.h>
 #endif
 
-#include "xgq.h"
+#include "xgq_cmd.h"
 
 /*
  * Generic XGQ implementation.

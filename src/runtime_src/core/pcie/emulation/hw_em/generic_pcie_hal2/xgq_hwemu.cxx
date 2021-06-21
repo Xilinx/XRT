@@ -36,7 +36,7 @@
  */
 
 #include "shim.h"
-#include "xgq.h"
+#include "xgq_cmd.h"
 
 using namespace xclhwemhal2;
 
@@ -169,7 +169,7 @@ namespace hwemu {
       for (auto& xcmd : pending_cmds) {
         // TODO Handle submission queue full
         int rval = submit_cmd(xcmd);
-	if (rval) {
+        if (rval) {
           std::cout << "Error: fail to submit command " << xcmd->cmdid << ": rval is " << rval << std::endl;
           break;
         }
