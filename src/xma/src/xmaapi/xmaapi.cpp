@@ -258,14 +258,8 @@ void xma_thread2(uint32_t hw_dev_index) {
 
     bool expected = false;
     bool desired = true;
-    int32_t num_sessions = -1;
     xclDeviceHandle dev_handle = g_xma_singleton->hwcfg.devices[hw_dev_index].handle;
     while (!g_xma_singleton->xma_exit) {
-        num_sessions = g_xma_singleton->all_sessions_vec.size();
-        if (num_sessions == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
-            continue;
-        }
         if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         } else {
