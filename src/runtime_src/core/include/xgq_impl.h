@@ -62,8 +62,14 @@
 #define ____cacheline_aligned_in_smp
 static inline void xgq_mem_write32(uint64_t hdl, uint64_t addr, uint32_t val) {}
 static inline void xgq_reg_write32(uint64_t hdl, uint64_t addr, uint32_t val) {}
-static inline uint32_t xgq_mem_read32(uint64_t hdl, uint64_t addr) {}
-static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr) {}
+static inline uint32_t xgq_mem_read32(uint64_t hdl, uint64_t addr)
+{
+	return 0xFFFFFFFF;
+}
+static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
+{
+	return 0xFFFFFFFF;
+}
 #endif
 
 /*
