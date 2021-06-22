@@ -128,10 +128,10 @@ class ip_impl
     const ip_data* ip;
     uint64_t size;         // address range of ip, To-Be-Computed
 
-    ip_context(std::shared_ptr<xrt_core::device> dev, xrt::uuid xid, const std::string& nm)
-      : device(std::move(dev)),
-        xclbin_uuid(std::move(xid)),
-        size(64_kb) // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    ip_context(std::shared_ptr<xrt_core::device> dev, xrt::uuid xid, const std::string& nm, size_t range)
+      : device(std::move(dev))
+      , xclbin_uuid(std::move(xid))
+      , size(range)
     {
       auto ip_section = device->get_axlf_section(IP_LAYOUT, xclbin_uuid);
       if (!ip_section.first)
@@ -185,6 +185,19 @@ class ip_impl
     }
   };
 
+  size_t
+  address_range(const xrt::uuid& xid, const std::string& ipname) const
+  {
+    auto xml_section = device->get_axlf_section(EMBEDDED_METADATA, xid);
+    if (!xml_section.first)
+      return 0;
+
+    // Normalize ipname to kernel name
+    std::string kname(ipname.substr(0,ipname.find(":"))); 
+    auto kprop = xrt_core::xclbin::get_kernel_properties(xml_section.first, xml_section.second, kname);
+    return kprop.address_range;
+  }
+
   unsigned int
   get_cuidx_or_error(size_t offset) const
   {
@@ -215,7 +228,7 @@ public:
   // @nm:      name identifying an ip in IP_LAYOUT of xclbin
   ip_impl(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xid, const std::string& nm)
     : device(std::move(dev))                                   // share ownership
-    , ipctx(device, xid, nm)
+    , ipctx(device, xid, nm, address_range(xid, nm))
     , uid(create_uid())
   {
     XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);
