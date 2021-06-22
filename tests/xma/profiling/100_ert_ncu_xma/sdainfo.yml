@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 args: -k kernel.xclbin --jobs 1024 --seconds 1 --cus 8 --ert
 copy: [Makefile, utils.hpp, task.hpp]
 devices:
