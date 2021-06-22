@@ -436,6 +436,16 @@ get_xma_cpu_mode()
   return value;
 }
 
+/**
+ * Use XMA with old KDS; Default for XMA is to assume KDS2.0
+ */
+inline bool
+get_xma_kds_old()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_kds_old",false);
+  return value;
+}
+
 inline bool
 get_enable_flat()
 {
