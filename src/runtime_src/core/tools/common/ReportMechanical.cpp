@@ -19,7 +19,7 @@
 #include "ReportMechanical.h"
 #include "core/common/device.h"
 #include "xrt/xrt_device.h"
-#include "core/common/xrt_sensor.h"
+#include "core/common/sensor.h"
 
 void
 ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
@@ -34,7 +34,7 @@ void
 ReportMechanical::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  auto device = xrt::device(_pDevice->get_device_id());
+  xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_mechanical;
   std::stringstream ss;
   ss << device.get_info<xrt::info::device::fans>();

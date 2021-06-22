@@ -20,7 +20,6 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "utils.cpp"
   "xclbin_parser.cpp"
   "xclbin_swemu.cpp"
-  "xrt_sensor.cpp"
   "api/*.cpp"
   )
 

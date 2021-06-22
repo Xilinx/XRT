@@ -197,17 +197,17 @@ unit_convert(size_t size)
 std::string
 format_base10_shiftdown3(uint64_t value)
 {
-  static double DECIMAL_SHIFT = 1000.0;
-  static int DIGIT_PRECISION = 3;
-  return precision(static_cast<double>(value) / DECIMAL_SHIFT, DIGIT_PRECISION);
+  constexpr double decimal_shift = 1000.0;
+  constexpr int digit_precision = 3;
+  return precision(static_cast<double>(value) / decimal_shift, digit_precision);
 }
 
 std::string
 format_base10_shiftdown6(uint64_t value)
 {
-  static double DECIMAL_SHIFT = 1000000.0;
-  static int DIGIT_PRECISION = 6;
-  return precision(static_cast<double>(value) / DECIMAL_SHIFT, DIGIT_PRECISION);
+  constexpr double decimal_shift = 1000000.0;
+  constexpr int digit_precision = 6;
+  return precision(static_cast<double>(value) / decimal_shift, digit_precision);
 }
 
 uint64_t
