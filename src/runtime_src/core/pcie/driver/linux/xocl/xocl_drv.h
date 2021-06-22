@@ -298,6 +298,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_XILINX_VEN 0x10EE
 #define XOCL_ARISTA_VEN 0x3475
 
+#define XOCL_PCI_CFG_SPACE_EXP_SIZE 4096
+
 #define	XOCL_CHARDEV_REG_COUNT	16
 
 #define INVALID_SUBDEVICE ~0U
@@ -1198,122 +1200,134 @@ struct xocl_mailbox_funcs {
 	(MAILBOX_READY(xdev, get) ? MAILBOX_OPS(xdev)->get(MAILBOX_DEV(xdev), \
 	kind, data) : -ENODEV)
 
-enum CLOCK_COUNTER_TYPE {
-        CCT_K1 = 0,
-        CCT_K2 = 1,
-        CCT_NUM = 2,
+struct xocl_clock_counter_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*get_freq_counter)(struct platform_device *pdev,
+		u32 *value, int id);
 };
+#define CLOCK_C_DEV_INFO(xdev, idx)					\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx).info
+#define	CLOCK_C_DEV(xdev, idx)						\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx).pldev
+#define	CLOCK_C_OPS(xdev, idx)						\
+	((struct xocl_clock_counter_funcs *)				\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_COUNTER, idx).ops)
+static inline int xocl_clock_c_ops_level(xdev_handle_t xdev)
+{
+	int i;
+	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
+		if (CLOCK_C_OPS(xdev, i))
+			return i;
+	}
 
-struct clock_counter_info {
-        size_t start;
-        size_t end;
-        size_t size;
-};
+	return -ENODEV;
+}
+#define CLOCK_C_CB(xdev, idx, cb)						\
+	(idx >= 0 && CLOCK_C_DEV(xdev, idx) && CLOCK_C_OPS(xdev, idx) && 	\
+	CLOCK_C_OPS(xdev, idx)->cb)
 
-struct xocl_clock_funcs {
+#define CLOCK_C_DEV_LEVEL(xdev) 						\
+({ \
+	int __idx = xocl_clock_c_ops_level(xdev);				\
+	(__idx >= 0 ? (CLOCK_C_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
+})
+#define	xocl_clock_get_freq_counter(xdev, value, id)				\
+({ \
+	int __idx = xocl_clock_c_ops_level(xdev);				\
+	(CLOCK_C_CB(xdev, __idx, get_freq_counter) ?				\
+	CLOCK_C_OPS(xdev, __idx)->get_freq_counter(CLOCK_C_DEV(xdev, __idx),	\
+		value, id) : -ENODEV); 						\
+})
+
+struct xocl_clock_wiz_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*get_freq)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freqs, int num_freqs);
 	int (*get_freq_by_id)(struct platform_device *pdev, unsigned int region,
 		unsigned short *freq, int id);
-	int (*get_freq_counter_khz)(struct platform_device *pdev,
-		unsigned int *value, int id);
-	int (*freq_rescaling)(struct platform_device *pdev, bool force);
-	int (*freq_scaling_by_request)(struct platform_device *pdev,
+	int (*rescaling)(struct platform_device *pdev, bool force);
+	int (*scaling_by_request)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
-	int (*freq_scaling_by_topo)(struct platform_device *pdev,
+	int (*scaling_by_topo)(struct platform_device *pdev,
 		struct clock_freq_topology *topo, int verify);
 	int (*clock_status)(struct platform_device *pdev, bool *latched);
-	void (*reconfig_counters)(struct platform_device *pdev, struct clock_counter_info *clk_counter);
 	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
-#define CLOCK_DEV_INFO(xdev, idx)					\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
-#define	CLOCK_DEV(xdev, idx)						\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).pldev
-#define	CLOCK_OPS(xdev, idx)						\
-	((struct xocl_clock_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).ops)
-static inline int xocl_clock_ops_level(xdev_handle_t xdev)
+#define CLOCK_W_DEV_INFO(xdev, idx)					\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_WIZ, idx).info
+#define	CLOCK_W_DEV(xdev, idx)						\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_WIZ, idx).pldev
+#define	CLOCK_W_OPS(xdev, idx)						\
+	((struct xocl_clock_wiz_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK_WIZ, idx).ops)
+static inline int xocl_clock_w_ops_level(xdev_handle_t xdev)
 {
 	int i;
 	for (i = XOCL_SUBDEV_LEVEL_MAX - 1; i >= 0; i--) {
-		if (CLOCK_OPS(xdev, i))
+		if (CLOCK_W_OPS(xdev, i))
 			return i;
 	}
 
 	return -ENODEV;
 }
 
-#define CLOCK_CB(xdev, idx, cb)						\
-	(idx >= 0 && CLOCK_DEV(xdev, idx) && CLOCK_OPS(xdev, idx) && CLOCK_OPS(xdev, idx)->cb)
+#define CLOCK_W_CB(xdev, idx, cb)						\
+	(idx >= 0 && CLOCK_W_DEV(xdev, idx) && CLOCK_W_OPS(xdev, idx) &&	\
+	CLOCK_W_OPS(xdev, idx)->cb)
 
-#define CLOCK_DEV_LEVEL(xdev) 						\
+#define CLOCK_W_DEV_LEVEL(xdev) 						\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
+	int __idx = xocl_clock_w_ops_level(xdev);				\
+	(__idx >= 0 ? (CLOCK_W_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
 })
 
-#define	xocl_clock_reconfig_counters(xdev, clk_counter)			\
-({ \
-	int __idx = xocl_clock_ops_level(xdev);					\
-	(CLOCK_CB(xdev, __idx, reconfig_counters) ?				\
-	CLOCK_OPS(xdev, __idx)->reconfig_counters(CLOCK_DEV(xdev, __idx),	\
-	clk_counter) : -ENODEV); \
-})
 #define	xocl_clock_freq_rescaling(xdev, force)					\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);					\
-	(CLOCK_CB(xdev, __idx, freq_rescaling) ?				\
-	CLOCK_OPS(xdev, __idx)->freq_rescaling(CLOCK_DEV(xdev, __idx), force) :	\
-	-ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);				\
+	(CLOCK_W_CB(xdev, __idx, rescaling) ?					\
+	CLOCK_W_OPS(xdev, __idx)->rescaling(CLOCK_W_DEV(xdev, __idx), force) :	\
+		-ENODEV); \
 })
-#define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)		\
+#define	xocl_clock_get_freq(xdev, region, freqs, num_freqs)			\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq) ?				\
-	CLOCK_OPS(xdev, __idx)->get_freq(CLOCK_DEV(xdev, __idx), region, freqs, num_freqs) : \
-	-ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);				\
+	(CLOCK_W_CB(xdev, __idx, get_freq) ?					\
+	CLOCK_W_OPS(xdev, __idx)->get_freq(CLOCK_W_DEV(xdev, __idx), region,	\
+		freqs, num_freqs) : -ENODEV); \
 })
-#define	xocl_clock_get_freq_by_id(xdev, region, freq, id)		\
+#define	xocl_clock_get_freq_by_id(xdev, region, freq, id)			\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_by_id) ?			\
-	CLOCK_OPS(xdev, __idx)->get_freq_by_id(CLOCK_DEV(xdev, __idx), region, freq, id) : \
-	-ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);				\
+	(CLOCK_W_CB(xdev, __idx, get_freq_by_id) ?				\
+	CLOCK_W_OPS(xdev, __idx)->get_freq_by_id(CLOCK_W_DEV(xdev, __idx),	\
+		region, freq, id) : -ENODEV); 					\
 })
-#define	xocl_clock_get_freq_counter_khz(xdev, value, id)		\
+#define	xocl_clock_freq_scaling_by_request(xdev, freqs, num_freqs, verify) 	\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_freq_counter_khz) ?			\
-	CLOCK_OPS(xdev, __idx)->get_freq_counter_khz(CLOCK_DEV(xdev, __idx), value, id) : \
-	-ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);				\
+	(CLOCK_W_CB(xdev, __idx, scaling_by_request) ?				\
+	CLOCK_W_OPS(xdev, __idx)->scaling_by_request(				\
+		CLOCK_W_DEV(xdev, __idx), freqs, num_freqs, verify) : -ENODEV); \
 })
-#define	xocl_clock_freq_scaling_by_request(xdev, freqs, num_freqs, verify) \
+#define	xocl_clock_freq_scaling_by_topo(xdev, topo, verify) 		\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, freq_scaling_by_request) ?		\
-	CLOCK_OPS(xdev, __idx)->freq_scaling_by_request(		\
-	    CLOCK_DEV(xdev, __idx), freqs, num_freqs, verify) : -ENODEV); \
-})
-#define	xocl_clock_freq_scaling_by_topo(xdev, topo, verify) \
-({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, freq_scaling_by_topo) ?		\
-	CLOCK_OPS(xdev, __idx)->freq_scaling_by_topo(		\
-	    CLOCK_DEV(xdev, __idx), topo, verify) : -ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);			\
+	(CLOCK_W_CB(xdev, __idx, scaling_by_topo) ?			\
+	CLOCK_W_OPS(xdev, __idx)->scaling_by_topo(			\
+		CLOCK_W_DEV(xdev, __idx), topo, verify) : -ENODEV); 	\
 })
 #define	xocl_clock_status(xdev, latched)				\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, clock_status) ?				\
-	CLOCK_OPS(xdev, __idx)->clock_status(CLOCK_DEV(xdev, __idx), latched) : 	\
-	-ENODEV); \
+	int __idx = xocl_clock_w_ops_level(xdev);			\
+	(CLOCK_W_CB(xdev, __idx, clock_status) ?			\
+	CLOCK_W_OPS(xdev, __idx)->clock_status(CLOCK_W_DEV(xdev, __idx),\
+		latched) : -ENODEV); \
 })
 #define	xocl_clock_get_data(xdev, kind)					\
 ({ \
-	int __idx = xocl_clock_ops_level(xdev);				\
-	(CLOCK_CB(xdev, __idx, get_data) ?				\
-	CLOCK_OPS(xdev, __idx)->get_data(CLOCK_DEV(xdev, __idx), kind) : 0); 	\
+	int __idx = xocl_clock_w_ops_level(xdev);			\
+	(CLOCK_W_CB(xdev, __idx, get_data) ?				\
+	CLOCK_W_OPS(xdev, __idx)->get_data(CLOCK_W_DEV(xdev, __idx),	\
+		kind) : 0); 						\
 })
 
 /* Not a real SC version to indicate that SC image does not exist. */
@@ -2200,7 +2214,6 @@ const void *xocl_fdt_getprop(xdev_handle_t xdev_hdl, void *blob, int off,
 			     char *name, int *lenp);
 int xocl_fdt_unblock_ip(xdev_handle_t xdev_hdl, void *blob);
 const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob);
-bool xocl_fdt_get_freq_cnt_eps(xdev_handle_t xdev_hdl, void *blob, struct clock_counter_info *clk_counter);
 
 /* debug functions */
 struct xocl_dbg_reg {
@@ -2270,8 +2283,11 @@ void xocl_fini_mailbox(void);
 int __init xocl_init_icap(void);
 void xocl_fini_icap(void);
 
-int __init xocl_init_clock(void);
-void xocl_fini_clock(void);
+int __init xocl_init_clock_wiz(void);
+void xocl_fini_clock_wiz(void);
+
+int __init xocl_init_clock_counter(void);
+void xocl_fini_clock_counter(void);
 
 int __init xocl_init_mig(void);
 void xocl_fini_mig(void);

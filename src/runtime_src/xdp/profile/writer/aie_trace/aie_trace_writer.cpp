@@ -63,7 +63,10 @@ namespace xdp {
     size_t num = traceData->buffer.size();
     for(size_t j = 0; j < num; j++) {
       void*    buf = traceData->buffer[j];
-      uint64_t bufferSz = traceData->bufferSz[j];
+      // We write 4 bytes at a time
+      // Max chunk size should be multiple of 4
+      // If last chunk is not multiple of 4 then in worst case, 3 bytes of data will not be written
+      uint64_t bufferSz = (traceData->bufferSz[j] / 4);
       if(nullptr == buf) {
         fout << std::endl;
         return;

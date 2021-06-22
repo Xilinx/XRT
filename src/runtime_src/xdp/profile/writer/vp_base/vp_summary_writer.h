@@ -32,6 +32,7 @@ namespace xdp {
     XDP_EXPORT virtual void switchFiles() ;
   public:
     XDP_EXPORT VPSummaryWriter(const char* filename) ;
+    XDP_EXPORT VPSummaryWriter(const char* filename, VPDatabase* inst);
     XDP_EXPORT ~VPSummaryWriter() ;
   } ;
   

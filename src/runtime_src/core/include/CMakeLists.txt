@@ -14,7 +14,8 @@ set(XRT_HEADER_SRC
   xclperf.h
   xclhal2_mem.h
   xrt_mem.h
-  xrt_error_code.h)
+  xrt_error_code.h
+  xgq.h)
 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR} COMPONENT ${XRT_DEV_COMPONENT})
 

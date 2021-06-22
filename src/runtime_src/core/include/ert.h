@@ -696,6 +696,11 @@ uint32_t ert_base_addr = 0;
 #define MAX_CONFIG_PACKET_SIZE 512
 
 /*
+* Maximum size of CQ slot
+*/
+#define MAX_CQ_SLOT_SIZE 4096
+
+/*
  * Helper functions to hide details of ert_start_copybo_cmd
  */
 static inline void

@@ -63,7 +63,6 @@ typedef struct xclErrorLast {
 
 typedef struct xcl_errors {
 	int		num_err;	/* number of errors recorded */
-	int		cap;		/* capacity of current error array */
 	struct xclErrorLast errors[XCL_ERROR_CAPACITY];	/* error array pointer */
 } xcl_errors;
 

@@ -47,11 +47,42 @@ typedef void * xrtKernelHandle;
  * A run handle is obtained by running a kernel.  Clients
  * use a run handle to check or wait for kernel completion.
  */
-typedef void * xrtRunHandle;
+typedef void * xrtRunHandle;  // NOLINT
 
 #ifdef __cplusplus
 
 namespace xrt {
+
+/*!
+ * @class autostart
+ *
+ * @brief 
+ * xrt::autostart is a specific type used as template argument.
+ *
+ * @details 
+ * When implicitly starting a kernel through templated operator, the
+ * first argument can be specified as xrt::autostart indicating the
+ * number of iterations the kernel run should perform.
+ *
+ * The default iterations, or xrt::autostart constructed with the
+ * value 0, represents a for-ever running kernel.
+ * 
+ * When a kernel is auto-started, the running kernel can be manipulated
+ * through a \ref xrt::mailbox object provided the kernel is synthesized 
+ * with mailbox.
+ *
+ * The counted auto-restart feature is supported only for kernels that
+ * are specifically synthesized with counted auto restart.  The
+ * default value of xrt::autostart is supported default for AP_CTRL_HS
+ * and AP_CTRL_CHAIN.
+ *
+ * Currently autostart is only supported for kernels with one compute
+ * unit which must be opened in exclusive mode.
+ */
+struct autostart
+{
+  unsigned int iterations = 0;
+};
 
 class kernel;
 class event_impl;
@@ -77,8 +108,7 @@ class run
    *
    * Can be used as lvalue in assignment.
    */
-  run()
-  {}
+  run() = default;
 
   /**
    * run() - Construct run object from a kernel object
@@ -90,7 +120,7 @@ class run
   run(const kernel& krnl);
 
   /**
-   * start() - Start execution of a run.
+   * start() - Start one execution of a run.
    *
    * This function is asynchronous, run status must be expclicit checked
    * or ``wait()`` must be used to wait for the run to complete.
@@ -98,6 +128,50 @@ class run
   XCL_DRIVER_DLLESPEC
   void
   start();
+
+  /**
+   * start() - Start auto-restart execution of a run
+   *
+   * @param iterations  
+   *   Number of times to iterate the same run.  
+   *
+   * An iteration count of zero means that the kernel should run
+   * forever, or until explicitly stopped using ``stop()``.
+   *
+   * This function is asynchronous, run status must be expclicit
+   * checked or ``wait()`` must be used to wait for the run to
+   * complete.
+   *
+   * The kernel run object is complete only after all iterations have
+   * completed, or until run object has been explicitly stopped.
+   *
+   * Changing kernel arguments ``set_arg()`` while the kernel is running
+   * has undefined behavior.  To synchronize change of arguments, please
+   * use \ref xrt::mailbox.
+   *
+   * Currently autostart is only supported for kernels with one
+   * compute unit which must be opened in exclusive mode.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  start(const autostart& iterations);
+
+  /**
+   * stop() - Stop kernel run object at next safe iteration
+   *
+   * If the kernel run object has been started by specifying 
+   * an iteration count or by specifying default iteration count, 
+   * then this function can be used to stop the iteration early.  
+   *
+   * The function is synchronous and waits for the kernel
+   * run object to complete.
+   *
+   * If the kernel is not iterating, then calling this funciton
+   * is the same as calling ``wait()``.
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  stop();
 
   /**
    * wait() - Wait for a run to complete execution
@@ -174,6 +248,7 @@ class run
                std::function<void(const void*, ert_cmd_state, void*)> callback,
                void* data);
 
+  /// @cond
   /**
    * set_event() - Add event for enqueued operations
    *
@@ -182,10 +257,13 @@ class run
    *
    * This function is used when a run object is enqueued in an event
    * graph.  The event must be notified upon completion of the run.
+   *
+   * This is an experimental API using a WIP feature.
    */
   XCL_DRIVER_DLLESPEC
   void
   set_event(const std::shared_ptr<event_impl>& event) const;
+  /// @endcond
 
   /**
    * operator bool() - Check if run handle is valid
@@ -202,7 +280,7 @@ class run
   /**
    * operator < () - Weak ordering
    *
-   * @rhs
+   * @param rhs
    *  Object to compare with
    * @return
    *  True if object is ordered less that compared with other
@@ -328,6 +406,34 @@ class run
     start();
   }
 
+  /**
+   * operator() - Set all kernel arguments and start the run
+   *
+   * @param count
+   *  Iteration count specifying number of iterations of the run
+   * @param args
+   *  Kernel arguments
+   *
+   * Use this API to explicitly set all kernel arguments and start
+   * kernel execution for specified number of iterations.
+   *
+   * An iteration count of '1' invokes the kernel once and is the same
+   * as calling the operator without specifying ``autostart``.
+   *
+   * The run is complete only after all iterations have completed or
+   * when the kernel has been explicitly stopped using ``stop()``.
+   *
+   * Currently autostart is only supported for kernels with one
+   * compute unit which must be opened in exclusive mode.
+   */
+  template<typename ...Args>
+  void
+  operator() (autostart&& count, Args&&... args)
+  {
+    set_arg(0, std::forward<Args>(args)...);
+    start(count);
+  }
+
 public:
   /// @cond
   const std::shared_ptr<run_impl>&
@@ -337,6 +443,7 @@ public:
   }
 
   // run() - Construct run object from a pimpl
+  explicit
   run(std::shared_ptr<run_impl> impl)
     : handle(std::move(impl))
   {}
@@ -389,7 +496,7 @@ private:
 class kernel_impl;
 class kernel
 {
- public:
+public:
   /**
    * cu_access_mode - compute unit access mode
    *
@@ -403,8 +510,7 @@ class kernel
   /**
    * kernel() - Construct for empty kernel
    */
-  kernel()
-  {}
+  kernel() = default;
 
   /**
    * kernel() - Constructor from a device and xclbin

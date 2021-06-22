@@ -88,7 +88,7 @@ mac_addresses(const xrt_core::device * dev)
     catch (...) {  }
     for (const auto& a : mac_addr) {
       boost::property_tree::ptree addr;
-      if (a.empty() || a.compare("FF:FF:FF:FF:FF:FF") != 0) {
+      if (!a.empty() && a.compare("FF:FF:FF:FF:FF:FF") != 0) {
         addr.add("address", a);
         ptree.push_back(std::make_pair("", addr));
       }
@@ -377,6 +377,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     
     for(auto & km : macs) 
       formattedStr += boost::str(fmtBasic % (formattedStr.empty() ? "Mac Address" : "") % km.second.get<std::string>("address", "N/A"));
+    _output << formattedStr << std::endl;
   }
 
   _output << shell_status(_pt.get<bool>("platform.status.shell", false), 

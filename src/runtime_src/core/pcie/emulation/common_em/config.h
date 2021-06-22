@@ -215,6 +215,7 @@ namespace xclemulation{
       inline ertmode getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
+      inline bool isM2MEnabled() const { return mIsM2MEnabled; }
       inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
 
       inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
@@ -252,6 +253,7 @@ namespace xclemulation{
       ertmode mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
+      bool mIsM2MEnabled;
       bool mIsPlatformDataAvailable;
       TIMEOUT_SCALE mTimeOutScale;
       config();

@@ -534,6 +534,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
     };
 
+  axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
   std::vector<char> krnl_binary;
   if (!xrt_core::xclbin::is_pdi_only(buffer)) {
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
@@ -926,14 +927,19 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
+  //if kds_mode is enabled, use kds_cu_stat to get the ip index. 
+  //if kds_mode is disabled get cu index from get_cus function
+
   // In new kds, driver determines CU index
   try {
-    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
-      if (stat.name == name)
-        return stat.index;
+    if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
+      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
+        if (stat.name == name)
+          return stat.index;
 
-    xclLog(XRT_ERROR, "%s not found", name);
-    return -ENOENT;
+      xclLog(XRT_ERROR, "%s not found", name);
+      return -ENOENT;
+    }
   }
   catch (const xrt_core::query::no_such_key&) {
   }

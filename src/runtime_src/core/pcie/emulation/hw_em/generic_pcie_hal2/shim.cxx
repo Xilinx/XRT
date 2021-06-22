@@ -414,6 +414,9 @@ namespace xclhwemhal2 {
         m_scheduler = new hwemu::xocl_scheduler(this);
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         m_xgq = new hwemu::xocl_xgq(this);
+        if (m_xgq && pdi && pdiSize > 0) {
+            returnValue = m_xgq->load_xclbin(pdi, pdiSize);
+        }
     } else {
         mCore = new exec_core;
         mMBSch = new MBScheduler(this);
@@ -536,15 +539,14 @@ namespace xclhwemhal2 {
       if (mLogStream.is_open())
          mLogStream << __func__ << " Creating the DDRMemoryManager Object with RTD section info" << std::endl;
 
-      int tmpIdx = 0;
       for (auto it : mMembanks)
       {
-        tmpIdx++;
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
 
-        if (it.tag.find("HOST")) {
-          host_sptag_idx = tmpIdx;
+        std::size_t found = it.tag.find("HOST");
+        if (found != std::string::npos) {
+          host_sptag_idx = it.index;
         }
       }
 
@@ -552,17 +554,21 @@ namespace xclhwemhal2 {
       {
         std::string tag = it->tag();
 
-        if (tag.empty() || tag.find("MBG") == std::string::npos) {
+        //continue if not MBG group
+        if (tag.find("MBG") == std::string::npos) {
           continue;
         }
 
+        // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the 
+        // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
         for (auto it2 : mDDRMemoryManager)
         {
           if (it2->size() != 0 && it2 != it &&
             it->start() <= it2->start() &&
             (it->start() + it->size()) >= (it2->start() + it2->size()))
           {
-            //add child memories
+            //add HBM child memories to MBG large group[
             it->mChildMemories.push_back(it2);
           }
         }
@@ -2217,6 +2223,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return 0;
   }
 
+  std::shared_ptr<xrt_core::device> HwEmShim::getMCoreDevice()
+  {
+    return mCoreDevice;
+  }
+
   bool HwEmShim::isLegacyErt()
   {
     if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ertmode::legacy)
@@ -2480,19 +2491,10 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
     }
 
-    std::string lf = "";
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-      lf = std::string(pPath) + "/hal_log.txt";
-    }
-    else {
-      lf = "";
-    }
-
-    //if ( logfileName && (logfileName[0] != '\0'))
-    if (!lf.empty())
-    {
-      mLogStream.open(lf);
-      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
+    std::string logFilePath = xrt_core::config::get_hal_logging();
+    if (!logFilePath.empty()) {
+      mLogStream.open(logFilePath);
+      mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
@@ -2766,42 +2768,46 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     return -1;
   }
    
-  // Disabling the m2m for timebeing as it is not working as expected. So still data is getting transferred thru DMA.
-  // Will enable this logic unless we have a clarity from the m2m hw_emu kernel. Please do not remove this code 
-  /*if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
+  // Enabling the copy buffer thru the M2M under the INI option enable_m2m and its default is false.
+  // Once the issues regarding this is resolved from the sim_m2m kernel, we will remove this ini option.
+  if (xclemulation::config::getInstance()->isM2MEnabled()) {
+    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
 
-    char hostBuf[M2M_KERNEL_ARGS_SIZE];
-    std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
+      char hostBuf[M2M_KERNEL_ARGS_SIZE];
+      std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
 
-    //src and dest addresses construction
-    uint64_t src_addr = sBO->base + src_offset;
-    uint64_t dest_addr = dBO->base + dst_offset;
+      //src and dest addresses construction
+      uint64_t src_addr = sBO->base + src_offset;
+      uint64_t dest_addr = dBO->base + dst_offset;
 
-    //fill the hostbuf with the src offset and dest offset and size offset
-    std::memcpy(hostBuf+0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
+      std::cout << __func__ << " PRASAD: src_addr " << src_addr << " dest_addr: " << dest_addr << std::endl;
 
-    //Configuring the kernel with hostbuf by providing the Base address of the IP
-    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
-      std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
+      //fill the hostbuf with the src offset and dest offset and size offset
+      std::memcpy(hostBuf + 0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
+      std::memcpy(hostBuf + 0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
+      std::memcpy(hostBuf + 0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
+
+      //Configuring the kernel with hostbuf by providing the Base address of the IP
+      if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
+        std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
+      }
+
+      hostBuf[0] = 0x1; //filling the hostbuf with the start info
+      //Starting the kernel
+      if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, 4) != 4) {
+        std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
+      }
+
+      do {
+        //Read the status of the kernel by polling the hostBuf[0]
+        //check for the base_address is either 4 or 6
+        xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, 4);
+      } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)));
+
+      PRINTENDFUNC;
+      return 0;
     }
-
-    hostBuf[0] = 0x1; //filling the hostbuf with the start info
-    //Starting the kernel
-    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4) != 4) {
-      std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
-    }
-
-    do {
-      //Read the status of the kernel by polling the hostBuf[0]
-      //check for the base_address is either 4 or 6
-      xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4);
-    } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)) );
-
-    PRINTENDFUNC;
-    return 0;
-  }*/
+  }
 
   // source buffer is host_only and destination buffer is device_only
   if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {

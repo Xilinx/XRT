@@ -49,9 +49,9 @@ The signals ap_start and ap_done must be connected to the AXI_LITE control and s
   1         ap_done            Asserted by the kernel when it is finished producing the output data
 ====== ===================== =======================================================================
 
-========================
+=========================
 Pipelined Execution Model
-========================
+=========================
 
 Pipelined execution model is current default execution model supported through the HLS flow. 
 

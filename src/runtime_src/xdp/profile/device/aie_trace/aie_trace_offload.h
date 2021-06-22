@@ -18,6 +18,7 @@
 #define XDP_PROFILE_AIE_TRACE_OFFLOAD_H_
 
 #include "xdp/config.h"
+#include "core/edge/user/aie/aie.h"
 
 namespace xdp {
 
@@ -31,6 +32,13 @@ struct AIETraceBufferInfo
   uint64_t usedSz;
   uint64_t offset;
   bool     isFull;
+};
+
+struct AIETraceGmioDMAInst
+{
+  // C_RTS Shim DMA to where this GMIO object is mapped
+  XAie_DmaDesc shimDmaInst;
+  XAie_LocType gmioTileLoc;
 };
 
 class AIETraceOffload 
@@ -81,7 +89,8 @@ private:
 
     uint64_t bufAllocSz;
 
-    std::vector<AIETraceBufferInfo> buffers;
+    std::vector<AIETraceBufferInfo>  buffers;
+    std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
 
     uint64_t readPartialTrace(uint64_t);
     void configAIETs2mm(uint64_t wordCount);

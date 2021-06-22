@@ -24,6 +24,7 @@
 #include <linux/iommu.h>
 #include <linux/pagemap.h>
 #include "../xocl_drv.h"
+#include "xocl_errors.h"
 #include "common.h"
 #include "version.h"
 
@@ -199,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
+	mutex_lock(&xdev->core.errors_lock);
+	xocl_clear_all_error_record(&xdev->core);
+	mutex_unlock(&xdev->core.errors_lock);
 
 	if (prepare) {
 		if (kds_mode)
@@ -1101,6 +1105,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	xocl_subdev_destroy_all(xdev);
 
@@ -1573,6 +1578,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	char				wq_name[15];
 	int				ret, i;
 
+	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
+		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
+			 pdev->cfg_size);
+		return -EINVAL;
+	}
+
 	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
@@ -1587,11 +1598,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
-	/* TODO
-	 * initialize xocl_errors
-	 * xocl_init_errors(&xdev->core);
-	 */
-
+	/* initialize xocl_errors */
+	xocl_init_errors(&xdev->core);
 
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
@@ -1767,7 +1775,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_xmc_u2,
 	xocl_init_icap,
-	xocl_init_clock,
+	xocl_init_clock_wiz,
+	xocl_init_clock_counter,
 	xocl_init_xvc,
 	xocl_init_firewall,
 	xocl_init_mig,
@@ -1805,7 +1814,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_xmc_u2,
 	xocl_fini_icap,
-	xocl_fini_clock,
+	xocl_fini_clock_wiz,
+	xocl_fini_clock_counter,
 	xocl_fini_xvc,
 	xocl_fini_firewall,
 	xocl_fini_mig,

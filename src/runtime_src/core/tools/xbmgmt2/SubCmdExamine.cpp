@@ -145,17 +145,17 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     // Collect the reports to be processed
     XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
 
-    // Output Format
-    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown) 
-      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
-
     // when json is specified, make sure an accompanying output file is also specified
     if (!sFormat.empty() && sOutput.empty())
       throw xrt_core::error("Please specify an output file to redirect the json to");
 
     if(sFormat.empty())
       sFormat = "json";
+
+    // Output Format
+    schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+    if (schemaVersion == Report::SchemaVersion::unknown) 
+      throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file
     if (!sOutput.empty() && boost::filesystem::exists(sOutput) && !XBU::getForce()) 

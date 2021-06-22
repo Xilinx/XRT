@@ -426,6 +426,11 @@ int32_t xma_initialize(XmaXclbinParameter *devXclbins, int32_t num_parms)
             break;
     }
 
+    g_xma_singleton->kds_old = xrt_core::config::get_xma_kds_old();
+    if (g_xma_singleton->kds_old)
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA for old KDS.");
+    else
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA for KDS 2.0. Default mode.");
     g_xma_singleton->cpu_mode = xrt_core::config::get_xma_cpu_mode();
     xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XMA CPU Mode is: %d", g_xma_singleton->cpu_mode);
 

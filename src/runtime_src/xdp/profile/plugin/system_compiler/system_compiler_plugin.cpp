@@ -17,12 +17,14 @@
 #define XDP_SOURCE
 
 #include "xdp/profile/plugin/system_compiler/system_compiler_plugin.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 namespace xdp {
 
   SystemCompilerPlugin::SystemCompilerPlugin() : XDPPlugin()
   {
     db->registerPlugin(this);
+    db->registerInfo(info::system_compiler);
 
     db->getStaticInfo().addOpenedFile("sc_host_summary.csv", "PROFILE_SUMMARY");
     db->getStaticInfo().addOpenedFile("sc_trace.csv", "VP_TRACE");

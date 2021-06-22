@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/lop/lop_plugin.h"
 #include "xdp/profile/writer/lop/low_overhead_trace_writer.h"
 #include "core/common/config_reader.h"
@@ -128,6 +129,7 @@ namespace xdp {
   LowOverheadProfilingPlugin::LowOverheadProfilingPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::lop);
     writers.push_back(new LowOverheadTraceWriter("lop_trace.csv")) ;
 
     emulationSetup() ;
