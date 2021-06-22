@@ -521,17 +521,18 @@ namespace xdp {
 
   void DeviceEventCreatorFromTrace::addApproximateDataTransferEndEvents()
   {
-    // Go through all of our AIMs.  If any of them have any outstanding
-    //  reads or writes, then finish them based on the last CU execution time.
-    for (uint64_t aimIndex = 0 ;
-         aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
-         ++aimIndex) {
+    // Go through all of our AIMs that have trace enabled.  If any of them
+    //  have any outstanding reads or writes, then finish them based off of
+    //  the last CU execution time.
+    auto aims = db->getStaticInfo().getAIMonitors(deviceId, xclbin) ;
+    if (aims == nullptr) return ;
 
-      uint64_t aimTraceID = aimIndex + MIN_TRACE_ID_AIM ;
-      Monitor* mon =
-        db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
-      if (!mon)
-        continue;
+    // aims is a map of slotID to Monitor*.  We can get the traceID of an AIM
+    //  by slotID * 2.
+    for (auto pair : (*aims)) {
+      uint64_t aimTraceID = (pair.first * 2) ;
+      Monitor* mon = pair.second ;
+      if (!mon) continue ;
 
       int32_t cuId = mon->cuIndex ;
       int32_t amId = -1 ;
