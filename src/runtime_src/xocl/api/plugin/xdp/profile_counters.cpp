@@ -57,12 +57,14 @@ namespace xocl {
                         unsigned long long int,
                         const char*,
                         unsigned long long int,
+                        unsigned long long int,
                         bool,
                         bool,
                         unsigned long long int,
                         unsigned long long int)> counter_action_read_cb ;
     std::function<void (unsigned long long int,
                         const char*,
+                        unsigned long long int,
                         unsigned long long int,
                         bool,
                         bool,
@@ -72,39 +74,69 @@ namespace xocl {
 
     void register_opencl_counters_functions(void* handle)
     {
-      typedef void (*stype)(const char*, unsigned long long int, bool) ;
-      counter_function_start_cb = 
-        (stype)(xrt_core::dlsym(handle, "log_function_call_start")) ;
+      using start_type       = void (*)(const char*,            // Function name
+                                        unsigned long long int, // Queue address
+                                        bool);                  // isOOO
+
+      using end_type         = void (*)(const char*);           // Function name
+
+      using kernel_exec_type = void (*)(const char*,            // Kernel name
+                                        bool,                   // isStart
+                                        unsigned long long int, // Inst address
+                                        unsigned long long int, // Context ID
+                                        unsigned long long int, // Command Q ID
+                                        const char*,            // Device name
+                                        const char*,            // Global WS
+                                        const char*,            // Local WS
+                                        const char**,           // Buffers
+                                        unsigned long long int);// numBuffers
+
+      using cu_exec_type     = void (*)(const char*,            // CU name
+                                        const char*,            // Kernel name
+                                        const char*,            // Local WG
+                                        const char*,            // Global WG
+                                        bool);                  // isStart
+
+      using read_type        = void (*)(unsigned long long int, // Context ID
+                                        unsigned long long int, // Num Devices
+                                        const char*,            // Device name
+                                        unsigned long long int, // Event ID
+                                        unsigned long long int, // Size
+                                        bool,                   // isStart
+                                        bool,                   // isP2P
+                                        unsigned long long int, // Address
+                                        unsigned long long int);// Command Q ID
+
+      using write_type       = void (*)(unsigned long long int, // Context ID
+                                        const char*,            // Device name
+                                        unsigned long long int, // Event ID
+                                        unsigned long long int, // Size
+                                        bool,                   // isStart
+                                        bool,                   // isP2P
+                                        unsigned long long int, // Address
+                                        unsigned long long int);// Command Q ID
+
+      using release_type    = void (*)() ;
+
+      counter_function_start_cb = reinterpret_cast<start_type>(xrt_core::dlsym(handle, "log_function_call_start")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
-      typedef void (*etype)(const char*) ;
-      counter_function_end_cb = 
-        (etype)(xrt_core::dlsym(handle, "log_function_call_end")) ;
+      counter_function_end_cb = reinterpret_cast<end_type>(xrt_core::dlsym(handle, "log_function_call_end")) ;
       if (xrt_core::dlerror() != NULL) counter_function_start_cb = nullptr ;
       
-      typedef void (*ktype)(const char*, bool, unsigned long long int, unsigned long long int, unsigned long long int, const char* ,const char*, const char*, const char**, unsigned long long int) ;
-      counter_kernel_execution_cb =
-        (ktype)(xrt_core::dlsym(handle, "log_kernel_execution")) ;
+      counter_kernel_execution_cb = reinterpret_cast<kernel_exec_type>(xrt_core::dlsym(handle, "log_kernel_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_kernel_execution_cb = nullptr ;
       
-      typedef void (*cuetype)(const char*, const char*, const char*, const char*, bool) ;
-      counter_cu_execution_cb =
-        (cuetype)(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
+      counter_cu_execution_cb = reinterpret_cast<cu_exec_type>(xrt_core::dlsym(handle, "log_compute_unit_execution")) ;
       if (xrt_core::dlerror() != NULL) counter_cu_execution_cb = nullptr ;
       
-      typedef void (*atype)(unsigned long long int, unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
-      counter_action_read_cb =
-        (atype)(xrt_core::dlsym(handle, "counter_action_read")) ;
+      counter_action_read_cb = reinterpret_cast<read_type>(xrt_core::dlsym(handle, "counter_action_read")) ;
       if (xrt_core::dlerror() != NULL) counter_action_read_cb = nullptr ;
       
-      typedef void (*wtype)(unsigned long long int, const char*, unsigned long long int, bool, bool, unsigned long long int, unsigned long long int) ;
-      counter_action_write_cb =
-        (wtype)(xrt_core::dlsym(handle, "counter_action_write")) ;
+      counter_action_write_cb = reinterpret_cast<write_type>(xrt_core::dlsym(handle, "counter_action_write")) ;
       if (xrt_core::dlerror() != NULL) counter_action_write_cb = nullptr ;
 
-      typedef void (*vtype)() ;
-      counter_mark_objects_released_cb =
-        (vtype)(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
+      counter_mark_objects_released_cb = reinterpret_cast<release_type>(xrt_core::dlsym(handle, "counter_mark_objects_released")) ;
       if (xrt_core::dlerror() != NULL) counter_mark_objects_released_cb = nullptr ;
 
       // For logging counter information for compute unit executions
@@ -244,6 +276,7 @@ namespace xocl {
 
                auto queue = e->get_command_queue() ;
                uint64_t contextId = e->get_context()->get_uid() ;
+               uint64_t eventId = e->get_uid() ;
                uint64_t numDevices = e->get_context()->num_devices() ;
                std::string deviceName = queue->get_device()->get_name() ;
 
@@ -261,6 +294,7 @@ namespace xocl {
                  counter_action_read_cb(contextId,
                                         numDevices,
                                         deviceName.c_str(),
+                                        eventId,
                                         0,
                                         true,
                                         isP2P,
@@ -272,6 +306,7 @@ namespace xocl {
                  counter_action_read_cb(contextId,
                                         numDevices,
                                         deviceName.c_str(),
+                                        eventId,
                                         xmem->get_size(),
                                         false,
                                         isP2P,
@@ -291,6 +326,7 @@ namespace xocl {
 
                auto queue = e->get_command_queue() ;
                uint64_t contextId = e->get_context()->get_uid() ;
+               uint64_t eventId = e->get_uid() ;
                std::string deviceName = queue->get_device()->get_name() ;
 
                auto xmem = xocl::xocl(buffer) ;
@@ -303,6 +339,7 @@ namespace xocl {
                {
                  counter_action_write_cb(contextId,
                                          deviceName.c_str(),
+                                         eventId,
                                          0,
                                          true,
                                          isP2P,
@@ -313,6 +350,7 @@ namespace xocl {
                {
                  counter_action_write_cb(contextId,
                                          deviceName.c_str(),
+                                         eventId,
                                          xmem->get_size(),
                                          false,
                                          isP2P,
@@ -349,6 +387,7 @@ namespace xocl {
 
                  auto queue = e->get_command_queue() ;
                  uint64_t contextId = e->get_context()->get_uid() ;
+                 uint64_t eventId = e->get_uid() ;
                  uint64_t numDevices = e->get_context()->num_devices() ;
                  std::string deviceName = queue->get_device()->get_name() ;
 
@@ -363,6 +402,7 @@ namespace xocl {
                    counter_action_read_cb(contextId,
                                           numDevices,
                                           deviceName.c_str(),
+                                          eventId,
                                           0,
                                           true,
                                           isP2P,
@@ -374,6 +414,7 @@ namespace xocl {
                    counter_action_read_cb(contextId,
                                           numDevices,
                                           deviceName.c_str(),
+                                          eventId,
                                           totalSize,
                                           false,
                                           isP2P,
@@ -392,6 +433,7 @@ namespace xocl {
 
                  auto queue = e->get_command_queue() ;
                  uint64_t contextId = e->get_context()->get_uid() ;
+                 uint64_t eventId = e->get_uid() ;
                  std::string deviceName = queue->get_device()->get_name() ;
 
                  auto xmem = xocl::xocl(buffer) ;
@@ -404,6 +446,7 @@ namespace xocl {
                  {
                    counter_action_write_cb(contextId,
                                            deviceName.c_str(),
+                                           eventId,
                                            0,
                                            true,
                                            isP2P,
@@ -414,6 +457,7 @@ namespace xocl {
                  {
                    counter_action_write_cb(contextId,
                                            deviceName.c_str(),
+                                           eventId,
                                            totalSize,
                                            false,
                                            isP2P,
@@ -574,6 +618,7 @@ namespace xocl {
 
                auto queue = e->get_command_queue() ;
                uint64_t contextId = e->get_context()->get_uid() ;
+               uint64_t eventId = e->get_uid() ;
                std::string deviceName = queue->get_device()->get_name() ;
 
                auto xmem = xocl::xocl(mem0) ;
@@ -586,6 +631,7 @@ namespace xocl {
                {
                  counter_action_write_cb(contextId,
                                          deviceName.c_str(),
+                                         eventId,
                                          0,
                                          true,
                                          isP2P,
@@ -596,6 +642,7 @@ namespace xocl {
                {
                  counter_action_write_cb(contextId,
                                          deviceName.c_str(),
+                                         eventId,
                                          totalSize,
                                          false,
                                          isP2P,
@@ -623,6 +670,7 @@ namespace xocl {
           if (!(xmem->is_resident(device))) return ;
 
           uint64_t contextId = e->get_context()->get_uid() ;
+          uint64_t eventId = e->get_uid() ;
           uint64_t numDevices = e->get_context()->num_devices() ;
           std::string deviceName = device->get_name() ;
 
@@ -635,6 +683,7 @@ namespace xocl {
             counter_action_read_cb(contextId,
                                    numDevices,
                                    deviceName.c_str(),
+                                   eventId,
                                    0,
                                    true,
                                    isP2P,
@@ -645,6 +694,7 @@ namespace xocl {
             counter_action_read_cb(contextId,
                                    numDevices,
                                    deviceName.c_str(),
+                                   eventId,
                                    xmem->get_size(),
                                    false,
                                    isP2P,
@@ -673,6 +723,7 @@ namespace xocl {
           if (!(xmem->is_resident(device))) return ;
 
           uint64_t contextId = e->get_context()->get_uid() ;
+          uint64_t eventId = e->get_uid() ;
           std::string deviceName = device->get_name() ;
           auto ext_flags = xmem->get_ext_flags() ;
           bool isP2P = ((ext_flags & XCL_MEM_EXT_P2P_BUFFER) != 0) ;
@@ -682,6 +733,7 @@ namespace xocl {
           if (status == CL_RUNNING) {
             counter_action_write_cb(contextId,
                                     deviceName.c_str(),
+                                    eventId,
                                     0,
                                     true,
                                     isP2P,
@@ -691,6 +743,7 @@ namespace xocl {
           else if (status == CL_COMPLETE) {
             counter_action_write_cb(contextId,
                                     deviceName.c_str(),
+                                    eventId,
                                     xmem->get_size(),
                                     false,
                                     isP2P,
