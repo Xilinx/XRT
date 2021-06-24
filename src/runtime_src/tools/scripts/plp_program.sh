@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # This script program plp based on input xclbin
 # This will be obsoleted after plp auto download is fully impletmented
 

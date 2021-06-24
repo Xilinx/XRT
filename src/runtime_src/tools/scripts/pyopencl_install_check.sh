@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 # Run this script if xrt installation fails due to a pyopencl issue
 # This can help narrow down the reason for pyopencl installation/import failure 

@@ -1,5 +1,9 @@
 #!/bin/csh -f
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 #set called=($_)
 set script_path=""
 set xrt_dir=""
