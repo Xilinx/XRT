@@ -673,7 +673,15 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct ert_user_command *ecmd)
 	case OP_START_SK:
 		BUG_ON(ert_user->ctrl_busy);
 #if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
+#ifdef CONFIG_SUSE_KERNEL
+#if SLE_VERSION(SUSE_VERSION, SUSE_PATCHLEVEL, SUSE_AUXRELEASE) >= SLE_VERSION(15, 2, 0)
+		__attribute__ ((__fallthrough__));
+#else
 		__attribute__ ((fallthrough));
+#endif
+#else
+		__attribute__ ((fallthrough));
+#endif
 #else
 		__attribute__ ((__fallthrough__));
 #endif
