@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # Script to setup environment for XRT
 # This script is installed in /opt/xilinx/xrt and must
 # be sourced from that location

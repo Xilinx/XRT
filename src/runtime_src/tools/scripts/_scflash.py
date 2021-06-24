@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 """
  Copyright (C) 2020-2021 Xilinx, Inc
  Author(s): Brian Xu (brianx@xlinx.com)

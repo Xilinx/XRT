@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 COMPILER="Visual Studio 15 2017 Win64"
 BOOSTINC=/mnt/c/xrt/libs/boost/include/boost-1_70
 BOOSTLIB=/mnt/c/xrt/libs/boost/lib

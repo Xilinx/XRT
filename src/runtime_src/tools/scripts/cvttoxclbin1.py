@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 import os, sys, getopt
 import subprocess, shlex
 import glob, re
