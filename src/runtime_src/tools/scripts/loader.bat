@@ -1,6 +1,9 @@
 @echo off
 setlocal
 
+REM SPDX-License-Identifier: Apache-2.0
+REM Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 REM Working Variables 
 set XRT_EXEC=""
 set XRT_UNWRAPPED_DIR=%~dp0

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 # This script creates rpm and deb packages for applications.
 #
 # The script is assumed to run on a host or docker that has all the

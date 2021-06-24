@@ -9,6 +9,7 @@
 
 #include <linux/workqueue.h>
 #include "common.h"
+#include "xocl_errors.h"
 #include "kds_core.h"
 /* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
@@ -418,9 +419,13 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 				     struct drm_xocl_bo *xobj,
 				     struct ert_packet *ecmd)
 {
+	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct ert_packet *orig;
 	int pkg_size;
+	struct xcl_errors *err;
+	struct xclErrorLast err_last;
 
+	err = xdev->core.errors;
 	orig = (struct ert_packet *)xobj->vmapping;
 	orig->state = ERT_CMD_STATE_NEW;
 	ecmd->header = orig->header;
@@ -428,6 +433,10 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
 	if (xobj->base.size < pkg_size) {
 		userpf_err(xdev, "payload size bigger than exec buf\n");
+		err_last.pid = pid_nr(task_tgid(current));
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_NUM_KDS_EXEC;
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return false;
 	}
 
@@ -441,6 +450,11 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 
 	if (get_size_with_timestamps_or_zero(ecmd) > xobj->base.size) {
 		userpf_err(xdev, "no space for timestamp in exec buf\n");
+		return false;
+	}
+
+	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
 
@@ -946,8 +960,13 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	regmap_size = kds_get_max_regmap_size(kds);
 	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
 		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
+
+	if (ecmd->slot_size > MAX_CQ_SLOT_SIZE)
+		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
 	/* cfg->slot_size is for debug purpose */
 	/* ecmd->slot_size	= cfg->slot_size; */
+	/* Record slot size so that KDS could validate command */
+	kds->ert->slot_size = ecmd->slot_size;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {

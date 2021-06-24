@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #ifndef _XRT_VERSION_H_
 #define _XRT_VERSION_H_
 
@@ -24,7 +29,7 @@ static const char xrt_modified_files[] = "@XRT_MODIFIED_FILES@";
 #include <iostream>
 #include <string>
 
-namespace xrt { 
+namespace xrt {
 
 class version {
  public:
@@ -35,7 +40,7 @@ class version {
      output << "      Build Version Hash: " << xrt_build_version_hash << std::endl;
      output << " Build Version Hash Date: " << xrt_build_version_hash_date << std::endl;
      output << "      Build Version Date: " << xrt_build_version_date_rfc << std::endl;
-  
+
      std::string modifiedFiles(xrt_modified_files);
      if ( !modifiedFiles.empty() ) {
         const std::string& delimiters = ",";      // Our delimiter
@@ -48,15 +53,15 @@ class version {
              output << "                          ";
           }
           output << runningIndex++ << ") ";
-  
+
           std::string::size_type pos = modifiedFiles.find_first_of(delimiters, lastPos);
-  
+
           if (pos == std::string::npos) {
             pos = modifiedFiles.length();
           }
-  
+
           output << modifiedFiles.substr(lastPos, pos-lastPos) << std::endl;
-  
+
           lastPos = pos + 1;
         }
      }
@@ -65,5 +70,4 @@ class version {
 }
 #endif
 
-#endif 
-
+#endif

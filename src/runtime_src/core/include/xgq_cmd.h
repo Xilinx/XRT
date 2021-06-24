@@ -35,13 +35,15 @@
  *
  */
 
-#ifndef __XGQ_H__
-#define __XGQ_H__
+#ifndef __XGQ_CMD_H__
+#define __XGQ_CMD_H__
 
 #if defined(__KERNEL__)
 # include <linux/types.h>
 #else
 # include <stdint.h>
+# include <stddef.h>
+# include <errno.h>
 #endif
 
 #define XRT_SUB_Q1_SLOT_SIZE	512	// NOLINT
@@ -73,11 +75,28 @@ enum xrt_cmd_state {
 	XRT_CMD_STATE_ERROR		= 0x1,
 };
 
+/*
+ * On some platforms, XGQ IP and XGQ ring buffer can be located
+ * on different hardware location, e.g. separate PCIe BARs. So
+ * updating doorbell register can be faster than the ring buffer.
+ * We have a special flag in Submission queue and Completion queue
+ * entry to indicate this entry is a new one. This flag is located
+ * at the first Word MSB in both Submission queue and Completion
+ * entry. After receiving doorbell update interrupt, consumer will
+ * need to check this flag as well to make sure this is a new entry.
+ *
+ * Note: for same reason, the producer will make sure to write to
+ *       Word0 as the last update of the Submission and Completion
+ *       queue entry before writing to the doorbell register.
+ */
+#define XGQ_ENTRY_NEW_FLAG_MASK		0x80000000
+
 /**
  * struct xrt_sub_queue_entry: XGQ submission queue entry format
  *
  * @opcode:	[15-0]	command opcode identifying specific command
  * @count:	[30-16]	number of bytes representing packet payload
+ * @state:	[31]	flag indicates this is a new entry
  * @cid:		unique command id
  * @rsvd:		reserved for future use
  *
@@ -105,16 +124,15 @@ struct xrt_sub_queue_entry {
  *
  * @rcode:	return code
  * @result:	command specific result
- * @sqhead:	submission queue head point
  * @cid:	unique command id
  * @cstate:	command state
+ * @specific:	flag indicates there is command specific info in result
+ * @state:	flag indicates this is a new entry
  *
  * When a command is completed, a completion entry is put into completion
  * queue. A generic command state is put into cstate. The command is
- * identified by cid which matches the cid in submission queue. sqhead
- * indicates the submission queue entries the queue consumer has
- * fetched so that those submission queue entries can be reused. More
- * command specific result is put into result field. POSIX error code
+ * identified by cid which matches the cid in submission queue.
+ * More command specific result is put into result field. POSIX error code
  * can be put into rcode. This is useful for some case like PS kernel.
  *
  * All completion queue entries have a same fixed size of 4 words.
@@ -122,12 +140,13 @@ struct xrt_sub_queue_entry {
 struct xrt_com_queue_entry {
 	union {
 		struct {
-			uint32_t rcode;
-			uint32_t result;
-			uint16_t sqhead;
-			uint16_t rsvd;
 			uint16_t cid;
-			uint16_t cstate;
+			uint16_t cstate:14;
+			uint16_t specifc:1;
+			uint16_t state:1;
+			uint32_t result;
+			uint32_t resvd;
+			uint32_t rcode;
 		};
 		uint32_t data[4]; // NOLINT
 	};

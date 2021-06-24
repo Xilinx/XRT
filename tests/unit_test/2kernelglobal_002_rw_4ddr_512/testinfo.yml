@@ -1,4 +1,7 @@
 #template_tql < $XTC_TEMPLATES/sdx/sdaccel/swhw/template.tql
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 description: testinfo generated using import_sdx_test.py script
 level: 6
 owner: thuyp

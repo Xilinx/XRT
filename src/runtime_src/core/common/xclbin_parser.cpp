@@ -38,6 +38,9 @@ namespace {
 
 namespace pt = boost::property_tree;
 
+// NOLINTNEXTLINE
+constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
+
 static size_t
 convert(const std::string& str)
 {
@@ -638,38 +641,6 @@ get_kernel_freq(const axlf* top)
   return kernel_clk_freq;
 }
 
-size_t
-get_kernel_range(const char* xml_data, size_t xml_size, const std::string& kname)
-{
-  constexpr size_t default_kernel_range = 0x10000; 
-  size_t kernel_range = default_kernel_range;
-
-  pt::ptree xml_project;
-  std::stringstream xml_stream;
-  xml_stream.write(xml_data,xml_size);
-  pt::read_xml(xml_stream,xml_project);
-
-  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) {
-    if (xml_kernel.first != "kernel")
-      continue;
-    if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
-      continue;
-
-    for (auto& xml_port : xml_kernel.second) {
-      if (xml_port.first != "port")
-        continue;
-
-      /* one AXI slave port per kernel */
-      if (xml_port.second.get<std::string>("<xmlattr>.mode") == "slave") {
-        kernel_range = convert(xml_port.second.get<std::string>("<xmlattr>.range"));
-        break;
-      }
-    }
-  }
-
-  return kernel_range;
-}
-
 std::vector<kernel_argument>
 get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& kname)
 {
@@ -696,8 +667,7 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
       args.emplace_back(kernel_argument{
           xml_arg.second.get<std::string>("<xmlattr>.name")
          ,xml_arg.second.get<std::string>("<xmlattr>.type", "no-type")
-
-            ,xml_arg.second.get<std::string>("<xmlattr>.port", "no-port")
+         ,xml_arg.second.get<std::string>("<xmlattr>.port", "no-port")
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
@@ -737,13 +707,27 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
       continue;
 
+    // Determine kernel address range
+    size_t address_range = 64_kb; // NOLINT  default address range
+    for (auto& xml_port : xml_kernel.second) {
+      if (xml_port.first != "port")
+        continue;
+
+      // one AXI slave port per kernel
+      if (xml_port.second.get<std::string>("<xmlattr>.mode") == "slave") {
+        address_range = convert(xml_port.second.get<std::string>("<xmlattr>.range"));
+        break;
+      }
+    }
+
+    // Determine features
     auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
     if (mailbox == kernel_properties::mailbox_type::none)
       mailbox = get_mailbox_from_ini(kname);
     auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.counted_auto_restart","0"));
     if (restart == 0)
       restart = get_restart_from_ini(kname);
-    return kernel_properties{kname, restart, mailbox};
+    return kernel_properties{kname, restart, mailbox, address_range};
   }
 
   return kernel_properties{};
@@ -783,9 +767,12 @@ get_kernels(const char* xml_data, size_t xml_size)
 
   auto knames = get_kernel_names(xml_data, xml_size);
   for (auto& kname : get_kernel_names(xml_data, xml_size)) {
-    kernels.emplace_back
-      (kernel_object{kname,get_kernel_arguments(xml_data, xml_size, kname),
-                     get_kernel_range(xml_data, xml_size, kname)});
+    auto kprop = get_kernel_properties(xml_data, xml_size, kname);
+    kernels.emplace_back(kernel_object{
+        kname
+       ,get_kernel_arguments(xml_data, xml_size, kname)
+       ,kprop.address_range
+    });
   }
 
   return kernels;

@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
 #stop msd service anyway
 systemctl stop msd > /dev/null 2>&1

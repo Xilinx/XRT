@@ -200,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
+	mutex_lock(&xdev->core.errors_lock);
+	xocl_clear_all_error_record(&xdev->core);
+	mutex_unlock(&xdev->core.errors_lock);
 
 	if (prepare) {
 		if (kds_mode)

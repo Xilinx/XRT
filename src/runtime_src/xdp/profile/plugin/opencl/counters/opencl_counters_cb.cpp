@@ -165,6 +165,7 @@ namespace xdp {
   static void counter_action_read(uint64_t contextId,
                                   uint64_t numDevices,
                                   const char* deviceName,
+                                  uint64_t eventId,
                                   uint64_t size,
                                   bool isStart,
                                   bool isP2P,
@@ -176,7 +177,7 @@ namespace xdp {
     static std::mutex timestampLock ;
 
     std::pair<uint64_t, std::string> identifier =
-      std::make_pair(contextId, std::string(deviceName)) ;
+      std::make_pair(eventId, std::string(deviceName)) ;
 
     // clEnqueueNDRangeKernel will issue end events with no start
     //  if the data transfer didn't have to happen.  We can safely
@@ -213,6 +214,7 @@ namespace xdp {
 
   static void counter_action_write(uint64_t contextId,
                                    const char* deviceName,
+                                   uint64_t eventId,
                                    uint64_t size,
                                    bool isStart,
                                    bool isP2P,
@@ -224,7 +226,7 @@ namespace xdp {
     static std::mutex timestampLock ;
 
     std::pair<uint64_t, std::string> identifier =
-      std::make_pair(contextId, std::string(deviceName)) ;
+      std::make_pair(eventId, std::string(deviceName)) ;
 
     // clEnqueueNDRangeKernel will issue end events with no start
     //  if the data transfer didn't have to happen.  We can safely
@@ -325,6 +327,7 @@ extern "C"
 void counter_action_read(unsigned long long int contextId,
                          unsigned long long int numDevices,
                          const char* deviceName,
+                         unsigned long long int eventId,
                          unsigned long long int size,
                          bool isStart,
                          bool isP2P,
@@ -334,6 +337,7 @@ void counter_action_read(unsigned long long int contextId,
   xdp::counter_action_read(static_cast<uint64_t>(contextId),
                            static_cast<uint64_t>(numDevices),
                            deviceName,
+                           static_cast<uint64_t>(eventId),
                            static_cast<uint64_t>(size),
                            isStart,
                            isP2P,
@@ -344,6 +348,7 @@ void counter_action_read(unsigned long long int contextId,
 extern "C"
 void counter_action_write(unsigned long long int contextId,
                           const char* deviceName,
+                          unsigned long long int eventId,
                           unsigned long long int size,
                           bool isStart,
                           bool isP2P,
@@ -352,6 +357,7 @@ void counter_action_write(unsigned long long int contextId,
 {
   xdp::counter_action_write(static_cast<uint64_t>(contextId),
                             deviceName,
+                            static_cast<uint64_t>(eventId),
                             static_cast<uint64_t>(size),
                             isStart,
                             isP2P,

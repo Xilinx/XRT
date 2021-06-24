@@ -128,13 +128,8 @@ namespace {
 constexpr uint32_t MAILBOX_INPUT_CTRL  = (1 << 9);
 constexpr uint32_t MAILBOX_OUTPUT_CTRL = (1 << 10);
 
- constexpr size_t max_cus = 128;
+constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
-
-// NOLINTNEXTLINE
-constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
-
-
 
 XRT_CORE_UNUSED // debug enabled function
 std::string
@@ -477,7 +472,7 @@ public:
   // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::uuid& xclbin_id,
+  open(xrt_core::device* device, const xrt::uuid& xclbin_id, size_t range,
        const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
@@ -487,7 +482,7 @@ public:
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, cuidx, am));
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, range, ip, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
 
@@ -585,14 +580,14 @@ public:
 
 private:
   // regular CU
-  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
+  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, size_t range,
              const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
     : device(dev)
     , xid(xclbin_id)
     , args(dev, xclbin_id, ipindex)
     , cuidx(cuindex)
     , address(ip->m_base_address)
-    , size(64_kb)  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    , size(range)
     , access(am)
   {
     if (access != access_mode::none)
@@ -1367,7 +1362,7 @@ public:
         throw std::runtime_error("unexpected error");
       auto cuidx = std::distance(all_cus.begin(), itr);         // sort order index
       auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, ipidx, cuidx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, properties.address_range, cu, ipidx, cuidx, am));
       cumask.set(cuidx);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
     }

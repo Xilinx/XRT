@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 message("-- Preparing XRT find_package")
 
 # Provides write_basic_package_version_file
