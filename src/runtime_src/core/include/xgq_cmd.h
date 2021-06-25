@@ -84,6 +84,9 @@ enum xrt_cmd_state {
  * at the first Word MSB in both Submission queue and Completion
  * entry. After receiving doorbell update interrupt, consumer will
  * need to check this flag as well to make sure this is a new entry.
+ * After the check, consumer also needs to clear it so that it won't
+ * be confused by the stale data next time when it comes to this slot.
+ * To handle this case, XGQ_OUT_OF_ORDER_WRITE macro shall be defined.
  *
  * Note: for same reason, the producer will make sure to write to
  *       Word0 as the last update of the Submission and Completion
