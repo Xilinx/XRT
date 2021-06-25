@@ -121,8 +121,10 @@
 #define	XMC_CLOCK_SCALING_MODE_POWER_TEMP	0x2
 #define	XMC_CLOCK_SCALING_POWER_REG	0x18
 #define	XMC_CLOCK_SCALING_POWER_TARGET_MASK 0xFF
+#define	XMC_CLOCK_SCALING_POWER_DIS_OVRD    0x1000
 #define	XMC_CLOCK_SCALING_TEMP_REG	0x14
 #define	XMC_CLOCK_SCALING_TEMP_TARGET_MASK	0xFF
+#define	XMC_CLOCK_SCALING_TEMP_DIS_OVRD		0x1000
 #define	XMC_CLOCK_SCALING_THRESHOLD_REG		0x2C
 #define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS	0
 #define	XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK	0xFF
@@ -1771,7 +1773,8 @@ static ssize_t scaling_threshold_power_override_en_show(struct device *dev,
 
 	mutex_lock(&xmc->xmc_lock);
 	if (!xmc->sc_presence) {
-		val = 1;
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
+		val = (val & XMC_CLOCK_SCALING_POWER_DIS_OVRD) ? 0 : 1;
 	} else {
 		val = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
 		val = (val >> 31) & 0x1;
@@ -1825,15 +1828,19 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 		val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 		val2 = (val2 >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 			XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
-		if (val < val2) {
-			val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-			val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+		val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
+		val3 &= ~XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+		if ((val > 0) && (val <= val2)) {
+			val3 &= ~XMC_CLOCK_SCALING_POWER_DIS_OVRD;
 			val3 |= (val & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
-			WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
 			xocl_info(dev, "New power threshold value is = %d W", val);
-		} else {
-			xocl_info(dev, "Unable to set new power threshold value since value is > %d W", val2);
+		} else { //disable power override mode
+			val3 |= XMC_CLOCK_SCALING_POWER_DIS_OVRD;
+			val3 |= (val2 & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
+			xocl_info(dev, "Requested power threshold value is not in range (0,
+				%d]W, disabled target power override feature\n", val2);
 		}
+		WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
 	} else {
 		val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_PWR_MGMT_REG);
 		val2 &= ~XMC_CLK_THROTTLING_PWR_MGMT_REG_OVRD_MASK;
@@ -1957,7 +1964,8 @@ static ssize_t scaling_threshold_temp_override_en_show(struct device *dev,
 		return sprintf(buf, "%d\n", val);
 
 	if (!xmc->sc_presence) {
-		val = 1;
+		val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
+		val = (val & XMC_CLOCK_SCALING_TEMP_DIS_OVRD) ? 0 : 1;
 	} else {
 		val = READ_REG32(xmc, XMC_CLK_THROTTLING_TEMP_MGMT_REG);
 		val = (val >> 31) & 0x1;
@@ -2010,15 +2018,19 @@ static ssize_t scaling_threshold_temp_override_store(struct device *dev,
 		val2 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
 		val2 = (val2 >> XMC_CLOCK_SCALING_TEMP_THRESHOLD_POS) &
 			XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
-		if (val <= val2) {
-			val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-			val3 &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+		val3 = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
+		val3 &= ~XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+		if ((val > 0) && (val <= val2)) {
+			val3 &= ~XMC_CLOCK_SCALING_TEMP_DIS_OVRD;
 			val3 |= (val & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
-			WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_TEMP_REG);
 			xocl_info(dev, "New temp threshold value is = %d dC", val);
 		} else{
-			xocl_info(dev, "Unable to set new temp threshold value since value is >= %d dC", val2);
+			val3 |= XMC_CLOCK_SCALING_TEMP_DIS_OVRD;
+			val3 |= (val2 & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
+			xocl_info(dev, "Requested temp override value is not in range (0, %d]dC,
+				disabled target temp override feature\n", val2);
 		}
+		WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_TEMP_REG);
 	} else {
 		val2 = READ_REG32(xmc, XMC_CLK_THROTTLING_TEMP_MGMT_REG);
 		val2 &= ~XMC_CLK_THROTTLING_TEMP_MGMT_REG_OVRD_MASK;
