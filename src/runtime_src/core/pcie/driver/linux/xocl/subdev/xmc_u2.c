@@ -1837,8 +1837,7 @@ static ssize_t scaling_threshold_power_override_store(struct device *dev,
 		} else { //disable power override mode
 			val3 |= XMC_CLOCK_SCALING_POWER_DIS_OVRD;
 			val3 |= (val2 & XMC_CLOCK_SCALING_POWER_TARGET_MASK);
-			xocl_info(dev, "Requested power threshold value is not in range (0,
-				%d]W, disabled target power override feature\n", val2);
+			xocl_info(dev, "Requested power threshold value is not in range (0, %d]W, disabled target power override feature\n", val2);
 		}
 		WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_POWER_REG);
 	} else {
@@ -2027,8 +2026,7 @@ static ssize_t scaling_threshold_temp_override_store(struct device *dev,
 		} else{
 			val3 |= XMC_CLOCK_SCALING_TEMP_DIS_OVRD;
 			val3 |= (val2 & XMC_CLOCK_SCALING_TEMP_TARGET_MASK);
-			xocl_info(dev, "Requested temp override value is not in range (0, %d]dC,
-				disabled target temp override feature\n", val2);
+			xocl_info(dev, "Requested temp override value is not in range (0, %d]dC, disabled target temp override feature\n", val2);
 		}
 		WRITE_RUNTIME_CS(xmc, val3, XMC_CLOCK_SCALING_TEMP_REG);
 	} else {
