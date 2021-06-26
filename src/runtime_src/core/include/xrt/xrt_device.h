@@ -69,6 +69,14 @@ namespace info {
  *  True if device is a NoDMA device (bool)
  * @var offline
  *  True if device is offline and in process of being reset (bool)
+ * @var power_rails
+ *  Power rail sensors of device in json format (std::string)
+ * @var thermals
+ *  Thermal sensors of device in json format (std::string)
+ * @power_consumption
+ *  Power sensors of a device in json format (std::string)
+ * @fans
+ *  Fans of a device in json format (std::string)
  */
 enum class device : unsigned int {
   bdf,

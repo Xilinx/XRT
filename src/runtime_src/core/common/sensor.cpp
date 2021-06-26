@@ -45,7 +45,8 @@ populate_sensor(const xrt_core::device * device, const std::string& loc_id, cons
   pt.put("id", loc_id);
   pt.put("description", desc);
 
-  uint64_t voltage = 0, current = 0;
+  uint64_t voltage = 0;
+  uint64_t current = 0;
   try {
     if (!std::is_same<QRVoltage, xrt_core::query::noop>::value)
       voltage = xrt_core::device_query<QRVoltage>(device);
@@ -72,17 +73,17 @@ static boost::property_tree::ptree
 populate_temp(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
 {
   boost::property_tree::ptree pt;
-  uint64_t temp = 0;
+  uint64_t temp_C = 0;
   try {
-    temp = xrt_core::device_query<QueryRequestType>(device);
+    temp_C = xrt_core::device_query<QueryRequestType>(device);
   } catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
   }
   
   pt.put("location_id", loc_id);
   pt.put("description", desc);
-  pt.put("temp_C", temp);
-  pt.put("is_present", temp != 0 ? "true" : "false");
+  pt.put("temp_C", temp_C);
+  pt.put("is_present", temp_C != 0 ? "true" : "false");
   
   return pt;
 }
@@ -105,10 +106,11 @@ static boost::property_tree::ptree
 populate_fan(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
 {
   boost::property_tree::ptree pt;
-  uint64_t temp = 0, rpm = 0;
+  uint64_t temp_C = 0;
+  uint64_t rpm = 0;
   std::string is_present;
   try {
-    temp = xrt_core::device_query<xrt_core::query::fan_trigger_critical_temp>(device);
+    temp_C = xrt_core::device_query<xrt_core::query::fan_trigger_critical_temp>(device);
     rpm = xrt_core::device_query<xrt_core::query::fan_speed_rpm>(device);
     is_present = xrt_core::device_query<xrt_core::query::fan_fan_presence>(device);
   } catch (const std::exception& ex) {
@@ -117,7 +119,7 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
   
   pt.put("location_id", loc_id);
   pt.put("description", desc);
-  pt.put("critical_trigger_temp_C", temp);
+  pt.put("critical_trigger_temp_C", temp_C);
   pt.put("speed_rpm", rpm);
   pt.put("is_present", xrt_core::query::fan_fan_presence::to_string(is_present));
   

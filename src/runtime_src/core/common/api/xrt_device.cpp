@@ -126,7 +126,7 @@ to_string(const xrt_core::device* device)
   return to_value<param, QueryRequestType>(device, [](const auto& q) { return QueryRequestType::to_string(q); });
 }
 
-std::string
+static std::string
 json_str(boost::property_tree::ptree pt) 
 {
   std::stringstream ss;

@@ -34,15 +34,21 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
                                         boost::property_tree::ptree &_pt) const
 {
   xrt::device device(_pDevice->get_device_id());
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::power_rails>();
+  
   boost::property_tree::ptree pt;
-  boost::property_tree::read_json(ss, pt);
-  ss.clear();
+  {
+    std::stringstream ss;
+    ss << device.get_info<xrt::info::device::power_rails>();
+    boost::property_tree::read_json(ss, pt);
+  }
 
-  ss << device.get_info<xrt::info::device::power_consumption>();
   boost::property_tree::ptree pt_power_consumption;
-  boost::property_tree::read_json(ss, pt_power_consumption);
+  {
+    std::stringstream ss;
+    ss << device.get_info<xrt::info::device::power_consumption>();
+    boost::property_tree::read_json(ss, pt_power_consumption);
+  }
+  
   pt_power_consumption = pt_power_consumption.get_child("power_consumption");
   for(auto& it : pt_power_consumption) {
     pt.put(it.first, it.second.data());
