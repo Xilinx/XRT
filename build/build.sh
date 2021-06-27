@@ -75,7 +75,6 @@ ccache=0
 docs=0
 verbose=""
 driver=0
-clangtidy="OFF"
 checkpatch=0
 jcore=$CORE
 opt=1
@@ -86,6 +85,8 @@ nobuild=0
 noctest=0
 static_boost=""
 ertfw=""
+cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -130,12 +131,13 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -ccache)
+            cmake_flags+=" -DRDI_CCACHE=1"
             ccache=1
             shift
             ;;
         -toolchain)
             shift
-            toolchain=$1
+            cmake_flags+=" -DCMAKE_TOOLCHAIN_FILE=$1"
             shift
             ;;
         -checkpatch)
@@ -153,7 +155,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -clangtidy)
-            clangtidy="ON"
+            cmake_flags+=" -DXRT_CLANG_TIDY=ON"
             shift
             ;;
         -verbose)
@@ -181,7 +183,7 @@ cd $BUILDDIR
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $debug_dir $release_dir"
+    echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
     /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
 fi
@@ -225,9 +227,12 @@ fi
 if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
+
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
+	echo "$CMAKE $cmake_flags ../../src"
+	time $CMAKE $cmake_flags ../../src
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -242,9 +247,12 @@ fi
 if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
+  
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
+	echo "$CMAKE $cmake_flags ../../src"
+	time $CMAKE $cmake_flags ../../src
   fi
 
   if [[ $nobuild == 0 ]]; then
@@ -282,9 +290,12 @@ fi
 if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
   mkdir -p $edge_dir
   cd $edge_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
+
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time env XRT_NATIVE_BUILD=no $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+    echo "env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src"
+    time env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD"
   time make -j $jcore $verbose DESTDIR=$PWD
