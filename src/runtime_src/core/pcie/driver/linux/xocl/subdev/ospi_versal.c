@@ -93,7 +93,7 @@ struct xfer_versal {
 	size_t			xv_size;
 	size_t			xv_data_size;
 	bool			xv_inuse;
-
+	bool			xv_apu_pdi;
 	struct mutex		xv_lock;
 };
 
@@ -326,8 +326,9 @@ static ssize_t xfer_versal_write(struct file *filp, const char __user *udata,
 	}
 
 	/* Set timeout 1MB per 30 seconds for flash operation on device side */
-	ret = xfer_versal_transfer(xv, kdata, data_len, XRT_XFR_PKT_FLAGS_PDI,
-	    data_len / 1024 / 1024 * 30);
+	ret = xfer_versal_transfer(xv, kdata, data_len,
+	    xv->xv_apu_pdi ? XRT_XFR_PKT_FLAGS_APU_PDI : XRT_XFR_PKT_FLAGS_PDI,
+	    data_len / 1024 / 1024 * 300);
 
 done:
 	mutex_lock(&xv->xv_lock);
@@ -378,6 +379,30 @@ done:
 	return ret;
 }
 
+static ssize_t apu_pdi_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xfer_versal *xv = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	xv->xv_apu_pdi = val != 0 ? true : false;
+
+	return count;
+}
+static DEVICE_ATTR_WO(apu_pdi);
+
+static struct attribute *xfer_attrs[] = {
+	&dev_attr_apu_pdi.attr,
+	NULL,
+};
+
+static struct attribute_group xfer_attr_group = {
+	.attrs = xfer_attrs,
+};
+
 /* Kernel APIs exported from this sub-device driver */
 static struct xocl_xfer_versal_funcs xfer_versal_ops = {
 	.download_axlf = xfer_versal_download_axlf,
@@ -413,6 +438,8 @@ static int xfer_versal_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &xfer_attr_group);
 
 	xocl_drvinst_release(xv, &hdl);
 	if (xv->xv_base)
@@ -456,6 +483,12 @@ static int xfer_versal_probe(struct platform_device *pdev)
 	if (xv->xv_size % 4 || xv->xv_data_size % 4) {
 		XV_ERR(xv, "BRAM size is not 4 Bytes aligned");
 		ret = -EINVAL;
+		goto failed;
+	}
+
+	ret = sysfs_create_group(&pdev->dev.kobj, &xfer_attr_group);
+	if (ret) {
+		XV_ERR(xv, "create xfer attrs failed: %d", ret);
 		goto failed;
 	}
 

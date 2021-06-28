@@ -64,6 +64,10 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
     {
         type = E_FlasherType::OSPIVERSAL;
     }
+    else if (typeStr.compare("apu_versal") == 0)
+    {
+        type = E_FlasherType::APUVERSAL;
+    }
     else
     {
         std::cout << "Unknown flash type: " << typeStr << std::endl;
@@ -160,6 +164,20 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         break;
     }
+    case APUVERSAL:
+    {
+        XAPUVER_Flasher xapu_versal(mDev);
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: APUVERSAL mode does not support reverting to MFG." << std::endl;
+        }
+        else
+        {
+            retVal = xapu_versal.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
+ 
     default:
         break;
     }
