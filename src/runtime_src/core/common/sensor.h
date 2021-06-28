@@ -1,8 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
- * Author: Ryan Radjabi
- * Wrapper around boost::property_tree::ptree for storing data that can
- * be accessed easily and exported to formats like JSON and XML.
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,12 +17,41 @@
 #ifndef COMMON_SENSOR_H
 #define COMMON_SENSOR_H
 
-#include <boost/property_tree/ptree.hpp>
+// Local - Include Files
+#include "config.h"
+#include "device.h"
+
+// 3rd Party Library - Include Files
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/lexical_cast.hpp>
-#include <typeinfo>
-#include <limits>
-#include <string>
-#include <sstream>
+
+// System - Include Files
+#include <iostream>
+
+namespace xrt_core {
+namespace sensor {
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+read_power_rails(const xrt_core::device * device);
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+read_thermals(const xrt_core::device * device);
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+read_power_consumption(const xrt_core::device * device);
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+read_fans(const xrt_core::device * device);
+
+}} // sensor, xrt_core
+
+
+// ------ L E G A C Y   X B U T I L   F U N C T I O N S  -----------------
+// The following namespace is only used by legacy xbutil dump
 
 namespace sensor_tree {
 

@@ -17,29 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportThermal.h"
-#include "core/common/query_requests.h"
 #include "core/common/device.h"
-namespace qr = xrt_core::query;
-
-template <typename QueryRequestType>
-boost::property_tree::ptree
-populate_temp(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
-{
-  boost::property_tree::ptree pt;
-  uint64_t temp;
-  try {
-    temp = xrt_core::device_query<QueryRequestType>(device);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-  }
-  
-  pt.put("location_id", loc_id);
-  pt.put("description", desc);
-  pt.put("temp_C", temp);
-  pt.put("is_present", temp != 0 ? "true" : "false");
-  
-  return pt;
-}
+#include "core/common/sensor.h"
 
 void
 ReportThermal::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
@@ -54,26 +33,10 @@ void
 ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  boost::property_tree::ptree thermal_array;
-  //--- pcb ----------
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::temp_card_top_front>(_pDevice, "pcb_top_front", "PCB Top Front")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::temp_card_top_rear>(_pDevice, "pcb_top_rear", "PCB Top Rear")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::temp_card_bottom_front>(_pDevice, "pcb_bottom_front", "PCB Bottom Front")));
-
-  //--- cage ----------
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::cage_temp_0>(_pDevice, "cage_temp_0", "Cage0")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::cage_temp_1>(_pDevice, "cage_temp_1", "Cage1")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::cage_temp_2>(_pDevice, "cage_temp_2", "Cage2")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::cage_temp_3>(_pDevice, "cage_temp_3", "Cage3")));
-
-  // --- fpga, vccint, hbm -------------
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::temp_fpga>(_pDevice, "fpga0", "FPGA")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::int_vcc_temp>(_pDevice, "int_vcc", "Int Vcc")));
-  thermal_array.push_back(std::make_pair("", populate_temp<qr::hbm_temp>(_pDevice, "fpga_hbm", "FPGA HBM")));
-
-
-  // There can only be 1 root node
-  _pt.add_child("thermals", thermal_array);
+  xrt::device device(_pDevice->get_device_id());
+  std::stringstream ss;
+  ss << device.get_info<xrt::info::device::thermals>();
+  boost::property_tree::read_json(ss, _pt);
 }
 
 void 
