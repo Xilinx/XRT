@@ -41,11 +41,13 @@
 #if defined(__KERNEL__)
 # include <linux/types.h>
 #else
+#ifndef __cplusplus
 # include <stdbool.h>
+#endif /* __cplusplus */
 # include <stdint.h>
 # include <stddef.h>
 # include <errno.h>
-#endif
+#endif /* __KERNEL__ */
 
 #include "xgq_cmd.h"
 
@@ -242,7 +244,7 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 {
 	size_t rlen = *ring_len;
 	uint32_t numslots = XGQ_MIN_NUM_SLOTS;
-	struct xgq_header hdr;
+	struct xgq_header hdr = {};
 
 	if (slot_size % sizeof(uint32_t))
 		return -EINVAL;
@@ -283,7 +285,7 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
 			     uint64_t sq_produced, uint64_t cq_produced)
 {
-	struct xgq_header hdr;
+	struct xgq_header hdr = {};
 	uint32_t nslots;
 
 	xgq_copy_from_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(uint32_t));
