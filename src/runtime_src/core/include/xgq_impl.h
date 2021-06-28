@@ -139,7 +139,7 @@ struct xgq {
 
 static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, size_t len)
 {
-	size_t i;
+	size_t i = 0;
 	uint32_t *src = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, tgt += 4)
@@ -148,7 +148,7 @@ static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, si
 
 static inline void xgq_copy_from_ring(uint64_t io_hdl, void *buf, uint64_t src, size_t len)
 {
-	size_t i;
+	size_t i = 0;
 	uint32_t *tgt = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, src += 4)
