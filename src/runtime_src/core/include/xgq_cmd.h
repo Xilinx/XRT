@@ -35,8 +35,8 @@
  *
  */
 
-#ifndef __XGQ_CMD_H__
-#define __XGQ_CMD_H__
+#ifndef XGQ_CMD_H
+#define XGQ_CMD_H
 
 #if defined(__KERNEL__)
 # include <linux/types.h>
