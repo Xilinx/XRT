@@ -38,6 +38,12 @@ endif()
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
 
+# Bypass binary targets if clangtidy is enabled,
+# same targets are defined for DC
+if (${XRT_CLANGTIDY_REVIEW})
+  return()
+endif()
+
 if (DEFINED XRT_AIE_BUILD)
   add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
     $<TARGET_OBJECTS:core_common_objects>
