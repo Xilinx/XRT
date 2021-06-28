@@ -342,7 +342,7 @@ static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 
 #ifdef XGQ_OUT_OF_ORDER_WRITE
 	/*
-	 * Producer pointer does not gurantee the slot content is updat-to-date.
+	 * Producer pointer does not gurantee the slot content is up-to-date.
 	 * See comments above XGQ_ENTRY_NEW_FLAG_MASK for details.
 	 */
 	while (!(val & XGQ_ENTRY_NEW_FLAG_MASK))
