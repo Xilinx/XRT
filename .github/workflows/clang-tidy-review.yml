@@ -8,6 +8,10 @@ on:
         description: Pull request to review
         default: 0
         required: true
+      sha:
+        description: Sha of pull request
+        default: 0
+        required: true
 
 jobs:
   clangtidy_review:
@@ -16,7 +20,7 @@ jobs:
     - name: Checkout XRT
       uses: actions/checkout@v2
       with:
-        ref: refs/remotes/pull/${{ github.event.inputs.pr }}/merge
+        ref: ${{ github.event.inputs.sha }}
       
     - name: Install dependencies
       run: |
