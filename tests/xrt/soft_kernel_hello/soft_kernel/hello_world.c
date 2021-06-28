@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -96,7 +101,7 @@ int hello_world(void *args, struct sk_operations *ops)
     if (ar->size_hello > 511) {
         boHandle_hello = ops->getHostBO(ar->out_hello, ar->size_hello);
         //boHandle_hello = ops->getHostBO(0x800000000, 4096);//for debug
-       
+
         bo_hello = (char *)ops->mapBO(boHandle_hello, true);
         //strcpy(bo_hello, "Hello World - ");
         snprintf(bo_hello, 510, "Hello World -  %d-%02d-%02d %02d:%02d:%02d", tmp_tm.tm_year+1900, tmp_tm.tm_mon+1, tmp_tm.tm_mday, tmp_tm.tm_hour, tmp_tm.tm_min, tmp_tm.tm_sec);
@@ -206,5 +211,3 @@ int hello_world(void *args, struct sk_operations *ops)
     closelog();
     return 0;
 }
-
-
