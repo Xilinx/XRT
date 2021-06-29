@@ -14,7 +14,7 @@
 
 #include "kds_core.h"
 #include "zocl_error.h"
-#include "zocl_ioctl.h"
+#include "zynq_ioctl.h"
 
 #define zocl_err(dev, fmt, args...)     \
 	dev_err(dev, "%s: "fmt, __func__, ##args)

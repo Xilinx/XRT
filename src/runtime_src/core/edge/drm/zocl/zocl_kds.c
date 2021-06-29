@@ -268,6 +268,17 @@ zocl_del_aie_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	return zocl_aie_kds_del_context(zdev, client);
 }
 
+static int
+zocl_open_ucu(struct drm_zocl_dev *zdev, struct kds_client *client,
+	      struct drm_zocl_ctx *args)
+{
+	struct kds_sched  *kds;
+	int cu_idx = args->cu_index;
+
+	kds = &zdev->kds;
+	return kds_open_ucu(kds, client, cu_idx);
+}
+
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -293,6 +304,9 @@ int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		break;
 	case ZOCL_CTX_OP_FREE_AIE_CTX:
 		ret = zocl_del_aie_context(zdev, client, args);
+		break;
+	case ZOCL_CTX_OP_OPEN_GCU_FD:
+		ret = zocl_open_ucu(zdev, client, args);
 		break;
 	default:
 		ret = -EINVAL;
