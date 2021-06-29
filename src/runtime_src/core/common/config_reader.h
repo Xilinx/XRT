@@ -156,6 +156,13 @@ get_data_transfer_trace()
   return value;
 }
 
+inline std::string
+get_profiling_directory()
+{
+  static std::string value = detail::get_string_value("Debug.profiling_directory", "") ;
+  return value ;
+}
+
 inline bool
 get_power_profile()
 {

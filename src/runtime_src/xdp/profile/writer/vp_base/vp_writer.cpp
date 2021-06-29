@@ -20,6 +20,14 @@
 #include "xdp/profile/writer/vp_base/vp_writer.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "core/common/message.h"
+#include "core/common/config_reader.h"
+
+#ifdef _WIN32
+#else
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 namespace xdp {
 
@@ -28,10 +36,61 @@ namespace xdp {
   {
   }
 
-  VPWriter::VPWriter(const char* filename, VPDatabase* inst) :
-    basename(filename), currentFileName(filename), fileNum(1), db(inst),
-    fout(filename)
+  VPWriter::VPWriter(const char* filename, VPDatabase* inst, bool useDir) :
+    basename(filename), currentFileName(filename), directory(""),
+#ifdef _WIN32
+    separator('\\'),
+#else
+    separator('/'),
+#endif
+    fileNum(1), db(inst)
   {
+    std::string directory = xrt_core::config::get_profiling_directory() ;
+
+    if (!useDir || directory == "") {
+      // If no directory was specified, just use the file in
+      //  the working directory
+      fout.open(filename) ;
+      return ;
+    }
+
+    // The directory was specified.  Check if it exists and is writable
+    bool dirExists  = false ;
+    bool writeable  = false ;
+#ifdef _WIN32
+#else
+    struct stat buf ;
+    int result = stat(directory.c_str(), &buf) ;
+    if (!result) {
+      // The file exists.  Is it a directory?
+      dirExists = S_ISDIR(buf.st_mode) ;
+      if (dirExists) {
+        // The directory exists, but can we write to it?
+        writeable = (buf.st_mode & S_IWUSR) != 0 ;
+      }
+      //else {
+        // The file exists, but it is not a directory.  We cannot write to it
+      //}
+    }
+    else {
+      // The file does not exist at all, so try to create it
+      result = mkdir(directory.c_str(), 0777) ;
+      if (!result) {
+        dirExists = true ;
+        writeable = true ;
+      }
+    }
+#endif
+    if (!dirExists || !writeable) {
+      // If we cannot create the directory, or if we cannot write to
+      //  the directory, then just use the filename
+      fout.open(filename) ;
+      return ;
+    }
+
+    // Set the file name to directory + filename
+    currentFileName = directory + separator + basename ;
+    fout.open(currentFileName) ;
   }
 
   VPWriter::~VPWriter()
@@ -48,6 +107,9 @@ namespace xdp {
 
     ++fileNum ;
     currentFileName = std::to_string(fileNum) + std::string("-") + basename ;
+    if (directory != "") {
+      currentFileName = directory + separator + currentFileName ;
+    }
 
     if (fileNum == TRACE_DUMP_FILE_COUNT_WARN && !warnFileNum) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_FILE_COUNT_WARN_MSG);
@@ -65,6 +127,11 @@ namespace xdp {
     fout.clear() ;
 
     fout.open(currentFileName.c_str()) ;
+  }
+
+  std::string VPWriter::getcurrentFileName()
+  {
+    return currentFileName ;
   }
 
 }
