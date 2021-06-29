@@ -28,6 +28,13 @@ class device;
 
 namespace edge { namespace aie {
 
+enum e_tile_type {
+  AIE_TILE_CORE = 0,
+  AIE_TILE_MEMORY,
+  AIE_TILE_SHIM,
+  AIE_TILE_NUM_TYPES
+};
+
 struct tile_type
 {
   uint16_t row;
@@ -93,6 +100,18 @@ get_graphs(const xrt_core::device* device);
  */
 std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name);
+
+/**
+ * get_event_tiles() - get tiles with active events from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph_name: name of graph to extract tile data for
+ * @type: type of counter set (e.g., core, memory, shim)
+ * Return: vector of tiles with active events in given graph name
+ */
+std::vector<tile_type>
+get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
+                e_tile_type type);
 
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata

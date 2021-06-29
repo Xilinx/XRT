@@ -28,6 +28,7 @@
 namespace {
 
 namespace pt = boost::property_tree;
+using e_tile_type = xrt_core::edge::aie::e_tile_type;
 using tile_type = xrt_core::edge::aie::tile_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
@@ -203,6 +204,68 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
       tiles.at(count++).is_trigger = (node.second.data() == "true");
     throw_if_error(count < num_tiles,"multirate_triggers < num_tiles");
 
+  }
+
+  return tiles;
+}
+
+std::vector<tile_type>
+get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
+                e_tile_type type)
+{
+  std::vector<tile_type> tiles;
+
+  // Not supported yet
+  if (type == xrt_core::edge::aie::AIE_TILE_SHIM)
+    return tiles;
+
+  const char* key_cols[xrt_core::edge::aie::AIE_TILE_NUM_TYPES] =
+      {"core_columns", "dma_columns", "N/A"};
+  const char* key_rows[xrt_core::edge::aie::AIE_TILE_NUM_TYPES] =
+      {"core_rows", "dma_rows", "N/A"};
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
+    if (graph.second.get<std::string>("name") != graph_name)
+      continue;
+
+    int count = 0;
+      for (auto& node : graph.second.get_child( key_cols[type] )) {
+        tiles.push_back(tile_type());
+        auto& t = tiles.at(count++);
+        t.col = std::stoul(node.second.data());
+      }
+
+      int num_tiles = count;
+      count = 0;
+      for (auto& node : graph.second.get_child( key_rows[type] ))
+        tiles.at(count++).row = std::stoul(node.second.data());
+      throw_if_error(count < num_tiles,"rows < num_tiles");
+  }
+
+  return tiles;
+}
+
+std::vector<tile_type>
+get_dma_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
+{
+  std::vector<tile_type> tiles;
+
+  for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
+    if (graph.second.get<std::string>("name") != graph_name)
+      continue;
+
+    int count = 0;
+    for (auto& node : graph.second.get_child("dma_columns")) {
+      tiles.push_back(tile_type());
+      auto& t = tiles.at(count++);
+      t.col = std::stoul(node.second.data());
+    }
+
+    int num_tiles = count;
+    count = 0;
+    for (auto& node : graph.second.get_child("dma_rows"))
+      tiles.at(count++).row = std::stoul(node.second.data());
+    throw_if_error(count < num_tiles,"dma_rows < num_tiles");
   }
 
   return tiles;
@@ -444,6 +507,19 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_tiles(aie_meta, graph_name);
+}
+
+std::vector<tile_type>
+get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
+                e_tile_type type)
+{
+  auto data = device->get_axlf_section(AIE_METADATA);
+  if (!data.first || !data.second)
+    return std::vector<tile_type>();
+
+  pt::ptree aie_meta;
+  read_aie_metadata(data.first, data.second, aie_meta);
+  return ::get_event_tiles(aie_meta, graph_name, type);
 }
 
 std::unordered_map<std::string, adf::rtp_config>

@@ -83,7 +83,6 @@ namespace xdp {
     // Pre-defined metric sets
     //
     // **** Core Module Counters ****
-    mCoreMetricSets = {"heat_map", "stalls", "execution"};
     mCoreStartEvents = {
       {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
                      XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
@@ -102,14 +101,21 @@ namespace xdp {
     };
 
     // **** Memory Module Counters ****
-    mMemoryMetricSets = {"dma_locks", "conflicts"};
     mMemoryStartEvents = {
+      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
       {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
-      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
+      {"dma_stalls_s2mm", {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+	                         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+      {"dma_stalls_mm2s", {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+	                         XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
     mMemoryEndEvents = {
+      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
       {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
-      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}}
+      {"dma_stalls_s2mm", {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+	                         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+      {"dma_stalls_mm2s", {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+	                         XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
   }
 
@@ -188,8 +194,8 @@ namespace xdp {
       std::string moduleName = isCore ? "core" : "memory";
 
       // Ensure requested metric set is supported (if not, use default)
-      if ((isCore && (mCoreMetricSets.find(metricSet) == mCoreMetricSets.end()))
-          || (!isCore && (mMemoryMetricSets.find(metricSet) == mMemoryMetricSets.end()))) {
+      if ((isCore && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
+          || (!isCore && (mMemoryStartEvents.find(metricSet) == mMemoryStartEvents.end()))) {
         std::string defaultSet = isCore ? "heat_map" : "dma_locks";
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << metricSet 
@@ -206,7 +212,8 @@ namespace xdp {
         auto graphs = xrt_core::edge::aie::get_graphs(device.get());
         
         for (auto& graph : graphs) {
-          auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+          auto currTiles = xrt_core::edge::aie::get_event_tiles(device.get(), 
+              graph, (xrt_core::edge::aie::e_tile_type)module);
           std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
         }
       }
