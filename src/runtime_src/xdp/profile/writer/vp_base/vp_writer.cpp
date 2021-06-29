@@ -45,7 +45,7 @@ namespace xdp {
 #endif
     fileNum(1), db(inst)
   {
-    std::string directory = xrt_core::config::get_profiling_directory() ;
+    directory = xrt_core::config::get_profiling_directory() ;
 
     if (!useDir || directory == "") {
       // If no directory was specified, just use the file in
