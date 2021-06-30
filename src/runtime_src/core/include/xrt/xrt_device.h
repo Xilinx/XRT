@@ -69,6 +69,14 @@ namespace info {
  *  True if device is a NoDMA device (bool)
  * @var offline
  *  True if device is offline and in process of being reset (bool)
+ * @var power_rails
+ *  Power rail sensors of device in json format (std::string)
+ * @var thermals
+ *  Thermal sensors of device in json format (std::string)
+ * @power_consumption
+ *  Power sensors of a device in json format (std::string)
+ * @fans
+ *  Fans of a device in json format (std::string)
  */
 enum class device : unsigned int {
   bdf,
@@ -79,6 +87,10 @@ enum class device : unsigned int {
   name,
   nodma,
   offline,
+  power_rails,
+  thermals,
+  power_consumption,
+  fans
 };
 
 /// @cond 
@@ -93,6 +105,10 @@ XRT_INFO_PARAM_TRAITS(device::m2m, bool);
 XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
 XRT_INFO_PARAM_TRAITS(device::offline, bool);
+XRT_INFO_PARAM_TRAITS(device::power_rails, std::string);
+XRT_INFO_PARAM_TRAITS(device::thermals, std::string);
+XRT_INFO_PARAM_TRAITS(device::power_consumption, std::string);
+XRT_INFO_PARAM_TRAITS(device::fans, std::string);
 /// @endcond 
 
 } // info

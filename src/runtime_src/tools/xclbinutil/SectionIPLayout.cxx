@@ -48,6 +48,8 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_MEM_DDR4";
     case IP_MEM_HBM:
       return "IP_MEM_HBM";
+    case IP_MEM_HBM_ECC:
+      return "IP_MEM_HBM_ECC";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);
@@ -61,6 +63,7 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   if (_sIPType == "IP_DDR4_CONTROLLER") return IP_DDR4_CONTROLLER;
   if (_sIPType == "IP_MEM_DDR4") return IP_MEM_DDR4;
   if (_sIPType == "IP_MEM_HBM") return IP_MEM_HBM;
+  if (_sIPType == "IP_MEM_HBM_ECC") return IP_MEM_HBM_ECC;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);
@@ -145,7 +148,8 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     boost::property_tree::ptree ip_data;
 
     if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
 
       XUtil::TRACE(XUtil::format("[%d]: m_type: %s, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
                                  index,
@@ -180,7 +184,8 @@ SectionIPLayout::marshalToJSON(char* _pDataSection,
     ip_data.put("m_type", getIPTypeStr((enum IP_TYPE)pHdr->m_ip_data[index].m_type).c_str());
 
     if (((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_DDR4) ||
-        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)) {
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM)  ||
+        ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_MEM_HBM_ECC)) {
       ip_data.put("m_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_index).c_str());
       ip_data.put("m_pc_index", XUtil::format("%d", (unsigned int)pHdr->m_ip_data[index].indices.m_pc_index).c_str());
     } else if ((enum IP_TYPE)pHdr->m_ip_data[index].m_type == IP_KERNEL) {
@@ -243,7 +248,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
 
     // For these IPs, the struct indices needs to be initialized
     if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
-        (ipDataHdr.m_type == IP_MEM_HBM))
+        (ipDataHdr.m_type == IP_MEM_HBM)  ||
+        (ipDataHdr.m_type == IP_MEM_HBM_ECC))
     {
       ipDataHdr.indices.m_index = ptIPData.get<uint16_t>("m_index");
       ipDataHdr.indices.m_pc_index = ptIPData.get<uint8_t>("m_pc_index", 0);
@@ -322,7 +328,8 @@ SectionIPLayout::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
     memcpy(ipDataHdr.m_name, sm_name.c_str(), sm_name.length() + 1);
 
     if ((ipDataHdr.m_type == IP_MEM_DDR4) ||
-        (ipDataHdr.m_type == IP_MEM_HBM)) {
+        (ipDataHdr.m_type == IP_MEM_HBM)  ||
+        (ipDataHdr.m_type == IP_MEM_HBM_ECC)) {
       XUtil::TRACE(XUtil::format("[%d]: m_type: %d, m_index: %d, m_pc_index: %d, m_base_address: 0x%lx, m_name: '%s'",
                                  count,
                                  (unsigned int)ipDataHdr.m_type,
@@ -429,7 +436,8 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
     new_ip_data.put("m_type", sm_type);
 
     if ((getIPType(sm_type) == IP_MEM_DDR4) ||
-        (getIPType(sm_type) == IP_MEM_HBM)) {
+        (getIPType(sm_type) == IP_MEM_HBM)  ||
+        (getIPType(sm_type) == IP_MEM_HBM_ECC)) {
       new_ip_data.put("m_index", ip_data.get<std::string>("m_index"));
       new_ip_data.put("m_pc_index", ip_data.get<std::string>("m_pc_index", "0"));
     } else {

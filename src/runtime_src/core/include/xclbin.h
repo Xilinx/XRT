@@ -194,7 +194,8 @@ extern "C" {
         IP_DNASC,
         IP_DDR4_CONTROLLER,
         IP_MEM_DDR4,
-        IP_MEM_HBM
+        IP_MEM_HBM,
+        IP_MEM_HBM_ECC,
     };
 
     enum ACTION_MASK {
