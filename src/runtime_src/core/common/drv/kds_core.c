@@ -15,6 +15,9 @@
 #include <linux/vmalloc.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/fs.h>
+#include <linux/poll.h>
+#include <linux/anon_inodes.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -242,6 +245,9 @@ out:
 		return -EINVAL;
 	}
 
+	if (test_bit(0, &cu_mgmt->xcus[index]->is_ucu))
+		return -EBUSY;
+
 	cu_stat_inc(cu_mgmt, usage[index]);
 	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;
@@ -451,6 +457,128 @@ skip:
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
+}
+
+static int kds_ucu_release(struct inode *inode, struct file *filp)
+{
+	struct xrt_cu *xcu = filp->private_data;
+
+	xcu->user_manage_irq(xcu, false);
+	clear_bit(0, &xcu->is_ucu);
+
+	return 0;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+static unsigned int kds_ucu_poll(struct file *filp, poll_table *wait)
+{
+	unsigned int ret = 0;
+#else
+static __poll_t kds_ucu_poll(struct file *filp, poll_table *wait)
+{
+	__poll_t ret = 0;
+#endif
+	struct xrt_cu *xcu = filp->private_data;
+
+	poll_wait(filp, &xcu->ucu_waitq, wait);
+
+	if (atomic_read(&xcu->ucu_event) > 0)
+		ret = POLLIN;
+
+	return ret;
+}
+
+static ssize_t kds_ucu_read(struct file *filp, char __user *buf,
+			    size_t count, loff_t *ppos)
+{
+	struct xrt_cu *xcu = filp->private_data;
+	ssize_t ret = 0;
+	s32 events = 0;
+
+	if (count != sizeof(s32))
+		return -EINVAL;
+
+	ret = wait_event_interruptible(xcu->ucu_waitq,
+				       (atomic_read(&xcu->ucu_event) > 0));
+	if (ret)
+		return ret;
+
+	events = atomic_xchg(&xcu->ucu_event, 0);
+	if (copy_to_user(buf, &events, count))
+		return -EFAULT;
+
+	return sizeof(events);
+}
+
+static ssize_t kds_ucu_write(struct file *filp, const char __user *buf,
+			     size_t count, loff_t *ppos)
+{
+	struct xrt_cu *xcu = filp->private_data;
+	s32 enable;
+
+	if (count != sizeof(s32))
+		return -EINVAL;
+
+	if (copy_from_user(&enable, buf, count))
+		return -EFAULT;
+
+	if (!xcu->configure_irq)
+		return -EOPNOTSUPP;
+	xcu->configure_irq(xcu, enable);
+
+	return sizeof(s32);
+}
+
+static const struct file_operations ucu_fops = {
+	.release	= kds_ucu_release,
+	.poll		= kds_ucu_poll,
+	.read		= kds_ucu_read,
+	.write		= kds_ucu_write,
+	.llseek		= noop_llseek,
+};
+
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx)
+{
+	int fd;
+	struct kds_cu_mgmt *cu_mgmt;
+	struct xrt_cu *xcu;
+
+	cu_mgmt = &kds->cu_mgmt;
+
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
+		return -EINVAL;
+	}
+
+	mutex_lock(&cu_mgmt->lock);
+	if (!(cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)) {
+		kds_err(client, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	xcu = cu_mgmt->xcus[cu_idx];
+	if (!client_stat_read(client, s_cnt[cu_idx])) {
+		set_bit(0, &xcu->is_ucu);
+		if (client_stat_read(client, s_cnt[cu_idx])) {
+			clear_bit(0, &xcu->is_ucu);
+			return -EBUSY;
+		}
+	}
+
+	if (!xcu->user_manage_irq)
+		return -EOPNOTSUPP;
+
+	if (xcu->user_manage_irq(xcu, true))
+		return -EINVAL;
+
+	init_waitqueue_head(&cu_mgmt->xcus[cu_idx]->ucu_waitq);
+	atomic_set(&cu_mgmt->xcus[cu_idx]->ucu_event, 0);
+	fd = anon_inode_getfd("[user_manage_cu]", &ucu_fops,
+			      cu_mgmt->xcus[cu_idx], O_RDWR);
+
+	return fd;
 }
 
 int kds_init_sched(struct kds_sched *kds)

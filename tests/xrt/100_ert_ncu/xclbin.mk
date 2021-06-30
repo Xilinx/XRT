@@ -18,7 +18,7 @@ EMCONFIG_FILE := $(BLDDIR)/emconfig.json
 
 # flags
 VPP_LINK_OPTS := \
---nk addone:8
+--config vitis_link.cfg
 
 VPP_COMMON_OPTS := -s -t $(MODE) --platform $(DSA) --temp_dir $(BLDDIR)
 

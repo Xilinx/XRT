@@ -468,7 +468,8 @@ struct drm_xocl_pread_bo {
 
 enum drm_xocl_ctx_code {
 	XOCL_CTX_OP_ALLOC_CTX = 0,
-	XOCL_CTX_OP_FREE_CTX
+	XOCL_CTX_OP_FREE_CTX,
+	XOCL_CTX_OP_OPEN_UCU_FD,
 };
 
 #define	XOCL_CTX_SHARED		0x0
