@@ -22,9 +22,6 @@ jobs:
       with:
         ref: ${{ github.event.inputs.sha }}
 
-    - name: Rebase
-      run: git rebase master
-      
     - name: Install dependencies
       run: |
         sudo apt update
