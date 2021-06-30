@@ -21,12 +21,15 @@ jobs:
       uses: actions/checkout@v2
       with:
         ref: ${{ github.event.inputs.sha }}
+
+    - name: Rebase
+      run: git rebase master
       
     - name: Install dependencies
       run: |
         sudo apt update
         sudo src/runtime_src/tools/scripts/xrtdeps.sh
-        sudo apt install clang-tidy-11
+        sudo apt install clang-tidy-10
         sudo pip3 install PyGithub~=1.51 unidiff~=0.6.0 requests~=2.23
         
     - name: Create compile_commands.json
@@ -37,5 +40,5 @@ jobs:
         XRT_CLANGTIDY_REVIEW: 1
         
     - name: Run the clang-tidy review
-      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-11
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10
 
