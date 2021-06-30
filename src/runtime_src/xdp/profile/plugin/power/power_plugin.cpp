@@ -84,10 +84,11 @@ namespace xdp {
       std::string deviceName = std::string(info.mName) ;
       std::string outputFile = "power_profile_" + deviceName + ".csv" ; 
 
-      writers.push_back(new PowerProfilingWriter(outputFile.c_str(),
-						 deviceName.c_str(),
-					         index)) ;
-      (db->getStaticInfo()).addOpenedFile(outputFile.c_str(), 
+      VPWriter* writer = new PowerProfilingWriter(outputFile.c_str(),
+                                                  deviceName.c_str(),
+                                                  index) ;
+      writers.push_back(writer) ;
+      (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), 
 					  "XRT_POWER_PROFILE") ;
 
       // Move on to the next device

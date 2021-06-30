@@ -130,11 +130,13 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
     db->registerInfo(info::lop);
-    writers.push_back(new LowOverheadTraceWriter("lop_trace.csv")) ;
+
+    VPWriter* writer = new LowOverheadTraceWriter("lop_trace.csv") ;
+    writers.push_back(writer) ;
 
     emulationSetup() ;
 
-    (db->getStaticInfo()).addOpenedFile("lop_trace.csv", "VP_TRACE") ;
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     // In order to avoid overhead later, preallocate the string table
     //  in the dynamic database with all of the strings we will store
