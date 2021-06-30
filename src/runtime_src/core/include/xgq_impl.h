@@ -41,9 +41,6 @@
 #if defined(__KERNEL__)
 # include <linux/types.h>
 #else
-#ifndef __cplusplus
-# include <stdbool.h>
-#endif /* __cplusplus */
 # include <stdint.h>
 # include <stddef.h>
 # include <errno.h>
@@ -125,12 +122,14 @@ struct xgq_ring {
 };
 
 /* Software representation of a single XGQ. */
+#define XGQ_SERVER		(1UL << 0)
 struct xgq {
-	bool xq_is_server;
+	uint64_t xq_flags;
 	uint64_t io_hdl;
 	struct xgq_ring xq_sq ____cacheline_aligned_in_smp;
 	struct xgq_ring xq_cq ____cacheline_aligned_in_smp;
 };
+#define XGQ_IS_SERVER(xgq)	((xgq->xq_flags & XGQ_SERVER) != 0)
 
 
 /*
@@ -205,7 +204,7 @@ static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, bool produce)
 
 static inline bool xgq_can_produce(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	if (!xgq_ring_full(ring))
 		return true;
@@ -215,7 +214,7 @@ static inline bool xgq_can_produce(struct xgq *xgq)
 
 static inline bool xgq_can_consume(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	if (!xgq_ring_empty(ring))
 		return true;
@@ -239,7 +238,7 @@ static inline bool xgq_can_consume(struct xgq *xgq)
  * xgq_notify_peer_produced(), which then will publish all entries at once to peer.
  */
 
-static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint64_t ring_addr,
+static inline int xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
 	    size_t *ring_len, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
 {
 	size_t rlen = *ring_len;
@@ -253,7 +252,7 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 	while (XGQ_RING_LEN(numslots << 1, slot_size) <= rlen)
 		numslots <<= 1;
 
-	xgq->xq_is_server = server;
+	xgq->xq_flags |= flags;
 	xgq->io_hdl = io_hdl;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
@@ -282,7 +281,7 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 	return 0;
 }
 
-static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
+static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr,
 			     uint64_t sq_produced, uint64_t cq_produced)
 {
 	struct xgq_header hdr = {};
@@ -301,7 +300,7 @@ static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
 	if ((nslots < XGQ_MIN_NUM_SLOTS) || (nslots & (nslots - 1)))
 		return -EPROTO;
 
-	xgq->xq_is_server = server;
+	xgq->xq_flags |= flags;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + hdr.xh_sq_offset,
@@ -319,7 +318,7 @@ static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
 
 static inline int xgq_produce(struct xgq *xgq, uint64_t *slot_addr)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	if (!xgq_can_produce(xgq))
 		return -ENOSPC;
@@ -333,7 +332,7 @@ static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 #ifdef XGQ_OUT_OF_ORDER_WRITE
 	uint32_t val = 0;
 #endif
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	if (!xgq_can_consume(xgq))
 		return -ENOENT;
@@ -355,14 +354,14 @@ static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 
 static inline void xgq_notify_peer_produced(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	xgq_ring_write_produced(xgq->io_hdl, ring);
 }
 
 static inline void xgq_notify_peer_consumed(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	xgq_ring_write_consumed(xgq->io_hdl, ring);
 }
