@@ -12,6 +12,11 @@ on:
         description: Sha of pull request
         default: 0
         required: true
+      max_comments:
+        description: Max comments to add to review
+        default: 25
+
+  pull_request:
 
 jobs:
   clangtidy_review:
@@ -20,6 +25,9 @@ jobs:
     - name: Checkout XRT
       uses: actions/checkout@v2
       with:
+        if: github.event_name == 'pull_request'
+        ref: ${{ github.event.pull_request.head.sha }}
+        if: github.event_name == 'workflow_dispatch'
         ref: ${{ github.event.inputs.sha }}
 
     - name: Install dependencies
@@ -37,5 +45,8 @@ jobs:
         XRT_CLANGTIDY_REVIEW: 1
         
     - name: Run the clang-tidy review
-      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10
+      if: github.event_name == 'workflow_dispatch'
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=${{ github.event.inputs.max_comments }}
+      if: github.event_name == 'pull_request'
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.pull_request.number }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=0
 
