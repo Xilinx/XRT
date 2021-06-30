@@ -4,17 +4,20 @@
 on:
   workflow_dispatch:
     inputs:
-      pr:
-        description: Pull request to review
-        default: 0
-        required: true
       sha:
         description: Sha of pull request
         default: 0
         required: true
+      pr:
+        description: Pull request to review
+        default: 0
+        required: true
+      exclude:
+        description: Comma-separated list of files or patterns to exclude
+        default:
       max_comments:
         description: Max comments to add to review
-        default: 25
+        default: 0
 
   pull_request:
 
@@ -51,7 +54,7 @@ jobs:
         
     - name: Run the clang-tidy review on pull request
       if: github.event_name == 'pull_request'
-      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.pull_request.number }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=0
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.pull_request.number }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=0 --exclude='*aie*,*/drm/*,*/driver/*'
 
     - name: Run the clang-tidy review on dispatch
       if: github.event_name == 'workflow_dispatch'
