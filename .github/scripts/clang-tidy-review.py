@@ -311,7 +311,7 @@ if __name__ == "__main__":
         default="",
     )
     parser.add_argument(
-        "--max-comments",
+        "--max_comments",
         help="Maximum number of comments to post at once",
         type=int,
         default=25,
