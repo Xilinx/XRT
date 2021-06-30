@@ -30,6 +30,8 @@
 
 /* Control Mask */
 #define XASM_COUNTER_RESET_MASK       0x00000001
+#define XASM_TRACE_ENABLE_MASK        0x00000002
+#define XASM_TRACE_CTRL_MASK          0x2
 
 struct xocl_asm {
 	void __iomem		*base;
@@ -93,7 +95,18 @@ static long stop_counters(struct xocl_asm *xocl_asm)
 
 static long start_trace(struct xocl_asm *xocl_asm, void __user *arg)
 {
-	// Needs hw implementation
+	uint32_t options = 0;
+	uint32_t reg = 0;
+	if (copy_from_user(&options, arg, sizeof(uint32_t)))
+	{
+		return -EFAULT;
+	}
+	reg = XOCL_READ_REG32(xocl_asm->base + XASM_CONTROL_OFFSET);
+	if (options & XASM_TRACE_CTRL_MASK)
+		reg |= XASM_TRACE_ENABLE_MASK;
+	else
+		reg &= (~XASM_TRACE_ENABLE_MASK);
+	XOCL_WRITE_REG32(reg, xocl_asm->base + XASM_CONTROL_OFFSET);
 	return 0;
 }
 
