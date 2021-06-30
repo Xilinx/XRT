@@ -469,10 +469,16 @@ static int kds_ucu_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+static unsigned int kds_ucu_poll(struct file *filp, poll_table *wait)
+{
+	unsigned int ret = 0;
+#else
 static __poll_t kds_ucu_poll(struct file *filp, poll_table *wait)
 {
-	struct xrt_cu *xcu = filp->private_data;
 	__poll_t ret = 0;
+#endif
+	struct xrt_cu *xcu = filp->private_data;
 
 	poll_wait(filp, &xcu->ucu_waitq, wait);
 

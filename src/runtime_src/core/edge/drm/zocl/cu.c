@@ -130,9 +130,11 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 		return ret;
 	}
 
-	__set_bit(IRQ_DISABLED, &zcu->flag);
-	spin_lock_init(&zcu->lock);
-	disable_irq(zcu->irq);
+	if (user_manage) {
+		__set_bit(IRQ_DISABLED, &zcu->flag);
+		spin_lock_init(&zcu->lock);
+		disable_irq(zcu->irq);
+	}
 
 	return 0;
 }
