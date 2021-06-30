@@ -252,6 +252,7 @@ static inline int xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	while (XGQ_RING_LEN(numslots << 1, slot_size) <= rlen)
 		numslots <<= 1;
 
+	xgq->xq_flags = 0;
 	xgq->xq_flags |= flags;
 	xgq->io_hdl = io_hdl;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
@@ -300,6 +301,7 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 	if ((nslots < XGQ_MIN_NUM_SLOTS) || (nslots & (nslots - 1)))
 		return -EPROTO;
 
+	xgq->xq_flags = 0;
 	xgq->xq_flags |= flags;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
