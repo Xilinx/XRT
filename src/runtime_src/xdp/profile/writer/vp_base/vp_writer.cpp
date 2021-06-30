@@ -59,7 +59,7 @@ namespace xdp {
     bool writeable  = false ;
 #ifdef _WIN32
 #else
-    struct stat buf ;
+    struct stat buf = {0} ;
     int result = stat(directory.c_str(), &buf) ;
     if (!result) {
       // The file exists.  Is it a directory?
@@ -74,7 +74,8 @@ namespace xdp {
     }
     else {
       // The file does not exist at all, so try to create it
-      result = mkdir(directory.c_str(), 0777) ;
+      const mode_t rwx_all = 0777 ;
+      result = mkdir(directory.c_str(), rwx_all) ;
       if (!result) {
         dirExists = true ;
         writeable = true ;
