@@ -793,6 +793,10 @@ namespace xdp {
     // Create AIE Trace Offloader
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
+    std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
+    std::string msg = "Total " + std::to_string(aieTraceBufSize) + " size is used for AIE trace buffer for " + std::to_string(numAIETraceOutput) + " " + flowType + " streams.";
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg);
+
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
                                               isPLIO,              // isPLIO?
