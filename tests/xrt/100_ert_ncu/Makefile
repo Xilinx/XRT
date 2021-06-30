@@ -3,6 +3,6 @@ LEVEL := ..
 DIR := $(notdir $(CURDIR))
 EXENAME := $(DIR).exe
 
-MYCLLFLAGS := --nk addone:8
+MYCLLFLAGS := --config vitis_link.cfg
 
 include $(LEVEL)/common.mk
