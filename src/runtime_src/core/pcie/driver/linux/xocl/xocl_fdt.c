@@ -1070,12 +1070,13 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		subdev->res[idx].end = subdev->res[idx].start +
 		       be64_to_cpu(io_off[1]) - 1;
 		subdev->res[idx].flags = IORESOURCE_MEM;
-		snprintf(subdev->res_name[idx],
+		snprintf(subdev->res_name + idx * XOCL_SUBDEV_RES_NAME_LEN,
 			XOCL_SUBDEV_RES_NAME_LEN,
 			"%s %d %d %d %s",
 			ip->name, ip->major, ip->minor,
 			ip->level, ip->regmap_name ? ip->regmap_name : "");
-		subdev->res[idx].name = subdev->res_name[idx];
+		subdev->res[idx].name = subdev->res_name +
+		       	idx * XOCL_SUBDEV_RES_NAME_LEN;
 
 		subdev->bar_idx[idx] = bar_idx ? ntohl(*bar_idx) : 0;
 
@@ -1090,12 +1091,13 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		subdev->res[idx].start = ntohl(irq_off[0]);
 		subdev->res[idx].end = ntohl(irq_off[1]);
 		subdev->res[idx].flags = IORESOURCE_IRQ;
-		snprintf(subdev->res_name[idx],
+		snprintf(subdev->res_name + idx * XOCL_SUBDEV_RES_NAME_LEN,
 			XOCL_SUBDEV_RES_NAME_LEN,
 			"%s %d %d %d %s",
 			ip->name, ip->major, ip->minor,
 			ip->level, ip->regmap_name ? ip->regmap_name : "");
-		subdev->res[idx].name = subdev->res_name[idx];
+		subdev->res[idx].name = subdev->res_name +
+		       	idx * XOCL_SUBDEV_RES_NAME_LEN;
 		subdev->info.num_res++;
 		sz -= sizeof(*irq_off) * 2;
 		irq_off += 2;
@@ -1112,12 +1114,13 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 		ret = xocl_fdt_parse_intr_alias(xdev_hdl, blob, intr_alias,
 			&subdev->res[idx]);
 		if (!ret) {
-			snprintf(subdev->res_name[idx],
+			snprintf(subdev->res_name + idx * XOCL_SUBDEV_RES_NAME_LEN,
 				XOCL_SUBDEV_RES_NAME_LEN,
 				"%s %d %d %d %s",
 				ip->name, ip->major, ip->minor,
 				ip->level, intr_alias);
-			subdev->res[idx].name = subdev->res_name[idx];
+			subdev->res[idx].name = subdev->res_name +
+		       		idx * XOCL_SUBDEV_RES_NAME_LEN;
 			subdev->info.num_res++;
 		}
 	}
@@ -1245,12 +1248,26 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	int num = 0, i = 0, ret;
 
 	if (rtn_subdevs) {
+		struct resource *res_tmp;
+		char *res_name_tmp, *bar_idx_tmp;
+
 		subdev = rtn_subdevs;
+		res_tmp = subdev->res;
+		res_name_tmp = subdev->res_name;
+		bar_idx_tmp = subdev->bar_idx;
 		memset(subdev, 0, sizeof(*subdev));
+		subdev->res = res_tmp;
+		subdev->res_name = res_name_tmp;
+		subdev->bar_idx = bar_idx_tmp;
 	} else {
-		subdev = vzalloc(sizeof(*subdev));
+		subdev = kzalloc(sizeof(*subdev), GFP_KERNEL);
 		if (!subdev)
 			return -ENOMEM;
+		ret = xocl_subdev_dyn_alloc(subdev, XOCL_SUBDEV_MAX_RES);
+		if (ret) {
+			num = ret;
+			goto failed;
+		}
 	}
 
 	for (res = &map_p->res_array[0]; res && res->res_name != NULL;
@@ -1290,14 +1307,17 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 	subdev->info.bar_idx = subdev->bar_idx;
 	subdev->info.override_idx = -1;
 	for (i = 0; i < subdev->info.num_res; i++)
-		subdev->info.res[i].name = subdev->res_name[i];
+		subdev->info.res[i].name = subdev->res_name +
+			i * XOCL_SUBDEV_RES_NAME_LEN;
 
 	if (map_p->devinfo_cb)
 		map_p->devinfo_cb(xdev_hdl, rtn_subdevs, 1);
 
 failed:
-	if (!rtn_subdevs)
-		vfree(subdev);
+	if (!rtn_subdevs) {
+		xocl_subdev_dyn_free(subdev);
+		kfree(subdev);
+	}
 	for (i = 0; i < ip_num; i++) {
 		if (ip[i].used || !ip[i].match)
 			continue;
@@ -1372,10 +1392,55 @@ end:
 	return total;
 }
 
+static void xocl_pack_subdev(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
+{
+	struct resource *res;
+	char *res_name, *bar_idx;
+	int i;
+
+	BUG_ON(!subdev || !subdev->res || !subdev->res_name || !subdev->bar_idx);
+
+		xocl_xdev_info(xdev_hdl, "####res num %d", subdev->info.num_res);
+	res = kzalloc(sizeof (struct resource)
+		* subdev->info.num_res, GFP_KERNEL);
+	res_name = kzalloc(XOCL_SUBDEV_RES_NAME_LEN
+		* subdev->info.num_res, GFP_KERNEL);
+	bar_idx = kzalloc(sizeof (char)
+		* subdev->info.num_res, GFP_KERNEL);
+		
+	if (!res || !res_name || !bar_idx) {
+		if (res)
+			kfree(res);
+		if (res_name)
+			kfree(res_name);
+		if (bar_idx)
+			kfree(bar_idx);
+		return;
+	}
+
+	memcpy(res, subdev->res, sizeof (struct resource) * subdev->info.num_res);
+	memcpy(res_name, subdev->res_name, XOCL_SUBDEV_RES_NAME_LEN * subdev->info.num_res);
+	memcpy(bar_idx, subdev->bar_idx, sizeof (char) * subdev->info.num_res);
+	for (i = 0; i < subdev->info.num_res; i++)
+		res[i].name = res_name + i * XOCL_SUBDEV_RES_NAME_LEN;
+
+	xocl_subdev_dyn_free(subdev);
+
+	subdev->res = res;
+	subdev->res_name = res_name;
+	subdev->bar_idx = bar_idx;
+
+	subdev->info.res = subdev->res;
+	subdev->info.bar_idx = subdev->bar_idx;
+	for (i = 0; i < subdev->info.num_res; i++)
+		subdev->info.res[i].name = subdev->res_name +
+			i * XOCL_SUBDEV_RES_NAME_LEN;
+}
+
 int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
-	int		dev_num; 
+	int	i, dev_num, ret; 
 
 	*subdevs = NULL;
 
@@ -1398,13 +1463,33 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		goto failed;
 	}
 
-	*subdevs = vzalloc(dev_num * sizeof(struct xocl_subdev));
+	*subdevs = kzalloc(dev_num * sizeof(struct xocl_subdev), GFP_KERNEL);
 	if (!*subdevs)
 		return -ENOMEM;
 
+	for (i = 0; i < dev_num; i++) {
+		ret = xocl_subdev_dyn_alloc(*subdevs + i, XOCL_SUBDEV_MAX_RES);
+			
+		if (ret) {
+			dev_num = ret;
+			goto failed;
+		}
+	}
+
 	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs, dev_num);
 
+	for (i = 0; i < dev_num; i++) {
+		xocl_xdev_info(xdev_hdl, "%s: dyn_subdev_num: %d",
+			(*subdevs + i)->info.name, (*subdevs + i)->info.num_res);
+		xocl_pack_subdev(xdev_hdl, *subdevs + i);
+	}
+
+	return dev_num;
+
 failed:
+	for (i = 0; i < dev_num && *subdevs; i++)
+		xocl_subdev_dyn_free(*subdevs + i);
+
 	return dev_num;
 }
 
