@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>

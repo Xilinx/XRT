@@ -34,6 +34,14 @@ bit(unsigned int lsh)
   return (0x1 << lsh);
 }
 
+static std::string
+precision(double value, int p)
+{
+  std::stringstream stream;
+  stream << std::fixed << std::setprecision(p) << value;
+  return stream.str();
+}
+
 }
 
 namespace xrt_core { namespace utils {
@@ -184,6 +192,22 @@ unit_convert(size_t size)
     i++;
   }
   return ret+" "+unit[i-1];
+}
+
+std::string
+format_base10_shiftdown3(uint64_t value)
+{
+  constexpr double decimal_shift = 1000.0;
+  constexpr int digit_precision = 3;
+  return precision(static_cast<double>(value) / decimal_shift, digit_precision);
+}
+
+std::string
+format_base10_shiftdown6(uint64_t value)
+{
+  constexpr double decimal_shift = 1000000.0;
+  constexpr int digit_precision = 6;
+  return precision(static_cast<double>(value) / decimal_shift, digit_precision);
 }
 
 uint64_t

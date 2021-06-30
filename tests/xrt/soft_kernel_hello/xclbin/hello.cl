@@ -1,6 +1,11 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 //------------------------------------------------------------------------------
 //
-// kernel:  hello  
+// kernel:  hello
 //
 // Purpose: Copy "Hello World" into a global array to be read from the host
 //
@@ -10,10 +15,10 @@
 __kernel void __attribute__ ((reqd_work_group_size(1, 1, 1)))
     hello(__global char* buf) {
   // Get global ID
-    
+
  int glbId = get_global_id(0);
 
- 
+
   // Only one work-item should be responsible
   // for copying into the buffer.
    if (glbId == 0) {

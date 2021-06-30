@@ -54,6 +54,7 @@ struct kernel_properties
   restart_type counted_auto_restart = 0;
   mailbox_type mailbox = mailbox_type::none;
   size_t address_range = 0;
+  bool sw_reset = false;
 };
 
 struct kernel_object
@@ -61,6 +62,7 @@ struct kernel_object
   std::string name;
   std::vector<kernel_argument> args;
   size_t range;
+  bool sw_reset;
 };
 
 /**

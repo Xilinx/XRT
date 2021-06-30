@@ -630,6 +630,17 @@ get_auto_restart_kernels()
   return value;
 }
 
+// Kernel sw_reset
+// Needed until meta-data support (Vitis-2931)
+// Format is "[/kernel_name/]*"
+// sw_reset_kernels="/kernel1_name/kernel2_name/"
+inline std::string
+get_sw_reset_kernels()
+{
+  static auto value = detail::get_string_value("Runtime.sw_reset_kernels", "");
+  return value;
+}
+
 // WORKAROUND: KDS would only allow xclRegWrite/xclRegRead access
 // exclusively reserved CU.  This switch can loose the limitation. It
 // means xclRegWrite/xclRegRead can access shared CU.

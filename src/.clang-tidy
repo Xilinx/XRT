@@ -21,7 +21,7 @@ modernize-*,
 -cppcoreguidelines-pro-type-union-access,
 -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
 -cppcoreguidelines-pro-type-reinterpret-cast,
--cppcoreguidelines-pro-bounds-constant-array-index
+-cppcoreguidelines-pro-bounds-constant-array-index,
 '
 
 WarningsAsErrors: ''
@@ -146,10 +146,6 @@ CheckOptions:
     value:           '::free;::realloc;::freopen;::fclose'
   - key:             cppcoreguidelines-owning-memory.LegacyResourceProducers
     value:           '::malloc;::aligned_alloc;::realloc;::calloc;::fopen;::freopen;::tmpfile'
-  - key:             cppcoreguidelines-pro-bounds-constant-array-index.GslHeader
-    value:           ''
-  - key:             cppcoreguidelines-pro-bounds-constant-array-index.IncludeStyle
-    value:           '0'
   - key:             cppcoreguidelines-pro-type-member-init.IgnoreArrays
     value:           '0'
   - key:             cppcoreguidelines-pro-type-member-init.UseAssignment
@@ -244,16 +240,12 @@ CheckOptions:
     value:           CamelCase
   - key:             modernize-make-shared.IgnoreMacros
     value:           '1'
-  - key:             modernize-make-shared.IncludeStyle
-    value:           '0'
   - key:             modernize-make-shared.MakeSmartPtrFunction
     value:           'std::make_shared'
   - key:             modernize-make-shared.MakeSmartPtrFunctionHeader
     value:           memory
   - key:             modernize-make-unique.IgnoreMacros
     value:           '1'
-  - key:             modernize-make-unique.IncludeStyle
-    value:           '0'
   - key:             modernize-make-unique.MakeSmartPtrFunction
     value:           'std::make_unique'
   - key:             modernize-make-unique.MakeSmartPtrFunctionHeader

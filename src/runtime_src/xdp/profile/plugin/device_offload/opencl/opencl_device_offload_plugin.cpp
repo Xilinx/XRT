@@ -61,9 +61,10 @@ namespace {
       memoryName = "DDR" ;
     }
 
-    // Catch old bank format and report as DDR
-    if (memoryName.find("bank") != std::string::npos)
-      memoryName = "DDR";
+    // If we find the old "bank" format, just return it as is since our
+    //  monitor name will also have "bank" in it.
+    //if (memoryName.find("bank") != std::string::npos)
+    //  memoryName = "DDR";
 
     return memoryName.substr(0, memoryName.find_last_of("[")) ;
   }
