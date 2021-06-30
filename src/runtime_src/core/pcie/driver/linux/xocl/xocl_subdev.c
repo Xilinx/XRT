@@ -437,7 +437,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	}
 
 	if (subdev->info.num_res > 0) {
-		res = vzalloc(subdev->info.num_res);
+		res = vzalloc(sizeof (*res) * subdev->info.num_res);
 		if (!res) {
 			retval = -ENOMEM;
 			goto error;
