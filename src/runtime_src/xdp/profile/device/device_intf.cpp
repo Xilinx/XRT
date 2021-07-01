@@ -605,6 +605,7 @@ DeviceIntf::~DeviceIntf()
             case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
                                          break;
             default : break;
+            // case ACCEL_DEADLOCK_DETECTOR: break;
             // case AXI_STREAM_PROTOCOL_CHECKER
           }
         }
@@ -706,6 +707,7 @@ DeviceIntf::~DeviceIntf()
             //  }
             //  break;
             //}
+            // case ACCEL_DEADLOCK_DETECTOR: break;
             default : break;
           }
         }
@@ -795,6 +797,7 @@ DeviceIntf::~DeviceIntf()
               break;
             }
             default : break;
+            // case ACCEL_DEADLOCK_DETECTOR: break;
             // case AXI_STREAM_PROTOCOL_CHECKER
             // case AXI_NOC
           }
