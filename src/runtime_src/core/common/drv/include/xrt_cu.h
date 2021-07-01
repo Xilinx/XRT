@@ -275,7 +275,7 @@ struct xrt_cu {
 	u32			   max_running;
 
 	/* support user management CU interrupt */
-	unsigned long		   is_ucu;
+	DECLARE_BITMAP(is_ucu, 1);
 	wait_queue_head_t	   ucu_waitq;
 	atomic_t		   ucu_event;
 	int (* user_manage_irq)(struct xrt_cu *xcu, bool user_manage);
