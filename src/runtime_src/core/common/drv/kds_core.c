@@ -245,7 +245,7 @@ out:
 		return -EINVAL;
 	}
 
-	if (test_bit(0, &cu_mgmt->xcus[index]->is_ucu))
+	if (test_bit(0, cu_mgmt->xcus[index]->is_ucu))
 		return -EBUSY;
 
 	cu_stat_inc(cu_mgmt, usage[index]);
@@ -464,7 +464,7 @@ static int kds_ucu_release(struct inode *inode, struct file *filp)
 	struct xrt_cu *xcu = filp->private_data;
 
 	xcu->user_manage_irq(xcu, false);
-	clear_bit(0, &xcu->is_ucu);
+	clear_bit(0, xcu->is_ucu);
 
 	return 0;
 }
@@ -560,9 +560,9 @@ int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx)
 
 	xcu = cu_mgmt->xcus[cu_idx];
 	if (!client_stat_read(client, s_cnt[cu_idx])) {
-		set_bit(0, &xcu->is_ucu);
+		set_bit(0, xcu->is_ucu);
 		if (client_stat_read(client, s_cnt[cu_idx])) {
-			clear_bit(0, &xcu->is_ucu);
+			clear_bit(0, xcu->is_ucu);
 			return -EBUSY;
 		}
 	}

@@ -19,7 +19,7 @@ struct zocl_cu {
 	struct platform_device	*pdev;
 	u32			 irq;
 	char			*irq_name;
-	unsigned long		 flag;
+	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
 };
 
@@ -103,7 +103,7 @@ irqreturn_t ucu_isr(int irq, void *arg)
 	 * We could esaily support edge interrupt if needed.
 	 * Like, provide one more gcu->flag to permanently enabl irq.
 	 */
-	if (!__test_and_set_bit(IRQ_DISABLED, &zcu->flag))
+	if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
 		disable_irq_nosync(irq);
 	spin_unlock_irqrestore(&zcu->lock, flags);
 
@@ -131,7 +131,7 @@ static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
 	}
 
 	if (user_manage) {
-		__set_bit(IRQ_DISABLED, &zcu->flag);
+		__set_bit(IRQ_DISABLED, zcu->flag);
 		spin_lock_init(&zcu->lock);
 		disable_irq(zcu->irq);
 	}
@@ -146,10 +146,10 @@ static int configure_irq(struct xrt_cu *xcu, bool enable)
 
 	spin_lock_irqsave(&zcu->lock, flags);
 	if (enable) {
-		if (__test_and_clear_bit(IRQ_DISABLED, &zcu->flag))
+		if (__test_and_clear_bit(IRQ_DISABLED, zcu->flag))
 			enable_irq(zcu->irq);
 	} else {
-		if (!__test_and_set_bit(IRQ_DISABLED, &zcu->flag))
+		if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
 			disable_irq(zcu->irq);
 	}
 	spin_unlock_irqrestore(&zcu->lock, flags);

@@ -23,7 +23,7 @@
 struct xocl_cu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
-	unsigned long		 flag;
+	DECLARE_BITMAP(flag, 1);
 	spinlock_t		 lock;
 };
 
@@ -195,7 +195,7 @@ irqreturn_t ucu_isr(int irq, void *arg)
 	spin_lock_irqsave(&xcu->lock, flags);
 	atomic_inc(&xcu->base.ucu_event);
 
-	if (!__test_and_set_bit(IRQ_DISABLED, &xcu->flag))
+	if (!__test_and_set_bit(IRQ_DISABLED, xcu->flag))
 		xocl_intc_cu_config(xdev, irq, false);
 	spin_unlock_irqrestore(&xcu->lock, flags);
 
@@ -227,7 +227,7 @@ static int user_manage_irq(struct xrt_cu *xrt_cu, bool user_manage)
 	}
 
 	if (user_manage) {
-		__set_bit(IRQ_DISABLED, &xcu->flag);
+		__set_bit(IRQ_DISABLED, xcu->flag);
 		spin_lock_init(&xcu->lock);
 		xocl_intc_cu_config(xdev, info->intr_id, false);
 	} else {
@@ -247,10 +247,10 @@ static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
 
 	spin_lock_irqsave(&xcu->lock, flags);
 	if (enable) {
-		if (__test_and_clear_bit(IRQ_DISABLED, &xcu->flag))
+		if (__test_and_clear_bit(IRQ_DISABLED, xcu->flag))
 			xocl_intc_cu_config(xdev, info->intr_id, true);
 	} else {
-		if (!__test_and_set_bit(IRQ_DISABLED, &xcu->flag))
+		if (!__test_and_set_bit(IRQ_DISABLED, xcu->flag))
 			xocl_intc_cu_config(xdev, info->intr_id, false);
 	}
 	spin_unlock_irqrestore(&xcu->lock, flags);
