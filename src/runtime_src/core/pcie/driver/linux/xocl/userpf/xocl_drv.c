@@ -1789,6 +1789,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_fifo_full,
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
+	xocl_init_accel_deadlock_detector,
 	xocl_init_mem_hbm,
 	/* Initial intc sub-device before CU/ERT sub-devices */
 	xocl_init_intc,
@@ -1828,6 +1829,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_fifo_full,
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
+	xocl_fini_accel_deadlock_detector,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
 	xocl_fini_addr_translator,

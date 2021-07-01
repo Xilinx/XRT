@@ -2346,6 +2346,9 @@ void xocl_fini_trace_funnel(void);
 int __init xocl_init_trace_s2mm(void);
 void xocl_fini_trace_s2mm(void);
 
+int __init xocl_init_accel_deadlock_detector(void);
+void xocl_fini_accel_deadlock_detector(void);
+
 int __init xocl_init_mem_hbm(void);
 void xocl_fini_mem_hbm(void);
 
