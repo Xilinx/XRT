@@ -88,10 +88,10 @@ operator << (std::ostream& ostr, const xrt::xclbin::kernel& kernel)
 }
 
 void
-run(const std::string& xclbin_fnm)
+run_cpp(const std::string& xclbin_fnm)
 {
   // Construct xclbin from fnm
-  std::cout << "================================================================\n";
+  std::cout << "============================ CPP ==============================\n";
   auto xclbin = xrt::xclbin(xclbin_fnm);
   auto uuid = xclbin.get_uuid();
   std::cout << xclbin_fnm << "\n";
@@ -100,6 +100,17 @@ run(const std::string& xclbin_fnm)
 
   for (auto& kernel : xclbin.get_kernels())
     std::cout << kernel << '\n';
+}
+
+void
+run_c(const std::string& xclbin_fnm)
+{
+  std::cout << "============================= C ===============================\n";
+  auto xhdl = xrtXclbinAllocFilename(xclbin_fnm.c_str());
+  std::cout << xclbin_fnm << '\n';
+  std::cout << "number of kernels " << xrtXclbinGetNumKernels(xhdl) << '\n';
+  std::cout << "number of compute units " << xrtXclbinGetNumKernelComputeUnits(xhdl) << '\n';
+  xrtXclbinFreeHandle(xhdl);
 }
 
 int 
@@ -138,7 +149,8 @@ run(int argc, char** argv)
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-  run(xclbin_fnm);
+  run_cpp(xclbin_fnm);
+  run_c(xclbin_fnm);
 
   return 0;
 }
