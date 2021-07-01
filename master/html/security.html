@@ -81,7 +81,7 @@
 															<div class="logo-column">
 																<div class="logo">
 																	<a href="https://www.xilinx.com/">
-																	<img src="https://www.xilinx.com/etc.clientlibs/site/clientlibs/xilinx/all/resources/imgs/header/xilinx-header-logo.svg" title="Xilinx Inc"/>
+																	<img src="https://raw.githubusercontent.com/Xilinx/Image-Collateral/main/xilinx-header-logo.svg" title="Xilinx Inc"/>
 																	</a>
 																</div>
 															</div>
@@ -501,8 +501,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="security-of-alveo-platform">
-<span id="security-rst"></span><h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="security-rst"></span><div class="section" id="security-of-alveo-platform">
+<h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
 <div class="align-center figure align-default" id="id1">
 <img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /><p class="caption"><span class="caption-text">Alveo shell mgmt and user components, data and control paths</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
 </div>
@@ -525,7 +525,7 @@ part of <em>Root-of-Trust</em>. The following features reinforce security of the
 <h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
 <p>The Shell provides core infrastructure to the Alveo platform. It includes <em>hardened</em> PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
-as described in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.
+as described in <span class="xref std std-ref">platforms.rst</span>.
 The Shell is <em>trusted</em> partition of the Alveo platform and for all practical purposes
 should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
 Once loaded, the Shell cannot be changed.</p>
@@ -555,11 +555,11 @@ transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in rever
 PCIe from non-compliant transfers.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Features <span class="xref std std-ref">sb.rst</span> and <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a> are not available in all shells.</p>
+<p>Features <span class="xref std std-ref">sb.rst</span> and <span class="xref std std-ref">p2p.rst</span> are not available in all shells.</p>
 </div>
 <p>For more information on firewall protection see <a class="reference internal" href="#firewall">Firewall</a> section below.</p>
 <p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
-<p>Compatibility enforcement between Shell and User xclbin is described in <a class="reference internal" href="platforms_partitions.html#platform-partitions-rst"><span class="std std-ref">Alveo™ Platform Loading Overview</span></a></p>
+<p>Compatibility enforcement between Shell and User xclbin is described in <span class="xref std std-ref">platform_partitions.rst</span></p>
 <div class="section" id="pcie-topology">
 <h3>PCIe Topology<a class="headerlink" href="#pcie-topology" title="Permalink to this headline">¶</a></h3>
 <p>As mentioned before Alveo platforms have two physical function architecture where each function has its
@@ -608,7 +608,7 @@ registers</p></td>
 <td><p>CPU direct and P2P access to device attached DDR/HBM/PL-RAM
 memory.
 By default its size is limited to 256MB but can be expanded
-using XRT xbutil tool as described in <a class="reference internal" href="p2p.html#p2p-rst"><span class="std std-ref">PCIe Peer-to-Peer (P2P)</span></a></p></td>
+using XRT xbutil tool as described in <span class="xref std std-ref">p2p.rst</span></p></td>
 </tr>
 </tbody>
 </table>
@@ -661,7 +661,7 @@ metadata like clock frequencies, information about instantiated compute units, e
 compute units typically expose a well defined register space on the PCIe BAR for access by
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
 Bus. Compiled images do have access to device DDR.</p>
-<p>More information on xclbin can be found in <a class="reference internal" href="formats.html#formats-rst"><span class="std std-ref">Binary Formats</span></a>.</p>
+<p>More information on xclbin can be found in <span class="xref std std-ref">formats.rst</span>.</p>
 </div>
 <div class="section" id="xclbin-generation">
 <h2>Xclbin Generation<a class="headerlink" href="#xclbin-generation" title="Permalink to this headline">¶</a></h2>
@@ -741,7 +741,7 @@ PF1. This is critical for <a class="reference internal" href="#pass-through-virt
 <h3>Baremetal<a class="headerlink" href="#baremetal" title="Permalink to this headline">¶</a></h3>
 <p>In Baremetal deployment model, both physical functions are visible to the end user who <em>does not</em>
 have root privileges. End user have access to both XRT <strong>xclmgmt</strong> and XRT <strong>xocl</strong> drivers. The system
-administrator trusts both drivers which provide well defined <a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> and <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.
+administrator trusts both drivers which provide well defined <span class="xref std std-ref">mgmt-ioctl.main.rst</span> and <span class="xref std std-ref">xocl_ioctl.main.rst</span>.
 End user does have the privilege to load xclbins which should be signed for maximum security. This
 will ensure that only known good xclbins are loaded by end users.</p>
 <p>Certain operations like resetting the board and upgrading the flash image on PROM (from which the shell
@@ -753,17 +753,17 @@ is loaded on system boot) require root privileges and are effected by xclmgmt dr
 but user physical function (PF1) is visible to the guest VM. Host considers the guest VM a <em>hostile</em> environment.
 End users in guest VM may be root and may be running modified implementation of XRT <strong>xocl</strong> driver – XRT
 <strong>xclmgmt</strong> driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
-<a class="reference internal" href="mgmt-ioctl.main.html#mgmt-ioctl-main-rst"><span class="std std-ref">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> to the host. In a good and clean deployment end users in guest VM interact with
-standard xocl using well defined <a class="reference internal" href="xocl_ioctl.main.html#xocl-ioctl-main-rst"><span class="std std-ref">XOCL (PCIe User Physical Function) Driver Interfaces</span></a>.</p>
+<span class="xref std std-ref">mgmt-ioctl.main.rst</span> to the host. In a good and clean deployment end users in guest VM interact with
+standard xocl using well defined <span class="xref std std-ref">xocl_ioctl.main.rst</span>.</p>
 <p>As explained under the Shell section above, by design xocl has limited access to violet shaded Shell peripherals.
 This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
-reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in <a class="reference internal" href="platforms.html#platforms-rst"><span class="std std-ref">XRT and Vitis™ Platform Overview</span></a>.</p>
+reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in <span class="xref std std-ref">platforms.rst</span>.</p>
 <p>A guest VM user can potentially crash a compute unit in User partition, deadlock data path AXI bus or corrupt
 device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
 host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and recovery is described below.</p>
 <p>A user cannot load a malicious xclbin on the User partition since xclbin downloads are done by xclmgmt
 drive. xclbins are passed on to the host via a plugin based MPD/MSD framework defined in
-<a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a>. Host can add any extra checks necessary to validate xclbins received from guest VM.</p>
+<span class="xref std std-ref">mailbox.main.rst</span>. Host can add any extra checks necessary to validate xclbins received from guest VM.</p>
 <p>This deployment model is ideal for public cloud where host does not trust the guest VM. This is the prevalent
 deployment model for FaaS operators.</p>
 </div>
@@ -866,14 +866,14 @@ Host&gt;$ vi /tmp/config.ini
 Host&gt;$ xbmgmt advanced --load-conf --input<span class="o">=</span>/tmp/config.ini -d bdf
 </pre></div>
 </div>
-<p><a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a> has details on mailbox usage.</p>
+<p><span class="xref std std-ref">mailbox.main.rst</span> has details on mailbox usage.</p>
 </div>
 <div class="section" id="device-reset-and-recovery">
 <h2>Device Reset and Recovery<a class="headerlink" href="#device-reset-and-recovery" title="Permalink to this headline">¶</a></h2>
 <p>Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
 can reset a device by using XRT <strong>xbutil</strong> utility. This utility talks to xocl driver which uses the reset
-message as defined in <a class="reference internal" href="mailbox.main.html#mailbox-main-rst"><span class="std std-ref">Mailbox Subdevice Driver</span></a></p>
+message as defined in <span class="xref std std-ref">mailbox.main.rst</span></p>
 <p>Currently Alveo boards are reset by using PCIe bus <em>hot reset</em> mechanism. This resets the board peripherals
 and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
 sending them a SIGBUS.</p>
@@ -892,7 +892,7 @@ platform from the updated image.</p>
 <div class="section" id="compute-kernel-execution-models">
 <h2>Compute Kernel Execution Models<a class="headerlink" href="#compute-kernel-execution-models" title="Permalink to this headline">¶</a></h2>
 <p>XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
-interfaces. More details on <a class="reference internal" href="xrt_kernel_executions.html#xrt-kernel-executions-rst"><span class="std std-ref">XRT Controlled Kernel Execution Models</span></a>. These well understood models do not require
+interfaces. More details on <span class="xref std std-ref">xrt_kernel_executions.rst</span>. These well understood models do not require
 direct register access from user space. To execute a compute kernel XRT has a well defined <em>exec command buffer</em>
 API and a <em>wait for exec completion</em> API. These operations are exposed as ioctls by the xocl driver.</p>
 </div>
@@ -927,7 +927,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on June 08, 2021.
+        Last updated on July 01, 2021.
       </span>
 
     </p>

@@ -81,7 +81,7 @@
 															<div class="logo-column">
 																<div class="logo">
 																	<a href="https://www.xilinx.com/">
-																	<img src="https://www.xilinx.com/etc.clientlibs/site/clientlibs/xilinx/all/resources/imgs/header/xilinx-header-logo.svg" title="Xilinx Inc"/>
+																	<img src="https://raw.githubusercontent.com/Xilinx/Image-Collateral/main/xilinx-header-logo.svg" title="Xilinx Inc"/>
 																	</a>
 																</div>
 															</div>
@@ -490,8 +490,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xrt-and-vitis-platform-overview">
-<span id="platforms-rst"></span><h1>XRT and Vitis™ Platform Overview<a class="headerlink" href="#xrt-and-vitis-platform-overview" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="platforms-rst"></span><div class="section" id="xrt-and-vitis-platform-overview">
+<h1>XRT and Vitis™ Platform Overview<a class="headerlink" href="#xrt-and-vitis-platform-overview" title="Permalink to this headline">¶</a></h1>
 <p><a class="reference external" href="https://www.xilinx.com/products/design-tools/vitis/xrt.html">Xilinx Runtime library (XRT)</a> is an open-source easy to use software stack that facilitates management and usage of FPGA/ACAP devices. Users use familiar programming languages like C/C++ or Python to write host code which uses XRT to interact with FPGA/ACAP device. XRT exports well defined set of software APIs that work across PCIe based datacenter platforms and ZYNQ UltraScale+ MPSoC/Versal ACAP based embedded platforms. XRT is key component of <a class="reference external" href="https://www.xilinx.com/products/design-tools/vitis/vitis-platform.html">Vitis™</a> and <a class="reference external" href="https://www.xilinx.com/products/boards-and-kits/alveo.html">Alveo™</a> solutions.</p>
 <div class="section" id="user-application-compilation">
 <h2>User Application Compilation<a class="headerlink" href="#user-application-compilation" title="Permalink to this headline">¶</a></h2>
@@ -538,7 +538,7 @@ embedded Microblazes. The embedded Microblazes perform the functionality of ERT 
 <li><p>AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted user partition.</p></li>
 <li><p>Shell upgrade by grogramming QSPI flash constroller.</p></li>
 <li><p>Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.</p></li>
-<li><p>Communication with user pf driver xocl via hardware mailbox. The protocol is defined <a class="reference internal" href="mailbox.proto.html#mailbox-proto-rst"><span class="std std-ref">Mailbox Inter-domain Communication Protocol</span></a></p></li>
+<li><p>Communication with user pf driver xocl via hardware mailbox. The protocol is defined <span class="xref std std-ref">mailbox.proto.rst</span></p></li>
 <li><p>Interrupt handling for AXI Firewall and Mailbox HW IPs.</p></li>
 <li><p>Device DNA (unique ID) discovery and validation.</p></li>
 <li><p>DDR and HBM memory ECC handling and reporting.</p></li>
@@ -567,7 +567,7 @@ access to host memory is enabled by Slave Bridge (SB) in the shell.</p></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Section <a class="reference internal" href="security.html#security-rst"><span class="std std-ref">Security of Alveo Platform</span></a> describes PCIe platform security and robustness in detail.</p>
+<p>Section <span class="xref std std-ref">security.rst</span> describes PCIe platform security and robustness in detail.</p>
 </div>
 </div>
 <div class="section" id="pcie-based-hybrid-platforms">
@@ -590,7 +590,7 @@ On these platforms the ERT subsystem is running on APU.</p>
 <img alt="_images/XRT-Architecture-Versal-Edge.svg" src="_images/XRT-Architecture-Versal-Edge.svg" /><p class="caption"><span class="caption-text">Versal ACAP Embedded stack</span><a class="headerlink" href="#id5" title="Permalink to this image">¶</a></p>
 </div>
 <p>XRT supports ZYNQ-7000, ZYNQ Ultrascale+ MPSoC and Versal ACAP. User can create their own embedded platforms
-and enable XRT with the steps described <a class="reference internal" href="yocto.html#yocto-rst"><span class="std std-ref">XRT Setup for Embedded Flow</span></a>.</p>
+and enable XRT with the steps described <span class="xref std std-ref">yocto.rst</span>.</p>
 <p><a class="reference external" href="https://github.com/Xilinx/Vitis_Embedded_Platform_Source">Source code</a> and
 <a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html">pre-built</a>
 embedded platforms for the following Xilinx evaluation boards are provided:</p>
@@ -618,7 +618,7 @@ well-defined abstraction of buffer objects to the clients.</p></li>
 </ul>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Section <a class="reference internal" href="execution-model.html#execution-model-rst"><span class="std std-ref">Execution Model Overview</span></a> provides a high level overview of execution model.</p>
+<p>Section <span class="xref std std-ref">execution-model.rst</span> provides a high level overview of execution model.</p>
 </div>
 </div>
 </div>
@@ -652,7 +652,7 @@ well-defined abstraction of buffer objects to the clients.</p></li>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on June 08, 2021.
+        Last updated on July 01, 2021.
       </span>
 
     </p>
