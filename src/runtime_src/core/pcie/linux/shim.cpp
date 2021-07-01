@@ -2295,6 +2295,27 @@ int shim::xclIPName2Index(const char *name)
     return std::distance(cus.begin(),itr);
 }
 
+int shim::xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags)
+{
+    int ret;
+
+    drm_xocl_ctx ctx;
+    ctx.cu_index = ipIndex;
+    ctx.flags = flags;
+    ctx.op = XOCL_CTX_OP_OPEN_UCU_FD;
+
+    xrt_logmsg(XRT_DEBUG, "%s: IP index %d, flags 0x%x", __func__, ipIndex, flags);
+    ret = ioctl(mUserHandle, DRM_IOCTL_XOCL_CTX, &ctx);
+    return (ret < 0) ? -errno : ret;
+}
+
+int shim::xclCloseIPInterruptNotify(int fd)
+{
+    xrt_logmsg(XRT_DEBUG, "%s: fd %d", __func__, fd);
+    close(fd);
+    return 0;
+}
+
 } // namespace xocl
 
 /*******************************/
@@ -2917,14 +2938,16 @@ int xclUpdateSchedulerStat(xclDeviceHandle handle)
   return (drv) ? drv->xclUpdateSchedulerStat() : -ENODEV;
 }
 
-int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, int flags)
+int xclOpenIPInterruptNotify(xclDeviceHandle handle, uint32_t ipIndex, unsigned int flags)
 {
-    return -ENOSYS;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return (drv) ? drv->xclOpenIPInterruptNotify(ipIndex, flags) : -EINVAL;
 }
 
 int xclCloseIPInterruptNotify(xclDeviceHandle handle, int fd)
 {
-    return -ENOSYS;
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return (drv) ? drv->xclCloseIPInterruptNotify(fd) : -EINVAL;
 }
 
 int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,

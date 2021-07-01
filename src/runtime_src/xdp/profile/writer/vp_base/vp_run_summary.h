@@ -32,7 +32,7 @@ namespace xdp {
     virtual void switchFiles() ;
   public:
     XDP_EXPORT
-    VPRunSummaryWriter(const char* filename) ;
+    VPRunSummaryWriter(const char* filename, VPDatabase* inst) ;
     XDP_EXPORT
     ~VPRunSummaryWriter() ;
 

@@ -107,6 +107,7 @@ struct intr_metadata {
 	u32			 cnt;
 	u32			 blanking;
 	u32			 ienabled;
+	u32			 disabled_state;
 	struct work_struct	 work;
 };
 
@@ -273,6 +274,7 @@ irqreturn_t intc_isr(int irq, void *arg)
 {
 	struct intr_metadata *data = arg;
 	u32 pending;
+	u32 enable_mask;
 
 	data->cnt++;
 
@@ -297,7 +299,9 @@ irqreturn_t intc_isr(int irq, void *arg)
 
 	if (data->type == AXI_INTC_TYPE) {
 		iowrite32(pending, reg_addr(data->isr, iar));
-		iowrite32(data->ienabled, reg_addr(data->isr, sie));
+		/* The handler could disable its interrupt */
+		enable_mask = data->ienabled & ~data->disabled_state;
+		iowrite32(enable_mask, reg_addr(data->isr, sie));
 	}
 
 	return IRQ_HANDLED;
@@ -337,7 +341,7 @@ static int request_intr(struct platform_device *pdev, int id,
 
 	/* register handler */
 	if (handler) {
-		info = vzalloc(sizeof(struct intr_info));
+		info = kzalloc(sizeof(struct intr_info), GFP_KERNEL);
 		info->handler = handler;
 		info->intr_id = id;
 		info->arg = arg;
@@ -348,7 +352,7 @@ static int request_intr(struct platform_device *pdev, int id,
 
 	/* unregister handler */
 	if (data->info[intr_src]) {
-		vfree(data->info[intr_src]);
+		kfree(data->info[intr_src]);
 		data->info[intr_src] = NULL;
 	}
 
@@ -398,10 +402,17 @@ static int config_intr(struct platform_device *pdev, int id, bool en, int mode)
 
 	iowrite32(0x3, reg_addr(data->isr, mer));
 	/* For CU intc, configure sie/cie register */
-	if (en)
+	if (en) {
+		if (!(data->disabled_state & (1 << intr_src)))
+			return 0;
+		data->disabled_state &= ~(1 << intr_src);
 		iowrite32((1 << intr_src), reg_addr(data->isr, sie));
-	else
+	} else {
+		if (data->disabled_state & (1 << intr_src))
+			return 0;
+		data->disabled_state |= (1 << intr_src);
 		iowrite32((1 << intr_src), reg_addr(data->isr, cie));
+	}
 
 	return 0;
 }

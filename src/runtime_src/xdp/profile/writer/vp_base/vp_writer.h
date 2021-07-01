@@ -39,6 +39,10 @@ namespace xdp {
     // The current name of the open file
     std::string currentFileName ;
 
+    // The directory where all the files will be dumped
+    std::string directory ;
+    char separator ;
+
     // The number of files created by this writer (in continuous offload)
     uint32_t fileNum ;
     static bool warnFileNum;
@@ -57,8 +61,10 @@ namespace xdp {
     XDP_EXPORT virtual void refreshFile() ;
   public:
     XDP_EXPORT VPWriter(const char* filename) ;
-    XDP_EXPORT VPWriter(const char* filename, VPDatabase* inst) ;
+    XDP_EXPORT VPWriter(const char* filename, VPDatabase* inst, bool useDir = true) ;
     XDP_EXPORT virtual ~VPWriter() ;
+
+    XDP_EXPORT virtual std::string getcurrentFileName() ;
 
     virtual bool isRunSummaryWriter() { return false ; }
     // Return false to indicate no data was written
@@ -66,7 +72,8 @@ namespace xdp {
     virtual bool isDeviceWriter() { return false ; } 
     virtual DeviceIntf* device() { return nullptr ; } 
     virtual bool isSameDevice(void* /*handle*/) { return false ; }
-    virtual std::string getcurrentFileName() { return currentFileName ; }
+
+    virtual std::string getDirectory() { return directory ; }
   } ;
 
 }

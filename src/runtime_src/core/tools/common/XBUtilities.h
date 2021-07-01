@@ -92,8 +92,6 @@ namespace XBUtilities {
 
   boost::property_tree::ptree
   get_available_devices(bool inUserDomain);
-  std::string format_base10_shiftdown3(uint64_t value);
-  std::string format_base10_shiftdown6(uint64_t value);
   
   template <typename T>
   std::vector<T> as_vector( boost::property_tree::ptree const& pt, 

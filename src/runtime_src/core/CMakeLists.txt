@@ -6,12 +6,18 @@ include_directories(
   )
 
 add_subdirectory(include)
- if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-   add_subdirectory(common)
-   add_subdirectory(pcie)
-   add_subdirectory(tools)
- else()
-   add_subdirectory(common)
-   add_subdirectory(edge)
-   add_subdirectory(tools)
- endif()
+
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_subdirectory(common)
+  add_subdirectory(pcie)
+  add_subdirectory(tools)
+else()
+  add_subdirectory(common)
+  add_subdirectory(edge)
+  add_subdirectory(tools)
+endif()
+
+if (${XRT_CLANGTIDY_REVIEW})
+  add_subdirectory(edge)
+endif()
+  

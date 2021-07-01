@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -214,10 +219,10 @@ load_file_to_memory(const std::string& fn)
 inline void drop_uncompleted_task(xclDeviceHandle handle, task_info &cmd) {
     if (cmd.desc != NULL)
         munmap(cmd.desc, 4096);
- 
+
     if (cmd.ecmd != NULL)
         munmap(cmd.ecmd, 4096);
- 
+
     if (cmd.in_data_boh != NULLBO)
         xclFreeBO(handle, cmd.in_data_boh);
 
@@ -255,7 +260,7 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
     uint32_t submitted = 0;
     uint32_t completed = 0;
     auto start = std::chrono::high_resolution_clock::now();
-    
+
     while (submitted < DESC_FIFO_DEPTH) {
         xclBOProperties prop;
         uint64_t boh_addr;

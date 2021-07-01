@@ -156,6 +156,13 @@ get_data_transfer_trace()
   return value;
 }
 
+inline std::string
+get_profiling_directory()
+{
+  static std::string value = detail::get_string_value("Debug.profiling_directory", "") ;
+  return value ;
+}
+
 inline bool
 get_power_profile()
 {
@@ -627,6 +634,17 @@ inline std::string
 get_auto_restart_kernels()
 {
   static auto value = detail::get_string_value("Runtime.auto_restart_kernels", "");
+  return value;
+}
+
+// Kernel sw_reset
+// Needed until meta-data support (Vitis-2931)
+// Format is "[/kernel_name/]*"
+// sw_reset_kernels="/kernel1_name/kernel2_name/"
+inline std::string
+get_sw_reset_kernels()
+{
+  static auto value = detail::get_string_value("Runtime.sw_reset_kernels", "");
   return value;
 }
 
