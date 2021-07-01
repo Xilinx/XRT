@@ -81,7 +81,7 @@
 															<div class="logo-column">
 																<div class="logo">
 																	<a href="https://www.xilinx.com/">
-																	<img src="https://www.xilinx.com/etc.clientlibs/site/clientlibs/xilinx/all/resources/imgs/header/xilinx-header-logo.svg" title="Xilinx Inc"/>
+																	<img src="https://raw.githubusercontent.com/Xilinx/Image-Collateral/main/xilinx-header-logo.svg" title="Xilinx Inc"/>
 																	</a>
 																</div>
 															</div>
@@ -530,8 +530,8 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="xrt-native-apis">
-<span id="xrt-native-apis-rst"></span><h1>XRT Native APIs<a class="headerlink" href="#xrt-native-apis" title="Permalink to this headline">¶</a></h1>
+  <span class="target" id="xrt-native-apis-rst"></span><div class="section" id="xrt-native-apis">
+<h1>XRT Native APIs<a class="headerlink" href="#xrt-native-apis" title="Permalink to this headline">¶</a></h1>
 <p>From 2020.2 release XRT provides a new XRT API set in C, C++, and Python flavor.</p>
 <p>To use the native XRT APIs, the host application must link with the <strong>xrt_coreutil</strong> library.
 Compiling host code with XRT native C++ API requires C++ standard with -std=c++14 or newer.
@@ -742,7 +742,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 </div>
 <div class="section" id="iii-data-transfer-between-the-buffers-by-copy-api">
 <h4>III. Data transfer between the buffers by copy API<a class="headerlink" href="#iii-data-transfer-between-the-buffers-by-copy-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html#m2m-rst"><span class="std std-ref">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
+<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <span class="xref std std-ref">m2m.rst</span>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="lineno">25 </span>     <span class="n">dst_buffer</span><span class="p">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src_buffer</span><span class="p">,</span> <span class="n">copy_size_in_bytes</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -1221,7 +1221,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on June 08, 2021.
+        Last updated on July 01, 2021.
       </span>
 
     </p>
