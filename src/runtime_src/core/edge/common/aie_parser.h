@@ -30,7 +30,7 @@ namespace edge { namespace aie {
 
 enum e_tile_type {
   AIE_TILE_CORE = 0,
-  AIE_TILE_MEMORY,
+  AIE_TILE_DMA,
   AIE_TILE_SHIM,
   AIE_TILE_NUM_TYPES
 };

@@ -35,10 +35,13 @@
 #define NUM_MEMORY_COUNTERS 2
 #define BASE_MEMORY_COUNTER 128
 
-#define GROUP_DMA_MASK      0xf000
-#define GROUP_LOCK_MASK     0x55555555
-#define GROUP_CONFLICT_MASK 0xff
-#define GROUP_ERROR_MASK    0x3fff
+#define GROUP_DMA_MASK                   0xf000
+#define GROUP_LOCK_MASK                  0x55555555
+#define GROUP_CONFLICT_MASK              0xff
+#define GROUP_ERROR_MASK                 0x3fff
+#define GROUP_STREAM_SWITCH_IDLE_MASK    0x11111111
+#define GROUP_STREAM_SWITCH_RUNNING_MASK 0x22222222
+#define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -84,38 +87,50 @@ namespace xdp {
     //
     // **** Core Module Counters ****
     mCoreStartEvents = {
-      {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                     XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
-      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
-      {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
-                     XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
+      {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                 XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                                 XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
+      {"execution",             {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
+                                 XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}},
+      {"stream_switch_idle",    {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_IDLE_0_CORE,
+                                 XAIE_EVENT_PORT_IDLE_1_CORE,          XAIE_EVENT_PORT_IDLE_2_CORE}},
+      {"stream_switch_running", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_RUNNING_0_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_RUNNING_2_CORE}},
+      {"stream_switch_stalled", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_STALLED_0_CORE,
+                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}}
     };
     mCoreEndEvents = {
-      {"heat_map",  {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                     XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
-      {"stalls",    {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
-                     XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
-      {"execution", {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
-                     XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}}
+      {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
+                                 XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+      {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
+                                 XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
+      {"execution",             {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
+                                 XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}},
+      {"stream_switch_idle",    {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_IDLE_0_CORE,
+                                 XAIE_EVENT_PORT_IDLE_1_CORE,          XAIE_EVENT_PORT_IDLE_2_CORE}},
+      {"stream_switch_running", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_RUNNING_0_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_RUNNING_2_CORE}},
+      {"stream_switch_stalled", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_STALLED_0_CORE,
+                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}}
     };
 
     // **** Memory Module Counters ****
     mMemoryStartEvents = {
-      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
-      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
-      {"dma_stalls_s2mm", {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-	                         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
-      {"dma_stalls_mm2s", {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-	                         XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
+      {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
+      {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
+      {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+	                               XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+      {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+	                               XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
     mMemoryEndEvents = {
-      {"conflicts", {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
-      {"dma_locks", {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
-      {"dma_stalls_s2mm", {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-	                         XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
-      {"dma_stalls_mm2s", {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-	                         XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
+      {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
+      {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
+      {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
+	                               XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+      {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
+	                               XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
   }
 
@@ -137,11 +152,11 @@ namespace xdp {
   {
     // Get polling interval (in usec; minimum is 100)
     mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
-    if (mPollingInterval < 100) {
-      mPollingInterval = 100;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
-          "Minimum supported AIE profile interval is 100 usec.");
-    }
+    //if (mPollingInterval < 100) {
+    //  mPollingInterval = 100;
+    //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+    //      "Minimum supported AIE profile interval is 100 usec.");
+    //}
   }
 
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
@@ -322,6 +337,14 @@ namespace xdp {
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_LOCK_MASK);
           else if (startEvents.at(i) == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CONFLICT_MASK);
+          else if (startEvents.at(i) == XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) {
+            if (metricSet == "stream_switch_idle")
+              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_IDLE_MASK);
+            else if (metricSet == "stream_switch_running")
+              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_RUNNING_MASK);
+            else if (metricSet == "stream_switch_stalled")
+              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_STALLED_MASK);
+          }
           //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
           //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
 
