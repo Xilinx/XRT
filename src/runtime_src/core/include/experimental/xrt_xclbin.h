@@ -620,7 +620,7 @@ xrtXclbinAllocFilename(const char* filename);
  */
 XCL_DRIVER_DLLESPEC
 xrtXclbinHandle
-xrtXclbinAllocAxlf(const axlf* top_axlf);
+xrtXclbinAllocAxlf(const struct axlf* top_axlf);
 
 /**
  * xrtXclbinAllocRawData() - Allocate a xclbin using raw data
