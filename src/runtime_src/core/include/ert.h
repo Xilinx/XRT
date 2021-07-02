@@ -47,8 +47,11 @@
 
 #if defined(__KERNEL__)
 # include <linux/types.h>
+#elif defined(__cplusplus)
+# include <cstdint>
 #else
 # include <stdint.h>
+# include <stdbool.h>
 #endif
 
 #ifdef _WIN32
