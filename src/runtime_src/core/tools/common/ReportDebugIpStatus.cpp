@@ -58,9 +58,7 @@ xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
 #endif
 }
 
-const uint32_t maxDebugIpType = TRACE_S2MM_FULL+1;
-
-static const char* debugIpNames[maxDebugIpType] = {
+static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "unknown",
   "Light Weight AXI Protocol Checker (lapc)",
   "Integrated Logic Analyzer (ila)",
@@ -73,9 +71,10 @@ static const char* debugIpNames[maxDebugIpType] = {
   "AXI Stream Protocol Checker (spc)",
   "Trace Stream to Memory (ts2mm)",
   "AxiDMA",
-  "TS2MMFull"
+  "TS2MMFull",
+  "AxiNOC",
+  "Accelerator Deadlock Detector (accel_deadlocl_detector)"
 };
-
 
 class DebugIpStatusCollector
 {
@@ -85,14 +84,14 @@ class DebugIpStatusCollector
   std::string infoMessage ;
   std::vector<char> map;
 
-  uint64_t debugIpNum[maxDebugIpType];
-  bool     debugIpOpt[maxDebugIpType];
+  uint64_t debugIpNum[DEBUG_IP_TYPE_MAX];
+  bool     debugIpOpt[DEBUG_IP_TYPE_MAX];
 
-  size_t   cuNameMaxStrLen[maxDebugIpType];
-  size_t   portNameMaxStrLen[maxDebugIpType];
+  size_t   cuNameMaxStrLen[DEBUG_IP_TYPE_MAX];
+  size_t   portNameMaxStrLen[DEBUG_IP_TYPE_MAX];
 
-  std::vector<std::string> cuNames[maxDebugIpType];
-  std::vector<std::string> portNames[maxDebugIpType];
+  std::vector<std::string> cuNames[DEBUG_IP_TYPE_MAX];
+  std::vector<std::string> portNames[DEBUG_IP_TYPE_MAX];
 
   xclDebugCountersResults          aimResults;
   xclStreamingDebugCountersResults asmResults;
@@ -168,7 +167,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     , spcResults{0}
 {
   // By default, enable status collection for all Debug IP types
-  std::fill(debugIpOpt, debugIpOpt + maxDebugIpType, true);
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
 
 #ifdef _WIN32
   size_t sz1 = 0, sectionSz = 0;
@@ -278,7 +277,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
   _output << "  Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
 
   std::stringstream sstr;
-  for(uint32_t i = 0; i < maxDebugIpType; i++) {
+  for(uint32_t i = 0; i < DEBUG_IP_TYPE_MAX; i++) {
     if(0 == debugIpNum[i]) {
        continue;
     }
@@ -307,7 +306,7 @@ void
 DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _elementsFilter)
 {
   // reset debugIpOpt to all "false" and then process given element filter
-  std::fill(debugIpOpt, debugIpOpt + maxDebugIpType, false);
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, false);
 
   for(auto& itr : _elementsFilter) {
     if(itr == "aim") {
@@ -1367,7 +1366,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
   _pt.put("total_num_debug_ips", count); // Total count with the IPs actually shown
 
   boost::property_tree::ptree dbg_ip_list_pt;
-  for(uint8_t i = 0; i < maxDebugIpType; i++) {
+  for(uint8_t i = 0; i < DEBUG_IP_TYPE_MAX; i++) {
     if(0 == debugIpNum[i]) {
        continue;
     }
