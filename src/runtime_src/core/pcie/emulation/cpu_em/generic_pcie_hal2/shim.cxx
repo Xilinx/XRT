@@ -21,25 +21,18 @@
 #include "shim.h"
 #include "system_swemu.h"
 #include "xclbin.h"
+#include "core/common/xclbin_parser.h"
 #include <errno.h>
 #include <unistd.h>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/lexical_cast.hpp>
 
-namespace {
-
-static auto
-get_mem_topology(const axlf* top)
-{
-  if (auto sec = xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY))
-    return sec;
-  return xclbin::get_axlf_section(top, MEM_TOPOLOGY);
-}
-  
-}
 
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
   unsigned int CpuemShim::mBufferCount = 0;
+  unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
   bool CpuemShim::mFirstBinary = true;
   const unsigned CpuemShim::TAG = 0X586C0C6C; // XL OpenCL X->58(ASCII), L->6C(ASCII), O->0 C->C L->6C(ASCII);
@@ -49,8 +42,9 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
- 
-  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr, FeatureRomHeader& fRomHeader)
+
+  CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
+    FeatureRomHeader& fRomHeader, const boost::property_tree::ptree& platformData)
     :mTag(TAG)
     ,mRAMSize(info.mDDRSize)
     ,mCoalesceThreshold(4)
@@ -60,22 +54,33 @@ namespace xclcpuemhal2 {
   {
     binaryCounter = 0;
     mReqCounter = 0;
-    sock = NULL;
+    sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
     mSWSch = nullptr;
 
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ci_buf = malloc(ci_msg.ByteSize());
+#else
+    ci_buf = malloc(ci_msg.ByteSizeLong());
+#endif
     ri_msg.set_size(0);
+#if GOOGLE_PROTOBUF_VERSION < 3006001
     ri_buf = malloc(ri_msg.ByteSize());
-    buf = NULL;
+#else
+    ri_buf = malloc(ri_msg.ByteSizeLong());
+#endif
+    buf = nullptr;
     buf_size = 0;
-    
-    deviceName = "device"+std::to_string(deviceIndex); 
+
+    deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() + "/"+std::to_string(getpid())+"/sw_emu/"+deviceName;
     simulator_started = false;
     mVerbosity = XCL_INFO;
+
+    mPlatformData = platformData;
+    constructQueryTable();
 
     std::memset(&mDeviceInfo, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(&mDeviceInfo,&info);
@@ -83,7 +88,7 @@ namespace xclcpuemhal2 {
 
     std::memset(&mFeatureRom, 0, sizeof(FeatureRomHeader));
     std::memcpy(&mFeatureRom, &fRomHeader, sizeof(FeatureRomHeader));
-    
+
     char* pack_size = getenv("SW_EMU_PACKET_SIZE");
     if(pack_size)
     {
@@ -99,23 +104,26 @@ namespace xclcpuemhal2 {
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
   }
- 
-  size_t CpuemShim::alloc_void(size_t new_size) 
+
+  size_t CpuemShim::alloc_void(size_t new_size)
   {
-    if (buf_size == 0) 
+    if (buf_size == 0)
     {
       buf = malloc(new_size);
       return new_size;
     }
-    if (buf_size < new_size) 
+    if (buf_size < new_size)
     {
-      buf = (void*) realloc(buf,new_size);
+      void *temp = buf;
+      buf = (void*) realloc(temp,new_size);
+      if (!buf) // prevent leak of original buf
+        free(temp);
       return new_size;
     }
     return buf_size;
   }
 
- 
+
   void CpuemShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
   {
     std::list<xclemulation::DDRBank>::iterator start = DDRBankList.begin();
@@ -123,7 +131,7 @@ namespace xclcpuemhal2 {
     uint64_t base = 0;
     for(;start != end; start++)
     {
-      const uint64_t bankSize = (*start).ddrSize; 
+      const uint64_t bankSize = (*start).ddrSize;
       mDdrBanks.push_back(*start);
       //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
       mDDRMemoryManager.push_back(new xclemulation::MemoryManager(bankSize, base , getpagesize()));
@@ -131,14 +139,14 @@ namespace xclcpuemhal2 {
     }
   }
 
-//private 
-  bool CpuemShim::isGood() const 
+//private
+  bool CpuemShim::isGood() const
   {
     // TODO: Add sanity check for card state
     return true;
   }
 
-  CpuemShim *CpuemShim::handleCheck(void *handle) 
+  CpuemShim *CpuemShim::handleCheck(void *handle)
   {
     // Sanity checks
     if (!handle)
@@ -164,46 +172,39 @@ namespace xclcpuemhal2 {
     }
 
   }
- 
+
   static void sigHandler(int sn, siginfo_t *si, void *sc)
   {
-    switch(sn) {
-      case SIGSEGV:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGSEGV);
-          exit(1);
-          break;
-        }
-      case SIGFPE :
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGTERM);
-          exit(1);
-          break;
-        }
-      case SIGABRT:
-        {
-          saveDeviceProcessOutputs();
-          kill(0,SIGABRT);
-          exit(1);
-          break;
-        }
+    switch (sn) {
+    case SIGSEGV:
+      saveDeviceProcessOutputs();
+      kill(0, SIGSEGV);
+      exit(1);
+      break;
+    case SIGFPE:
+      saveDeviceProcessOutputs();
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    case SIGABRT:
+      saveDeviceProcessOutputs();
+      kill(0, SIGABRT);
+      exit(1);
+      break;
+    case SIGCHLD: // Prevent infinite loop when the emulator dies
+      if (si->si_code != CLD_KILLED && si->si_code != CLD_DUMPED)
+        break;
     case SIGUSR1:
-        {
-	  // One of the spawned processes died for some reason,
-	  //  kill all of the others and exit the host code
-	  saveDeviceProcessOutputs() ;
-	  std::cerr << "Software emulation of compute unit(s) exited unexpectedly" 
-		    << std::endl ;
-	  kill(0, SIGTERM) ; 
-	  exit(1) ;
-	  break ;
-        }
-      default:
-        {
-          break;
-        }
+      // One of the spawned processes died for some reason,
+      //  kill all of the others and exit the host code
+      saveDeviceProcessOutputs();
+      std::cerr << "Software emulation of compute unit(s) exited unexpectedly"
+                << std::endl;
+      kill(0, SIGTERM);
+      exit(1);
+      break;
+    default:
+      break;
     }
   }
 
@@ -211,7 +212,7 @@ namespace xclcpuemhal2 {
   {
     if (!header) return 0 ; // We didn't dump it, but this isn't an error
 
-    char* xclbininmemory = 
+    char* xclbininmemory =
       reinterpret_cast<char*>(const_cast<xclBin*>(header)) ;
 
     char* xmlfile = nullptr ;
@@ -219,16 +220,16 @@ namespace xclcpuemhal2 {
 
     if (memcmp(xclbininmemory, "xclbin0", 8) == 0)
     {
-       if (mLogStream.is_open()) 
+       if (mLogStream.is_open())
        {
 	   mLogStream << __func__ << " unsupported Legacy XCLBIN header " << std::endl;
        }
        return -1;
 
       //xmlfile = xclbininmemory + (header->m_metadataOffset) ;
-      //xmllength = (int)(header->m_metadataLength);       
+      //xmllength = (int)(header->m_metadataLength);
     }
-    else if (memcmp(xclbininmemory,"xclbin2",7) == 0) 
+    else if (memcmp(xclbininmemory,"xclbin2",7) == 0)
     {
       auto top = reinterpret_cast<const axlf*>(header);
       if (auto sec = xclbin::get_axlf_section(top,EMBEDDED_METADATA)) {
@@ -239,7 +240,7 @@ namespace xclcpuemhal2 {
     else
     {
       // This was not a valid xclbin file
-      if (mLogStream.is_open()) 
+      if (mLogStream.is_open())
       {
 	mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
       }
@@ -251,7 +252,7 @@ namespace xclcpuemhal2 {
       // This xclbin file did not contain any XML meta-data
       if (mLogStream.is_open())
       {
-	mLogStream << __func__ << " XCLBIN did not contain meta-data" 
+	mLogStream << __func__ << " XCLBIN did not contain meta-data"
 		   << std::endl ;
       }
       return -1 ;
@@ -266,7 +267,7 @@ namespace xclcpuemhal2 {
     std::string binDir = binaryDirectory.str() ;
     systemUtil::makeSystemCall(binDir,
 			       systemUtil::systemOperation::CREATE) ;
-    systemUtil::makeSystemCall(binDir, 
+    systemUtil::makeSystemCall(binDir,
 			       systemUtil::systemOperation::PERMISSIONS,
 			       "777") ;
 
@@ -293,12 +294,12 @@ namespace xclcpuemhal2 {
       }
     }
 
-    // The file name we've chosen does not exist, so attempt to 
-    //  open it for writing 
+    // The file name we've chosen does not exist, so attempt to
+    //  open it for writing
     FILE* fp = fopen(fileLocation.c_str(), "wb") ;
     if(fp==NULL)
     {
-      if (mLogStream.is_open()) 
+      if (mLogStream.is_open())
       {
 	mLogStream << __func__ << " failed to create temporary xml file " << std::endl;
       }
@@ -320,7 +321,7 @@ namespace xclcpuemhal2 {
     }
     return true ;
   }
-  
+
   void CpuemShim::launchDeviceProcess(bool debuggable, std::string& binaryDirectory)
   {
     std::lock_guard<std::mutex> lk(mProcessLaunchMtx);
@@ -343,7 +344,8 @@ namespace xclcpuemhal2 {
     if (sigaction(SIGSEGV, &s, (struct sigaction *)0) ||
         sigaction(SIGFPE , &s, (struct sigaction *)0) ||
         sigaction(SIGABRT, &s, (struct sigaction *)0) ||
-        sigaction(SIGUSR1, &s, (struct sigaction *)0))
+        sigaction(SIGUSR1, &s, (struct sigaction *)0) ||
+        sigaction(SIGCHLD, &s, (struct sigaction *)0))
     {
       //debug_print("unable to support all signals");
     }
@@ -372,7 +374,7 @@ namespace xclcpuemhal2 {
       pid_t pid = fork();
       assert(pid >= 0);
       if (pid == 0)
-      { 
+      {
         std::string childProcessPath("");
         std::string xilinxInstall("");
 
@@ -401,25 +403,28 @@ namespace xclcpuemhal2 {
           }
         }
         char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
-        if(xilinxVivadoEnvvar)
+        if(xilinxVivadoEnvvar && vitisInstallEnvvar)
         {
           std::string sHlsBinDir = xilinxVivadoEnvvar;
+          std::string sVitisBinDir = vitisInstallEnvvar;
           std::string sLdLibs("");
           std::string DS("/");
           std::string sPlatform("lnx64");
           char* sLdLib = getenv("LD_LIBRARY_PATH");
-          if (sLdLib) 
-            sLdLibs = std::string(sLdLib) + ":"; 
+          if (sLdLib)
+            sLdLibs = std::string(sLdLib) + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
-          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;         
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVitisBinDir + DS + "lib" + DS + "lnx64.o" + DS;
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
-
+        
         if (xilinxInstall.empty()) {
            std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
            exit(1);
@@ -483,7 +488,7 @@ namespace xclcpuemhal2 {
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
     if (result != 0) return result ;
-
+   
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
     //  by checking to see if there is a DEBUG_DATA section in
@@ -494,7 +499,7 @@ namespace xclcpuemhal2 {
     if (getenv("ENABLE_KERNEL_DEBUG") != NULL &&
 	strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
     {
-      char* xclbininmemory = 
+      char* xclbininmemory =
         reinterpret_cast<char*>(const_cast<xclBin*>(header)) ;
       if (!memcmp(xclbininmemory, "xclbin2", 7))
       {
@@ -504,7 +509,7 @@ namespace xclcpuemhal2 {
         {
           debuggable = true ;
         }
-      }      
+      }
     }
 
     std::string binaryDirectory("");
@@ -513,6 +518,12 @@ namespace xclcpuemhal2 {
     if(header)
     {
       resetProgram();
+      std::string logFilePath = xrt_core::config::get_hal_logging();
+      if (!logFilePath.empty()) {
+        mLogStream.open(logFilePath);
+        mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
+        mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
+      }
 
     if( mFirstBinary )
     {
@@ -524,13 +535,17 @@ namespace xclcpuemhal2 {
       //parse header
       char *sharedlib = nullptr;
       int sharedliblength = 0;
-      char* memTopology = nullptr;
-      ssize_t memTopologySize = 0;
+      std::unique_ptr<char[]> memTopology;
+      size_t memTopologySize = 0;    
+      std::unique_ptr<char[]> emuData;
+      size_t emuDataSize = 0;
+      std::unique_ptr<char[]> connectvitybuf;
+      ssize_t connectvitybufsize = 0;
      
       //check header
-      if (!memcmp(xclbininmemory, "xclbin0", 8)) 
+      if (!memcmp(xclbininmemory, "xclbin0", 8))
       {
-        if (mLogStream.is_open()) 
+        if (mLogStream.is_open())
         {
           mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
         }
@@ -542,15 +557,27 @@ namespace xclcpuemhal2 {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
         }
-        if (auto sec = get_mem_topology(top)) {
-          memTopologySize = sec->m_sectionSize;
-          memTopology = new char[memTopologySize];
-          memcpy(memTopology, xclbininmemory + sec->m_sectionOffset, memTopologySize);
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, ASK_GROUP_TOPOLOGY)) {
+          memTopologySize = sec->m_sectionSize;        
+          memTopology = std::unique_ptr<char[]>(new char[memTopologySize]);
+          memcpy(memTopology.get(), xclbininmemory + sec->m_sectionOffset, memTopologySize);
+        }
+        //Extract EMULATION_DATA from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, EMULATION_DATA)) {
+          emuDataSize = sec->m_sectionSize;        
+          emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
+          memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
+        }
+	      //Extract CONNECTIVITY section from XCLBIN       
+        if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
+          connectvitybufsize = sec->m_sectionSize;       
+          connectvitybuf = std::unique_ptr<char[]>(new char[connectvitybufsize]);
+          memcpy(connectvitybuf.get(), xclbininmemory + sec->m_sectionOffset, connectvitybufsize);
         }
       }
       else
       {
-        if (mLogStream.is_open()) 
+        if (mLogStream.is_open())
         {
           mLogStream << __func__ << " invalid XCLBIN header " << std::endl;
           mLogStream << __func__ << " header " << xclbininmemory[0] << xclbininmemory[1] << xclbininmemory[2] <<  xclbininmemory[3] <<
@@ -559,7 +586,7 @@ namespace xclcpuemhal2 {
         return -1;
       }
       //write out shared library to file for consumption with dlopen
-      std::string tempdlopenfilename = binaryDirectory+"/dltmp"; 
+      std::string tempdlopenfilename = binaryDirectory+"/dltmp";
       {
         bool tempfilecreated = false;
         unsigned int counter = 0;
@@ -569,7 +596,7 @@ namespace xclcpuemhal2 {
           {
             tempfilecreated = true;
           }
-          else 
+          else
           {
             fclose(fp);
             std::stringstream ss;
@@ -579,33 +606,35 @@ namespace xclcpuemhal2 {
           }
         }
         FILE *fp = fopen(tempdlopenfilename.c_str(),"wb");
-        if( !fp ) 
+        if( !fp )
         {
           if(mLogStream.is_open()) mLogStream << __func__ << " failed to create temporary dlopen file" << std::endl;
-          
-          if(memTopology)
-          {
-            delete []memTopology;
-            memTopology = NULL;
-          }
           return -1;
         }
         fwrite(sharedlib,sharedliblength,1,fp);
         fflush(fp);
         fclose(fp);
       }
-      if(memTopology)
+      if (memTopology && connectvitybuf)
       {
-        const mem_topology* m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology));
-        if(m_mem)
+        auto m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology.get()));
+        auto m_conn = (reinterpret_cast<const ::connectivity*>(connectvitybuf.get()));
+        if (m_mem && m_conn)
         {
-          uint64_t argNum = 0;
+          //uint64_t argNum = 0;
           uint64_t prev_instanceBaseAddr = ULLONG_MAX;
           std::map<uint64_t, std::pair<uint64_t,std::string> > argFlowIdMap;
-          for (int32_t i=0; i<m_mem->m_count; ++i)
+          for (int32_t conn_idx = 0; conn_idx<m_conn->m_count; ++conn_idx)
           {
-            uint64_t flow_id =m_mem->m_mem_data[i].flow_id;//base address + flow_id combo 
+            int32_t memdata_idx = m_conn->m_connection[conn_idx].mem_data_index;
+            if (memdata_idx >(m_mem->m_count - 1))
+              return -1;
+            uint64_t route_id = m_mem->m_mem_data[memdata_idx].route_id;
+            uint64_t arg_id = m_conn->m_connection[conn_idx].arg_index;
+            uint64_t flow_id = m_mem->m_mem_data[memdata_idx].flow_id;//base address + flow_id combo 
             uint64_t instanceBaseAddr = 0xFFFF0000 & flow_id;
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " flow_id : " << flow_id << " route_id : " << route_id << " inst addr : " << instanceBaseAddr << " arg_id : " << arg_id << std::endl;
             if(prev_instanceBaseAddr != ULLONG_MAX && instanceBaseAddr != prev_instanceBaseAddr)
             {
               //RPC CALL
@@ -614,19 +643,20 @@ namespace xclcpuemhal2 {
 
               if(mLogStream.is_open())
                 mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
-              
+
               argFlowIdMap.clear();
-              argNum = 0;
+              //argNum = 0;
             }
-            if(m_mem->m_mem_data[i].m_type == MEM_TYPE::MEM_STREAMING)
+            if(m_mem->m_mem_data[memdata_idx].m_type == MEM_TYPE::MEM_STREAMING)
             {
-              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[i].m_tag)); 
+              std::string m_tag (reinterpret_cast<const char*>(m_mem->m_mem_data[memdata_idx].m_tag));
               std::pair<uint64_t,std::string> mPair;
               mPair.first  = flow_id;
               mPair.second = m_tag;
-              argFlowIdMap[argNum] = mPair;
+              argFlowIdMap[arg_id] = mPair;
+              //argFlowIdMap[argNum] = mPair;
             }
-            argNum++;
+            //argNum++;
             prev_instanceBaseAddr = instanceBaseAddr;
           }
           bool success = false;
@@ -635,19 +665,28 @@ namespace xclcpuemhal2 {
           if(mLogStream.is_open())
             mLogStream << __func__ << " setup instance: " << prev_instanceBaseAddr <<" success "<< success << std::endl;
         }
-        delete []memTopology;
-        memTopology = NULL;
       }
-      
+
       //check xclbin version with vivado tool version
-      xclemulation::checkXclibinVersionWithTool(header);     
-      
+      xclemulation::checkXclibinVersionWithTool(header);
+
       if (mIsKdsSwEmu)
       {
         mCore = new exec_core;
         mSWSch = new SWScheduler(this);
         mSWSch->init_scheduler_thread();
       }
+
+      //Extract EMULATION_DATA from XCLBIN
+      if (emuData && (emuDataSize > 1)) {
+        std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
+        std::ofstream os(emuDataFilePath);
+        os.write(emuData.get(), emuDataSize);             
+        std::cout << "emuDataFilePath : " << emuDataFilePath << std::endl;
+        systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
+      }
+
       bool ack = true;
       bool verbose = false;
       if(mLogStream.is_open())
@@ -659,11 +698,11 @@ namespace xclcpuemhal2 {
     return 0;
   }
 
-  int CpuemShim::xclGetDeviceInfo2(xclDeviceInfo2 *info) 
+  int CpuemShim::xclGetDeviceInfo2(xclDeviceInfo2 *info)
   {
     std::memset(info, 0, sizeof(xclDeviceInfo2));
     fillDeviceInfo(info,&mDeviceInfo);
-    for (auto i : mDDRMemoryManager) 
+    for (auto i : mDDRMemoryManager)
     {
       info->mDDRFreeSize += i->freeSize();
     }
@@ -683,10 +722,10 @@ namespace xclcpuemhal2 {
     xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
   }
 
-  uint64_t CpuemShim::xclAllocDeviceBuffer(size_t size) 
+  uint64_t CpuemShim::xclAllocDeviceBuffer(size_t size)
   {
-    
-    size_t requestedSize =  size; 
+
+    size_t requestedSize =  size;
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << size << std::endl;
     }
@@ -705,9 +744,9 @@ namespace xclcpuemhal2 {
         break;
     }
     bool ack = false;
-    //   Memory Manager Has allocated aligned address, 
+    //   Memory Manager Has allocated aligned address,
 	//   size contains alignement + original size requested.
-	//   We are passing original size to device process for exact stats.	
+	//   We are passing original size to device process for exact stats.
     bool noHostMemory = false;
     std::string sFileName("");
     xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,requestedSize,noHostMemory);
@@ -719,7 +758,7 @@ namespace xclcpuemhal2 {
       PRINTENDFUNC;
     return result;
   }
-  
+
   uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
   {
     if (mLogStream.is_open()) {
@@ -739,27 +778,27 @@ namespace xclcpuemhal2 {
     if (size == 0)
       size = DDR_BUFFER_ALIGNMENT;
 
-    if (flags >= mDDRMemoryManager.size()) 
+    if (flags >= mDDRMemoryManager.size())
     {
       return xclemulation::MemoryManager::mNull;
     }
 
     uint64_t result = mDDRMemoryManager[flags]->alloc(size);
 
-    if (result == xclemulation::MemoryManager::mNull) {  
+    if (result == xclemulation::MemoryManager::mNull) {
       auto ddrSize = mDDRMemoryManager[flags]->size();
       std::string ddrSizeStr = std::to_string(ddrSize);
-      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit " + ddrSizeStr + " Bytes";
-      std::cout << initMsg << std::endl;      
+      std::string initMsg = "ERROR: [SW-EM 12] OutOfMemoryError : Requested Global memory size exceeds DDR limit 16 GB.";
+      std::cout << initMsg << std::endl;
       return result;
     }
 
     bool ack = false;
-    //   Memory Manager Has allocated aligned address, 
+    //   Memory Manager Has allocated aligned address,
 	//   size contains alignement + original size requested.
-	//   We are passing original size to device process for exact stats.	
+	//   We are passing original size to device process for exact stats.
     xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,noHostMemory);
-    
+
     if(!ack)
     {
       PRINTENDFUNC;
@@ -769,7 +808,7 @@ namespace xclcpuemhal2 {
     return result;
   }
 
-  void CpuemShim::xclFreeDeviceBuffer(uint64_t offset) 
+  void CpuemShim::xclFreeDeviceBuffer(uint64_t offset)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << offset << std::endl;
@@ -794,7 +833,7 @@ namespace xclcpuemhal2 {
     return;
   }
 
-  size_t CpuemShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) 
+  size_t CpuemShim::xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
   {
     std::lock_guard<std::mutex> lk(mApiMtx);
     if (mLogStream.is_open()) {
@@ -817,12 +856,13 @@ namespace xclcpuemhal2 {
     }
 
     fflush(stdout);
-    xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,kernelArgsInfo);
+    //Adding PF and BAR IDs to 0 until we get real values here.
+    xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,kernelArgsInfo,0,0);
     PRINTENDFUNC;
     return size;
   }
 
-  size_t CpuemShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) 
+  size_t CpuemShim::xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
   {
     std::lock_guard<std::mutex> lk(mApiMtx);
     if (mLogStream.is_open()) {
@@ -848,21 +888,22 @@ namespace xclcpuemhal2 {
       PRINTENDFUNC;
       return -1;
     }
-    xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+    //Adding PF and BAR IDs to 0 until we get real values here.
+    xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
     PRINTENDFUNC;
     return size;
 
   }
 
-  
 
-  size_t CpuemShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek) 
+
+  size_t CpuemShim::xclCopyBufferHost2Device(uint64_t dest, const void *src, size_t size, size_t seek)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << seek << std::endl;
     }
-    
+
     if(!sock)
     {
       launchTempProcess();
@@ -894,7 +935,7 @@ namespace xclcpuemhal2 {
   }
 
 
-  size_t CpuemShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip) 
+  size_t CpuemShim::xclCopyBufferDevice2Host(void *dest, uint64_t src, size_t size, size_t skip)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
@@ -936,8 +977,8 @@ namespace xclcpuemhal2 {
   void CpuemShim::xclOpen(const char* logfileName)
   {
     xclemulation::config::getInstance()->populateEnvironmentSetup(mEnvironmentNameValueMap);
-
     std::string logFilePath = (logfileName && (logfileName[0] != '\0')) ? logfileName : xrt_core::config::get_hal_logging();
+
     if (!logFilePath.empty()) {
       mLogStream.open(logFilePath);
       mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
@@ -965,7 +1006,7 @@ namespace xclcpuemhal2 {
     for(unsigned int i = 0; i < 4 ;i++)
       dest->mOCLFrequency[i]       =    src->mOCLFrequency[i];
   }
- 
+
   void CpuemShim::saveDeviceProcessOutput()
   {
     if(!sock)
@@ -986,6 +1027,9 @@ namespace xclcpuemhal2 {
       }
     }
 
+    if (mLogStream.is_open()) {
+      mLogStream.close();
+    }
   }
   void CpuemShim::resetProgram(bool callingFromClose)
   {
@@ -1014,7 +1058,7 @@ namespace xclcpuemhal2 {
       }
       return;
     }
-    
+
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -1022,9 +1066,9 @@ namespace xclcpuemhal2 {
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
-   saveDeviceProcessOutput(); 
+   saveDeviceProcessOutput();
   }
-  
+
   void CpuemShim::xclClose()
   {
     std::lock_guard<std::mutex> lk(mApiMtx);
@@ -1036,7 +1080,7 @@ namespace xclcpuemhal2 {
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
     mCoreDevice.reset();
-    
+
     if(!sock)
     {
       if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
@@ -1060,7 +1104,7 @@ namespace xclcpuemhal2 {
       close(fd);
     }
       mFdToFileNameMap.clear();
-    mCloseAll = true; 
+    mCloseAll = true;
     std::string socketName = sock->get_name();
     if(socketName.empty() == false)// device is active if socketName is non-empty
     {
@@ -1068,13 +1112,13 @@ namespace xclcpuemhal2 {
       xclClose_RPC_CALL(xclClose,this);
 #endif
     }
-    mCloseAll = false; 
+    mCloseAll = false;
 
     int status = 0;
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if(!simDontRun)
       while (-1 == waitpid(0, &status, 0));
-    
+
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
     delete sock;
     sock = nullptr;
@@ -1096,8 +1140,8 @@ namespace xclcpuemhal2 {
     }
     google::protobuf::ShutdownProtobufLibrary();
   }
-    
-  CpuemShim::~CpuemShim() 
+
+  CpuemShim::~CpuemShim()
   {
     if (mIsKdsSwEmu && mSWSch && mCore)
     {
@@ -1107,21 +1151,21 @@ namespace xclcpuemhal2 {
       delete mSWSch;
       mSWSch = nullptr;
     }
-    if (mLogStream.is_open()) 
+    if (mLogStream.is_open())
     {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
     free(ci_buf);
     free(ri_buf);
     free(buf);
-    
-    if (mLogStream.is_open()) 
+
+    if (mLogStream.is_open())
     {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();
     }
 
-    if (mLogStream.is_open()) 
+    if (mLogStream.is_open())
     {
       mLogStream.close();
     }
@@ -1154,7 +1198,7 @@ inline unsigned long long CpuemShim::xocl_ddr_channel_size()
 int CpuemShim::xclGetBOProperties(unsigned int boHandle, xclBOProperties *properties)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1187,12 +1231,12 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   {
     ddr = 0;
   }
-  
+
   //struct xclemulation::drm_xocl_bo *xobj = new xclemulation::drm_xocl_bo;
   auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get()); 
+  bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get());
   std::string sFileName("");
   xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
   xobj->filename = sFileName;
@@ -1202,7 +1246,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   xobj->fd = -1;
 
   if (xobj->base == xclemulation::MemoryManager::mNull)
-  { 
+  {
     return xclemulation::MemoryManager::mNull;
   }
 
@@ -1214,7 +1258,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
 unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << size << std::dec << " , "<< unused <<" , "<< flags << std::endl;
   }
@@ -1229,7 +1273,7 @@ unsigned int CpuemShim::xclAllocBO(size_t size, int unused, unsigned flags)
 unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned flags)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << userptr <<", " << std::hex << size << std::dec <<" , "<< flags << std::endl;
   }
@@ -1247,7 +1291,7 @@ unsigned int CpuemShim::xclAllocUserPtrBO(void *userptr, size_t size, unsigned f
 /******************************** xclExportBO *******************************************/
 int CpuemShim::xclExportBO(unsigned int boHandle)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1265,7 +1309,7 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
 
   uint64_t size = bo->size;
   int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
-  if (fd == -1) 
+  if (fd == -1)
   {
     printf("Error opening exported BO file.\n");
     PRINTENDFUNC;
@@ -1296,7 +1340,7 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
 unsigned int CpuemShim::xclImportBO(int boGlobalHandle, unsigned flags)
 {
   //TODO
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boGlobalHandle << std::endl;
   }
@@ -1330,9 +1374,9 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
   //TODO
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
-    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << dst_boHandle 
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << dst_boHandle
       <<" , "<< src_boHandle << " , "<< size <<"," << dst_offset << "," <<src_offset<< std::endl;
   }
   xclemulation::drm_xocl_bo* sBO = xclGetBoByHandle(src_boHandle);
@@ -1348,21 +1392,48 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     PRINTENDFUNC;
     return -1;
   }
-  if(dBO->fd < 0)
-  {
-    std::cout<<"bo is not exported for copying"<<std::endl;
+
+  // source buffer is host_only and destination buffer is device_only
+  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
+    if (xclCopyBufferHost2Device(dBO->base, (void*) host_only_buffer, size, dst_offset) != size) {
+      return -1;
+    }
+  } // source buffer is device_only and destination buffer is host_only
+  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+    unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
+    if (xclCopyBufferDevice2Host((void*) host_only_buffer, sBO->base, size, src_offset) != size) {
+      return -1;
+    }
+  }
+  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+    unsigned char temp_buffer[size];
+    // copy data from source buffer to temp buffer
+    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
+      return -1;
+    }
+    // copy data from temp buffer to destination buffer
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset) != size) {
+      std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
+      return -1;
+    }
+  }
+  else if (dBO->fd >= 0) {
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(dBO->fd);
+    if (fItr != mFdToFileNameMap.end()) {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;
+  }
+  else {
+    std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
     return -1;
   }
 
-  int ack = false;
-  auto fItr = mFdToFileNameMap.find(dBO->fd);
-  if(fItr != mFdToFileNameMap.end())
-  {
-    const std::string& sFileName = std::get<0>((*fItr).second);
-    xclCopyBO_RPC_CALL(xclCopyBO,sBO->base,sFileName,size,src_offset,dst_offset);
-  }
-  if(!ack)
-    return -1;
   PRINTENDFUNC;
   return 0;
 }
@@ -1372,7 +1443,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
 void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << write << std::endl;
   }
@@ -1386,7 +1457,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   if(!sFileName.empty() )
   {
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
-    if (fd == -1) 
+    if (fd == -1)
     {
       printf("Error opening exported BO file.\n");
       return nullptr;
@@ -1410,7 +1481,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   void *pBuf=nullptr;
-  if (posix_memalign(&pBuf, getpagesize(), bo->size)) 
+  if (posix_memalign(&pBuf, getpagesize(), bo->size))
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
@@ -1433,7 +1504,7 @@ int CpuemShim::xclUnmapBO(unsigned int boHandle, void* addr)
 int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , " << std::endl;
   }
@@ -1468,7 +1539,7 @@ int CpuemShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t s
 void CpuemShim::xclFreeBO(unsigned int boHandle)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << std::endl;
   }
@@ -1492,7 +1563,7 @@ void CpuemShim::xclFreeBO(unsigned int boHandle)
 size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< src <<" , "<< size << ", " << seek << std::endl;
   }
@@ -1515,7 +1586,7 @@ size_t CpuemShim::xclWriteBO(unsigned int boHandle, const void *src, size_t size
 size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << std::hex << boHandle << " , "<< dst <<" , "<< size << ", " << skip << std::endl;
   }
@@ -1541,14 +1612,14 @@ size_t CpuemShim::xclReadBO(unsigned int boHandle, void *dst, size_t size, size_
 int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
 
   uint64_t q_handle = 0;
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,true);
   if(q_handle <= 0)
   {
-    if (mLogStream.is_open()) 
+    if (mLogStream.is_open())
       mLogStream << " unable to create write queue "<<std::endl;
     PRINTENDFUNC;
     return -1;
@@ -1564,7 +1635,7 @@ int CpuemShim::xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -1572,7 +1643,7 @@ int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
   xclCreateQueue_RPC_CALL(xclCreateQueue,q_ctx,false);
   if(q_handle <= 0)
   {
-    if (mLogStream.is_open()) 
+    if (mLogStream.is_open())
       mLogStream << " unable to create read queue "<<std::endl;
     PRINTENDFUNC;
     return -1;
@@ -1588,7 +1659,7 @@ int CpuemShim::xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl)
 int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -1597,7 +1668,7 @@ int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
   xclDestroyQueue_RPC_CALL(xclDestroyQueue, q_handle);
   if(!success)
   {
-    if (mLogStream.is_open()) 
+    if (mLogStream.is_open())
       mLogStream <<" unable to destroy the queue"<<std::endl;
     PRINTENDFUNC;
     return -1;
@@ -1613,7 +1684,7 @@ int CpuemShim::xclDestroyQueue(uint64_t q_hdl)
 ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -1621,12 +1692,12 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
   bool eot = false;
   if(wr->flag & XCL_QUEUE_REQ_EOT)
     eot = true;
-  
+
   bool nonBlocking = false;
-  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  if (wr->flag & XCL_QUEUE_REQ_NONBLOCKING)
   {
     std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < wr->buf_num; i++) 
+    for (unsigned i = 0; i < wr->buf_num; i++)
     {
       vaLenMap[wr->bufs[i].va] = wr->bufs[i].len;
     }
@@ -1634,7 +1705,7 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
     nonBlocking = true;
   }
   uint64_t fullSize = 0;
-  for (unsigned i = 0; i < wr->buf_num; i++) 
+  for (unsigned i = 0; i < wr->buf_num; i++)
   {
     xclWriteQueue_RPC_CALL(xclWriteQueue,q_hdl, wr->bufs[i].va, wr->bufs[i].len);
     fullSize += written_size;
@@ -1649,21 +1720,21 @@ ssize_t CpuemShim::xclWriteQueue(uint64_t q_hdl, xclQueueRequest *wr)
  */
 ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
-  
+
   bool eot = false;
   if(rd->flag & XCL_QUEUE_REQ_EOT)
     eot = true;
 
   bool nonBlocking = false;
-  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING) 
+  if (rd->flag & XCL_QUEUE_REQ_NONBLOCKING)
   {
     nonBlocking = true;
     std::map<uint64_t,uint64_t> vaLenMap;
-    for (unsigned i = 0; i < rd->buf_num; i++) 
+    for (unsigned i = 0; i < rd->buf_num; i++)
     {
       vaLenMap[rd->bufs[i].va] = rd->bufs[i].len;
     }
@@ -1673,7 +1744,7 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   void *dest;
 
   uint64_t fullSize = 0;
-  for (unsigned i = 0; i < rd->buf_num; i++) 
+  for (unsigned i = 0; i < rd->buf_num; i++)
   {
     dest = (void *)rd->bufs[i].va;
     uint64_t read_size = 0;
@@ -1686,20 +1757,20 @@ ssize_t CpuemShim::xclReadQueue(uint64_t q_hdl, xclQueueRequest *rd)
   mReqCounter++;
   PRINTENDFUNC;
   return fullSize;
-
 }
 /*
  * xclPollCompletion
  */
 int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int* actual, int timeout)
 {
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << " , "<< max_compl <<", "<<min_compl<<" ," << *actual <<" ," << timeout << std::endl;
   }
+
 //  struct timespec time, *ptime = NULL;
 //
-//  if (timeout > 0) 
+//  if (timeout > 0)
 //  {
 //    memset(&time, 0, sizeof(time));
 //    time.tv_sec = timeout / 1000;
@@ -1741,7 +1812,7 @@ int CpuemShim::xclPollCompletion(int min_compl, int max_compl, xclReqCompletion 
 void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -1764,7 +1835,7 @@ void * CpuemShim::xclAllocQDMABuf(size_t size, uint64_t *buf_hdl)
 int CpuemShim::xclFreeQDMABuf(uint64_t buf_hdl)
 {
   std::lock_guard<std::mutex> lk(mApiMtx);
-  if (mLogStream.is_open()) 
+  if (mLogStream.is_open())
   {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
   }
@@ -1779,7 +1850,7 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
 {
     int len = std::vsnprintf(nullptr, 0, format, args1);
 
-    if (len < 0) 
+    if (len < 0)
     {
         //illegal arguments
         std::string err_str = "ERROR: Illegal arguments in log format string. ";
@@ -1792,7 +1863,7 @@ int CpuemShim::xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const cha
     std::vector<char> buf(len);
     len = std::vsnprintf(buf.data(), len, format, args1);
 
-    if (len < 0) 
+    if (len < 0)
     {
         //error processing arguments
         std::string err_str = "ERROR: When processing arguments in log format string. ";
@@ -1862,6 +1933,168 @@ int CpuemShim::xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) cons
   return 0;
 }
 
+//Get CU index from IP_LAYOUT section for corresponding kernel name
+int CpuemShim::xclIPName2Index(const char *name)
+{ 
+  //Get IP_LAYOUT buffer from xclbin
+  auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
+  return xclemulation::getIPName2Index(name, buffer.first);
+}
+
+// New API's for m2m and no-dma
+
+void CpuemShim::constructQueryTable() {
+  if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
+    if (mPlatformData.get_optional<std::string>("plp.m2m").is_initialized()) {
+      mQueryTable[key_type::m2m] = mPlatformData.get<std::string>("plp.m2m");
+    }
+
+    if (mPlatformData.get_optional<std::string>("plp.dma").is_initialized()) {
+      std::string dmaVal = mPlatformData.get<std::string>("plp.dma");
+      mQueryTable[key_type::nodma] = (dmaVal == "none" ? "enabled" : "disabled");
+    }
+  }
+}
+
+int CpuemShim::deviceQuery(key_type queryKey) {
+  if(mQueryTable.find(queryKey) != mQueryTable.end())
+    return (mQueryTable[queryKey] == "enabled" ? 1 : 0);    
+  return 0;
+}
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
+
+/******************************* XRT Graph API's **************************************************/
+/**
+* xrtGraphInit() - Initialize  graph
+*/
+int CpuemShim::xrtGraphInit(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  auto graphname = ghPtr->getGraphName();
+  xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphRun() - Start a graph execution
+*/
+int CpuemShim::xrtGraphRun(void * gh, uint32_t iterations) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphRun_RPC_CALL(xclGraphRun, graphhandle, iterations);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+*                   then stop the graph. If cycle is 0, busy wait until graph
+*                   is done. If graph already run more than the given
+*                   cycle, stop the graph immediateley.
+*/
+int CpuemShim::xrtGraphWait(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphWait_RPC_CALL(xclGraphWait, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+*                 then end the graph. If cycle is 0, busy wait until graph
+*                 is done before end the graph. If graph already run more
+*                 than the given cycle, stop the graph immediately and end it.
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+*                   wait until graph is done.
+*
+* Return:          0 on success, -1 on timeout.
+*
+* Note: This API with non-zero AIE cycle is for graph that is running
+* forever or graph that has multi-rate core(s).
+*/
+int CpuemShim::xrtGraphEnd(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the RTP value.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*/
+int CpuemShim::xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphUpdateRTP_RPC_CALL(xclGraphUpdateRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+
+/**
+* xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @hierPathPort:    hierarchial name of RTP port.
+* @buffer:          pointer to the buffer that RTP value is copied to.
+* @size:            size in bytes of the RTP value.
+*
+* Return:          0 on success, -1 on error.
+*
+* Note: Caller is reponsible for allocating enough memory for RTP value
+*       being copied to.
+*/
+int CpuemShim::xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size) {
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphReadRTP_RPC_CALL(xclGraphReadRTP, graphhandle, hierPathPort, buffer, size);
+  PRINTENDFUNC
+    return 0;
+}
+/******************************* XRT Graph API's End here**************************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 }
