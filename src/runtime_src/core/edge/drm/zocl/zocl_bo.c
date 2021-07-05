@@ -19,6 +19,7 @@
 #include <asm/io.h>
 #include "xrt_drv.h"
 #include "zocl_drv.h"
+#include "zocl_sk.h"
 #include "xclbin.h"
 #include "zocl_bo.h"
 
@@ -489,8 +490,10 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 		struct drm_file *filp)
 {
 	int ret = 0;
+	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct drm_zocl_map_bo *args = data;
 	struct drm_gem_object *gem_obj;
+	struct drm_zocl_bo *bo;
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
@@ -506,6 +509,11 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 	/* The mmap offset was set up at BO allocation time. */
 	args->offset = drm_vma_node_offset_addr(&gem_obj->vma_node);
 	zocl_describe(to_zocl_bo(gem_obj));
+
+	/* Update softkernel memory stats */
+	bo = to_zocl_bo(gem_obj);
+	if (bo->flags & ZOCL_BO_FLAGS_HOST_BO)
+        	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_MAPBO);
 
 out:
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
@@ -848,6 +856,8 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		return ret;
 	}
 
+	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_HBO);
+
 	zocl_describe(bo);
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
 
@@ -860,6 +870,7 @@ error:
 void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 {
 	struct drm_zocl_bo *zocl_bo = to_zocl_bo(gem_obj);
+	struct drm_zocl_dev *zdev = gem_obj->dev->dev_private;;
 
 	DRM_DEBUG("%s: obj 0x%px", __func__, zocl_bo);
 
@@ -868,6 +879,9 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 	drm_gem_object_release(gem_obj);
 
 	kfree(&zocl_bo->cma_base);
+			
+	/* Update softkernel memory stats */
+        zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_FREEBO);
 }
 
 /*

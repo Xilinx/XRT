@@ -161,7 +161,9 @@ populate_cus_new(const xrt_core::device *device)
 
   try {
     cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
+    std::cout << cu_stats.size() << std::endl;
     scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
+    std::cout << scu_stats.size() << std::endl;
   } catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
@@ -203,6 +205,9 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
+    ptCu.put( "succ_return",    stat.succ_cnt);
+    ptCu.put( "err_return",    stat.err_cnt);
+    ptCu.put( "crsh_return",    stat.crsh_cnt);
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
 
@@ -258,6 +263,7 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
 {
   boost::property_tree::ptree empty_ptree;
   boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
+  boost::format scuFmt("    %-8s%-30s%-16s%-8s%-12s%-16s%-16s%-16s\n");
 
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_cu = _pt.get_child("compute_units", empty_ptree);
@@ -287,7 +293,7 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
 
   //PS kernel report
   _output << "  PS Compute Units" << std::endl;
-  _output << cuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status";
+  _output << scuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status" % "Success_Count" % "Error_Count" % "Crash_Count";
   try {
     int index = 0;
     for(auto& kv : pt_cu) {
@@ -296,9 +302,11 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
         continue;
       std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
       uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-      _output << cuFmt % index++ %
+      _output << scuFmt % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
-	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val);
+	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val) %
+	      cu.get<std::string>("succ_return") % cu.get<std::string>("err_return") %
+	      cu.get<std::string>("crsh_return");
     }
   }
   catch( std::exception const& e) {

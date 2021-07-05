@@ -86,6 +86,23 @@ static int eccStatus2Str(uint64_t status, std::string& str)
   return 0;
 }
 
+static void
+schedulerUpdateStat(xrt_core::device *device)
+{
+  try {
+    // lock xclbin
+    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
+    xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+
+    device->update_scheduler_status();
+  }
+  catch (const std::exception&) {
+    // xclbin_lock failed, safe to ignore
+  }
+}
+
 void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree& pt) {
   std::vector<std::string> dma_threads;
   boost::property_tree::ptree pt_dma_array;
@@ -118,6 +135,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   uint64_t memoryUsage, boCount;
   pt.put("description", desc);
   getChannelinfo(device, pt);
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+  
   try {
     buf = xrt_core::device_query<qr::mem_topology_raw>(device);
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -225,6 +244,20 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   }
   pt.add_child(std::string("board.memory.data_streams"), ptStream_array);
   pt.add_child(std::string("board.memory.memories"), ptMem_array );
+   
+  // Populate softkernel mem stats 
+  boost::property_tree::ptree ptSkMem;
+  std::stringstream ss(mm_buf[map->m_count + 1]);
+  if (!ss.str().empty()) {
+    uint64_t hboCnt, mapboCnt, unmapboCnt, freeboCnt;
+  
+    ss >> hboCnt >> mapboCnt >> unmapboCnt >> freeboCnt;
+    ptSkMem.put("sk_hbo", hboCnt);
+    ptSkMem.put("sk_mapbo", mapboCnt);
+    ptSkMem.put("sk_unmapbo", unmapboCnt);
+    ptSkMem.put("sk_freebo", freeboCnt);
+    pt.add_child(std::string("board.memory.sk_memories"), ptSkMem);
+  }
 
   try {
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -388,6 +421,33 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
       // eat the exception, probably bad path
     }
   }
+
+  bool sk_mem_is_present = _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree).size() > 0 ? true:false;
+  if (sk_mem_is_present) {
+    _output << std::endl;
+    _output << "  Soft Kernel Memory Status" << std::endl;
+    _output << boost::format("  %-20s%-16s%-16s%-16s\n") % "  HostBO Count" % "MapBO Count" % "UnmapBO Count" % "FreeBO Count";
+
+    try {
+      std::string hbo_count, mapbo_count, unmapbo_count, freebo_count;
+      for (auto& v : _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree)) {
+        if (v.first == "sk_hbo") {
+          hbo_count = v.second.get_value<std::string>();
+        } else if (v.first == "sk_mapbo") {
+          mapbo_count = v.second.get_value<std::string>();
+        } else if (v.first == "sk_unmapbo") {
+          unmapbo_count = v.second.get_value<std::string>();
+        } else if (v.first == "sk_freebo") {
+          freebo_count = v.second.get_value<std::string>();
+	}
+      }
+      _output << boost::format("    %-18s%-16s%-16s%-16s\n") % hbo_count % mapbo_count % unmapbo_count % freebo_count;
+    }
+    catch( std::exception const&) {
+      // eat the exception, probably bad path
+    }
+  }
+
 
   bool dma_is_present = _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree).size() > 0 ? true:false;
   if (dma_is_present) {

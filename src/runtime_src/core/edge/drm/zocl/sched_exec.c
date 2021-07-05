@@ -1082,6 +1082,7 @@ cu_stat(struct sched_cmd *cmd)
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec = zdev->exec;
 	struct soft_krnl *sk = zdev->soft_kernel;
+	struct sk_mem_stats *mem_stat;
 	struct ert_packet *pkg;
 	int slot_idx;
 	int pkt_idx = 0;
@@ -1112,10 +1113,22 @@ cu_stat(struct sched_cmd *cmd)
 	/* individual SK CU execution stat */
 	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		if (sk->sk_cu[i])
+		struct scu_usages *sc_stat;
+		if (sk->sk_cu[i]) {
+			sc_stat = &sk->sk_cu[i]->sc_usages;
+
 			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
-		else //soft kernel cu has crashed
+			pkg->data[pkt_idx++] = sc_stat->succ_cnt;
+			pkg->data[pkt_idx++] = sc_stat->err_cnt;
+			pkg->data[pkt_idx++] = sc_stat->crsh_cnt;
+		}
+		else { //soft kernel cu has crashed
+			// Fill for all the counters for consistency 
 			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+		}
 	}
 	mutex_unlock(&sk->sk_lock);
 
@@ -1147,8 +1160,15 @@ cu_stat(struct sched_cmd *cmd)
 		} else
 			pkg->data[pkt_idx++] = -1;
 	}
-	mutex_unlock(&sk->sk_lock);
 
+	/* Collect other soft-kernel memory stats */
+	mem_stat = &sk->mem_stats;
+	pkg->data[pkt_idx++] = mem_stat->hbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->mapbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->unmapbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->freebo_cnt;
+
+	mutex_unlock(&sk->sk_lock);
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
 	 * ERT/PS will set it to QUEUED. Then no CQ write.
@@ -1244,11 +1264,23 @@ configure_soft_kernel(struct sched_cmd *cmd)
 
 		list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
 		sk->sk_ncus += cp->num_cus;
+
 		mutex_unlock(&sk->sk_lock);
 
 		/* start CU by waking up PS kernel handler */
 		wake_up_interruptible(&sk->sk_wait_queue);
 	}
+#if 1	
+	/* Reset memory stats for the softkernel */
+	memset(&sk->mem_stats, 0, sizeof(struct sk_mem_stats));
+	printk("Memset *********************************************\n");
+	printk("Hbo %d, Map %d, Unmap %d, Free %d\n", 
+			sk->mem_stats.hbo_cnt, 
+			sk->mem_stats.mapbo_cnt, 
+			sk->mem_stats.unmapbo_cnt, 
+			sk->mem_stats.freebo_cnt);
+#endif
+
 
 	SCHED_DEBUG("<- %s\n", __func__);
 

@@ -334,6 +334,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 				}
 				zocl_update_mem_stat(zdev, obj->size, -1,
 				    zocl_obj->bank);
+			
 			}
 			drm_gem_object_release(obj);
 			kfree(zocl_obj);
@@ -695,10 +696,23 @@ static int zocl_iommu_init(struct drm_zocl_dev *zdev,
 	return 0;
 }
 
+void zocl_drm_gem_vm_close(struct vm_area_struct *vma)
+{
+	struct drm_gem_object *obj = vma->vm_private_data;
+	struct drm_zocl_dev *zdev = obj->dev->dev_private;
+	struct drm_zocl_bo *bo = to_zocl_bo(obj);
+
+	/* Update softkernel memory stats */
+	if (bo->flags & ZOCL_BO_FLAGS_HOST_BO)
+		zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_UNMAPBO);
+
+	drm_gem_vm_close(vma);
+}
+
 const struct vm_operations_struct zocl_bo_vm_ops = {
 	.fault = zocl_bo_fault,
 	.open  = drm_gem_vm_open,
-	.close = drm_gem_vm_close,
+	.close = zocl_drm_gem_vm_close,
 };
 
 static const struct drm_ioctl_desc zocl_ioctls[] = {
