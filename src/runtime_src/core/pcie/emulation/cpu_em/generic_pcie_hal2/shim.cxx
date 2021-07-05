@@ -856,7 +856,7 @@ namespace xclcpuemhal2 {
     }
 
     fflush(stdout);
-    xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,kernelArgsInfo);
+    xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,kernelArgsInfo,0,0);
     PRINTENDFUNC;
     return size;
   }
@@ -887,7 +887,7 @@ namespace xclcpuemhal2 {
       PRINTENDFUNC;
       return -1;
     }
-    xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+    xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
     PRINTENDFUNC;
     return size;
 

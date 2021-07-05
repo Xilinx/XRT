@@ -182,10 +182,12 @@ mtx.unlock();
 //------------------------------------------------------------
 //--------------------xclWriteAddrSpaceDeviceRam--------------------------------
 //Generate call and info message
-#define xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
+#define xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,pf_id,bar_id) \
     c_msg.set_addr(addr); \
     c_msg.set_data((char*) data, size); \
-    c_msg.set_size(size);
+    c_msg.set_size(size); \
+    c_msg.set_pf_id(pf_id); \
+    c_msg.set_bar_id(bar_id);
 
 
 #define xclWriteAddrSpaceDeviceRam_SET_PROTO_RESPONSE() \
@@ -196,9 +198,9 @@ mtx.unlock();
 #define xclWriteAddrSpaceDeviceRam_RETURN()\
     //return size;
 
-#define xclWriteAddrSpaceDeviceRam_RPC_CALL(func_name,address_space,address,data,size) \
+#define xclWriteAddrSpaceDeviceRam_RPC_CALL(func_name,address_space,address,data,size,pf_id,bar_id) \
     RPC_PROLOGUE(func_name); \
-    xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size); \
+    xclWriteAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrSpaceDeviceRam_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
@@ -206,7 +208,7 @@ mtx.unlock();
 
 //--------------------xclWriteAddrKernelCtrl--------------------------------
 //Generate call and info message
-#define xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,kernelArgsInfo) \
+#define xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,kernelArgsInfo,pf_id,bar_id) \
     c_msg.set_addr(addr); \
     c_msg.set_data((char*) data, size); \
     c_msg.set_size(size); \
@@ -216,6 +218,8 @@ mtx.unlock();
     	kernelInfo->set_size(i.second.second);\
     	kernelInfo->set_name(i.second.first);\
     }\
+    c_msg.set_pf_id(pf_id); \
+    c_msg.set_bar_id(bar_id);
 
 
 #define xclWriteAddrKernelCtrl_SET_PROTO_RESPONSE() \
@@ -226,9 +230,9 @@ mtx.unlock();
 #define xclWriteAddrKernelCtrl_RETURN()\
     //return size;
 
-#define xclWriteAddrKernelCtrl_RPC_CALL(func_name,address_space,address,data,size,kernelArgsInfo) \
+#define xclWriteAddrKernelCtrl_RPC_CALL(func_name,address_space,address,data,size,kernelArgsInfo,pf_id,bar_id) \
     RPC_PROLOGUE(func_name); \
-    xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,kernelArgsInfo); \
+    xclWriteAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,kernelArgsInfo,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclWriteAddrKernelCtrl_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
@@ -236,9 +240,11 @@ mtx.unlock();
 
 //-----------------------xclReadAddrSpaceDeviceRam----------------------------
 //Generate call and info message
-#define xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
+#define xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,pf_id,bar_id) \
     c_msg.set_addr(addr); \
     c_msg.set_size(size); \
+    c_msg.set_pf_id(pf_id); \
+    c_msg.set_bar_id(bar_id);
 
 
 #define xclReadAddrSpaceDeviceRam_SET_PROTO_RESPONSE(datax,size) \
@@ -252,18 +258,20 @@ mtx.unlock();
 #define xclReadAddrSpaceDeviceRam_RETURN()\
   //  return size;
 
-#define xclReadAddrSpaceDeviceRam_RPC_CALL(func_name,address_space,address,data,size) \
+#define xclReadAddrSpaceDeviceRam_RPC_CALL(func_name,address_space,address,data,size,pf_id,bar_id) \
     RPC_PROLOGUE(func_name); \
-    xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size); \
+    xclReadAddrSpaceDeviceRam_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrSpaceDeviceRam_SET_PROTO_RESPONSE(data,size); \
     FREE_BUFFERS(); \
     xclReadAddrSpaceDeviceRam_RETURN();
 //-----------------------xclReadAddrKernelCtrl----------------------------
 //Generate call and info message
-#define xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size) \
+#define xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,addr,data,size,pf_id,bar_id) \
     c_msg.set_addr(addr); \
     c_msg.set_size(size); \
+    c_msg.set_pf_id(pf_id); \
+    c_msg.set_bar_id(bar_id);
 
 
 #define xclReadAddrKernelCtrl_SET_PROTO_RESPONSE(datax,size) \
@@ -277,9 +285,9 @@ mtx.unlock();
 #define xclReadAddrKernelCtrl_RETURN()\
   //  return size;
 
-#define xclReadAddrKernelCtrl_RPC_CALL(func_name,address_space,address,data,size) \
+#define xclReadAddrKernelCtrl_RPC_CALL(func_name,address_space,address,data,size,pf_id,bar_id) \
     RPC_PROLOGUE(func_name); \
-    xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size); \
+    xclReadAddrKernelCtrl_SET_PROTOMESSAGE(func_name,address_space,address,data,size,pf_id,bar_id); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclReadAddrKernelCtrl_SET_PROTO_RESPONSE(data,size); \
     FREE_BUFFERS(); \
