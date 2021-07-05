@@ -115,9 +115,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		return -EINVAL;
 	}
 
-	/* SAIF TODO : The following code is a BUG!!!! sk_cu is a type of soft_cu */
 	sk->sk_cu[cu_idx] = kzalloc(sizeof(struct soft_krnl), GFP_KERNEL);
-	//sk->sk_cu[cu_idx] = kzalloc(sizeof(struct soft_cu), GFP_KERNEL);
 	if (!sk->sk_cu[cu_idx]) {
 		DRM_ERROR("Fail to create soft kernel: no memory.\n");
 		mutex_unlock(&sk->sk_lock);

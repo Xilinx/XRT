@@ -1270,17 +1270,6 @@ configure_soft_kernel(struct sched_cmd *cmd)
 		/* start CU by waking up PS kernel handler */
 		wake_up_interruptible(&sk->sk_wait_queue);
 	}
-#if 1	
-	/* Reset memory stats for the softkernel */
-	memset(&sk->mem_stats, 0, sizeof(struct sk_mem_stats));
-	printk("Memset *********************************************\n");
-	printk("Hbo %d, Map %d, Unmap %d, Free %d\n", 
-			sk->mem_stats.hbo_cnt, 
-			sk->mem_stats.mapbo_cnt, 
-			sk->mem_stats.unmapbo_cnt, 
-			sk->mem_stats.freebo_cnt);
-#endif
-
 
 	SCHED_DEBUG("<- %s\n", __func__);
 

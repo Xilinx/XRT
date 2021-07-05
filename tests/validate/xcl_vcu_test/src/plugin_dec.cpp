@@ -581,7 +581,7 @@ gstivas_xvcudec_stop (XrtIvas_XVCUDec *dec)
 {
   int bret = TRUE;
 
-  if (dec->priv->init_done == TRUE) {
+  if (dec->priv->init_done) {
     bret = xvcudec_send_flush (dec);
     if (bret != TRUE)
       return bret;

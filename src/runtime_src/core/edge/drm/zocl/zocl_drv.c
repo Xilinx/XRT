@@ -334,7 +334,6 @@ void zocl_free_bo(struct drm_gem_object *obj)
 				}
 				zocl_update_mem_stat(zdev, obj->size, -1,
 				    zocl_obj->bank);
-			
 			}
 			drm_gem_object_release(obj);
 			kfree(zocl_obj);

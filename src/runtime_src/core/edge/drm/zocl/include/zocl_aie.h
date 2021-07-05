@@ -15,8 +15,6 @@
 
 #include "zynq_ioctl.h"
 
-#define __NONE_PETALINUX__
-
 /* Wait 100 * 1 ms before AIE parition is availabe after reset */
 #define	ZOCL_AIE_RESET_TIMEOUT_INTERVAL	1
 #define	ZOCL_AIE_RESET_TIMEOUT_NUMBER	100
