@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  * Copyright (C) 2019 Samsung Semiconductor, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -994,7 +994,10 @@ done:
           nullptr);
 
       if (!status || bytes != sizeof(struct debug_ip_layout))
-          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout hdr) failed");
+		  throw std::runtime_error
+          ("Failed to find any Debug IP Layout section in the bitstream loaded"
+              " on device. Ensure that a valid bitstream with debug IPs (AIM, "
+              "LAPC) is successfully downloaded.");
 
       if (debug_iplayout_hdr.m_count == 0)
       {
@@ -1012,7 +1015,7 @@ done:
 
       if (size < debug_ip_layout_size)
           throw std::runtime_error
-          ("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed "
+          ("Found invalid IP in debug ip layout of "
               "size (" + std::to_string(size) + ") of buffer too small, "
               "required size (" + std::to_string(debug_ip_layout_size) + ")");
 
@@ -1025,8 +1028,32 @@ done:
           &bytes,
           nullptr);
 
-      if (!status || bytes != debug_ip_layout_size)
-          throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_debug_ip_layout) failed");
+      if (!status)
+		  throw std::runtime_error
+          ("Failed to find any Debug IP Layout section in the bitstream loaded"
+              " on device. Ensure that a valid bitstream with debug IPs (AIM, "
+              "LAPC) is successfully downloaded.");
+
+      if (bytes != debug_ip_layout_size)
+          throw std::runtime_error("Found invalid IP in debug ip layout");
+
+  }
+
+  void
+  get_mailbox_info(struct xcl_mailbox* value)
+  {
+	  DWORD bytes = 0;
+	  bool status = DeviceIoControl(m_dev,
+		  IOCTL_XOCL_MAILBOX_INFO,
+		  nullptr,
+		  0,
+		  value,
+		  sizeof(xcl_mailbox),
+		  &bytes,
+		  nullptr);
+
+	  if (!status || bytes != sizeof(xcl_mailbox))
+		  throw std::runtime_error("DeviceIoControl (get_mailbox_info) failed");
   }
 
   void
@@ -1204,6 +1231,15 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
     send(xrt_core::message::severity_level::debug, "XRT", "get_bdf_info()");
   auto shim = get_shim_object(hdl);
   shim->get_bdf_info(bdf);
+}
+
+void
+get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value)
+{
+	xrt_core::message::
+		send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
+	shim* shim = get_shim_object(hdl);
+	shim->get_mailbox_info(value);
 }
 
 void

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,6 +77,10 @@ get_debug_ip_layout(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
