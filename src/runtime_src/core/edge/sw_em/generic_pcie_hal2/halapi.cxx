@@ -378,7 +378,7 @@ unsigned xclProbe()
     return deviceIndex;
   }
   std::vector<std::tuple<xclDeviceInfo2,std::list<xclemulation::DDRBank> ,bool, bool, FeatureRomHeader> > devicesInfo;
-  getDevicesInfo(devicesInfo);
+  xclemulation::getDevicesInfo(devicesInfo);
 
   if(devicesInfo.size() == 0)
     return 1;
