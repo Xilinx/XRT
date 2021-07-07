@@ -491,11 +491,37 @@ message xclSyncBOAIENB_response {
      required bool ack = 1;
 }
 
-//xclGraphEnd
+//xclGMIOWait
 message xclGMIOWait_call {
   required bytes gmioname = 2;  
 }
 message xclGMIOWait_response {
+     required bool ack = 1;
+}
+
+//xclGraphTimedWait
+message xclGraphTimedWait_call {
+  required uint32 gh = 2;
+  required uint64 cycletimeout = 3; 
+}
+message xclGraphTimedWait_response {
+     required bool ack = 1;
+}
+
+//xclGraphTimedEnd
+message xclGraphTimedEnd_call {
+  required uint32 gh = 2;
+  required uint64 cycletimeout = 3;
+}
+message xclGraphTimedEnd_response {
+     required bool ack = 1;
+}
+
+//xclGraphResume
+message xclGraphResume_call {
+  required uint32 gh = 2;  
+}
+message xclGraphResume_response {
      required bool ack = 1;
 }
 

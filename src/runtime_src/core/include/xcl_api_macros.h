@@ -917,6 +917,62 @@ mtx.unlock();
     FREE_BUFFERS(); \
     xclGMIOWait_RETURN();
 
+//-----------xclGraphTimedWait-----------------
+#define xclGraphTimedWait_SET_PROTOMESSAGE(func_name,graphhandle,cycle) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_cycletimeout(cycle);
+
+#define xclGraphTimedWait_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphTimedWait_RETURN()\
+    //return size;
+
+#define xclGraphTimedWait_RPC_CALL(func_name,graphhandle,cycle) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphTimedWait_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphTimedWait_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphTimedWait_RETURN();
+
+//-----------xclGraphTimedEnd-----------------
+#define xclGraphTimedEnd_SET_PROTOMESSAGE(func_name,graphhandle,cycle) \
+    c_msg.set_gh(graphhandle); \
+    c_msg.set_cycletimeout(cycle);
+
+#define xclGraphTimedEnd_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphTimedEnd_RETURN()\
+    //return size;
+
+#define xclGraphTimedEnd_RPC_CALL(func_name,graphhandle,cycle) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphTimedEnd_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphTimedEnd_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphTimedEnd_RETURN();
+
+//-----------xclGraphResume-----------------
+#define xclGraphResume_SET_PROTOMESSAGE(func_name,graphhandle) \
+    c_msg.set_gh(graphhandle);
+
+#define xclGraphResume_SET_PROTO_RESPONSE() \
+    ack = r_msg.ack();  
+
+#define xclGraphResume_RETURN()\
+    //return size;
+
+#define xclGraphResume_RPC_CALL(func_name,graphhandle) \
+    RPC_PROLOGUE(func_name); \
+    xclGraphResume_SET_PROTOMESSAGE(func_name,graphhandle); \
+    SERIALIZE_AND_SEND_MSG(func_name)\
+    xclGraphResume_SET_PROTO_RESPONSE(); \
+    FREE_BUFFERS(); \
+    xclGraphResume_RETURN();
+
 //-----------xclLoadXclbinContent-----------------
 #define xclLoadXclbinContent_SET_PROTOMESSAGE(func_name,xmlbuff,xmlbuffsize,sharedbin,sharedbinsize,emuldata,emuldatasize,keepdir) \
     c_msg.set_xmlbuff((char*)xmlbuff,xmlbuffsize); \

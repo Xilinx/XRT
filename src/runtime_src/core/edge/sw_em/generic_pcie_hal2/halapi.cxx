@@ -813,7 +813,7 @@ xclGraphWait(xclGraphHandle gh, uint64_t cycle)
     if (gh) {
       auto ghPtr = (xclcpuemhal2::GraphType*)gh;
       auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphWait(gh) : -1;
+      return drv ? (cycle ? drv->xrtGraphTimedWait(gh,cycle) : drv->xrtGraphWait(gh) ): -1;
     }
     return -1;
   }
@@ -836,7 +836,22 @@ xclGraphSuspend(xclGraphHandle gh)
 int
 xclGraphResume(xclGraphHandle gh)
 {
-  return 0;
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphResume(gh) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
 }
 
 int
@@ -846,7 +861,7 @@ xclGraphEnd(xclGraphHandle gh, uint64_t cycle)
     if (gh) {
       auto ghPtr = (xclcpuemhal2::GraphType*)gh;
       auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphEnd(gh) : -1;
+      return drv ? (cycle ? drv->xrtGraphTimedEnd(gh, cycle) : drv->xrtGraphEnd(gh) ) : -1;
     }
     return -1;
   }
