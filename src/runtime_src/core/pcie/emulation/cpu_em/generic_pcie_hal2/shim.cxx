@@ -1428,7 +1428,7 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
       return -1;
   }
   else {
-    std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+    std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
     return -1;
   }
 
@@ -1484,6 +1484,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
     pBuf=nullptr;
   }
+  memset(pBuf, 0, bo->size);
   bo->buf = pBuf;
   PRINTENDFUNC;
   return pBuf;
