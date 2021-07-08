@@ -2344,6 +2344,27 @@ int CpuemShim::xrtGraphWait(void * gh) {
 }
 
 /**
+* xrtGraphTimedWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+*                   then stop the graph. If cycle is 0, busy wait until graph
+*                   is done. If graph already run more than the given
+*                   cycle, stop the graph immediateley.
+*/
+int CpuemShim::xrtGraphTimedWait(void * gh, uint64_t cycle) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphTimedWait_RPC_CALL(xclGraphTimedWait, graphhandle, cycle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
 * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
 *                 then end the graph. If cycle is 0, busy wait until graph
 *                 is done before end the graph. If graph already run more
@@ -2365,6 +2386,56 @@ int CpuemShim::xrtGraphEnd(void * gh) {
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
   xclGraphEnd_RPC_CALL(xclGraphEnd, graphhandle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphTimedEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+*                 then end the graph. If cycle is 0, busy wait until graph
+*                 is done before end the graph. If graph already run more
+*                 than the given cycle, stop the graph immediately and end it.
+*
+* @gh:              Handle to graph previously opened with xrtGraphOpen.
+* @cycle:           AIE cycle should wait since last xrtGraphRun. 0 for
+*                   wait until graph is done.
+*
+* Return:          0 on success, -1 on timeout.
+*
+* Note: This API with non-zero AIE cycle is for graph that is running
+* forever or graph that has multi-rate core(s).
+*/
+int CpuemShim::xrtGraphTimedEnd(void * gh , uint64_t cycle) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphTimedEnd_RPC_CALL(xclGraphTimedEnd, graphhandle, cycle);
+  if (!ack)
+  {
+    PRINTENDFUNC;
+    return -1;
+  }
+  return 0;
+}
+
+/**
+* xrtGraphResume() - Resume a suspended graph.
+*
+* Resume graph execution which was paused by suspend() or wait(cycles) APIs
+*/
+int CpuemShim::xrtGraphResume(void * gh) {
+  bool ack = false;
+  auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+  if (!ghPtr)
+    return -1;
+  auto graphhandle = ghPtr->getGraphHandle();
+  xclGraphResume_RPC_CALL(xclGraphResume, graphhandle);
   if (!ack)
   {
     PRINTENDFUNC;
