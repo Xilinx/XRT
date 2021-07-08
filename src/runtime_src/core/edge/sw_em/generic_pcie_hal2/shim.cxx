@@ -848,6 +848,29 @@ namespace xclcpuemhal2 {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
 
+    // Before we spawn off the child process, we must determine
+    //  if the process will be debuggable or not.  We get that
+    //  by checking to see if there is a DEBUG_DATA section in
+    //  the xclbin file.  Note, this only works with xclbin2
+    //  files.  Also, the GUI can overwrite this by setting an
+    //  environment variable
+    std::string debugMode = "No";
+    if (getenv("ENABLE_KERNEL_DEBUG") != nullptr &&
+      strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
+    {
+      char* xclbininmemory =
+        reinterpret_cast<char*>(const_cast<xclBin*>(header));
+      if (!memcmp(xclbininmemory, "xclbin2", 7))
+      {
+        auto top = reinterpret_cast<const axlf*>(header);
+        auto sec = xclbin::get_axlf_section(top, DEBUG_DATA);
+        if (sec)
+        {         
+          debugMode = "Yes";
+        }
+      }
+    }
+
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
       if (!xclcpuemhal2::isRemotePortMapped) {
@@ -862,8 +885,8 @@ namespace xclcpuemhal2 {
       if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
-      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID);
-      cmd->addArg(xclBinName.c_str());
+      cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID); 
+      cmd->addArg(debugMode.c_str());
       uint32_t length;
       uint8_t* buff = cmd->generateBuffer(&length);
       for (unsigned int i = 0; i < length; i += 4) {
@@ -877,29 +900,6 @@ namespace xclcpuemhal2 {
     }
 
     std::string xmlFile = "";
-    // Before we spawn off the child process, we must determine
-    //  if the process will be debuggable or not.  We get that
-    //  by checking to see if there is a DEBUG_DATA section in
-    //  the xclbin file.  Note, this only works with xclbin2
-    //  files.  Also, the GUI can overwrite this by setting an
-    //  environment variable
-    bool debuggable = false;
-    if (getenv("ENABLE_KERNEL_DEBUG") != nullptr &&
-      strcmp("true", getenv("ENABLE_KERNEL_DEBUG")) == 0)
-    {
-      char* xclbininmemory =
-        reinterpret_cast<char*>(const_cast<xclBin*>(header));
-      if (!memcmp(xclbininmemory, "xclbin2", 7))
-      {
-        auto top = reinterpret_cast<const axlf*>(header);
-        auto sec = xclbin::get_axlf_section(top, DEBUG_DATA);
-        if (sec)
-        {
-          debuggable = true;
-        }
-      }
-    }
-
     std::string binaryDirectory("");
     //launchDeviceProcess(debuggable, binaryDirectory);
     systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE);
