@@ -1526,24 +1526,24 @@ create_report_summary( const boost::property_tree::ptree& ptDevCollectionTestSui
   _ostream << "Validation Summary" << std::endl;
   _ostream << "------------------" << std::endl;
 
-  _ostream << boost::format("%-2d device(s) evaluated") % devices.size() << std::endl;
-  _ostream << boost::format("%-2d device(s) validated successfully") % validatedSuccessfully.size() << std::endl;
-  _ostream << boost::format("%-2d device(s) had exceptions during validation") % validateWithExceptions.size() << std::endl;
+  _ostream << boost::format("%-2d device evaluated") % devices.size() << std::endl;
+  _ostream << boost::format("%-2d device validated successfully") % validatedSuccessfully.size() << std::endl;
+  _ostream << boost::format("%-2d device had exceptions during validation") % validateWithExceptions.size() << std::endl;
 
-  _ostream << boost::format("\nValidated successfully [%d device(s)]") % validatedSuccessfully.size() << std::endl;
+  _ostream << boost::format("\nValidated successfully [%d device]") % validatedSuccessfully.size() << std::endl;
   for (const auto &entry : validatedSuccessfully)
     _ostream << entry << std::endl;
 
-  _ostream << boost::format("\nValidation Exceptions [%d device(s)]") % validateWithExceptions.size() << std::endl;
+  _ostream << boost::format("\nValidation Exceptions [%d device]") % validateWithExceptions.size() << std::endl;
   for (const auto &entry : validateWithExceptions)
     _ostream << entry << std::endl;
 
-  _ostream << boost::format("\nWarnings produced during test [%d device(s)] (Note: The given test successfully validated)") % validateWithWarnings.size() << std::endl;
+  _ostream << boost::format("\nWarnings produced during test [%d device] (Note: The given test successfully validated)") % validateWithWarnings.size() << std::endl;
   for (const auto &entry : validateWithWarnings)
     _ostream << entry << std::endl;
 
   if (XBU::getVerbose()) {
-    _ostream << boost::format("\nUnsupported tests [%d device(s)]") % validatedWithSkippedTests.size() << std::endl;
+    _ostream << boost::format("\nUnsupported tests [%d device]") % validatedWithSkippedTests.size() << std::endl;
     for (const auto &entry : validatedWithSkippedTests)
       _ostream << entry << std::endl;
   }
