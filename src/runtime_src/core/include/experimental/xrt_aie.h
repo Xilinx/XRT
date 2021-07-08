@@ -26,6 +26,11 @@
 #include "experimental/xrt_graph.h"
 
 #ifdef __cplusplus
+# include <cstdint>
+# include <string>
+#endif
+
+#ifdef __cplusplus
 
 namespace xrt { namespace aie {
 

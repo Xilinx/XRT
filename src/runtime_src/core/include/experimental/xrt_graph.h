@@ -19,12 +19,16 @@
 #ifndef XRT_GRAPH_H_
 #define XRT_GRAPH_H_
 
-#include <chrono>
-
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
+
+#ifdef __cplusplus
+# include <chrono>
+# include <string>
+# include <cstdint>
+#endif
 
 typedef void *xrtGraphHandle;
 
