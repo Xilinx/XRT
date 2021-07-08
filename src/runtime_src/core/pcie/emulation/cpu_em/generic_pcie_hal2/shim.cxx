@@ -1478,12 +1478,15 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
     return data;
   }
 
-  void *pBuf=nullptr;
+  void *pBuf = nullptr;
   if (posix_memalign(&pBuf, getpagesize(), bo->size))
   {
     if (mLogStream.is_open()) mLogStream << "posix_memalign failed" << std::endl;
-    pBuf=nullptr;
+    pBuf = nullptr;
+    PRINTENDFUNC;
+    return pBuf;
   }
+  
   memset(pBuf, 0, bo->size);
   bo->buf = pBuf;
   PRINTENDFUNC;
