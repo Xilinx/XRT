@@ -16,8 +16,8 @@
  * under the License.
  */
 
-#ifndef _XRT_AIE_H_
-#define _XRT_AIE_H_
+#ifndef XRT_AIE_H_
+#define XRT_AIE_H_
 
 #include "xrt.h"
 #include "xrt/xrt_uuid.h"
@@ -29,22 +29,47 @@
 
 namespace xrt { namespace aie {
 
+/**
+ * @enum access_mode - AIE array access mode
+ *
+ * @var exclusive
+ *   Exclusive access to AIE array.  No other process will have 
+ *   access to the AIE array.
+ * @var primary
+ *   Primary access to AIE array provides same capabilities as exclusive
+ *   access, but other processes will be allowed shared access as well.
+ * @var shared
+ *   Shared none destructive access to AIE array, a limited number of APIs
+ *   can be called.
+ * @var none
+ *   For internal use only, to be removed.
+ *
+ * By default the AIE array is opened in primary access mode.
+ */
 enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2, none = 3 };
 
 class device : public xrt::device
 {
 public:
-  /**
-   * device() - Constructor a device that has AIE.
-   *
-   * @param arg
-   *  Arguments to construct a device (xrt_device.h).
-   */
-  template <typename ...Args>
-  device(Args&&... args)
-    : xrt::device(std::forward<Args>(args)...)
-  {}
+  using access_mode = xrt::aie::access_mode;
 
+  /**
+   * device() - Construct device with specified access mode
+   *
+   * @param args
+   *  Arguments to construct a device (xrt_device.h).
+   * @param am
+   *  Open the AIE device is specified access mode (default primary)
+   *
+   * The default access mode is primary.
+   */
+  template <typename ArgType>
+  device(ArgType&& arg, access_mode am = access_mode::primary)
+    : xrt::device(std::forward<ArgType>(arg))
+  {
+    open_context(am);
+  }
+    
   /**
    * reset_array() - Reset AIE array
    *
@@ -54,7 +79,12 @@ public:
    *   Reset shim;
    *   Write '0' to all the data and program memories.
    */
-  void reset_array();
+  void
+  reset_array();
+
+private:
+  void
+  open_context(access_mode mode);
 };
 
 class bo : public xrt::bo
@@ -118,8 +148,10 @@ extern "C" {
 /**
  * xrtAIEOpen() - Open a device with AIE and obtain its handle
  *
- * @index:          Device index
- * Return:          0 on success, or appropriate error number.
+ * @param index
+ *   Device index
+ * @return          
+ *   0 on success, or appropriate error number.
  *
  * There are three supported AIE context
  * 1) exclusive: Can fully access AIE array. At any time, there can be only

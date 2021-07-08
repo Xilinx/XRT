@@ -16,8 +16,8 @@
  * under the License.
  */
 
-#ifndef _XRT_GRAPH_H_
-#define _XRT_GRAPH_H_
+#ifndef XRT_GRAPH_H_
+#define XRT_GRAPH_H_
 
 #include <chrono>
 
@@ -35,15 +35,31 @@ namespace xrt {
 /*!
  * @class graph
  *
- * The graph object represents an abstraction exported by aietool matching
- * a specified name.
- * The graph is created by finding matching graph name in the currently
- * loaded xclbin.
+ * The graph object represents an abstraction exported by aietool
+ * matching a specified name.
+ *
+ * The graph is created by finding matching graph name in the
+ * currently loaded xclbin.
  */
 class graph_impl;
 class graph
 {
 public:
+  /**
+   * @enum access_mode - graph access mode
+   *
+   * @var exclusive
+   *   Exclusive access to graph and all graph APIs.  No other process 
+   *   will have access to the graph.
+   * @var primary
+   *   Primary access to graph provides same capabilities as exclusive
+   *   access, but other processes will be allowed shared access as well.
+   * @var shared
+   *   Shared none destructive access to graph, a limited number of APIs
+   *   can be called.
+   *
+   * By default a graph is opened in primary access mode.
+   */
   enum class access_mode : uint8_t { exclusive = 0, primary = 1, shared = 2 };
 
   /**
@@ -55,8 +71,11 @@ public:
    *  UUID of the xclbin with the graph
    * @param name
    *  Name of graph to construct
+   * @param am
+   *  Open the graph with specified access (default primary)
    */
-  graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name);
+  graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
+        access_mode am = access_mode::primary);
 
   /**
    * reset() - Reset a graph.
