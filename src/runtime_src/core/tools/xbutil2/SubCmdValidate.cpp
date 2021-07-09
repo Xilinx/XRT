@@ -262,6 +262,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     static const std::map<std::string, std::string> test_map = {
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
+      { "versal_23_bandwidth.py",   "kernel_bw.exe"   },
       { "host_mem_23_bandwidth.py", "slavebridge.exe" },
       { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
