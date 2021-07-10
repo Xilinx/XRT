@@ -69,7 +69,7 @@ struct device_info
     case key_type::kds_numcdmas:
       return static_cast<xrt_core::query::kds_numcdmas::result_type>(info.mNumCDMA);
     case key_type::pcie_bdf:
-      return xrt_core::query::pcie_bdf::result_type{0,device->get_device_id(),0};
+      return xrt_core::query::pcie_bdf::result_type{0, 0, device->get_device_id(), 0};
     case key_type::rom_vbnv:
       return std::string(info.mName, strnlen(info.mName, sizeof(info.mName)));
     default:

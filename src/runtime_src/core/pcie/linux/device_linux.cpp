@@ -50,7 +50,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
 

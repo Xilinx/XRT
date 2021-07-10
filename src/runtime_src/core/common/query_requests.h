@@ -387,7 +387,7 @@ struct pcie_express_lane_width_max : request
 
 struct pcie_bdf : request
 {
-  using result_type = std::tuple<uint16_t,uint16_t,uint16_t>;
+  using result_type = std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>;
   static const key_type key = key_type::pcie_bdf;
   static const char* name() { return "bdf"; }
 
@@ -398,8 +398,8 @@ struct pcie_bdf : request
   to_string(const result_type& value)
   {
     return boost::str
-      (boost::format("%04x:%02x:%02x.%01x") % 0 % std::get<0>(value)
-       % std::get<1>(value) % std::get<2>(value));
+      (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value)
+       % std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
   }
 };
 
