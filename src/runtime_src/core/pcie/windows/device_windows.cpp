@@ -650,8 +650,10 @@ struct xmc
     switch (key) {
     case key_type::xmc_reg_base:
       return info.xmc_offset;
-	  case key_type::xmc_status:
-	    return query::xmc_status::result_type(1); //hardcoded
+    case key_type::xmc_status:
+      return query::xmc_status::result_type(1); //hardcoded
+    case key_type::xmc_qspi_status:
+      return std::pair<std::string, std::string>("N/A", "N/A");
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -1167,6 +1169,7 @@ initialize_query_table()
   emplace_function0_getter<query::power_microwatts,          sensor>();
   emplace_function0_getter<query::power_warning,             sensor>();
   emplace_function0_getter<query::xmc_status,                xmc>();
+  emplace_function0_getter<query::xmc_qspi_status,           xmc>();
   emplace_function0_getter<query::xmc_serial_num,            board>();
   emplace_function0_getter<query::max_power_level,           board>();
   emplace_function0_getter<query::xmc_sc_version,            board>();
