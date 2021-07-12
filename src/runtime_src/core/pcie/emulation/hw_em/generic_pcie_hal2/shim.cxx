@@ -2786,8 +2786,6 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       uint64_t src_addr = sBO->base + src_offset;
       uint64_t dest_addr = dBO->base + dst_offset;
 
-      std::cout << __func__ << " PRASAD: src_addr " << src_addr << " dest_addr: " << dest_addr << std::endl;
-
       //fill the hostbuf with the src offset and dest offset and size offset
       std::memcpy(hostBuf + 0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
       std::memcpy(hostBuf + 0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
@@ -2852,7 +2850,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   }
   else{
-     std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
      return -1;
   }
 
