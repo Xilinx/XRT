@@ -1044,7 +1044,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 			if ((i == j) || !mtopo->m_mem_data[j].m_used)
 				continue;
 
-			if (strstr(mtopo->m_mem_data[i].m_tag, mtopo->m_mem_data[j].m_tag) && 
+			if (strcmp(mtopo->m_mem_data[i].m_tag, mtopo->m_mem_data[j].m_tag) && 
 					list_empty(&zdev->mem[j].zm_mm_list)) {
 				list_add_tail(&zdev->mem[j].zm_mm_list, &memp->zm_mm_list);
 				memp = &zdev->mem[j];
