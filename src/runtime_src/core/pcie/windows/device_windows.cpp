@@ -489,6 +489,7 @@ struct bdf
   using result_type = query::pcie_bdf::result_type;
 
   struct bdf_type {
+    uint16_t domain = 0;
     uint16_t bus = 0;
     uint16_t device = 0;
     uint16_t function = 0;
@@ -520,7 +521,7 @@ struct bdf
     }
 
     auto& bdf = (*it).second;
-    return std::make_tuple(bdf.bus,bdf.device,bdf.function);
+    return std::make_tuple(bdf.domain, bdf.bus, bdf.device, bdf.function);
   }
 
   static result_type
