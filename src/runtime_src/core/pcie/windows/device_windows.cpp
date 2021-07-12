@@ -573,10 +573,10 @@ struct info
       return static_cast<query::pcie_subsystem_vendor::result_type>(info.SubsystemVendor);
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.SubsystemDevice);
-	case key_type::pcie_link_speed_max:
-		return static_cast<query::pcie_link_speed_max::result_type>(info.MaximumLinkSpeed);
-	case key_type::pcie_express_lane_width:
-		return static_cast<query::pcie_express_lane_width::result_type>(info.MaximumLinkWidth);
+    case key_type::pcie_link_speed_max:
+      return static_cast<query::pcie_link_speed_max::result_type>(info.MaximumLinkSpeed);
+    case key_type::pcie_express_lane_width:
+      return static_cast<query::pcie_express_lane_width::result_type>(info.MaximumLinkWidth);
     default:
       throw std::runtime_error("device_windows::info_user() unexpected qr");
     }
@@ -921,61 +921,58 @@ struct data_retention
 
 struct mailbox
 {
-	using result_type = boost::any;
+    using result_type = boost::any;
 
-	static xcl_mailbox
-		init_mailbox_info(const xrt_core::device* dev)
-	{
-		xcl_mailbox info = { 0 };
-		userpf::get_mailbox_info(dev->get_user_handle(), &info);
-		return info;
-	}
+    static xcl_mailbox
+        init_mailbox_info(const xrt_core::device* dev)
+    {
+        xcl_mailbox info = { 0 };
+        userpf::get_mailbox_info(dev->get_user_handle(), &info);
+        return info;
+    }
 
-	static result_type
-		get_info(const xrt_core::device* device, key_type key)
-	{
-		static std::map<const xrt_core::device*, xcl_mailbox> info_map;
-		static std::mutex mutex;
-		std::lock_guard<std::mutex> lk(mutex);
+    static result_type
+        get_info(const xrt_core::device* device, key_type key)
+    {
+        static std::map<const xrt_core::device*, xcl_mailbox> info_map;
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lk(mutex);
 
-		auto it = info_map.find(device);
-		if (it == info_map.end()) {
-			auto ret = info_map.emplace(device, init_mailbox_info(device));
-			it = ret.first;
-		}
+        auto it = info_map.find(device);
+        if (it == info_map.end()) {
+            auto ret = info_map.emplace(device, init_mailbox_info(device));
+            it = ret.first;
+        }
 
-		const xcl_mailbox& info = (*it).second;
-		int count = 0, i, size;
-		char *buf = new char[1024];
-		std::vector<std::string> vec;
-		switch (key) {
-		case key_type::mailbox_metrics:
-			count += sprintf(buf, "raw bytes received: %d\n", info.mbx_recv_raw_bytes);
-			vec.push_back(std::string(buf, buf + count));
-			for (i = 0; i < XCL_MAILBOX_REQ_MAX; i++) {
-				size = sprintf(buf + count, "req[%d] received: %d\n", i, info.mbx_recv_req[i]);
-				vec.push_back(std::string(buf + count, buf + count + size));
-				count += size;
-			}
-			return std::vector<std::string>(vec);
-		default:
-			throw std::runtime_error("device_windows::mailbox() unexpected qr "
-				+ std::to_string(static_cast<qtype>(key))
-				+ ") for userpf");
-		}
-	}
+        const xcl_mailbox& info = (*it).second;
+        int i;
+        std::vector<std::string> vec;
+        switch (key) {
+        case key_type::mailbox_metrics:
+            vec.push_back((boost::format("raw bytes received: %d\n") %
+                           info.mbx_recv_raw_bytes).str());
+            for (i = 0; i < MAILBOX_REQ_MAX; i++)
+                vec.push_back(boost::str(boost::format("req[%d] received: %d\n")
+                                         % i % info.mbx_recv_req[i]));
+            return std::vector<std::string>(vec);
+        default:
+            throw std::runtime_error("device_windows::mailbox() unexpected qr "
+                + std::to_string(static_cast<qtype>(key))
+                + ") for userpf");
+        }
+    }
 
-	static result_type
-		user(const xrt_core::device* device, key_type key)
-	{
-		return get_info(device, key);
-	}
+    static result_type
+        user(const xrt_core::device* device, key_type key)
+    {
+        return get_info(device, key);
+    }
 
-	static result_type
-		mgmt(const xrt_core::device* device, key_type key)
-	{
-		return get_info(device, key);
-	}
+    static result_type
+        mgmt(const xrt_core::device* device, key_type key)
+    {
+        return get_info(device, key);
+    }
 }; //end of struct mailbox
 
 template <typename QueryRequestType, typename Getter>

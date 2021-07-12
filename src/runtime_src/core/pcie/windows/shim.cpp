@@ -994,7 +994,7 @@ done:
           nullptr);
 
       if (!status || bytes != sizeof(struct debug_ip_layout))
-		  throw std::runtime_error
+          throw std::runtime_error
           ("Failed to find any Debug IP Layout section in the bitstream loaded"
               " on device. Ensure that a valid bitstream with debug IPs (AIM, "
               "LAPC) is successfully downloaded.");
@@ -1029,7 +1029,7 @@ done:
           nullptr);
 
       if (!status)
-		  throw std::runtime_error
+          throw std::runtime_error
           ("Failed to find any Debug IP Layout section in the bitstream loaded"
               " on device. Ensure that a valid bitstream with debug IPs (AIM, "
               "LAPC) is successfully downloaded.");
@@ -1042,18 +1042,18 @@ done:
   void
   get_mailbox_info(struct xcl_mailbox* value)
   {
-	  DWORD bytes = 0;
-	  bool status = DeviceIoControl(m_dev,
-		  IOCTL_XOCL_MAILBOX_INFO,
-		  nullptr,
-		  0,
-		  value,
-		  sizeof(xcl_mailbox),
-		  &bytes,
-		  nullptr);
+      DWORD bytes = 0;
+      bool status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_MAILBOX_INFO,
+          nullptr,
+          0,
+          value,
+          sizeof(xcl_mailbox),
+          &bytes,
+          nullptr);
 
-	  if (!status || bytes != sizeof(xcl_mailbox))
-		  throw std::runtime_error("DeviceIoControl (get_mailbox_info) failed");
+      if (!status || bytes != sizeof(xcl_mailbox))
+          throw std::runtime_error("DeviceIoControl (get_mailbox_info) failed");
   }
 
   void
@@ -1236,10 +1236,10 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
 void
 get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value)
 {
-	xrt_core::message::
-		send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
-	shim* shim = get_shim_object(hdl);
-	shim->get_mailbox_info(value);
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_mailbox_info(value);
 }
 
 void
