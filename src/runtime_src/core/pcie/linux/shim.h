@@ -161,6 +161,9 @@ public:
     int xclPollCompletion(int min_compl, int max_compl, xclReqCompletion *comps, int * actual, int timeout /*ms*/);
     int xclIPName2Index(const char *name);
 
+    int xclOpenIPInterruptNotify(uint32_t ipIndex, unsigned int flags);
+    int xclCloseIPInterruptNotify(int fd);
+
 private:
     std::shared_ptr<xrt_core::device> mCoreDevice;
     std::shared_ptr<pcidev::pci_device> mDev;

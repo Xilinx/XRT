@@ -22,8 +22,12 @@
 #include "xrt_device.h"
 
 #ifdef __cplusplus
-#include <string>
+# include <string>
+# include <memory>
+# include <cstdint>
+#endif
 
+#ifdef __cplusplus
 namespace xrt {
 
 class error_impl;
@@ -98,7 +102,7 @@ private:
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtErrorGetLast(xrtDeviceHandle handle, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp);
+xrtErrorGetLast(xrtDeviceHandle handle, enum xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp);
 
 /**
  * xrtErrorGetString - Get the description string of a given error code.

@@ -51,7 +51,7 @@ namespace xdp {
     // After all the plugins have written their data, we can dump the
     //  generic summary
     if (summary != nullptr) {
-      staticdb.addOpenedFile("summary.csv", "PROFILE_SUMMARY") ;
+      staticdb.addOpenedFile(summary->getcurrentFileName(), "PROFILE_SUMMARY") ;
       summary->write(false) ;
       delete summary ;
     }

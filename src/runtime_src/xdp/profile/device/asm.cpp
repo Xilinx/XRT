@@ -38,6 +38,8 @@
 
 /* SSPM Control Mask */
 #define XASM_COUNTER_RESET_MASK       0x00000001
+#define XASM_TRACE_ENABLE_MASK        0x00000002
+#define XASM_TRACE_CTRL_MASK          0x2
 
 /********************* AXI Stream Protocol Checker (SPC) *********************/
 
@@ -128,8 +130,16 @@ size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
     return size;
 }
 
-size_t ASM::triggerTrace(uint32_t /*traceOption*/ /* starttrigger*/)
+size_t ASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
 {
+    // Tun on/off trace as requested
+    uint32_t regValue = 0;
+    read(XASM_CONTROL_OFFSET, 4, &regValue);
+    if (traceOption & XASM_TRACE_CTRL_MASK)
+        regValue |= XASM_TRACE_ENABLE_MASK;
+    else
+        regValue &= (~XASM_TRACE_ENABLE_MASK);
+    write(XASM_CONTROL_OFFSET, 4, &regValue);
     return 0;
 }
 

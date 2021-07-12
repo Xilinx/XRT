@@ -192,7 +192,7 @@ opencl_install()
 
     # Clone https://github.com/KhronosGroup/OpenCL-Headers.git
     mkdir -p $KHRONOS
-    git clone https://github.com/KhronosGroup/OpenCL-Headers.git $KHRONOS/OpenCL-Headers
+    git clone -b v2020.03.13 https://github.com/KhronosGroup/OpenCL-Headers.git $KHRONOS/OpenCL-Headers
     rsync -avz $KHRONOS/OpenCL-Headers/CL $KHRONOS/include
 }
 
@@ -206,7 +206,7 @@ icd_install()
         return
     fi
 
-    git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader.git $KHRONOS/OpenCL-ICD-Loader
+    git clone -b v2020.03.13 https://github.com/KhronosGroup/OpenCL-ICD-Loader.git $KHRONOS/OpenCL-ICD-Loader
     rsync -avz $KHRONOS/OpenCL-Headers/CL $KHRONOS/OpenCL-ICD-Loader/inc
     local here=$PWD
     cd $KHRONOS/OpenCL-ICD-Loader

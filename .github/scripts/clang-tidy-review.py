@@ -254,9 +254,10 @@ def main(
 
     print("Created the following review:\n", pprint.pformat(review), flush=True)
 
-    # short cut for now
-    return
-
+    # don't add comments if max_comments is 0
+    if max_comments == 0:
+        return
+    
     github = Github(token)
     repo = github.get_repo(f"{repo}")
     pull_request = repo.get_pull(pr_number)
@@ -310,7 +311,7 @@ if __name__ == "__main__":
         default="",
     )
     parser.add_argument(
-        "--max-comments",
+        "--max_comments",
         help="Maximum number of comments to post at once",
         type=int,
         default=25,

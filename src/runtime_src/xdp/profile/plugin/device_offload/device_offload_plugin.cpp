@@ -133,15 +133,15 @@ namespace xdp {
 
     std::string filename = 
       "device_trace_" + std::to_string(deviceId) + ".csv" ;
-      
-    writers.push_back(new DeviceTraceWriter(filename.c_str(),
-                                            deviceId,
-                                            version,
-                                            creationTime,
-                                            xrtVersion,
-                                            toolVersion)) ;
 
-    (db->getStaticInfo()).addOpenedFile(filename.c_str(), "VP_TRACE") ;
+    VPWriter* writer = new DeviceTraceWriter(filename.c_str(),
+                                             deviceId,
+                                             version,
+                                             creationTime,
+                                             xrtVersion,
+                                             toolVersion);
+    writers.push_back(writer) ;
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     if (continuous_trace)
       XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");

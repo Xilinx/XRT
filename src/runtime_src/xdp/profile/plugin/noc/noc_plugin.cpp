@@ -46,9 +46,11 @@ namespace xdp {
       mDevices.push_back(deviceName);
 
       std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
-      writers.push_back(new NOCProfilingWriter(outputFile.c_str(),
-          deviceName.c_str(), index));
-      db->getStaticInfo().addOpenedFile(outputFile.c_str(), "NOC_PROFILE") ;
+      VPWriter* writer = new NOCProfilingWriter(outputFile.c_str(),
+                                                deviceName.c_str(),
+                                                index) ;
+      writers.push_back(writer);
+      db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
 
       // Move on to next device
       xclClose(handle);

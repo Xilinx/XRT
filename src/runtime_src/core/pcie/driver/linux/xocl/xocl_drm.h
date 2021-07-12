@@ -134,8 +134,18 @@ static inline struct sg_table *xocl_prime_pages_to_sg(struct drm_device *dev,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 	return drm_prime_pages_to_sg(dev, pages, nr_pages);
 #else
-	(void)dev;
-	return drm_prime_pages_to_sg(pages, nr_pages);
+	#if defined(RHEL_RELEASE_CODE)
+		#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8,4)
+			(void)dev;
+			return drm_prime_pages_to_sg(dev, pages, nr_pages);
+		#else
+			(void)dev;
+			return drm_prime_pages_to_sg(pages, nr_pages);
+		#endif
+	#else
+                (void)dev;
+                return drm_prime_pages_to_sg(pages, nr_pages);
+	#endif
 #endif
 }
 

@@ -132,7 +132,7 @@ size_t IOCtlASM::triggerTrace(uint32_t traceOption /* starttrigger*/)
   if(!isOpened()) {
     return 0;
   }
- 
+
   if(out_stream)
     (*out_stream) << " IOCtlASM::triggerTrace " << std::endl;
 

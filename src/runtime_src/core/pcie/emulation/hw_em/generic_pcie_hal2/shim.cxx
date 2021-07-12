@@ -1163,7 +1163,8 @@ namespace xclhwemhal2 {
            }
 
            const char *curr = (const char *)hostBuf;
-           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,0,0);
            PRINTENDFUNC;
            return totalSize;
          }
@@ -1171,7 +1172,8 @@ namespace xclhwemhal2 {
          {
            const char *curr = (const char *)hostBuf;
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,0,0);
            PRINTENDFUNC;
            return size;
          }
@@ -1238,7 +1240,8 @@ namespace xclhwemhal2 {
              std::string dMsg ="INFO: [HW-EMU 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,0,0);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
              std::string dMsg ="INFO: [HW-EMU 04-1] Kernel " + kernelName +" is Started";
@@ -1312,14 +1315,16 @@ namespace xclhwemhal2 {
           }
 
           //const char *curr = (const char *)hostBuf;
-          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return totalSize;
         }
       case XCL_ADDR_SPACE_DEVICE_PERFMON:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return -1;
         }
@@ -1331,7 +1336,8 @@ namespace xclhwemhal2 {
       case XCL_ADDR_KERNEL_CTRL:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return size;
         }
@@ -2780,8 +2786,6 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       uint64_t src_addr = sBO->base + src_offset;
       uint64_t dest_addr = dBO->base + dst_offset;
 
-      std::cout << __func__ << " PRASAD: src_addr " << src_addr << " dest_addr: " << dest_addr << std::endl;
-
       //fill the hostbuf with the src offset and dest offset and size offset
       std::memcpy(hostBuf + 0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
       std::memcpy(hostBuf + 0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
@@ -2846,7 +2850,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   }
   else{
-     std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
      return -1;
   }
 

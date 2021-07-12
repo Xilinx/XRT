@@ -19,9 +19,12 @@
 #define XCU_DBG(xcu, fmt, arg...) \
 	xocl_dbg(&xcuc->pdev->dev, fmt "\n", ##arg)
 
+#define IRQ_DISABLED 0
 struct xocl_cu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
+	DECLARE_BITMAP(flag, 1);
+	spinlock_t		 lock;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -181,6 +184,78 @@ irqreturn_t cu_isr(int irq, void *arg)
 	up(&xcu->base.sem_cu);
 
 	return IRQ_HANDLED;
+}
+
+irqreturn_t ucu_isr(int irq, void *arg)
+{
+	struct xocl_cu *xcu = arg;
+	xdev_handle_t xdev = xocl_get_xdev(xcu->pdev);
+	unsigned long flags;
+
+	spin_lock_irqsave(&xcu->lock, flags);
+	atomic_inc(&xcu->base.ucu_event);
+
+	if (!__test_and_set_bit(IRQ_DISABLED, xcu->flag))
+		xocl_intc_cu_config(xdev, irq, false);
+	spin_unlock_irqrestore(&xcu->lock, flags);
+
+	wake_up_interruptible(&xcu->base.ucu_waitq);
+
+	return IRQ_HANDLED;
+}
+
+static int user_manage_irq(struct xrt_cu *xrt_cu, bool user_manage)
+{
+	struct xocl_cu *xcu = (struct xocl_cu *)xrt_cu;
+	xdev_handle_t xdev = xocl_get_xdev(xcu->pdev);
+	struct xrt_cu_info *info = &xrt_cu->info;
+	int ret;
+
+	if (!xrt_cu->info.intr_enable)
+		return -EINVAL;
+
+	xocl_intc_cu_config(xdev, info->intr_id, false);
+	xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+	if (user_manage) {
+		ret = xocl_intc_cu_request(xdev, info->intr_id, ucu_isr, xcu);
+	} else {
+		ret = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+	}
+	if (ret) {
+		XCU_ERR(xcu, "CU register request failed");
+		return ret;
+	}
+
+	if (user_manage) {
+		__set_bit(IRQ_DISABLED, xcu->flag);
+		spin_lock_init(&xcu->lock);
+		xocl_intc_cu_config(xdev, info->intr_id, false);
+	} else {
+		xocl_ert_user_enable(xdev);
+		xocl_intc_cu_config(xdev, info->intr_id, true);
+	}
+
+	return 0;
+}
+
+static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
+{
+	struct xocl_cu *xcu = (struct xocl_cu *)xrt_cu;
+	xdev_handle_t xdev = xocl_get_xdev(xcu->pdev);
+	struct xrt_cu_info *info = &xrt_cu->info;
+	unsigned long flags;
+
+	spin_lock_irqsave(&xcu->lock, flags);
+	if (enable) {
+		if (__test_and_clear_bit(IRQ_DISABLED, xcu->flag))
+			xocl_intc_cu_config(xdev, info->intr_id, true);
+	} else {
+		if (!__test_and_set_bit(IRQ_DISABLED, xcu->flag))
+			xocl_intc_cu_config(xdev, info->intr_id, false);
+	}
+	spin_unlock_irqrestore(&xcu->lock, flags);
+
+	return 0;
 }
 
 static int cu_add_args(struct xocl_cu *xcu, struct kernel_info *kinfo)
@@ -350,6 +425,9 @@ static int cu_probe(struct platform_device *pdev)
 		XCU_ERR(xcu, "Not able to create CU sysfs group");
 
 	platform_set_drvdata(pdev, xcu);
+
+	xcu->base.user_manage_irq = user_manage_irq;
+	xcu->base.configure_irq = configure_irq;
 
 	return 0;
 
