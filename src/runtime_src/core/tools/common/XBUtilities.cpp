@@ -440,11 +440,13 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     auto cmp_func = [bdf](uint16_t func)
     {
       if (func != std::numeric_limits<uint16_t>::max())
-        return func == std::get<3>(bdf);
+        return func == std::get<xrt_core::query::BDF_FUNC>(bdf);
       return true;
     };
 
-    if (domain == std::get<0>(bdf) && bus == std::get<1>(bdf) && dev == std::get<2>(bdf) && cmp_func(func))
+    if (domain == std::get<xrt_core::query::BDF_DOMAIN>(bdf)
+        && bus == std::get<xrt_core::query::BDF_BUS>(bdf)
+        && dev == std::get<xrt_core::query::BDF_DEV>(bdf) && cmp_func(func))
       return i;
   }
 
@@ -460,7 +462,7 @@ str2index(const std::string& str, bool _inUserDomain)
 {
   //throw an error if no devices are present
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
-  if(devices == 0) 
+  if(devices == 0)
     throw std::runtime_error("No devices found");
   try {
     int idx(boost::lexical_cast<int>(str));
@@ -468,7 +470,10 @@ str2index(const std::string& str, bool _inUserDomain)
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     // if the bdf is zero, we are dealing with an edge device
-    if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0) {
+    if(std::get<xrt_core::query::BDF_DOMAIN>(bdf) == 0 &&
+       std::get<xrt_core::query::BDF_BUS>(bdf) == 0 &&
+       std::get<xrt_core::query::BDF_DEV>(bdf) == 0 &&
+       std::get<xrt_core::query::BDF_FUNC>(bdf) == 0) {
       return deviceId2index();
     }
   } catch (...) {

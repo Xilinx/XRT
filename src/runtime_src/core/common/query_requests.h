@@ -32,6 +32,15 @@ namespace xrt_core {
 
 namespace query {
 
+enum bdf_index
+{
+  BDF_DOMAIN,
+  BDF_BUS,
+  BDF_DEV,
+  BDF_FUNC,
+  BDF_MAX,
+};
+
 /**
  * enum class key_type - keys for specific query requests
  *
@@ -398,8 +407,9 @@ struct pcie_bdf : request
   to_string(const result_type& value)
   {
     return boost::str
-      (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value)
-       % std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
+      (boost::format("%04x:%02x:%02x.%01x") % std::get<BDF_DOMAIN>(value)
+       % std::get<BDF_BUS>(value) % std::get<BDF_DEV>(value)
+       % std::get<BDF_FUNC>(value));
   }
 };
 
