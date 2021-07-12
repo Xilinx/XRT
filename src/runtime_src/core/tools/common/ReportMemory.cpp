@@ -276,8 +276,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
       boost::property_tree::ptree ptGrp;
       auto search = memtype_map.find((MEM_TYPE)grp_map->m_mem_data[i].m_type );
       std::string str = search->second;
-      std::stringstream ss(mm_buf[i]);
-      ss >> memoryUsage >> boCount;
+      std::stringstream mem_ss(mm_buf[i]);
+      mem_ss >> memoryUsage >> boCount;
       ptGrp.put("type", str);
       ptGrp.put("tag", grp_map->m_mem_data[i].m_tag);
       ptGrp.put("base_address", boost::format("0x%x") % map->m_mem_data[i].m_base_address);
