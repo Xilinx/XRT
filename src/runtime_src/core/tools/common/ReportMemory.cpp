@@ -256,7 +256,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
     ptSkMem.put("sk_mapbo", mapboCnt);
     ptSkMem.put("sk_unmapbo", unmapboCnt);
     ptSkMem.put("sk_freebo", freeboCnt);
-    pt.add_child(std::string("board.memory.sk_memories"), ptSkMem);
+    pt.add_child(std::string("board.memory.sk_memory_usage"), ptSkMem);
   }
 
   try {
@@ -422,7 +422,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     }
   }
 
-  bool sk_mem_is_present = _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree).size() > 0 ? true:false;
+  bool sk_mem_is_present = _pt.get_child("mem_topology.board.memory.sk_memory_usage",empty_ptree).size() > 0 ? true:false;
   if (sk_mem_is_present) {
     _output << std::endl;
     _output << "  Soft Kernel Memory Status" << std::endl;
@@ -430,7 +430,7 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
 
     try {
       std::string hbo_count, mapbo_count, unmapbo_count, freebo_count;
-      for (auto& v : _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree)) {
+      for (auto& v : _pt.get_child("mem_topology.board.memory.sk_memory_usage",empty_ptree)) {
         if (v.first == "sk_hbo") {
           hbo_count = v.second.get_value<std::string>();
         } else if (v.first == "sk_mapbo") {

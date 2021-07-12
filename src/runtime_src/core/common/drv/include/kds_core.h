@@ -117,8 +117,8 @@ struct kds_scu_mgmt {
 	u32			  status[MAX_CUS];
 	u32			  usage[MAX_CUS];
 	char			  name[MAX_CUS][32];
-	struct scu_usages	  sc_usages[MAX_CUS];
-	struct sk_mem_stats	  sk_mem_stats;
+	struct scu_usages	  usages_stats[MAX_CUS];
+	struct sk_mem_stats	  mem_stats;
 };
 
 /* the MSB of cu_refs is used for exclusive flag */

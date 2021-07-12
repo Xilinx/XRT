@@ -94,9 +94,9 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
 				scu_mgmt->name[i], scu_mgmt->status[i],
 				scu_mgmt->usage[i], 
-				scu_mgmt->sc_usages[i].succ_cnt,
-				scu_mgmt->sc_usages[i].err_cnt,
-				scu_mgmt->sc_usages[i].crsh_cnt);
+				scu_mgmt->usages_stats[i].succ_cnt,
+				scu_mgmt->usages_stats[i].err_cnt,
+				scu_mgmt->usages_stats[i].crsh_cnt);
 	}
 	mutex_unlock(&scu_mgmt->lock);
 
@@ -110,12 +110,7 @@ ssize_t kds_sk_memstat(struct kds_sched *kds, struct sk_mem_stats *stat)
 
 	mutex_lock(&scu_mgmt->lock);
 
-	mem_stat = &scu_mgmt->sk_mem_stats;
-	
-	/* Check if this is present. Non Scu case fail here */
-	if (!scu_mgmt && !mem_stat) 
-		return -EINVAL;
-
+	mem_stat = &scu_mgmt->mem_stats;
 	stat->hbo_cnt = mem_stat->hbo_cnt;
 	stat->mapbo_cnt = mem_stat->mapbo_cnt;
 	stat->unmapbo_cnt = mem_stat->unmapbo_cnt;

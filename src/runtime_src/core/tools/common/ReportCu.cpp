@@ -161,9 +161,7 @@ populate_cus_new(const xrt_core::device *device)
 
   try {
     cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
-    std::cout << cu_stats.size() << std::endl;
     scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
-    std::cout << scu_stats.size() << std::endl;
   } catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
     return pt;
@@ -205,9 +203,9 @@ populate_cus_new(const xrt_core::device *device)
     ptCu.put( "base_address",   "0x0");
     ptCu.put( "usage",          stat.usages);
     ptCu.put( "type", enum_to_str(cu_type::PS));
-    ptCu.put( "succ_return",    stat.succ_cnt);
-    ptCu.put( "err_return",    stat.err_cnt);
-    ptCu.put( "crsh_return",    stat.crsh_cnt);
+    ptCu.put( "successful_return",    stat.succ_cnt);
+    ptCu.put( "error_return",    stat.err_cnt);
+    ptCu.put( "crash_return",    stat.crsh_cnt);
     ptCu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", ptCu));
 
@@ -305,8 +303,8 @@ ReportCu::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << scuFmt % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
 	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val) %
-	      cu.get<std::string>("succ_return") % cu.get<std::string>("err_return") %
-	      cu.get<std::string>("crsh_return");
+	      cu.get<std::string>("successful_return") % cu.get<std::string>("error_return") %
+	      cu.get<std::string>("crash_return");
     }
   }
   catch( std::exception const& e) {
