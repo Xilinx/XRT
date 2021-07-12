@@ -428,6 +428,7 @@ struct cu_cmd_state_timestamps {
  * @ERT_SK_CONFIG:      configure soft kernel
  * @ERT_SK_START:       start a soft kernel
  * @ERT_SK_UNCONFIG:    unconfigure a soft kernel
+ * @ERT_START_KEY_VAL:  same as ERT_START_CU but with key-value pair flavor
  */
 enum ert_cmd_opcode {
   ERT_START_CU      = 0,
@@ -445,6 +446,7 @@ enum ert_cmd_opcode {
   ERT_START_FA      = 12,
   ERT_CLK_CALIB     = 13,
   ERT_MB_VALIDATE   = 14,
+  ERT_START_KEY_VAL = 15,
 };
 
 /**
@@ -762,10 +764,10 @@ ert_valid_opcode(struct ert_packet *pkt)
     /* 1 cu mask + 4 registers */
     valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 4);
     break;
-  case ERT_EXEC_WRITE:
+  case ERT_START_KEY_VAL:
     skcmd = to_start_krnl_pkg(pkt);
-    /* 1 cu mask + 6 registers */
-    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 6);
+    /* 1 cu mask */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1);
     break;
   case ERT_START_FA:
     skcmd = to_start_krnl_pkg(pkt);
