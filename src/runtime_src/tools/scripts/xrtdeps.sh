@@ -66,6 +66,7 @@ rh_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils-devel \
      gcc \
      gcc-c++ \
      gdb \
@@ -77,6 +78,7 @@ rh_package_list()
      json-glib-devel \
      libcurl-devel \
      libdrm-devel \
+     libffi-devel \
      libjpeg-turbo-devel \
      libstdc++-static \
      libtiff-devel \
@@ -174,6 +176,9 @@ ub_package_list()
      libboost-program-options-dev \
      libcurl4-openssl-dev \
      libdrm-dev \
+     libdw-dev \
+     libelf-dev \
+     libffi-dev \
      libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \
