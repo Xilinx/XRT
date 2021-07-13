@@ -282,6 +282,14 @@ using addr_type = uint64_t;
       std::string getSimPath () { return sim_path; }
       //Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
       int getCuIdxBaseAddrMap();
+      bool isHostOnlyBuffer(const struct xclemulation::drm_xocl_bo *bo) {
+    	  if(xclemulation::config::getInstance()->isDisabledHostBUffer()) {
+    		  return false;
+    	  } else {
+    		  return xclemulation::xocl_bo_host_only(bo);
+    	  }
+      }
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
