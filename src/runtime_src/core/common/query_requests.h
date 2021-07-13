@@ -38,7 +38,6 @@ enum bdf
   bus,
   dev,
   func,
-  bdf_max,
 };
 
 /**
