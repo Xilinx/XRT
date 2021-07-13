@@ -881,7 +881,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 			
 	/* Update softkernel memory stats */
-        zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_FREEBO);
+	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_FREEBO);
 }
 
 /*

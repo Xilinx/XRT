@@ -205,7 +205,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     }
 
     /* Reg file indicates the kernel should not be running. */
-    if (!(args_from_host[0] & 0x1)) 
+    if (!(args_from_host[0] & 0x1))
       continue; //AP_START bit is not set; New Cmd is not available
 
     /* Start run the soft kernel. */
