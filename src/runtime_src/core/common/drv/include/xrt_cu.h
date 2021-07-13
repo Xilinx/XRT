@@ -207,6 +207,7 @@ struct xrt_cu_info {
 	u32			 is_m2m;
 	u32			 num_res;
 	bool			 intr_enable;
+	bool			 sw_reset;
 	struct xrt_cu_arg	*args;
 	u32			 num_args;
 	char			 iname[32];

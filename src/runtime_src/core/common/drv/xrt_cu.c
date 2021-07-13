@@ -720,6 +720,8 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 			info->intr_enable);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt ID:  %d\n",
 			info->intr_id);
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "SW Resettable: %d\n",
+			info->sw_reset);
 
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "--- Arguments ---\n");
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of arguments: %d\n",
