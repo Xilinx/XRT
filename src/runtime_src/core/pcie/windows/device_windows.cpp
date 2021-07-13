@@ -689,6 +689,7 @@ struct devinfo
     }
 
     auto& info = (*it).second;
+    std::vector<std::string> vec;
     switch (key) {
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
@@ -707,6 +708,16 @@ struct devinfo
         //sample strings: xilinx_u250_GOLDEN, xilinx_u250_gen3x16_base, xilinx_u250_xdma_201830_3
         return (shell.find("GOLDEN") != std::string::npos) ? false : true;
       }
+    case key_type::mac_addr_first:
+      return std::string(info.MacAddrFirst);
+    case key_type::mac_contiguous_num:
+      return info.MacContiguousNum;
+    case key_type::mac_addr_list:
+      vec.push_back(std::string(info.MacAddr0));
+      vec.push_back(std::string(info.MacAddr1));
+      vec.push_back(std::string(info.MacAddr2));
+      vec.push_back(std::string(info.MacAddr3));
+      return std::vector<std::string>(vec);
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -1190,6 +1201,9 @@ initialize_query_table()
   emplace_function0_getter<query::board_name,                devinfo>();
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
   emplace_function0_getter<query::xmc_sc_presence,           devinfo>();
+  emplace_function0_getter<query::mac_addr_first,            devinfo>();
+  emplace_function0_getter<query::mac_contiguous_num,        devinfo>();
+  emplace_function0_getter<query::mac_addr_list,             devinfo>();
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
   emplace_function0_getter<query::mailbox_metrics,           mailbox>();
