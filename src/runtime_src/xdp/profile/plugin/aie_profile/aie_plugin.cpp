@@ -42,6 +42,7 @@
 #define GROUP_STREAM_SWITCH_IDLE_MASK    0x11111111
 #define GROUP_STREAM_SWITCH_RUNNING_MASK 0x22222222
 #define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
+#define GROUP_STREAM_SWITCH_TLAST_MASK   0x88888888
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -102,7 +103,9 @@ namespace xdp {
       {"stream_switch_running", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_RUNNING_0_CORE,
                                  XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_RUNNING_2_CORE}},
       {"stream_switch_stalled", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}}
+                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}},
+      {"stream_switch_tlast",   {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_TLAST_0_CORE,
+                                 XAIE_EVENT_PORT_TLAST_1_CORE,         XAIE_EVENT_PORT_TLAST_2_CORE}}
     };
     mCoreEndEvents = {
       {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
@@ -120,7 +123,9 @@ namespace xdp {
       {"stream_switch_running", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_RUNNING_0_CORE,
                                  XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_RUNNING_2_CORE}},
       {"stream_switch_stalled", {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}}
+                                 XAIE_EVENT_PORT_STALLED_1_CORE,       XAIE_EVENT_PORT_STALLED_2_CORE}},
+      {"stream_switch_tlast",   {XAIE_EVENT_GROUP_STREAM_SWITCH_CORE,  XAIE_EVENT_PORT_TLAST_0_CORE,
+                                 XAIE_EVENT_PORT_TLAST_1_CORE,         XAIE_EVENT_PORT_TLAST_2_CORE}}
     };
 
     // **** Memory Module Counters ****
@@ -352,6 +357,8 @@ namespace xdp {
               XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_RUNNING_MASK);
             else if (metricSet == "stream_switch_stalled")
               XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_STALLED_MASK);
+            else if (metricSet == "stream_switch_tlast")
+              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_TLAST_MASK);
           }
           //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
           //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
