@@ -273,6 +273,13 @@ struct xrt_cu {
 	/* Good for debug */
 	u32			   sleep_cnt;
 	u32			   max_running;
+
+	/* support user management CU interrupt */
+	DECLARE_BITMAP(is_ucu, 1);
+	wait_queue_head_t	   ucu_waitq;
+	atomic_t		   ucu_event;
+	int (* user_manage_irq)(struct xrt_cu *xcu, bool user_manage);
+	int (* configure_irq)(struct xrt_cu *xcu, bool enable);
 };
 
 static inline char *prot2str(enum CU_PROTOCOL prot)

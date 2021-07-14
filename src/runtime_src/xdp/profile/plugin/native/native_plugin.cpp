@@ -26,9 +26,11 @@ namespace xdp {
   {
     db->registerPlugin(this) ;
     db->registerInfo(info::native) ;
-    writers.push_back(new NativeTraceWriter("native_trace.csv")) ;
 
-    (db->getStaticInfo()).addOpenedFile("native_trace.csv", "VP_TRACE") ;
+    VPWriter* writer = new NativeTraceWriter("native_trace.csv") ;
+    writers.push_back(writer) ;
+
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
   }
 
   NativeProfilingPlugin::~NativeProfilingPlugin()

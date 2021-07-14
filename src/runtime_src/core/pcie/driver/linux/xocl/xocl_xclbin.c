@@ -79,8 +79,10 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 		    xrt_xclbin_get_section_hdr(arg->xclbin, CLOCK_FREQ_TOPOLOGY);
 		struct clock_freq_topology *topo;
 
-		for (i = 0; i < arg->num_dev; i++)
+		for (i = 0; i < arg->num_dev; i++) {
 			(void) xocl_subdev_create(xdev, &(arg->urpdevs[i].info));
+			xocl_subdev_dyn_free(arg->urpdevs + i);
+		}
 		xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
 		if (hdr) {
@@ -90,6 +92,9 @@ static int versal_xclbin_post_download(xdev_handle_t xdev, void *args)
 			ret = xocl_clock_freq_scaling_by_topo(xdev, topo, 0);
 		}
 	}
+
+	if (arg->urpdevs)
+		kfree(arg->urpdevs);
 
 	return ret;
 }

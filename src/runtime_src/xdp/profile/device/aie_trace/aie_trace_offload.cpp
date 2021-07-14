@@ -79,6 +79,10 @@ bool AIETraceOffload::initReadTrace()
     buffers[i].isFull = false;
     // Data Mover will write input stream to this address
     uint64_t bufAddr = deviceIntf->getDeviceAddr(buffers[i].boHandle);
+
+    std::string msg = "Allocating trace buffer of size " + std::to_string(bufAllocSz) + " for AIE Stream " + std::to_string(i);
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.c_str());
+
     if(isPLIO) {
       deviceIntf->initAIETs2mm(bufAllocSz, bufAddr, i);
     } else {
@@ -184,10 +188,11 @@ void AIETraceOffload::readTrace()
     } else { 
       buffers[i].usedSz = bufAllocSz;
     }
+    uint64_t totalBytesRead = 0;
     while (1) {
       auto bytes = readPartialTrace(i);
-
-      if (buffers[i].usedSz == bufAllocSz) {
+      totalBytesRead += bytes;
+      if (totalBytesRead >= bufAllocSz) {
         buffers[i].isFull = true;
         break;
       }
@@ -235,6 +240,8 @@ bool AIETraceOffload::isTraceBufferFull()
 void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
 {
   uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(i);
+  uint64_t incompletePacketWord = wordCount % 4;
+  wordCount -= incompletePacketWord;
   uint64_t usedSize  = wordCount * TRACE_PACKET_SIZE;
   if(usedSize <= bufAllocSz) {
     buffers[i].usedSz = usedSize;

@@ -699,7 +699,7 @@ namespace xdp {
 
     if (runSummary == nullptr)
     {
-      runSummary = new VPRunSummaryWriter("xclbin.run_summary") ;
+      runSummary = new VPRunSummaryWriter("xclbin.run_summary", db) ;
     }
     runSummary->write(false) ;
   }

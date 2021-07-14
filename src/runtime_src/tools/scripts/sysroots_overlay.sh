@@ -1,4 +1,8 @@
 #! /bin/bash --
+
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # This script overlays the sysroot with given rpms. 
 # Usage : ./sysroots_overlay.sh -s <sysroot path which need to be overlaid> -r <file which contains RPM Paths>
 # Example: ./sysroots_overlay.sh -s sysroots/aarch64-xilinx-linux -r /scratch/xrtrpms

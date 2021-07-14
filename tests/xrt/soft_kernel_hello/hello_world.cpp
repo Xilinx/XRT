@@ -1,19 +1,8 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  */
+
 #include <iostream>
 #include <cstring>
 #include <fstream>
@@ -124,7 +113,7 @@ int main(int argc, char *argv[])
     //enc_props.ddr_bank_index = 2;//XMA to use user provided ddr bank; error if invalid ddr bank
 
     //hardware PL hello CUs are: 0 - 7
-    enc_props.cu_index = 0;//cu_index of hw kernel in xclbin; 
+    enc_props.cu_index = 0;//cu_index of hw kernel in xclbin;
 
     //Create dummy xma session
     XmaEncoderSession *xma_enc_session1 = xma_enc_session_create(&enc_props);
@@ -182,7 +171,7 @@ int main(int argc, char *argv[])
     }
 
     //soft hello CUs are: 8 - 15
-    enc_props.cu_index = 8;//cu_index of soft kernel in xclbin; 
+    enc_props.cu_index = 8;//cu_index of soft kernel in xclbin;
 
     //Create dummy xma session
     XmaEncoderSession *xma_enc_session2 = xma_enc_session_create(&enc_props);
@@ -219,7 +208,7 @@ int main(int argc, char *argv[])
     regptr1[11] = 0xC;
     regptr1[12] = 0xD;
     */
-     
+
     regmap.out_hello = buf_hello.paddr;
     regmap.out_log = buf_log.paddr;
     regmap.size_hello = size_hello;
@@ -269,5 +258,5 @@ int main(int argc, char *argv[])
     }
 
     return 0;
-    
+
 }

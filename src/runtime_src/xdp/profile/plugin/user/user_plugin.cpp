@@ -25,8 +25,9 @@ namespace xdp {
     db->registerPlugin(this) ;
     db->registerInfo(info::user) ;
 
-    writers.push_back(new UserEventsTraceWriter("user_events.csv")) ;
-    (db->getStaticInfo()).addOpenedFile("user_events.csv", "VP_TRACE") ;
+    VPWriter* writer = new UserEventsTraceWriter("user_events.csv") ;
+    writers.push_back(writer) ;
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
   }
 
   UserEventsPlugin::~UserEventsPlugin()

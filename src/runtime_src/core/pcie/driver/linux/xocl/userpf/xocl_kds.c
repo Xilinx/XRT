@@ -272,6 +272,24 @@ out:
 	return ret;
 }
 
+static int
+xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
+	      struct drm_xocl_ctx *args)
+{
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	int cu_idx = args->cu_index;
+
+	if (!kds->cu_intr_cap) {
+		userpf_err(xdev, "Shell not support CU to host interrupt");
+		return -EOPNOTSUPP;
+	}
+
+	userpf_info(xdev, "User manage interrupt found, disable ERT");
+	xocl_ert_user_disable(xdev);
+
+	return kds_open_ucu(kds, client, cu_idx);
+}
+
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
 {
@@ -285,6 +303,9 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	case XOCL_CTX_OP_FREE_CTX:
 		ret = xocl_del_context(xdev, client, args);
+		break;
+	case XOCL_CTX_OP_OPEN_UCU_FD:
+		ret = xocl_open_ucu(xdev, client, args);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1171,6 +1192,8 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	}
 
 	/* Construct and send configure command */
+	userpf_info(xdev, "enable ert user");
+	xocl_ert_user_enable(xdev);
 	ret = xocl_config_ert(xdev, cfg);
 
 out:

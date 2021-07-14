@@ -35,8 +35,8 @@
  *
  */
 
-#ifndef __XGQ_IMPL_H__
-#define __XGQ_IMPL_H__
+#ifndef XGQ_IMPL_H
+#define XGQ_IMPL_H
 
 #if defined(__KERNEL__)
 # include <linux/types.h>
@@ -44,9 +44,16 @@
 # include <stdint.h>
 # include <stddef.h>
 # include <errno.h>
-#endif
+#endif /* __KERNEL__ */
 
 #include "xgq_cmd.h"
+
+/*
+ * Standard bool type's portability is poor across multiple OSes and HW platforms.
+ * Defineing our own true and false values as integer to avoid using bool.
+ */
+#define XGQ_TRUE	1
+#define XGQ_FALSE	0
 
 /*
  * Generic XGQ implementation.
@@ -76,7 +83,7 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
  * One XGQ consists of one submission (SQ) and one completion ring (CQ) buffer shared by one client
  * and one server. Client send request through SQ to server, which processes it and send back
  * response through CQ.
-  */
+ */
 #define XGQ_ALLOC_MAGIC			0x5847513F	/* XGQ? */
 #define XGQ_ATTACH_MAGIC		0x58475121	/* XGQ! */
 #define XGQ_MAJOR			1
@@ -90,10 +97,8 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
  */
 struct xgq_header {
 	uint32_t xh_magic; /* Always the first member */
-
-	uint32_t xh_minor:8;
-	uint32_t xh_major:8;
-	uint32_t xh_rsvd:16;
+	uint16_t xh_minor;
+	uint16_t xh_major;
 
 	/* SQ and CQ share the same num of slots. */
 	uint32_t xh_slot_num;
@@ -124,12 +129,14 @@ struct xgq_ring {
 };
 
 /* Software representation of a single XGQ. */
+#define XGQ_SERVER		(1UL << 0)
 struct xgq {
-	bool xq_is_server;
+	uint64_t xq_flags;
 	uint64_t io_hdl;
 	struct xgq_ring xq_sq ____cacheline_aligned_in_smp;
 	struct xgq_ring xq_cq ____cacheline_aligned_in_smp;
 };
+#define XGQ_IS_SERVER(xgq)	((xgq->xq_flags & XGQ_SERVER) != 0)
 
 
 /*
@@ -138,7 +145,7 @@ struct xgq {
 
 static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, size_t len)
 {
-	size_t i;
+	size_t i = 0;
 	uint32_t *src = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, tgt += 4)
@@ -147,7 +154,7 @@ static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, si
 
 static inline void xgq_copy_from_ring(uint64_t io_hdl, void *buf, uint64_t src, size_t len)
 {
-	size_t i;
+	size_t i = 0;
 	uint32_t *tgt = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, src += 4)
@@ -165,12 +172,12 @@ static inline void xgq_init_ring(struct xgq_ring *ring, uint64_t produced, uint6
 	ring->xr_produced = ring->xr_consumed = 0;
 }
 
-static inline bool xgq_ring_full(struct xgq_ring *ring)
+static inline int xgq_ring_full(struct xgq_ring *ring)
 {
 	return (ring->xr_produced - ring->xr_consumed) >= ring->xr_slot_num;
 }
 
-static inline bool xgq_ring_empty(struct xgq_ring *ring)
+static inline int xgq_ring_empty(struct xgq_ring *ring)
 {
 	return ring->xr_produced == ring->xr_consumed;
 }
@@ -195,29 +202,29 @@ static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *rin
 	xgq_reg_write32(io_hdl, ring->xr_consumed_addr, ring->xr_consumed);
 }
 
-static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, bool produce)
+static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, int produce)
 {
 	uint32_t counter = produce ? ring->xr_produced : ring->xr_consumed;
 
 	return ring->xr_slot_addr + ring->xr_slot_sz * (counter & (ring->xr_slot_num - 1));
 }
 
-static inline bool xgq_can_produce(struct xgq *xgq)
+static inline int xgq_can_produce(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	if (!xgq_ring_full(ring))
-		return true;
+		return XGQ_TRUE;
 	xgq_ring_read_consumed(xgq->io_hdl, ring);
 	return !xgq_ring_full(ring);
 }
 
-static inline bool xgq_can_consume(struct xgq *xgq)
+static inline int xgq_can_consume(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	if (!xgq_ring_empty(ring))
-		return true;
+		return XGQ_TRUE;
 	xgq_ring_read_produced(xgq->io_hdl, ring);
 	return !xgq_ring_empty(ring);
 }
@@ -232,15 +239,18 @@ static inline bool xgq_can_consume(struct xgq *xgq)
  * 	  -> xgq_consume() -> process-CQ-entry -> xgq_notify_peer_consumed()
  *
  * Server -> xgq_attach() -> xgq_consume() -> process-SQ-entry -> xgq_notify_peer_consumed()
- * 	  -> xgq_produce() -> fill-up-CQ-entry -> xgq_notify_peer_consumed()
+ * 	  -> xgq_produce() -> fill-up-CQ-entry -> xgq_notify_peer_produced()
+ *
+ * You can call xgq_produce() and fill out entries multiple times before you call
+ * xgq_notify_peer_produced(), which then will publish all entries at once to peer.
  */
 
-static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint64_t ring_addr,
+static inline int xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
 	    size_t *ring_len, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
 {
 	size_t rlen = *ring_len;
 	uint32_t numslots = XGQ_MIN_NUM_SLOTS;
-	struct xgq_header hdr = { 0 };
+	struct xgq_header hdr = {};
 
 	if (slot_size % sizeof(uint32_t))
 		return -EINVAL;
@@ -249,7 +259,8 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 	while (XGQ_RING_LEN(numslots << 1, slot_size) <= rlen)
 		numslots <<= 1;
 
-	xgq->xq_is_server = server;
+	xgq->xq_flags = 0;
+	xgq->xq_flags |= flags;
 	xgq->io_hdl = io_hdl;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
@@ -259,12 +270,15 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 		      ring_addr + sizeof(struct xgq_header) + numslots * slot_size,
 		      numslots, sizeof(struct xrt_com_queue_entry));
 
-	hdr.xh_minor = XGQ_MINOR;
+	hdr.xh_magic = 0;
 	hdr.xh_major = XGQ_MAJOR;
-	hdr.xh_sq_offset = xgq->xq_sq.xr_slot_addr - ring_addr;
+	hdr.xh_minor = XGQ_MINOR;
 	hdr.xh_slot_num = numslots;
+	hdr.xh_sq_offset = xgq->xq_sq.xr_slot_addr - ring_addr;
 	hdr.xh_sq_slot_size = slot_size;
 	hdr.xh_cq_offset = xgq->xq_cq.xr_slot_addr - ring_addr;
+	hdr.xh_sq_consumed = 0;
+	hdr.xh_cq_consumed = 0;
 	xgq_copy_to_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(hdr));
 
 	// Write the magic number to confirm the header is fully initialized
@@ -275,10 +289,10 @@ static inline int xgq_alloc(struct xgq *xgq, bool server, uint64_t io_hdl, uint6
 	return 0;
 }
 
-static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
+static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr,
 			     uint64_t sq_produced, uint64_t cq_produced)
 {
-	struct xgq_header hdr = { 0 };
+	struct xgq_header hdr = {};
 	uint32_t nslots;
 
 	xgq_copy_from_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(uint32_t));
@@ -288,13 +302,14 @@ static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
 
 	xgq_copy_from_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(struct xgq_header));
 	if (hdr.xh_major != XGQ_MAJOR)
-		return -ENOTSUP;
+		return -EOPNOTSUPP;
 
 	nslots = hdr.xh_slot_num;
 	if ((nslots < XGQ_MIN_NUM_SLOTS) || (nslots & (nslots - 1)))
 		return -EPROTO;
 
-	xgq->xq_is_server = server;
+	xgq->xq_flags = 0;
+	xgq->xq_flags |= flags;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + hdr.xh_sq_offset,
@@ -312,40 +327,50 @@ static inline int xgq_attach(struct xgq *xgq, bool server, uint64_t ring_addr,
 
 static inline int xgq_produce(struct xgq *xgq, uint64_t *slot_addr)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	if (!xgq_can_produce(xgq))
 		return -ENOSPC;
 	ring->xr_produced++;
-	*slot_addr = xgq_ring_slot_ptr(ring, true);
+	*slot_addr = xgq_ring_slot_ptr(ring, XGQ_TRUE);
 	return 0;
 }
 
 static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+#ifdef XGQ_OUT_OF_ORDER_WRITE
+	uint32_t val = 0;
+#endif
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	if (!xgq_can_consume(xgq))
 		return -ENOENT;
 	ring->xr_consumed++;
-	*slot_addr = xgq_ring_slot_ptr(ring, false);
+	*slot_addr = xgq_ring_slot_ptr(ring, XGQ_FALSE);
 
-	/* Make sure this is a new entry */
-	while (!(xgq_mem_read32(xgq->io_hdl, *slot_addr) & XGQ_ENTRY_NEW_FLAG_MASK));
+#ifdef XGQ_OUT_OF_ORDER_WRITE
+	/*
+	 * Producer pointer does not gurantee the slot content is up-to-date.
+	 * See comments above XGQ_ENTRY_NEW_FLAG_MASK for details.
+	 */
+	while (!(val & XGQ_ENTRY_NEW_FLAG_MASK))
+		val = xgq_mem_read32(xgq->io_hdl, *slot_addr);
+	xgq_mem_write32(xgq->io_hdl, *slot_addr, val & ~XGQ_ENTRY_NEW_FLAG_MASK);
+#endif
 
 	return 0;
 }
 
 static inline void xgq_notify_peer_produced(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_cq : &xgq->xq_sq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	xgq_ring_write_produced(xgq->io_hdl, ring);
 }
 
 static inline void xgq_notify_peer_consumed(struct xgq *xgq)
 {
-	struct xgq_ring *ring = xgq->xq_is_server ? &xgq->xq_sq : &xgq->xq_cq;
+	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	xgq_ring_write_consumed(xgq->io_hdl, ring);
 }

@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include "ap_axi_sdata.h"
 #include "ap_int.h"
 #include "hls_stream.h"
@@ -44,8 +49,8 @@ vdatamover:
     }
   } while (eos == false);
 
-  
-  
-  
+
+
+
 }
 }

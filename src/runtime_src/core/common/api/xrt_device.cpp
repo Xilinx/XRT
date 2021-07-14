@@ -26,6 +26,7 @@
 #include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/message.h"
+#include "core/common/sensor.h"
 #include "core/common/query_requests.h"
 
 #include "xclbin_int.h" // Non public xclbin APIs
@@ -124,6 +125,14 @@ to_string(const xrt_core::device* device)
 {
   return to_value<param, QueryRequestType>(device, [](const auto& q) { return QueryRequestType::to_string(q); });
 }
+
+static std::string
+json_str(boost::property_tree::ptree pt) 
+{
+  std::stringstream ss;
+  boost::property_tree::write_json(ss, pt);
+  return ss.str();
+};
 
 } // query
 
@@ -275,6 +284,14 @@ get_info(info::device param) const
       (handle.get(), [](const auto& val) { return bool(val); });
   case info::device::offline :
     return query::raw<info::device::offline, xrt_core::query::is_offline>(handle.get());
+  case info::device::power_rails :            // std::string
+    return query::json_str(xrt_core::sensor::read_power_rails(handle.get()));
+  case info::device::thermals :               // std::string
+    return query::json_str(xrt_core::sensor::read_thermals(handle.get()));
+  case info::device::power_consumption :      // std::string
+    return query::json_str(xrt_core::sensor::read_power_consumption(handle.get()));
+  case info::device::fans :                   // std::string
+    return query::json_str(xrt_core::sensor::read_fans(handle.get()));
   }
 
   throw std::runtime_error("internal error: unreachable");
@@ -292,8 +309,16 @@ void
 device::
 reset_array()
 {
-  auto handle = get_handle();
-  handle->reset_aie();
+  auto core_device = get_handle();
+  core_device->reset_aie();
+}
+
+void
+device::
+open_context(xrt::aie::device::access_mode am)
+{
+  auto core_device = get_handle();
+  core_device->open_aie_context(am);
 }
 
 }} // namespace aie, xrt

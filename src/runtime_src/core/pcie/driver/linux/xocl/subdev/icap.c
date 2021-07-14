@@ -1311,7 +1311,7 @@ static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_
 		target_m_type = MEM_DRAM;
 	else if (ecc_type == IP_DDR4_CONTROLLER)
 		target_m_type = MEM_DRAM;
-	else if (ecc_type == IP_MEM_HBM)
+	else if (ecc_type == IP_MEM_HBM_ECC)
 		target_m_type = MEM_HBM;
 	else
 		goto done;
@@ -1658,6 +1658,44 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev)
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
+				goto done;
+			}
+
+		} else if (ip->m_type == IP_MEM_HBM_ECC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
+			uint16_t memidx = icap_get_memidx(mem_topo, IP_MEM_HBM_ECC, ip->indices.m_index);
+
+			if (memidx == INVALID_MEM_IDX)
+				continue;
+
+			if (!mem_topo || memidx >= mem_topo->m_count) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
+					ip->properties);
+				continue;
+			}
+
+			if (!mem_topo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					mem_topo->m_mem_data[memidx].m_tag);
+				continue;
+			}
+
+			memcpy(&mig_label.tag, mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = memidx;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = &mig_label;
+			subdev_info.data_len =
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create MIG_HBM subdev");
 				goto done;
 			}
 
@@ -2133,12 +2171,14 @@ static void icap_probe_urpdev_all(struct platform_device *pdev,
 	/* create the rest of subdevs for both mgmt and user pf */
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
+		for (i = 0; i < num_dev; i++) {
 			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+			xocl_subdev_dyn_free(subdevs + i);
+		}
 	}
 
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 }
 
 /* Create specific subdev */
@@ -2162,8 +2202,10 @@ static int icap_probe_urpdev_by_id(struct platform_device *pdev,
 		}
 	}
 
+	for (i = 0; i < num_dev; i++)
+		xocl_subdev_dyn_free(subdevs + i);
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 
 	return found ? err : -ENODATA;
 }

@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 MAJOR=${VERSION%.*}
@@ -62,6 +66,7 @@ rh_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils-devel \
      gcc \
      gcc-c++ \
      gdb \
@@ -73,6 +78,7 @@ rh_package_list()
      json-glib-devel \
      libcurl-devel \
      libdrm-devel \
+     libffi-devel \
      libjpeg-turbo-devel \
      libstdc++-static \
      libtiff-devel \
@@ -170,6 +176,9 @@ ub_package_list()
      libboost-program-options-dev \
      libcurl4-openssl-dev \
      libdrm-dev \
+     libdw-dev \
+     libelf-dev \
+     libffi-dev \
      libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \

@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -69,7 +74,7 @@ runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& cmds,
         }
         if (cmds[i]->ecmd->state != ERT_CMD_STATE_COMPLETED)
             throw std::runtime_error("CU execution failed");
-        
+
         completed++;
         if (issued < total) {
             if (startCmd(handle, cmds[i].get()))
@@ -168,7 +173,7 @@ int _main(int argc, char* argv[])
     while ((c = getopt(argc, argv, "k:h")) != -1) {
         switch (c) {
             case 'k':
-               xclbin_fn = optarg; 
+               xclbin_fn = optarg;
                break;
             case 'h':
                usage();
