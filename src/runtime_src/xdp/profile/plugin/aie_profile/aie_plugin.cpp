@@ -75,6 +75,7 @@ namespace {
 } // end anonymous namespace
 
 namespace xdp {
+  using severity_level = xrt_core::message::severity_level;
 
   AIEProfilingPlugin::AIEProfilingPlugin() 
       : XDPPlugin()
@@ -167,7 +168,7 @@ namespace xdp {
     mPollingInterval = xrt_core::config::get_aie_profile_interval_us();
     //if (mPollingInterval < 100) {
     //  mPollingInterval = 100;
-    //  xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+    //  xrt_core::message::send(severity_level::warning, "XRT", 
     //      "Minimum supported AIE profile interval is 100 usec.");
     //}
   }
@@ -179,7 +180,7 @@ namespace xdp {
     xaiefal::XAieDev* aieDevice =
       static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
+      xrt_core::message::send(severity_level::warning, "XRT", 
           "Unable to get AIE device. There will be no AIE profiling.");
       return false;
     }
@@ -228,7 +229,7 @@ namespace xdp {
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << metricSet 
             << ". Using default of " << defaultSet << ".";
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg.str());
+        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
         metricSet = defaultSet;
       }
 
@@ -284,7 +285,7 @@ namespace xdp {
         for (auto& tile : tiles) {
           msg << "(" << tile.col << "," << tile.row << "), ";
         }
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       }
 
       // Get vector of pre-defined metrics for this set
@@ -375,7 +376,7 @@ namespace xdp {
 
         std::stringstream msg;
         msg << "Reserved " << numCounters << " counters for profiling AIE tile (" << col << "," << row << ").";
-        xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
         numTileCounters[numCounters]++;
       }
 
@@ -390,7 +391,7 @@ namespace xdp {
 
           (db->getStaticInfo()).addAIECounterResources(deviceId, n, numTileCounters[n], isCore);
         }
-        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+        xrt_core::message::send(severity_level::info, "XRT", msg.str());
       }
 
       runtimeCounters = true;
@@ -506,7 +507,7 @@ namespace xdp {
         if (counters.empty()) {
           std::string msg = "AIE Profile Counters were not found for this design. "
                             "Please specify aie_profile_core_metrics and/or aie_profile_memory_metrics in your xrt.ini.";
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+          xrt_core::message::send(severity_level::warning, "XRT", msg);
         }
         else {
           for (auto& counter : counters) {

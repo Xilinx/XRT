@@ -28,10 +28,10 @@
 namespace {
 
 namespace pt = boost::property_tree;
-using e_tile_type = xrt_core::edge::aie::e_tile_type;
 using tile_type = xrt_core::edge::aie::tile_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
+using e_module_type = xrt_core::edge::aie::e_module_type;
 
 inline void
 throw_if_error(bool err, const char* msg)
@@ -211,25 +211,25 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
-                e_tile_type type)
+                e_module_type type)
 {
-  std::vector<tile_type> tiles;
-
   // Not supported yet
-  if (type == xrt_core::edge::aie::AIE_TILE_SHIM)
-    return tiles;
+  if (type == e_module_type::aie_module_shim)
+    return {};
 
-  const char* key_cols[xrt_core::edge::aie::AIE_TILE_NUM_TYPES] =
-      {"core_columns", "dma_columns", "N/A"};
-  const char* key_rows[xrt_core::edge::aie::AIE_TILE_NUM_TYPES] =
-      {"core_rows", "dma_rows", "N/A"};
+  const char* col_name = (type == e_module_type::aie_module_core) ?
+      "core_columns" : "dma_columns";
+  const char* row_name = (type == e_module_type::aie_module_core) ?
+      "core_rows"    : "dma_rows";
 
+  std::vector<tile_type> tiles;
+ 
   for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
     if (graph.second.get<std::string>("name") != graph_name)
       continue;
 
     int count = 0;
-      for (auto& node : graph.second.get_child( key_cols[type] )) {
+      for (auto& node : graph.second.get_child(col_name)) {
         tiles.push_back(tile_type());
         auto& t = tiles.at(count++);
         t.col = std::stoul(node.second.data());
@@ -237,7 +237,7 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
 
       int num_tiles = count;
       count = 0;
-      for (auto& node : graph.second.get_child( key_rows[type] ))
+      for (auto& node : graph.second.get_child(row_name))
         tiles.at(count++).row = std::stoul(node.second.data());
       throw_if_error(count < num_tiles,"rows < num_tiles");
   }
@@ -485,7 +485,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
-                e_tile_type type)
+                e_module_type type)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
