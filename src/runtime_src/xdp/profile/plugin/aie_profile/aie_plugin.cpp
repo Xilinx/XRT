@@ -133,17 +133,17 @@ namespace xdp {
       {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
       {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}},
       {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+                                 XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
+                                 XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
     mMemoryEndEvents = {
       {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
       {"dma_locks",             {XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM,    XAIE_EVENT_GROUP_LOCK_MEM}}, 
       {"dma_stalls_s2mm",       {XAIE_EVENT_DMA_S2MM_0_STALLED_LOCK_ACQUIRE_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
+                                 XAIE_EVENT_DMA_S2MM_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
+                                 XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}}
     };
   }
 
@@ -240,8 +240,10 @@ namespace xdp {
         auto graphs = xrt_core::edge::aie::get_graphs(device.get());
         
         for (auto& graph : graphs) {
-          auto currTiles = xrt_core::edge::aie::get_event_tiles(device.get(), 
-              graph, (xrt_core::edge::aie::e_tile_type)module);
+          // TODO: include DMA-only tiles if and when required
+          //auto currTiles = xrt_core::edge::aie::get_event_tiles(device.get(), 
+          //    graph, (xrt_core::edge::aie::e_tile_type)module);
+          auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
           std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
         }
       }

@@ -265,10 +265,15 @@ namespace xdp {
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
     std::vector<xrt_core::edge::aie::tile_type> tiles;
     for (auto& graph : graphs) {
+      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
+
+      // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
+
       // Core Tiles
-      auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, 
-          xrt_core::edge::aie::AIE_TILE_CORE);
-      std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
+      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, 
+      //    xrt_core::edge::aie::AIE_TILE_CORE);
+      //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
 
       // DMA-Only Tiles
       // NOTE: These tiles are only needed when aie_trace_metrics = all
@@ -285,8 +290,6 @@ namespace xdp {
     for (auto& tile : tiles) {
       auto  col    = tile.col;
       auto  row    = tile.row;
-      std::cout << "Working on tile (" << col << "," << row << ")..." << std::endl;
-
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
@@ -809,9 +812,14 @@ namespace xdp {
     // Create AIE Trace Offloader
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
 
-    std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
-    std::string msg = "Total " + std::to_string(aieTraceBufSize) + " size is used for AIE trace buffer for " + std::to_string(numAIETraceOutput) + " " + flowType + " streams.";
-    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg);
+    if (xrt_core::config::get_verbosity() >= (uint32_t)xrt_core::message::severity_level::debug) {
+      std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
+      std::stringstream msg;
+      msg << "Total size of " << std::fixed << std::setprecision(3) << (aieTraceBufSize / (1024.0 * 1024.0))
+          << " MB is used for AIE trace buffer for " << std::to_string(numAIETraceOutput) << " " << flowType 
+          << " streams.";
+      xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg.str());
+    }
 
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
@@ -819,7 +827,7 @@ namespace xdp {
                                               aieTraceBufSize,     // total trace buffer size
                                               numAIETraceOutput);  // numStream
 
-    if(!aieTraceOffloader->initReadTrace()) {
+    if (!aieTraceOffloader->initReadTrace()) {
       std::string msg = "Allocation of buffer for AIE trace failed. AIE trace will not be available.";
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       delete aieTraceOffloader;
@@ -998,4 +1006,4 @@ namespace xdp {
     }
   }
 
-}
+} // namespace xdp
