@@ -44,6 +44,7 @@ static unsigned int getHostBO(unsigned long paddr, size_t size)
 static void *mapBO(unsigned int boHandle, bool write)
 {
   void *buf;
+  
   buf = xclMapBO(devHdl, boHandle, write);
   return buf;
 }
@@ -209,6 +210,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
     /* Start run the soft kernel. */
     kernel_return = kernel(&args_from_host[1], &ops);
+
+    /* Update ZOCL about the return status of this soft-kernel */
     args_from_host[1] = (uint32_t)kernel_return;
   }
 

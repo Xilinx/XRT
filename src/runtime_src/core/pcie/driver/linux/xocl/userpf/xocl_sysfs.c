@@ -158,6 +158,22 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 		size += count;
 	}
 
+	if (raw) {
+		const char *skmem_raw_fmt = "%llu %llu %llu %llu\n";
+		struct sk_mem_stats sk_memstat;
+
+		err = kds_sk_memstat(&XDEV(xdev)->kds, &sk_memstat);
+		if (!err) {
+			count = sprintf(buf, skmem_raw_fmt,
+					sk_memstat.hbo_cnt,
+					sk_memstat.mapbo_cnt,
+					sk_memstat.unmapbo_cnt,
+					sk_memstat.freebo_cnt);
+			buf += count;
+			size += count;
+		}
+	}
+
 done:
 	XOCL_PUT_GROUP_TOPOLOGY(xdev);
 	mutex_unlock(&xdev->dev_lock);

@@ -137,6 +137,36 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	return 0;
 }
 
+/*
+ * Update the memory stats for softkernel .
+ */
+void zocl_update_sk_mem_stat(struct drm_zocl_dev *zdev, int count, 
+                unsigned m_stat_type)
+{
+	struct soft_krnl *sk = zdev->soft_kernel;
+	struct sk_mem_stats *mem_stat = &sk->mem_stats;
+
+	write_lock(&zdev->attr_rwlock);
+	switch (m_stat_type) {
+		case ZOCL_MEM_STAT_TYPE_HBO:
+			mem_stat->hbo_cnt += count;
+			break;
+
+		case ZOCL_MEM_STAT_TYPE_MAPBO:
+			mem_stat->mapbo_cnt += count;
+			break;
+
+		case ZOCL_MEM_STAT_TYPE_UNMAPBO:
+			mem_stat->unmapbo_cnt += count;
+			break;
+
+		case ZOCL_MEM_STAT_TYPE_FREEBO:
+			mem_stat->freebo_cnt += count;
+			break;
+	}
+	write_unlock(&zdev->attr_rwlock);
+}
+
 int
 zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp)
@@ -147,6 +177,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 	struct soft_cu *scu;
 	uint32_t cu_idx = args->cu_idx;
 	uint32_t *vaddr;
+	struct scu_usages *sc_usage = NULL;
 	enum drm_zocl_scu_state state = args->cu_state;
 	int ret = 0;
 
@@ -166,6 +197,8 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 
+	sc_usage = &sk->sk_cu[args->cu_idx]->sc_usages;
+
 	switch (state) {
 
 	case ZOCL_SCU_STATE_DONE:
@@ -173,9 +206,16 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		vaddr = scu->sc_vregs;
 
 		/* If the CU is running, mark it as done */
-		if (*vaddr & 1)
+		if (*vaddr & 1) {
 			/* Clear Bit 0 and set Bit 1 */
 			*vaddr = 2 | (*vaddr & ~3);
+
+			/* Update stats based on SCU return value */
+			if (vaddr[1]) // This stores return value of softkernel. 
+				++sc_usage->err_cnt;
+			else
+				++sc_usage->succ_cnt;
+		}
 
 		mutex_unlock(&sk->sk_lock);
 		if (down_killable(&scu->sc_sem))
@@ -189,6 +229,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 
 		if (ret) {
 			/* We are interrupted */
+			++sc_usage->crsh_cnt;
 			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}
