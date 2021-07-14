@@ -28,11 +28,11 @@ def runKernel(opt):
     xbin = pyxrt.xclbin(opt.bitstreamFile)
     uuid = d.load_xclbin(xbin)
 
-    iplist = xbin.get_ips()
+    kernellist = xbin.get_kernels()
 
     rule = re.compile("hello*")
-    ip = list(filter(lambda val: rule.match(val.get_name()), iplist))[0]
-    hello = pyxrt.kernel(d, uuid, ip.get_name(), pyxrt.kernel.shared)
+    kernel = list(filter(lambda val: rule.match(val.get_name()), kernellist))[0]
+    hello = pyxrt.kernel(d, uuid, kernel.get_name(), pyxrt.kernel.shared)
 
     zeros = bytearray(opt.DATA_SIZE)
     boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, hello.group_id(0))
