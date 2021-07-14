@@ -245,32 +245,6 @@ get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
   return tiles;
 }
 
-std::vector<tile_type>
-get_dma_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
-{
-  std::vector<tile_type> tiles;
-
-  for (auto& graph : aie_meta.get_child("aie_metadata.EventGraphs")) {
-    if (graph.second.get<std::string>("name") != graph_name)
-      continue;
-
-    int count = 0;
-    for (auto& node : graph.second.get_child("dma_columns")) {
-      tiles.push_back(tile_type());
-      auto& t = tiles.at(count++);
-      t.col = std::stoul(node.second.data());
-    }
-
-    int num_tiles = count;
-    count = 0;
-    for (auto& node : graph.second.get_child("dma_rows"))
-      tiles.at(count++).row = std::stoul(node.second.data());
-    throw_if_error(count < num_tiles,"dma_rows < num_tiles");
-  }
-
-  return tiles;
-}
-
 std::unordered_map<std::string, adf::rtp_config>
 get_rtp(const pt::ptree& aie_meta, int graph_id)
 {
