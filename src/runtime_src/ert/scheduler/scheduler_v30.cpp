@@ -928,7 +928,7 @@ cu_stat(size_type slot_idx)
   size_type max_idx = slot_size >> 2; 
 
   // custat version, update when changing layout of packet
-  write_reg(slot.slot_addr + (pkt_idx++ << 2), ERT_PACKET_VERSION_0);
+  write_reg(slot.slot_addr + (pkt_idx++ << 2), ERT_CUSTAT_VERSION_0);
 
   // ert git version
   write_reg(slot.slot_addr + (pkt_idx++ << 2),ERT_VERSION);

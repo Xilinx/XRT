@@ -1095,7 +1095,7 @@ cu_stat(struct sched_cmd *cmd)
 	pkg = cmd->packet;
 
 	/* custat version, update when changing layout of packet */
-	pkg->data[pkt_idx++] = ERT_PACKET_VERSION_1;
+	pkg->data[pkt_idx++] = ERT_CUSTAT_VERSION_1;
 
 	/* should be git version */
 	pkg->data[pkt_idx++] = ERT_VERSION;
