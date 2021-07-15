@@ -679,6 +679,15 @@ static int get_header_from_vsec(struct feature_rom *rom)
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset, NULL);
 	if (ret) {
+		/* XOCL_DSAFLAG_CUSTOM_DTB is used for non-VSEC platforms which
+		 * still wanted to use partition metadata to discover resources
+		 */
+		if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUSTOM_DTB) {
+			rom->uuid_len = 32;
+			strcpy(rom->uuid,"fedcba987654321fedcba987654321fe");
+			xocl_xdev_info(xdev, "rom UUID is: %s",rom->uuid);
+			return init_rom_by_dtb(rom);
+		}
 		xocl_xdev_info(xdev, "Does not get UUID ROM");
 		return -ENODEV;
 	}
