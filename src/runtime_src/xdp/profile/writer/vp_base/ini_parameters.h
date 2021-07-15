@@ -33,10 +33,10 @@ namespace xdp {
     ~IniParameters() ;
 
     template <typename Arg>
-    void addParameter(const char* name, Arg&& arg)
+    void addParameter(const char* name, Arg&& arg, const char* desc)
     {
       std::stringstream setting ;
-      setting << "XRT_INI_SETTING," << name << "," << arg << "," ;
+      setting << "XRT_INI_SETTING," << name << "," << arg << "," << desc ;
       settings.push_back(setting.str()) ;
     }
 
