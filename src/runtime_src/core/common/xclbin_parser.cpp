@@ -367,12 +367,12 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
     std::regex r("^(.*):\\{(.*)\\}$");
     std::smatch m;
     if (!regex_search(str,m,r))
-      return "^(" + str + ")((.*))$";            // "(kernel):((.*))"
+      return "^(" + str + "):((.*))$";            // "(kernel):((.*))"
 
     std::string kernel = m[1];
-    std::string insts = m[2];                  // "cu1,cu2,cu3"
-    std::string regex = "^(" + kernel + "):(";  // "(kernel):("
-    std::vector<std::string> cus;              // split at ','
+    std::string insts = m[2];                     // "cu1,cu2,cu3"
+    std::string regex = "^(" + kernel + "):(";    // "(kernel):("
+    std::vector<std::string> cus;                 // split at ','
     boost::split(cus,insts,boost::is_any_of(","));
 
     // compose final regex
