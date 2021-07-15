@@ -466,6 +466,8 @@ struct xcl_sensor {
     uint32_t vccint_bram;
     uint32_t version;
     uint32_t power_warn;
+    uint32_t oem_id;
+    uint32_t vccint_temp;
 };
 
 //
