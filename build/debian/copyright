@@ -1,0 +1,148 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: XRT
+Source: https://github.com/Xilinx/XRT
+
+Files: *
+Copyright: 2014-2020, Xilinx, Inc
+License: Apache-2.0
+
+License: Apache-2.0
+ FIXME
+
+Files: debian/*
+Copyright: 2020, Canonical Ltd
+License: Apache-2.0
+
+Files: build/*
+ src/runtime_src/core/common/*
+ src/runtime_src/core/edge/*
+ src/runtime_src/core/pcie/linux/*
+ src/runtime_src/doc/*
+ src/runtime_src/ert/*
+ src/runtime_src/tools/*
+ src/runtime_src/xdp/*
+ src/runtime_src/xocl/*
+ src/runtime_src/xrt/*
+ tests/*
+Copyright: 2014-2020, Xilinx, Inc
+License: Apache-2.0
+
+Files: src/runtime_src/core/common/drv/Makefile
+ src/runtime_src/core/common/drv/include/xrt_drv.h
+Copyright: 2019-2020, Xilinx, Inc.
+License: GPL-2
+
+License: GPL-2
+ FIXME
+
+Files: src/runtime_src/core/edge/drm/zocl/*
+Copyright: 2016-2020, Xilinx, Inc.
+License: Apache-2.0 or GPL-2
+
+Files: src/runtime_src/core/include/*
+Copyright: 2015-2020, Xilinx Inc -
+License: Apache-2.0
+
+Files: src/runtime_src/core/include/ert.h
+ src/runtime_src/core/include/xclbin.h
+ src/runtime_src/core/include/xclfeatures.h
+ src/runtime_src/core/include/xclerr.h
+Copyright: 2015-2020, Xilinx Inc
+License: Apache-2.0 or GPL-2
+
+Files: src/runtime_src/core/pcie/driver/linux/xocl/*
+ src/runtime_src/core/pcie/driver/aws/kernel/*
+Copyright: 2016-present, Xilinx, Inc.
+License: GPL-2
+
+Files: src/runtime_src/core/pcie/driver/linux/xocl/lib/libfdt/*
+Copyright: 2006, David Gibson, IBM Corporation.
+  2012, David Gibson, IBM Corporation.
+  2012, Kim Phillips, Freescale Semiconductor.
+  2014, David Gibson <david@gibson.dropbear.id.au>
+  2016, Free Electrons
+  2016, NextThing Co.
+  2018, embedded brains GmbH
+License: BSD-2-clause and/or GPL-2+
+
+License: BSD-2-clause
+ FIXME
+
+License: GPL-2+
+ FIXME
+
+Files: src/runtime_src/core/pcie/driver/linux/xocl/devices.h
+ src/runtime_src/core/pcie/driver/linux/xocl/lib/libxdma_api.h
+Copyright: 2016-2020, Xilinx Inc
+License: Apache-2.0 and/or GPL-2
+ FIXME
+
+Files: src/runtime_src/core/pcie/driver/linux/xocl/lib/cdev_sgdma.h
+ src/runtime_src/core/pcie/driver/linux/xocl/lib/libxdma.h
+ src/runtime_src/core/pcie/driver/linux/xocl/subdev/ulite.c
+Copyright: (c) 2015 - 2019 Xilinx, Inc.
+  2006, Peter Korsgaard <jacmet@sunsite.dk>
+  2007, Secret Lab Technologies Ltd.
+  2020, Chien-Wei Lan <chienwei@xilinx.com>
+License: GPL-2
+
+Files: src/runtime_src/core/pcie/driver/linux/xocl/subdev/xiic.c
+Copyright: 2009-2010, Intel Corporation
+  2017, Xilinx, Inc.
+License: GPL-2+
+
+Files: src/runtime_src/core/tools/*
+ src/runtime_src/core/pcie/*
+Copyright: 2016-2020, Xilinx, Inc
+License: Apache-2.0
+
+Files: src/runtime_src/core/pcie/driver/linux/include/cdev_ctrl.h
+ src/runtime_src/core/pcie/driver/linux/include/mgmt-ioctl.h
+ src/runtime_src/core/pcie/driver/linux/include/qdma_ioctl.h
+Copyright: 2015-2017, Xilinx Inc
+  2018, Xilinx Inc
+  2018-2020, Xilinx Inc
+License: Apache-2.0 and/or GPL-2
+ FIXME
+
+Files: src/runtime_src/core/pcie/linux/LICENSE
+ src/runtime_src/core/pcie/tools/xbutil/LICENSE
+Copyright: [yyyy] [name of copyright owner]
+License: Apache-2.0
+ FIXME
+
+Files: src/runtime_src/core/pcie/driver/linux/include/libxdma_api.h
+ src/runtime_src/core/pcie/driver/linux/xocl/lib/libxdma_api.h
+Copyright: 2016-2017, Xilinx, Inc
+License: Apache-2.0 and/or GPL-2
+ FIXME
+
+Files: src/runtime_src/core/pcie/windows/*
+Copyright: 2019, Samsung Semiconductor, Inc
+  2018-2019, Xilinx, Inc
+  2019, OSR Open Systems Resources, Inc.
+License: Apache-2.0
+
+Files: src/runtime_src/core/pcie/emulation/hw_em/zynqu/pllauncher_defines.h
+Copyright: 2016-2017, Xilinx, Inc
+License: Apache-2.0 and/or Expat
+ FIXME
+
+Files: src/runtime_src/core/pcie/driver/linux/include/xocl_ioctl.h
+Copyright: 2017, Xilinx, Inc.
+License: Apache-2.0 and/or GPL-2
+ FIXME
+
+Files: src/runtime_src/tools/scripts/header.lic
+Copyright: 2015-2017, Xilinx Inc
+License: Apache-2.0 and/or GPL-2
+
+Files: src/runtime_src/xocl/api/icd/windows/icd_dispatch.h
+Copyright: 2016-2019, The Khronos Group Inc.
+License: Apache-2.0
+
+Files: src/runtime_src/xocl/api/khronos/check_copy_overlap.cpp
+Copyright: 2011, The Khronos Group Inc.
+License: UNKNOWN
+ FIXME
+

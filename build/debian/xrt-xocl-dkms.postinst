@@ -1,0 +1,118 @@
+#!/bin/sh
+
+#
+# UBUNTU NOTE
+# -----------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then prerm of 2.3.0 is run
+#    followed by postinst of 2.2.0. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.3.0" argument.
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is run
+#    followed by postinst of 2.3.0. The prerm is invoked with "upgrade 2.3.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm of 2.2.0 is run
+#    followed by postinst of 2.2.0. The prerm is invoked with "upgrade 2.2.0"
+#    argument and postinst is invoked with "configure 2.2.0" argument.
+#
+# RHEL/CentOS NOTE
+# ----------------
+# 1. When downgrading (say from 2.3.0 to 2.2.0) then oddly postinst of 2.2.0
+#    is run first followed by prerm of 2.3.0. The postinst is invoked with
+#    "2" and prerm is invoked with "1".
+# 2. When upgrading (say from 2.2.0 to 2.3.0) then prerm of 2.2.0 is NOT run
+#    but postinst of 2.3.0 is run. The postinst is invoked with "2" argument.
+# 3. When re-installing (say from 2.2.0 to 2.2.0) then prerm is NOT run but
+#    and postinst of 2.2.0 is run. The postinst is invoked with "2" argument.
+
+rmmodules()
+{
+    find /lib/modules -type f -name xocl.ko -delete
+    find /lib/modules -type f -name xclmgmt.ko -delete
+    find /lib/modules -type f -name xocl.ko.kz -delete
+    find /lib/modules -type f -name xclmgmt.ko.kz -delete
+    find /lib/modules -type f -name xocl.ko.xz -delete
+    find /lib/modules -type f -name xclmgmt.ko.xz -delete
+    depmod -A
+}
+
+installdir=/opt/xilinx/xrt
+systemddir=/etc/systemd/system
+
+msd_active=`systemctl is-active msd`
+mpd_active=`systemctl is-active mpd`
+# Stopping existing daemons so that we could swap drivers and update daemons later
+if [ "$mpd_active" = "active" ]; then
+    echo "Stopping MPD daemon"
+    systemctl stop mpd > /dev/null 2>&1
+fi
+if [ "$msd_active" = "active" ]; then
+    echo "Stopping MSD daemon"
+    systemctl stop msd > /dev/null 2>&1
+fi
+
+# Set version that we are installing from dkms config in PACKAGE_VERSION
+dkms_file=$(dpkg-query --listfiles xrt-xocl-dkms | grep dkms.conf)
+version_line=$(grep ^PACKAGE_VERSION= "$dkms_file")
+eval "$version_line"
+echo "Installing version $PACKAGE_VERSION"
+
+echo "Unloading old XRT Linux kernel modules"
+rmmod xocl
+rmmod xclmgmt
+XRT_VERSION_STRING_OLD=`dkms status -m xrt | awk -F, '{print $2}'`
+for OLD in $XRT_VERSION_STRING_OLD; do
+    echo "Unregistering old XRT Linux kernel module sources $OLD from dkms"
+    dkms remove -m xrt -v $OLD --all
+    break
+done
+rmmodules
+
+DRACUT_CONF_PATH=/etc/dracut.conf.d
+if [ -e $DRACUT_CONF_PATH ]; then
+    install -m 644 /usr/src/xrt-"$PACKAGE_VERSION"/driver/xocl/userpf/xocl.dracut.conf $DRACUT_CONF_PATH
+    install -m 644 /usr/src/xrt-"$PACKAGE_VERSION"/driver/xocl/mgmtpf/xclmgmt.dracut.conf $DRACUT_CONF_PATH
+fi
+
+echo "Invoking DKMS common.postinst for xrt"
+/usr/lib/dkms/common.postinst xrt "$PACKAGE_VERSION" "" "" $2
+if [ $? -eq 0 ]; then
+    echo "Finished DKMS common.postinst"
+    install -m 644 /usr/src/xrt-"$PACKAGE_VERSION"/driver/xocl/userpf/10-xocl.rules /etc/udev/rules.d
+    install -m 644 /usr/src/xrt-"$PACKAGE_VERSION"/driver/xocl/mgmtpf/10-xclmgmt.rules /etc/udev/rules.d
+
+    echo "Loading new XRT Linux kernel modules"
+    udevadm control --reload-rules
+    modprobe xclmgmt
+    modprobe xocl
+    udevadm trigger
+fi
+
+if [ -z "`dkms status -m xrt -v $PACKAGE_VERSION | grep installed`" ]; then
+    echo "****************************************************************"
+    echo "* DKMS failed to install XRT drivers."
+    echo "* Please check if kernel development headers are installed for OS variant used."
+    echo "* "
+    echo "* Check build logs in /var/lib/dkms/xrt/$PACKAGE_VERSION"
+    echo "****************************************************************"
+fi
+
+echo "Installing MSD / MPD daemons"
+
+# Update msd configuration before start daemons
+${installdir}/bin/xbmgmt config --daemon
+
+# Install msd/mpd services
+cp -f ${installdir}/etc/msd.service ${systemddir}
+cp -f ${installdir}/etc/mpd.service ${systemddir}
+systemctl daemon-reload > /dev/null 2>&1
+
+# Start daemons only when it was started previously
+if [ "$msd_active" = "active" ]; then
+    echo "Starting MSD daemon"
+    systemctl start msd > /dev/null 2>&1
+fi
+if [ "$mpd_active" = "active" ]; then
+    echo "Starting MPD daemon"
+    systemctl start mpd > /dev/null 2>&1
+fi
+
+exit 0
