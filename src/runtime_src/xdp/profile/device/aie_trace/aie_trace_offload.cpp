@@ -240,6 +240,8 @@ bool AIETraceOffload::isTraceBufferFull()
 void AIETraceOffload::configAIETs2mm(uint64_t i /*index*/)
 {
   uint64_t wordCount = deviceIntf->getWordCountAIETs2mm(i);
+  uint64_t incompletePacketWord = wordCount % 4;
+  wordCount -= incompletePacketWord;
   uint64_t usedSize  = wordCount * TRACE_PACKET_SIZE;
   if(usedSize <= bufAllocSz) {
     buffers[i].usedSz = usedSize;
