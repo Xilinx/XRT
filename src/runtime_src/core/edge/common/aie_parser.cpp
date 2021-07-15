@@ -31,7 +31,7 @@ namespace pt = boost::property_tree;
 using tile_type = xrt_core::edge::aie::tile_type;
 using gmio_type = xrt_core::edge::aie::gmio_type;
 using counter_type = xrt_core::edge::aie::counter_type;
-using e_module_type = xrt_core::edge::aie::e_module_type;
+using module_type = xrt_core::edge::aie::module_type;
 
 inline void
 throw_if_error(bool err, const char* msg)
@@ -211,16 +211,14 @@ get_tiles(const pt::ptree& aie_meta, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const pt::ptree& aie_meta, const std::string& graph_name,
-                e_module_type type)
+                module_type type)
 {
   // Not supported yet
-  if (type == e_module_type::aie_module_shim)
+  if (type == module_type::shim)
     return {};
 
-  const char* col_name = (type == e_module_type::aie_module_core) ?
-      "core_columns" : "dma_columns";
-  const char* row_name = (type == e_module_type::aie_module_core) ?
-      "core_rows"    : "dma_rows";
+  const char* col_name = (type == module_type::core) ? "core_columns" : "dma_columns";
+  const char* row_name = (type == module_type::core) ?    "core_rows" :    "dma_rows";
 
   std::vector<tile_type> tiles;
  
@@ -485,7 +483,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
 
 std::vector<tile_type>
 get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
-                e_module_type type)
+                module_type type)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)

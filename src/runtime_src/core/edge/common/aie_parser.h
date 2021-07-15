@@ -28,10 +28,10 @@ class device;
 
 namespace edge { namespace aie {
 
-enum class e_module_type {
-  aie_module_core = 0,
-  aie_module_dma,
-  aie_module_shim
+enum class module_type {
+  core = 0,
+  dma,
+  shim
 };
 
 struct tile_type
@@ -110,7 +110,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name);
  */
 std::vector<tile_type>
 get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
-                e_module_type type);
+                module_type type);
 
 /**
  * get_rtp() - get rtp data from xclbin AIE metadata

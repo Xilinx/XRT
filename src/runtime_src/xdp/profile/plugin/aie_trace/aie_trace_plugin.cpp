@@ -72,7 +72,7 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using tile_type = xrt_core::edge::aie::tile_type;
-  using e_module_type = xrt_core::edge::aie::e_module_type;
+  using module_type = xrt_core::edge::aie::module_type;
 
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin()
@@ -273,14 +273,12 @@ namespace xdp {
       // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
 
       // Core Tiles
-      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, 
-      //    e_module_type::aie_module_core);
+      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
       //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
 
       // DMA-Only Tiles
       // NOTE: These tiles are only needed when aie_trace_metrics = all
-      //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, 
-      //    e_module_type::aie_module_dma);
+      //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
       //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
     }
 
