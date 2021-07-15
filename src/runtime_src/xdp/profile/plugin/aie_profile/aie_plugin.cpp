@@ -243,7 +243,7 @@ namespace xdp {
         for (auto& graph : graphs) {
           // TODO: include DMA-only tiles if and when required
           //auto currTiles = xrt_core::edge::aie::get_event_tiles(device.get(), 
-          //    graph, (xrt_core::edge::aie::e_tile_type)module);
+          //    graph, static_cast<xrt_core::edge::aie::module_type>(module));
           auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
           std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
         }
