@@ -32,14 +32,15 @@
 
 namespace xrt {
 
-class graph_impl {
+class graph_impl
+{
 private:
   std::shared_ptr<xrt_core::device> device;
   xclGraphHandle handle;
 
 public:
-  graph_impl(const std::shared_ptr<xrt_core::device>& dev, xclGraphHandle ghdl)
-    : device(dev)
+  graph_impl(std::shared_ptr<xrt_core::device> dev, xclGraphHandle ghdl)
+    : device(std::move(dev))
     , handle(ghdl)
   {}
 
@@ -126,18 +127,18 @@ static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 static std::shared_ptr<xrt::graph_impl>
 open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
 {
-  auto device = xrt_core::device_int::get_core_device(dhdl);
-  auto handle = device->open_graph(xclbin_uuid, graph_name, am);
-  auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
+  auto core_device = xrt_core::device_int::get_core_device(dhdl);
+  auto handle = core_device->open_graph(xclbin_uuid, graph_name, am);
+  auto ghdl = std::make_shared<xrt::graph_impl>(core_device, handle);
   return ghdl;
 }
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xclDeviceHandle dhdl, const xrt::uuid& xclbin_id, const std::string& name, xrt::graph::access_mode am)
+open_graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, xrt::graph::access_mode am)
 {
-  auto device = xrt_core::get_userpf_device(dhdl);
-  auto handle = device->open_graph(xclbin_id.get(), name.c_str(), am);
-  auto ghdl = std::make_shared<xrt::graph_impl>(device, handle);
+  auto core_device = device.get_handle();
+  auto handle = core_device->open_graph(xclbin_id.get(), name.c_str(), am);
+  auto ghdl = std::make_shared<xrt::graph_impl>(core_device, handle);
   return ghdl;
 }
 
@@ -229,8 +230,8 @@ send_exception_message(const char* msg)
 namespace xrt {
 
 graph::
-graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name)
-  : handle(open_graph(device, xclbin_id, name, xrt::graph::access_mode::primary))
+graph(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name, graph::access_mode am)
+  : handle(open_graph(device, xclbin_id, name, am))
 {}
 
 void

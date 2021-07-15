@@ -18,8 +18,8 @@
 
 // This file defines shim level XRT Graph APIs.
 
-#ifndef _XCL_COMMON_GRAPH_H_
-#define _XCL_COMMON_GRAPH_H_
+#ifndef XCL_COMMON_GRAPH_H_
+#define XCL_COMMON_GRAPH_H_
 
 #include "experimental/xrt_graph.h"
 
