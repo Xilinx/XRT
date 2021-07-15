@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -50,7 +50,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
 

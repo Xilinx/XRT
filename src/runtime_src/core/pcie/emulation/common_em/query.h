@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -69,7 +69,7 @@ struct device_info
     case key_type::kds_numcdmas:
       return static_cast<xrt_core::query::kds_numcdmas::result_type>(info.mNumCDMA);
     case key_type::pcie_bdf:
-      return xrt_core::query::pcie_bdf::result_type{0,device->get_device_id(),0};
+      return xrt_core::query::pcie_bdf::result_type{0, 0, device->get_device_id(), 0};
     case key_type::rom_vbnv:
       return std::string(info.mName, strnlen(info.mName, sizeof(info.mName)));
     default:
