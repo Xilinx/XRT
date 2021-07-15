@@ -25,6 +25,7 @@
 #include "xspi.h"
 #include "xqspips.h"
 #include "xospiversal.h"
+#include "xapuversal.h"
 #include "prom.h"
 #include "xmc.h"
 #include "firmware_image.h"
@@ -94,8 +95,9 @@ private:
         BPI,
         QSPIPS,
         OSPIVERSAL,
+        APUVERSAL,
     };
-    const char *E_FlasherTypeStrings[5] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS", "OSPI_VERSAL"};
+    const char *E_FlasherTypeStrings[6] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS", "OSPI_VERSAL", "APU_VERSAL"};
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     std::shared_ptr<pcidev::pci_device> mDev;
 
