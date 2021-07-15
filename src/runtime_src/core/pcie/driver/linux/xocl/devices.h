@@ -2677,7 +2677,7 @@ struct xocl_subdev_map {
                 .bar_idx = (char []){ 0 },                              \
         }
 
-#define RES_USER_VCK190_VSEC						\
+#define RES_USER_VCK190_VSEC                                            \
         ((struct xocl_subdev_info []) {                                 \
                 XOCL_DEVINFO_FEATURE_ROM_USER_DYN,                      \
                 XOCL_DEVINFO_SCHEDULER_DYN,                             \
@@ -3633,11 +3633,11 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\
                 .vbnv = "xilinx_vck190",				\
                 .priv_data = &XOCL_BOARD_VCK190_MGMT_RAPTOR2,		\
-                .type = XOCL_DSAMAP_RAPTOR2 },				\
+                .type = XOCL_DSAMAP_RAPTOR2 },                        \
         { 0x10EE, 0x6099, PCI_ANY_ID,					\
                 .vbnv = "xilinx_vck190",				\
                 .priv_data = &XOCL_BOARD_VCK190_USER_RAPTOR2,		\
-                .type = XOCL_DSAMAP_RAPTOR2 },				\
+                .type = XOCL_DSAMAP_RAPTOR2 },                        \
 	{ 0x10EE, 0x5078, PCI_ANY_ID,					\
 		.vbnv = "xilinx_v65",					\
 		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
@@ -3672,4 +3672,3 @@ struct xocl_subdev_map {
 		.type = XOCL_DSAMAP_RAPTOR2 }
 
 #endif
-
