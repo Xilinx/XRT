@@ -594,7 +594,7 @@ enum mailbox_request {
 	MAILBOX_REQ_CHG_SHELL = 13,
 	MAILBOX_REQ_PROGRAM_SHELL = 14,
 	MAILBOX_REQ_READ_P2P_BAR_ADDR = 15,
-	MAILBOX_REQ_MAX,
+	MAILBOX_REQ_MAX = 16,
 	/* Version 0 OP code ends */
 };
 

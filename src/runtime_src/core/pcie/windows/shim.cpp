@@ -1236,8 +1236,7 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3])
 void
 get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value)
 {
-  xrt_core::message::
-    send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
+  xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", "mailbox_info()");
   shim* shim = get_shim_object(hdl);
   shim->get_mailbox_info(value);
 }

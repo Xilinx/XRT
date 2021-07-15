@@ -962,16 +962,12 @@ struct mailbox
         std::vector<std::string> vec;
         switch (key) {
         case key_type::mailbox_metrics:
-            vec.push_back((boost::format("raw bytes received: %d\n") %
-                           info.mbx_recv_raw_bytes).str());
+            vec.push_back((boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes).str());
             for (i = 0; i < MAILBOX_REQ_MAX; i++)
-                vec.push_back(boost::str(boost::format("req[%d] received: %d\n")
-                                         % i % info.mbx_recv_req[i]));
+                vec.push_back(boost::str(boost::format("req[%d] received: %d\n") % i % info.mbx_recv_req[i]));
             return std::vector<std::string>(vec);
         default:
-            throw std::runtime_error("device_windows::mailbox() unexpected qr "
-                + std::to_string(static_cast<qtype>(key))
-                + ") for userpf");
+            throw std::runtime_error("device_windows::mailbox() unexpected qr " + std::to_string(static_cast<qtype>(key)) + ") for userpf");
         }
     }
 
