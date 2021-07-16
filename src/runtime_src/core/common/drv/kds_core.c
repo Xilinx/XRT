@@ -276,6 +276,38 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	return 0;
 }
 
+static void
+kds_cu_abort_cmd(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	struct kds_sched *kds;
+	int i;
+
+	/* Broadcast abort command to each CU and let CU finds out how to abort
+	 * the target command.
+	 */
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		xrt_cu_hpq_submit(cu_mgmt->xcus[i], xcmd);
+
+		if (xcmd->status == KDS_NEW)
+			continue;
+
+		if (xcmd->status == KDS_TIMEOUT) {
+			kds = container_of(cu_mgmt, struct kds_sched, cu_mgmt);
+			kds->bad_state = 1;
+			kds_info(xcmd->client, "CU(%d) hangs, reset device", i);
+		}
+
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		xcmd->cb.free(xcmd);
+		return;
+	}
+
+	/* Command is not found in any CUs and any queues */
+	xcmd->status = KDS_ERROR;
+	xcmd->cb.notify_host(xcmd, xcmd->status);
+	xcmd->cb.free(xcmd);
+}
+
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
@@ -290,6 +322,9 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	case OP_GET_STAT:
 		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 		xcmd->cb.free(xcmd);
+		break;
+	case OP_ABORT:
+		kds_cu_abort_cmd(cu_mgmt, xcmd);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1326,6 +1361,14 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_CTRL;
+}
+
+void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd, struct kds_command *xcmd)
+{
+	u32 *exec_bo_handle = xcmd->info;
+
+	xcmd->opcode = OP_ABORT;
+	*exec_bo_handle = ecmd->exec_bo_handle;
 }
 
 void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s)

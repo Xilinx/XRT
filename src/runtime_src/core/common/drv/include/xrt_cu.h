@@ -57,6 +57,7 @@
 #define CU_AP_READY	(0x1 << 3)
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
+#define CU_AP_SW_RESET	(0x1 << 8)
 /* Special macro(s) which not defined by HLS CU */
 #define CU_AP_CRASHED	(0xFFFFFFFF)
 
@@ -149,6 +150,7 @@ struct xcu_funcs {
 	 * @reset_done:
 	 *
 	 * Check if CU is properly reset
+	 * Return 1 if reset done, 0 if not done
 	 */
 	int (*reset_done)(void *core);
 
@@ -226,6 +228,11 @@ struct xrt_cu {
 	struct list_head	  pq;
 	spinlock_t		  pq_lock;
 	u32			  num_pq;
+	/* high priority queue */
+	struct list_head	  hpq;
+	spinlock_t		  hpq_lock;
+	u32			  num_hpq;
+	struct completion	  comp;
 	/*
 	 * Pending Q is used in thread that is submitting CU cmds.
 	 * Other Qs are used in thread that is completing them.
@@ -296,9 +303,6 @@ static inline char *prot2str(enum CU_PROTOCOL prot)
 	}
 }
 
-void xrt_cu_reset(struct xrt_cu *xcu);
-int  xrt_cu_reset_done(struct xrt_cu *xcu);
-
 static void inline xrt_cu_enable_intr(struct xrt_cu *xcu, u32 intr_type)
 {
 	if (xcu->funcs)
@@ -324,6 +328,16 @@ static inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int t
 static inline void xrt_cu_start(struct xrt_cu *xcu)
 {
 	xcu->funcs->start(xcu->core);
+}
+
+static inline void xrt_cu_reset(struct xrt_cu *xcu)
+{
+	xcu->funcs->reset(xcu->core);
+}
+
+static inline int xrt_cu_reset_done(struct xrt_cu *xcu)
+{
+	return xcu->funcs->reset_done(xcu->core);
 }
 
 static inline void xrt_cu_check(struct xrt_cu *xcu)
@@ -380,6 +394,7 @@ u32 round_up_to_next_power2(u32 size)
  * 3. Check if submitted command is completed or not
  */
 void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
+void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd);
 void xrt_cu_abort(struct xrt_cu *xcu, struct kds_client *client);
 bool xrt_cu_abort_done(struct xrt_cu *xcu, struct kds_client *client);
 int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);

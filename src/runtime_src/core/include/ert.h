@@ -71,6 +71,8 @@
     ((struct ert_init_kernel_cmd *)(pkg))
 #define to_validate_pkg(pkg) \
     ((struct ert_validate_cmd *)(pkg))
+#define to_abort_pkg(pkg) \
+    ((struct ert_abort_cmd *)(pkg))
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -344,19 +346,22 @@ struct ert_unconfigure_sk_cmd {
 /**
  * struct ert_abort_cmd: ERT abort command format.
  *
- * @idx: The slot index of command to abort
+ * @exec_bo_handle: The bo handle of execbuf command to abort
  */
 struct ert_abort_cmd {
   union {
     struct {
       uint32_t state:4;          /* [3-0]   */
-      uint32_t unused:11;        /* [14-4]  */
-      uint32_t idx:8;            /* [22-15] */
+      uint32_t custom:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
       uint32_t opcode:5;         /* [27-23] */
       uint32_t type:4;           /* [31-27] */
     };
     uint32_t header;
   };
+
+  /* payload */
+  uint32_t exec_bo_handle;
 };
 
 /**

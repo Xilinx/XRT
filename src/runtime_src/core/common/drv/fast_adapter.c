@@ -178,6 +178,17 @@ static u32 cu_fa_clear_intr(void *core)
 	return cu_read32(cu_fa, ISR);
 }
 
+static void cu_fa_reset(void *core)
+{
+	/* Fast adapter doesn't define software reset */
+	return;
+}
+
+static int cu_fa_reset_done(void *core)
+{
+	return 1;
+}
+
 static struct xcu_funcs xrt_cu_fa_funcs = {
 	.alloc_credit	= cu_fa_alloc_credit,
 	.free_credit	= cu_fa_free_credit,
@@ -188,6 +199,8 @@ static struct xcu_funcs xrt_cu_fa_funcs = {
 	.enable_intr	= cu_fa_enable_intr,
 	.disable_intr	= cu_fa_disable_intr,
 	.clear_intr	= cu_fa_clear_intr,
+	.reset		= cu_fa_reset,
+	.reset_done	= cu_fa_reset_done,
 };
 
 int xrt_cu_fa_init(struct xrt_cu *xcu)

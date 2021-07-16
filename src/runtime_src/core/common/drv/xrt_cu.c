@@ -259,6 +259,100 @@ static inline void process_pq(struct xrt_cu *xcu)
 		xcu->max_running = xcu->num_rq;
 }
 
+static inline void
+try_abort_cmd(struct xrt_cu *xcu, struct kds_command *abort_cmd)
+{
+	struct kds_command *xcmd;
+	struct kds_command *tmp;
+	u32 handle;
+
+	/* Never call this function on the performance critical path */
+	handle = *(u32 *)abort_cmd->info;
+	list_for_each_entry_safe(xcmd, tmp, &xcu->rq, list) {
+		if (xcmd->exec_bo_handle != handle)
+			continue;
+
+		/* Found the xcmd to abort! */
+		abort_cmd->status = KDS_COMPLETED;
+
+		xcu_info(xcu, "Abort command(%d) on running queue", handle);
+		xcmd->status = KDS_ABORT;
+		move_to_queue(xcmd, &xcu->cq, &xcu->num_cq);
+		--xcu->num_rq;
+		return;
+	}
+
+	list_for_each_entry_safe(xcmd, tmp, &xcu->sq, list) {
+		if (xcmd->exec_bo_handle != handle)
+			continue;
+
+		xcu_info(xcu, "Abort command(%d) on submitted queue", handle);
+		/* Found the xcmd to abort! */
+		if (!xcu->info.sw_reset) {
+			xcu_warn(xcu, "No sw resset. Device goto bad state");
+			abort_cmd->status = KDS_TIMEOUT;
+			xcu->bad_state = true;
+		} else {
+			xcu_info(xcu, "Try reset CU(%d)", xcu->info.cu_idx);
+			xrt_cu_reset(xcu);
+
+			/* wait 100 ~ 150 micro seconds. Let's see if we need to
+			 * adjust this.
+			 */
+			usleep_range(100, 150);
+			if (xrt_cu_reset_done(xcu)) {
+				xcu_info(xcu, "Reset done");
+				/* re-initial this cu */
+				xrt_cu_put_credit(xcu, 1);
+
+				abort_cmd->status = KDS_COMPLETED;
+			} else {
+				xcu_info(xcu, "Reset timeout");
+				abort_cmd->status = KDS_TIMEOUT;
+				xcu->bad_state = true;
+			}
+		}
+
+		xcmd->status = KDS_ABORT;
+		move_to_queue(xcmd, &xcu->cq, &xcu->num_cq);
+		--xcu->num_sq;
+
+		return;
+	}
+}
+
+/**
+ * process_hpq() - Process high priority queue
+ * @xcu: Target XRT CU
+ *
+ */
+static inline void process_hpq(struct xrt_cu *xcu)
+{
+	struct kds_command *xcmd;
+	struct kds_command *tmp;
+	unsigned long flags;
+
+	if (!xcu->num_hpq)
+		return;
+
+	/* slowpath */
+	spin_lock_irqsave(&xcu->hpq_lock, flags);
+	if (!xcu->num_hpq)
+		goto done;
+
+	list_for_each_entry_safe(xcmd, tmp, &xcu->hpq, list) {
+		if (xcmd->opcode == OP_ABORT)
+			try_abort_cmd(xcu, xcmd);
+
+		list_del(&xcmd->list);
+		--xcu->num_hpq;
+	}
+
+done:
+	spin_unlock_irqrestore(&xcu->hpq_lock, flags);
+	complete(&xcu->comp);
+}
+
 int xrt_cu_polling_thread(void *data)
 {
 	struct xrt_cu *xcu = (struct xrt_cu *)data;
@@ -282,6 +376,14 @@ int xrt_cu_polling_thread(void *data)
 		 */
 		process_cq(xcu);
 		process_sq(xcu);
+
+		/* process rare commands with very high priority. For example
+		 * abort command.
+		 * If this kind of command don't not exist, this would be a very
+		 * low overhead and should not impact performance.
+		 * But if this kind of command exist, this would be a slow path.
+		 */
+		process_hpq(xcu);
 
 		/* The idea is when CU's credit is less than busy threshold,
 		 * sleep a while to wait for CU completion.
@@ -371,6 +473,7 @@ int xrt_cu_intr_thread(void *data)
 		}
 
 		process_cq(xcu);
+		process_hpq(xcu);
 
 		/* Avoid large num_rq leads to more 120 sec blocking */
 		if (++loop_cnt == 8) {
@@ -416,6 +519,23 @@ void xrt_cu_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 	spin_unlock_irqrestore(&xcu->pq_lock, flags);
 	if (first_command)
 		up(&xcu->sem);
+}
+
+void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
+{
+	unsigned long flags;
+
+	/* This high priority queue is designed to handle those hight priority
+	 * but low frequency commands. Like abort command.
+	 */
+	spin_lock_irqsave(&xcu->hpq_lock, flags);
+	list_add_tail(&xcmd->list, &xcu->hpq);
+	++xcu->num_hpq;
+	spin_unlock_irqrestore(&xcu->hpq_lock, flags);
+	up(&xcu->sem);
+
+	wait_for_completion(&xcu->comp);
+	return xcu->bad_state;
 }
 
 /**
@@ -629,6 +749,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	xcu->run_timeout = 0;
 	sema_init(&xcu->sem, 0);
 	sema_init(&xcu->sem_cu, 0);
+
+	INIT_LIST_HEAD(&xcu->hpq);
+	spin_lock_init(&xcu->hpq_lock);
+	init_completion(&xcu->comp);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	setup_timer(&xcu->timer, cu_timer, (unsigned long)xcu);
 #else

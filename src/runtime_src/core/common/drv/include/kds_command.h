@@ -23,6 +23,7 @@ enum kds_opcode {
 	OP_NONE = 0,
 	OP_CONFIG,
 	OP_START,
+	OP_ABORT,
 	OP_CONFIG_SK, /* TODO: There is a plan to remove softkernel config and unconfig command */
 	OP_START_SK,
 	OP_CLK_CALIB,
@@ -99,6 +100,7 @@ struct kds_command {
 	u32			*execbuf;
 	u32			*u_execbuf;
 	void			*gem_obj;
+	u32			 exec_bo_handle;
 	/* to notify inkernel exec completion */
 	struct in_kernel_cb	*inkern_cb;
 };
@@ -115,6 +117,8 @@ void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  u32 skip);
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			struct kds_command *xcmd);
+void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd,
+		     struct kds_command *xcmd);
 int cu_mask_to_cu_idx(struct kds_command *xcmd, uint8_t *cus);
 
 #endif
