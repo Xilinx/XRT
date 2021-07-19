@@ -949,20 +949,19 @@ struct mailbox
         std::lock_guard<std::mutex> lk(mutex);
 
         auto it = info_map.find(device);
-        if (it == info_map.end()) {
-            auto ret = info_map.emplace(device, init_mailbox_info(device));
-            it = ret.first;
-        }
+        if (it == info_map.end())
+            it = info_map.emplace(device, init_mailbox_info(device)).first;
 
         const xcl_mailbox& info = (*it).second;
-        int i;
-        std::vector<std::string> vec;
         switch (key) {
         case key_type::mailbox_metrics:
-            vec.push_back(boost::str(boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes));
-            for (i = 0; i < MAILBOX_REQ_MAX; i++)
-                vec.push_back(boost::str(boost::format("req[%d] received: %d\n") % i % info.mbx_recv_req[i]));
-            return vec;
+            {
+              std::vector<std::string> vec;
+              vec.push_back(boost::str(boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes));
+              for (int i = 0; i < MAILBOX_REQ_MAX; i++)
+                  vec.push_back(boost::str(boost::format("req[%d] received: %d\n") % i % info.mbx_recv_req[i]));
+              return vec;
+            }
         default:
             throw std::runtime_error("device_windows::mailbox() unexpected qr " + std::to_string(static_cast<qtype>(key)) + ") for userpf");
         }
