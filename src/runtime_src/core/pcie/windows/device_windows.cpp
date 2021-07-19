@@ -359,9 +359,9 @@ struct sensor
     case key_type::xmc_version:
       return std::to_string(info.version);
     case key_type::power_microwatts:
-      val = static_cast<uint64_t> info.vol_12v_pex * info.cur_12v_pex +
-          static_cast<uint64_t> info.vol_12v_aux * info.cur_12v_aux +
-          static_cast<uint64_t> info.vol_3v3_pex * info.cur_3v3_pex;
+      val = static_cast<uint64_t>(info.vol_12v_pex) * static_cast<uint64_t>(info.cur_12v_pex) +
+          static_cast<uint64_t>(info.vol_12v_aux) * static_cast<uint64_t>(info.cur_12v_aux) +
+          static_cast<uint64_t>(info.vol_3v3_pex) * static_cast<uint64_t>(info.cur_3v3_pex);
       return val;
     case key_type::power_warning:
       return query::power_warning::result_type(info.power_warn);
