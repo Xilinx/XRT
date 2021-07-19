@@ -440,13 +440,11 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     auto cmp_func = [bdf](uint16_t func)
     {
       if (func != std::numeric_limits<uint16_t>::max())
-        return func == std::get<xrt_core::query::bdf::func>(bdf);
+        return func == std::get<3>(bdf);
       return true;
     };
 
-    if (domain == std::get<xrt_core::query::bdf::domain>(bdf)
-        && bus == std::get<xrt_core::query::bdf::bus>(bdf)
-        && dev == std::get<xrt_core::query::bdf::dev>(bdf) && cmp_func(func))
+    if (domain == std::get<0>(bdf) && bus == std::get<1>(bdf) && dev == std::get<2>(bdf) && cmp_func(func))
       return i;
   }
 
@@ -470,12 +468,8 @@ str2index(const std::string& str, bool _inUserDomain)
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     // if the bdf is zero, we are dealing with an edge device
-    if(std::get<xrt_core::query::bdf::domain>(bdf) == 0 &&
-       std::get<xrt_core::query::bdf::bus>(bdf) == 0 &&
-       std::get<xrt_core::query::bdf::dev>(bdf) == 0 &&
-       std::get<xrt_core::query::bdf::func>(bdf) == 0) {
+    if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0 && std::get<3>(bdf) == 0)
       return deviceId2index();
-    }
   } catch (...) {
     /* not an edge device so safe to ignore this error */
   }

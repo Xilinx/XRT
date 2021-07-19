@@ -33,26 +33,6 @@ namespace xrt_core {
 namespace query {
 
 /**
- * enum bdf - used for indexing the pcie bdf tuple (domain, bus, dev, func)
- *
- * pcie_bdf query request call returns the BDF in tuple format.
- *   domain is at index 0
- *   bus is at index 1
- *   dev is at index 2
- *   func is at index 3
- * enum bdf member "max" is used for identifying tuple size.
- * Retrieve the individual elements from bdf tuple using below enum bdf members.
- */
-enum bdf
-{
-  domain = 0,
-  bus = 1,
-  dev = 2,
-  func = 3,
-  max = 4,
-};
-
-/**
  * enum class key_type - keys for specific query requests
  *
  * Use keys in this table to identify the desired query request.  Use
@@ -418,9 +398,8 @@ struct pcie_bdf : request
   to_string(const result_type& value)
   {
     return boost::str
-      (boost::format("%04x:%02x:%02x.%01x") % std::get<bdf::domain>(value)
-       % std::get<bdf::bus>(value) % std::get<bdf::dev>(value)
-       % std::get<bdf::func>(value));
+      (boost::format("%04x:%02x:%02x.%01x") % std::get<0>(value) %
+       std::get<1>(value) % std::get<2>(value) % std::get<3>(value));
   }
 };
 

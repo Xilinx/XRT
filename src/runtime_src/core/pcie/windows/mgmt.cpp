@@ -17,7 +17,6 @@
 #include "mgmt.h"
 #include "xclfeatures.h"
 #include "core/common/message.h"
-#include "core/common/query_requests.h"
 #include <boost/format.hpp>
 
 #define NOMINMAX
@@ -211,7 +210,7 @@ struct mgmt
   }
 
   void
-  get_bdf_info(uint16_t bdf[xrt_core::query::bdf::max])
+  get_bdf_info(uint16_t bdf[4])
   {
     // TODO: code share with shim
     GUID guid = GUID_XILINX_PF_INTERFACE;
@@ -507,7 +506,7 @@ get_rom_info(xclDeviceHandle hdl, FeatureRomHeader* value)
 }
 
 void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[xrt_core::query::bdf::max])
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[4])
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "get_bdf_info()");
