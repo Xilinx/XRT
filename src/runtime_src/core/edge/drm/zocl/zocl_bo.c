@@ -15,6 +15,7 @@
  */
 
 #include <linux/pagemap.h>
+#include <linux/of_address.h>
 #include <linux/iommu.h>
 #include <asm/io.h>
 #include "xrt_drv.h"
@@ -172,8 +173,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	bo->mm_node = kzalloc(sizeof(struct drm_mm_node),
 			GFP_KERNEL);
 	if (IS_ERR(bo->mm_node)) {
-		kfree(bo);
 		drm_gem_object_release(&bo->gem_base);
+		kfree(bo);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -186,8 +187,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				/* Get the memory in CMA memory region */
 				mutex_unlock(&zdev->mm_lock);
 				kfree(bo->mm_node);
-				kfree(bo);
 				drm_gem_object_release(&bo->gem_base);
+				kfree(bo);
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
 				return cma_bo;
 			}
@@ -213,8 +214,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				(long)size);
 		mutex_unlock(&zdev->mm_lock);
 		kfree(bo->mm_node);
-		kfree(bo);
 		drm_gem_object_release(&bo->gem_base);
+		kfree(bo);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -981,6 +982,38 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 	write_unlock(&zdev->attr_rwlock);
 }
 
+/* This function retern True if given region are reserved
+ * on device tree. Else return False
+ */
+static int check_for_reserved_memory(uint64_t start_addr, size_t size)
+{
+	struct device_node *mem_np;
+	struct device_node *np_it;
+	struct resource res_mem;
+	int err;
+
+	mem_np = of_find_node_by_name(of_root, "reserved-memory");
+	if(!mem_np)
+		return -EINVAL;
+
+	/* Traverse through all the child nodes */
+	for (np_it = NULL; (np_it = of_get_next_child(mem_np, np_it)) != NULL;) {
+		if (strcmp(np_it->name, "buffer") == 0) {
+			err = of_address_to_resource(np_it, 0, &res_mem);
+			if (!err) {
+				/* Check the given address and size fall
+				 * in this reserved memory region
+				 */
+				if (start_addr >= res_mem.start &&
+						size <= resource_size(&res_mem))
+					return true;
+			}
+		}
+	}
+
+	return false;
+}
+
 /*
  * Initialize the memory structure in zocl driver based on the memory
  * topology extracted from xclbin.
@@ -1023,7 +1056,8 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 		memp->zm_used = 1;
 		INIT_LIST_HEAD(&memp->zm_mm_list);
 
-		if (strstr(md->m_tag, "DDR") && (memp->zm_base_addr == 0x0)) {
+
+		if (!check_for_reserved_memory(memp->zm_base_addr, memp->zm_size)) {
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
