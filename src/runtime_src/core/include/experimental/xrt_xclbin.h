@@ -15,8 +15,8 @@
  * under the License.
  */
 
-#ifndef _XRT_XCLBIN_H_
-#define _XRT_XCLBIN_H_
+#ifndef XRT_XCLBIN_H_
+#define XRT_XCLBIN_H_
 
 #include "xrt.h"
 #include "xclbin.h"
@@ -32,7 +32,7 @@
 /**
  * typedef xrtXclbinHandle - opaque xclbin handle
  */
-typedef void* xrtXclbinHandle;
+typedef void* xrtXclbinHandle; // NOLINT
 
 #ifdef __cplusplus
 namespace xrt {
@@ -208,8 +208,7 @@ public:
   class arg : public detail::pimpl<arg_impl>
   {
   public:
-    arg()
-    {}
+    arg() = default;
 
     explicit
     arg(std::shared_ptr<arg_impl> handle)
@@ -293,8 +292,7 @@ public:
   class ip : public detail::pimpl<ip_impl>
   {
   public:
-    ip()
-    {}
+    ip() = default;
 
     explicit
     ip(std::shared_ptr<ip_impl> handle)
@@ -372,8 +370,7 @@ public:
   class kernel : public detail::pimpl<kernel_impl>
   {
   public:
-    kernel()
-    {}
+    kernel() = default;
 
     explicit
     kernel(std::shared_ptr<kernel_impl> handle)
@@ -455,13 +452,13 @@ public:
   /**
    * xclbin() - Construct empty xclbin object
    */
-  xclbin()
-  {}
+  xclbin() = default;
 
   /// @cond
   /**
    * xclbin() - Construct from handle
    */
+  explicit
   xclbin(std::shared_ptr<xclbin_impl> handle)
     : detail::pimpl<xclbin_impl>(handle)
   {}
@@ -673,6 +670,38 @@ xrtXclbinGetXSAName(xrtXclbinHandle xhdl, char* name, int size, int* ret_size);
 XCL_DRIVER_DLLESPEC
 int
 xrtXclbinGetUUID(xrtXclbinHandle xhdl, xuid_t ret_uuid);
+
+/**
+ * xrtXclbinGetNumKernels() - Get number of PL kernels in xclbin
+ *
+ * @param xhdl
+ *  Xclbin handle obtained from an xrtXclbinAlloc function
+ * @return
+ *  The number of PL kernels in the xclbin
+ *
+ * Kernels are extracted from embedded XML metadata in the xclbin.
+ * A kernel groups one or more compute units. A kernel has arguments
+ * from which offset, type, etc can be retrived.
+ */
+XCL_DRIVER_DLLESPEC
+size_t
+xrtXclbinGetNumKernels(xrtXclbinHandle xhdl);
+
+/**
+ * xrtXclbinGetNumKernelComputeUnits() - Get number of CUs in xclbin
+ *
+ * @param xhdl
+ *  Xclbin handle obtained from an xrtXclbinAlloc function
+ * @return
+ *  The number of compute units
+ *
+ * Compute units are associated with kernels.  This function returns
+ * the total number of compute units as the sum of compute units over
+ * all kernels.
+ */
+XCL_DRIVER_DLLESPEC
+size_t
+xrtXclbinGetNumKernelComputeUnits(xrtXclbinHandle xhdl);
 
 /**
  * xrtXclbinGetData() - Get the raw data of the xclbin handle

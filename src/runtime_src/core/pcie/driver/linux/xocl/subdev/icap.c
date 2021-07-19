@@ -2183,12 +2183,14 @@ static void icap_probe_urpdev_all(struct platform_device *pdev,
 	/* create the rest of subdevs for both mgmt and user pf */
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
+		for (i = 0; i < num_dev; i++) {
 			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+			xocl_subdev_dyn_free(subdevs + i);
+		}
 	}
 
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 }
 
 /* Create specific subdev */
@@ -2212,8 +2214,10 @@ static int icap_probe_urpdev_by_id(struct platform_device *pdev,
 		}
 	}
 
+	for (i = 0; i < num_dev; i++)
+		xocl_subdev_dyn_free(subdevs + i);
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 
 	return found ? err : -ENODATA;
 }

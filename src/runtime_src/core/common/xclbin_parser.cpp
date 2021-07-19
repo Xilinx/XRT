@@ -47,6 +47,12 @@ convert(const std::string& str)
   return str.empty() ? 0 : std::stoul(str,nullptr,0);
 }
 
+static bool
+to_bool(const std::string& str)
+{
+  return str == "true" ? true : false;
+}
+
 static xrt_core::xclbin::kernel_properties::mailbox_type
 convert_to_mailbox_type(const std::string& str)
 {
@@ -88,6 +94,14 @@ get_restart_from_ini(const std::string& kname)
   return (restart_kernels.find("/" + kname + "/") != std::string::npos)
     ? 1
     : 0;
+}
+
+// Kernel software reset
+static bool
+get_sw_reset_from_ini(const std::string& kname)
+{
+  static auto reset_kernels = xrt_core::config::get_sw_reset_kernels();
+  return (reset_kernels.find("/" + kname + "/") != std::string::npos);
 }
 
 static bool
@@ -727,7 +741,11 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.counted_auto_restart","0"));
     if (restart == 0)
       restart = get_restart_from_ini(kname);
-    return kernel_properties{kname, restart, mailbox, address_range};
+    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.sw_reset","false"));
+    if (!sw_reset)
+      sw_reset = get_sw_reset_from_ini(kname);
+
+    return kernel_properties{kname, restart, mailbox, address_range, sw_reset};
   }
 
   return kernel_properties{};
@@ -772,6 +790,7 @@ get_kernels(const char* xml_data, size_t xml_size)
         kname
        ,get_kernel_arguments(xml_data, xml_size, kname)
        ,kprop.address_range
+       ,kprop.sw_reset
     });
   }
 

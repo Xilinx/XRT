@@ -32,7 +32,9 @@
 
 #include "native_profile.h"
 
+#include <array>
 #include <fstream>
+#include <numeric>
 #include <set>
 #include <vector>
 
@@ -44,8 +46,8 @@
 #endif
 
 namespace {
-
-static axlf_section_kind kinds[] = {
+constexpr size_t max_sections = 11;
+static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
   IP_LAYOUT,
@@ -138,9 +140,6 @@ public: // purposely not a struct to match decl in xrt_xclbin.h
   const xrt_core::xclbin::kernel_argument* m_arginfo = nullptr;
 
 public:
-  arg_impl()
-  {}
-
   void
   add_arg(const arg_impl* rhs)
   {
@@ -395,6 +394,7 @@ class xclbin_impl
     }
 
     // xclbin_info() - constructor for xclbin meta data
+    explicit
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
     {
@@ -416,8 +416,15 @@ class xclbin_impl
   }
 
 public:
+  xclbin_impl() = default;
+
   virtual
   ~xclbin_impl() = default;
+
+  xclbin_impl(const xclbin_impl&) = delete;
+  xclbin_impl(xclbin_impl&&) = delete;
+  xclbin_impl& operator=(xclbin_impl&) = delete;
+  xclbin_impl& operator=(xclbin_impl&&) = delete;
 
   virtual
   std::pair<const char*, size_t>
@@ -514,7 +521,7 @@ public:
 class xclbin_full : public xclbin_impl
 {
   std::vector<char> m_axlf;  // complete copy of xclbin raw data
-  const axlf* m_top;
+  const axlf* m_top = nullptr;
   uuid m_uuid;
   std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
 
@@ -522,7 +529,7 @@ class xclbin_full : public xclbin_impl
   init_axlf()
   {
     const axlf* tmp = reinterpret_cast<const axlf*>(m_axlf.data());
-    if (strncmp(tmp->m_magic, "xclbin2", 7)) // Future: Do not hardcode "xclbin2"
+    if (strncmp(tmp->m_magic, "xclbin2", strlen("xclbin2")) != 0) // Future: Do not hardcode "xclbin2"
       throw std::runtime_error("Invalid xclbin");
     m_top = tmp;
 
@@ -576,23 +583,20 @@ public:
     init_axlf();
   }
 
-  virtual
   uuid
-  get_uuid() const
+  get_uuid() const override
   {
     return m_uuid;
   }
 
-  virtual
   std::string
-  get_xsa_name() const
+  get_xsa_name() const override
   {
     return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
   }
 
-  virtual
   std::pair<const char*, size_t>
-  get_axlf_section(axlf_section_kind kind) const
+  get_axlf_section(axlf_section_kind kind) const override
   {
     auto itr = m_axlf_sections.find(kind);
     return itr != m_axlf_sections.end()
@@ -600,8 +604,8 @@ public:
       : std::make_pair(nullptr, size_t(0));
   }
 
-  virtual const axlf*
-  get_axlf() const
+  const axlf*
+  get_axlf() const override
   {
     return m_top;
   }
@@ -799,7 +803,7 @@ std::string
 xclbin::arg::
 get_port() const
 {
-  return handle && handle->m_arginfo ? handle->m_arginfo->port : 0;
+  return handle && handle->m_arginfo ? handle->m_arginfo->port : "";
 }
 
 uint64_t
@@ -889,6 +893,7 @@ namespace {
 // handles are inserted in this map.  When the unmanaged handle is
 // freed, it is removed from this map and underlying object is
 // deleted if no other shared ptrs exists for this xclbin object
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 static std::map<xrtXclbinHandle, std::shared_ptr<xrt::xclbin_impl>> xclbins;
 
 static std::shared_ptr<xrt::xclbin_impl>
@@ -941,7 +946,7 @@ get_axlf(xrtXclbinHandle handle)
 xrt::xclbin
 get_xclbin(xrtXclbinHandle handle)
 {
-  return ::get_xclbin(handle);
+  return xrt::xclbin(::get_xclbin(handle));
 }
 
 std::pair<const char*, size_t>
@@ -974,6 +979,7 @@ xrtXclbinAllocFilename(const char* filename)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -995,6 +1001,7 @@ xrtXclbinAllocRawData(const char* data, int size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -1013,12 +1020,12 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 
@@ -1041,12 +1048,12 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -1062,12 +1069,56 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
+}
+
+size_t
+xrtXclbinGetNumKernels(xrtXclbinHandle handle)
+{
+  try {
+    return xdp::native::profiling_wrapper(__func__,
+    [handle]{
+      auto xclbin = get_xclbin(handle);
+      return xclbin->get_kernels().size();
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return std::numeric_limits<size_t>::max();
+}
+
+size_t
+xrtXclbinGetNumKernelComputeUnits(xrtXclbinHandle handle)
+{
+  try {
+    return xdp::native::profiling_wrapper(__func__,
+    [handle]{
+      auto xclbin = get_xclbin(handle);
+      auto kernels = xclbin->get_kernels();
+      return std::accumulate(kernels.begin(), kernels.end(), 0,
+                             [](size_t sum, const auto& k) {
+                               return sum + k.get_cus().size();
+                             });
+    });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return std::numeric_limits<size_t>::max();
 }
 
 int
@@ -1092,12 +1143,12 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -1116,11 +1167,11 @@ xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 

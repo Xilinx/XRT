@@ -479,9 +479,11 @@ namespace xdp {
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
     std::string outputFile = "aie_profile_" + deviceName + ".csv";
-    writers.push_back(new AIEProfilingWriter(outputFile.c_str(),
-        deviceName.c_str(), mIndex));
-    db->getStaticInfo().addOpenedFile(outputFile.c_str(), "AIE_PROFILE");
+
+    VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
+                                              deviceName.c_str(), mIndex);
+    writers.push_back(writer);
+    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_PROFILE");
 
     // Start the AIE profiling thread
     mThreadCtrlMap[handle] = true;

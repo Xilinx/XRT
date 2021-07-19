@@ -703,21 +703,23 @@ namespace xdp {
     // Create runtime config file
     if (runtimeMetrics) {
       std::string configFile = "aie_event_runtime_config.json";
-      writers.push_back(new AieTraceConfigWriter(configFile.c_str(),
-                                                 deviceId, metricSet));
-      (db->getStaticInfo()).addOpenedFile(configFile, "AIE_EVENT_RUNTIME_CONFIG");
+      VPWriter* writer = new AieTraceConfigWriter(configFile.c_str(),
+                                                  deviceId, metricSet) ;
+      writers.push_back(writer);
+      (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_RUNTIME_CONFIG");
     }
 
     // Create trace output files
     for(uint64_t n = 0; n < numAIETraceOutput; n++) {
       // Consider both Device Id and Stream Id to create the output file name
       std::string fileName = "aie_trace_" + std::to_string(deviceId) + "_" + std::to_string(n) + ".txt";
-      writers.push_back(new AIETraceWriter(fileName.c_str(), deviceId, n,
-                            "" /*version*/,
-                            "" /*creationTime*/,
-                            "" /*xrtVersion*/,
-                            "" /*toolVersion*/));
-      (db->getStaticInfo()).addOpenedFile(fileName, "AIE_EVENT_TRACE");
+      VPWriter* writer = new AIETraceWriter(fileName.c_str(), deviceId, n,
+                                            "" /*version*/,
+                                            "" /*creationTime*/,
+                                            "" /*xrtVersion*/,
+                                            "" /*toolVersion*/);
+      writers.push_back(writer);
+      (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "AIE_EVENT_TRACE");
 
       std::stringstream msg;
       msg << "Creating AIE trace file " << fileName << " for device " << deviceId;
@@ -792,6 +794,10 @@ namespace xdp {
 
     // Create AIE Trace Offloader
     AIETraceDataLogger* aieTraceLogger = new AIETraceDataLogger(deviceId);
+
+    std::string flowType = (isPLIO) ? "PLIO" : "GMIO";
+    std::string msg = "Total " + std::to_string(aieTraceBufSize) + " size is used for AIE trace buffer for " + std::to_string(numAIETraceOutput) + " " + flowType + " streams.";
+    xrt_core::message::send(xrt_core::message::severity_level::debug, "XRT", msg);
 
     AIETraceOffload* aieTraceOffloader = new AIETraceOffload(handle, deviceId,
                                               deviceIntf, aieTraceLogger,
