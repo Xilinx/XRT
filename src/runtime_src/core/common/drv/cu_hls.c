@@ -18,6 +18,8 @@
  * Bit 2: ap_idle(Read only).
  * Bit 3: ap_ready(Read only). Self clear after clear ap_start.
  * Bit 4: ap_continue(Read/Set). Self clear.
+ * Bit 5-7: Not support yet
+ * Bit 8: ap_sw_reset. Clear when reset is done.
  */
 #define CTRL		0x0
 /* Global interrupt enable: Set bit 0 to enable. Clear it to disable */
@@ -300,6 +302,25 @@ static u32 cu_hls_clear_intr(void *core)
 	return cu_read32(cu_hls, ISR);
 }
 
+static void cu_hls_reset(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+
+	cu_write32(cu_hls, CTRL, CU_AP_SW_RESET);
+}
+
+static bool cu_hls_reset_done(void *core)
+{
+	struct xrt_cu_hls *cu_hls = core;
+	u32 ctrl_reg;
+
+	ctrl_reg = cu_read32(cu_hls, CTRL);
+	if (ctrl_reg & CU_AP_SW_RESET)
+		return false;
+
+	return true;
+}
+
 static struct xcu_funcs xrt_cu_hls_funcs = {
 	.alloc_credit	= cu_hls_alloc_credit,
 	.free_credit	= cu_hls_free_credit,
@@ -310,6 +331,8 @@ static struct xcu_funcs xrt_cu_hls_funcs = {
 	.enable_intr	= cu_hls_enable_intr,
 	.disable_intr	= cu_hls_disable_intr,
 	.clear_intr	= cu_hls_clear_intr,
+	.reset		= cu_hls_reset,
+	.reset_done	= cu_hls_reset_done,
 };
 
 int xrt_cu_hls_init(struct xrt_cu *xcu)
