@@ -359,7 +359,9 @@ struct sensor
     case key_type::xmc_version:
       return std::to_string(info.version);
     case key_type::power_microwatts:
-      val = (uint64_t)info.vol_12v_pex * info.cur_12v_pex + (uint64_t)info.vol_12v_aux * info.cur_12v_aux + (uint64_t)info.vol_3v3_pex * info.cur_3v3_pex;
+      val = static_cast<uint64_t> info.vol_12v_pex * info.cur_12v_pex +
+          static_cast<uint64_t> info.vol_12v_aux * info.cur_12v_aux +
+          static_cast<uint64_t> info.vol_3v3_pex * info.cur_3v3_pex;
       return val;
     case key_type::power_warning:
       return query::power_warning::result_type(info.power_warn);
@@ -678,7 +680,7 @@ struct devinfo
       mgmtpf::get_dev_info(dev->get_mgmt_handle(), &info);
       return info;
     };
-	
+
     static std::map<const xrt_core::device*, XCLMGMT_DEVICE_INFO> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
@@ -689,7 +691,6 @@ struct devinfo
     }
 
     auto& info = (*it).second;
-    std::vector<std::string> vec;
     switch (key) {
     case key_type::board_name:
       return static_cast<query::board_name::result_type>(info.ShellName);
@@ -713,11 +714,7 @@ struct devinfo
     case key_type::mac_contiguous_num:
       return info.MacContiguousNum;
     case key_type::mac_addr_list:
-      vec.push_back(std::string(info.MacAddr0));
-      vec.push_back(std::string(info.MacAddr1));
-      vec.push_back(std::string(info.MacAddr2));
-      vec.push_back(std::string(info.MacAddr3));
-      return std::vector<std::string>(vec);
+      return std::vector<std::string>{ std::string(info.MacAddr0), std::string(info.MacAddr1), std::string(info.MacAddr2), std::string(info.MacAddr3) };
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -962,10 +959,10 @@ struct mailbox
         std::vector<std::string> vec;
         switch (key) {
         case key_type::mailbox_metrics:
-            vec.push_back((boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes).str());
+            vec.push_back(boost::str(boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes));
             for (i = 0; i < MAILBOX_REQ_MAX; i++)
                 vec.push_back(boost::str(boost::format("req[%d] received: %d\n") % i % info.mbx_recv_req[i]));
-            return std::vector<std::string>(vec);
+            return vec;
         default:
             throw std::runtime_error("device_windows::mailbox() unexpected qr " + std::to_string(static_cast<qtype>(key)) + ") for userpf");
         }
