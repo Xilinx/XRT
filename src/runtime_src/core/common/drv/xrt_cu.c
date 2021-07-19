@@ -57,6 +57,24 @@ move_to_queue(struct kds_command *xcmd, struct list_head *dst_q, u32 *dst_len)
 	++(*dst_len);
 }
 
+static inline bool
+sw_reset_cu(struct xrt_cu *xcu)
+{
+	xrt_cu_reset(xcu);
+
+	/* wait 100 ~ 150 micro seconds. Let's see if we need to
+	 * adjust this.
+	 */
+	usleep_range(100, 150);
+	if (!xrt_cu_reset_done(xcu)) {
+		xcu_info(xcu, "CU(%d) Reset timeout", xcu->info.cu_idx);
+		return false;
+	}
+
+	xcu_info(xcu, "CU(%d) SW Reset done", xcu->info.cu_idx);
+	return true;
+}
+
 /**
  * process_cq() - Process completed queue
  * @xcu: Target XRT CU
@@ -149,8 +167,12 @@ static inline void __process_sq(struct xrt_cu *xcu)
 				continue;
 
 			xcmd->status = KDS_TIMEOUT;
-			/* Mark this CU as bad state */
-			xcu->bad_state = true;
+
+			if (xcu->info.sw_reset) {
+				if (!sw_reset_cu(xcu))
+					xcu->bad_state = true;
+			} else
+				xcu->bad_state = true;
 		} else
 			break;
 
@@ -290,24 +312,25 @@ try_abort_cmd(struct xrt_cu *xcu, struct kds_command *abort_cmd)
 		/* Found the xcmd to abort! */
 		if (!xcu->info.sw_reset) {
 			xcu_warn(xcu, "No sw resset. Device goto bad state");
-			abort_cmd->status = KDS_TIMEOUT;
+			abort_cmd->status = KDS_ABORT;
 			xcu->bad_state = true;
 		} else {
 			xcu_info(xcu, "Try reset CU(%d)", xcu->info.cu_idx);
-			xrt_cu_reset(xcu);
-
-			/* wait 100 ~ 150 micro seconds. Let's see if we need to
-			 * adjust this.
+			/* TODO: Not support CU with hardware queue.
+			 *
+			 * Since we only abort one command, not sure
+			 * what to do when this command is in hardware
+			 * queue with other commands.
+			 * In this case, if we still want to reset CU,
+			 * we need abort all of the commands on sq.
+			 * Not support this use case until we know what to do.
 			 */
-			usleep_range(100, 150);
-			if (xrt_cu_reset_done(xcu)) {
-				xcu_info(xcu, "Reset done");
+			if (sw_reset_cu(xcu)) {
 				/* re-initial this cu */
 				xrt_cu_put_credit(xcu, 1);
 
 				abort_cmd->status = KDS_COMPLETED;
 			} else {
-				xcu_info(xcu, "Reset timeout");
 				abort_cmd->status = KDS_TIMEOUT;
 				xcu->bad_state = true;
 			}
@@ -535,7 +558,6 @@ void xrt_cu_hpq_submit(struct xrt_cu *xcu, struct kds_command *xcmd)
 	up(&xcu->sem);
 
 	wait_for_completion(&xcu->comp);
-	return xcu->bad_state;
 }
 
 /**

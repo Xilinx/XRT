@@ -309,17 +309,16 @@ static void cu_hls_reset(void *core)
 	cu_write32(cu_hls, CTRL, CU_AP_SW_RESET);
 }
 
-static int cu_hls_reset_done(void *core)
+static bool cu_hls_reset_done(void *core)
 {
 	struct xrt_cu_hls *cu_hls = core;
 	u32 ctrl_reg;
 
 	ctrl_reg = cu_read32(cu_hls, CTRL);
 	if (ctrl_reg & CU_AP_SW_RESET)
-		return 0;
+		return false;
 
-	/* ap_sw_reset is clear, reset is done */
-	return 1;
+	return true;
 }
 
 static struct xcu_funcs xrt_cu_hls_funcs = {

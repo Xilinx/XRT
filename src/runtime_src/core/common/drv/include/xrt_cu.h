@@ -150,9 +150,8 @@ struct xcu_funcs {
 	 * @reset_done:
 	 *
 	 * Check if CU is properly reset
-	 * Return 1 if reset done, 0 if not done
 	 */
-	int (*reset_done)(void *core);
+	bool (*reset_done)(void *core);
 
 	/**
 	 * @enable_intr:
@@ -335,7 +334,7 @@ static inline void xrt_cu_reset(struct xrt_cu *xcu)
 	xcu->funcs->reset(xcu->core);
 }
 
-static inline int xrt_cu_reset_done(struct xrt_cu *xcu)
+static inline bool xrt_cu_reset_done(struct xrt_cu *xcu)
 {
 	return xcu->funcs->reset_done(xcu->core);
 }

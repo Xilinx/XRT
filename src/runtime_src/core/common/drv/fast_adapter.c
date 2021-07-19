@@ -184,9 +184,9 @@ static void cu_fa_reset(void *core)
 	return;
 }
 
-static int cu_fa_reset_done(void *core)
+static bool cu_fa_reset_done(void *core)
 {
-	return 1;
+	return true;
 }
 
 static struct xcu_funcs xrt_cu_fa_funcs = {
