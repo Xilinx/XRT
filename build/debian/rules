@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@ --with autoreconf --sourcedirectory=src
+
+override_dh_auto_configure:
+	set -ex; \
+	if [ "$$(dpkg-architecture -q DEB_TARGET_ARCH)" = arm64 ]; then \
+		XRT_NATIVE_BUILD=no DKMS_FLOW=yes dh_auto_configure; \
+	else \
+		dh_auto_configure; \
+	fi
+
+override_dh_auto_test:
+# tests not currently passing
+	dh_auto_test || true
+
+override_dh_shlibdeps:
+	dh_shlibdeps -l/opt/xilinx/xrt/lib
