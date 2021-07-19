@@ -65,6 +65,8 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_NOC";
     case ACCEL_DEADLOCK_DETECTOR:
       return "ACCEL_DEADLOCK_DETECTOR";
+    case DEBUG_IP_TYPE_MAX:
+      return "DEBUG_IP_TYPE_MAX";
   }
 
   return XUtil::format("UNKNOWN (%d)", static_cast<unsigned int>(_debugIpType));
@@ -116,6 +118,9 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
+
+  if (_sDebugIPType == "DEBUG_IP_TYPE_MAX")
+    return DEBUG_IP_TYPE_MAX;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sDebugIPType + "'";
   throw std::runtime_error(errMsg);

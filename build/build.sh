@@ -236,6 +236,7 @@ if [[ $dbg == 1 ]]; then
   if [[ $noctest == 0 ]]; then
       time ctest --output-on-failure
   fi
+      time make package
   cd $BUILDDIR
 fi
 

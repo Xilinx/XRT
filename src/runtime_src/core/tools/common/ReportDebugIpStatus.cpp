@@ -73,7 +73,7 @@ static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "AxiDMA",
   "TS2MMFull",
   "AxiNOC",
-  "Accelerator Deadlock Detector (accel_deadlocl_detector)"
+  "Accelerator Deadlock Detector (accel_deadlock_detector)"
 };
 
 class DebugIpStatusCollector
@@ -98,6 +98,7 @@ class DebugIpStatusCollector
   xclAccelMonitorCounterResults    amResults;
   xclDebugCheckersResults          lapcResults;
   xclDebugStreamingCheckersResults spcResults;
+  xclAccelDeadlockDetectorResults  accelDeadlockResults;
 
 public :
   DebugIpStatusCollector(xclDeviceHandle h, bool jsonFormat, std::ostream& _output = std::cout);
@@ -127,6 +128,7 @@ private :
   void readASMCounter(debug_ip_data*);
   void readLAPChecker(debug_ip_data*);
   void readSPChecker(debug_ip_data*);
+  void readAccelDeadlockDetector(debug_ip_data*);
 
   void printAIMResults(std::ostream&);
   void printAMResults(std::ostream&);
@@ -136,6 +138,7 @@ private :
   void printLAPCResults(std::ostream&);
   void printSPCResults(std::ostream&);
   void printILAResults(std::ostream&);
+  void printAccelDeadlockResults(std::ostream&);
 
   void populateAIMResults(boost::property_tree::ptree &_pt);
   void populateAMResults(boost::property_tree::ptree &_pt);
@@ -145,6 +148,7 @@ private :
   void populateLAPCResults(boost::property_tree::ptree &_pt);
   void populateSPCResults(boost::property_tree::ptree &_pt);
   void populateILAResults(boost::property_tree::ptree &_pt);
+  void populateAccelDeadlockResults(boost::property_tree::ptree &_pt);
 
   void processElementFilter(const std::vector<std::string> & _elementsFilter);
 };
@@ -165,6 +169,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     , amResults{0}
     , lapcResults{0}
     , spcResults{0}
+    , accelDeadlockResults{0}
 {
   // By default, enable status collection for all Debug IP types
   std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
@@ -256,6 +261,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
       case AXI_STREAM_MONITOR:
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
+      case ACCEL_DEADLOCK_DETECTOR:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
@@ -325,6 +331,8 @@ DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _e
       debugIpOpt[TRACE_S2MM] = true;
     } else if(itr == "ila") {
       debugIpOpt[ILA] = true;
+    } else if(itr == "accel_deadlock_detector") {
+      debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
     }
   }
 }
@@ -340,6 +348,7 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
   printLAPCResults(_output);
   printSPCResults(_output);
   printILAResults(_output);
+  printAccelDeadlockResults(_output);
 }
 
 void 
@@ -401,6 +410,12 @@ DebugIpStatusCollector::getDebugIpData()
       {
         if(debugIpOpt[ILA])
           ++debugIpNum[ILA];
+        break;
+      }
+      case ACCEL_DEADLOCK_DETECTOR : 
+      {
+        if(debugIpOpt[ACCEL_DEADLOCK_DETECTOR])
+          readAccelDeadlockDetector(&(dbgIpLayout->m_debug_ip_data[i]));
         break;
       }
       default: break;
@@ -1326,6 +1341,68 @@ DebugIpStatusCollector::printILAResults(std::ostream& _output)
   return;
 }
 
+void 
+DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
+{
+  // index in results is debugIpNum
+  const uint64_t index = debugIpNum[ACCEL_DEADLOCK_DETECTOR];
+
+  (void)index;
+
+  // Get Debug Ip Name
+  std::string dbgIpName;
+  // Fill up string with 128 characters (padded with null characters)
+  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
+  // Strip away any extraneous null characters
+  dbgIpName.assign(dbgIpName.c_str());
+
+#if 0
+  // Check Implementation
+  // Get Cu and Port Name
+  {
+    std::string cuName;
+    std::string portName;
+    getCuNamePortName(dbgIpInfo->m_type, dbgIpName, cuName, portName);
+    cuNames[ACCEL_DEADLOCK_DETECTOR].emplace_back(std::move(cuName));
+    portNames[ACCEL_DEADLOCK_DETECTOR].emplace_back(std::move(portName));
+  }
+#endif
+
+  // increment debugIpNum
+  ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin ?
+//  accelDeadlockResults.NumSlots = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
+
+#ifndef _WIN32
+  // read counter values
+  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
+    std::string monName("accel_deadlock_detector");
+    monName = monName + std::to_string(dbgIpInfo->m_base_address);
+
+    std::vector<char> nameSysfsPath;
+    nameSysfsPath.resize(512);
+    xclGetSysfsPath(handle, monName.c_str(), "name", nameSysfsPath.data(), 512);
+    std::string namePath(nameSysfsPath.data());
+
+    std::cout << "INFO : name path " << namePath << std::endl;
+    return;
+  }
+#endif
+}
+
+void 
+DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
+{ 
+    return;
+}
+
+void 
+DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
+{
+    return;
+}
+
+
 
 void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
@@ -1391,6 +1468,7 @@ DebugIpStatusCollector::populateAllResults(boost::property_tree::ptree &_pt)
   populateLAPCResults(_pt);
   populateSPCResults(_pt);
   populateILAResults(_pt);
+  populateAccelDeadlockResults(_pt);
 
 }
 
