@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
+name: Check File Encoding
+
+on:     
+  pull_request:
+
+jobs:
+  binary_check:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install Dependencies
+      run: |
+        sudo apt update
+        sudo apt install jq curl
+    - name: Binary Check
+      run: |
+        URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+        FILES=$(curl -s -X GET -G $URL | jq -r '.[] | .raw_url')
+        for f in ${FILES[*]}; do
+          echo "checking $f ..."
+          if ! $(curl -s -L -I $f | grep "content-type:" | tail -1 | grep -q "text/"); then
+            echo "$f is not a text file"
+            exit 1
+          fi
+        done
