@@ -982,7 +982,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 	write_unlock(&zdev->attr_rwlock);
 }
 
-/* This function retern True if given region are reserved
+/* This function return True if given region is reserved
  * on device tree. Else return False
  */
 static int check_for_reserved_memory(uint64_t start_addr, size_t size)
@@ -998,16 +998,14 @@ static int check_for_reserved_memory(uint64_t start_addr, size_t size)
 
 	/* Traverse through all the child nodes */
 	for (np_it = NULL; (np_it = of_get_next_child(mem_np, np_it)) != NULL;) {
-		if (strcmp(np_it->name, "buffer") == 0) {
-			err = of_address_to_resource(np_it, 0, &res_mem);
-			if (!err) {
-				/* Check the given address and size fall
-				 * in this reserved memory region
-				 */
-				if (start_addr >= res_mem.start &&
-						size <= resource_size(&res_mem))
-					return true;
-			}
+		err = of_address_to_resource(np_it, 0, &res_mem);
+		if (!err) {
+			/* Check the given address and size fall
+			 * in this reserved memory region
+			 */
+			if (start_addr >= res_mem.start &&
+					size <= resource_size(&res_mem))
+				return true;
 		}
 	}
 
