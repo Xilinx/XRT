@@ -400,11 +400,12 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   if(!std::regex_match(bdfstr,std::regex("[A-Za-z0-9:.]+")))
     throw std::runtime_error("Invalid BDF format. Please specify valid BDF" + str_available_devs(_inUserDomain));
 
-  std::vector<std::string> tokens; 
-  boost::split(tokens, bdfstr, boost::is_any_of(":")); 
+  std::vector<std::string> tokens;
+  boost::split(tokens, bdfstr, boost::is_any_of(":"));
   int radix = 16;
-  uint16_t bus = 0; 
-  uint16_t dev = 0; 
+  uint16_t domain = 0;
+  uint16_t bus = 0;
+  uint16_t dev = 0;
   uint16_t func = std::numeric_limits<uint16_t>::max();
 
   // check if we have 2-3 tokens: domain, bus, device.function
@@ -424,6 +425,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
   }
   bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
+  domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {
@@ -435,14 +437,14 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
 
     //if the user specifies func, compare
     //otherwise safely ignore
-    auto cmp_func = [bdf](uint16_t func) 
+    auto cmp_func = [bdf](uint16_t func)
     {
       if (func != std::numeric_limits<uint16_t>::max())
-        return func == std::get<2>(bdf);
+        return func == std::get<3>(bdf);
       return true;
     };
 
-    if (bus == std::get<0>(bdf) && dev == std::get<1>(bdf) && cmp_func(func))
+    if (domain == std::get<0>(bdf) && bus == std::get<1>(bdf) && dev == std::get<2>(bdf) && cmp_func(func))
       return i;
   }
 
@@ -458,7 +460,7 @@ str2index(const std::string& str, bool _inUserDomain)
 {
   //throw an error if no devices are present
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
-  if(devices == 0) 
+  if(devices == 0)
     throw std::runtime_error("No devices found");
   try {
     int idx(boost::lexical_cast<int>(str));
@@ -466,9 +468,8 @@ str2index(const std::string& str, bool _inUserDomain)
 
     auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
     // if the bdf is zero, we are dealing with an edge device
-    if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0) {
+    if(std::get<0>(bdf) == 0 && std::get<1>(bdf) == 0 && std::get<2>(bdf) == 0 && std::get<3>(bdf) == 0)
       return deviceId2index();
-    }
   } catch (...) {
     /* not an edge device so safe to ignore this error */
   }
