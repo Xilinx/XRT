@@ -112,7 +112,7 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
     return AXI_STREAM_PROTOCOL_CHECKER;
 
   if ( _sDebugIPType == "ACCEL_DEADLOCK_DETECTOR" ) 
-    return AXI_STREAM_PROTOCOL_CHECKER;
+    return ACCEL_DEADLOCK_DETECTOR;
 
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
