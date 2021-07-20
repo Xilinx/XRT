@@ -154,7 +154,10 @@ long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned
     mutex_lock(&accel_deadlock_detector->lock);
 
     switch (cmd) {
-        case 1:
+        case ACCEL_DEADLOCK_DETECTOR_IOC_RESET:
+            break;
+        case ACCEL_DEADLOCK_DETECTOR_IOC_GET_STATUS:
+            result = XOCL_READ_REG32(accel_deadlock_detector->base + 0x0);
             break;
         default:
             result = -ENOTTY;
