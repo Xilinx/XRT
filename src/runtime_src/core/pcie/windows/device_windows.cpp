@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,11 +27,9 @@
 #include <boost/algorithm/string.hpp>
 #include <type_traits>
 #include <string>
-#include <iostream>
 #include <map>
 #include <mutex>
 #include <iostream>
-#include <string>
 
 #pragma warning(disable : 4100 4996)
 
@@ -275,6 +273,7 @@ struct sensor
     }
 
     const xcl_sensor& info = (*it).second;
+    uint64_t val = 0;
 
     switch (key) {
     case key_type::v12v_pex_millivolts:
@@ -359,6 +358,13 @@ struct sensor
       return query::cage_temp_3::result_type(info.cage_temp3);
     case key_type::xmc_version:
       return std::to_string(info.version);
+    case key_type::power_microwatts:
+      val = static_cast<uint64_t>(info.vol_12v_pex) * static_cast<uint64_t>(info.cur_12v_pex) +
+          static_cast<uint64_t>(info.vol_12v_aux) * static_cast<uint64_t>(info.cur_12v_aux) +
+          static_cast<uint64_t>(info.vol_3v3_pex) * static_cast<uint64_t>(info.cur_3v3_pex);
+      return val;
+    case key_type::power_warning:
+      return query::power_warning::result_type(info.power_warn);
     default:
       throw std::runtime_error("device_windows::icap() unexpected qr("
                                + std::to_string(static_cast<qtype>(key))
@@ -570,6 +576,10 @@ struct info
       return static_cast<query::pcie_subsystem_vendor::result_type>(info.SubsystemVendor);
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.SubsystemDevice);
+    case key_type::pcie_link_speed_max:
+      return static_cast<query::pcie_link_speed_max::result_type>(info.MaximumLinkSpeed);
+    case key_type::pcie_express_lane_width:
+      return static_cast<query::pcie_express_lane_width::result_type>(info.MaximumLinkWidth);
     default:
       throw std::runtime_error("device_windows::info_user() unexpected qr");
     }
@@ -643,8 +653,10 @@ struct xmc
     switch (key) {
     case key_type::xmc_reg_base:
       return info.xmc_offset;
-	  case key_type::xmc_status:
-	    return query::xmc_status::result_type(1); //hardcoded
+    case key_type::xmc_status:
+      return query::xmc_status::result_type(1); //hardcoded
+    case key_type::xmc_qspi_status:
+      return std::pair<std::string, std::string>("N/A", "N/A");
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -669,7 +681,7 @@ struct devinfo
       mgmtpf::get_dev_info(dev->get_mgmt_handle(), &info);
       return info;
     };
-	
+
     static std::map<const xrt_core::device*, XCLMGMT_DEVICE_INFO> info_map;
     static std::mutex mutex;
     std::lock_guard<std::mutex> lk(mutex);
@@ -698,6 +710,12 @@ struct devinfo
         //sample strings: xilinx_u250_GOLDEN, xilinx_u250_gen3x16_base, xilinx_u250_xdma_201830_3
         return (shell.find("GOLDEN") != std::string::npos) ? false : true;
       }
+    case key_type::mac_addr_first:
+      return std::string(info.MacAddrFirst);
+    case key_type::mac_contiguous_num:
+      return info.MacContiguousNum;
+    case key_type::mac_addr_list:
+      return std::vector<std::string>{ std::string(info.MacAddr0), std::string(info.MacAddr1), std::string(info.MacAddr2), std::string(info.MacAddr3) };
     default:
       throw std::runtime_error("device_windows::info_mgmt() unexpected qr");
     }
@@ -912,6 +930,57 @@ struct data_retention
 
 };
 
+struct mailbox
+{
+    using result_type = boost::any;
+
+    static xcl_mailbox
+        init_mailbox_info(const xrt_core::device* dev)
+    {
+        xcl_mailbox info = { 0 };
+        userpf::get_mailbox_info(dev->get_user_handle(), &info);
+        return info;
+    }
+
+    static result_type
+        get_info(const xrt_core::device* device, key_type key)
+    {
+        static std::map<const xrt_core::device*, xcl_mailbox> info_map;
+        static std::mutex mutex;
+        std::lock_guard<std::mutex> lk(mutex);
+
+        auto it = info_map.find(device);
+        if (it == info_map.end())
+            it = info_map.emplace(device, init_mailbox_info(device)).first;
+
+        const xcl_mailbox& info = (*it).second;
+        switch (key) {
+        case key_type::mailbox_metrics:
+            {
+              std::vector<std::string> vec;
+              vec.push_back(boost::str(boost::format("raw bytes received: %d\n") % info.mbx_recv_raw_bytes));
+              for (int i = 0; i < MAILBOX_REQ_MAX; i++)
+                  vec.push_back(boost::str(boost::format("req[%d] received: %d\n") % i % info.mbx_recv_req[i]));
+              return vec;
+            }
+        default:
+            throw std::runtime_error("device_windows::mailbox() unexpected qr " + std::to_string(static_cast<qtype>(key)) + ") for userpf");
+        }
+    }
+
+    static result_type
+        user(const xrt_core::device* device, key_type key)
+    {
+        return get_info(device, key);
+    }
+
+    static result_type
+        mgmt(const xrt_core::device* device, key_type key)
+    {
+        return get_info(device, key);
+    }
+}; //end of struct mailbox
+
 template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
 {
@@ -1041,6 +1110,8 @@ initialize_query_table()
   emplace_function0_getter<query::pcie_device,               info>();
   emplace_function0_getter<query::pcie_subsystem_vendor,     info>();
   emplace_function0_getter<query::pcie_subsystem_id,         info>();
+  emplace_function0_getter<query::pcie_link_speed_max,       info>();
+  emplace_function0_getter<query::pcie_express_lane_width,   info>();
   emplace_function0_getter<query::interface_uuids,           uuid>();
   emplace_function0_getter<query::logic_uuids,               uuid>();
   emplace_function0_getter<query::xmc_reg_base,              xmc>();
@@ -1099,7 +1170,10 @@ initialize_query_table()
   emplace_function0_getter<query::cage_temp_2,               sensor>();
   emplace_function0_getter<query::cage_temp_3,               sensor>();
   emplace_function0_getter<query::xmc_version,               sensor>();
+  emplace_function0_getter<query::power_microwatts,          sensor>();
+  emplace_function0_getter<query::power_warning,             sensor>();
   emplace_function0_getter<query::xmc_status,                xmc>();
+  emplace_function0_getter<query::xmc_qspi_status,           xmc>();
   emplace_function0_getter<query::xmc_serial_num,            board>();
   emplace_function0_getter<query::max_power_level,           board>();
   emplace_function0_getter<query::xmc_sc_version,            board>();
@@ -1120,8 +1194,12 @@ initialize_query_table()
   emplace_function0_getter<query::board_name,                devinfo>();
   emplace_function0_getter<query::flash_bar_offset,          flash_bar_offset>();
   emplace_function0_getter<query::xmc_sc_presence,           devinfo>();
+  emplace_function0_getter<query::mac_addr_first,            devinfo>();
+  emplace_function0_getter<query::mac_contiguous_num,        devinfo>();
+  emplace_function0_getter<query::mac_addr_list,             devinfo>();
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
+  emplace_function0_getter<query::mailbox_metrics,           mailbox>();
 }
 
 struct X { X() { initialize_query_table(); }};

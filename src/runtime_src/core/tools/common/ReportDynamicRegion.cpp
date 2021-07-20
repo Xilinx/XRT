@@ -107,14 +107,12 @@ populate_cus(const xrt_core::device *device)
     ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
     cu_stats = xrt_core::device_query<qr::kds_cu_info>(device);
   } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-    ptree.add_child("compute_units", pt);
+    ptree.put("error_msg", ex.what());
     return ptree;
   }
 
   if(ip_buf.empty() || cu_stats.empty()) {
-    pt.put("error_msg", "ip_layout/kds_cu data is empty");
-    ptree.add_child("compute_units", pt);
+    ptree.put("error_msg", "ip_layout/kds_cu data is empty");
     return ptree;
   }
 
@@ -189,8 +187,7 @@ populate_cus_new(const xrt_core::device *device)
     // Ignoring if not available: Edge Case
   }
   catch (const std::exception& ex) {
-    pt.put("error_msg", ex.what());
-    ptree.add_child("compute_units", pt);
+    ptree.put("error_msg", ex.what());
     return ptree;
   }
 
