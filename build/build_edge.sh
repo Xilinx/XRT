@@ -1,5 +1,9 @@
 #!/bin/bash
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+red=$(tput setaf 1)
+
 error()
 {
     echo "ERROR: $1" 1>&2
@@ -199,10 +203,16 @@ if [ ! -d $PETALINUX_NAME ]; then
     cd ${PETALINUX_NAME}/project-spec/meta-user/
     install_recipes .
 else
-  echo "INFO: Project Already exists on Disk. Running incremental build"
+  echo "$red $bold INFO: Project Already exists on Disk. Running incremental build $normal"
 fi
 
 cd $ORIGINAL_DIR/$PETALINUX_NAME
+
+#cleanup existing files in incremental build
+/bin/rm -rf *.rpm
+/bin/rm -rf install_xrt.sh
+/bin/rm -rf reinstall_xrt.sh
+/bin/rm -rf rpms
 
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
