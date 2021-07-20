@@ -17,6 +17,7 @@
 #include <initguid.h>
 #include <stdint.h>
 #include "xclbin.h"
+#include "mailbox_proto.h"
 
 // {45A6FFCA-EF63-4933-9983-F63DEC5816EB}
 DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
@@ -419,86 +420,13 @@ typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
 //
 #define IOCTL_XOCL_SENSOR_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2107, METHOD_BUFFERED, FILE_READ_DATA)
 
-
-/**
- * struct xcl_sensor - Data structure used to fetch SENSOR group
- */
-struct xcl_sensor {
-    uint32_t vol_12v_pex;
-    uint32_t vol_12v_aux;
-    uint32_t cur_12v_pex;
-    uint32_t cur_12v_aux;
-    uint32_t vol_3v3_pex;
-    uint32_t vol_3v3_aux;
-    uint32_t cur_3v3_aux;
-    uint32_t ddr_vpp_btm;
-    uint32_t sys_5v5;
-    uint32_t top_1v2;
-    uint32_t vol_1v8;
-    uint32_t vol_0v85;
-    uint32_t ddr_vpp_top;
-    uint32_t mgt0v9avcc;
-    uint32_t vol_12v_sw;
-    uint32_t mgtavtt;
-    uint32_t vcc1v2_btm;
-    uint32_t fpga_temp;
-    uint32_t fan_temp;
-    uint32_t fan_rpm;
-    uint32_t dimm_temp0;
-    uint32_t dimm_temp1;
-    uint32_t dimm_temp2;
-    uint32_t dimm_temp3;
-    uint32_t vccint_vol;
-    uint32_t vccint_curr;
-    uint32_t se98_temp0;
-    uint32_t se98_temp1;
-    uint32_t se98_temp2;
-    uint32_t cage_temp0;
-    uint32_t cage_temp1;
-    uint32_t cage_temp2;
-    uint32_t cage_temp3;
-    uint32_t hbm_temp0;
-    uint32_t cur_3v3_pex;
-    uint32_t cur_0v85;
-    uint32_t vol_3v3_vcc;
-    uint32_t vol_1v2_hbm;
-    uint32_t vol_2v5_vpp;
-    uint32_t vccint_bram;
-    uint32_t version;
-    uint32_t power_warn;
-    uint32_t oem_id;
-    uint32_t vccint_temp;
-};
-
 //
 // IOCTL_XOCL_ICAP_INFO
 // Get sensor info
 // Inbuffer = (not used)
-// OutBuffer = struct xcl_hwicap
+// OutBuffer = struct xcl_pr_region
 //
 #define IOCTL_XOCL_ICAP_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2108, METHOD_BUFFERED, FILE_READ_DATA)
-
-/*
-  * UUID_SZ should ALWAYS have the same number
-  * as the MACRO UUID_SIZE defined in linux/uuid.h
-  */
-#define UUID_SZ 16
-/**
- * Data structure used to fetch ICAP group
- */
-struct xcl_hwicap {
-    uint64_t freq_0;
-    uint64_t freq_1;
-    uint64_t freq_2;
-    uint64_t freq_3;
-    uint64_t freq_cntr_0;
-    uint64_t freq_cntr_1;
-    uint64_t freq_cntr_2;
-    uint64_t freq_cntr_3;
-    uint64_t idcode;
-    uint8_t uuid[UUID_SZ];
-    uint64_t mig_calib;
-};
 
 //
 // IOCTL_XOCL_BOARD_INFO
@@ -507,24 +435,6 @@ struct xcl_hwicap {
 // OutBuffer = struct xcl_board_info
 //
 #define IOCTL_XOCL_BOARD_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2109, METHOD_BUFFERED, FILE_READ_DATA)
-
-/**
- * struct xcl_board_info - Data structure used to fetch BDINFO group
- */
-struct xcl_board_info {
-    char     serial_num[256];
-    char     mac_addr0[32];
-    char     mac_addr1[32];
-    char     mac_addr2[32];
-    char     mac_addr3[32];
-    char     revision[256];
-    char     bd_name[256];
-    char     bmc_ver[256];
-    uint32_t max_power;
-    uint32_t fan_presence;
-    uint32_t config_mode;
-    char     exp_bmc_ver[256];
-};
 
 //
 // IOCTL_XOCL_MIG_ECC_INFO
@@ -536,20 +446,6 @@ struct xcl_board_info {
 
 #define MAX_M_COUNT      64
 
-/**
- * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
- */
-struct xcl_mig_ecc {
-    uint64_t mem_type;
-    uint64_t mem_idx;
-    uint64_t ecc_enabled;
-    uint64_t ecc_status;
-    uint64_t ecc_ce_cnt;
-    uint64_t ecc_ue_cnt;
-    uint64_t ecc_ce_ffa;
-    uint64_t ecc_ue_ffa;
-};
-
 //
 // IOCTL_XOCL_FIREWALL_INFO
 // Get firewall info
@@ -559,18 +455,6 @@ struct xcl_mig_ecc {
 #define IOCTL_XOCL_FIREWALL_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2111, METHOD_BUFFERED, FILE_READ_DATA)
 
 
-/**
- * struct xcl_firewall -  Data structure used to fetch FIREWALL group
- */
-struct xcl_firewall {
-    uint64_t max_level;
-    uint64_t curr_status;
-    uint64_t curr_level;
-    uint64_t err_detected_status;
-    uint64_t err_detected_level;
-    uint64_t err_detected_time;
-};
-
 //
 // IOCTL_XOCL_MAILBOX_INFO
 // Get sensor info
@@ -579,32 +463,11 @@ struct xcl_firewall {
 //
 #define IOCTL_XOCL_MAILBOX_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2112, METHOD_BUFFERED, FILE_READ_DATA)
 
-enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN = 0,
-	MAILBOX_REQ_TEST_READY = 1,
-	MAILBOX_REQ_TEST_READ = 2,
-	MAILBOX_REQ_LOCK_BITSTREAM = 3,
-	MAILBOX_REQ_UNLOCK_BITSTREAM = 4,
-	MAILBOX_REQ_HOT_RESET = 5,
-	MAILBOX_REQ_FIREWALL = 6,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR = 7,
-	MAILBOX_REQ_LOAD_XCLBIN = 8,
-	MAILBOX_REQ_RECLOCK = 9,
-	MAILBOX_REQ_PEER_DATA = 10,
-	MAILBOX_REQ_USER_PROBE = 11,
-	MAILBOX_REQ_MGMT_STATE = 12,
-	MAILBOX_REQ_CHG_SHELL = 13,
-	MAILBOX_REQ_PROGRAM_SHELL = 14,
-	MAILBOX_REQ_READ_P2P_BAR_ADDR = 15,
-	MAILBOX_REQ_MAX = 16,
-	/* Version 0 OP code ends */
-};
-
 /**
  * struct xcl_mailbox -  Data structure used to fetch mailbox group
  */
 struct xcl_mailbox {
 	/* recv metrics */
-	uint32_t          mbx_recv_raw_bytes;
-	uint32_t          mbx_recv_req[MAILBOX_REQ_MAX];
+	uint64_t          mbx_recv_raw_bytes;
+	uint64_t          mbx_recv_req[XCL_MAILBOX_REQ_MAX];
 };
