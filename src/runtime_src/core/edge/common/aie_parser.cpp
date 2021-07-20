@@ -346,15 +346,15 @@ get_clock_freq_mhz(const pt::ptree& aie_meta)
 std::vector<counter_type>
 get_profile_counter(const pt::ptree& aie_meta)
 {
-  std::vector<counter_type> counters;
-
   // If counters not found, then return empty vector
   auto counterTree = aie_meta.get_child_optional("aie_metadata.PerformanceCounter");
   if (!counterTree)
-    return counters;
+    return {};
 
   // First grab clock frequency
   auto clockFreqMhz = get_clock_freq_mhz(aie_meta);
+
+  std::vector<counter_type> counters;
 
   // Now parse all counters
   for (auto const &counter_node : counterTree.get()) {
@@ -382,9 +382,8 @@ std::vector<gmio_type>
 get_trace_gmio(const pt::ptree& aie_meta)
 {
   auto trace_gmios = aie_meta.get_child_optional("aie_metadata.TraceGMIOs");
-  if(!trace_gmios) {
+  if (!trace_gmios)
     return {};
-  }
 
   std::vector<gmio_type> gmios;
 
@@ -414,19 +413,19 @@ get_driver_config(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return adf::driver_config();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_driver_config(aie_meta);
-}
+p}
 
 adf::aiecompiler_options
 get_aiecompiler_options(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return adf::aiecompiler_options();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -438,7 +437,7 @@ get_graph(const xrt_core::device* device, const std::string& graph_name)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return adf::graph_config();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -462,7 +461,7 @@ get_graphs(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<std::string>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -474,7 +473,7 @@ get_tiles(const xrt_core::device* device, const std::string& graph_name)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<tile_type>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -487,7 +486,7 @@ get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<tile_type>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -499,7 +498,7 @@ get_rtp(const xrt_core::device* device, int graph_id)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::unordered_map<std::string, adf::rtp_config>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -511,7 +510,7 @@ get_gmios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::unordered_map<std::string, adf::gmio_config>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -523,7 +522,7 @@ get_plios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::unordered_map<std::string, adf::plio_config>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -535,7 +534,7 @@ get_clock_freq_mhz(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return 1000.0;
+    return 1000.0;  // magic
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -547,7 +546,7 @@ get_profile_counters(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<counter_type>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
@@ -559,7 +558,7 @@ get_trace_gmios(const xrt_core::device* device)
 {
   auto data = device->get_axlf_section(AIE_METADATA);
   if (!data.first || !data.second)
-    return std::vector<gmio_type>();
+    return {};
 
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
