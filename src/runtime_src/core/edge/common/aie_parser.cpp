@@ -418,7 +418,7 @@ get_driver_config(const xrt_core::device* device)
   pt::ptree aie_meta;
   read_aie_metadata(data.first, data.second, aie_meta);
   return ::get_driver_config(aie_meta);
-p}
+}
 
 adf::aiecompiler_options
 get_aiecompiler_options(const xrt_core::device* device)
