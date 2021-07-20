@@ -78,8 +78,12 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
     int err = 0;
 
     accel_deadlock_detector = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_accel_deadlock_detector));
-    if (!accel_deadlock_detector)
+    if (!accel_deadlock_detector) {
+        err = -ENOMEM;
+        xocl_err(&pdev->dev, "xocl_drvinst_alloc failed for accel_deadlock_detector_probe , err (-ENOMEM): %d", err);
         return -ENOMEM;
+    }
+    xocl_info(&pdev->dev, "xocl_drvinst_alloc completed in accel_deadlock_detector_probe");
 
     accel_deadlock_detector->dev = &pdev->dev;
 
@@ -88,11 +92,13 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
         memcpy(&accel_deadlock_detector->data, priv, sizeof(struct debug_ip_data));
 
     platform_set_drvdata(pdev, accel_deadlock_detector);
+    xocl_info(&pdev->dev, "platform_set_drvdata done , just before mutex_init");
     mutex_init(&accel_deadlock_detector->lock);
 
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (!res) {
         err = -ENOMEM;
+        xocl_err(&pdev->dev, "platform_get_resource failed for accel_deadlock_detector_probe , err (-ENOMEM): %d", err);
         goto done;
     }
 
@@ -110,6 +116,7 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
     accel_deadlock_detector->start_paddr = res->start;
     accel_deadlock_detector->range = res->end - res->start + 1;
 
+    xocl_info(&pdev->dev, "in accel_deadlock_detector_probe , right before sysfs_create_group");
     err = sysfs_create_group(&pdev->dev.kobj, &accel_deadlock_detector_attr_group);
     if (err) {
         xocl_err(&pdev->dev, "create accel_deadlock_detector sysfs attrs failed: %d", err);
