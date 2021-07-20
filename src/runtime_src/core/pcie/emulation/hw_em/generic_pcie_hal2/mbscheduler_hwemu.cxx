@@ -718,7 +718,7 @@ namespace hwemu {
         memset(this->cq_slot_status, -1, MAX_SLOTS * sizeof(uint32_t));
 
         // New command style from ERT firmware
-        if (custat_version == 0x51a10000) {
+        if (custat_version == ERT_CUSTAT_VERSION_0) {
             uint32_t idx = 2; // packet word index past header and version
             uint32_t max_idx = (this->slot_size >> 2);
             uint32_t git = ioread32(this->cq_base + slot_addr + (idx++ << 2));
