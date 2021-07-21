@@ -62,6 +62,76 @@ typedef enum _XOCL_BUFFER_TYPE {
 
 } XOCL_BUFFER_TYPE, *PXOCL_BUFFER_TYPE;
 
+/**
+ * struct xocl_kds - KDS user configuration
+ *
+ * @slot_size:  CQ slot size
+ * @ert:        enable embedded HW scheduler
+ * @polling:    poll for command completion
+ * @cu_dma:     enable CUDMA custom module for HW scheduler
+ * @cu_isr:     enable CUISR custom module for HW scheduler
+ * @cq_int:     enable interrupt from host to HW scheduler
+ * @dataflow:   enable dataflow mode
+ * @rw_shared:  allow xclRegWrite/xclRegRead access shared CU
+ */
+struct xocl_kds {
+    uint32_t slot_size;
+    uint32_t ert:1;
+    uint32_t polling:1;
+    uint32_t cu_dma:1;
+    uint32_t cu_isr:1;
+    uint32_t cq_int:1;
+    uint32_t dataflow:1;
+    uint32_t rw_shared:1;
+    uint32_t unused:25;
+};
+
+
+/**
+ * struct xocl_axlf - load xclbin (AXLF) device image used with
+ * IOCTL_XOCL_READ_AXLF ioctl
+ *
+ * @xclbin:	Pointer to user's xclbin structure in memory
+ * @ksize:	size of kernels in bytes
+ * @kernels:	pointer of argument array
+ */
+struct xocl_axlf {
+	struct axlf     *xclbin;
+	size_t          ksize;
+	char            *kernels;
+	struct xocl_kds kds_cfg;
+};
+
+/**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+	char		name[64];
+	size_t  	offset;
+	size_t  	size;
+	uint32_t	dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @range:	kernel register range
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+	char			 name[64];
+	size_t  		 range;
+	size_t			 anums;
+	struct argument_info	 args[1];
+};
+
 #define XOCL_MAX_DDR_BANKS    4
 
 //
