@@ -264,7 +264,7 @@ enum {
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
-#define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock_detector"
+#define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 

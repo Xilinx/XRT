@@ -1376,13 +1376,14 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string monName("accel_deadlock_detector");
+    std::string monName("accel_deadlock_");
     monName = monName + std::to_string(dbgIpInfo->m_base_address);
 
     std::vector<char> nameSysfsPath;
     nameSysfsPath.resize(512);
     xclGetSysfsPath(handle, monName.c_str(), "name", nameSysfsPath.data(), 512);
     std::string namePath(nameSysfsPath.data());
+std::cout << " In accel_deadlock_detector :: monName " << monName << " namePath " << namePath << std::endl;
 
     std::cout << "INFO : name path " << namePath << std::endl;
     return;

@@ -31,7 +31,7 @@ static ssize_t name_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = platform_get_drvdata(to_platform_device(dev));
-    return sprintf(buf, "accel_deadlock_detector_%llu\n",accel_deadlock_detector->data.m_base_address);
+    return sprintf(buf, "accel_deadlock_%llu\n",accel_deadlock_detector->data.m_base_address);
 }
 
 static DEVICE_ATTR_RO(name);
@@ -253,12 +253,16 @@ int __init xocl_init_accel_deadlock_detector(void)
 
     err = alloc_chrdev_region(&accel_deadlock_detector_priv.dev, 0, XOCL_MAX_DEVICES,
                                 XOCL_ACCEL_DEADLOCK_DETECTOR);
-    if (err < 0)
+    if (err < 0) {
+        printk(KERN_ERR "%d error code for alloc_chrdev_region for xocl_init_accel_deadlock_detector , going to just return", err);
         goto err_chrdev_reg;
+    }
 
     err = platform_driver_register(&accel_deadlock_detector_driver);
-    if (err < 0)
+    if (err < 0) {
+        printk(KERN_ERR "%d error code for alloc_chrdev_region for xocl_init_accel_deadlock_detector : going to unregister_chrdev_region ", err);
         goto err_driver_reg;
+    }
 
     return 0;
 
