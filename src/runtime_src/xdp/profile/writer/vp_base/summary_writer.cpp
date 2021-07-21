@@ -1551,6 +1551,19 @@ namespace xdp {
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
     if (infos.size() == 0) return ;
 
+    bool monitorsExist = false ;
+    for (auto device : infos) {
+      for (auto xclbin : device->getLoadedXclbins()) {
+        if (xclbin->aimList.size() > 0 || xclbin->asmList.size() > 0) {
+          monitorsExist = true ;
+          break ;
+        }
+      }
+      if (monitorsExist) break ;
+    }
+
+    if (!monitorsExist) return ;
+
     // Caption
     fout << "Data Transfer: Kernels to Global Memory\n" ;
 
@@ -1665,6 +1678,19 @@ namespace xdp {
   {
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
     if (infos.size() == 0) return ;
+
+    bool monitorsExist = false ;
+    for (auto device : infos) {
+      for (auto xclbin : device->getLoadedXclbins()) {
+        if (xclbin->aimList.size() > 0 || xclbin->asmList.size() > 0) {
+          monitorsExist = true ;
+          break ;
+        }
+      }
+      if (monitorsExist) break ;
+    }
+
+    if (!monitorsExist) return ;
 
     // Caption
     fout << "Top Data Transfer: Kernels to Global Memory" << std::endl ;
