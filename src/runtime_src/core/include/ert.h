@@ -769,6 +769,10 @@ ert_valid_opcode(struct ert_packet *pkt)
     /* 1 cu mask */
     valid = (skcmd->count >= skcmd->extra_cu_masks + 1);
     break;
+  case ERT_EXEC_WRITE:
+    skcmd = to_start_krnl_pkg(pkt);
+    /* 1 cu mask + 6 registers */
+    valid = (skcmd->count >= skcmd->extra_cu_masks + 1 + 6);
   case ERT_START_FA:
     skcmd = to_start_krnl_pkg(pkt);
     /* 1 cu mask */
