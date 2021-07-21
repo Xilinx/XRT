@@ -995,9 +995,25 @@ namespace xclhwemhal2 {
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
-          launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
-          launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          if (boost::filesystem::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
+            launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
+            launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
+            launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
+            launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_args.txt")) {
+            launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          }
 
           if (boost::filesystem::exists(sim_path + "/emulation_data/pmc_args.txt")) {
             launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
