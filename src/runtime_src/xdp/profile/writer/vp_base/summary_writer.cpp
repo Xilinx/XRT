@@ -1787,7 +1787,7 @@ namespace xdp {
     fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
       fout << "COLUMN:Duration (ms),float,Duration of write transfer (in ms),\n" ;
-      fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
+      fout << "COLUMN:Writing Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
     }
 
     for (auto& iter : db->getStats().getTopHostWrites()) {
