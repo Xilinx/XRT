@@ -1,0 +1,55 @@
+xrt (202110.2.11.0-0ubuntu2) experimental;urgency=medium
+
+  * Move to latest XRT version
+
+ -- Rahul Bramandlapalli <rbramand@xilinx.com>  Wed, 28 Apr 2021 00:23:51 +0530
+
+xrt (202020.2.8.726-0ubuntu2.20.04.1) focal; urgency=medium
+
+  * Fix dkms packages build
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Wed, 05 May 2021 12:38:07 +0200
+
+xrt (202020.2.8.726-0ubuntu2) focal; urgency=medium
+
+  * Add missing dependency for x86
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Wed, 25 Nov 2020 17:46:04 +0100
+
+xrt (202020.2.8.726-0ubuntu1) focal; urgency=medium
+
+  * Update to 202020.2.8.726 tag
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Wed, 25 Nov 2020 13:33:35 +0100
+
+xrt (202010.2.7.766-0ubuntu4) focal; urgency=medium
+
+  * Fix postinst/prerm for zocl
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Fri, 02 Oct 2020 13:25:07 +0200
+
+xrt (202010.2.7.766-0ubuntu3) focal; urgency=medium
+
+  * Add zocl files
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Fri, 02 Oct 2020 12:31:03 +0200
+
+xrt (202010.2.7.766-0ubuntu2) focal; urgency=medium
+
+  * Add xrt-embedded package for arm64.
+    The structure of this package is significantly different to the xrt
+    one.
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Fri, 02 Oct 2020 11:31:53 +0200
+
+xrt (202010.2.7.766-0ubuntu1) focal; urgency=medium
+
+  * Update to 202010.2.7.766 tag
+
+ -- Alfonso Sanchez-Beato (email Canonical) <alfonso.sanchez-beato@canonical.com>  Thu, 01 Oct 2020 16:19:32 +0200
+
+xrt (202010.2.6.655-0ubuntu0xlnx1) focal; urgency=medium
+
+  * Initial release.
+
+ -- Loïc Minier <loic.minier@ubuntu.com>  Sun, 07 Jun 2020 17:04:43 +0200

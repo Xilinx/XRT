@@ -2814,19 +2814,19 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
 
   // source buffer is host_only and destination buffer is device_only
-  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
   } // source buffer is device_only and destination buffer is host_only
-  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
     }
   }// source and destination buffers are device_only
-  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+  else if (!isHostOnlyBuffer(sBO) && !isHostOnlyBuffer(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
     unsigned char temp_buffer[size];
     // copy data from source buffer to temp buffer
     if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
@@ -2911,7 +2911,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
 
   //For Slave Bridge scenario, maintaining the map for base vs pBuf pointer
-  if (xclemulation::xocl_bo_host_only(bo)) {
+  if (isHostOnlyBuffer(bo)) {
     mHostOnlyMemMap[bo->base] = std::make_pair(pBuf, bo->size);
   }
 
@@ -2944,7 +2944,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
-  if (!xclemulation::xocl_bo_host_only(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
+  if (!isHostOnlyBuffer(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
     void* buffer = bo->userptr ? bo->userptr : bo->buf;
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
     {

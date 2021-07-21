@@ -557,6 +557,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* xcmd->u_execbuf points to user's original for write back/notice */
 	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
+	xcmd->exec_bo_handle = args->exec_bo_handle;
 
 	print_ecmd_info(ecmd);
 
@@ -621,6 +622,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_CU_STAT:
 		xcmd->opcode = OP_GET_STAT;
 		xcmd->priv = &XDEV(xdev)->kds;
+		break;
+	case ERT_ABORT:
+		abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");

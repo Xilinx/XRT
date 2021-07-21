@@ -68,6 +68,12 @@
 #endif
 #endif
 
+#ifdef CONFIG_SUSE_KERNEL
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 14)
+#include <linux/suse_version.h>
+#endif
+#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache		ioremap
 #endif
@@ -156,6 +162,12 @@
         #endif
 #else
 	#define XOCL_ACCESS_OK(TYPE, ADDR, SIZE) access_ok(TYPE, ADDR, SIZE)
+#endif
+
+#ifdef CONFIG_SUSE_KERNEL
+#ifndef SLE_VERSION
+#define SLE_VERSION(a,b,c) KERNEL_VERSION(a,b,c)
+#endif
 #endif
 
 #if defined(RHEL_RELEASE_CODE)

@@ -925,7 +925,7 @@ namespace xdp {
     if (hostReads.size() == 0) return ;
 
     fout << "TITLE:Host Reads from Global Memory\n" ;
-    fout << "SECTION:Host Data Transfer,Host Reads from Global Memory\n" ;
+    fout << "SECTION:Host Data Transfers,Host Reads from Global Memory\n" ;
     fout << "COLUMN:Number of Reads,int,"
          << "Number of host reads (note: may contain OpenCL printf transfers),"
          << "\n" ;
@@ -990,7 +990,7 @@ namespace xdp {
     if (hostWrites.size() == 0) return ;
 
     fout << "TITLE:Host Writes to Global Memory\n" ;
-    fout << "SECTION:Host Data Transfer,Host Writes to Global Memory\n" ;
+    fout << "SECTION:Host Data Transfers,Host Writes to Global Memory\n" ;
     fout << "COLUMN:Number of Writes,int,"
          << "Number of host writes,\n" ;
     fout << "COLUMN:Maximum Buffer Size (KB),float,"
@@ -1754,7 +1754,7 @@ namespace xdp {
       return ;
 
     fout << "TITLE:Top Memory Reads: Host from Global Memory\n" ;
-    fout << "SECTION:Host Data Transfer,Top Memory Reads\n" ;
+    fout << "SECTION:Host Data Transfers,Top Memory Reads\n" ;
     fout << "COLUMN:Start Time (ms),float,Start time of read transfer (in ms),\n" ;
     fout << "COLUMN:Buffer Size (KB),float,Size of read transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
@@ -1782,12 +1782,12 @@ namespace xdp {
       return ;
 
     fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
-    fout << "SECTION:Host Data Transfer,Top Memory Writes\n" ;
+    fout << "SECTION:Host Data Transfers,Top Memory Writes\n" ;
     fout << "COLUMN:Start Time (ms),float,Start time of write transfer (in ms),\n" ;
     fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
       fout << "COLUMN:Duration (ms),float,Duration of write transfer (in ms),\n" ;
-      fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
+      fout << "COLUMN:Writing Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
     }
 
     for (auto& iter : db->getStats().getTopHostWrites()) {
