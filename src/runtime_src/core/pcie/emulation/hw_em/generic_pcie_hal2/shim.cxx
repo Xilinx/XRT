@@ -2946,7 +2946,6 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   int returnVal = 0;
   if (!isHostOnlyBuffer(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
     void* buffer = bo->userptr ? bo->userptr : bo->buf;
-    std::cout<<"Calling Corret Duync"<<std::endl;
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
     {
       if (xclCopyBufferHost2Device(bo->base, buffer, size, offset, bo->topology) != size)
