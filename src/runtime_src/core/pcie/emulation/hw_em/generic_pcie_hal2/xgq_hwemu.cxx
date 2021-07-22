@@ -91,7 +91,12 @@ namespace hwemu {
 
   xgq_queue::~xgq_queue()
   {
-    stop = true;
+    {
+      std::lock_guard<std::mutex> lk(queue_mutex);
+      stop = true;
+    }
+    sub_cv.notify_all();
+    com_cv.notify_all();
 
     if (sub_thread->joinable()) {
       sub_thread->join();
@@ -164,7 +169,7 @@ namespace hwemu {
   {
     while (!this->stop) {
       std::unique_lock<std::mutex> lck(queue_mutex);
-      sub_cv.wait(lck, [this] { return !pending_cmds.empty(); });
+      sub_cv.wait(lck, [this] { return (!pending_cmds.empty() || stop); });
 
       for (auto& xcmd : pending_cmds) {
         // TODO Handle submission queue full
@@ -188,7 +193,7 @@ namespace hwemu {
   {
     while (!this->stop) {
       std::unique_lock<std::mutex> lck(queue_mutex);
-      com_cv.wait(lck, [this] { return !submitted_cmds.empty(); });
+      com_cv.wait(lck, [this] { return (!submitted_cmds.empty() || stop); });
 
       while (!submitted_cmds.empty()) {
         uint64_t slot_addr = 0;

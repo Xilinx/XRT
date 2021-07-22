@@ -64,30 +64,6 @@ std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
     return xclbin_buffer;
 }
 
-static int32_t kernel_max_channel_id(const ip_data* ip, std::string kernel_channels)
-{
-  if (kernel_channels.empty())
-    return -1;
-
-  std::string knm = std::string(reinterpret_cast<const char*>(ip->m_name));
-  knm = knm.substr(0,knm.find(":"));
-
-  auto pos1 = kernel_channels.find("{"+knm+":");
-  if (pos1 == std::string::npos)
-    return -1;
-
-  auto pos2 = kernel_channels.find("}",pos1);
-  if (pos2 == std::string::npos || pos2 < pos1+knm.size()+2)
-    return -2;
-
-  auto ctxid_str = kernel_channels.substr(pos1+knm.size()+2,pos2);
-  auto ctxid = std::stoi(ctxid_str);
-  if (ctxid < 0 || ctxid > 31)
-    return -3;
-  
-  return ctxid;
-}
-
 static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
 {
     const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
@@ -163,32 +139,7 @@ static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
                 //throw std::runtime_error("kernel regmap exceed's max size");
             }
             xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.arg_start, temp_ip_layout.regmap_size);
-            auto cu_data = xrt_core::xclbin::get_cus(ipl, temp_ip_layout.kernel_name);
-            if (cu_data.size() > 0) {
-                if (((cu_data[0]->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT) == AP_CTRL_CHAIN) {
-                    int32_t max_channel_id = kernel_max_channel_id(cu_data[0], kernel_channels_info);
-                    if (max_channel_id >= 0) {
-                        xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. channel_id will be handled by XMA. host app and plugins should not use reserved channle_id registers. Max channel_id is: %d ", temp_ip_layout.kernel_name.c_str(), max_channel_id);
-                        temp_ip_layout.kernel_channels = true;
-                        temp_ip_layout.max_channel_id = (uint32_t)max_channel_id;
-                    } else {
-                        if (max_channel_id == -1) {
-                            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel. Use kernel_channels xrt.ini setting to enable handling of channel_id by XMA. Treatng it as legacy dataflow kernel and channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
-                        } else if (max_channel_id == -2) {
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting has incorrect format. setting found is: %s ", temp_ip_layout.kernel_name.c_str(), kernel_channels_info.c_str());
-                            throw std::runtime_error("Incorrect dataflow kernel ini setting");
-                        } else if (max_channel_id == -3) {
-                            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel \"%s\" is a dataflow kernel.  xrt.ini kernel_channels setting only supports channel_ids from 0 to 31. setting found is: %s ", temp_ip_layout.kernel_name.c_str(), kernel_channels_info.c_str());
-                            throw std::runtime_error("Incorrect dataflow kernel ini setting");
-                        }
-                    }
-                } else {
-                    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is a legacy kernel. Channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
-                }
-            } else {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No CU for kernel %s in xclbin", temp_ip_layout.kernel_name.c_str());
-                throw std::runtime_error("Unexpected error. CU not found in xclbin");
-            }
+            xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is treated as a regular kernel. Channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
             temp_ip_layout.soft_kernel = false;
             
             xma_ip_layout.emplace_back(std::move(temp_ip_layout));

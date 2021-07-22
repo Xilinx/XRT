@@ -31,6 +31,10 @@ static int versal_xclbin_pre_download(xdev_handle_t xdev, void *args)
 	uint64_t size;
 	int ret = 0;
 
+	/* PARTITION_METADATA is not present for FLAT shells */
+	if (xclbin->m_header.m_mode == XCLBIN_FLAT)
+		return 0;
+
 	ret = xrt_xclbin_get_section(xclbin, PARTITION_METADATA, &metadata, &size);
 	if (ret)
 		return ret;

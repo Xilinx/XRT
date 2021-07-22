@@ -1121,8 +1121,12 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
 	 * condition.
 	 */
+
+	/* XOCL_DSAFLAG_CUSTOM_DTB is used for non-VSEC platforms which still wanted to
+	 * use partition metadata to discover resources
+	 */
 	if ((dev_info->flags & (XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)) &&
-	    xocl_subdev_is_vsec(lro))
+	    (xocl_subdev_is_vsec(lro) || dev_info->flags & XOCL_DSAFLAG_CUSTOM_DTB))
 		ret = -ENODEV;
 
 	if (!ret) {

@@ -141,9 +141,13 @@ public:
   /**
    * device() - Constructor for empty device
    */
-  device()
-  {}
+  device() = default;
 
+  /**
+   * device() - Dtor
+   */
+  ~device() = default;
+  
   /**
    * device() - Constructor from device index
    *
@@ -217,6 +221,12 @@ public:
    * device() - Copy ctor
    */
   device(const device& rhs) = default;
+
+  /**
+   * operator= () - Move assignment
+   */
+  device&
+  operator=(const device& rhs) = default;
 
   /**
    * device() - Move ctor
@@ -425,7 +435,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl);
  */
 XCL_DRIVER_DLLESPEC
 int
-xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* xclbin);
+xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const struct axlf* xclbin);
 
 /**
  * xrtDeviceLoadXclbinFile() - Read and load an xclbin file

@@ -1405,6 +1405,10 @@ int shim::xclLoadAxlf(const axlf *buffer)
         krnl->anums = kernel.args.size();
         krnl->range = kernel.range;
 
+        krnl->features = 0;
+        if (kernel.sw_reset)
+            krnl->features |= KRNL_SW_RESET;
+
         int ai = 0;
         for (auto& arg : kernel.args) {
             if (arg.name.size() > sizeof(krnl->args[ai].name)) {

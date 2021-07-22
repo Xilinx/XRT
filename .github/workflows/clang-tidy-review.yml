@@ -54,10 +54,10 @@ jobs:
         
     - name: Run the clang-tidy review on pull request
       if: github.event_name == 'pull_request'
-      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.pull_request.number }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=0 --exclude='*aie*,*/drm/*,*/driver/*,*/drv/*'
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.pull_request.number }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=25 --exclude='*aie*,*/drm/*,*/driver/*,*/drv/*'
 
     - name: Run the clang-tidy review on dispatch
       if: github.event_name == 'workflow_dispatch'
-      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=${{ github.event.inputs.max_comments }}
+      run: .github/scripts/clang-tidy-review.py --root . --build_dir=./build/Review --repo=${{ github.repository }} --token=${{ github.token }} --pr=${{ github.event.inputs.pr }} --clang_tidy_checks='' --clang_tidy_binary=clang-tidy-10 --max_comments=${{ github.event.inputs.max_comments }} --exclude=${{ github.event.inputs.exclude }}
 
 
