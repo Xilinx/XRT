@@ -486,7 +486,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
  * ERT_START_KEY_VAL.
  * The only difference is that ERT_EXEC_WRITE skip 6 words in the payload.
  */
-static int convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
+static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
 {
 	/* end index of payload = count - (1 + 6) */
 	int end = ecmd->count - 7;
