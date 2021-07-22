@@ -29,7 +29,6 @@
 #include "core/common/sensor.h"
 #include "core/common/info_memory.h"
 #include "core/common/info_platform.h"
-#include "core/common/info_host.h"
 #include "core/common/query_requests.h"
 
 #include "xclbin_int.h" // Non public xclbin APIs
@@ -291,14 +290,16 @@ get_info(info::device param) const
     return query::json_str(xrt_core::sensor::read_electrical(handle.get()));
   case info::device::thermal :               // std::string
     return query::json_str(xrt_core::sensor::read_thermals(handle.get()));
-  case info::device::mechanical :                   // std::string
+  case info::device::mechanical :            // std::string
     return query::json_str(xrt_core::sensor::read_mechanical(handle.get()));
-  case info::device::memory :                   // std::string
+  case info::device::memory :                // std::string
     return query::json_str(xrt_core::memory::memory_topology(handle.get()));
-  case info::device::platform :                   // std::string
+  case info::device::platform :              // std::string
     return query::json_str(xrt_core::platform::platform_info(handle.get()));
-    case info::device::pcie_info :                   // std::string
+  case info::device::pcie_info :              // std::string
     return query::json_str(xrt_core::platform::pcie_info(handle.get()));
+  case info::device::dynamic_regions :         // std::string
+    return query::json_str(xrt_core::memory::xclbin_info(handle.get()));
   case info::device::host :                   // std::string
     boost::property_tree::ptree pt;
     xrt_core::get_xrt_build_info(pt);

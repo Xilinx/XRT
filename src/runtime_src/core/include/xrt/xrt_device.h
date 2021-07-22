@@ -79,11 +79,12 @@ namespace info {
  *  Memory information present on the device (std::string)
  * @var platform
  *  Platforms flashed on the device (std::string)
- * @var pcie-info
+ * @var pcie_info
  *  Pcie information of the device (std::string)
  * @var host
  *  Host information (std::string)
- * 
+ * @var dynamic_regions
+ *  Information about xclbin on the device (std::string)
  */
 enum class device : unsigned int {
   bdf,
@@ -100,7 +101,8 @@ enum class device : unsigned int {
   memory, 
   platform,
   pcie_info,
-  host
+  host, 
+  dynamic_regions
 };
 
 /// @cond 
@@ -122,6 +124,7 @@ XRT_INFO_PARAM_TRAITS(device::memory, std::string);
 XRT_INFO_PARAM_TRAITS(device::platform, std::string);
 XRT_INFO_PARAM_TRAITS(device::pcie_info, std::string);
 XRT_INFO_PARAM_TRAITS(device::host, std::string);
+XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
 /// @endcond 
 
 } // info

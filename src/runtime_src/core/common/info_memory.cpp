@@ -245,4 +245,16 @@ memory_topology(const xrt_core::device * device)
   return pt;
 }
 
+boost::property_tree::ptree
+xclbin_info(const xrt_core::device * device) {
+  boost::property_tree::ptree ptree;
+  try {
+    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
+    boost::algorithm::to_upper(uuid);
+    ptree.put("xclbin_uuid", uuid);
+  } catch (...) {  }
+
+  return ptree;
+}
+
 }} // memory, xrt

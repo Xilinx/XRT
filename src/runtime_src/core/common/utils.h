@@ -118,6 +118,15 @@ XRT_CORE_COMMON_EXPORT
 std::string 
 parse_clock_id(const std::string& id);
 
+/**
+ * string_to_UUID(): convert a string to hyphen formatted UUID
+ * 
+ * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+string_to_UUID(std::string str);
+
 }} // utils, xrt_core
 
 #endif

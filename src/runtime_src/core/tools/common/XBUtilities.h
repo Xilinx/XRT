@@ -131,13 +131,6 @@ namespace XBUtilities {
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
   /**
-   * string_to_UUID(): convert a string to hyphen formatted UUID
-   * 
-   * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
-   */
-  std::string string_to_UUID(std::string str);
-
-  /**
    * OEM ID is a unique number called as the 
    * Private Enterprise Number (PEN) maintained by IANA
    * 

@@ -27,6 +27,9 @@ XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 memory_topology(const xrt_core::device * device);
 
+boost::property_tree::ptree
+xclbin_info(const xrt_core::device * device);
+
 }} // memory, xrt
 
 #endif

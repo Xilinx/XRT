@@ -102,6 +102,17 @@ platform_info(const xrt_core::device * device) {
   
   boost::property_tree::ptree static_region;
   static_region.add("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
+
+  std::vector<std::string> interface_uuids;
+  // the vectors are being populated by empty strings which need to be removed
+  try {
+    interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
+    interface_uuids.erase(
+      std::remove_if(interface_uuids.begin(), interface_uuids.end(),	
+                  [](const std::string& s) { return s.empty(); }), interface_uuids.end());
+  } catch (const xrt_core::query::no_such_key&) {}
+  static_region.add("interface_uuid", xrt_core::utils::string_to_UUID(interface_uuids[0]));
+
   try {
     static_region.add("jtag_idcode", xrt_core::query::idcode::to_string(xrt_core::device_query<xrt_core::query::idcode>(device)));
   }
