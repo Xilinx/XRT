@@ -1555,7 +1555,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		info.addr = ip->m_base_address;
 		/* Workaround for U30, maybe we can remove this in the future */
 		info.size = (krnl_info) ? krnl_info->range : 0x1000;
-		if (krnl_info->features & KRNL_SW_RESET)
+		if (krnl_info && (krnl_info->features & KRNL_SW_RESET))
 			info.sw_reset = true;
 		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
