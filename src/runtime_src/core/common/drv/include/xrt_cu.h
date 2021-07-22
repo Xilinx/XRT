@@ -21,6 +21,7 @@
 #include <linux/io.h>
 #include <linux/kthread.h>
 #include "kds_command.h"
+#include "kds_stat.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define ioremap_nocache         ioremap
@@ -267,6 +268,8 @@ struct xrt_cu {
 	struct timer_list	  timer;
 	atomic_t		  tick;
 
+	struct per_custat __percpu *cu_stat;
+
 	/**
 	 * @funcs:
 	 *
@@ -407,6 +410,7 @@ void xrt_cu_fini(struct xrt_cu *xcu);
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
+ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
 #define to_cu_hls(core) ((struct xrt_cu_hls *)(core))
