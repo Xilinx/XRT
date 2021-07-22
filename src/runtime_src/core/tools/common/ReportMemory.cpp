@@ -109,6 +109,23 @@ void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree
   pt.add_child(std::string("board.direct_memory_accesses.metrics"), pt_dma_array);
 }
 
+static void
+schedulerUpdateStat(xrt_core::device *device)
+{
+  try {
+    // lock xclbin
+    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
+    xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+
+    device->update_scheduler_status();
+  }
+  catch (const std::exception&) {
+    // xclbin_lock failed, safe to ignore
+  }
+}
+
 boost::property_tree::ptree
 populate_memtopology(const xrt_core::device * device, const std::string& desc)
 {
@@ -118,6 +135,8 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   uint64_t memoryUsage, boCount;
   pt.put("description", desc);
   getChannelinfo(device, pt);
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+
   try {
     buf = xrt_core::device_query<qr::mem_topology_raw>(device);
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
