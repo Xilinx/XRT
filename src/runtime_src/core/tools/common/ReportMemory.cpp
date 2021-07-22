@@ -228,11 +228,11 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
    
   // Populate softkernel mem stats 
   boost::property_tree::ptree ptSkMem;
-  std::stringstream ss(mm_buf[map->m_count + 1]);
-  if (!ss.str().empty()) {
+  std::stringstream ss_mem(mm_buf[map->m_count + 1]);
+  if (!ss_mem.str().empty()) {
     uint64_t hboCnt, mapboCnt, unmapboCnt, freeboCnt;
   
-    ss >> hboCnt >> mapboCnt >> unmapboCnt >> freeboCnt;
+    ss_mem >> hboCnt >> mapboCnt >> unmapboCnt >> freeboCnt;
     ptSkMem.put("sk_hbo", hboCnt);
     ptSkMem.put("sk_mapbo", mapboCnt);
     ptSkMem.put("sk_unmapbo", unmapboCnt);
