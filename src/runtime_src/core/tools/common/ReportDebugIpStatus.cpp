@@ -1383,9 +1383,30 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
     nameSysfsPath.resize(512);
     xclGetSysfsPath(handle, monName.c_str(), "name", nameSysfsPath.data(), 512);
     std::string namePath(nameSysfsPath.data());
-std::cout << " In accel_deadlock_detector :: monName " << monName << " namePath " << namePath << std::endl;
 
-    std::cout << "INFO : name path " << namePath << std::endl;
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    if(!ifs.eof()) {
+      accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
+    } else {
+      std::cout << "ERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
+      ifs.close();
+      return;
+    }
+    ifs.close();
+
     return;
   }
 #endif
@@ -1393,14 +1414,44 @@ std::cout << " In accel_deadlock_detector :: monName " << monName << " namePath 
 
 void 
 DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
-{ 
-    return;
+{
+//DeadlockStatus 
+//  if(0 == aimResults.NumSlots) {
+//    return;
+//  }
+
+  std::string statusStr;
+  if(0 == accelDeadlockResults.DeadlockStatus) {
+    statusStr = "No";
+  }
+  _output << "\nAccelerator Deadlock Detector IP status : " << statusStr << " deadlock detected.\n" << std::endl;
+  return;
 }
 
 void 
 DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
 {
-    return;
+//  if(0 == aimResults.NumSlots) {
+//    return;
+//  }
+
+  boost::property_tree::ptree accel_deadlock_pt;
+
+//  for(size_t i = 0; i < accelDeadlockResults.NumSlots; ++i) {
+    boost::property_tree::ptree entry;
+    std::string statusStr;
+    if(0 == accelDeadlockResults.DeadlockStatus) {
+      statusStr = "no_";
+    }
+    statusStr += "deadlock_detected";
+
+    entry.put("status", statusStr);
+
+    accel_deadlock_pt.push_back(std::make_pair("", entry));
+//  }
+
+  _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
+  return;
 }
 
 
