@@ -128,8 +128,6 @@ namespace XBUtilities {
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
 
-  int check_p2p_config(const xrt_core::device* _dev, std::string &err);
-
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
   /**

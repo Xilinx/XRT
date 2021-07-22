@@ -83,7 +83,6 @@ int run(int argc, char** argv)
   std::cout << "device m2m:            " << std::boolalpha << device.get_info<xrt::info::device::m2m>() << std::dec << "\n";
   std::cout << "device nodma:          " << std::boolalpha << device.get_info<xrt::info::device::nodma>() << std::dec << "\n";
   std::cout << "device interface uuid: " << device.get_info<xrt::info::device::interface_uuid>().to_string() << "\n";
-  std::cout << "fans: \n"                << device.get_info<xrt::info::device::fans>() << "\n";
 
   return 0;
 }

@@ -14,6 +14,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "debug.cpp"
   "device.cpp"
   "error.cpp"
+  "info_*.cpp"
   "message.cpp"
   "module_loader.cpp"
   "sensor.cpp"

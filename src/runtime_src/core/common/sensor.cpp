@@ -132,7 +132,7 @@ namespace xrt_core {
 namespace sensor {
 
 boost::property_tree::ptree
-read_power_rails(const xrt_core::device * device)
+read_electrical(const xrt_core::device * device)
 {
   boost::property_tree::ptree root;
   boost::property_tree::ptree sensor_array;
@@ -191,6 +191,18 @@ read_power_rails(const xrt_core::device * device)
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<xrt_core::query::v0v9_int_vcc_vcu_millivolts, xrt_core::query::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")));
   root.add_child("power_rails", sensor_array);
+
+  std::string power_watts;
+  try {
+    auto power_level = xrt_core::device_query<xrt_core::query::max_power_level>(device);
+    power_watts = lvl_to_power_watts(power_level);
+  }
+  catch (...) {
+    power_watts = "N/A";
+  }
+  root.put("power_consumption_max_watts", power_watts);
+  root.put("power_consumption_watts", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xrt_core::query::power_microwatts>(device)));
+  root.put("power_consumption_warning", xrt_core::query::power_warning::to_string(xrt_core::device_query<xrt_core::query::power_warning>(device)));
   return root;
 }
 
@@ -221,28 +233,7 @@ read_thermals(const xrt_core::device * device)
 }
 
 boost::property_tree::ptree
-read_power_consumption(const xrt_core::device * device)
-{
-  boost::property_tree::ptree root;
-  boost::property_tree::ptree power_array;
-  std::string power_watts;
-  try {
-    auto power_level = xrt_core::device_query<xrt_core::query::max_power_level>(device);
-    power_watts = lvl_to_power_watts(power_level);
-  }
-  catch (...) {
-    power_watts = "N/A";
-  }
-  power_array.put("power_consumption_max_watts", power_watts);
-  power_array.put("power_consumption_watts", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xrt_core::query::power_microwatts>(device)));
-  power_array.put("power_consumption_warning", xrt_core::query::power_warning::to_string(xrt_core::device_query<xrt_core::query::power_warning>(device)));
-  
-  root.add_child("power_consumption", power_array);
-  return root;
-}
-
-boost::property_tree::ptree
-read_fans(const xrt_core::device * device)
+read_mechanical(const xrt_core::device * device)
 {
   boost::property_tree::ptree root;
   boost::property_tree::ptree fan_array;

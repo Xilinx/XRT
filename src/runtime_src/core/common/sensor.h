@@ -33,7 +33,7 @@ namespace sensor {
 
 XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
-read_power_rails(const xrt_core::device * device);
+read_electrical(const xrt_core::device * device);
 
 XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
@@ -45,7 +45,7 @@ read_power_consumption(const xrt_core::device * device);
 
 XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
-read_fans(const xrt_core::device * device);
+read_mechanical(const xrt_core::device * device);
 
 }} // sensor, xrt_core
 

@@ -17,246 +17,35 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMemory.h"
-#include <boost/lexical_cast.hpp>
-#include <boost/algorithm/string.hpp>
-#include "core/common/query_requests.h"
-#include "core/common/device.h"
 #include "core/common/utils.h"
-namespace qr = xrt_core::query;
 
-#define XCL_NO_SENSOR_DEV_LL    ~(0ULL)
-#define XCL_NO_SENSOR_DEV       ~(0U)
-#define XCL_NO_SENSOR_DEV_S     0xffff
-#define XCL_INVALID_SENSOR_VAL 0
+// 3rd Party Library - Include Files
+#include <boost/lexical_cast.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
-static const std::map<MEM_TYPE, std::string> memtype_map = {
-    {MEM_DDR3, "MEM_DDR3"},
-    {MEM_DDR4, "MEM_DDR4"},
-    {MEM_DRAM, "MEM_DRAM"},
-    {MEM_STREAMING, "MEM_STREAMING"},
-    {MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB"},
-    {MEM_ARE, "MEM_ARE"},
-    {MEM_HBM, "MEM_HBM"},
-    {MEM_BRAM, "MEM_BRAM"},
-    {MEM_URAM, "MEM_URAM"},
-    {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
-};
+// ------ S T A T I C   V A R I A B L E S -------------------------------------
+constexpr uint32_t no_sensor_dev        = 0xffffffff;
+constexpr int      invalid_sensor_value = 0;
 
+// ------ S T A T I C   F U N C T I O N S -------------------------------------
+namespace {
 template <typename T>
-inline std::string pretty( const T &val, const std::string &default_val = "N/A", bool isHex = false )
+inline std::string pretty(const T &val, const std::string &default_val = "N/A", bool isHex = false)
 {   
-    if (typeid(val).name() != typeid(std::string).name()) {
-        if (val >= std::numeric_limits<T>::max() || val == 0) {
-            return default_val;
-        }
+  if (typeid(val).name() != typeid(std::string).name()){
+    if (val >= std::numeric_limits<T>::max() || val == 0)
+      return default_val;
 
-        if (isHex) {
-            std::stringstream ss;
-            ss << "0x" << std::hex << val;
-            return ss.str();
-        }
-    }
-    return boost::lexical_cast<std::string>(val);
-}
-
-static int eccStatus2Str(uint64_t status, std::string& str) 
-{    
-  const int ce_mask = (0x1 << 1);
-  const int ue_mask = (0x1 << 0);
-
-  str.clear();
-
-  // If unknown status bits, can't support.
-  if (status & ~(ce_mask | ue_mask)) {
-    //Bad ECC status detected!
-    return -EINVAL;
-  }    
-
-  if (status == 0) { 
-    str = "(None)";
-    return -EINVAL;
-  }    
-
-  if (status & ue_mask)
-    str += "UE ";
-  if (status & ce_mask)
-    str += "CE ";
-  // Remove the trailing space.
-  str.pop_back();
-  return 0;
-}
-
-void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree& pt) {
-  std::vector<std::string> dma_threads;
-  boost::property_tree::ptree pt_dma_array;
-  try {
-    dma_threads = xrt_core::device_query<qr::dma_threads_raw>(device);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-  }
-  uint64_t h2c[8];
-  uint64_t c2h[8];
-  for (unsigned i = 0; i < dma_threads.size(); i++) {
-    boost::property_tree::ptree pt_dma;
-    std::stringstream ss(dma_threads[i]);
-    ss >> c2h[i] >> h2c[i];
-    pt_dma.put("channel_id", i);
-    pt_dma.put("host_to_card_bytes", boost::format("0x%x") % h2c[i]);
-    pt_dma.put("card_to_host_bytes", boost::format("0x%x") % c2h[i]);
-    pt_dma_array.push_back(std::make_pair("",pt_dma));
-  }
-  pt.put(std::string("board.direct_memory_accesses.type"), "pcie xdma");
-  pt.add_child(std::string("board.direct_memory_accesses.metrics"), pt_dma_array);
-}
-
-boost::property_tree::ptree
-populate_memtopology(const xrt_core::device * device, const std::string& desc)
-{
-  boost::property_tree::ptree pt;
-  std::vector<std::string> mm_buf, stream_stat;
-  std::vector<char> buf, temp_buf, gbuf;
-  uint64_t memoryUsage, boCount;
-  pt.put("description", desc);
-  getChannelinfo(device, pt);
-  try {
-    buf = xrt_core::device_query<qr::mem_topology_raw>(device);
-    mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
-    temp_buf = xrt_core::device_query<qr::temp_by_mem_topology>(device);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-  }
-  
-  if(buf.empty() || mm_buf.empty())
-    return pt;
-
-  const mem_topology *map = (mem_topology *)buf.data();
-  const uint32_t *temp = (uint32_t *)temp_buf.data();
-
-  try {
-    boost::any a = std::string("1");
-    xrt_core::device_update<qr::mig_cache_update>(device,a);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-  }
-  
-  boost::property_tree::ptree ptMem_array;
-  boost::property_tree::ptree ptStream_array;
-  boost::property_tree::ptree ptGrp_array;
-  for (int i = 0; i < map->m_count; i++) {
-    if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
-      std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
-      boost::property_tree::ptree ptStream;
-      std::map<std::string, std::string> stat_map;
-      lname = std::string((char *)map->m_mem_data[i].m_tag);
-      ptStream.put("tag", map->m_mem_data[i].m_tag);
-      if (lname.back() == 'w')
-        lname = "route" + std::to_string(map->m_mem_data[i].route_id) + "/stat";
-      else if (lname.back() == 'r')
-        lname = "flow" + std::to_string(map->m_mem_data[i].flow_id) + "/stat";
-      else
-        status = "N/A";
-      try {
-        stream_stat = xrt_core::device_query<qr::dma_stream>(device, qr::request::modifier::entry, lname);
-        status = "Active";
-        for (unsigned k = 0; k < stream_stat.size(); k++) {
-          std::vector<std::string> strs;
-          boost::split(strs, stream_stat[k],boost::is_any_of(":"));
-          if (strs.size() > 1)
-            stat_map[strs[0]] = strs[1];
-        }
-
-        total = stat_map[std::string("complete_bytes")] + "/" + stat_map[std::string("complete_requests")];
-        pending = stat_map[std::string("pending_bytes")] + "/" + stat_map[std::string("pending_requests")];
-        ptStream.put("usage.status", status);
-        ptStream.put("usage.total", total);
-        ptStream.put("usage.pending", pending);
-      } catch (const std::exception& ){
-        // eat the exception, probably bad path
-      }
-  
-      ptStream_array.push_back(std::make_pair("",ptStream));
-      continue;
-    }
-
-    boost::property_tree::ptree ptMem;
-
-    std::string str = "**UNUSED**";
-    auto search = memtype_map.find((MEM_TYPE)map->m_mem_data[i].m_type );
-    str = search->second;
-    if (map->m_mem_data[i].m_used != 0) {
-      uint64_t ecc_st = 0xffffffffffffffff;
-      std::string ecc_st_str;
-      std::string tag(reinterpret_cast<const char *>(map->m_mem_data[i].m_tag));
-      try {
-        ecc_st = xrt_core::device_query<qr::mig_ecc_status>(device, qr::request::modifier::subdev, tag);
-      } catch (const std::exception& ex){
-        pt.put("error_msg", ex.what());
-      }
-      if (eccStatus2Str(ecc_st, ecc_st_str) == 0) {
-        uint64_t ce_cnt = 0;
-        ce_cnt = xrt_core::device_query<qr::mig_ecc_ce_cnt>(device, qr::request::modifier::subdev, tag);
-        uint64_t ue_cnt = 0;
-        ue_cnt = xrt_core::device_query<qr::mig_ecc_ue_cnt>(device, qr::request::modifier::subdev, tag);
-        uint64_t ce_ffa = 0;
-        ce_ffa = xrt_core::device_query<qr::mig_ecc_ce_ffa>(device, qr::request::modifier::subdev, tag);
-        uint64_t ue_ffa = 0;
-        ue_ffa = xrt_core::device_query<qr::mig_ecc_ue_ffa>(device, qr::request::modifier::subdev, tag);
-
-        ptMem.put("extended_info.ecc.status", ecc_st_str);
-        ptMem.put("extended_info.ecc.error.correctable.count", ce_cnt);
-        ptMem.put("extended_info.ecc.error.correctable.first_failure_address", boost::format("0x%x") % ce_ffa);
-        ptMem.put("extended_info.ecc.error.uncorrectable.count", ue_cnt);
-        ptMem.put("extended_info.ecc.error.uncorrectable.first_failure_address", boost::format("0x%x") % ue_ffa);
-      }
-    }
-    std::stringstream ss(mm_buf[i]);
-    ss >> memoryUsage >> boCount;
-
-    ptMem.put("type", str);
-    ptMem.put("tag", map->m_mem_data[i].m_tag);
-    ptMem.put("enabled", map->m_mem_data[i].m_used ? true : false);
-    ptMem.put("base_address", boost::format("0x%x") % map->m_mem_data[i].m_base_address);
-    ptMem.put("range_bytes", boost::format("0x%x") % (map->m_mem_data[i].m_size << 10));
-    if (!temp_buf.empty() && temp[i] != XCL_INVALID_SENSOR_VAL)
-      ptMem.put("extended_info.temperature_C", temp[i]);
-    ptMem.put("extended_info.usage.allocated_bytes", memoryUsage);
-    ptMem.put("extended_info.usage.buffer_objects_count", boCount);
-    ptMem_array.push_back(std::make_pair("",ptMem));
-  }
-  pt.add_child(std::string("board.memory.data_streams"), ptStream_array);
-  pt.add_child(std::string("board.memory.memories"), ptMem_array );
-
-  try {
-    mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
-    gbuf = xrt_core::device_query<qr::group_topology>(device);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-  }
-
-  if (gbuf.empty() || mm_buf.empty())
-    return pt;
-
-  const mem_topology *grp_map = (mem_topology *)gbuf.data();
-
-  for (int i = 0; i < grp_map->m_count; i++) {
-    if (grp_map->m_mem_data[i].m_used != 0) {
-      boost::property_tree::ptree ptGrp;
-      auto search = memtype_map.find((MEM_TYPE)grp_map->m_mem_data[i].m_type );
-      std::string str = search->second;
-      std::stringstream ss(mm_buf[i]);
-      ss >> memoryUsage >> boCount;
-      ptGrp.put("type", str);
-      ptGrp.put("tag", grp_map->m_mem_data[i].m_tag);
-      ptGrp.put("base_address", boost::format("0x%x") % map->m_mem_data[i].m_base_address);
-      ptGrp.put("range_bytes", boost::format("0x%x") % (grp_map->m_mem_data[i].m_size << 10));
-      ptGrp.put("extended_info.usage.allocated_bytes", memoryUsage);
-      ptGrp.put("extended_info.usage.buffer_objects_count", boCount);
-      ptGrp_array.push_back(std::make_pair("",ptGrp));
+    if (isHex){
+      std::stringstream ss;
+      ss << "0x" << std::hex << val;
+      return ss.str();
     }
   }
-  pt.add_child(std::string("board.memory.memory_groups"), ptGrp_array);
-  return pt;
+  return boost::lexical_cast<std::string>(val);
 }
+
+} //unnamed namespace
 
 void
 ReportMemory::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
@@ -271,7 +60,14 @@ void
 ReportMemory::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  _pt.add_child("mem_topology", populate_memtopology(_pDevice, "Memory Information"));
+  xrt::device device(_pDevice->get_device_id());
+  boost::property_tree::ptree pt_memory;
+  std::stringstream ss;
+  ss << device.get_info<xrt::info::device::memory>();
+  boost::property_tree::read_json(ss, pt_memory);
+
+  // There can only be 1 root node
+  _pt.add_child("mem_topology", pt_memory);
 }
 
 void 
@@ -281,9 +77,6 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
                            std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
-
-  _output << boost::format("%s\n") % _pt.get<std::string>("mem_topology.description");
-
 
   try {
     int index = 0;
@@ -337,8 +130,8 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
           } else if (subv.first == "tag") {
             tag = subv.second.get_value<std::string>();
           } else if (subv.first == "extended_info") {
-            unsigned int t = subv.second.get<unsigned int>("temperature_C",XCL_INVALID_SENSOR_VAL);
-            temp = pretty<unsigned int>(t == XCL_INVALID_SENSOR_VAL ? XCL_NO_SENSOR_DEV : t, "N/A");
+            unsigned int t = subv.second.get<unsigned int>("temperature_C", invalid_sensor_value);
+            temp = pretty<unsigned int>(t == invalid_sensor_value ? no_sensor_dev : t, "N/A");
           } else if (subv.first == "range_bytes") {
             size = xrt_core::utils::unit_convert(std::stoll(subv.second.get_value<std::string>(), 0, 16));
           } else if (subv.first == "base_address") {

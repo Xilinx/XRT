@@ -42,6 +42,8 @@ precision(double value, int p)
   return stream.str();
 }
 
+
+
 }
 
 namespace xrt_core { namespace utils {
@@ -215,6 +217,89 @@ issue_id()
 {
   static std::atomic<uint64_t> id {0} ;
   return id++;
+}
+
+int
+parse_p2p_config(const std::vector<std::string> config, std::string &msg)
+{
+  int64_t bar = -1;
+  int64_t rbar = -1;
+  int64_t remap = -1;
+  int64_t exp_bar = -1;
+
+  //parse the query
+  for(const auto& val : config) {
+    auto pos = val.find(':') + 1;
+    if(val.find("rbar") == 0)
+      rbar = std::stoll(val.substr(pos));
+    else if(val.find("exp_bar") == 0)
+      exp_bar = std::stoll(val.substr(pos));
+    else if(val.find("bar") == 0)
+      bar = std::stoll(val.substr(pos));
+    else if(val.find("remap") == 0)
+      remap = std::stoll(val.substr(pos));
+  }
+
+  //return the config with a message
+  if (bar == -1) {
+    msg = "P2P config failed. P2P is not supported. Can't find P2P BAR.";
+    return static_cast<int>(p2p_config::not_supported);
+  }
+  else if (rbar != -1 && rbar > bar) {
+    msg = "Warning:Please WARM reboot to enable p2p now.";
+    return static_cast<int>(p2p_config::reboot);
+  }
+  else if (remap > 0 && remap != bar) {
+    msg = "Error:P2P config failed. P2P remapper is not set correctly";
+    return static_cast<int>(p2p_config::error);
+  }
+  else if (bar == exp_bar) {
+    return static_cast<int>(p2p_config::enabled);
+  }
+  msg = "P2P bar is not enabled";
+  return static_cast<int>(p2p_config::disabled);
+}
+
+static const std::map<int, std::string> oemid_map = {
+  {0x10da, "Xilinx"},
+  {0x02a2, "Dell"},
+  {0x12a1, "IBM"},
+  {0xb85c, "HP"},
+  {0x2a7c, "Super Micro"},
+  {0x4a66, "Lenovo"},
+  {0xbd80, "Inspur"},
+  {0x12eb, "Amazon"},
+  {0x2b79, "Google"}
+};
+
+std::string 
+parse_oem_id(const std::string& oemid)
+{
+  unsigned int oem_id_val = 0;
+  std::stringstream ss;
+
+  try {
+    ss << std::hex << oemid;
+    ss >> oem_id_val;
+  } catch (const std::exception&) {
+    //failed to parse oemid to hex value, ignore erros and print original value
+  }
+
+  auto oemstr = oemid_map.find(oem_id_val);
+  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
+}
+
+static const std::map<std::string, std::string> clock_map = {
+  {"DATA_CLK", "Data"},
+  {"KERNEL_CLK", "Kernel"},
+  {"SYSTEM_CLK", "System"},
+};
+
+std::string 
+parse_clock_id(const std::string& id)
+{
+  auto clock_str = clock_map.find(id);
+  return clock_str != clock_map.end() ? clock_str->second : "N/A";
 }
 
 }} // utils, xrt_core

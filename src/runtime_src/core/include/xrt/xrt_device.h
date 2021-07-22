@@ -69,14 +69,21 @@ namespace info {
  *  True if device is a NoDMA device (bool)
  * @var offline
  *  True if device is offline and in process of being reset (bool)
- * @var power_rails
- *  Power rail sensors of device in json format (std::string)
- * @var thermals
- *  Thermal sensors of device in json format (std::string)
- * @power_consumption
- *  Power sensors of a device in json format (std::string)
- * @fans
- *  Fans of a device in json format (std::string)
+ * @var electrical
+ *  Electrical and power sensors present on the device (std::string)
+ * @var thermal
+ *  Thermal sensors present on the device (std::string)
+ * @var mechanical
+ *  Mechanical sensors on and surrounding the device (std::string)
+ * @var memory
+ *  Memory information present on the device (std::string)
+ * @var platform
+ *  Platforms flashed on the device (std::string)
+ * @var pcie-info
+ *  Pcie information of the device (std::string)
+ * @var host
+ *  Host information (std::string)
+ * 
  */
 enum class device : unsigned int {
   bdf,
@@ -87,10 +94,13 @@ enum class device : unsigned int {
   name,
   nodma,
   offline,
-  power_rails,
-  thermals,
-  power_consumption,
-  fans
+  electrical,
+  thermal,
+  mechanical, 
+  memory, 
+  platform,
+  pcie_info,
+  host
 };
 
 /// @cond 
@@ -105,10 +115,13 @@ XRT_INFO_PARAM_TRAITS(device::m2m, bool);
 XRT_INFO_PARAM_TRAITS(device::name, std::string);
 XRT_INFO_PARAM_TRAITS(device::nodma, bool);
 XRT_INFO_PARAM_TRAITS(device::offline, bool);
-XRT_INFO_PARAM_TRAITS(device::power_rails, std::string);
-XRT_INFO_PARAM_TRAITS(device::thermals, std::string);
-XRT_INFO_PARAM_TRAITS(device::power_consumption, std::string);
-XRT_INFO_PARAM_TRAITS(device::fans, std::string);
+XRT_INFO_PARAM_TRAITS(device::electrical, std::string);
+XRT_INFO_PARAM_TRAITS(device::thermal, std::string);
+XRT_INFO_PARAM_TRAITS(device::mechanical, std::string);
+XRT_INFO_PARAM_TRAITS(device::memory, std::string);
+XRT_INFO_PARAM_TRAITS(device::platform, std::string);
+XRT_INFO_PARAM_TRAITS(device::pcie_info, std::string);
+XRT_INFO_PARAM_TRAITS(device::host, std::string);
 /// @endcond 
 
 } // info

@@ -24,6 +24,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
+#include <vector>
 
 /* HLS CU bit status */
 #define CU_AP_START	(0x1 << 0)
@@ -34,6 +35,14 @@
 #define CU_AP_RESET	(0x1 << 5)
 
 namespace xrt_core { namespace utils {
+
+enum class p2p_config {
+  disabled,
+  enabled,
+  error,
+  reboot,
+  not_supported
+};
 
 /**
  * ios_flags_restore() - scope guard for ios flags
@@ -96,6 +105,18 @@ bdf2index(const std::string& bdf, bool _inUserDomain);
 XRT_CORE_COMMON_EXPORT
 uint64_t
 issue_id();
+
+XRT_CORE_COMMON_EXPORT
+int
+parse_p2p_config(const std::vector<std::string> config, std::string &msg);
+
+XRT_CORE_COMMON_EXPORT
+std::string 
+parse_oem_id(const std::string& oemid);
+
+XRT_CORE_COMMON_EXPORT
+std::string 
+parse_clock_id(const std::string& id);
 
 }} // utils, xrt_core
 
