@@ -184,9 +184,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
 			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev, size);
 			if (!IS_ERR(cma_bo)) {
-				/* Get the memory in CMA memory region as no memory 
-				 * avilable for non-cachable region.
-				 */
+				/* Get the memory from CMA memory region */
 				mutex_unlock(&zdev->mm_lock);
 				kfree(bo->mm_node);
 				drm_gem_object_release(&bo->gem_base);
@@ -194,8 +192,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
 				return cma_bo;
 			}
-			DRM_WARN("Memory allocated from CMA region as"
-				       " non-chanhable memory exhausted\n");
+			DRM_WARN("Memory allocated from CMA region\n");
 		}
 		else {
 			err = drm_mm_insert_node_generic(mem->zm_mm,
@@ -391,7 +388,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 			if (zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_CMA)
 				args->flags |= ZOCL_BO_FLAGS_CMA;
 		} else {
-			DRM_WARN("Allocating BO from CMA as bank[%d] not available\n", 
+			DRM_WARN("Allocating BO from CMA for invalid or unused bank[%d]\n", 
 					bank);
 			args->flags |= ZOCL_BO_FLAGS_CMA;
 		}
@@ -1063,6 +1060,8 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo)
 
 
 		if (!check_for_reserved_memory(memp->zm_base_addr, memp->zm_size)) {
+			DRM_INFO("Memory %d is not reserved in device tree."
+					" Will allocate memory from CMA\n", i);
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
