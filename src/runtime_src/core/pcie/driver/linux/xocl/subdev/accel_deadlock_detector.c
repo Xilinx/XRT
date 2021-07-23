@@ -19,12 +19,12 @@
 #include "profile_ioctl.h"
 
 struct xocl_accel_deadlock_detector {
-    void __iomem		*base;
-    struct device		*dev;
-    uint64_t		start_paddr;
-    uint64_t		range;
-    struct mutex 		lock;
-    struct debug_ip_data	data;
+    void __iomem         *base;
+    struct device        *dev;
+    uint64_t             start_paddr;
+    uint64_t             range;
+    struct mutex         lock;
+    struct debug_ip_data data;
 };
 
 static ssize_t name_show(struct device *dev,
@@ -249,10 +249,10 @@ struct platform_device_id accel_deadlock_detector_id_table[] = {
     { },
 };
 
-static struct platform_driver	accel_deadlock_detector_driver = {
-    .probe		= accel_deadlock_detector_probe,
-    .remove		= accel_deadlock_detector_remove,
-    .driver		= {
+static struct platform_driver  accel_deadlock_detector_driver = {
+    .probe    = accel_deadlock_detector_probe,
+    .remove    = accel_deadlock_detector_remove,
+    .driver    = {
             .name = XOCL_DEVNAME(XOCL_ACCEL_DEADLOCK_DETECTOR),
         },
     .id_table = accel_deadlock_detector_id_table,
