@@ -1460,7 +1460,7 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 			subdev_info.data_len = sizeof(struct debug_ip_data);
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
-				ICAP_ERR(icap, "edited:: can't create ACCEL_DEADLOCK_DETECTOR subdev");
+				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
 				break;
 			}
 		}
