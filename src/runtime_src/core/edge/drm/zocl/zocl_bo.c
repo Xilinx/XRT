@@ -192,7 +192,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				cma_bo->flags |= ZOCL_BO_FLAGS_CMA;
 				return cma_bo;
 			}
-			DRM_WARN("Memory allocated from CMA region\n");
+			DRM_WARN("Memory allocated from CMA region"
+					" whereas requested for reserved memory region\n");
 		}
 		else {
 			err = drm_mm_insert_node_generic(mem->zm_mm,
