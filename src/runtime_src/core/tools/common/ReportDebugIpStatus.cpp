@@ -1398,6 +1398,10 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
     return;
   }
 #endif
+
+  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
+                  dbgIpInfo->m_base_address + 0x0,
+                  &(accelDeadlockResults.DeadlockStatus), sizeof(uint32_t));
 }
 
 void 
