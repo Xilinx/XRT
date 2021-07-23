@@ -1344,20 +1344,8 @@ DebugIpStatusCollector::printILAResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
 {
-  // index in results is debugIpNum
-  const uint64_t index = debugIpNum[ACCEL_DEADLOCK_DETECTOR];
-
-  (void)index;
-
-  // Get Debug Ip Name
-  std::string dbgIpName;
-  // Fill up string with 128 characters (padded with null characters)
-  dbgIpName.assign(dbgIpInfo->m_name, sizeof(dbgIpInfo->m_name));
-  // Strip away any extraneous null characters
-  dbgIpName.assign(dbgIpName.c_str());
-
   // increment debugIpNum
-  ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin ?
+  ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin 
   accelDeadlockResults.Num = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
 
 #ifndef _WIN32
