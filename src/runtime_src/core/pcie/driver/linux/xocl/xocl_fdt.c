@@ -1664,13 +1664,16 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	ret = xocl_fdt_parse_blob(xdev_hdl, output_blob, len, &subdevs);
 	if (ret < 0)
 		goto failed;
-	core->dyn_subdev_num = ret;
 
 	if (core->fdt_blob)
 		vfree(core->fdt_blob);
 
-	if (core->dyn_subdev_store)
-		vfree(core->dyn_subdev_store);
+	if (core->dyn_subdev_store) {
+		for (i = 0; i < core->dyn_subdev_num; i++)
+			xocl_subdev_dyn_free(core->dyn_subdev_store + i);
+		kfree(core->dyn_subdev_store);
+	}
+	core->dyn_subdev_num = ret;
 
 	core->fdt_blob = output_blob;
 	core->fdt_blob_sz = fdt_totalsize(output_blob);
