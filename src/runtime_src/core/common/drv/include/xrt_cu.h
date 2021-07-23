@@ -215,6 +215,10 @@ struct xrt_cu_info {
 	char			 kname[32];
 };
 
+struct per_custat {
+	u64		usage;
+};
+
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
 
@@ -266,6 +270,8 @@ struct xrt_cu {
 
 	struct timer_list	  timer;
 	atomic_t		  tick;
+
+	struct per_custat	  cu_stat;
 
 	/**
 	 * @funcs:
@@ -407,6 +413,7 @@ void xrt_cu_fini(struct xrt_cu *xcu);
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
+ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf);
 
 /* CU Implementations */
 #define to_cu_hls(core) ((struct xrt_cu_hls *)(core))

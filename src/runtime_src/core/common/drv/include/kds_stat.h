@@ -15,7 +15,13 @@
 
 #include <linux/percpu-defs.h>
 
-#include "xrt_cu.h"
+/* TODO: Using MAX_CUS in this header file is not ideal.
+ * This file eventually should be very independent.
+ * Let's remove all MAX_CUS from this file once we have chance.
+ */
+#ifndef MAX_CUS
+#define MAX_CUS 128
+#endif
 
 /* This header file defines statistics struct and macros to operates them.
  * Percpu variable are used for performance concerns.

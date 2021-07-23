@@ -69,10 +69,21 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(cu_info);
 
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_formatted_cu_stat(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(stat);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stat.attr,
 	NULL,
 };
 

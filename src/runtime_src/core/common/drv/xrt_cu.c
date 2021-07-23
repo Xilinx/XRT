@@ -99,6 +99,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
 		--xcu->num_cq;
+		xcu->cu_stat.usage++;
 	}
 }
 
@@ -775,6 +776,8 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	INIT_LIST_HEAD(&xcu->hpq);
 	spin_lock_init(&xcu->hpq_lock);
 	init_completion(&xcu->comp);
+
+	memset(&xcu->cu_stat, 0, sizeof(struct per_custat));
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	setup_timer(&xcu->timer, cu_timer, (unsigned long)xcu);
 #else
@@ -895,6 +898,18 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 	else
 		buf[PAGE_SIZE - 1] = 0;
 
+
+	return sz;
+}
+
+ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf)
+{
+	ssize_t sz = 0;
+	char *fmt = "%lld %d\n";
+	int in_flight = xcu->num_sq;
+
+	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
+			xcu->cu_stat.usage, in_flight);
 
 	return sz;
 }
