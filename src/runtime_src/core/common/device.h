@@ -273,7 +273,7 @@ public:
 
   // get_cus() - Get list cu base addresses sorted by cu inidex
   const std::vector<uint64_t>
-  get_cus(const uuid& xclbin_id) const;
+  get_cus(const uuid& xclbin_id = uuid()) const;
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots
