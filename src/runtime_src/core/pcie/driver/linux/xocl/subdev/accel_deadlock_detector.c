@@ -61,8 +61,8 @@ static struct attribute_group accel_deadlock_detector_attr_group = {
 
 static int accel_deadlock_detector_remove(struct platform_device *pdev)
 {
-    struct xocl_accel_deadlock_detector *accel_deadlock_detector;
-    void *hdl;
+    struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
+    void *hdl = NULL;
 
     accel_deadlock_detector = platform_get_drvdata(pdev);
     if (!accel_deadlock_detector) {
@@ -86,9 +86,9 @@ static int accel_deadlock_detector_remove(struct platform_device *pdev)
 
 static int accel_deadlock_detector_probe(struct platform_device *pdev)
 {
-    struct xocl_accel_deadlock_detector *accel_deadlock_detector;
-    struct resource *res;
-    void *priv;
+    struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
+    struct resource *res = NULL;
+    void *priv = NULL;
     int err = 0;
 
     accel_deadlock_detector = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_accel_deadlock_detector));
@@ -162,8 +162,8 @@ static int accel_deadlock_detector_close(struct inode *inode, struct file *file)
 
 long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    struct xocl_accel_deadlock_detector *accel_deadlock_detector;
-    void __user *data;
+    struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
+    void __user *data = NULL;
     long result = 0;
 
     accel_deadlock_detector = (struct xocl_accel_deadlock_detector *)filp->private_data;
