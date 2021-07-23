@@ -3661,7 +3661,7 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
   }
 
   // get sorted cu addresses to match up with cu_index
-  auto cuidx2addr = mCoreDevice->get_cus();
+  const auto& cuidx2addr = mCoreDevice->get_cus();
   if (cu_index >= cuidx2addr.size()) {
     std::string strMsg = "ERROR: [HW-EMU 20] xclRegRW - invalid CU index: " + std::to_string(cu_index);
     logMessage(strMsg);
