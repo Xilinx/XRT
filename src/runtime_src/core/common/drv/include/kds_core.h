@@ -58,6 +58,7 @@ struct kds_ctx_info {
  * Let's see if we can unify them later.
  */
 struct scu_usages {
+        u32                       usage;
         u32                       succ_cnt;
         u32                       err_cnt;
         u32                       crsh_cnt;
@@ -74,7 +75,6 @@ struct kds_scu_mgmt {
 	struct mutex		  lock;
 	int			  num_cus;
 	u32			  status[MAX_CUS];
-	u32			  usage[MAX_CUS];
 	char			  name[MAX_CUS][32];
 	struct scu_usages	  usages_stats[MAX_CUS];
 	struct sk_mem_stats	  mem_stats;

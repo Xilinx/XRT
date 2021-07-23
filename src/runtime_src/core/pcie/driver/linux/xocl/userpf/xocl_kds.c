@@ -334,7 +334,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
 	off_idx = 4 + num_cu;
 	for (i = 0; i < num_scu; i++) {
-		kds->scu_mgmt.usage[i] = ecmd->data[off_idx++];
+		kds->scu_mgmt.usages_stats[i].usage = ecmd->data[off_idx++];
 		if (ecmd->data[0] == ERT_CUSTAT_VERSION_1) { // Only for new ERT packet version 
 			kds->scu_mgmt.usages_stats[i].succ_cnt = ecmd->data[off_idx++];
 			kds->scu_mgmt.usages_stats[i].err_cnt = ecmd->data[off_idx++];

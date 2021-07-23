@@ -93,7 +93,7 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	for (i = 0; i < scu_mgmt->num_cus; ++i) {
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
 				scu_mgmt->name[i], scu_mgmt->status[i],
-				scu_mgmt->usage[i], 
+				scu_mgmt->usages_stats[i].usage,
 				scu_mgmt->usages_stats[i].succ_cnt,
 				scu_mgmt->usages_stats[i].err_cnt,
 				scu_mgmt->usages_stats[i].crsh_cnt);
@@ -196,7 +196,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 				sizeof(scu_mgmt->name[0]));
 
 			scu_mgmt->num_cus++;
-			scu_mgmt->usage[i] = 0;
+			scu_mgmt->usages_stats[i].usage = 0;
 		}
 	}
 	mutex_unlock(&scu_mgmt->lock);
