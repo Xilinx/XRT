@@ -74,8 +74,9 @@ static int accel_deadlock_detector_remove(struct platform_device *pdev)
 
     xocl_drvinst_release(accel_deadlock_detector, &hdl);
 
-    if (accel_deadlock_detector->base)
+    if (accel_deadlock_detector->base) {
         iounmap(accel_deadlock_detector->base);
+    }
 
     platform_set_drvdata(pdev, NULL);
 
@@ -101,8 +102,9 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
     accel_deadlock_detector->dev = &pdev->dev;
 
     priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
-    if (priv)
+    if (priv) {
         memcpy(&accel_deadlock_detector->data, priv, sizeof(struct debug_ip_data));
+    }
 
     platform_set_drvdata(pdev, accel_deadlock_detector);
     mutex_init(&accel_deadlock_detector->lock);
@@ -146,8 +148,9 @@ static int accel_deadlock_detector_open(struct inode *inode, struct file *file)
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = NULL;
 
     accel_deadlock_detector = xocl_drvinst_open_single(inode->i_cdev);
-    if (!accel_deadlock_detector)
+    if (!accel_deadlock_detector) {
         return -ENXIO;
+    }
     file->private_data = accel_deadlock_detector;
     return 0;
 }
@@ -205,8 +208,9 @@ static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct
     psize = accel_deadlock_detector->range - off;
 
 
-    if (vsize > psize)
+    if (vsize > psize) {
         return -EINVAL;
+    }
 
     /*
      * pages must not be cached as this would result in cache line sized
@@ -226,8 +230,9 @@ static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct
     /* make MMIO accessible to user space */
     rc = io_remap_pfn_range(vma, vma->vm_start, phys >> PAGE_SHIFT,
                             vsize, vma->vm_page_prot);
-    if (rc)
+    if (rc) {
         return -EAGAIN;
+    }
     return rc;
 }
 
