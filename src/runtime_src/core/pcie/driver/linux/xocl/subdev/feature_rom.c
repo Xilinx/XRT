@@ -38,6 +38,17 @@ struct feature_rom {
 	bool			passthrough_virt_en;
 };
 
+/* This module param is a workaround for non-VSEC platforms which rely on partition
+ * metadata to discover resources. PLatforms using this mechanism should set
+ * XOCL_DSAFLAG_CUSTOM_DTB flag. This can support only single device. Getting
+ * uuid from VSEC is scalable as it supports multiple devices and EOU.
+ *
+ * TODO : Remove this after CR-1105444 is fixed
+ */
+static char *rom_uuid = "firmware_dir";
+module_param(rom_uuid, charp, 0644);
+MODULE_PARM_DESC(rom_uuid, "uuid value to find firmware directory (max 64 chars)");
+
 static ssize_t VBNV_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
@@ -679,6 +690,19 @@ static int get_header_from_vsec(struct feature_rom *rom)
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_UUID_ROM, &bar, &offset, NULL);
 	if (ret) {
+		/* XOCL_DSAFLAG_CUSTOM_DTB is used for non-VSEC platforms which
+		 * still wanted to use partition metadata to discover resources
+		 */
+		if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUSTOM_DTB) {
+			rom->uuid_len = strlen(rom_uuid);
+			if (rom->uuid_len == 0 || rom->uuid_len > 64) {
+				xocl_xdev_info(xdev, "Invalid ROM UUID");
+				return -EINVAL;
+			}
+			strcpy(rom->uuid,rom_uuid);
+			xocl_xdev_info(xdev, "rom UUID is: %s",rom->uuid);
+			return init_rom_by_dtb(rom);
+		}
 		xocl_xdev_info(xdev, "Does not get UUID ROM");
 		return -ENODEV;
 	}

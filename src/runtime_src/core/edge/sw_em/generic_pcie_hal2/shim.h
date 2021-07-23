@@ -280,6 +280,32 @@ namespace xclcpuemhal2 {
       int
         xrtGMIOWait(const char *gmioname);
 
+      /**
+      * xrtGraphResume() - Resume a suspended graph.
+      *
+      * Resume graph execution which was paused by suspend() or wait(cycles) APIs
+      */
+      int
+        xrtGraphResume(void * gh);
+
+      /**
+      * xrtGraphTimedEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+      *                 then end the graph. If cycle is 0, busy wait until graph
+      *                 is done before end the graph. If graph already run more
+      *                 than the given cycle, stop the graph immediately and end it.
+      */
+      int
+        xrtGraphTimedEnd(void * gh, uint64_t cycle);
+
+      /**
+      * xrtGraphTimedWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+      *                   then stop the graph. If cycle is 0, busy wait until graph
+      *                   is done. If graph already run more than the given
+      *                   cycle, stop the graph immediateley.
+      */
+      int
+        xrtGraphTimedWait(void * gh, uint64_t cycle);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

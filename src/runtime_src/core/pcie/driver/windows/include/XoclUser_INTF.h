@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-//    (C) Copyright 2019 Xilinx, Inc.
+//    (C) Copyright 2019-2021 Xilinx, Inc.
 //    (C) Copyright 2019 OSR Open Systems Resources, Inc.
 //    All Rights Reserved
 //
@@ -229,6 +229,10 @@ typedef struct _XOCL_DEVICE_INFORMATION {
     ULONG  DmaEngineVersion;
     ULONG  DriverVersion;
     ULONG  PciSlot;
+    ULONG  MaximumLinkWidth;
+    ULONG  LinkWidth;
+    ULONG  MaximumLinkSpeed;
+    ULONG  LinkSpeed;
 
 } XOCL_DEVICE_INFORMATION, *PXOCL_DEVICE_INFORMATION;
 #if 0
@@ -461,6 +465,9 @@ struct xcl_sensor {
     uint32_t vol_2v5_vpp;
     uint32_t vccint_bram;
     uint32_t version;
+    uint32_t power_warn;
+    uint32_t oem_id;
+    uint32_t vccint_temp;
 };
 
 //
@@ -562,4 +569,42 @@ struct xcl_firewall {
     uint64_t err_detected_status;
     uint64_t err_detected_level;
     uint64_t err_detected_time;
+};
+
+//
+// IOCTL_XOCL_MAILBOX_INFO
+// Get sensor info
+// Inbuffer = (not used)
+// OutBuffer = struct xcl_mailbox
+//
+#define IOCTL_XOCL_MAILBOX_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2112, METHOD_BUFFERED, FILE_READ_DATA)
+
+enum mailbox_request {
+	MAILBOX_REQ_UNKNOWN = 0,
+	MAILBOX_REQ_TEST_READY = 1,
+	MAILBOX_REQ_TEST_READ = 2,
+	MAILBOX_REQ_LOCK_BITSTREAM = 3,
+	MAILBOX_REQ_UNLOCK_BITSTREAM = 4,
+	MAILBOX_REQ_HOT_RESET = 5,
+	MAILBOX_REQ_FIREWALL = 6,
+	MAILBOX_REQ_LOAD_XCLBIN_KADDR = 7,
+	MAILBOX_REQ_LOAD_XCLBIN = 8,
+	MAILBOX_REQ_RECLOCK = 9,
+	MAILBOX_REQ_PEER_DATA = 10,
+	MAILBOX_REQ_USER_PROBE = 11,
+	MAILBOX_REQ_MGMT_STATE = 12,
+	MAILBOX_REQ_CHG_SHELL = 13,
+	MAILBOX_REQ_PROGRAM_SHELL = 14,
+	MAILBOX_REQ_READ_P2P_BAR_ADDR = 15,
+	MAILBOX_REQ_MAX = 16,
+	/* Version 0 OP code ends */
+};
+
+/**
+ * struct xcl_mailbox -  Data structure used to fetch mailbox group
+ */
+struct xcl_mailbox {
+	/* recv metrics */
+	uint32_t          mbx_recv_raw_bytes;
+	uint32_t          mbx_recv_req[MAILBOX_REQ_MAX];
 };

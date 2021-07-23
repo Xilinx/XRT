@@ -309,8 +309,16 @@ void
 device::
 reset_array()
 {
-  auto handle = get_handle();
-  handle->reset_aie();
+  auto core_device = get_handle();
+  core_device->reset_aie();
+}
+
+void
+device::
+open_context(xrt::aie::device::access_mode am)
+{
+  auto core_device = get_handle();
+  core_device->open_aie_context(am);
 }
 
 }} // namespace aie, xrt

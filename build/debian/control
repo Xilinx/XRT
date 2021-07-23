@@ -1,0 +1,73 @@
+Source: xrt
+Section: libdevel
+Priority: optional
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Build-Depends: cmake,
+               cppcheck,
+               debhelper-compat (= 12),
+# used to check the version of the tree
+               git,
+               libboost-dev,
+               libboost-filesystem-dev,
+               libboost-program-options-dev,
+               libcurl4-openssl-dev,
+               libdrm-dev,
+               libgtest-dev,
+               libncurses5-dev,
+               libprotobuf-dev,
+               libssl-dev,
+               libudev-dev,
+               libxml2-dev,
+               libyaml-dev,
+               lsb-release,
+               ocl-icd-dev,
+               ocl-icd-opencl-dev,
+               opencl-clhpp-headers,
+               pkg-config,
+               protobuf-compiler,
+               uuid-dev,
+Standards-Version: 4.5.0
+
+Package: xrt
+Architecture: amd64
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Description: Xilinx Runtime (XRT) - runtime libraries
+ The Xilinx Runtime (XRT) provides acceleration across PCIe and MPSoC
+ based Xilinx platforms.
+ .
+ This package contains the XRT libraries, headers, and tools.
+
+Package: xrt-embedded
+Architecture: arm64
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Description: Xilinx Runtime (XRT) - runtime libraries
+ The Xilinx Runtime (XRT) provides acceleration across PCIe and MPSoC
+ based Xilinx platforms.
+ .
+ This package contains the XRT libraries, headers, and tools.
+
+Package: xrt-xocl-dkms
+# host/server only driver
+Architecture: amd64
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         dkms
+Description: Xilinx Runtime (XRT) - XOCL DKMS kernel drivers
+ The Xilinx Runtime (XRT) provides acceleration across PCIe and MPSoC
+ based Xilinx platforms.
+ .
+ This package contains the XOCL DKMS kernel drivers.
+
+Package: xrt-zocl-dkms
+# embedded/edge only driver
+Architecture: arm64
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         dkms
+Description: Xilinx Runtime (XRT) - ZOCL DKMS kernel drivers
+ The Xilinx Runtime (XRT) provides acceleration across PCIe and MPSoC
+ based Xilinx platforms.
+ .
+ This package contains the ZOCL DKMS kernel drivers.

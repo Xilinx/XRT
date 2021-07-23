@@ -13,9 +13,9 @@ import os
 import sys
 
 # Following found in PYTHONPATH setup by XRT
-import pyxrt as pp
 import xrt_binding as xx
 import ert_binding as ee
+import pyxrt as pp
 
 def clear():
     try:
