@@ -97,7 +97,6 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
         xocl_err(&pdev->dev, "xocl_drvinst_alloc failed for accel_deadlock_detector_probe , err (-ENOMEM): %d", err);
         return -ENOMEM;
     }
-    xocl_info(&pdev->dev, "xocl_drvinst_alloc completed in accel_deadlock_detector_probe");
 
     accel_deadlock_detector->dev = &pdev->dev;
 
@@ -106,7 +105,6 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
         memcpy(&accel_deadlock_detector->data, priv, sizeof(struct debug_ip_data));
 
     platform_set_drvdata(pdev, accel_deadlock_detector);
-    xocl_info(&pdev->dev, "platform_set_drvdata done , just before mutex_init");
     mutex_init(&accel_deadlock_detector->lock);
 
     res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -130,7 +128,6 @@ static int accel_deadlock_detector_probe(struct platform_device *pdev)
     accel_deadlock_detector->start_paddr = res->start;
     accel_deadlock_detector->range = res->end - res->start + 1;
 
-    xocl_info(&pdev->dev, "in accel_deadlock_detector_probe , right before sysfs_create_group");
     err = sysfs_create_group(&pdev->dev.kobj, &accel_deadlock_detector_attr_group);
     if (err) {
         xocl_err(&pdev->dev, "create accel_deadlock_detector sysfs attrs failed: %d", err);
@@ -268,13 +265,11 @@ int __init xocl_init_accel_deadlock_detector(void)
     err = alloc_chrdev_region(&accel_deadlock_detector_priv.dev, 0, XOCL_MAX_DEVICES,
                                 XOCL_ACCEL_DEADLOCK_DETECTOR);
     if (err < 0) {
-        printk(KERN_ERR "%d error code for alloc_chrdev_region for xocl_init_accel_deadlock_detector , going to just return", err);
         goto err_chrdev_reg;
     }
 
     err = platform_driver_register(&accel_deadlock_detector_driver);
     if (err < 0) {
-        printk(KERN_ERR "%d error code for alloc_chrdev_region for xocl_init_accel_deadlock_detector : going to unregister_chrdev_region ", err);
         goto err_driver_reg;
     }
 
