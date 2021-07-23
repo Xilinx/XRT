@@ -128,6 +128,7 @@ typedef struct {
 } xclAccelMonitorCounterResults;
 
 typedef struct {
+  unsigned int           Num;
   unsigned int           DeadlockStatus;
 } xclAccelDeadlockDetectorResults;
 

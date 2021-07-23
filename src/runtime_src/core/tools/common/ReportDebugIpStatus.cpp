@@ -1356,21 +1356,9 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
   // Strip away any extraneous null characters
   dbgIpName.assign(dbgIpName.c_str());
 
-#if 0
-  // Check Implementation
-  // Get Cu and Port Name
-  {
-    std::string cuName;
-    std::string portName;
-    getCuNamePortName(dbgIpInfo->m_type, dbgIpName, cuName, portName);
-    cuNames[ACCEL_DEADLOCK_DETECTOR].emplace_back(std::move(cuName));
-    portNames[ACCEL_DEADLOCK_DETECTOR].emplace_back(std::move(portName));
-  }
-#endif
-
   // increment debugIpNum
   ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin ?
-//  accelDeadlockResults.NumSlots = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
+  accelDeadlockResults.Num = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
 
 #ifndef _WIN32
   // read counter values
@@ -1415,10 +1403,9 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
 void 
 DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
 {
-//DeadlockStatus 
-//  if(0 == aimResults.NumSlots) {
-//    return;
-//  }
+  if(0 == accelDeadlockResults.Num) {
+    return;
+  }
 
   std::string statusStr;
   if(0 == accelDeadlockResults.DeadlockStatus) {
@@ -1431,24 +1418,23 @@ DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
 void 
 DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
 {
-//  if(0 == aimResults.NumSlots) {
-//    return;
-//  }
+  if(0 == accelDeadlockResults.Num) {
+    return;
+  }
 
   boost::property_tree::ptree accel_deadlock_pt;
 
-//  for(size_t i = 0; i < accelDeadlockResults.NumSlots; ++i) {
-    boost::property_tree::ptree entry;
-    std::string statusStr;
-    if(0 == accelDeadlockResults.DeadlockStatus) {
-      statusStr = "no_";
-    }
-    statusStr += "deadlock_detected";
+  // Atmost 1 Accelerator Deadlock Detector Ip per design
+  boost::property_tree::ptree entry;
+  std::string statusStr;
+  if(0 == accelDeadlockResults.DeadlockStatus) {
+    statusStr = "no_";
+  }
+  statusStr += "deadlock_detected";
 
-    entry.put("status", statusStr);
+  entry.put("status", statusStr);
 
-    accel_deadlock_pt.push_back(std::make_pair("", entry));
-//  }
+  accel_deadlock_pt.push_back(std::make_pair("", entry));
 
   _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
   return;
@@ -1474,6 +1460,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
       case AXI_STREAM_MONITOR:
       case AXI_STREAM_PROTOCOL_CHECKER:
       case TRACE_S2MM:
+      case ACCEL_DEADLOCK_DETECTOR:
         ++count;
         ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
         break;
