@@ -81,7 +81,7 @@ namespace po = boost::program_options;
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine", 
-             "Status of the system and device(s)")
+             "Status of the system and device")
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";

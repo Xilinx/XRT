@@ -472,14 +472,14 @@ auto_flash(xrt_core::device_collection& deviceCollection)
   }
 
   if (success != 0) {
-    std::cout << "\n" << success << " device(s) flashed successfully." << std::endl; 
+    std::cout << "\n" << success << " device flashed successfully." << std::endl; 
   } else {
     std::cout << "\nNo devices were flashed." << std::endl; 
   }
 
   if (needreboot) {
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
   } else if (need_warm_reboot) {
     std::cout << "******************************************************************\n";
@@ -625,7 +625,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                     "  ospi\n"
                                                                     "  ospi_versal")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk\n"
                                                                     "Note: Multiple images can be specified separated by a space")
@@ -773,7 +773,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (!has_reset)
       return;
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
     return;
   }

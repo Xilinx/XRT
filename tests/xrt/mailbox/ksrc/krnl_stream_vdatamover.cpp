@@ -14,12 +14,15 @@ typedef ap_axiu<DWIDTH, 0, 0, 0> pkt;
 extern "C" {
 void krnl_stream_vdatamover(hls::stream<pkt> &in,
                       hls::stream<pkt> &out,
-                      int adder// Internal Stream
+                      int adder1,
+                      int adder2
                       ) {
 //#pragma HLS interface ap_ctrl_none port=return
 #pragma HLS interface ap_ctrl_chain port=return
-#pragma HLS INTERFACE s_axilite port=adder
-#pragma HLS STABLE variable=adder
+#pragma HLS INTERFACE s_axilite port=adder1
+#pragma HLS STABLE variable=adder1
+#pragma HLS INTERFACE s_axilite port=adder2
+#pragma HLS STABLE variable=adder2
 
 bool eos = false;
 vdatamover:
@@ -34,7 +37,7 @@ vdatamover:
     ap_uint<DWIDTH> in1 = t1.data;
 
     // Vadd operation
-    ap_uint<DWIDTH> tmpOut = in1+adder;
+    ap_uint<DWIDTH> tmpOut = in1+adder1+adder2;
 
     // Setting data and configuration to output packet
     t_out.data = tmpOut;

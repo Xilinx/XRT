@@ -995,9 +995,25 @@ namespace xclhwemhal2 {
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
-          launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
-          launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          if (boost::filesystem::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
+            launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
+            launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
+            launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
+            launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_args.txt")) {
+            launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          }
 
           if (boost::filesystem::exists(sim_path + "/emulation_data/pmc_args.txt")) {
             launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
@@ -1163,7 +1179,8 @@ namespace xclhwemhal2 {
            }
 
            const char *curr = (const char *)hostBuf;
-           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,0,0);
            PRINTENDFUNC;
            return totalSize;
          }
@@ -1171,7 +1188,8 @@ namespace xclhwemhal2 {
          {
            const char *curr = (const char *)hostBuf;
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,0,0);
            PRINTENDFUNC;
            return size;
          }
@@ -1238,7 +1256,8 @@ namespace xclhwemhal2 {
              std::string dMsg ="INFO: [HW-EMU 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,0,0);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
              std::string dMsg ="INFO: [HW-EMU 04-1] Kernel " + kernelName +" is Started";
@@ -1312,14 +1331,16 @@ namespace xclhwemhal2 {
           }
 
           //const char *curr = (const char *)hostBuf;
-          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return totalSize;
         }
       case XCL_ADDR_SPACE_DEVICE_PERFMON:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return -1;
         }
@@ -1331,7 +1352,8 @@ namespace xclhwemhal2 {
       case XCL_ADDR_KERNEL_CTRL:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return size;
         }
@@ -2780,8 +2802,6 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       uint64_t src_addr = sBO->base + src_offset;
       uint64_t dest_addr = dBO->base + dst_offset;
 
-      std::cout << __func__ << " PRASAD: src_addr " << src_addr << " dest_addr: " << dest_addr << std::endl;
-
       //fill the hostbuf with the src offset and dest offset and size offset
       std::memcpy(hostBuf + 0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
       std::memcpy(hostBuf + 0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
@@ -2810,19 +2830,19 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
   }
 
   // source buffer is host_only and destination buffer is device_only
-  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
   } // source buffer is device_only and destination buffer is host_only
-  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
     }
   }// source and destination buffers are device_only
-  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+  else if (!isHostOnlyBuffer(sBO) && !isHostOnlyBuffer(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
     unsigned char temp_buffer[size];
     // copy data from source buffer to temp buffer
     if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
@@ -2846,7 +2866,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   }
   else{
-     std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
      return -1;
   }
 
@@ -2907,7 +2927,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
 
   //For Slave Bridge scenario, maintaining the map for base vs pBuf pointer
-  if (xclemulation::xocl_bo_host_only(bo)) {
+  if (isHostOnlyBuffer(bo)) {
     mHostOnlyMemMap[bo->base] = std::make_pair(pBuf, bo->size);
   }
 
@@ -2940,7 +2960,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
-  if (!xclemulation::xocl_bo_host_only(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
+  if (!isHostOnlyBuffer(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
     void* buffer = bo->userptr ? bo->userptr : bo->buf;
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
     {

@@ -700,6 +700,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	struct xcl_mailbox_peer_state *st = NULL;
+	struct xclErrorLast err_last;
 
 	if (err != 0)
 		return;
@@ -710,6 +711,12 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
+		err_last.pid = 0;
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		xocl_drvinst_set_offline(xdev->core.drm, true);
 		/* Once firewall tripped, need to reset in secs */
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);

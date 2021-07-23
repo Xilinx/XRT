@@ -49,6 +49,13 @@
 #include "xgq_cmd.h"
 
 /*
+ * Standard bool type's portability is poor across multiple OSes and HW platforms.
+ * Defineing our own true and false values as integer to avoid using bool.
+ */
+#define XGQ_TRUE	1
+#define XGQ_FALSE	0
+
+/*
  * Generic XGQ implementation.
  *
  * Each platform should define its own xgq_XXX_plat.h where the platform
@@ -165,12 +172,12 @@ static inline void xgq_init_ring(struct xgq_ring *ring, uint64_t produced, uint6
 	ring->xr_produced = ring->xr_consumed = 0;
 }
 
-static inline bool xgq_ring_full(struct xgq_ring *ring)
+static inline int xgq_ring_full(struct xgq_ring *ring)
 {
 	return (ring->xr_produced - ring->xr_consumed) >= ring->xr_slot_num;
 }
 
-static inline bool xgq_ring_empty(struct xgq_ring *ring)
+static inline int xgq_ring_empty(struct xgq_ring *ring)
 {
 	return ring->xr_produced == ring->xr_consumed;
 }
@@ -195,29 +202,29 @@ static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *rin
 	xgq_reg_write32(io_hdl, ring->xr_consumed_addr, ring->xr_consumed);
 }
 
-static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, bool produce)
+static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, int produce)
 {
 	uint32_t counter = produce ? ring->xr_produced : ring->xr_consumed;
 
 	return ring->xr_slot_addr + ring->xr_slot_sz * (counter & (ring->xr_slot_num - 1));
 }
 
-static inline bool xgq_can_produce(struct xgq *xgq)
+static inline int xgq_can_produce(struct xgq *xgq)
 {
 	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_cq : &xgq->xq_sq;
 
 	if (!xgq_ring_full(ring))
-		return true;
+		return XGQ_TRUE;
 	xgq_ring_read_consumed(xgq->io_hdl, ring);
 	return !xgq_ring_full(ring);
 }
 
-static inline bool xgq_can_consume(struct xgq *xgq)
+static inline int xgq_can_consume(struct xgq *xgq)
 {
 	struct xgq_ring *ring = XGQ_IS_SERVER(xgq) ? &xgq->xq_sq : &xgq->xq_cq;
 
 	if (!xgq_ring_empty(ring))
-		return true;
+		return XGQ_TRUE;
 	xgq_ring_read_produced(xgq->io_hdl, ring);
 	return !xgq_ring_empty(ring);
 }
@@ -325,7 +332,7 @@ static inline int xgq_produce(struct xgq *xgq, uint64_t *slot_addr)
 	if (!xgq_can_produce(xgq))
 		return -ENOSPC;
 	ring->xr_produced++;
-	*slot_addr = xgq_ring_slot_ptr(ring, true);
+	*slot_addr = xgq_ring_slot_ptr(ring, XGQ_TRUE);
 	return 0;
 }
 
@@ -339,7 +346,7 @@ static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 	if (!xgq_can_consume(xgq))
 		return -ENOENT;
 	ring->xr_consumed++;
-	*slot_addr = xgq_ring_slot_ptr(ring, false);
+	*slot_addr = xgq_ring_slot_ptr(ring, XGQ_FALSE);
 
 #ifdef XGQ_OUT_OF_ORDER_WRITE
 	/*

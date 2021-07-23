@@ -66,6 +66,7 @@ rh_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils-devel \
      gcc \
      gcc-c++ \
      gdb \
@@ -77,6 +78,7 @@ rh_package_list()
      json-glib-devel \
      libcurl-devel \
      libdrm-devel \
+     libffi-devel \
      libjpeg-turbo-devel \
      libstdc++-static \
      libtiff-devel \
@@ -174,6 +176,9 @@ ub_package_list()
      libboost-program-options-dev \
      libcurl4-openssl-dev \
      libdrm-dev \
+     libdw-dev \
+     libelf-dev \
+     libffi-dev \
      libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \
@@ -303,7 +308,7 @@ suse_package_list()
      gcc \
      gcc-c++ \
      gdb \
-     git \
+     git-core \
      glibc-devel-static \
      gnuplot \
      json-glib-devel \
@@ -330,9 +335,8 @@ suse_package_list()
      perl \
      pkg-config \
      protobuf-devel \
-     python \
+     python3-devel \
      python3-pip \
-     rapidjson-devel \
      rpm-build \
      strace \
      unzip \
@@ -492,6 +496,22 @@ prep_amzn()
     yum install -y ocl-icd ocl-icd-devel opencl-headers
 }
 
+prep_sles()
+{
+    echo "Preparing SLES for package dependencies..."
+
+    if [ "$VERSION" == "15.2" ]; then
+	SUSEConnect -p sle-module-desktop-applications/$VERSION/x86_64
+	SUSEConnect -p sle-module-development-tools/$VERSION/x86_64
+	SUSEConnect -p PackageHub/$VERSION/x86_64
+	zypper addrepo https://download.opensuse.org/repositories/science/SLE_15_SP2/science.repo
+	zypper addrepo https://download.opensuse.org/repositories/devel:libraries:c_c++/SLE_15_SP2/devel:libraries:c_c++.repo
+	zypper --no-gpg-checks refresh
+	zypper install -y opencl-headers ocl-icd-devel rapidjson-devel
+	zypper mr -d -f science devel_libraries_c_c++ devel_languages_python
+    fi
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -512,6 +532,8 @@ install()
         prep_rhel
     elif [ $FLAVOR == "amzn" ]; then
         prep_amzn
+    elif [ $FLAVOR == "sles" ]; then
+        prep_sles
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then

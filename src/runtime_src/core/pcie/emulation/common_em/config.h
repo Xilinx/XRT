@@ -220,6 +220,7 @@ namespace xclemulation{
 
       inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
       inline bool getIsPlatformEnabled() { return mIsPlatformDataAvailable;}
+      inline bool isDisabledHostBUffer() { return mIsDisabledHostBuffer;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -255,6 +256,7 @@ namespace xclemulation{
       bool      mIsSharedFmodel;
       bool mIsM2MEnabled;
       bool mIsPlatformDataAvailable;
+      bool mIsDisabledHostBuffer;
       TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
