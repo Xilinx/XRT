@@ -99,7 +99,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
 		--xcu->num_cq;
-		this_stat_inc(xcu->cu_stat, usage);
+		xcu->cu_stat.usage++;
 	}
 }
 
@@ -777,11 +777,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	spin_lock_init(&xcu->hpq_lock);
 	init_completion(&xcu->comp);
 
-	xcu->cu_stat = alloc_percpu(struct per_custat);
-	if (!xcu->cu_stat)
-		return -ENOMEM;
-
-	stat_write(xcu->cu_stat, usage, 0);
+	memset(&xcu->cu_stat, 0, sizeof(struct per_custat));
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	setup_timer(&xcu->timer, cu_timer, (unsigned long)xcu);
 #else
@@ -810,21 +806,7 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 	if (!IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);
 
-	free_percpu(xcu->cu_stat);
-
 	return;
-}
-
-static void cu_stat_read_all(struct xrt_cu *xcu, struct per_custat *stat)
-{
-	int cpu;
-
-	memset(stat, 0, sizeof(struct per_custat));
-	for_each_possible_cpu(cpu) {
-		struct per_custat *tmp = per_cpu_ptr(xcu->cu_stat, cpu);
-
-		stat->usage += tmp->usage;
-	}
 }
 
 ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf)
@@ -923,14 +905,11 @@ ssize_t show_cu_info(struct xrt_cu *xcu, char *buf)
 ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf)
 {
 	ssize_t sz = 0;
-	char *fmt = "%d %d\n";
-	struct per_custat custat;
+	char *fmt = "%lld %d\n";
 	int in_flight = xcu->num_sq;
 
-	cu_stat_read_all(xcu, &custat);
-
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
-			custat.usage, in_flight);
+			xcu->cu_stat.usage, in_flight);
 
 	return sz;
 }

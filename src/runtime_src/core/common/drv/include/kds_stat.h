@@ -38,10 +38,6 @@ struct cu_stats {
 	u64		  usage[MAX_CUS];
 };
 
-struct per_custat {
-	u64		usage;
-};
-
 /*
  * Macros to operates on percpu statistics:
  * this_cpu_* are operations with implied preemption/interrupt protection.
