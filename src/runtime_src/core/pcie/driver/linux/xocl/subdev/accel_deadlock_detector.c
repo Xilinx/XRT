@@ -192,19 +192,19 @@ long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned
 static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 
-    int rc;
-    unsigned long off;
-    unsigned long phys;
-    unsigned long vsize;
-    unsigned long psize;
+    int rc = 0;
+    unsigned long off   = 0;
+    unsigned long phys  = 0;
+    unsigned long vsize = 0;
+    unsigned long psize = 0;
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = (struct xocl_accel_deadlock_detector *)filp->private_data;
     BUG_ON(!accel_deadlock_detector);
 
     off = vma->vm_pgoff << PAGE_SHIFT;
-    /* BAR physical address */
+    // BAR physical address
     phys = accel_deadlock_detector->start_paddr + off;
     vsize = vma->vm_end - vma->vm_start;
-    /* complete resource */
+    // complete resource
     psize = accel_deadlock_detector->range - off;
 
 
@@ -212,22 +212,17 @@ static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct
         return -EINVAL;
     }
 
-    /*
-     * pages must not be cached as this would result in cache line sized
-     * accesses to the end point
-     */
+    // pages must not be cached as this would result in cache line sized accesses to the end point
     vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-    /*
-     * prevent touching the pages (byte access) for swap-in,
-     * and prevent the pages from being swapped out
-     */
+
+    // prevent touching the pages (byte access) for swap-in, and prevent the pages from being swapped out
 #ifndef VM_RESERVED
     vma->vm_flags |= VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
 #else
     vma->vm_flags |= VM_IO | VM_RESERVED;
 #endif
 
-    /* make MMIO accessible to user space */
+    // make MMIO accessible to user space
     rc = io_remap_pfn_range(vma, vma->vm_start, phys >> PAGE_SHIFT,
                             vsize, vma->vm_page_prot);
     if (rc) {
