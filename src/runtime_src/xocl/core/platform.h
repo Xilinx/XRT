@@ -117,30 +117,6 @@ get_shared_platform();
 unsigned int
 get_num_platforms();
 
-/**
- * @return
- *   The value of XILINX_OPENCL if set, empty otherwise
- */
-std::string
-get_xilinx_opencl();
-
-/**
- * @return
- *   The value of XILINX_SDX if set, empty otherwise
- */
-std::string
-get_xilinx_sdx();
-
-/**
- * @return
- *   The install root (same as xilinx_opencl)
- */
-inline std::string
-get_install_root()
-{
-  return get_xilinx_opencl();
-}
-
 } // xocl
 
 #endif

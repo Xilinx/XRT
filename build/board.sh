@@ -20,7 +20,6 @@ tests=
 csv=
 select="PASS"
 rel=2019.1
-sdxp="Scout"
 
 usage()
 {
@@ -38,7 +37,6 @@ usage()
     echo "[-csv <path>]                  Path to csv file to parse for tests"
     echo "[-ini <path>]                  Path to sdaccel.ini file"
     echo "[-xrt <path>]                  Path to XRT install (default: $xrt)"
-    echo "[-sdx <path>]                  Path to SDx install (default: $sdx)"
     echo ""
     echo "With no optional options, this script runs all previously synced tests in"
     echo "current directory. "
@@ -104,11 +102,6 @@ while [ $# -gt 0 ]; do
             csv=$1
             shift
             ;;
-        -sdx)
-            shift
-            sdx=$1
-            shift
-            ;;
         -select)
             shift
             select=$1
@@ -131,11 +124,6 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/Scout/${rel}
-if [[ $rel < 2019.2 ]]; then
-    sdx=/proj/xbuilds/${rel}_daily_latest/installs/lin64/SDx/${rel}
-fi
-
 ################################################################
 # Environment
 ################################################################
@@ -150,24 +138,14 @@ if [[ "X$xrt" != "X" && -d "$xrt" ]] ; then
  export XILINX_XRT=${XILINX_XRT:=$xrt}
  export LD_LIBRARY_PATH=$XILINX_XRT/lib
  export PATH=$XILINX_XRT/bin:${PATH}
- echo "echo $XILINX_XRT/lib/libxilinxopencl.so > /etc/OpenCL/vendors/xilinx.icd"
- echo "$XILINX_XRT/lib/libxilinxopencl.so" | sudo tee /etc/OpenCL/vendors/xilinx.icd > /dev/null
-fi
-
-if [[ "X$sdx" != "X" && -d "$sdx" ]] ; then
- export XILINX_SDX=${XILINX_SDX:=$sdx}
- export XILINX_OPENCL=$XILINX_SDX
- export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_SDX/lib/lnx64.o/Default:$XILINX_SDX/lib/lnx64.o:$XILINX_SDX/runtime/lib/x86_64
+ export OCL_ICD_VENDORS=$XILINX_XRT/lib/libxilinxopencl.so
 fi
 
 export DSA=`${XILINX_XRT}/bin/xbutil scan | grep '\[0\]' | cut -d':' -f5 | cut -d'(' -f1`
 
 echo "XILINX_XRT      = $XILINX_XRT"
-echo "XILINX_SDX      = $XILINX_SDX"
-echo "XILINX_SCOUT    = $XILINX_SDX"
-echo "XILINX_OPENCL   = $XILINX_OPENCL"
 echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
-
+echo "OCL_ICD_VENDORS = $OCL_ICD_VENDORS"
 
 ################################################################
 # Test extraction
@@ -235,8 +213,6 @@ for f in ${tests[*]}; do
   echo "================================================================"
   echo "RUNDIR          = $PWD"
   echo "XILINX_XRT      = $XILINX_XRT"
-  echo "XILINX_SDX      = $XILINX_SDX"
-  echo "XILINX_OPENCL   = $XILINX_OPENCL"
   echo "LD_LIBRARY_PATH = $LD_LIBRARY_PATH"
   echo "DSA		= $DSA"
   echo "================================================================"
