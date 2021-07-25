@@ -243,7 +243,6 @@ enum class key_type
 // because ultimately the base query exception is-a std::exception
 class exception : public std::runtime_error
 {
-  const std::string msg;
 public:
   explicit
   exception(const std::string& err)
