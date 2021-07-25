@@ -57,7 +57,7 @@ userpf_not_supported_error(key_type key)
 void
 unexpected_query_request_key(key_type key)
 {
-  throw xrt_core::no_such_key
+  throw xrt_core::query::no_such_key
     (key, "unexpected query request ( " + std::to_string(static_cast<qtype>(key)) + ")");
 }
 
@@ -514,7 +514,7 @@ struct bdf
     else if (auto uhdl = dev->get_user_handle())
       userpf::get_bdf_info(uhdl, reinterpret_cast<uint16_t*>(bdf));
     else
-      throw std::internal_error("bdf::init_bdf - No device handle");
+      throw xrt_core::internal_error("bdf::init_bdf - No device handle");
   }
 
   static result_type
@@ -887,7 +887,7 @@ struct data_retention
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
-  
+
   static result_type
   user_get(const xrt_core::device* device)
   {
@@ -919,7 +919,7 @@ struct data_retention
   user_put(const xrt_core::device* device, value_type)
   {
     // data retention can't be set on user side, hence doesn't have driver support
-    throw xrt_core::query_not_supported("device data retention query is not implemented on user windows");
+    throw xrt_core::query::not_supported("device data retention query is not implemented on user windows");
   }
 
   static void
@@ -990,7 +990,7 @@ struct function0_getput : QueryRequestType
     || std::is_same<Getter::result_type, boost::any>::value, "get type mismatch");
   static_assert(std::is_same<Getter::value_type, QueryRequestType::result_type>::value
     || std::is_same<Getter::value_type, boost::any>::value, "value type mismatch");
-  
+
   boost::any
   get(const xrt_core::device* device) const
   {
@@ -1009,7 +1009,7 @@ struct function0_getput : QueryRequestType
       Getter::mgmt_put(device, val);
     else if (device->get_user_handle())
       Getter::user_put(device, val);
-    else 
+    else
       throw xrt_core::internal_error("No device handle");
   }
 };
