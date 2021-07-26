@@ -29,6 +29,11 @@
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 
+/* Soft CUs metrics size to display in sysfs entry */
+#define SCU_STATS_METRIC_SIZE   7
+/* CUs metrics size to display in sysfs entry */
+#define CU_STATS_METRIC_SIZE  	5
+
 namespace {
 
 namespace query = xrt_core::query;
@@ -80,7 +85,7 @@ struct kds_cu_stat
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      if (std::distance(tokens.begin(), tokens.end()) != CU_STATS_METRIC_SIZE)
         throw std::runtime_error("CU statistic sysfs node corrupted");
 
       data_type data;
