@@ -63,6 +63,7 @@ namespace xdp {
     // Generic device tables
     void writeDataTransferDMA() ;
     void writeDataTransferDMABypass() ;
+    void writeDataTransferMemory() ;
     void writeStreamDataTransfers() ;
     void writeDataTransferKernelsToGlobalMemory() ;
     void writeTopDataTransferKernelAndGlobal() ;
