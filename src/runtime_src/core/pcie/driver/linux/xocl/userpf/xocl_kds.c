@@ -30,6 +30,8 @@ do {\
 #define print_ecmd_info(ecmd)
 #endif
 
+#define CUSTATS_HEADER_SIZE	4
+
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
 int kds_mode = 1;
@@ -301,7 +303,10 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
+ * [#numscus] : scu execution stats (number of executions, success, error and crash count)
  * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
+ * [#numscus] : scu status (1: running, 0: idle, -1: crashed)
+ * [mem stat] : soft kernel memory status
  * [#slots]   : command queue slot status
  *
  * Old ERT populates
@@ -332,7 +337,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Only need PS kernel info, which is after FPGA CUs */
 	mutex_lock(&kds->scu_mgmt.lock);
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
-	off_idx = 4 + num_cu;
+	off_idx = CUSTATS_HEADER_SIZE + num_cu;
 	for (i = 0; i < num_scu; i++) {
 		kds->scu_mgmt.usages_stats[i].usage = ecmd->data[off_idx++];
 		if (ecmd->data[0] == ERT_CUSTAT_VERSION_1) { // Only for new ERT packet version 

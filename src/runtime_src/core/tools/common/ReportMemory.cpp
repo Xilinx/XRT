@@ -133,6 +133,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   std::vector<std::string> mm_buf, stream_stat;
   std::vector<char> buf, temp_buf, gbuf;
   uint64_t memoryUsage, boCount;
+  int buf_idx = 0;
   pt.put("description", desc);
   getChannelinfo(device, pt);
   schedulerUpdateStat(const_cast<xrt_core::device *>(device));
@@ -161,6 +162,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   boost::property_tree::ptree ptMem_array;
   boost::property_tree::ptree ptStream_array;
   boost::property_tree::ptree ptGrp_array;
+  buf_idx = 0;
   for (int i = 0; i < map->m_count; i++) {
     if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
       std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -228,7 +230,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         ptMem.put("extended_info.ecc.error.uncorrectable.first_failure_address", boost::format("0x%x") % ue_ffa);
       }
     }
-    std::stringstream ss(mm_buf[i]);
+    std::stringstream ss(mm_buf[buf_idx++]);
     ss >> memoryUsage >> boCount;
 
     ptMem.put("type", str);
@@ -247,7 +249,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
    
   // Populate softkernel mem stats 
   boost::property_tree::ptree ptSkMem;
-  std::stringstream ss_mem(mm_buf[map->m_count + 1]);
+  std::stringstream ss_mem(mm_buf[buf_idx++]);
   if (!ss_mem.str().empty()) {
     uint64_t hboCnt, mapboCnt, unmapboCnt, freeboCnt;
   
@@ -429,18 +431,11 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-20s%-16s%-16s%-16s\n") % "  HostBO Count" % "MapBO Count" % "UnmapBO Count" % "FreeBO Count";
 
     try {
-      std::string hbo_count, mapbo_count, unmapbo_count, freebo_count;
-      for (auto& v : _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree)) {
-        if (v.first == "sk_hbo") {
-          hbo_count = v.second.get_value<std::string>();
-        } else if (v.first == "sk_mapbo") {
-          mapbo_count = v.second.get_value<std::string>();
-        } else if (v.first == "sk_unmapbo") {
-          unmapbo_count = v.second.get_value<std::string>();
-        } else if (v.first == "sk_freebo") {
-          freebo_count = v.second.get_value<std::string>();
-	}
-      }
+      auto & sk_memories_pt = _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree);
+      const std::string &hbo_count = sk_memories_pt.get<std::string>("sk_hbo","");
+      const std::string &mapbo_count = sk_memories_pt.get<std::string>("sk_mapbo","");
+      const std::string &unmapbo_count = sk_memories_pt.get<std::string>("sk_unmapbo","");
+      const std::string &freebo_count = sk_memories_pt.get<std::string>("sk_freebo","");
       _output << boost::format("    %-18s%-16s%-16s%-16s\n") % hbo_count % mapbo_count % unmapbo_count % freebo_count;
     }
     catch( std::exception const&) {

@@ -174,9 +174,9 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct soft_krnl *sk = zdev->soft_kernel;
 	struct drm_zocl_sk_report *args = data;
-	struct soft_cu *scu;
+	struct soft_cu *scu = NULL;
 	uint32_t cu_idx = args->cu_idx;
-	uint32_t *vaddr;
+	uint32_t *vaddr = NULL;
 	struct scu_usages *sc_usage = NULL;
 	enum drm_zocl_scu_state state = args->cu_state;
 	int ret = 0;

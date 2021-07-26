@@ -54,6 +54,9 @@ struct kds_ctx_info {
 	u32		  flags;
 };
 
+/* Soft CUs metrics size to display in sysfs entry */
+#define SCU_STATS_METRIC_SIZE	7
+
 /* TODO: PS kernel is very different with FPGA kernel.
  * Let's see if we can unify them later.
  */

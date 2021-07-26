@@ -106,7 +106,7 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 ssize_t kds_sk_memstat(struct kds_sched *kds, struct sk_mem_stats *stat)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	struct sk_mem_stats *mem_stat;
+	struct sk_mem_stats *mem_stat = NULL;
 
 	mutex_lock(&scu_mgmt->lock);
 

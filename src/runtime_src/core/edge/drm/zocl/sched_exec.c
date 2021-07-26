@@ -1072,7 +1072,10 @@ print_and_out:
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
+ * [#numscus] : scu execution stats (number of executions, success, error and crash count)
  * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
+ * [#numscus] : scu status (1: running, 0: idle, -1: crashed)
+ * [mem stat] : soft kernel memory status
  * [#slots]   : command queue slot status
  */
 static void
@@ -1082,13 +1085,13 @@ cu_stat(struct sched_cmd *cmd)
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec = zdev->exec;
 	struct soft_krnl *sk = zdev->soft_kernel;
-	struct sk_mem_stats *mem_stat;
-	struct ert_packet *pkg;
-	int slot_idx;
+	struct sk_mem_stats *mem_stat = NULL;
+	struct ert_packet *pkg = NULL;
+	struct pid *p_tmp = NULL;
+	int slot_idx = 0;
 	int pkt_idx = 0;
 	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
 	int i;
-	struct pid *p_tmp;
 
 	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
 	slot_idx = cmd->cq_slot_idx;

@@ -320,27 +320,27 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
     }
     _output << std::endl;
 
-  //PS kernel report
-  _output << "  PS Compute Units" << std::endl;
-  _output << scuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status" % "Success_Count" % "Error_Count" % "Crash_Count";
-  try {
-    int index = 0;
-    for(auto& kv : pt_cu) {
-      const boost::property_tree::ptree& cu = kv.second;
-      if(cu.get<std::string>("type").compare("PS") != 0)
-        continue;
-      std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
-      uint32_t status_val = std::stoul(cu_status, nullptr, 16);
-      _output << scuFmt % index++ %
+    //PS kernel report
+    _output << "  PS Compute Units" << std::endl;
+    _output << scuFmt % "Index" % "Name" % "Base_Address" % "Usage" % "Status" % "Success_Count" % "Error_Count" % "Crash_Count";
+    try {
+      int index = 0;
+      for(auto& kv : pt_cu) {
+        const boost::property_tree::ptree& cu = kv.second;
+        if(cu.get<std::string>("type").compare("PS") != 0)
+          continue;
+        std::string cu_status = cu.get_child("status").get<std::string>("bit_mask");
+        uint32_t status_val = std::stoul(cu_status, nullptr, 16);
+        _output << scuFmt % index++ %
 	      cu.get<std::string>("name") % cu.get<std::string>("base_address") %
 	      cu.get<std::string>("usage") % xrt_core::utils::parse_cu_status(status_val) %
 	      cu.get<std::string>("succ_return") % cu.get<std::string>("err_return") %
 	      cu.get<std::string>("crsh_return");
+      }
     }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
-  }
+    catch( std::exception const& e) {
+      _output << "ERROR: " <<  e.what() << std::endl;
+    }
   }
 
   _output << std::endl;

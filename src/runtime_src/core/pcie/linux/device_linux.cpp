@@ -125,7 +125,7 @@ struct kds_scu_stat
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 7) 
+      if (std::distance(tokens.begin(), tokens.end()) != SCU_STATS_METRIC_SIZE) 
         throw std::runtime_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
