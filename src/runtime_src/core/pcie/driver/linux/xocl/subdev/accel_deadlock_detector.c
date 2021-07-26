@@ -31,6 +31,7 @@ static ssize_t name_show(struct device *dev,
         struct device_attribute *attr, char *buf)
 {
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = platform_get_drvdata(to_platform_device(dev));
+
     return sprintf(buf, "accel_deadlock_%llu\n",accel_deadlock_detector->data.m_base_address);
 }
 
@@ -41,6 +42,7 @@ static ssize_t status_show(struct device *dev,
 {
     uint64_t result = 0;
     struct xocl_accel_deadlock_detector *accel_deadlock_detector = platform_get_drvdata(to_platform_device(dev));
+
     mutex_lock(&accel_deadlock_detector->lock);
     result = XOCL_READ_REG32(accel_deadlock_detector->base + 0x0);
     mutex_unlock(&accel_deadlock_detector->lock);
