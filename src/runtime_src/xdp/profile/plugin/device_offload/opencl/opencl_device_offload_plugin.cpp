@@ -62,11 +62,20 @@ namespace {
     }
 
     // If we find the old "bank" format, just return it as is since our
-    //  monitor name will also have "bank" in it.
-    //if (memoryName.find("bank") != std::string::npos)
-    //  memoryName = "DDR";
+    //  monitor name could also have "bank" in it.  We'll check
+    //  if converting the name to DDR works separately.
 
     return memoryName.substr(0, memoryName.find_last_of("[")) ;
+  }
+
+  static std::string convertBankToDDR(const std::string& name)
+  {
+    auto loc = name.find("bank") ;
+    if (loc == std::string::npos) return name ;
+    std::string ddr = "DDR[" ;
+    ddr += name.substr(loc + 4) ;
+    ddr += "]" ;
+    return ddr ;
   }
 
   static std::string
@@ -373,7 +382,9 @@ namespace xdp {
 
           // Is this particular argument heading to the right memory?
           std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-          if ((monitor->name).find(memoryName) == std::string::npos)
+          std::string convertedName = convertBankToDDR(memoryName) ;
+          if (monitor->name.find(memoryName) == std::string::npos &&
+              monitor->name.find(convertedName) == std::string::npos )
             continue ;
 
           if (arguments != "") arguments += "|" ;
@@ -406,8 +417,11 @@ namespace xdp {
 
           // Is this particular argument heading to the right memory?
           std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-          if ((monitor->name).find(memoryName) == std::string::npos)
+          std::string convertedName = convertBankToDDR(memoryName) ;
+          if (monitor->name.find(memoryName) == std::string::npos &&
+              monitor->name.find(convertedName) == std::string::npos) {
             continue ;
+          }
 
           if (arguments != "") arguments += "|" ;
           arguments += arg.name ;

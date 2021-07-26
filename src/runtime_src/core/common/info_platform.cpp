@@ -156,10 +156,7 @@ platform_info(const xrt_core::device * device) {
     config = xrt_core::device_query<xrt_core::query::p2p_config>(device);
     value = xrt_core::utils::parse_p2p_config(config, msg);
   }
-  catch (const std::runtime_error&) {
-    value = static_cast<int>(xrt_core::utils::p2p_config::not_supported);
-  }
-  catch (const xrt_core::query::no_such_key&) {
+  catch (const xrt_core::query::exception&) {
     value = static_cast<int>(xrt_core::utils::p2p_config::not_supported);
   }
   
@@ -176,7 +173,7 @@ platform_info(const xrt_core::device * device) {
     cmc.add("serial_number", xrt_core::device_query<xrt_core::query::xmc_serial_num>(device));
     cmc.add("oem_id", xrt_core::utils::parse_oem_id(xrt_core::device_query<xrt_core::query::oem_id>(device)));
   }
-  catch (const xrt_core::query::no_such_key&) {
+  catch (const xrt_core::query::exception&) {
     // Ignoring if not available: Edge Case 
   }
   controller.put_child("satellite_controller", sc);

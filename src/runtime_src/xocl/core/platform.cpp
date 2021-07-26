@@ -35,18 +35,6 @@ namespace {
 
 static xocl::platform* g_platform = nullptr;
 
-static const char*
-value_or_empty(const char* value)
-{
-  return value ? value : "";
-}
-
-static std::string
-get_env(const char* env)
-{
-  return value_or_empty(std::getenv(env));
-}
-
 } // namespace
 
 namespace xocl {
@@ -173,20 +161,6 @@ unsigned int
 get_num_platforms()
 {
   return g_platform ? 1 : 0;
-}
-
-std::string
-get_xilinx_opencl()
-{
-  static std::string xilinx_opencl = get_env("XILINX_OPENCL");
-  return xilinx_opencl;
-}
-
-std::string
-get_xilinx_sdx()
-{
-  static std::string xilinx_sdx = get_env("XILINX_SDX");
-  return xilinx_sdx;
 }
 
 } // xocl

@@ -1008,7 +1008,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   try {
     config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
   }
-  catch (const xrt_core::query::no_such_key&) {  }
+  catch (const xrt_core::query::exception&) {  }
   
   xrt_core::utils::parse_p2p_config(config, msg);
 

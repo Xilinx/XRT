@@ -1353,7 +1353,7 @@ public:
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    auto all_cus = device->core_device->get_cus(xclbin_id);  // sort order
+    const auto& all_cus = device->core_device->get_cus(xclbin_id);  // sort order
     for (const ip_data* cu : kernel_cus) {
       if (::get_ip_control(cu) == AP_CTRL_NONE)
         continue;

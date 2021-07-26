@@ -4150,7 +4150,7 @@ static int xmc_access(struct platform_device *pdev, enum xocl_xmc_flags flags)
 static void clock_status_check(struct platform_device *pdev, bool *latched)
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(pdev);
-	u32 status = 0;
+	u32 status = 0, val, temp, pwr, temp_t;
 
 	if (!xmc->sc_presence) {
 		/*
@@ -4162,12 +4162,12 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 		status = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_CLOCK_STATUS_REG);
 
 		if (status & XMC_CLOCK_SCALING_CLOCK_STATUS_CLKS_LOW) {
-			u32 val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
-			u32 temp = val & XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
+			val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_TEMP_REG);
+			temp = val & XMC_CLOCK_SCALING_TEMP_TARGET_MASK;
 			val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_POWER_REG);
-			u32 pwr = val & XMC_CLOCK_SCALING_POWER_TARGET_MASK;
+			pwr = val & XMC_CLOCK_SCALING_POWER_TARGET_MASK;
 			val = READ_RUNTIME_CS(xmc, XMC_CLOCK_SCALING_THRESHOLD_REG);
-			u32 temp_t = val & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
+			temp_t = val & XMC_CLOCK_SCALING_TEMP_THRESHOLD_MASK;
 			val = (val >> XMC_CLOCK_SCALING_POWER_THRESHOLD_POS) &
 				XMC_CLOCK_SCALING_POWER_THRESHOLD_MASK;
 			xocl_warn(&pdev->dev, "Kernel clocks are running at lowest possible frequency"
