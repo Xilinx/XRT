@@ -77,7 +77,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
-#define	FLASH_TYPE_OSPI_VERSAL	"qspi_versal"
+#define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
