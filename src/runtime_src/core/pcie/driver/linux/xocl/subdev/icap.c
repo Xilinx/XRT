@@ -1451,6 +1451,18 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 				ICAP_ERR(icap, "can't create SPC subdev");
 				break;
 			}
+		} else if (ip->m_type == ACCEL_DEADLOCK_DETECTOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ACCEL_DEADLOCK_DETECTOR;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
+				break;
+			}
 		}
 	}
 	return err;

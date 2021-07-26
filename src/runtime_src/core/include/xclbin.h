@@ -368,7 +368,8 @@ extern "C" {
         AXI_DMA,
         TRACE_S2MM_FULL,
         AXI_NOC,
-        ACCEL_DEADLOCK_DETECTOR
+        ACCEL_DEADLOCK_DETECTOR,
+        DEBUG_IP_TYPE_MAX
     };
 
     struct debug_ip_data {
