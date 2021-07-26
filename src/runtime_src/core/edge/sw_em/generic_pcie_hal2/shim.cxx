@@ -80,7 +80,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  bool validateXclBin(const xclBin *header, std::string &xclBinName)
+  bool validateXclBin(const xclBin *header, std::string &xclBinName, bool &newFlow)
   {
     char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
     //int result = 0; Not used. Removed to get rid of compiler warning, and probably a Coverity CID.
@@ -132,12 +132,14 @@ namespace xclcpuemhal2 {
       }
     }
 
+    std::string fpgaDevice = "";
     // iterate devices
     count = 0;
     for (auto& xml_device : xml_project.get_child("project.platform"))
     {
       if (xml_device.first != "device")
         continue;
+      fpgaDevice = xml_device.second.get<std::string>("<xmlattr>.fpgaDevice");
       if (++count > 1)
       {
         //Give error and return from here
@@ -156,6 +158,10 @@ namespace xclcpuemhal2 {
       }
     }
     xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
+    //check for Versal Platforms
+    if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+      newFlow = true;
+    }
     return true;
   }
 
@@ -215,7 +221,7 @@ namespace xclcpuemhal2 {
     bUnified = _unified;
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
-    mIsAieEnabled = false;
+    mIsNewFlow = false;
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -591,12 +597,19 @@ namespace xclcpuemhal2 {
   }
 
   int CpuemShim::xclLoadXclBin(const xclBin *header)
-  {    
-    if (isAieEnabled(header)){
-      mIsAieEnabled = true;
-      return xclLoadXclBinNewFlow(header);
+  { 
+    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
+    std::string xclBinName = "";
+    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mIsNewFlow)) {
+      printf("ERROR:Xclbin validation failed\n");
+      return 1;
     }
-    if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
+    xclBinName = xclBinName + ".xclbin";
+    if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
+
+    if (mIsNewFlow){      
+      return xclLoadXclBinNewFlow(header);
+    }  
 
     std::string xmlFile = "" ;
     int result = dumpXML(header, xmlFile) ;
@@ -845,8 +858,7 @@ namespace xclcpuemhal2 {
 
   int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
-    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
-    std::string xclBinName = "";
+    if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;  
 
     // Before we spawn off the child process, we must determine
     //  if the process will be debuggable or not.  We get that
@@ -876,13 +888,7 @@ namespace xclcpuemhal2 {
       if (!xclcpuemhal2::isRemotePortMapped) {
         xclcpuemhal2::initRemotePortMap();
       }
-
-      if (!xclcpuemhal2::validateXclBin(header, xclBinName)) {
-        printf("ERROR:Xclbin validation failed\n");
-        return 1;
-      }
-      xclBinName = xclBinName + ".xclbin";
-      if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
+      
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
       cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID); 
@@ -895,8 +901,7 @@ namespace xclcpuemhal2 {
       }
       //Send the end of packet
       char cPacketEndChar = PL_OCL_PACKET_END_MARKER;
-      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);
-      if (mLogStream.is_open()) mLogStream << " sendXclbintoPllauncher done :  " << xclBinName << std::endl;
+      memcpy((char*)(xclcpuemhal2::remotePortMappedPointer), &cPacketEndChar, 1);     
     }
 
     std::string xmlFile = "";
@@ -1480,7 +1485,7 @@ namespace xclcpuemhal2 {
 
     int status = 0;
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!simDontRun && !mIsAieEnabled)
+    if(!simDontRun && !mIsNewFlow)
       while (-1 == waitpid(0, &status, 0));
 
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);
