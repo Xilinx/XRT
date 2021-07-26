@@ -80,7 +80,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  bool validateXclBin(const xclBin *header, std::string &xclBinName, bool &newFlow)
+  bool validateXclBin(const xclBin *header, std::string &xclBinName, bool &deviceProcessInQemu)
   {
     char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
     //int result = 0; Not used. Removed to get rid of compiler warning, and probably a Coverity CID.
@@ -160,7 +160,7 @@ namespace xclcpuemhal2 {
     xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
     //check for Versal Platforms
     if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
-      newFlow = true;
+      deviceProcessInQemu = false;
     }
     return true;
   }
@@ -221,7 +221,7 @@ namespace xclcpuemhal2 {
     bUnified = _unified;
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
-    mIsNewFlow = false;
+    mDeviceProcessInQemu = true;
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -600,14 +600,14 @@ namespace xclcpuemhal2 {
   { 
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
-    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mIsNewFlow)) {
+    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu)) {
       printf("ERROR:Xclbin validation failed\n");
       return 1;
     }
     xclBinName = xclBinName + ".xclbin";
     if (mLogStream.is_open()) mLogStream << " validateXclBin done :  " << xclBinName << std::endl;
 
-    if (mIsNewFlow){      
+    if (!mDeviceProcessInQemu){
       return xclLoadXclBinNewFlow(header);
     }  
 
@@ -1485,7 +1485,7 @@ namespace xclcpuemhal2 {
 
     int status = 0;
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!simDontRun && !mIsNewFlow)
+    if(!simDontRun && mDeviceProcessInQemu)
       while (-1 == waitpid(0, &status, 0));
 
     systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE);

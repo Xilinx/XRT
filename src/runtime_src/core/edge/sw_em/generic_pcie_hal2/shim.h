@@ -385,7 +385,7 @@ namespace xclcpuemhal2 {
       exec_core* mCore;
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
-      bool mIsNewFlow;
+      bool mDeviceProcessInQemu;
   };
 
   class GraphType {
