@@ -157,6 +157,12 @@ typedef struct sysmon_info {
     UINT32 vcc_bram_max;
 }SYSMON_INFO, *PSYSMON_INFO;
 
+typedef struct xcl_mailbox_recv {
+	/* recv metrics */
+    UINT64 mbx_recv_raw_bytes;
+    UINT64 mbx_recv_req[XCL_MAILBOX_REQ_MAX];
+}XCLMGMT_IOC_MAILBOX_RECV_INFO, *PXCLMGMT_IOC_MAILBOX_RECV_INFO;
+
 /* Structure available for golden */
 typedef struct xclmgmt_ioc_device_pci_info {
     PCIE_CONFIG_INFO pcie_info;
