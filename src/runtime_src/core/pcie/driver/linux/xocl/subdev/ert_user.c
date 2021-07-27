@@ -109,6 +109,11 @@ struct ert_user_command {
 	uint32_t	status;
 };
 
+struct ert_cu_stat {
+	u64		usage;
+	u32		inflight;
+};
+
 struct xocl_ert_user {
 	struct device		*dev;
 	struct platform_device	*pdev;
@@ -168,6 +173,12 @@ struct xocl_ert_user {
 	uint32_t 		ert_dmsg;
 	uint32_t		echo;
 	uint32_t		intr;
+
+	/* TODO: Before we have partition queue, we need
+	 * record CU statistics in this place.
+	 */
+	struct ert_cu_stat	cu_stat[MAX_CUS];
+	uint32_t		num_cus;
 
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
@@ -330,6 +341,25 @@ static ssize_t cu_write_cnt_show(struct device *dev,
 
 static DEVICE_ATTR_RO(cu_write_cnt);
 
+static ssize_t stat_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+	ssize_t sz = 0;
+	char *fmt = "%lld %d\n";
+	int i;
+
+	/* formatted CU statistics one CU per line */
+	for (i = 0; i < ert_user->num_cus; i++) {
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, fmt,
+				ert_user->cu_stat[i].usage,
+				ert_user->cu_stat[i].inflight);
+	}
+
+	return sz;
+}
+static DEVICE_ATTR_RO(stat);
+
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
@@ -341,6 +371,7 @@ static struct attribute *ert_user_attrs[] = {
 	&dev_attr_cq_write_cnt.attr,
 	&dev_attr_cu_read_cnt.attr,
 	&dev_attr_cu_write_cnt.attr,
+	&dev_attr_stat.attr,
 	NULL,
 };
 
@@ -731,6 +762,10 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 		ert_release_slot(ert_user, ecmd);
 		set_xcmd_timestamp(xcmd, ecmd->status);
 		xcmd->cb.notify_host(xcmd, ecmd->status);
+		if (cmd_opcode(ecmd) == OP_START) {
+			ert_user->cu_stat[xcmd->cu_idx].inflight--;
+			ert_user->cu_stat[xcmd->cu_idx].usage++;
+		}
 		xcmd->cb.free(xcmd);
 		ert_user_free_cmd(ecmd);
 		--ert_user->cq.num;
@@ -1138,6 +1173,9 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct ert_user_command *
 	// xclbin while ERT asynchronous configure is running.
 	//exec->configure_active = true;
 
+	memset(ert_user->cu_stat, 0, cfg->num_cus * sizeof(struct ert_cu_stat));
+	ert_user->num_cus = cfg->num_cus;
+
 	ERTUSER_INFO(ert_user, "scheduler config ert(%d), dataflow(%d), cudma(%d), cuisr(%d)\n"
  		 , cfg->ert
 		 , cfg->dataflow
@@ -1239,6 +1277,8 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 				// write remaining packet (past header and cuidx)
 				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 8,
 						 ecmd->xcmd->execbuf+2, (epkt->count-1)*sizeof(u32));
+
+				ert_user->cu_stat[ecmd->xcmd->cu_idx].inflight++;
 			} else {
 				xocl_memcpy_toio(ert_user->cq_base + slot_addr + 4,
 					  ecmd->xcmd->execbuf+1, epkt->count*sizeof(u32));
