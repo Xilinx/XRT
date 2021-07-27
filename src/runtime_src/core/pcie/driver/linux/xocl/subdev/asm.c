@@ -315,6 +315,10 @@ static int asm_mmap(struct file *filp, struct vm_area_struct *vma)
 	BUG_ON(!xocl_asm);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= xocl_asm->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = xocl_asm->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

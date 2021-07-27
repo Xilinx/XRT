@@ -185,6 +185,10 @@ static int trace_fifo_lite_mmap(struct file *filp, struct vm_area_struct *vma)
 	BUG_ON(!trace_fifo_lite);
 
 	off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= trace_fifo_lite->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = trace_fifo_lite->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;
