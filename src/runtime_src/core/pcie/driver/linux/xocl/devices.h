@@ -77,6 +77,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
+#define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -2659,7 +2660,7 @@ struct xocl_subdev_map {
                 .flags = XOCL_DSAFLAG_MFG,                              \
                 .subdev_info = RES_MFG_VCK190,                          \
                 .subdev_num = ARRAY_SIZE(RES_MFG_VCK190),               \
-                .flash_type = FLASH_TYPE_OSPI_VERSAL,                   \
+                .flash_type = FLASH_TYPE_QSPI_VERSAL,                   \
                 .board_name = "vck190"                                  \
         }
 
@@ -2982,7 +2983,7 @@ struct xocl_subdev_map {
                         XOCL_DSAFLAG_DYNAMIC_IP,                        \
                 .subdev_info = RES_MGMT_VSEC,                           \
                 .subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
-                .flash_type = FLASH_TYPE_OSPI_VERSAL,                   \
+                .flash_type = FLASH_TYPE_QSPI_VERSAL,                   \
                 .board_name = "vck190"                                  \
         }
 
