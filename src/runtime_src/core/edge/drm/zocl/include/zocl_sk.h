@@ -88,6 +88,6 @@ struct soft_krnl_cmd {
 
 int zocl_init_soft_kernel(struct drm_device *drm);
 void zocl_fini_soft_kernel(struct drm_device *drm);
-void zocl_update_sk_mem_stat(struct drm_zocl_dev *zdev, int count,
+void zocl_sk_mem_stat_incr(struct drm_zocl_dev *zdev,
                 unsigned m_stat_type);
 #endif

@@ -713,7 +713,7 @@ void zocl_drm_gem_vm_close(struct vm_area_struct *vma)
 
 	/* Update softkernel memory stats */
 	if (bo->flags & ZOCL_BO_FLAGS_HOST_BO)
-		zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_UNMAPBO);
+		zocl_sk_mem_stat_incr(zdev, ZOCL_MEM_STAT_TYPE_UNMAPBO);
 
 	drm_gem_vm_close(vma);
 }

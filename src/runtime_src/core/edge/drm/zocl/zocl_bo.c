@@ -529,7 +529,7 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 	/* Update softkernel memory stats */
 	bo = to_zocl_bo(gem_obj);
 	if (bo->flags & ZOCL_BO_FLAGS_HOST_BO)
-        	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_MAPBO);
+		zocl_sk_mem_stat_incr(zdev, ZOCL_MEM_STAT_TYPE_MAPBO);
 
 out:
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
@@ -895,7 +895,7 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		return ret;
 	}
 
-	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_HBO);
+	zocl_sk_mem_stat_incr(zdev, ZOCL_MEM_STAT_TYPE_HBO);
 
 	zocl_describe(bo);
 	ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(&bo->cma_base.base);
@@ -920,7 +920,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 	kfree(&zocl_bo->cma_base);
 			
 	/* Update softkernel memory stats */
-	zocl_update_sk_mem_stat(zdev, 1, ZOCL_MEM_STAT_TYPE_FREEBO);
+	zocl_sk_mem_stat_incr(zdev, ZOCL_MEM_STAT_TYPE_FREEBO);
 }
 
 /*

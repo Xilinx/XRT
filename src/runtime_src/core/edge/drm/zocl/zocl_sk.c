@@ -140,7 +140,7 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 /*
  * Update the memory stats for softkernel .
  */
-void zocl_update_sk_mem_stat(struct drm_zocl_dev *zdev, int count, 
+void zocl_sk_mem_stat_incr(struct drm_zocl_dev *zdev,
                 unsigned m_stat_type)
 {
 	struct soft_krnl *sk = zdev->soft_kernel;
@@ -149,19 +149,19 @@ void zocl_update_sk_mem_stat(struct drm_zocl_dev *zdev, int count,
 	write_lock(&zdev->attr_rwlock);
 	switch (m_stat_type) {
 		case ZOCL_MEM_STAT_TYPE_HBO:
-			mem_stat->hbo_cnt += count;
+			mem_stat->hbo_cnt++;
 			break;
 
 		case ZOCL_MEM_STAT_TYPE_MAPBO:
-			mem_stat->mapbo_cnt += count;
+			mem_stat->mapbo_cnt++;
 			break;
 
 		case ZOCL_MEM_STAT_TYPE_UNMAPBO:
-			mem_stat->unmapbo_cnt += count;
+			mem_stat->unmapbo_cnt++;
 			break;
 
 		case ZOCL_MEM_STAT_TYPE_FREEBO:
-			mem_stat->freebo_cnt += count;
+			mem_stat->freebo_cnt++;
 			break;
 	}
 	write_unlock(&zdev->attr_rwlock);
