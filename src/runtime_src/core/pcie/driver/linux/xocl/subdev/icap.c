@@ -2611,12 +2611,14 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	/*
 	 * If the previous frequency was very high and we load an incompatible
 	 * bitstream it may damage the hardware!
-	 * If no clock freq, must return without touching the hardware.
+	 *
+	 * But if Platform contain all fixed clocks, xclbin doesnt contain
+	 * CLOCK_FREQ_TOPOLOGY section as there are no clocks to configure,
+	 * downloading xclbin should be succesful in this case.
 	 */
 	header = xrt_xclbin_get_section_hdr(xclbin, CLOCK_FREQ_TOPOLOGY);
 	if (!header) {
-		err = -EINVAL;
-		goto done;
+		ICAP_WARN(icap, "CLOCK_FREQ_TOPOLOGY doesn't exist. XRT is not configuring any clocks");
 	}
 
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {
