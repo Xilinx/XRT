@@ -116,6 +116,7 @@ typedef struct {
     CHAR   ShellName[64];
     CHAR   ShellFilename[64];
     CHAR   BMCVersion[16];
+    CHAR   MacAddress[20];
     UINT32 VlanTag;
 } XCLMGMT_DEVICE_INFO, *PXCLMGMT_DEVICE_INFO;
 #pragma pack(pop)
