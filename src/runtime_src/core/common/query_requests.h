@@ -81,6 +81,7 @@ enum class key_type
   kds_cu_stat,
   kds_scu_stat,
   ps_kernel,
+  xocl_errors,
   xclbin_full,
 
   xmc_version,
@@ -1053,6 +1054,16 @@ struct error : request
     auto time = std::stoul(line.substr(pos));
     return std::make_pair(code, time);
   }
+};
+
+// Retrieve asynchronous xocl errors from xocl driver
+struct xocl_errors : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::xocl_errors;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 struct dna_serial_num : request

@@ -24,6 +24,7 @@
 #include "native_profile.h"
 #include "device_int.h"
 #include "error_int.h"
+#include "core/include/xclerr_int.h"
 #include "core/common/error.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -67,6 +68,8 @@ error_number_to_string(xrtErrorNum err)
     {XRT_ERROR_NUM_AIE_LOCK,          "AIE_LOCK"},
     {XRT_ERROR_NUM_AIE_DMA,           "AIE_DMA"},
     {XRT_ERROR_NUM_AIE_MEM_PARITY,    "AIE_MEM_PARITY"},
+    {XRT_ERROR_NUM_KDS_CU,            "KDS_CU"},
+    {XRT_ERROR_NUM_KDS_EXEC,          "KDS_EXEC"},
   };
 
   return code_to_string(map, err, "Unknown error number");
@@ -111,6 +114,8 @@ error_module_to_string(xrtErrorModule err)
     {XRT_ERROR_MODULE_AIE_CORE,   "MODULE_AIE_CORE"},
     {XRT_ERROR_MODULE_AIE_MEMORY, "MODULE_AIE_MEMORY"},
     {XRT_ERROR_MODULE_AIE_SHIM,   "MODULE_AIE_SHIM"},
+    {XRT_ERROR_MODULE_AIE_SHIM,   "MODULE_AIE_NOC"},
+    {XRT_ERROR_MODULE_AIE_SHIM,   "MODULE_AIE_PL"},
   };
 
   return code_to_string(map, err, "Unknown error module");
@@ -246,10 +251,54 @@ public:
 
 };
 
+class xocl_error_impl
+{
+  std::vector<xclErrorLast> errors;
+public:
+  xocl_error_impl(const xrt_core::device* device)
+  {
+    try {
+      std::vector<char> buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
+      if (buf.empty())
+        return;
+      const xcl_errors *errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
+      if (errors_buf->num_err <= 0)
+        return;
+
+      for (int i = 0; i < errors_buf->num_err; i++)
+        errors.emplace_back(errors_buf->errors[i]);
+    }
+    catch (const xrt_core::query::no_such_key&) {
+      // Ignoring if not available: Edge Case
+    }
+  }
+
+  std::vector<xclErrorLast>
+  get_errors() const
+  {
+    return errors;
+  }
+
+/* TODO
+  std::string
+  to_string()
+  {
+    auto fmt = boost::format
+      ("%s\n"
+       "Timestamp: %s")
+      % error_code_to_string(m_errcode)
+      % error_time_to_string(m_timestamp);
+
+    return fmt.str();
+  }
+*/
+
+};
+
 } //namespace
 
 ////////////////////////////////////////////////////////////////
-// xrt_xclbin C++ API implementations (xrt_xclbin.h)
+// xrt_error C++ API implementations (xrt_error.h)
 ////////////////////////////////////////////////////////////////
 namespace xrt {
 
@@ -295,7 +344,7 @@ to_string() const
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
-// xrt_xclbin C API implmentations (xrt_xclbin.h)
+// xrt_error C API implmentations (xrt_error.h)
 ////////////////////////////////////////////////////////////////
 int
 xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, uint64_t* timestamp)
@@ -303,6 +352,12 @@ xrtErrorGetLast(xrtDeviceHandle dhdl, xrtErrorClass ecl, xrtErrorCode* error, ui
   try {
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, ecl, error, timestamp]{
+      auto xocl_errors_obj = xrt::xocl_error_impl(xrt_core::device_int::get_core_device(dhdl).get());
+      auto xocl_errors = xocl_errors_obj.get_errors();
+      if (xocl_errors.size() > 0) {
+        //TODO
+        return 0;
+      }
       auto handle = xrt::error_impl(xrt_core::device_int::get_core_device(dhdl).get(), ecl);
       *error = handle.get_error_code();
       *timestamp = handle.get_timestamp();
