@@ -7,15 +7,8 @@
 #  % run.sh -dbg emacs
 XRTBUILD=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 
-# Define SDX and VIVADO to allow this loader script to be used
-# through other scripts (e.g. sprite scripts) that invoke SDx
-# and Vivado tools in addition to using XRT.
-
-# Set to location of your preferred SDx install
-vitis=/proj/xbuilds/2020.2_released/installs/lin64/Vitis/2020.2
-
-# Set to location of your preferred Vivado install
-vivado=/proj/xbuilds/2020.2_released/installs/lin64/Vivado/2020.2
+# Set to location of your preferred Vitis install
+vitis=/proj/xbuilds/2021.1_released/installs/lin64/Vitis/2021.1
 
 ext=.o
 rel="Release"
@@ -34,7 +27,6 @@ usage()
     echo "[-conf]                    Run conformance mode testing"
     echo "[-ini <path>]              Set SDACCEL_INI_PATH"
     echo "[-vitis <path>]            Specify Vitis install (default: $vitis)"
-    echo "[-vivado <path>]           Specify Vivado install (default: $vivado)"
     echo "[-xrt <path>]              Path to XRT install (default: $XRTBUILD/opt/xilinx/xrt)"
     echo "[-ldp <path>]              Prepend path to LD_LIBRARY_PATH"
     echo "[--]                       End option parsing for this script invocation"
@@ -69,11 +61,6 @@ while [ $# -gt 0 ]; do
         -vitis)
             shift
             vitis=$1
-            shift
-            ;;
-        -vivado)
-            shift
-            vivado=$1
             shift
             ;;
         -ini)
@@ -126,24 +113,16 @@ fi
 
 if [[ "X$vitis" != "X" && -d "$vitis" ]] ; then
  export XILINX_VITIS=${XILINX_VITIS:=$vitis}
- export XILINX_OPENCL=$XILINX_VITIS
  export VITIS_CXX_PATH=${VITIS_CXX_PATH:=$XILINX_VITIS/bin/xcpp}
- export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_VITIS/lib/lnx64${ext}/Default:$XILINX_VITIS/lib/lnx64${ext}:$XILINX_VITIS/runtime/lib/x86_64
-fi
-
-if [[ "X$vivado" != "X" && -d "$vivado" ]] ; then
- export XILINX_VIVADO=${XILINX_VIVADO:=$vivado}
- export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_VIVADO/lib/lnx64${ext}
+ export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$XILINX_VITIS/lib/lnx64${ext}
 fi
 
 if [ "X$ldp" != "X" ] ; then
  export LD_LIBRARY_PATH=$ldp:${LD_LIBRARY_PATH}
 fi
 
-echo "XILINX_OPENCL=$XILINX_OPENCL"
 echo "XILINX_XRT=$XILINX_XRT"
 echo "XILINX_VITIS=$XILINX_VITIS"
-echo "XILINX_VIVADO=$XILINX_VIVADO"
 echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 echo "OCL_ICD_VENDORS=$OCL_ICD_VENDORS"
 echo "PATH=$PATH"

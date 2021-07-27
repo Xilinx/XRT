@@ -142,8 +142,8 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 
   // incr(nullptr, nullptr, adder1, adder2)
   xrt::kernel incr(device, uuid, "krnl_stream_vdatamover");
-  int adder1 = 0;
-  int adder2 = 0;
+  int adder1 = 20;  // arbitrarily chosen to be different from 0
+  int adder2 = 10;  // arbitrarily chosen to be different from 0
 
   // create run objects for re-use in loop
   xrt::run add_run(add);
