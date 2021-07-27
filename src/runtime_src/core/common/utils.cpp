@@ -219,47 +219,6 @@ issue_id()
   return id++;
 }
 
-int
-parse_p2p_config(const std::vector<std::string> config, std::string &msg)
-{
-  int64_t bar = -1;
-  int64_t rbar = -1;
-  int64_t remap = -1;
-  int64_t exp_bar = -1;
-
-  //parse the query
-  for(const auto& val : config) {
-    auto pos = val.find(':') + 1;
-    if(val.find("rbar") == 0)
-      rbar = std::stoll(val.substr(pos));
-    else if(val.find("exp_bar") == 0)
-      exp_bar = std::stoll(val.substr(pos));
-    else if(val.find("bar") == 0)
-      bar = std::stoll(val.substr(pos));
-    else if(val.find("remap") == 0)
-      remap = std::stoll(val.substr(pos));
-  }
-
-  //return the config with a message
-  if (bar == -1) {
-    msg = "P2P config failed. P2P is not supported. Can't find P2P BAR.";
-    return static_cast<int>(p2p_config::not_supported);
-  }
-  else if (rbar != -1 && rbar > bar) {
-    msg = "Warning:Please WARM reboot to enable p2p now.";
-    return static_cast<int>(p2p_config::reboot);
-  }
-  else if (remap > 0 && remap != bar) {
-    msg = "Error:P2P config failed. P2P remapper is not set correctly";
-    return static_cast<int>(p2p_config::error);
-  }
-  else if (bar == exp_bar) {
-    return static_cast<int>(p2p_config::enabled);
-  }
-  msg = "P2P bar is not enabled";
-  return static_cast<int>(p2p_config::disabled);
-}
-
 static const std::map<int, std::string> oemid_map = {
   {0x10da, "Xilinx"},
   {0x02a2, "Dell"},
@@ -300,29 +259,6 @@ parse_clock_id(const std::string& id)
 {
   auto clock_str = clock_map.find(id);
   return clock_str != clock_map.end() ? clock_str->second : "N/A";
-}
-
-std::string
-string_to_UUID(std::string str)
-{
-  //make sure that a UUID is passed in
-  assert(str.length() == 32);
-  std::string uuid = "";
-  //positions to insert hyphens
-  //before: 00000000000000000000000000000000
-  std::vector<int> pos = {8, 4, 4, 4};
-  //before: 00000000-0000-0000-0000-000000000000
-
-  for(auto const p : pos) {
-    std::string token = str.substr(0, p);
-    boost::to_upper(token);
-    uuid.append(token + "-");
-    str.erase(0, p);
-  }
-  boost::to_upper(str);
-  uuid.append(str);
-
-  return uuid;
 }
 
 }} // utils, xrt_core

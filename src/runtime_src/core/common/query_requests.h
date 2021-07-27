@@ -594,9 +594,8 @@ struct interface_uuids : request
   }
 
   // Convert string value to proper uuid string if necessary
-  // and return xrt::uuid
-  static uuid
-  to_uuid(const std::string& value)
+  static std::string
+  to_uuid_string(const std::string& value)
   {
     std::string str = value;
     if (str.length() < 24)  // for '-' insertion
@@ -606,7 +605,21 @@ struct interface_uuids : request
         str.insert(idx,1,'-');
     if (str.length() != 36) // final uuid length must be 36 chars
       throw xrt_core::system_error(EINVAL, "invalid uuid: " + value);
-    return uuid(str);
+    return str;
+  }
+
+  // Convert string value to proper uuid upper cased string if necessary
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  to_uuid_upper_string(const std::string& value);
+
+  // Convert string value to proper uuid string if necessary
+  // and return xrt::uuid
+  static uuid
+  to_uuid(const std::string& value)
+  {
+    auto str = to_uuid_string(value);
+    return uuid{str};
   }
 };
 
@@ -1186,6 +1199,18 @@ struct p2p_config : request
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::p2p_config;
   static const char* name() { return "p2p_config"; }
+
+  enum class value_type { disabled, enabled, error, reboot, not_supported };
+
+  // parse a config result and return value and msg
+  XRT_CORE_COMMON_EXPORT
+  static std::pair<value_type, std::string>
+  parse(const result_type& config);
+
+  // convert value_type enumerator to std::string
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  to_string(value_type value);
 
   virtual boost::any
   get(const device*) const = 0;

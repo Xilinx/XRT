@@ -22,24 +22,16 @@
 #include "query_requests.h"
 #include "utils.h"
 
+#include <boost/algorithm/string.hpp>
+
 namespace {
 
-static std::map<int, std::string> p2p_config_map = {
-  { 0, "disabled" },
-  { 1, "enabled" },
-  { 2, "error" },
-  { 3, "reboot" },
-  { 4, "not supported" },
-};
-
-/**
- * New flow for exposing mac addresses
- * xrt_core::query::mac_contiguous_num is the total number of mac addresses
- * avaliable contiguously starting from xrt_core::query::mac_addr_first
- * 
- * Old flow: Query the four sysfs nodes we have and validate them
- * before adding them to the property tree
- */
+// New flow for exposing mac addresses
+// xrt_core::query::mac_contiguous_num is the total number of mac addresses
+// avaliable contiguously starting from xrt_core::query::mac_addr_first
+// 
+// Old flow: Query the four sysfs nodes we have and validate them
+// before adding them to the property tree
 static boost::property_tree::ptree
 mac_addresses(const xrt_core::device * dev)
 {
@@ -110,8 +102,13 @@ platform_info(const xrt_core::device * device) {
     interface_uuids.erase(
       std::remove_if(interface_uuids.begin(), interface_uuids.end(),	
                   [](const std::string& s) { return s.empty(); }), interface_uuids.end());
-  } catch (const xrt_core::query::no_such_key&) {}
-  static_region.add("interface_uuid", xrt_core::utils::string_to_UUID(interface_uuids[0]));
+  }
+  catch (const xrt_core::query::no_such_key&) {
+  }
+
+  auto uuid_str = xrt_core::query::interface_uuids::to_uuid_string(interface_uuids[0]);
+  boost::algorithm::to_upper(uuid_str);
+  static_region.add("interface_uuid", uuid_str);
 
   try {
     static_region.add("jtag_idcode", xrt_core::query::idcode::to_string(xrt_core::device_query<xrt_core::query::idcode>(device)));
@@ -151,16 +148,15 @@ platform_info(const xrt_core::device * device) {
 
   std::vector<std::string> config;
   std::string msg;
-  int value = static_cast<int>(xrt_core::utils::p2p_config::not_supported);
+  auto value = xrt_core::query::p2p_config::value_type::not_supported;
   try {
     config = xrt_core::device_query<xrt_core::query::p2p_config>(device);
-    value = xrt_core::utils::parse_p2p_config(config, msg);
+    std::tie(value, std::ignore) = xrt_core::query::p2p_config::parse(config);
   }
   catch (const xrt_core::query::exception&) {
-    value = static_cast<int>(xrt_core::utils::p2p_config::not_supported);
   }
   
-  status.add("p2p_status", p2p_config_map[value]);
+  status.add("p2p_status", xrt_core::query::p2p_config::to_string(value));
   pt_platform.put_child("status", status);
 
   boost::property_tree::ptree controller;

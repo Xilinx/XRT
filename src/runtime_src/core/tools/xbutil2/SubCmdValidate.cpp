@@ -1009,8 +1009,8 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
   }
   catch (const xrt_core::query::exception&) {  }
-  
-  xrt_core::utils::parse_p2p_config(config, msg);
+
+  std::tie(std::ignore, msg) = xrt_core::query::p2p_config::parse(config);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));

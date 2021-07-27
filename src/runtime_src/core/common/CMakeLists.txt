@@ -17,6 +17,7 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "info_*.cpp"
   "message.cpp"
   "module_loader.cpp"
+  "query_requests.cpp"
   "sensor.cpp"
   "system.cpp"
   "thread.cpp"

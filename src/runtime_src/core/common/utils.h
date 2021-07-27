@@ -36,14 +36,6 @@
 
 namespace xrt_core { namespace utils {
 
-enum class p2p_config {
-  disabled,
-  enabled,
-  error,
-  reboot,
-  not_supported
-};
-
 /**
  * ios_flags_restore() - scope guard for ios flags
  */
@@ -107,25 +99,12 @@ uint64_t
 issue_id();
 
 XRT_CORE_COMMON_EXPORT
-int
-parse_p2p_config(const std::vector<std::string> config, std::string &msg);
-
-XRT_CORE_COMMON_EXPORT
 std::string 
 parse_oem_id(const std::string& oemid);
 
 XRT_CORE_COMMON_EXPORT
 std::string 
 parse_clock_id(const std::string& id);
-
-/**
- * string_to_UUID(): convert a string to hyphen formatted UUID
- * 
- * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
- */
-XRT_CORE_COMMON_EXPORT
-std::string
-string_to_UUID(std::string str);
 
 }} // utils, xrt_core
 
