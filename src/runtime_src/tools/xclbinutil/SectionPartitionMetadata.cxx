@@ -39,24 +39,28 @@ SectionPartitionMetadata::_init SectionPartitionMetadata::_initializer;
 
 // Variable name to data size mapping table
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
-  { "major", FDTProperty::DF_u32 },
-  { "minor", FDTProperty::DF_u32 },
-  { "logic_uuid", FDTProperty::DF_sz },
-  { "resolves_interface_uuid", FDTProperty::DF_sz },
-  { "interface_uuid", FDTProperty::DF_sz },
-  { "reg", FDTProperty::DF_au64 },
-  { "pcie_physical_function", FDTProperty::DF_u32},
-  { "pcie_bar_mapping", FDTProperty::DF_u32},
+  { "__INFO", FDTProperty::DF_sz },
+  { "alias_name", FDTProperty::DF_sz },
+  { "bar", FDTProperty::DF_u32},
+  { "base_address", FDTProperty::DF_u64 },
   { "compatible", FDTProperty::DF_asz },
-  { "interrupts", FDTProperty::DF_au32 },
-  { "firmware_product_name", FDTProperty::DF_sz },
   { "firmware_branch_name", FDTProperty::DF_sz },
+  { "firmware_product_name", FDTProperty::DF_sz },
   { "firmware_version_major", FDTProperty::DF_u32 },
   { "firmware_version_minor", FDTProperty::DF_u32 },
   { "firmware_version_revision", FDTProperty::DF_u32 },
+  { "interface_uuid", FDTProperty::DF_sz },
   { "interrupt_alias", FDTProperty::DF_asz },
-  { "alias_name", FDTProperty::DF_sz },
-  { "__INFO", FDTProperty::DF_sz }
+  { "interrupts", FDTProperty::DF_au32 },
+  { "logic_uuid", FDTProperty::DF_sz },
+  { "major", FDTProperty::DF_u32 },
+  { "minor", FDTProperty::DF_u32 },
+  { "pcie_bar_mapping", FDTProperty::DF_u32},
+  { "pcie_physical_function", FDTProperty::DF_u32},
+  { "physical_function", FDTProperty::DF_u32},
+  { "range", FDTProperty::DF_u64 },
+  { "reg", FDTProperty::DF_au64 },
+  { "resolves_interface_uuid", FDTProperty::DF_sz },
 };
 
 // -- Helper transformation helper functions ---------------------------------
@@ -145,7 +149,7 @@ SchemaTransform_nameValue( const std::string & _valueName,
 
 
 /**
- * Help method to transform the firmware section
+ * Helper method to transform the firmware section
  * 
  * @param _ptOriginal The original firmware property tree
  * @param _ptTransformed The transform firmware property tree
@@ -159,6 +163,19 @@ SchemaTransformUniversal_firmware( const boost::property_tree::ptree& _ptOrigina
   SchemaTransform_nameValue("firmware_version_major", "", true  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_version_minor", "", false  /*required*/, _ptOriginal, _ptTransformed);
   SchemaTransform_nameValue("firmware_version_revision", "", false  /*required*/, _ptOriginal, _ptTransformed);
+}
+
+/**
+ * Helper method to transform a generic node
+ * 
+ * @param _ptOriginal The original firmware property tree
+ * @param _ptTransformed The transform firmware property tree
+ */
+void 
+SchemaTransformUniversal_generic( const boost::property_tree::ptree& _ptOriginal,
+                                  boost::property_tree::ptree & _ptTransformed)
+{
+  _ptTransformed = _ptOriginal;
 }
 
 /**
@@ -438,6 +455,10 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
                            SchemaTransformToDTC_interfaces,
                            _ptOriginal, _ptTransformed);
 
+  SchemaTransform_subNode( "pcie", false /*required*/, 
+                           SchemaTransformUniversal_generic,
+                           _ptOriginal, _ptTransformed);
+
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
                            SchemaTransformToDTC_addressable_endpoints,
                            _ptOriginal, _ptTransformed);
@@ -658,6 +679,10 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
 
   SchemaTransform_subNode( "interfaces", true /*required*/, 
                            SchemaTransformToPM_interfaces,
+                           _ptOriginal, _ptTransformed);
+
+  SchemaTransform_subNode( "pcie", false /*required*/, 
+                           SchemaTransformUniversal_generic,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
