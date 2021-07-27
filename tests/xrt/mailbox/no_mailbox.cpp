@@ -22,14 +22,15 @@ stream output of the streaming kernel and writes result into global memory.
       |_____________|------+
        _____________       | (s1) AXI4 Stream
       |incr         |<-----+
-      | s1 + adder  |<----- adder (scalar)
+      | s1 + adder1 |<----- adder1 (scalar)
+      |    + adder2 |<----- adder2 (scalar)
       |_____________|----->+
        _____________       | (s2) AXI4 Stream
       |mult         |<-----+
       | s2 * in3    |<----- in3 (global memory)
       |_____________|-----> out (global memory)
 
-out = [in1 + in2 + adder] * in3
+out = [in1 + in2 + adder1 + adder2] * in3
 
 The incr kernel is built as an AP_CTRL_CHAIN kernel with mailbox and
 restart counter using:
@@ -38,22 +39,15 @@ restart counter using:
    config_interface -s_axilite_auto_restart_counter 1
 
 The test harness allows the user to specify how many times the
-pipeline should be iterated.  The scalar adder to the 'incr' kernel is
-incremented in each iteration. The final output is validated against
-its expected value and if different, then prints the difference
-between the expected scalar 'adder' and adder actually used by 'incr'
-kernel and the value of expected 'adder' along with the value of the
-adder used by 'incr' kernel.
+pipeline should be iterated.  The scalar adders to the 'incr' kernel
+are incremented and decremented in lock step in each iteration. The
+final output is validated against its expected value and if different
+exists with error.
 
 This example illustrates running the above pipeline *without* using
 the mailbox and restart counter feature of the incr kernel,
 essentially the 'incr' kernel is started in iteration just like the
 'add' and 'mult' kernel are started.
-
-The example prints the difference between the expected scalar 'adder'
-and adder actually used by 'incr' kernel and prints the value of
-expected 'adder' along with the value of the adder used by 'incr'
-kernel.
 
 While the 'incr' kernel is compiled with mailbox and restart counter,
 the xclbin contains no meta data to reflect mailbox and counter. As a
@@ -146,9 +140,10 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
   xrt::bo out(device, data_size_bytes, mult.group_id(2));
   auto out_data = out.map<int*>();
 
-  // incr(nullptr, nullptr, adder)
+  // incr(nullptr, nullptr, adder1, adder2)
   xrt::kernel incr(device, uuid, "krnl_stream_vdatamover");
-  unsigned int adder = 0;
+  int adder1 = 20;  // arbitrarily chosen to be different from 0
+  int adder2 = 10;  // arbitrarily chosen to be different from 0
 
   // create run objects for re-use in loop
   xrt::run add_run(add);
@@ -161,7 +156,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
   bool error = false;   // indicates error in any of the iterations
   for (unsigned int cnt = 0; cnt < iter; ++cnt) {
 
-    std::cout << "iteration: " << cnt << " adder: " << adder << '\n';
+    std::cout << "iteration: " << cnt << " (adder1,adder2): " << adder1 << ',' << adder2 << ")\n";
 
     // create the test data and software result
     for(size_t i = 0; i < data_size; ++i) {
@@ -169,7 +164,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
       in2_data[i] = 2 * static_cast<int>(i);
       in3_data[i] = static_cast<int>(i);
       out_data[i] = 0;
-      sw_out_data[i] = (in1_data[i] + in2_data[i] + adder) * in3_data[i];
+      sw_out_data[i] = (in1_data[i] + in2_data[i] + adder1 + adder2) * in3_data[i];
     }
 
     // sync test data to kernel
@@ -179,7 +174,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 
     // start the pipeline
     add_run(in1, in2, nullptr, data_size);
-    incr_run(nullptr, nullptr, adder++);
+    incr_run(nullptr, nullptr, adder1++, adder2--);
     mult_run(in3, nullptr, out, data_size);
 
     // wait for all stages to complete
@@ -191,29 +186,17 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
     out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
     // compare with expected scalar adder
-    auto prev = 0;  // expected difference
     for (size_t i = 0 ; i < data_size; i++) {
       if (out_data[i] != sw_out_data[i]) {
-        error = true;
-        // check what the adder value actually was
-        if (in3_data[i] == 0)
-          continue;  // don't divide by 0
-
-        auto diff = (sw_out_data[i] - out_data[i]) / in3_data[i];
-        auto sw_adder = adder - 1;        // the expected adder
-        auto hw_adder = sw_adder - diff;  // the actual adder used
-        if (prev != (sw_adder - hw_adder)) {
-          std::cout << "error in iteration = " << cnt
-                    << " diff = " << diff
-                    << " sw_adder = " << sw_adder
-                    << " hw_adder = " << hw_adder << '\n';
-          prev = sw_adder - hw_adder;
-        }
+        std::cout << "error in iteration = " << cnt
+                  << " expected output = " << sw_out_data[i]
+                  << " observed output = " << out_data[i]
+                  << " adder1 = " << adder1 - 1
+                  << " adder2 = " << adder2 + 1 << '\n';
+        throw std::runtime_error("result mismatch");
       }
     }
   }
-  if (error)
-    throw std::runtime_error("result mismatch");
 }
 
 static void

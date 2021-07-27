@@ -159,6 +159,16 @@ size_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(size);
 
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_formatted_cu_stat(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(stat);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
@@ -168,6 +178,7 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_name.attr,
 	&dev_attr_base_paddr.attr,
 	&dev_attr_size.attr,
+	&dev_attr_stat.attr,
 	NULL,
 };
 

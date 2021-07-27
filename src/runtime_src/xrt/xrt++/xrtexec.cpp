@@ -287,7 +287,7 @@ add(index_type idx, value_type value)
 
 exec_write_command::
 exec_write_command(xrt_device* device)
-  : command(device,ERT_EXEC_WRITE)
+  : command(device,ERT_START_KEY_VAL)
 {
   m_impl->ert_pkt->type = ERT_CU;
   clear();
@@ -327,12 +327,7 @@ clear()
   auto skcmd = m_impl->ert_cu;
   skcmd->cu_mask = 0;
 
-  // clear payload to past reserved fields. Reserved entries are
-  // dictated by mandatory cumask and offset (0x10 and 0x14) of ctx-in
-  // and ctx-out.  Since exec_write is piggybacking on start_kernel,
-  // we have to skip past 4 control registers in register map also.
-  // todo: create separate cmd packet for exec_write
-  m_impl->ert_pkt->count = 1 + 4 + 2; 
+  m_impl->ert_pkt->count = 1; 
 }
 
 }} // exec,xrt

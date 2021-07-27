@@ -112,9 +112,8 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd);
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			  struct kds_command *xcmd);
-void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
-			  struct kds_command *xcmd,
-			  u32 skip);
+void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			     struct kds_command *xcmd);
 void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 			struct kds_command *xcmd);
 void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd,

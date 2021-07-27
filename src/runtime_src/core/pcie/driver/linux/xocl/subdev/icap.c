@@ -1451,6 +1451,18 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 				ICAP_ERR(icap, "can't create SPC subdev");
 				break;
 			}
+		} else if (ip->m_type == ACCEL_DEADLOCK_DETECTOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ACCEL_DEADLOCK_DETECTOR;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
+				break;
+			}
 		}
 	}
 	return err;
@@ -1555,7 +1567,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 		info.addr = ip->m_base_address;
 		/* Workaround for U30, maybe we can remove this in the future */
 		info.size = (krnl_info) ? krnl_info->range : 0x1000;
-		if (krnl_info->features & KRNL_SW_RESET)
+		if (krnl_info && (krnl_info->features & KRNL_SW_RESET))
 			info.sw_reset = true;
 		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;

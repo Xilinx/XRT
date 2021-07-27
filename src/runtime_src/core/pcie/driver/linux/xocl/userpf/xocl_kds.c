@@ -482,6 +482,21 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	return true;
 }
 
+/* This function is only used to convert ERT_EXEC_WRITE to
+ * ERT_START_KEY_VAL.
+ * The only difference is that ERT_EXEC_WRITE skip 6 words in the payload.
+ */
+static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
+{
+	/* end index of payload = count - (1 + 6) */
+	int end = ecmd->count - 7;
+	int i;
+
+	/* Shift payload 6 words up */
+	for (i = ecmd->extra_cu_masks; i < end; i++)
+		ecmd->data[i] = ecmd->data[i + 6];
+}
+
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp, bool in_kernel)
 {
@@ -584,13 +599,12 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		/* third argument in following function is representing number of
-		 * words to skip when writing to CU. This should be consistent
-		 * for both edge/DC, but Due to performance and some use cases
-		 * this is been decided that, DC flows skips first 6 words
-		 * whereas edge flows doesnt skip any words
-		 */
-		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd, 6);
+		userpf_info(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+		convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_START_KEY_VAL:
+		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);

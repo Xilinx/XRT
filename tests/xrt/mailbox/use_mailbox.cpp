@@ -22,14 +22,15 @@ stream output of the streaming kernel and writes result into global memory.
       |_____________|------+
        _____________       | (s1) AXI4 Stream
       |incr         |<-----+
-      | s1 + adder  |<----- adder (scalar)
+      | s1 + adder1 |<----- adder1 (scalar)
+      |    + adder2 |<----- adder2 (scalar)
       |_____________|----->+
        _____________       | (s2) AXI4 Stream
       |mult         |<-----+
       | s2 * in3    |<----- in3 (global memory)
       |_____________|-----> out (global memory)
 
-out = [in1 + in2 + adder] * in3
+out = [in1 + in2 + adder1 + adder2] * in3
 
 The incr kernel is built as an AP_CTRL_CHAIN kernel with mailbox and
 restart counter using:
@@ -38,19 +39,22 @@ restart counter using:
    config_interface -s_axilite_auto_restart_counter 1
 
 The test harness allows the user to specify how many times the
-pipeline should be iterated.  The scalar adder to the 'incr' kernel is
-incremented in each iteration. The final output is validated against
-its expected value and if different, then prints the difference
-between the expected scalar 'adder' and adder actually used by 'incr'
-kernel and the value of expected 'adder' along with the value of the
-adder used by 'incr' kernel.
+pipeline should be iterated.  The scalar adders to the 'incr' kernel
+are incremented and decremented in lock step in each iteration. The
+final output is validated against its expected value and if different
+exits with error.
 
 This example illustrates counted auto-restart on the incr streaming
-kernel and the use of mailbox to change the adder value of incr.
+kernel and the use of mailbox to change the adder values of incr.
 
 Since incr is a streaming kernel, it is stalled while waiting for
-input from first stage adder.  The values written to mailbox are not
-picked up by the streaming kernel before it starts running.
+input from first stage adder. Any updates the mailbox inputs are
+picked up only immediately after the kernel asserts AP_READY and 
+before it enters AP_START.  In counted auto restart, the kernel 
+is only observable as AP_START and changes to mailbox inputs are picked up
+only after the kernel finishes and immediately before it against becomes
+AP_START.  From this sample host code this means that changes to the 
+scalar adders are seen only in the following iteration of the pipeline.
 
 While the 'incr' kernel is compiled with mailbox and restart counter,
 the xclbin contains no meta data to reflect mailbox and counter. As a
@@ -136,16 +140,17 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 
   // incr(nullptr, nullptr, adder)
   xrt::kernel incr(device, uuid, "krnl_stream_vdatamover");
-  unsigned int adder = 0;
+  int adder1 = 20;  // arbitrarily chosen to be different from 0
+  int adder2 = 10;  // arbitrarily chosen to be different from 0
 
   // create run objects for re-use in loop
   xrt::run add_run(add);
   xrt::run mult_run(mult);
 
-  // start the incr kernel in auto restart mode with default adder
+  // start the incr kernel in auto restart mode with default adders
   // since it is a streaming kernel it will be stalled waiting for
   // input
-  auto incr_run = incr(xrt::autostart{iter}, nullptr, nullptr, adder);
+  auto incr_run = incr(xrt::autostart{iter}, nullptr, nullptr, adder1, adder2);
 
   // create mailbox to programatically update the incr scalar adder
   xrt::mailbox incr_mbox(incr_run);
@@ -156,7 +161,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
   bool error = false;   // indicates error in any of the iterations
   for (unsigned int cnt = 0; cnt < iter; ++cnt) {
 
-    std::cout << "iteration: " << cnt << " adder: " << adder << '\n';
+    std::cout << "iteration: " << cnt << " (adder1,adder2): " << adder1 << ',' << adder2 << ")\n";
 
     // Create the test data and software result
     for(size_t i = 0; i < data_size; ++i) {
@@ -164,7 +169,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
       in2_data[i] = 2 * static_cast<int>(i);
       in3_data[i] = static_cast<int>(i);
       out_data[i] = 0;
-      sw_out_data[i] = (in1_data[i] + in2_data[i] + adder) * in3_data[i];
+      sw_out_data[i] = (in1_data[i] + in2_data[i] + adder1 + adder2) * in3_data[i];
     }
 
     // sync test data to kernel
@@ -182,7 +187,8 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 
     // prepare for next iteration, update the mailbox with the next
     // value of 'adder'.
-    incr_mbox.set_arg(2, ++adder); // update the mailbox
+    incr_mbox.set_arg(2, ++adder1); // update the mailbox
+    incr_mbox.set_arg(3, --adder2); // update the mailbox
 
     // write the mailbox content to hw, the write will not be picked
     // up until the next iteration of the pipeline (incr).
@@ -191,30 +197,18 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
     // sync result from device to host
     out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 
-    // compare with expected scalar adder
-    auto prev = 0;  // expected difference
+    // compare with expected scalar adders
     for (size_t i = 0 ; i < data_size; i++) {
       if (out_data[i] != sw_out_data[i]) {
-        error = true;
-        // check what the adder value actually was
-        if (in3_data[i] == 0)
-          continue;  // don't divide by 0
-
-        auto diff = (sw_out_data[i] - out_data[i]) / in3_data[i];
-        auto sw_adder = adder - 1;        // the expected adder
-        auto hw_adder = sw_adder - diff;  // the actual adder used
-        if (prev != (sw_adder - hw_adder)) {
-          std::cout << "error in iteration = " << cnt
-                    << " diff = " << diff
-                    << " sw_adder = " << sw_adder
-                    << " hw_adder = " << hw_adder << '\n';
-          prev = sw_adder - hw_adder;
-        }
+        std::cout << "error in iteration = " << cnt
+                  << " expected output = " << sw_out_data[i]
+                  << " observed output = " << out_data[i]
+                  << " adder1 = " << adder1 - 1
+                  << " adder2 = " << adder2 + 1 << '\n';
+        throw std::runtime_error("result mismatch");
       }
     }
   }
-  if (error)
-    throw std::runtime_error("result mismatch");
 }
 
 static void
