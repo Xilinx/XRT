@@ -1074,7 +1074,7 @@ done:
   }
 
   void
-  get_icap_info(xcl_hwicap* value)
+  get_icap_info(xcl_pr_region* value)
   {
     DWORD bytes = 0;
     bool status = DeviceIoControl(m_dev,
@@ -1082,11 +1082,11 @@ done:
         nullptr,
         0,
         value,
-        sizeof(xcl_hwicap),
+        sizeof(xcl_pr_region),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(xcl_hwicap))
+    if (!status || bytes != sizeof(xcl_pr_region))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_ICAP_INFO (get_icap_info) failed");
   }
 
@@ -1251,7 +1251,7 @@ get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
 }
 
 void
-get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value)
+get_icap_info(xclDeviceHandle hdl, xcl_pr_region* value)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "icap_info()");
