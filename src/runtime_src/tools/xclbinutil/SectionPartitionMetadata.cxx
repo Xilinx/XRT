@@ -172,10 +172,31 @@ SchemaTransformUniversal_firmware( const boost::property_tree::ptree& _ptOrigina
  * @param _ptTransformed The transform firmware property tree
  */
 void 
-SchemaTransformUniversal_generic( const boost::property_tree::ptree& _ptOriginal,
-                                  boost::property_tree::ptree & _ptTransformed)
+SchemaTransformUniversal_pcie( const boost::property_tree::ptree& _ptOriginal,
+                               boost::property_tree::ptree & _ptTransformed)
 {
-  _ptTransformed = _ptOriginal;
+  boost::property_tree::ptree ptEmpty;
+
+  // --- Bars ---
+  boost::property_tree::ptree ptBarOriginal;
+  ptBarOriginal = _ptOriginal.get_child("bars", ptEmpty);
+
+  if (ptBarOriginal.empty()) 
+    throw std::runtime_error("Error: pcie.bars[] list not found.");
+
+  boost::property_tree::ptree ptBarArray;
+  for (auto barEntryOrig : ptBarOriginal) {
+    boost::property_tree::ptree ptBarEntry;
+
+    SchemaTransform_nameValue("bar", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+    SchemaTransform_nameValue("physical_function", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+    SchemaTransform_nameValue("base_address", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+    SchemaTransform_nameValue("range", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+
+    ptBarArray.push_back(std::make_pair("", ptBarEntry));
+  }
+
+  _ptTransformed.add_child("bars", ptBarArray);
 }
 
 /**
@@ -456,7 +477,7 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "pcie", false /*required*/, 
-                           SchemaTransformUniversal_generic,
+                           SchemaTransformUniversal_pcie,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
@@ -682,7 +703,7 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "pcie", false /*required*/, 
-                           SchemaTransformUniversal_generic,
+                           SchemaTransformUniversal_pcie,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
