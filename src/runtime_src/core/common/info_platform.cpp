@@ -58,7 +58,7 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
   catch (const xq::no_such_key&) {
     static_region.add("fpga_name", "N/A");   // edige
   }
-  
+
   pt.put_child("static_region", static_region);
 }
 
@@ -92,7 +92,7 @@ add_mig_info(const xrt_core::device* device, ptree_type& pt)
     pt.add("mig_calibrated", xrt_core::device_query<xq::status_mig_calibrated>(device));
   }
   catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case 
+    // Ignoring if not available: Edge Case
     pt.add("mig_calibrated", "N/A");
   }
 }
@@ -107,7 +107,7 @@ add_p2p_info(const xrt_core::device* device, ptree_type& pt)
   }
   catch (const xq::exception&) {
   }
-  
+
   pt.add("p2p_status", xq::p2p_config::to_string(value));
 }
 
@@ -140,7 +140,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     pt.put_child("controller", controller);
   }
   catch (const xq::exception&) {
-    // Ignoring if not available: Edge Case 
+    // Ignoring if not available: Edge Case
   }
 }
 
@@ -149,7 +149,7 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
 {
   ptree_type pt_clock_array;
 
-  try { 
+  try {
     auto raw = xrt_core::device_query<xq::clock_freq_topology_raw>(device);
     if(raw.empty())
       return;
@@ -166,7 +166,7 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
     pt.put_child("clocks", pt_clock_array);
   }
   catch (const xq::no_such_key&) {
-    // ignoring if not available: Edge Case 
+    // ignoring if not available: Edge Case
   }
 }
 
@@ -185,13 +185,13 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
       std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
       constexpr int base = 16;
       auto mac_base_val = std::stoul(mac_base, nullptr, base);
-      
+
       for (decltype(mac_contiguous_num) i = 0; i < mac_contiguous_num; ++i) {
         ptree_type addr;
-        auto base = boost::format("%02X") % (mac_base_val + i);
-        addr.add("address", mac_prefix + ":" + base.str());
+        auto basex = boost::format("%02X") % (mac_base_val + i);
+        addr.add("address", mac_prefix + ":" + basex.str());
         pt_mac.push_back(std::make_pair("", addr));
-      } 
+      }
     }
     else { //old flow
       auto  mac_addr = xrt_core::device_query<xq::mac_addr_list>(device);
@@ -204,10 +204,10 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
       }
     }
     pt.put_child("macs", pt_mac);
-    
+
   }
   catch (const xq::no_such_key&) {
-    // Ignoring if not available: Edge Case 
+    // Ignoring if not available: Edge Case
   }
 }
 
@@ -225,7 +225,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 
   pt_platform_array.push_back(std::make_pair("", pt_platform));
 }
-  
+
 } //unnamed namespace
 
 namespace xrt_core { namespace platform {
@@ -264,7 +264,7 @@ pcie_info(const xrt_core::device * device)
   }
   catch(const xq::exception&) {
   }
-  
+
   return ptree;
 }
 

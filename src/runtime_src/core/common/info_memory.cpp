@@ -51,17 +51,17 @@ memtype2str(MEM_TYPE mt)
   throw xrt_core::error("Invalid memtype");
 }
 
-// memtype2str() - Convert xclbin::mem_data::m_type to string  
+// memtype2str() - Convert xclbin::mem_data::m_type to string
 inline std::string
 memtype2str(decltype(mem_data::m_type) mt)
 {
   return memtype2str(static_cast<MEM_TYPE>(mt));
 }
 
-// ecc_status2str - Convert ECC status to readable string 
+// ecc_status2str - Convert ECC status to readable string
 static std::string
 ecc_status2str(uint64_t status)
-{    
+{
   constexpr int ce_mask = 0b10;  // correctable error mask
   constexpr int ue_mask = 0b1;   // uncorrectable error mask
 
@@ -95,8 +95,8 @@ struct memory_info_collector
   {
     auto idx = std::distance(mt->m_mem_data, mem);
     if (idx >= 0 && idx < mt->m_count)
-      return idx;
-    
+      return static_cast<decltype(mem_topology::m_count)>(idx);
+
     throw xrt_core::internal_error("add_temp_mem_info: invalid mem_data entry");
   }
 
@@ -145,7 +145,7 @@ struct memory_info_collector
   add_stream_info(const mem_data* mem, ptree_type& pt_stream_array)
   {
     ptree_type pt_stream;
-  
+
     try {
       pt_stream.put("tag", mem->m_tag);
 
@@ -159,7 +159,7 @@ struct memory_info_collector
 
       // list of "???" strings presenting what?
       auto stream_stat = xrt_core::device_query<xq::dma_stream>(device, xq::request::modifier::entry, lname);
-      
+
       // what is being parsed here?
       std::map<std::string, std::string> stat_map;
       for (const auto& str : stream_stat) {
@@ -195,7 +195,7 @@ struct memory_info_collector
       if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
         add_stream_info(&mem, pt_stream_array);
     }
-    
+
     pt.add_child("board.memory.data_streams", pt_stream_array);
   }
 
@@ -205,7 +205,7 @@ struct memory_info_collector
   {
     if (!mem->m_used)
       return;
-    
+
     try {
       std::string tag(reinterpret_cast<const char*>(mem->m_tag));
       auto ecc_st = xrt_core::device_query<xq::mig_ecc_status>(device, xq::request::modifier::subdev, tag);
@@ -223,7 +223,7 @@ struct memory_info_collector
     catch (const xq::exception& ex) {
       pt_mem.put("error_msg", ex.what());
     }
-    catch (const std::exception& ex) {
+    catch (const std::exception&) {
       // Error from ecc_status2str, not sure why that is ignored?
     }
   }
@@ -310,7 +310,7 @@ struct memory_info_collector
   {
     if (!grp_topo)
       return;
-    
+
     ptree_type pt_grp_array;
 
     // group_topology prepends all mem_topology entries so groups
@@ -321,7 +321,7 @@ struct memory_info_collector
     }
     pt.add_child("board.memory.memory_groups", pt_grp_array);
   }
-    
+
 public:
   explicit
   memory_info_collector(const xrt_core::device* dev)
@@ -348,7 +348,7 @@ public:
       throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
   }
 
-  void 
+  void
   collect(ptree_type& pt)
   {
     if (!mem_topo)
@@ -379,7 +379,7 @@ memory_topology(const xrt_core::device* device)
   catch (xq::exception& ex) {
     pt.put("error_msg", ex.what());
   }
-    
+
   return pt;
 }
 
