@@ -100,10 +100,6 @@ issue_id();
 
 XRT_CORE_COMMON_EXPORT
 std::string 
-parse_oem_id(const std::string& oemid);
-
-XRT_CORE_COMMON_EXPORT
-std::string 
 parse_clock_id(const std::string& id);
 
 }} // utils, xrt_core

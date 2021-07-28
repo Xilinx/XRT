@@ -820,6 +820,11 @@ struct clock_freq_topology_raw : request
   using result_type = std::vector<char>;
   static const key_type key = key_type::clock_freq_topology_raw;
 
+  // parse a clock_freq_topo::clock_freq::m_name (null terminated string)
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  parse(const std::string& value);
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -1999,6 +2004,11 @@ struct oem_id : request
   using result_type = std::string;
   static const key_type key = key_type::oem_id;
   static const char* name() { return "oem_id"; }
+
+  // parse an oem_id and return value as string
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  parse(const result_type& value);
 
   virtual boost::any
   get(const device*) const = 0;

@@ -77,5 +77,48 @@ to_uuid_upper_string(const std::string& value)
   boost::to_upper(uuid_str);
   return uuid_str;
 }
+
+std::string
+xrt_core::query::oem_id::
+parse(const xrt_core::query::oem_id::result_type& value)
+{
+  static const std::map<int, std::string> oemid_map =
+  {
+   {0x10da, "Xilinx"},
+   {0x02a2, "Dell"},
+   {0x12a1, "IBM"},
+   {0xb85c, "HP"},
+   {0x2a7c, "Super Micro"},
+   {0x4a66, "Lenovo"},
+   {0xbd80, "Inspur"},
+   {0x12eb, "Amazon"},
+   {0x2b79, "Google"}
+  };
+
+  try {
+    unsigned int oem_id_val = std::stoul(value, nullptr, 16);
+    auto oemstr = oemid_map.find(oem_id_val);
+    return oemstr != oemid_map.end() ? oemstr->second : "N/A";
+  }
+  catch (const std::exception&) {
+    // conversion failed
+  }
+  return "N/A";
+}
+
+std::string
+xrt_core::query::clock_freq_topology_raw::
+parse(const std::string& clock)
+{
+  static const std::map<std::string, std::string> clock_map =
+  {
+   {"DATA_CLK", "Data"},
+   {"KERNEL_CLK", "Kernel"},
+   {"SYSTEM_CLK", "System"},
+  };
+
+  auto clock_str = clock_map.find(clock);
+  return clock_str != clock_map.end() ? clock_str->second : "N/A";
+}
   
 }} // query, xrt_core

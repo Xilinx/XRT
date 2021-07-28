@@ -23,8 +23,8 @@
 
 // Too much typing
 using ptree_type = boost::property_tree::ptree;
+namespace xq = xrt_core::query;
 
-// ------ S T A T I C   F U N C T I O N S -------------------------------------
 namespace {
 
 static const std::map<MEM_TYPE, std::string> memtype_map =
@@ -108,7 +108,7 @@ struct memory_info_collector
     ptree_type pt_dma_array;
     try {
       // list of "c2h h2c" strings representing bytes in either direction
-      auto dma_threads = xrt_core::device_query<xrt_core::query::dma_threads_raw>(device);
+      auto dma_threads = xrt_core::device_query<xq::dma_threads_raw>(device);
       for (size_t i = 0; i < dma_threads.size(); ++i) {
         ptree_type pt_dma;
         uint64_t c2h = 0, h2c = 0;
@@ -119,7 +119,7 @@ struct memory_info_collector
         pt_dma_array.push_back(std::make_pair("",pt_dma));
       }
     }
-    catch (const xrt_core::query::exception& ex) {
+    catch (const xq::exception& ex) {
       pt.put("error_msg", ex.what());
     }
 
@@ -133,9 +133,9 @@ struct memory_info_collector
   update_mig_cache(ptree_type& pt)
   {
     try {
-      xrt_core::device_update<xrt_core::query::mig_cache_update>(device, std::string("1"));
+      xrt_core::device_update<xq::mig_cache_update>(device, std::string("1"));
     }
-    catch (const xrt_core::query::exception& ex) {
+    catch (const xq::exception& ex) {
       pt.put("error_msg", ex.what());
     }
   }
@@ -159,7 +159,7 @@ struct memory_info_collector
         lname = "flow" + std::to_string(mem->flow_id) + "/stat";
 
       // list of "???" strings presenting what?
-      auto stream_stat = xrt_core::device_query<xrt_core::query::dma_stream>(device, xrt_core::query::request::modifier::entry, lname);
+      auto stream_stat = xrt_core::device_query<xq::dma_stream>(device, xq::request::modifier::entry, lname);
       
       // what is being parsed here?
       std::map<std::string, std::string> stat_map;
@@ -178,7 +178,7 @@ struct memory_info_collector
       pt_stream.put("usage.total", total);
       pt_stream.put("usage.pending", pending);
     }
-    catch (const xrt_core::query::exception&) {
+    catch (const xq::exception&) {
       // eat the exception, probably bad path
     }
 
@@ -209,11 +209,11 @@ struct memory_info_collector
     
     try {
       std::string tag(reinterpret_cast<const char*>(mem->m_tag));
-      auto ecc_st = xrt_core::device_query<xrt_core::query::mig_ecc_status>(device, xrt_core::query::request::modifier::subdev, tag);
-      auto ce_cnt = xrt_core::device_query<xrt_core::query::mig_ecc_ce_cnt>(device, xrt_core::query::request::modifier::subdev, tag);
-      auto ue_cnt = xrt_core::device_query<xrt_core::query::mig_ecc_ue_cnt>(device, xrt_core::query::request::modifier::subdev, tag);
-      auto ce_ffa = xrt_core::device_query<xrt_core::query::mig_ecc_ce_ffa>(device, xrt_core::query::request::modifier::subdev, tag);
-      auto ue_ffa = xrt_core::device_query<xrt_core::query::mig_ecc_ue_ffa>(device, xrt_core::query::request::modifier::subdev, tag);
+      auto ecc_st = xrt_core::device_query<xq::mig_ecc_status>(device, xq::request::modifier::subdev, tag);
+      auto ce_cnt = xrt_core::device_query<xq::mig_ecc_ce_cnt>(device, xq::request::modifier::subdev, tag);
+      auto ue_cnt = xrt_core::device_query<xq::mig_ecc_ue_cnt>(device, xq::request::modifier::subdev, tag);
+      auto ce_ffa = xrt_core::device_query<xq::mig_ecc_ce_ffa>(device, xq::request::modifier::subdev, tag);
+      auto ue_ffa = xrt_core::device_query<xq::mig_ecc_ue_ffa>(device, xq::request::modifier::subdev, tag);
 
       pt_mem.put("extended_info.ecc.status", ecc_status2str(ecc_st));
       pt_mem.put("extended_info.ecc.error.correctable.count", ce_cnt);
@@ -221,7 +221,7 @@ struct memory_info_collector
       pt_mem.put("extended_info.ecc.error.uncorrectable.count", ue_cnt);
       pt_mem.put("extended_info.ecc.error.uncorrectable.first_failure_address", boost::format("0x%x") % ue_ffa);
     }
-    catch (const xrt_core::query::exception& ex) {
+    catch (const xq::exception& ex) {
       pt_mem.put("error_msg", ex.what());
     }
     catch (const std::exception& ex) {
@@ -326,13 +326,13 @@ struct memory_info_collector
 public:
   memory_info_collector(const xrt_core::device* dev)
     : device(dev)
-    , mem_stat(xrt_core::device_query<xrt_core::query::memstat_raw>(device))
+    , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
   {
-    auto mt_buf = xrt_core::device_query<xrt_core::query::mem_topology_raw>(device);
+    auto mt_buf = xrt_core::device_query<xq::mem_topology_raw>(device);
     mem_topo  = mt_buf.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mt_buf.data());
-    auto gt_buf = xrt_core::device_query<xrt_core::query::group_topology>(device);
+    auto gt_buf = xrt_core::device_query<xq::group_topology>(device);
     grp_topo  = gt_buf.empty() ? nullptr : reinterpret_cast<const mem_topology*>(gt_buf.data());
-    auto temp_buf = xrt_core::device_query<xrt_core::query::temp_by_mem_topology>(device);
+    auto temp_buf = xrt_core::device_query<xq::temp_by_mem_topology>(device);
     mem_temp  = temp_buf.empty() ? nullptr : reinterpret_cast<uint32_t*>(temp_buf.data());
 
     // info gathering functions indexes mem_stat by mem_toplogy entry index
@@ -376,7 +376,7 @@ memory_topology(const xrt_core::device* device)
     memory_info_collector mic(device);
     mic.collect(pt);
   }
-  catch (xrt_core::query::exception& ex) {
+  catch (xq::exception& ex) {
     pt.put("error_msg", ex.what());
   }
     
@@ -393,7 +393,7 @@ xclbin_info(const xrt_core::device * device)
     boost::algorithm::to_upper(uuid_str);
     pt.put("xclbin_uuid", uuid_str);
   }
-  catch (const xrt_core::query::exception& ex) {
+  catch (const xq::exception& ex) {
     pt.put("error_msg", ex.what());
   }
 

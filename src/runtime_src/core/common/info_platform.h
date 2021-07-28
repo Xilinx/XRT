@@ -20,21 +20,15 @@
 // Local - Include Files
 #include "device.h"
 
-// ------ S T A T I C   F U N C T I O N S -------------------------------------
-namespace {
-
-} // unnamed namespace
-
-namespace xrt_core {
-namespace platform {
+namespace xrt_core { namespace platform {
 
 XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
-platform_info(const xrt_core::device * device);
+platform_info(const xrt_core::device* device);
 
 XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
-pcie_info(const xrt_core::device * device);
+pcie_info(const xrt_core::device* device);
 
 }} // platform, xrt
 

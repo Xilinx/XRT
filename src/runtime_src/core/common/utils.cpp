@@ -219,35 +219,6 @@ issue_id()
   return id++;
 }
 
-static const std::map<int, std::string> oemid_map = {
-  {0x10da, "Xilinx"},
-  {0x02a2, "Dell"},
-  {0x12a1, "IBM"},
-  {0xb85c, "HP"},
-  {0x2a7c, "Super Micro"},
-  {0x4a66, "Lenovo"},
-  {0xbd80, "Inspur"},
-  {0x12eb, "Amazon"},
-  {0x2b79, "Google"}
-};
-
-std::string 
-parse_oem_id(const std::string& oemid)
-{
-  unsigned int oem_id_val = 0;
-  std::stringstream ss;
-
-  try {
-    ss << std::hex << oemid;
-    ss >> oem_id_val;
-  } catch (const std::exception&) {
-    //failed to parse oemid to hex value, ignore erros and print original value
-  }
-
-  auto oemstr = oemid_map.find(oem_id_val);
-  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
-}
-
 static const std::map<std::string, std::string> clock_map = {
   {"DATA_CLK", "Data"},
   {"KERNEL_CLK", "Kernel"},
