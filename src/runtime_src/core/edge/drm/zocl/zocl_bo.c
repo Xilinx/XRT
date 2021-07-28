@@ -508,8 +508,8 @@ int zocl_map_bo_ioctl(struct drm_device *dev,
 	int ret = 0;
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct drm_zocl_map_bo *args = data;
-	struct drm_gem_object *gem_obj;
-	struct drm_zocl_bo *bo;
+	struct drm_gem_object *gem_obj = NULL;
+	struct drm_zocl_bo *bo = NULL;
 
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
