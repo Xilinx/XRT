@@ -34,6 +34,8 @@
 #include "xclbin_int.h" // Non public xclbin APIs
 #include "native_profile.h"
 
+#include <boost/property_tree/json_parser.hpp>
+
 #include <map>
 #include <vector>
 #include <fstream>

@@ -66,8 +66,9 @@ void
 add_board_info(const xrt_core::device* device, ptree_type& pt)
 {
   auto ddr_size_bytes = [](uint64_t size_gb, uint64_t count) {
-    auto bytes = size_gb * 1024 * 1024 * 1024;
-    return bytes * count;
+                          constexpr uint64_t gb = 1024 * 1024 * 1024;
+                          auto bytes = size_gb * gb;
+                          return bytes * count;
   };
 
   ptree_type bd_info;
@@ -182,7 +183,8 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     if (mac_contiguous_num && !mac_addr_first.empty()) {
       std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
       std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
-      auto mac_base_val = std::stoul(mac_base, nullptr, 16);
+      constexpr int base = 16;
+      auto mac_base_val = std::stoul(mac_base, nullptr, base);
       
       for (decltype(mac_contiguous_num) i = 0; i < mac_contiguous_num; ++i) {
         ptree_type addr;

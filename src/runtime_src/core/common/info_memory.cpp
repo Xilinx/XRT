@@ -20,31 +20,30 @@
 
 #include <boost/algorithm/string.hpp>
 
-
 // Too much typing
 using ptree_type = boost::property_tree::ptree;
 namespace xq = xrt_core::query;
 
 namespace {
 
-static const std::map<MEM_TYPE, std::string> memtype_map =
-{
- {MEM_DDR3,                 "MEM_DDR3"},
- {MEM_DDR4,                 "MEM_DDR4"},
- {MEM_DRAM,                 "MEM_DRAM"},
- {MEM_STREAMING,            "MEM_STREAMING"},
- {MEM_PREALLOCATED_GLOB,    "MEM_PREALLOCATED_GLOB"},
- {MEM_ARE,                  "MEM_ARE"},
- {MEM_HBM,                  "MEM_HBM"},
- {MEM_BRAM,                 "MEM_BRAM"},
- {MEM_URAM,                 "MEM_URAM"},
- {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
-};
-
 // memtype2str() - Convert MEM_TYPE to readable string
 static std::string
 memtype2str(MEM_TYPE mt)
 {
+  static const std::map<MEM_TYPE, std::string> memtype_map =
+  {
+   {MEM_DDR3,                 "MEM_DDR3"},
+   {MEM_DDR4,                 "MEM_DDR4"},
+   {MEM_DRAM,                 "MEM_DRAM"},
+   {MEM_STREAMING,            "MEM_STREAMING"},
+   {MEM_PREALLOCATED_GLOB,    "MEM_PREALLOCATED_GLOB"},
+   {MEM_ARE,                  "MEM_ARE"},
+   {MEM_HBM,                  "MEM_HBM"},
+   {MEM_BRAM,                 "MEM_BRAM"},
+   {MEM_URAM,                 "MEM_URAM"},
+   {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
+  };
+
   auto itr = memtype_map.find(mt);
   if (itr != memtype_map.end())
     return (*itr).second;
@@ -163,9 +162,9 @@ struct memory_info_collector
       
       // what is being parsed here?
       std::map<std::string, std::string> stat_map;
-      for (size_t i = 0; i < stream_stat.size(); ++i) {
+      for (const auto& str : stream_stat) {
         std::vector<std::string> strs;
-        boost::split(strs, stream_stat[i], boost::is_any_of(":"));
+        boost::split(strs, str, boost::is_any_of(":"));
         if (strs.size() > 1)
           stat_map[strs[0]] = strs[1];
       }
@@ -324,6 +323,7 @@ struct memory_info_collector
   }
     
 public:
+  explicit
   memory_info_collector(const xrt_core::device* dev)
     : device(dev)
     , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))

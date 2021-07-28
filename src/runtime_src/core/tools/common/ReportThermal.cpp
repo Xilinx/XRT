@@ -20,6 +20,8 @@
 #include "core/common/device.h"
 #include "core/common/sensor.h"
 
+#include <boost/property_tree/json_parser.hpp>
+
 void
 ReportThermal::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const

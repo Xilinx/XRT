@@ -96,7 +96,8 @@ parse(const xrt_core::query::oem_id::result_type& value)
   };
 
   try {
-    unsigned int oem_id_val = std::stoul(value, nullptr, 16);
+    constexpr int base = 16;
+    unsigned int oem_id_val = std::stoul(value, nullptr, base);
     auto oemstr = oemid_map.find(oem_id_val);
     return oemstr != oemid_map.end() ? oemstr->second : "N/A";
   }
