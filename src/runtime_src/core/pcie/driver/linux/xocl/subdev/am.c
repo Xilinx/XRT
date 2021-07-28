@@ -380,7 +380,11 @@ static int am_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct xocl_am *am = (struct xocl_am *)filp->private_data;
 	BUG_ON(!am);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= am->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = am->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

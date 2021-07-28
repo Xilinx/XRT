@@ -187,7 +187,11 @@ static int trace_funnel_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct trace_funnel *trace_funnel = (struct trace_funnel *)filp->private_data;
 	BUG_ON(!trace_funnel);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= trace_funnel->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = trace_funnel->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

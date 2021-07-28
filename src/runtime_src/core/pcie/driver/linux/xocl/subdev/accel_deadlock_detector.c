@@ -203,6 +203,10 @@ static int accel_deadlock_detector_mmap(struct file *filp, struct vm_area_struct
     BUG_ON(!accel_deadlock_detector);
 
     off = vma->vm_pgoff << PAGE_SHIFT;
+    if (off >= accel_deadlock_detector->range) {
+        return -EINVAL;
+    }
+
     // BAR physical address
     phys = accel_deadlock_detector->start_paddr + off;
     vsize = vma->vm_end - vma->vm_start;
