@@ -131,7 +131,7 @@ to_string(const xrt_core::device* device)
 }
 
 static std::string
-json_str(boost::property_tree::ptree pt) 
+json_str(const boost::property_tree::ptree& pt) 
 {
   std::stringstream ss;
   boost::property_tree::write_json(ss, pt);
@@ -298,7 +298,7 @@ get_info(info::device param) const
     return query::json_str(xrt_core::memory::memory_topology(handle.get()));
   case info::device::platform :              // std::string
     return query::json_str(xrt_core::platform::platform_info(handle.get()));
-  case info::device::pcie_info :              // std::string
+  case info::device::pcie :                  // std::string
     return query::json_str(xrt_core::platform::pcie_info(handle.get()));
   case info::device::dynamic_regions :         // std::string
     return query::json_str(xrt_core::memory::xclbin_info(handle.get()));

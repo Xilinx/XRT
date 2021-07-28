@@ -30,6 +30,7 @@ static void usage()
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
     std::cout << "  -d <bdf | device_index>\n";
+    std::cout << "  [-j all] # dump all json queries\n";
     std::cout << "  -h\n\n";
     std::cout << "";
     std::cout << "* Bitstream is required\n";
@@ -44,6 +45,7 @@ int run(int argc, char** argv)
 
   std::string xclbin_fnm;
   std::string device_index = "0";
+  bool json_queries = false;
 
   std::vector<std::string> args(argv+1,argv+argc);
   std::string cur;
@@ -55,9 +57,15 @@ int run(int argc, char** argv)
 
     if (arg[0] == '-') {
       cur = arg;
+
+      // No argument switches
+      if (cur == "-j")
+        json_queries = true;
+
       continue;
     }
 
+    // Switch arguments
     if (cur == "-k")
       xclbin_fnm = arg;
     else if (cur == "-d")
@@ -83,6 +91,25 @@ int run(int argc, char** argv)
   std::cout << "device m2m:            " << std::boolalpha << device.get_info<xrt::info::device::m2m>() << std::dec << "\n";
   std::cout << "device nodma:          " << std::boolalpha << device.get_info<xrt::info::device::nodma>() << std::dec << "\n";
   std::cout << "device interface uuid: " << device.get_info<xrt::info::device::interface_uuid>().to_string() << "\n";
+
+  if (json_queries) {
+    std::cout << "device electrical json info ====================================\n";
+    std::cout << device.get_info<xrt::info::device::electrical>();
+    std::cout << "device thermal json info =======================================\n";
+    std::cout << device.get_info<xrt::info::device::thermal>();
+    std::cout << "device mechanical json info ====================================\n";
+    std::cout << device.get_info<xrt::info::device::mechanical>();
+    std::cout << "device memory json info ========================================\n";
+    std::cout << device.get_info<xrt::info::device::memory>();
+    std::cout << "device platform json info ======================================\n";
+    std::cout << device.get_info<xrt::info::device::platform>();
+    std::cout << "device pcie json info ==========================================\n";
+    std::cout << device.get_info<xrt::info::device::platform>();
+    std::cout << "device dynamic regions json info ===============================\n";
+    std::cout << device.get_info<xrt::info::device::dynamic_regions>();
+    std::cout << "device host json info ==========================================\n";
+    std::cout << device.get_info<xrt::info::device::host>();
+  }
 
   return 0;
 }

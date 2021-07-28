@@ -82,7 +82,11 @@ ecc_status2str(uint64_t status)
 
 struct memory_info_collector
 {
-  const xrt_core::device* device;     // device to query for info
+  const xrt_core::device* device;          // device to query for info
+
+  const std::vector<char> mem_topo_raw;    // xclbin raw mem topology
+  const std::vector<char> grp_topo_raw;    // xclbin raw grp topology
+  const std::vector<char> mem_temp_raw;    // xclbin temperator raw data
 
   const mem_topology* mem_topo = nullptr;  // xclbin mem topology from device
   const mem_topology* grp_topo = nullptr;  // xclbin group topology from device
@@ -319,28 +323,29 @@ struct memory_info_collector
       const auto& mem = grp_topo->m_mem_data[i];
       add_grp_info(&mem, pt_grp_array);
     }
-    pt.add_child("board.memory.memory_groups", pt_grp_array);
+
+    if (!pt_grp_array.empty())
+      pt.add_child("board.memory.memory_groups", pt_grp_array);
   }
 
 public:
   explicit
   memory_info_collector(const xrt_core::device* dev)
     : device(dev)
+    , mem_topo_raw(xrt_core::device_query<xq::mem_topology_raw>(device))
+    , grp_topo_raw(xrt_core::device_query<xq::group_topology>(device))
+    , mem_temp_raw(xrt_core::device_query<xq::temp_by_mem_topology>(device))
+    , mem_topo(mem_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mem_topo_raw.data()))
+    , grp_topo(grp_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(grp_topo_raw.data()))
     , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
+    , mem_temp(mem_temp_raw.empty() ? nullptr : reinterpret_cast<const uint32_t*>(mem_temp_raw.data()))
   {
-    auto mt_buf = xrt_core::device_query<xq::mem_topology_raw>(device);
-    mem_topo  = mt_buf.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mt_buf.data());
-    auto gt_buf = xrt_core::device_query<xq::group_topology>(device);
-    grp_topo  = gt_buf.empty() ? nullptr : reinterpret_cast<const mem_topology*>(gt_buf.data());
-    auto temp_buf = xrt_core::device_query<xq::temp_by_mem_topology>(device);
-    mem_temp  = temp_buf.empty() ? nullptr : reinterpret_cast<uint32_t*>(temp_buf.data());
-
     // info gathering functions indexes mem_stat by mem_toplogy entry index
     if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
       throw xrt_core::internal_error("incorrect memstat_raw entries");
 
     // info gathering functions indexes mem_temp by mem_topology entry index
-    if (mem_temp && temp_buf.size() < static_cast<size_t>(mem_topo->m_count))
+    if (mem_temp && mem_temp_raw.size() < static_cast<size_t>(mem_topo->m_count))
       throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
 
     // info gathering functions indexes mem_stat by group_toplogy entry index

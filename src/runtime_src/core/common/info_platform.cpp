@@ -40,7 +40,8 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
                       [](const std::string& s) {
                         return s.empty();
                       }), interface_uuids.end());
-    static_region.add("interface_uuid", xq::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
+    if (!interface_uuids.empty())
+      static_region.add("interface_uuid", xq::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
   }
   catch (const xq::exception&) {
   }
