@@ -344,8 +344,53 @@ static struct attribute *ert_user_attrs[] = {
 	NULL,
 };
 
+static ssize_t
+ert_user_cq_debug(struct file *filp, struct kobject *kobj,
+	    struct bin_attribute *attr, char *buf,
+	    loff_t offset, size_t count)
+{
+	struct xocl_ert_user *ert_user;
+	struct device *dev = container_of(kobj, struct device, kobj);
+	ssize_t nread = 0;
+	size_t size = 0;
+
+	ert_user = (struct xocl_ert_user *)dev_get_drvdata(dev);
+	if (!ert_user || !ert_user->cq_base)
+		return nread;
+
+	size = ert_user->cq_range;
+	if (offset >= size)
+		goto done;
+
+	if (offset + count < size)
+		nread = count;
+	else
+		nread = size - offset;
+
+	xocl_memcpy_fromio(buf, ert_user->cq_base + offset, nread);
+
+done:
+	return nread;
+}
+
+static struct bin_attribute cq_attr = {
+	.attr = {
+		.name ="cq_debug",
+		.mode = 0444
+	},
+	.read = ert_user_cq_debug,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute *ert_user_bin_attrs[] = {
+	&cq_attr,
+	NULL,
+};
+
 static struct attribute_group ert_user_attr_group = {
 	.attrs = ert_user_attrs,
+	.bin_attrs = ert_user_bin_attrs,
 };
 
 static int32_t ert_user_gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
