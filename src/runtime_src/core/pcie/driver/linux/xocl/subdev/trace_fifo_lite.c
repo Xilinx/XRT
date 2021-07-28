@@ -184,7 +184,7 @@ static int trace_fifo_lite_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct trace_fifo_lite *trace_fifo_lite = (struct trace_fifo_lite *)filp->private_data;
 	BUG_ON(!trace_fifo_lite);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
         if (off >= trace_fifo_lite->range) {
             return -EINVAL;
         }

@@ -314,7 +314,7 @@ static int asm_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct xocl_asm *xocl_asm = (struct xocl_asm *)filp->private_data;
 	BUG_ON(!xocl_asm);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
         if (off >= xocl_asm->range) {
             return -EINVAL;
         }
