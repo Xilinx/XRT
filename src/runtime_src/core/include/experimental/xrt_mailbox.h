@@ -62,9 +62,15 @@ public:
   /**
    * read() - Read kernel arguments into mailbox copy
    *
-   * If the kernel is in auto restart mode, then it is paused after
-   * current iteration before copying the kernel arguments.  The
-   * kernel is started again after the arguments are copied.
+   * This function is asynchronous, it requests the kernel to update
+   * the content of the mailbox when it is safe to do so.  If the
+   * kernel is in auto restart mode, then the update is delayed until
+   * beginning of next iteration.  If the kernel is idle, then the 
+   * update is immediate.
+   *
+   * The mailbox is busy until the kernel has updated the content. 
+   * It is an error to call ``read()`` while the mailbox is busy, 
+   * throws std::system_error with std::errc::device_or_resource_busy.
    *
    * This function invalidates any argument data returned through
    * ``get_arg`` function.
@@ -76,9 +82,15 @@ public:
   /**
    * write() - Write the mailbox copy of kernel arguments to kernel
    *
-   * If the kernel is in auto restart mode, then it is paused after
-   * current iteration before copying the mailbox content.  The
-   * kernel is started again after the arguments are copied.
+   * This function is asynchronous, it requests the kernel to copy
+   * the content of the mailbox when it is safe to do so.  If the
+   * kernel is in auto restart mode, then the copying is delayed until
+   * beginning of next iteration.  If the kernel is idle, then the 
+   * copying is immediate.
+   *
+   * The mailbox is busy until the kernel has copied the content. 
+   * It is an error to call ``write()`` while the mailbox is busy, 
+   * throws std::system_error with std::errc::device_or_resource_busy.
    */
   XCL_DRIVER_DLLESPEC
   void
@@ -96,6 +108,9 @@ public:
    * copy of the data.  It is valid only until the mailbox is updated
    * again.
    *
+   * The function is synchronous and blocks if the mailbox is busy,
+   * per pending ``read()`` or ``write()``.
+   *
    * Subject to deprecation in favor of type safe version.
    */
   XCL_DRIVER_DLLESPEC
@@ -112,6 +127,9 @@ public:
    *
    * Use this API to queue up a new kernel argument value that can
    * be written to the kernel using ``write()``.
+   *
+   * The function is synchronous and blocks if the mailbox is busy,
+   * per pending ``read()`` or ``write()``.
    */
   void
   set_arg(int index, xrt::bo& boh)
@@ -120,7 +138,7 @@ public:
   }
  
   /**
-   * set_arg - xrt::bo variant for const lvalue
+   * set_arg() - xrt::bo variant for const lvalue
    */
   void
   set_arg(int index, const xrt::bo& boh)
@@ -129,7 +147,7 @@ public:
   }
  
   /**
-   * set_arg - xrt::bo variant for rvalue
+   * set_arg() - xrt::bo variant for rvalue
    */
   void
   set_arg(int index, xrt::bo&& boh)
@@ -147,6 +165,9 @@ public:
    *
    * Use this API to queue up a new kernel scalar arguments value that
    * can be written to the kernel using ``write()``.
+   *
+   * The function is synchronous and blocks if the mailbox is busy,
+   * per pending ``read()`` or ``write()``.
    */
   template <typename ArgType>
   void
