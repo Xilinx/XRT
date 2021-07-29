@@ -1165,6 +1165,40 @@ done:
                      });
   }
 
+  void
+  get_kds_custat(char* buffer, DWORD output_sz, int* size_ret)
+  {
+      XOCL_STAT_CLASS_ARGS statargs;
+      statargs.StatClass = XoclStatKdsCU;
+      DWORD bytes = 0;
+      XOCL_KDS_CU_INFORMATION kds_cu;
+
+      if (output_sz == 0) {
+          //Retrieve CU count in this ioctl request
+          auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &kds_cu, sizeof(XOCL_KDS_CU_INFORMATION),
+              &bytes,
+              nullptr);
+
+          if (!status)
+              throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_kds_custat) failed in retrieving KDS CU count");
+          *size_ret = kds_cu.CuCount;
+          return;
+      }
+
+      auto kds_cu2 = reinterpret_cast<XOCL_KDS_CU_INFORMATION*>(buffer);
+	  auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          kds_cu2, output_sz,
+          &bytes,
+          nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_kds_custat) failed in retrieving KDS CU info");
+  }
 
 }; // struct shim
 
@@ -1286,6 +1320,14 @@ get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value)
   shim->get_firewall_info(value);
 }
 
+void
+get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_kds_custat()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_kds_custat(buffer, size, size_ret);
+}
 } // namespace userpf
 
 // Basic

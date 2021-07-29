@@ -884,6 +884,8 @@ struct rom
       return static_cast<query::rom_ddr_bank_count_max::result_type>(hdr.DDRChannelCount);
     case key_type::rom_fpga_name:
       return std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
+    case key_type::rom_time_since_epoch:
+      return static_cast<query::rom_time_since_epoch::result_type>(hdr.TimeSinceEpoch);
     }
 
     if (device->get_user_handle())
@@ -892,8 +894,6 @@ struct rom
     switch (key) {
     case key_type::rom_uuid:
       return std::string(reinterpret_cast<const char*>(hdr.uuid),16);
-    case key_type::rom_time_since_epoch:
-      return static_cast<query::rom_time_since_epoch::result_type>(hdr.TimeSinceEpoch);
     default:
       unexpected_query_request_key(key);
     }
@@ -909,6 +909,55 @@ struct rom
   mgmt(const xrt_core::device* device, key_type key)
   {
     return get_info(device,key);
+  }
+};
+
+struct kds_cu_info
+{
+  using result_type = query::kds_cu_info::result_type;
+
+  static XOCL_KDS_CU_INFORMATION*
+    init_kds_custat(const xrt_core::device* dev)
+  {
+    if (auto uhdl = dev->get_user_handle()) {
+      int cu_count; DWORD output_sz;
+      userpf::get_kds_custat(uhdl, nullptr, 0, &cu_count);
+      output_sz = sizeof(XOCL_KDS_CU_INFORMATION) + cu_count * sizeof(XOCL_KDS_CU);
+      std::vector<char> hdr(output_sz);
+      userpf::get_kds_custat(uhdl, hdr.data(), output_sz, nullptr);
+      return reinterpret_cast<XOCL_KDS_CU_INFORMATION*>(hdr.data());
+    }
+    else
+      throw std::runtime_error("No userpf device handle");
+  }
+
+  static result_type
+  get_info(const xrt_core::device* device, key_type key)
+  {
+    static std::map<const xrt_core::device*, XOCL_KDS_CU_INFORMATION*> hdrmap;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = hdrmap.find(device);
+    if (it == hdrmap.end())
+      it = hdrmap.emplace(device, init_kds_custat(device)).first;
+
+    auto& stats = (*it).second;
+    result_type cuStats;
+    for (unsigned int i = 0; i < stats->CuCount; i++)
+      cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+    return cuStats;
+  }
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return get_info(device, key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    mgmtpf_not_supported_error(key);
   }
 };
 
@@ -1269,6 +1318,7 @@ initialize_query_table()
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
   emplace_function0_getter<query::mailbox_metrics,           mailbox>();
+  emplace_function0_getter<query::kds_cu_info,               kds_cu_info>();
 }
 
 struct X { X() { initialize_query_table(); }};
