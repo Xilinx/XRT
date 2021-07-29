@@ -29,6 +29,11 @@
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 
+/* Soft CUs metrics size to display in sysfs entry */
+#define SCU_STATS_METRIC_SIZE   7
+/* CUs metrics size to display in sysfs entry */
+#define CU_STATS_METRIC_SIZE  	5
+
 namespace {
 
 namespace query = xrt_core::query;
@@ -80,7 +85,7 @@ struct kds_cu_stat
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      if (std::distance(tokens.begin(), tokens.end()) != CU_STATS_METRIC_SIZE)
         throw std::runtime_error("CU statistic sysfs node corrupted");
 
       data_type data;
@@ -114,7 +119,7 @@ struct kds_scu_stat
     std::string errmsg;
 
     // The kds_scustat_raw is printing in formatted string of each line
-    // Format: "%d,%s:%s,0x%x,%lu"
+    // Format: "%d,%s:%s,0x%x,%lu,%lu,%lu,%lu"
     // Using comma as separator.
     pdev->sysfs_get("", "kds_scustat_raw", errmsg, stats);
     if (!errmsg.empty())
@@ -125,7 +130,7 @@ struct kds_scu_stat
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 4)
+      if (std::distance(tokens.begin(), tokens.end()) != SCU_STATS_METRIC_SIZE) 
         throw std::runtime_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
@@ -135,6 +140,9 @@ struct kds_scu_stat
       data.name   = std::string(*tok_it++);
       data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages = std::stoul(std::string(*tok_it++));
+      data.succ_cnt = std::stoul(std::string(*tok_it++));
+      data.err_cnt = std::stoul(std::string(*tok_it++));
+      data.crsh_cnt = std::stoul(std::string(*tok_it++));
       // TODO: Let's avoid this special handling for PS kernel name
       data.name = data.name + ":scu_" + std::to_string(data.index);
 

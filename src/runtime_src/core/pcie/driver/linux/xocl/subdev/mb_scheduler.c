@@ -1586,7 +1586,7 @@ ert_read_custat(struct xocl_ert *xert, struct xocl_cmd *xcmd, unsigned int num_c
 	memset(xert->cq_slot_status, -1, MAX_SLOTS * sizeof(u32));
 
 	// New command style from ERT firmware
-	if (custat_version == 0x51a10000) {
+	if (custat_version == ERT_CUSTAT_VERSION_0) {
 		unsigned int idx = 2; // packet word index past header and version
 		unsigned int max_idx = (xert->slot_size >> 2);
 		u32 git = ioread32(xert->cq_base + slot_addr + (idx++ << 2));

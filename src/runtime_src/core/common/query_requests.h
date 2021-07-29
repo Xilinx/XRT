@@ -757,6 +757,9 @@ struct kds_scu_stat : request
     std::string name;
     uint32_t status;
     uint64_t usages;
+    uint64_t succ_cnt;
+    uint64_t err_cnt;
+    uint64_t crsh_cnt;
   };
   using result_type = std::vector<struct data>;
   using data_type = struct data;

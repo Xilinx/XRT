@@ -30,6 +30,8 @@ do {\
 #define print_ecmd_info(ecmd)
 #endif
 
+#define CUSTATS_HEADER_SIZE	4
+
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
 int kds_mode = 1;
@@ -301,7 +303,10 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
+ * [#numscus] : scu execution stats (number of executions, success, error and crash count)
  * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
+ * [#numscus] : scu status (1: running, 0: idle, -1: crashed)
+ * [mem stat] : soft kernel memory status
  * [#slots]   : command queue slot status
  *
  * Old ERT populates
@@ -325,18 +330,25 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	 */
 
 	/* New KDS handle FPGA CU statistic on host not ERT */
-	if (ecmd->data[0] != 0x51a10000)
+	if ((ecmd->data[0] != ERT_CUSTAT_VERSION_0) && 
+			(ecmd->data[0] != ERT_CUSTAT_VERSION_1))
 		return;
 
 	/* Only need PS kernel info, which is after FPGA CUs */
 	mutex_lock(&kds->scu_mgmt.lock);
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
-	off_idx = 4 + num_cu;
-	for (i = 0; i < num_scu; i++)
-		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+	off_idx = CUSTATS_HEADER_SIZE + num_cu;
+	for (i = 0; i < num_scu; i++) {
+		kds->scu_mgmt.usages_stats[i].usage = ecmd->data[off_idx++];
+		if (ecmd->data[0] == ERT_CUSTAT_VERSION_1) { // Only for new ERT packet version 
+			kds->scu_mgmt.usages_stats[i].succ_cnt = ecmd->data[off_idx++];
+			kds->scu_mgmt.usages_stats[i].err_cnt = ecmd->data[off_idx++];
+			kds->scu_mgmt.usages_stats[i].crsh_cnt = ecmd->data[off_idx++];
+		}
+	}
 
 	/* off_idx points to PS kernel status */
-	off_idx += num_scu + num_cu;
+	off_idx += num_cu;
 	for (i = 0; i < num_scu; i++) {
 		int status = (int)(ecmd->data[off_idx + i]);
 
@@ -354,6 +366,16 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 			kds->scu_mgmt.status[i] = 0;
 		}
 	}
+
+	/* off_idx points to PS kernel memory stats */
+	if (ecmd->data[0] == ERT_CUSTAT_VERSION_1) { // Only for new ERT packet version 
+		off_idx += num_scu;
+		kds->scu_mgmt.mem_stats.hbo_cnt = ecmd->data[off_idx++];
+		kds->scu_mgmt.mem_stats.mapbo_cnt = ecmd->data[off_idx++];
+		kds->scu_mgmt.mem_stats.unmapbo_cnt = ecmd->data[off_idx++];
+		kds->scu_mgmt.mem_stats.freebo_cnt = ecmd->data[off_idx++];
+	}
+
 	mutex_unlock(&kds->scu_mgmt.lock);
 }
 

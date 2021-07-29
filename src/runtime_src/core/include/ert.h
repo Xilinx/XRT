@@ -626,6 +626,12 @@ uint32_t ert_base_addr = 0;
 #endif
 
 /**
+ * This defines ERT packet version which need to sync between Host and ERT
+ */
+#define ERT_CUSTAT_VERSION_0 		  0x51a10000
+#define ERT_CUSTAT_VERSION_1		  0x51a10001
+
+/**
  * Look up table for CUISR for CU addresses
  */
 #define ERT_CUISR_LUT_ADDR                (ERT_CSR_ADDR + 0x400)

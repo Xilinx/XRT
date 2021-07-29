@@ -1072,7 +1072,10 @@ print_and_out:
  * [1  ]      : number of cq slots
  * [1  ]      : number of cus
  * [#numcus]  : cu execution stats (number of executions)
+ * [#numscus] : scu execution stats (number of executions, success, error and crash count)
  * [#numcus]  : cu status (1: running, 0: idle, -1: crashed)
+ * [#numscus] : scu status (1: running, 0: idle, -1: crashed)
+ * [mem stat] : soft kernel memory status
  * [#slots]   : command queue slot status
  */
 static void
@@ -1082,19 +1085,20 @@ cu_stat(struct sched_cmd *cmd)
 	struct zocl_ert_dev *ert = zdev->ert;
 	struct sched_exec_core *exec = zdev->exec;
 	struct soft_krnl *sk = zdev->soft_kernel;
-	struct ert_packet *pkg;
-	int slot_idx;
+	struct sk_mem_stats *mem_stat = NULL;
+	struct ert_packet *pkg = NULL;
+	struct pid *p_tmp = NULL;
+	int slot_idx = 0;
 	int pkt_idx = 0;
 	int max_idx = (slot_size(cmd->ddev) >> 2) - 1;
 	int i;
-	struct pid *p_tmp;
 
 	SCHED_DEBUG("-> %s cq_slot_idx %d\n", __func__, cmd->cq_slot_idx);
 	slot_idx = cmd->cq_slot_idx;
 	pkg = cmd->packet;
 
 	/* custat version, update when changing layout of packet */
-	pkg->data[pkt_idx++] = 0x51a10000;
+	pkg->data[pkt_idx++] = ERT_CUSTAT_VERSION_1;
 
 	/* should be git version */
 	pkg->data[pkt_idx++] = ERT_VERSION;
@@ -1112,10 +1116,22 @@ cu_stat(struct sched_cmd *cmd)
 	/* individual SK CU execution stat */
 	mutex_lock(&sk->sk_lock);
 	for (i = 0; i < sk->sk_ncus && pkt_idx < max_idx; ++i) {
-		if (sk->sk_cu[i])
+		struct scu_usages *sc_stat;
+		if (sk->sk_cu[i]) {
+			sc_stat = &sk->sk_cu[i]->sc_usages;
+
 			pkg->data[pkt_idx++] = sk->sk_cu[i]->usage;
-		else //soft kernel cu has crashed
+			pkg->data[pkt_idx++] = sc_stat->succ_cnt;
+			pkg->data[pkt_idx++] = sc_stat->err_cnt;
+			pkg->data[pkt_idx++] = sc_stat->crsh_cnt;
+		}
+		else { //soft kernel cu has crashed
+			// Fill for all the counters for consistency 
 			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+			pkg->data[pkt_idx++] = -1;
+		}
 	}
 	mutex_unlock(&sk->sk_lock);
 
@@ -1147,8 +1163,15 @@ cu_stat(struct sched_cmd *cmd)
 		} else
 			pkg->data[pkt_idx++] = -1;
 	}
-	mutex_unlock(&sk->sk_lock);
 
+	/* Collect other soft-kernel memory stats */
+	mem_stat = &sk->mem_stats;
+	pkg->data[pkt_idx++] = mem_stat->hbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->mapbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->unmapbo_cnt;
+	pkg->data[pkt_idx++] = mem_stat->freebo_cnt;
+
+	mutex_unlock(&sk->sk_lock);
 	/* Command slot status
 	 * Hard code QUEUED state. When a NEW command is found,
 	 * ERT/PS will set it to QUEUED. Then no CQ write.

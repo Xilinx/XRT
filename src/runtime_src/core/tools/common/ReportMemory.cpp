@@ -109,6 +109,23 @@ void getChannelinfo(const xrt_core::device * device, boost::property_tree::ptree
   pt.add_child(std::string("board.direct_memory_accesses.metrics"), pt_dma_array);
 }
 
+static void
+schedulerUpdateStat(xrt_core::device *device)
+{
+  try {
+    // lock xclbin
+    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
+    auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
+    xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
+
+    device->update_scheduler_status();
+  }
+  catch (const std::exception&) {
+    // xclbin_lock failed, safe to ignore
+  }
+}
+
 boost::property_tree::ptree
 populate_memtopology(const xrt_core::device * device, const std::string& desc)
 {
@@ -116,8 +133,11 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   std::vector<std::string> mm_buf, stream_stat;
   std::vector<char> buf, temp_buf, gbuf;
   uint64_t memoryUsage, boCount;
+  int buf_idx = 0;
   pt.put("description", desc);
   getChannelinfo(device, pt);
+  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
+
   try {
     buf = xrt_core::device_query<qr::mem_topology_raw>(device);
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -142,6 +162,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   boost::property_tree::ptree ptMem_array;
   boost::property_tree::ptree ptStream_array;
   boost::property_tree::ptree ptGrp_array;
+  buf_idx = 0;
   for (int i = 0; i < map->m_count; i++) {
     if (map->m_mem_data[i].m_type == MEM_STREAMING || map->m_mem_data[i].m_type == MEM_STREAMING_CONNECTION) {
       std::string lname, status = "Inactive", total = "N/A", pending = "N/A";
@@ -209,7 +230,7 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
         ptMem.put("extended_info.ecc.error.uncorrectable.first_failure_address", boost::format("0x%x") % ue_ffa);
       }
     }
-    std::stringstream ss(mm_buf[i]);
+    std::stringstream ss(mm_buf[buf_idx++]);
     ss >> memoryUsage >> boCount;
 
     ptMem.put("type", str);
@@ -225,6 +246,20 @@ populate_memtopology(const xrt_core::device * device, const std::string& desc)
   }
   pt.add_child(std::string("board.memory.data_streams"), ptStream_array);
   pt.add_child(std::string("board.memory.memories"), ptMem_array );
+   
+  // Populate softkernel mem stats 
+  boost::property_tree::ptree ptSkMem;
+  std::stringstream ss_mem(mm_buf[buf_idx++]);
+  if (!ss_mem.str().empty()) {
+    uint64_t hboCnt, mapboCnt, unmapboCnt, freeboCnt;
+  
+    ss_mem >> hboCnt >> mapboCnt >> unmapboCnt >> freeboCnt;
+    ptSkMem.put("sk_hbo", hboCnt);
+    ptSkMem.put("sk_mapbo", mapboCnt);
+    ptSkMem.put("sk_unmapbo", unmapboCnt);
+    ptSkMem.put("sk_freebo", freeboCnt);
+    pt.add_child(std::string("board.memory.sk_memories"), ptSkMem);
+  }
 
   try {
     mm_buf = xrt_core::device_query<qr::memstat_raw>(device);
@@ -388,6 +423,26 @@ ReportMemory::writeReport( const xrt_core::device* /*_pDevice*/,
       // eat the exception, probably bad path
     }
   }
+
+  bool sk_mem_is_present = _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree).size() > 0 ? true:false;
+  if (sk_mem_is_present) {
+    _output << std::endl;
+    _output << "  Soft Kernel Memory Status" << std::endl;
+    _output << boost::format("  %-20s%-16s%-16s%-16s\n") % "  HostBO Count" % "MapBO Count" % "UnmapBO Count" % "FreeBO Count";
+
+    try {
+      auto & sk_memories_pt = _pt.get_child("mem_topology.board.memory.sk_memories",empty_ptree);
+      const std::string &hbo_count = sk_memories_pt.get<std::string>("sk_hbo","");
+      const std::string &mapbo_count = sk_memories_pt.get<std::string>("sk_mapbo","");
+      const std::string &unmapbo_count = sk_memories_pt.get<std::string>("sk_unmapbo","");
+      const std::string &freebo_count = sk_memories_pt.get<std::string>("sk_freebo","");
+      _output << boost::format("    %-18s%-16s%-16s%-16s\n") % hbo_count % mapbo_count % unmapbo_count % freebo_count;
+    }
+    catch( std::exception const&) {
+      // eat the exception, probably bad path
+    }
+  }
+
 
   bool dma_is_present = _pt.get_child("mem_topology.board.direct_memory_accesses.metrics",empty_ptree).size() > 0 ? true:false;
   if (dma_is_present) {

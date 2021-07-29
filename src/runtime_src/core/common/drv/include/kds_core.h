@@ -57,12 +57,27 @@ struct kds_ctx_info {
 /* TODO: PS kernel is very different with FPGA kernel.
  * Let's see if we can unify them later.
  */
+struct scu_usages {
+        u32                       usage;
+        u32                       succ_cnt;
+        u32                       err_cnt;
+        u32                       crsh_cnt;
+};
+
+struct sk_mem_stats {
+        u32                       hbo_cnt;
+        u32                       mapbo_cnt;
+        u32                       unmapbo_cnt;
+        u32                       freebo_cnt;
+};
+
 struct kds_scu_mgmt {
 	struct mutex		  lock;
 	int			  num_cus;
 	u32			  status[MAX_CUS];
-	u32			  usage[MAX_CUS];
 	char			  name[MAX_CUS][32];
+	struct scu_usages	  usages_stats[MAX_CUS];
+	struct sk_mem_stats	  mem_stats;
 };
 
 /* the MSB of cu_refs is used for exclusive flag */
@@ -176,4 +191,5 @@ int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf);
 ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf);
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf);
+ssize_t kds_sk_memstat(struct kds_sched *kds, struct sk_mem_stats *stat);
 #endif

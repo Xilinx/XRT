@@ -25,6 +25,13 @@
 #define SK_DONE			1
 #define SK_RUNNING		2
 
+enum sk_mem_stats_type {
+	ZOCL_MEM_STAT_TYPE_HBO,
+	ZOCL_MEM_STAT_TYPE_MAPBO,
+	ZOCL_MEM_STAT_TYPE_UNMAPBO,
+	ZOCL_MEM_STAT_TYPE_FREEBO,
+};
+
 struct soft_cu {
 	void			*sc_vregs;
 	struct drm_gem_object	*gem_obj;
@@ -39,6 +46,7 @@ struct soft_cu {
 
 	uint32_t		sc_flags;
 	uint64_t		usage;
+	struct scu_usages 	sc_usages;
 
 	/*
 	 * soft cu pid and parent pid. This can be used to identify if the
@@ -60,6 +68,7 @@ struct soft_krnl {
 	struct mutex		sk_lock;
 	struct soft_cu		*sk_cu[MAX_SOFT_KERNEL];
 
+	struct sk_mem_stats	mem_stats;
 	/*
 	 * sk_ncus is a counter represents how many
 	 * compute units are configured.
@@ -79,5 +88,6 @@ struct soft_krnl_cmd {
 
 int zocl_init_soft_kernel(struct drm_device *drm);
 void zocl_fini_soft_kernel(struct drm_device *drm);
-
+void zocl_sk_mem_stat_incr(struct drm_zocl_dev *zdev,
+                unsigned m_stat_type);
 #endif

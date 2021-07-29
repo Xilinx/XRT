@@ -75,7 +75,7 @@ ssize_t show_kds_custat_raw(struct kds_sched *kds, char *buf)
 ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	char *cu_fmt = "%d,%s,0x%x,%u\n";
+	char *cu_fmt = "%d,%s,0x%x,%u,%u,%u,%u\n";
 	ssize_t sz = 0;
 	int i;
 
@@ -93,11 +93,32 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	for (i = 0; i < scu_mgmt->num_cus; ++i) {
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
 				scu_mgmt->name[i], scu_mgmt->status[i],
-				scu_mgmt->usage[i]);
+				scu_mgmt->usages_stats[i].usage,
+				scu_mgmt->usages_stats[i].succ_cnt,
+				scu_mgmt->usages_stats[i].err_cnt,
+				scu_mgmt->usages_stats[i].crsh_cnt);
 	}
 	mutex_unlock(&scu_mgmt->lock);
 
 	return sz;
+}
+
+ssize_t kds_sk_memstat(struct kds_sched *kds, struct sk_mem_stats *stat)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	struct sk_mem_stats *mem_stat = NULL;
+
+	mutex_lock(&scu_mgmt->lock);
+
+	mem_stat = &scu_mgmt->mem_stats;
+	stat->hbo_cnt = mem_stat->hbo_cnt;
+	stat->mapbo_cnt = mem_stat->mapbo_cnt;
+	stat->unmapbo_cnt = mem_stat->unmapbo_cnt;
+	stat->freebo_cnt = mem_stat->freebo_cnt;
+
+	mutex_unlock(&scu_mgmt->lock);
+
+	return 0;
 }
 
 ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
@@ -175,7 +196,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 				sizeof(scu_mgmt->name[0]));
 
 			scu_mgmt->num_cus++;
-			scu_mgmt->usage[i] = 0;
+			scu_mgmt->usages_stats[i].usage = 0;
 		}
 	}
 	mutex_unlock(&scu_mgmt->lock);
