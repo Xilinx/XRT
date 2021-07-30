@@ -65,7 +65,7 @@ get_dev_info(xclDeviceHandle hdl, XCLMGMT_DEVICE_INFO* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
-get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
+get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[4]);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
@@ -95,6 +95,13 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_pcie_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_PCI_INFO* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_mailbox_info(xclDeviceHandle hdl, XCLMGMT_IOC_MAILBOX_RECV_INFO* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_board_info(xclDeviceHandle hdl, xcl_board_info* value);
 } // mgmtpf
 
 #endif

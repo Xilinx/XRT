@@ -738,10 +738,10 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
     if (mailbox == kernel_properties::mailbox_type::none)
       mailbox = get_mailbox_from_ini(kname);
-    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.counted_auto_restart","0"));
+    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.countedAutoRestart","0"));
     if (restart == 0)
       restart = get_restart_from_ini(kname);
-    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.sw_reset","false"));
+    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.swReset","false"));
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 

@@ -91,6 +91,8 @@ xocl-y := \
 	../subdev/msix_xdma.o \
 	../subdev/ert_user.o \
 	../subdev/accel_deadlock_detector.o \
+	../subdev/command_queue.o \
+	../subdev/cfg_gpio.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

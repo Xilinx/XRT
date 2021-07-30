@@ -94,8 +94,9 @@ private:
         BPI,
         QSPIPS,
         OSPIVERSAL,
+        QSPIVERSAL,
     };
-    const char *E_FlasherTypeStrings[5] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS", "OSPI_VERSAL"};
+    const char *E_FlasherTypeStrings[6] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS", "OSPI_VERSAL", "QSPI_VERSAL"};
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     std::shared_ptr<pcidev::pci_device> mDev;
 
