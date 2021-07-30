@@ -14,7 +14,7 @@
 //
 // Device interface GUID for the BME280 device
 //
-//#include <initguid.h>
+#include <initguid.h>
 #include <stdint.h>
 #include "xclbin.h"
 #include "mailbox_proto.h"
