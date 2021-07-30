@@ -552,12 +552,12 @@ done:
     HANDLE deviceHandle = m_dev;
     DWORD error = 0;
     DWORD bytesWritten;
-    ULONG return_status = 0;
     size_t off = 0;
+    size_t len = 0;
 
     auto top = reinterpret_cast<const axlf*>(ImageBuffer);
 
-    xocl_axlf axlf_obj = {const_cast<axlf *>(top), 0};
+    XOCL_READ_AXLF_ARGS axlf_obj = {0};
 
     auto kernels = xrt_core::xclbin::get_kernels(top);
     /* Calculate size of kernels */
@@ -606,6 +606,8 @@ done:
         krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
         krnl->range = kernel.range;
+        // Initialize pointer to first argument array element
+        krnl->args = reinterpret_cast<argument_info *>((char *)krnl + sizeof(kernel_info));
 
         int ai = 0;
         for (auto& arg : kernel.args) {
@@ -649,15 +651,17 @@ done:
         throw std::runtime_error("No xml metadata in xclbin");
     auto xml_size = xml_hdr->m_sectionSize;
     auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset);
-    axlf_obj.kds_cfg.slot_size = *reinterpret_cast<uint32_t *>(m_core_device->get_ert_slots(xml_data, xml_size).second);
+    axlf_obj.kds_cfg.slot_size = (uint32_t)m_core_device->get_ert_slots(xml_data, xml_size).second;
 
+    /* calculate the complete length of buffer to be sent as output buffer. */
+    len = off + sizeof(struct xocl_kds);
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
                          ImageBuffer,
                          BuffSize,
-                         &return_status,
-                         sizeof(ULONG),
+                         &axlf_obj,
+                         (DWORD)len,
                          &bytesWritten,
                          nullptr)) {
 
@@ -665,32 +669,7 @@ done:
 
       xrt_core::message::
         send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-
     }
-    if (return_status != NTSTATUS_STATUS_SUCCESS)
-    {
-
-        error = return_status;
-
-        if (return_status == NTSTATUS_REVISION_MISMATCH)
-        {
-            xrt_core::message::
-                send(xrt_core::message::severity_level::error, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
-
-        }
-        else {
-
-            xrt_core::message::
-                send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
-
-        }
-
-    }
-
-
-  out:
 
     return error ? false : true;
 
