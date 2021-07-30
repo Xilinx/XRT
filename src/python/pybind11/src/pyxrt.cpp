@@ -11,9 +11,9 @@
 
 
 // XRT includes
-#include "experimental/xrt_device.h"
-#include "experimental/xrt_kernel.h"
-#include "experimental/xrt_bo.h"
+#include "xrt/xrt_device.h"
+#include "xrt/xrt_kernel.h"
+#include "xrt/xrt_bo.h"
 #include "experimental/xrt_xclbin.h"
 
 // Pybind11 includes
@@ -79,10 +79,13 @@ py::class_<xrt::uuid>(m, "uuid")
 py::class_<xrt::device>(m, "device")
     .def(py::init<>())
     .def(py::init<unsigned int>())
-    .def("load_xclbin", [](xrt::device & d, const std::string& xclbin) {
+    .def(py::init([] (const std::string& bfd) {
+                      return new xrt::device(bfd);
+                  }))
+    .def("load_xclbin", [](xrt::device& d, const std::string& xclbin) {
                             return d.load_xclbin(xclbin);
                         })
-    .def("load_xclbin", [](xrt::device & d, const xrt::xclbin& xclbin) {
+    .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
                             return d.load_xclbin(xclbin);
                         })
     .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid);
@@ -98,13 +101,13 @@ py::class_<xrt::run>(m, "run")
     .def("start", [](xrt::run& r){
                        r.start();
                     })
-    .def("set_arg", [](xrt::run &r, int i, xrt::bo & item){
+    .def("set_arg", [](xrt::run& r, int i, xrt::bo& item){
                         r.set_arg(i, item);
                     })
-    .def("set_arg", [](xrt::run &r, int i, int & item){
+    .def("set_arg", [](xrt::run& r, int i, int& item){
                         r.set_arg<int&>(i, item);
                     })
-    .def("wait", ([](xrt::run &r, unsigned int timeout_ms)  {
+    .def("wait", ([](xrt::run& r, unsigned int timeout_ms)  {
                       return r.wait(timeout_ms);
                   }))
     .def("state", &xrt::run::state)
@@ -123,8 +126,8 @@ pyker.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::strin
                       xrt::kernel::cu_access_mode m) {
                        return new xrt::kernel(d, u, n, m);
                    }))
-    .def("__call__", [](xrt::kernel & k, py::args args) -> xrt::run {
-                         int i =0;
+    .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
+                         int i = 0;
                          xrt::run r(k);
 
                          for (auto item : args) {
