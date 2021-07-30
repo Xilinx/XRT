@@ -636,6 +636,7 @@ class aie_cfg_tile
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
+    double findClockRate(std::shared_ptr<xrt_core::device> device) ;
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
