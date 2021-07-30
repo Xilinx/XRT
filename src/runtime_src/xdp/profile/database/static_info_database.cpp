@@ -491,13 +491,7 @@ namespace xdp {
   {
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_AM) {
-      std::stringstream msg;
-      msg << "AM with incorrect index: " << index ;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-                              msg.str());
-      index = MIN_TRACE_ID_AM ;
-    }
+    // MIN_TRACE_ID_AM is 0, so the index is always >=
     uint64_t slotId = (index - MIN_TRACE_ID_AM) / 16;
 
     for (auto cu : devInfo->loadedXclbins.back()->cus) {
