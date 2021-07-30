@@ -769,7 +769,14 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 int xocl_init_sched(struct xocl_dev *xdev)
 {
-	return kds_init_sched(&XDEV(xdev)->kds);
+	int ret;
+	ret = kds_init_sched(&XDEV(xdev)->kds);
+	if (ret)
+		goto out;
+
+	ret = xocl_create_client(xdev, (void **)&XDEV(xdev)->kds.anon_client);
+out:
+	return ret;
 }
 
 void xocl_fini_sched(struct xocl_dev *xdev)
@@ -782,6 +789,7 @@ void xocl_fini_sched(struct xocl_dev *xdev)
 		xocl_drm_free_bo(&bo->base);
 	}
 
+	xocl_destroy_client(xdev, (void **)&XDEV(xdev)->kds.anon_client);
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
@@ -1144,7 +1152,6 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	struct kds_client *client;
 	struct ert_packet *ecmd;
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	pid_t pid = pid_nr(get_pid(task_pid(current)));
 	int ret = 0;
 
 	/* TODO: Use hard code size is not ideal. Let's refine this later */
@@ -1152,9 +1159,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	if (!ecmd)
 		return -ENOMEM;
 
-	client = kds_get_client(kds, pid);
-	BUG_ON(!client);
-
+	client = kds->anon_client;
 	ret = xocl_cfg_cmd(xdev, client, ecmd, &cfg);
 	if (ret) {
 		userpf_err(xdev, "ERT config command failed");
