@@ -9,7 +9,6 @@
 import os
 import sys
 import uuid
-import re
 
 # Following is found in PYTHONPATH setup by XRT
 from xrt_binding import *
