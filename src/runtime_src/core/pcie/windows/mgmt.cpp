@@ -193,11 +193,28 @@ struct mgmt
         0,                           //in buffer size
         value,                       //out buffer
         sizeof(XCLMGMT_DEVICE_INFO), //out buffer size
-        &bytes,                      //size of the data returned 
+        &bytes,                      //size of the data returned
         nullptr);                    //ptr to overlapped struct (for async operations)
 
     if (!status || (bytes != sizeof(XCLMGMT_DEVICE_INFO)))
       throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_DEVICE_INFO failed");
+  }
+
+  void
+  get_board_info(xcl_board_info* value)
+  {
+    DWORD bytes = 0;
+    auto status = DeviceIoControl(
+        m_hdl,
+        XCLMGMT_OID_GET_BOARD_INFO,
+        value,
+        sizeof(xcl_board_info),
+        value,
+        sizeof(xcl_board_info),
+        &bytes,
+        NULL);
+    if (!status || bytes != sizeof(xcl_board_info))
+      throw std::runtime_error("get_board_info(), DeviceIoControl XCLMGMT_OID_GET_BOARD_INFO failed");
   }
 
   void
@@ -370,6 +387,24 @@ get_pcie_info(XCLMGMT_IOC_DEVICE_PCI_INFO* value)
     throw std::runtime_error(boost::str(boost::format("DeviceIoControl XCLMGMT_OID_GET_DEVICE_PCI_INFO failed. Received %d bytes when %d bytes were expected.") % bytes % sizeof(XCLMGMT_IOC_DEVICE_PCI_INFO)));
 }
 
+void
+get_mailbox_info(XCLMGMT_IOC_MAILBOX_RECV_INFO* value)
+{
+  DWORD bytes = 0;
+
+  auto status = DeviceIoControl(
+      m_hdl,
+      XCLMGMT_OID_GET_MAILBOX_RECV_INFO,
+      value,
+      sizeof(XCLMGMT_IOC_MAILBOX_RECV_INFO),
+      value,
+      sizeof(XCLMGMT_IOC_MAILBOX_RECV_INFO),
+      &bytes,
+      NULL);
+
+  if (!status || bytes != sizeof(XCLMGMT_IOC_MAILBOX_RECV_INFO))
+      throw std::runtime_error("DeviceIoControl XCLMGMT_OID_GET_IOC_MAILBOX_RECV_INFO failed");
+}
 
 }; // struct mgmt
 
@@ -479,6 +514,15 @@ write_bar(xclDeviceHandle hdl, uint64_t addr, const void* buf, uint64_t len)
 }
 
 void
+get_board_info(xclDeviceHandle hdl, xcl_board_info* value)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_board_info()");
+  auto mgmt = get_mgmt_object(hdl);
+  mgmt->get_board_info(value);
+}
+
+void
 get_device_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_INFO* value)
 {
   xrt_core::message::
@@ -574,6 +618,15 @@ get_pcie_info(xclDeviceHandle hdl, XCLMGMT_IOC_DEVICE_PCI_INFO* value)
     send(xrt_core::message::severity_level::debug, "XRT", "get_pcie_info()");
   auto mgmt = get_mgmt_object(hdl);
   mgmt->get_pcie_info(value);
+}
+
+void
+get_mailbox_info(xclDeviceHandle hdl, XCLMGMT_IOC_MAILBOX_RECV_INFO* value)
+{
+	xrt_core::message::
+		send(xrt_core::message::severity_level::debug, "XRT", "get_mailbox_info()");
+	auto mgmt = get_mgmt_object(hdl);
+	mgmt->get_mailbox_info(value);
 }
 
 } // mgmt
