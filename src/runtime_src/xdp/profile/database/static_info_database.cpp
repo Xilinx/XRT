@@ -269,18 +269,18 @@ namespace xdp {
           continue ;
 
         try {
-	  std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
+          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
           if (port != "DATA_CLK")
             continue ;
-	  std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
-	  std::string freqNumeral = freq.substr(0, freq.find('M')) ;
+          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
+          std::string freqNumeral = freq.substr(0, freq.find('M')) ;
           double frequency = defaultClockSpeed ;
-	  std::stringstream convert ;
+          std::stringstream convert ;
           convert << freqNumeral ;
           convert >> frequency ;
           return frequency ;
         }
-        catch (std::exception& e) {
+        catch (std::exception& /*e*/) {
           continue ;
         }
       }
