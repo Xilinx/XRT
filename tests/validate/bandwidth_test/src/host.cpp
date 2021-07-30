@@ -1,5 +1,5 @@
 /**
-* Copyright (C) 2020 Xilinx, Inc
+* Copyright (C) 2019-2021 Xilinx, Inc
 *
 * Licensed under the Apache License, Version 2.0 (the "License"). You may
 * not use this file except in compliance with the License. A copy of the
@@ -13,36 +13,74 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
-#include "cmdlineparser.h"
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <math.h>
 #include <sys/time.h>
+#include <getopt.h>
 #include <xcl2.hpp>
 
+const static struct option long_options[] = {{"path", required_argument, 0, 'p'},
+                                             {"device", required_argument, 0, 'd'},
+                                             {"iter_cnt", required_argument, 0, 'l'},
+                                             {"supported", no_argument, 0, 's'},
+                                             {0, 0, 0, 0}};
+
+static void printHelp() {
+    std::cout << "usage: %s <options>\n";
+    std::cout << "  -p <platform_test_area_path>\n";
+    std::cout << "  -d <device> \n";
+    std::cout << "  -l <loop_iter_cnt> \n";
+    std::cout << "  -s <check_supported>\n";
+}
+
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
-                  << "<optional> -d device_id"
-                  << "<optional> -l iter_cnt" << std::endl;
+    int option_index = 0;
+    std::string dev_id = "0";
+    std::string test_path;
+    std::string iter_cnt = "10000";
+    std::string b_file = "/bandwidth.xclbin";
+    bool flag_s = false;
+    bool flag_p = false;
+    // Commandline
+    int c;
+    while ((c = getopt_long(argc, argv, "p:d:l:s", long_options, &option_index)) != -1) {
+        switch (c) {
+            case 'p':
+                test_path = optarg;
+                flag_p = true;
+                break;
+            case 'd':
+                dev_id = optarg;
+                break;
+            case 's':
+                flag_s = true;
+                break;
+            case 'l':
+                iter_cnt = atoi(optarg);
+                break;
+            default:
+                printHelp();
+                return 1;
+        }
+    }
+    if (!flag_p) {
+        std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-
-    // Command Line Parser
-    sda::utils::CmdLineParser parser;
-
-    // Switches
-    //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
-    parser.addSwitch("--device", "-d", "device id", "0");
-    parser.addSwitch("--iter_cnt", "-l", "loop iteration count", "10000");
-    parser.parse(argc, argv);
-
-    // Read settings
-    std::string dev_id = parser.value("device");
-    std::string iter_cnt = parser.value("iter_cnt");
+    if (flag_s) {
+        std::string binaryFile = test_path + b_file;
+        std::ifstream infile(binaryFile);
+        if (!infile.good()) {
+            std::cout << "\nNOT SUPPORTED" << std::endl;
+            return EOPNOTSUPP;
+        } else {
+            std::cout << "\nSUPPORTED" << std::endl;
+            return EXIT_SUCCESS;
+        }
+    }
 
     int NUM_KERNEL;
-    std::string test_path = argv[1];
     std::string filename = "/platform.json";
     std::string platform_json = test_path + filename;
 
@@ -60,7 +98,6 @@ int main(int argc, char** argv) {
         std::cout << msg << std::endl;
     }
 
-    std::string b_file = "/bandwidth.xclbin";
     std::string binaryFile = test_path + b_file;
     std::ifstream infile(binaryFile);
     if (!infile.good()) {
@@ -212,8 +249,7 @@ int main(int argc, char** argv) {
         double bpersec;
         double mbpersec;
 
-        usduration =
-            (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
+        usduration = (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
 
         dnsduration = (double)usduration;
         dsduration = dnsduration / ((double)1000000000);
@@ -229,4 +265,3 @@ int main(int argc, char** argv) {
 
     return EXIT_SUCCESS;
 }
-
