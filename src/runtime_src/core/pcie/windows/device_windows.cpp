@@ -956,7 +956,7 @@ struct kds_cu_info
   static result_type
   mgmt(const xrt_core::device* device, key_type key)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
