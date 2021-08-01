@@ -25,6 +25,7 @@
 // C++11 includes
 #include <mutex>
 #include <thread>
+#include <string>
 
 namespace py = pybind11;
 
@@ -47,7 +48,6 @@ py::enum_<xclBOSyncDirection>(m, "xclBOSyncDirection")
     .value("XCL_BO_SYNC_BO_GMIO_TO_AIE", xclBOSyncDirection::XCL_BO_SYNC_BO_GMIO_TO_AIE)
     .value("XCL_BO_SYNC_BO_AIE_TO_GMIO", xclBOSyncDirection::XCL_BO_SYNC_BO_AIE_TO_GMIO);
 
-
 py::enum_<ert_cmd_state>(m, "ert_cmd_state")
     .value("ERT_CMD_STATE_NEW", ert_cmd_state::ERT_CMD_STATE_NEW)
     .value("ERT_CMD_STATE_QUEUED", ert_cmd_state::ERT_CMD_STATE_QUEUED)
@@ -61,6 +61,19 @@ py::enum_<ert_cmd_state>(m, "ert_cmd_state")
     .value("ERT_CMD_STATE_SKCRASHED", ert_cmd_state::ERT_CMD_STATE_SKCRASHED)
     .value("ERT_CMD_STATE_MAX", ert_cmd_state::ERT_CMD_STATE_MAX);
 
+py::enum_<xrt::info::device>(m, "xrt_info_device")
+    .value("bdf", xrt::info::device::bdf)
+    .value("interface_uuid", xrt::info::device::interface_uuid)
+    .value("kdma", xrt::info::device::kdma)
+    .value("max_clock_frequency_mhz", xrt::info::device::max_clock_frequency_mhz)
+    .value("m2m", xrt::info::device::m2m)
+    .value("name", xrt::info::device::name)
+    .value("nodma", xrt::info::device::nodma)
+    .value("offline", xrt::info::device::offline)
+    .value("power_rails", xrt::info::device::power_rails)
+    .value("thermals", xrt::info::device::thermals)
+    .value("power_consumption", xrt::info::device::power_consumption)
+    .value("fans", xrt::info::device::fans);
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
@@ -85,10 +98,38 @@ py::class_<xrt::device>(m, "device")
     .def("load_xclbin", [](xrt::device& d, const std::string& xclbin) {
                             return d.load_xclbin(xclbin);
                         })
-    .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
-                            return d.load_xclbin(xclbin);
-                        })
-    .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid);
+    .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid)
+    .def("get_info", [] (xrt::device& d, xrt::info::device key) {
+                         switch (key) {
+                         case xrt::info::device::bdf:
+                             return d.get_info<xrt::info::device::bdf>();
+                         case xrt::info::device::interface_uuid:
+                             return d.get_info<xrt::info::device::interface_uuid>().to_string();
+                         case xrt::info::device::kdma:
+                             return std::to_string(d.get_info<xrt::info::device::kdma>());
+                         case xrt::info::device::max_clock_frequency_mhz:
+                             return std::to_string(d.get_info<xrt::info::device::max_clock_frequency_mhz>());
+                         case xrt::info::device::m2m:
+                             return std::to_string(d.get_info<xrt::info::device::m2m>());
+                         case xrt::info::device::name:
+                             return d.get_info<xrt::info::device::name>();
+                         case xrt::info::device::nodma:
+                             return std::to_string(d.get_info<xrt::info::device::nodma>());
+                         case xrt::info::device::offline:
+                             return std::to_string(d.get_info<xrt::info::device::offline>());
+                         case xrt::info::device::power_rails:
+                             return d.get_info<xrt::info::device::power_rails>();
+                         case xrt::info::device::thermals:
+                             return d.get_info<xrt::info::device::thermals>();
+                         case xrt::info::device::power_consumption:
+                             return d.get_info<xrt::info::device::power_consumption>();
+                         case xrt::info::device::fans:
+                             return d.get_info<xrt::info::device::fans>();
+                         default:
+                             return std::string("NA");
+                         }
+                     });
+
 
 /*
  *
