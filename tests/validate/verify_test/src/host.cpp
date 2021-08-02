@@ -37,14 +37,12 @@ int main(int argc, char** argv) {
     std::string test_path;
     std::string b_file = "/verify.xclbin";
     bool flag_s = false;
-    bool flag_p = false;
     // Commandline
-    int c;
+    int c = 0;
     while ((c = getopt_long(argc, argv, "p:d:s", long_options, &option_index)) != -1) {
         switch (c) {
             case 'p':
                 test_path = optarg;
-                flag_p = true;
                 break;
             case 'd':
                 dev_id = optarg;
@@ -57,7 +55,7 @@ int main(int argc, char** argv) {
                 return 1;
         }
     }
-    if (!flag_p) {
+    if (test_path.empty()) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
