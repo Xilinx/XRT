@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
 # XRT_VERSION_STRING
@@ -67,6 +70,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/userpf/xocl_ioctl.c
   xocl/userpf/xocl_sysfs.c
   xocl/userpf/xocl_drv.c
+  xocl/userpf/xocl_errors.h
   xocl/userpf/xocl_errors.c
   xocl/userpf/xocl_kds.c
   xocl/userpf/xocl.dracut.conf
@@ -202,7 +206,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/xiic.c
   xocl/subdev/mailbox.c
   xocl/subdev/icap.c
-  xocl/subdev/clock.c
+  xocl/subdev/clock_wiz.c
+  xocl/subdev/clock_counter.c
   xocl/subdev/iores.c
   xocl/subdev/axigate.c
   xocl/subdev/mig.c
@@ -224,6 +229,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/trace_s2mm.c
   xocl/subdev/spc.c
   xocl/subdev/lapc.c
+  xocl/subdev/accel_deadlock_detector.c
   xocl/subdev/memory_hbm.c
   xocl/subdev/ddr_srsr.c
   xocl/subdev/ulite.c
@@ -239,6 +245,8 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/msix_xdma.c
   xocl/subdev/ert_user.c
   xocl/subdev/pcie_firewall.c
+  xocl/subdev/command_queue.c
+  xocl/subdev/cfg_gpio.c
   xocl/Makefile
   )
 
@@ -263,6 +271,7 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclerr_int.h
   include/xrt_error_code.h
   include/xrt_mem.h
+  include/xgq_cmd.h
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV
@@ -282,6 +291,7 @@ SET (XRT_DKMS_COMMON_XRT_DRV_INCLUDES
   common/drv/include/xrt_cu.h
   common/drv/include/xrt_xclbin.h
   common/drv/include/kds_stat.h
+  common/drv/include/xrt_ert.h
   )
 
 SET (XRT_DKMS_ABS_SRCS)

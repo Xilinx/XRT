@@ -68,7 +68,7 @@ struct bdf
   static result_type
   get(const xrt_core::device* device, key_type)
   {
-    return std::make_tuple(0,0,0);
+    return std::make_tuple(0,0,0,0);
   }
 
 };
@@ -150,23 +150,25 @@ struct dev_info
   }
 };
 
-struct aie_metadata {
-  /* Function to read aie_metadata sysfs, and parse max rows and max columns from it. */
+struct aie_metadata
+{
+  // Function to read aie_metadata sysfs, and parse max rows and max
+  // columns from it.
   static void
   read_aie_metadata(const xrt_core::device* device, uint32_t &row, uint32_t &col)
   {
     std::string err;
     std::string value;
-    const static std::string AIE_TAG = "aie_metadata";
-    const uint32_t major = 1;
-    const uint32_t minor = 0;
-    const uint32_t patch = 0;
+    static std::string AIE_TAG = "aie_metadata";
+    constexpr uint32_t major = 1;
+    constexpr uint32_t minor = 0;
+    constexpr uint32_t patch = 0;
     
     auto dev = get_edgedev(device);
 
     dev->sysfs_get(AIE_TAG, err, value);
     if (!err.empty())
-      throw xrt_core::error(-EINVAL, err);
+      throw xrt_core::query::sysfs_error(err);
 
     std::stringstream ss(value);
     boost::property_tree::ptree pt; 
@@ -255,7 +257,7 @@ struct kds_cu_stat
     // Using comma as separator.
     edev->sysfs_get("kds_custat_raw", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     // stats e.g.
@@ -267,7 +269,7 @@ struct kds_cu_stat
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 5)
-        throw std::runtime_error("CU statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
       data_type data;
       constexpr int radix = 16;
@@ -298,7 +300,7 @@ struct kds_cu_info
     std::string errmsg;
     edev->sysfs_get("kds_custat", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -341,8 +343,10 @@ struct aie_reg_read
   // Reading the aie_metadata sysfs.
   dev->sysfs_get(AIE_TAG, err, value);
   if (!err.empty())
-    throw xrt_core::error(-EINVAL, err + ", The loading xclbin acceleration image doesn't use the Artificial "
-                                  + "Intelligent Engines (AIE). No action will be performed.");
+    throw xrt_core::query::sysfs_error
+      (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+       + "Intelligent Engines (AIE). No action will be performed.");
+
   std::stringstream ss(value);
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
@@ -427,7 +431,8 @@ struct sysfs_fcn
     ValueType value;
     dev->sysfs_get(entry, err, value, static_cast<ValueType>(-1));
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 };
@@ -442,7 +447,8 @@ struct sysfs_fcn<std::string>
     std::string value;
     dev->sysfs_get(entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 };
@@ -460,7 +466,8 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     ValueType value;
     dev->sysfs_get(entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 };

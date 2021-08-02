@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 cmake_minimum_required(VERSION 2.8.12)
 
 include(CPackComponent)

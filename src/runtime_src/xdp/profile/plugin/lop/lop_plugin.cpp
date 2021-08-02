@@ -14,6 +14,7 @@
  * under the License.
  */
 
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/lop/lop_plugin.h"
 #include "xdp/profile/writer/lop/low_overhead_trace_writer.h"
 #include "core/common/config_reader.h"
@@ -128,11 +129,14 @@ namespace xdp {
   LowOverheadProfilingPlugin::LowOverheadProfilingPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
-    writers.push_back(new LowOverheadTraceWriter("lop_trace.csv")) ;
+    db->registerInfo(info::lop);
+
+    VPWriter* writer = new LowOverheadTraceWriter("lop_trace.csv") ;
+    writers.push_back(writer) ;
 
     emulationSetup() ;
 
-    (db->getStaticInfo()).addOpenedFile("lop_trace.csv", "VP_TRACE") ;
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     // In order to avoid overhead later, preallocate the string table
     //  in the dynamic database with all of the strings we will store

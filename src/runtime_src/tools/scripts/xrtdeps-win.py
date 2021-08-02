@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # =============================================================================
 # Checks and validates the windows installation environment
 # =============================================================================
@@ -305,6 +308,7 @@ class OpenCLHeaders:
     self.install_dir = XRT_LIBRARY_INSTALL_DIR
     self.root_build_dir = XRT_LIBRARY_BUILD_DIR
     self.skipBuildInstall = skip
+    self.tag_version = "v2020.03.13"
     self.headerDir = "CL"
     self.buildDir = "OpenCL-Headers"
 
@@ -396,7 +400,7 @@ class OpenCLHeaders:
       print ("Retrieving git repository...")
 
     gitDir = os.path.join(self.root_build_dir, self.buildDir)
-    cloneCmd = "git clone https://github.com/KhronosGroup/OpenCL-Headers.git " + gitDir
+    cloneCmd = "git clone --branch=" + self.tag_version + " https://github.com/KhronosGroup/OpenCL-Headers.git " + gitDir
     print (cloneCmd)
     os.system(cloneCmd)
 
@@ -442,6 +446,7 @@ class ICDLibrary:
     self.install_dir = XRT_LIBRARY_INSTALL_DIR
     self.root_build_dir = XRT_LIBRARY_BUILD_DIR
     self.skipBuildInstall = skip
+    self.tag_version = "v2020.03.13"
     self.headerDir = "CL"
     self.buildDir = "OpenCL-ICD-Loader"
 
@@ -524,7 +529,7 @@ class ICDLibrary:
       print ("Retrieving git repository...")
 
     gitDir = os.path.join(self.root_build_dir, self.buildDir)
-    cloneCmd = "git clone https://github.com/KhronosGroup/OpenCL-ICD-Loader.git " + gitDir
+    cloneCmd = "git clone --branch=" + self.tag_version + " https://github.com/KhronosGroup/OpenCL-ICD-Loader.git " + gitDir
     print (cloneCmd)
     os.system(cloneCmd)
 

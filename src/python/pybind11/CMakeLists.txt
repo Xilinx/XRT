@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+#
 
 find_package(PythonLibs 3.4.0 REQUIRED)
 if (PythonLibs_FOUND)
@@ -14,7 +16,7 @@ if (PythonLibs_FOUND)
     SET(PKGDIR "site-packages")
   endif(${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
 
-  find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
+  find_package(pybind11 2.6.0 REQUIRED PATHS "/usr/local/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11" "/usr/lib/python${PYTHONLIBS_VERSION_MAJOR}.${PYTHONLIBS_VERSION_MINOR}/${PKGDIR}/pybind11")
 endif(PythonLibs_FOUND)
 
 if (pybind11_FOUND)

@@ -1,40 +1,30 @@
 .. _xbutil2.rst:
 
-Xbutil Next Generation
-======================
-
-The next generation of the ``xbutil`` command-line tool is in preview mode for the 2020.2 release of XRT. This version will replace the current ``xbutil`` in a future release of XRT. This document describes the usage of this new version of the tool. 
-
-To invoke the new version please set the following environment variable
-
-.. code::
-
-    export XRT_TOOLS_NEXTGEN=true
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
 
+xbutil (Next Generation)
+========================
 
-The xbutil command options are
+This document describes the new next-generation ``xbutil`` commands. These new commands are default from 21.1 release.   
+
+
+**Global options**: These are the global options can be used with any command. 
+
+ - ``--verbose``: Turn on verbosity and shows more outputs whenever applicable
+ - ``--batch``: Enable batch mode
+ - ``--force``: When possible, force an operation
+ - ``--help`` : Get help message
+
+The next-generation ``xbutil`` commands are
 
     - ``xbutil program``
     - ``xbutil validate``
     - ``xbutil examine``
     - ``xbutil reset``
-    - ``xbutil advanced`` 
 
-
-**A note about multidevice system**: All the ``xbutil`` command supports a ``--device`` (or ``-d``) switch to specify the target device of interest. The ``xbutil`` command accept the PCIe user function bdf as an argument of ``--device`` switch. The user can check the user function bdf from ``xbutil examine`` command.
-
-.. code:: 
-
-    xbutil examine
-    ....
-    ....
-    Devices present
-    [0000:b3:00.1] : xilinx_u200_xdma_201830_2
-    [0000:65:00.1] : xilinx_u50_gen3x16_xdma_201920_3
-
-
-The above output shows two devices and their user function bdf (``0000:b3:00.1`` and ``0000:65:00.1``) can be used with the ``--device`` switch
 
 xbutil program
 ~~~~~~~~~~~~~~
@@ -44,110 +34,100 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
-    xbutil program [--device|-d] <user bdf> [--program|-p] <xclbin>
+    xbutil program [--device|-d] <user bdf> [--user|-u] <xclbin>
 
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) specifies the target device to be programmed
+- The ``--device`` (or ``-d``) specifies the target device to program
     
-    - <none> : Optional for a single device system. 
-    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used 
-- The ``--program`` (or ``-p``) is required to specify the .xclbin file
+    - <user bdf> :  The Bus:Device.Function of the device of interest
     
-    - <xclbin file> : The xclbin file to be used to program the device
+- The ``--user`` (or ``-u``) is required to specify the .xclbin file
+    
+    - <xclbin file> : The xclbin file with full-path to program the device
 
 
 **Example commands** 
 
 
-.. code-block:: 
+.. code-block:: shell
 
-    #Programming a only available device with a xclbin 
-    xbutil program --program my_kernel.xclbin
+     xbutil program --device 0000:b3:00.1 --user ./my_kernel.xclbin
  
-    #Multiple Devices, program all the devices
-    xbutil program --device all --program my_kernel.xclbin
- 
-    #Multiple Device, programing a single device
-    xbutil program --device 0000:03:00.1 --program my_kernel.xclbin
- 
-    #Multiple Device, programing two devices
-    xbutil program --device 0000:03:00.1 0000:d8:00.1 --program my_kernel.xclbin
-
 
 xbutil validate
 ~~~~~~~~~~~~~~~
 
-The command ``xbutil validate`` validates the card installation by running precompiled basic tests. 
+The command ``xbutil validate`` validates the installed card by running precompiled basic tests. 
 
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
-   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format>
+   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename>
+ 
  
 
 **The details of the supported options**
 
-- The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to validate 
     
-    - <none> : Optional for a single device system. 
-    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--run`` (or ``-r``) specifies the perticular test to execute
+    - <user bdf> :  The Bus:Device.Function of the device of interest
+
+- The ``--run`` (or ``-r``) specifies the perticular test(s) to execute
         
     - ``all`` (**default**): runs all the tests listed below
-    - ``Kernel version``: Check if the kernel version is supported by XRT
     - ``Aux connection``: Check if auxiliary power is connected
     - ``PCIE link``: Check if PCIE link is active
     - ``SC version``: Check if SC firmware is up-to-date
     - ``Verify kernel``: Run 'Hello World' kernel test
     - ``DMA``: Run dma test
+    - ``iops``: Run test to measure performance of scheduler (number of `hello world` kernel execution per second)
     - ``Bandwidth kernel``: Run 'bandwidth kernel' and check the throughput
-    - ``Peer to peer bar``: Run P2P test
-    - ``Memory to memory DMA``: Run M2M test
-    - ``Host memory bandwidth test``: Run 'bandwidth kernel' when slave bridge is enabled
-    - ``quick``: Run first five tests (Kernel version, Aux connection, PCIE link, SC version and Verify kernel)   
+    - ``Peer to peer bar``: Run peer-to-peer test
+    - ``Memory to memory DMA``: Run zero copy memory to memory data transfer test
+    - ``Host memory bandwidth test``: Run 'bandwidth kernel' when host memory is enabled
+    - ``bist``: Run BIST test
+    - ``vcu``: Run decoder test (only applicable for specific platform). 
+    - ``quick``: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)   
   
-- The ``--format`` (or ``-f``) specifies the report format
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
-    - ``text`` (**default**): The report is shown in the text format, default behavior
-    - ``json``: The report is shown in json-2020.2  
+    - ``JSON``: The report is shown in latest JSON schema
+    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
+    
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
 
 
 **Example commands**
 
 
-.. code-block:: 
+.. code-block:: shell
 
-    # For a single device run all the tests 
-    xbutil validate
+    # Run all the tests 
+    xbutil validate --device 0000:b3:00.1
  
-    # For a multiple device system run all the tests on all the devices
-    xbutil validate --device all
+    # Run "DMA" test, produce text output in stdout
+    xbutil validate --device 0000:b3:00.1 --run DMA
  
-    # For a multiple device system run "DMA" program on a specific device
-    xbutil valiadate --device 0000:d8:00.1 --run DMA
- 
-    # For a multiple device system run "DMA" and "Validate Kernel" program on two devices and generates Json format
-    xbutil validate --device 0000:d8:00.1 0000:03:00.1 --run DMA "Verify Kernel" --format json-2021.2
+    # Run "DMA" and "Validate Kernel" test and generates Json format
+    xbutil validate --device 0000:b3:00.1 --run DMA "Verify Kernel" --format JSON --output xyz.json
 
 
 xbutil examine 
 ~~~~~~~~~~~~~~
 
-The command ``xbutil examine``  can be used to find the details of the specific device(s),
+The command ``xbutil examine``  can be used to find the details of the specific device,
 
 
 **The supported options**
 
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil examine [--device|-d] <user bdf> [--report| -r] <report of interest> [--format| -f] <report format> [--output| -o] <filename>
  
@@ -156,168 +136,77 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 **The details of the supported options**
 
 
-- The ``--device`` (or ``-d``) specifies the target device to be validate 
+- The ``--device`` (or ``-d``) specifies the target device to examine 
     
-    - <none> : Optional for a single device system. 
-    - <user bdf>+ : Mandetory for multiple device system, has to be specified with one or more device user bdf information 
-    - ``all``:To specify all devices ``–-device all``  or ``-d all``  can be used
+    - <user bdf> :  The Bus:Device.Function of the device of interest
 - The ``--report`` (or ``-r``) switch can be used to view specific report(s) of interest from the following options
           
-    - ``scan`` (**default**): Shows System Configuration, XRT and Device user bdf information. 
     - ``aie``: Reports AIE kernels metadata from the .xclbin
-    - ``electrical``: Reports  Electrical and power sensors present on the device
+    - ``aieshim``: Reports AIE shim tile status
+    - ``all``: All known reports are generated
     - ``debug-ip-status``: Reports information related to Debug-IPs inserted during the kernel compilation
+    - ``dynamic-regions``: Information about the xclbin and the compute units (default when ``--device`` is provided)
+    - ``electrical``: Reports  Electrical and power sensors present on the device
+    - ``error``: Asyncronus Error present on the device
     - ``firewall``: Reports the current firewall status
-    - ``host``: Reports the host configuration and drivers
-    - ``fan``: Reports fans present on the device
+    - ``host``: Reports the host configuration and drivers (default when ``--device`` is not provided)
+    - ``mailbox``: Mailbox metrics of the device
+    - ``mechanical``: Mechanical sensors on and surrounding the device
     - ``memory``: Reports memory topology of the XCLBIN (if XCLBIN is already loaded) 
+    - ``pcie-info`` : Pcie information of the device
+    - ``platform``: Platforms flashed on the device (default when ``--device`` is provided)
+    - ``qspi-status``: QSPI write protection status
     - ``thermal``: Reports thermal sensors present on the device
-    - ``verbose``: Reports everything
-- The ``--format`` (or ``-f``) can be used to specify the output format
-    
-    - ``text`` (**default**): The output is shown in the text format, default behavior
-    - ``json``: The output is shown in json-2020.2 
 
-- The ``--output`` (or ``-o``) can be used to dump output in a file instead of stdout
-        
-    - <filename> : The output file to be dumped
+- The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
+    
+    - ``JSON``: The report is shown in latest JSON schema
+    - ``JSON-2020.2``: The report is shown in JSON 2020.2 schema
+
+- The ``--output`` (or ``-o``) specifies the output file to direct the output
+
 
 
 **Example commands**
 
 
-.. code-block:: 
+.. code-block:: shell
 
-    # Examine all the devices and produces all the reports
+    # Shows ``xbutil examine --host``
     xbutil examine
  
+    # Reports electrical information in the stdout
+    xbutil examine --device 0000:b3:00.1 --report electrical
  
-    # Examine a specific device and report electrical information in the stdout
-    xbutil examine --device 0000:d8:00.0 --run electrical
- 
-    # Example a list of devices and reports a list of information and dump in a file json format
-    xbutil examine --device 0000:d8:00.0 0000:d8:00.1 --run electrical firewall --format json --output my_reports.json
+    # Reports "electrical" and "firewall" and dump in json format
+    xbutil examine --device 0000:b3:00.1  --report electrical firewall --format JSON --output n.json
+
  
  
 xbutil reset
 ~~~~~~~~~~~~
-This ``xbutil reset`` command can be used to reset one or more devices. 
+This ``xbutil reset`` command can be used to reset device. 
 
 **The supported options**
 
-.. code-block:: 
+.. code-block:: shell
 
     xbutil reset [--device| -d] <user bdf> [--type| -t] <reset type>
 
 **The details of the supported options**
 
-
-- The ``--device`` (or ``-d``) used to specify the device to be reset
+- The ``--device`` (or ``-d``) specifies the target device to reset 
     
-    - <user bdf>+ : Mandetory, has to be specified with one or more device user bdf  
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently supported reset type
+    - <user bdf> :  The Bus:Device.Function of the device of interest
+    
+- The ``--type`` (or ``-t``) can be used to specify the reset type. Currently only supported reset type is
     
     - ``hot`` (**default**): Complete reset of the device
 
 **Example commands**
 
 
-.. code-block::
+.. code-block:: shell
  
     xbutil reset --device 0000:65:00.1
-    
-    xbutil reset --device 0000:65:00.1 --type hot
-    
-
-
-xbutil advanced
-~~~~~~~~~~~~~~~
-
-The ``xbutil advanced`` commands are the group of commands only recommended for the advanced users. 
-
-As a disclaimer, the formats of these commands can change significantly as we know more about the advnced use-cases. 
-
-**The supported options**
-
-Read from Memory
-
-.. code-block:: 
-
-    xbutil advanced [--device| -d] <user bdf> --read-mem <address> <size> [--output] <output file>
-
-Fill Memory with binary value
-
-.. code-block:: 
-
-    xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size> [--fill] <binary data> 
-
-
-Fill Memory from a file content
-
-.. code-block:: 
-
-    xbutil advanced [--device| -d] <user bdf> --write-mem <address> <size>  [--input] <file>
-
-
-P2P Enable, disable or valiadte
-
-.. code-block:: 
-
-    xbutil advanced [--device| -d] <user bdf> --p2p [enable|disable|validate]
-
-
-
-**The details of the supported options**
-
-
-- The ``--device`` (or ``-d``) used to specify the device to be reset
-    
-    - <user bdf>+ : Mandetory, has to be specified with one or more device user bdf  
-    - ``all``: To specify all devices ``–-device all``  or ``-d all``  can be used
-- The ``--read-mem`` is used to read from perticular memory location. It has to use with following arguments
-    
-    - <address> <number of bytes> : The read location and the size of the read. 
-- The ``--output`` can be used with ``--read-mem`` to dump the read data to a file instead of console
-    
-    - <filename> : When specified the output of ``--read-mem`` commands are dumped into the user provided file
-- The ``--write-mem`` is used to write to the perticular memory location. It has to use with following arguments
-    
-    - <address> <number of bytes> : The write location and the size of the write. 
-- The ``--fill`` can be used with ``--write-mem`` to fill the memory location with a perticular binary value
-        
-    - <uint8> : The filled value in byte
-- The ``--input`` can be used with ``--write-mem`` to write the memory location from a file content
-        
-    - <binary file> : The binary file 
-- The ``--p2p`` can be used to enable, disable or validate p2p operation
-
-    - enable: Enable the p2p
-    - disable: Disable the p2p
-    - validate: Validate the p2p
-        
-
-**Example commands**
-
-
-.. code-block::
- 
-    xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30
-    
-    xbutil advanced --device 0000:65:00.1 --read-mem 0x100 0x30 --output foo.bin
-    
-    xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x10 --fill 0xAA
-    
-    xbutil advanced --device 0000:65:00.1 --write-mem 0x100 0x20 --input foo.bin
-    
-    xbutil advanced --device 0000:65:00.1 --p2p enable
-    
-    xbutil advanced --device 0000:65:00.1 --p2p disble
-    
-    xbutil advanced --device 0000:65:00.1 --p2p validate
-    
-    
-    
-
-
 

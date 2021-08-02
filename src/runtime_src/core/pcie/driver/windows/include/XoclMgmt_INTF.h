@@ -25,6 +25,7 @@
 #pragma once
 #include "xclfeatures.h"
 #include "xclbin.h"
+#include "mailbox_proto.h"
 #define XCLMGMT_NUM_SUPPORTED_CLOCKS    4
 
 //
@@ -58,6 +59,8 @@ enum XCLMGMT_IOC_TYPES {
     XCLMGMT_IOC_GET_DATA_RETENTION,
     XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF,
     XCLMGMT_IOC_GET_DEVICE_PCI_INFO,
+    XCLMGMT_IOC_GET_MAILBOX_INFO,
+    XCLMGMT_IOC_GET_BOARD_INFO,
     XCLMGMT_IOC_MAX
 };
 
@@ -97,6 +100,11 @@ enum XCLMGMT_IOC_TYPES {
 #define XCLMGMT_OID_PRP_FORCE_ICAP_PROGRAM_AXLF CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_PRP_FORCE_ICAP_PROGRAM_AXLF, METHOD_BUFFERED, FILE_ANY_ACCESS)
 /* IOC_GET_DEVICE_PCI_INFO gets the device-specific info */
 #define XCLMGMT_OID_GET_DEVICE_PCI_INFO     CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_DEVICE_PCI_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
+/* GET_MAILBOX_INFO gets the mailbox info */
+#define XCLMGMT_OID_GET_MAILBOX_RECV_INFO   CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_MAILBOX_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
+/* GET_MAILBOX_INFO gets the board info */
+#define XCLMGMT_OID_GET_BOARD_INFO   CTL_CODE(FILE_DEVICE_UNKNOWN, XCLMGMT_IOC_GET_BOARD_INFO, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
 //
 // Struct for XCLMGMT_OID_GET_DEVICE_INFO IOCTL
 // MAC address is a 48-bit formatted string - "aa:bb:cc:dd:ee:ff"
@@ -149,6 +157,12 @@ typedef struct sysmon_info {
     UINT32 vcc_bram_min;
     UINT32 vcc_bram_max;
 }SYSMON_INFO, *PSYSMON_INFO;
+
+typedef struct xcl_mailbox_recv {
+	/* recv metrics */
+    UINT64 mbx_recv_raw_bytes;
+    UINT64 mbx_recv_req[XCL_MAILBOX_REQ_MAX];
+}XCLMGMT_IOC_MAILBOX_RECV_INFO, *PXCLMGMT_IOC_MAILBOX_RECV_INFO;
 
 /* Structure available for golden */
 typedef struct xclmgmt_ioc_device_pci_info {

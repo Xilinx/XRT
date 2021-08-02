@@ -23,6 +23,7 @@
 #include "xdp/profile/writer/hal/hal_summary_writer.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/device/tracedefs.h"
 
 #include "xdp/profile/database/database.h"
@@ -37,6 +38,7 @@ namespace xdp {
   HALPlugin::HALPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
+    db->registerInfo(info::hal) ;
 
     std::string version = "1.1" ;
 
@@ -45,12 +47,13 @@ namespace xdp {
     std::string toolVersion  = xdp::getToolVersion() ;
 
     // Based upon the configuration, create the appropriate writers
-    writers.push_back(new HALHostTraceWriter("hal_host_trace.csv",
-					     version,
-					     creationTime,
-					     xrtVersion,
-                         toolVersion)) ;
-    (db->getStaticInfo()).addOpenedFile("hal_host_trace.csv", "VP_TRACE");
+    VPWriter* writer = new HALHostTraceWriter("hal_host_trace.csv",
+                                              version,
+                                              creationTime,
+                                              xrtVersion,
+                                              toolVersion) ;
+    writers.push_back(writer) ;
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE");
 #ifdef HAL_SUMMARY
     writers.push_back(new HALSummaryWriter("hal_summary.csv"));
 #endif

@@ -1,3 +1,7 @@
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 ============
 XMA Overview
 ============
@@ -184,7 +188,7 @@ As shown in the diagram above, the system is comprised of five blocks:
 - The FFmpeg Command Line application that is used to create a processing graph
 - The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session
 - The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin
-- The XMA Lower Edge plugin responsible for interfacing with the SDAccel Video Kernel
+- The XMA Lower Edge plugin responsible for interfacing with the Vitis Video Kernel
 - The XMA Video Kernel responsible for accelerating the encoding function
 
 While this sequence diagram only shows five components, more complex systems
@@ -192,7 +196,7 @@ can be developed that include multiple accelerators with the associated XMA
 plugin and FFmpeg plugin. In fact, adding new processing blocks is controlled
 entirely by the FFmpeg command line and the presence of the requested
 accelerator kernels. No additional development is required if all of the
-SDAccel kernels are available along with the associated plugins.  In this
+Vitis kernels are available along with the associated plugins.  In this
 example, an FFmpeg command is invoked that ingests an MP4 file encoded as H.264
 and re-encodes the file as H.264 at a lower bit rate. As a result, the main()
 function of the FFmpeg command is invoked and this calls the xma_initialize()
@@ -209,7 +213,7 @@ The xma_enc_session_create() function uses available resource based on the
 properties supplied and, invokes the XMA
 plugin initialization function. The XMA plugin initialization function
 allocates any required input and output buffers on the device and performs
-initialization of the SDAccel kernel if needed.
+initialization of the Vitis kernel if needed.
 Default session ddr_bank can be provided in properties supplied to xma_enc_session_create() function. If this ddr_bank_index is -1 then XMA will automatically select default sesion ddr_bank to be used else user provided dr_bank is selected as default session ddr_bank.
 Plugins may use ddr_bank other than default session ddr_bank. For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num().
 Also cu_name or cu_index can be provided in properties supplied to xma_enc_session_create() function. If cu_index is -1 then cu_name is used to use CU for the session.

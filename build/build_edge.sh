@@ -1,5 +1,9 @@
 #!/bin/bash
 
+bold=$(tput bold)
+normal=$(tput sgr0)
+red=$(tput setaf 1)
+
 error()
 {
     echo "ERROR: $1" 1>&2
@@ -15,6 +19,7 @@ usage()
     echo "          -cache                          path to sstate-cache"
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
+    echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
     echo ""
 }
 
@@ -88,6 +93,7 @@ PROJ_NAME=""
 PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
+full=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -105,6 +111,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-clean | clean )
 			clean=1
+			;;
+		-full | full )
+			full=1
 			;;
 		-cache )
                         shift
@@ -139,13 +148,25 @@ fi
 source $PETALINUX/settings.sh 
 
 if [[ $AARCH = $aarch64_dir ]]; then
+    if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
+    PETA_BSP="$PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp"
+    else
     PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp/zynqmp-common-v$PETALINUX_VER-final.bsp"
+    fi
     YOCTO_MACHINE="zynqmp-generic"
 elif [[ $AARCH = $aarch32_dir ]]; then
+    if [[ -f $PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
+    PETA_BSP="$PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
+    else
     PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
+    fi
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
+    if [[ -f $PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
+    PETA_BSP="$PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
+    else
     PETA_BSP="$PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
+    fi
     YOCTO_MACHINE="versal-generic"
 else
     error "$AARCH not exist"
@@ -179,14 +200,19 @@ if [ ! -d $PETALINUX_NAME ]; then
     echo " * Create PetaLinux Project: $PETALINUX_NAME"
     echo "[CMD]: petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT"
     $PETA_BIN/petalinux-create -t project -n $PETALINUX_NAME $PETA_CREATE_OPT
+    cd ${PETALINUX_NAME}/project-spec/meta-user/
+    install_recipes .
 else
-    error " * PetaLinux Project existed: $PETALINUX_NAME."
+  echo "$red $bold INFO: Project Already exists on Disk. Running incremental build $normal"
 fi
 
-cd ${PETALINUX_NAME}/project-spec/meta-user/
-install_recipes .
-
 cd $ORIGINAL_DIR/$PETALINUX_NAME
+
+#cleanup existing files in incremental build
+/bin/rm -rf *.rpm
+/bin/rm -rf install_xrt.sh
+/bin/rm -rf reinstall_xrt.sh
+/bin/rm -rf rpms
 
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\""
 echo "CONFIG_YOCTO_MACHINE_NAME=\"${YOCTO_MACHINE}\"" >> project-spec/configs/config 
@@ -201,8 +227,21 @@ fi
 
 # Build package
 echo " * Performing PetaLinux Build (from: ${PWD})"
-echo "[CMD]: petalinux-build -c xrt"
-$PETA_BIN/petalinux-build -c xrt
+#Run a full build if -full option is provided
+if [[ $full == 1 ]]; then
+  # remove following unused packages from rootfs sothat its size would fit in QSPI
+  sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
+  echo "[CMD]: petalinux-build"
+  $PETA_BIN/petalinux-build
+else
+#Run just xrt build if -full option is not provided
+  echo "[CMD]: petalinux-build -c xrt"
+  $PETA_BIN/petalinux-build -c xrt
+fi
+
 if [ $? != 0 ]; then
    error "XRT build failed"
 fi

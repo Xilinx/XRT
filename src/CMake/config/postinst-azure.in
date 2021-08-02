@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 DIR=/opt/xilinx/xrt/
 #create sym link to /opt/xilinx/xrt/lib/libmpd_plugin and restart mpd service
 echo "Install azure mpd plugin"

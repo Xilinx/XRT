@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 
 # Clang Tidy ia integrated into CMake since 3.7.2 and is automatically run if CMAKE_CXX_CLANG_TIDY
 # is set. We currently rely on a global .clang-tidy placed inside "src" directory that is automatically

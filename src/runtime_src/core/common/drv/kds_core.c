@@ -15,6 +15,9 @@
 #include <linux/vmalloc.h>
 #include <linux/device.h>
 #include <linux/delay.h>
+#include <linux/fs.h>
+#include <linux/poll.h>
+#include <linux/anon_inodes.h>
 #include "kds_core.h"
 
 /* for sysfs */
@@ -242,6 +245,9 @@ out:
 		return -EINVAL;
 	}
 
+	if (test_bit(0, cu_mgmt->xcus[index]->is_ucu))
+		return -EBUSY;
+
 	cu_stat_inc(cu_mgmt, usage[index]);
 	client_stat_inc(client, s_cnt[index]);
 	xcmd->cu_idx = index;
@@ -270,6 +276,38 @@ kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	return 0;
 }
 
+static void
+kds_cu_abort_cmd(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+{
+	struct kds_sched *kds;
+	int i;
+
+	/* Broadcast abort command to each CU and let CU finds out how to abort
+	 * the target command.
+	 */
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		xrt_cu_hpq_submit(cu_mgmt->xcus[i], xcmd);
+
+		if (xcmd->status == KDS_NEW)
+			continue;
+
+		if (xcmd->status == KDS_TIMEOUT) {
+			kds = container_of(cu_mgmt, struct kds_sched, cu_mgmt);
+			kds->bad_state = 1;
+			kds_info(xcmd->client, "CU(%d) hangs, reset device", i);
+		}
+
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		xcmd->cb.free(xcmd);
+		return;
+	}
+
+	/* Command is not found in any CUs and any queues */
+	xcmd->status = KDS_ERROR;
+	xcmd->cb.notify_host(xcmd, xcmd->status);
+	xcmd->cb.free(xcmd);
+}
+
 static int
 kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
@@ -284,6 +322,9 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 	case OP_GET_STAT:
 		xcmd->cb.notify_host(xcmd, KDS_COMPLETED);
 		xcmd->cb.free(xcmd);
+		break;
+	case OP_ABORT:
+		kds_cu_abort_cmd(cu_mgmt, xcmd);
 		break;
 	default:
 		ret = -EINVAL;
@@ -451,6 +492,128 @@ skip:
 	mutex_unlock(&cu_mgmt->lock);
 
 	return 0;
+}
+
+static int kds_ucu_release(struct inode *inode, struct file *filp)
+{
+	struct xrt_cu *xcu = filp->private_data;
+
+	xcu->user_manage_irq(xcu, false);
+	clear_bit(0, xcu->is_ucu);
+
+	return 0;
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+static unsigned int kds_ucu_poll(struct file *filp, poll_table *wait)
+{
+	unsigned int ret = 0;
+#else
+static __poll_t kds_ucu_poll(struct file *filp, poll_table *wait)
+{
+	__poll_t ret = 0;
+#endif
+	struct xrt_cu *xcu = filp->private_data;
+
+	poll_wait(filp, &xcu->ucu_waitq, wait);
+
+	if (atomic_read(&xcu->ucu_event) > 0)
+		ret = POLLIN;
+
+	return ret;
+}
+
+static ssize_t kds_ucu_read(struct file *filp, char __user *buf,
+			    size_t count, loff_t *ppos)
+{
+	struct xrt_cu *xcu = filp->private_data;
+	ssize_t ret = 0;
+	s32 events = 0;
+
+	if (count != sizeof(s32))
+		return -EINVAL;
+
+	ret = wait_event_interruptible(xcu->ucu_waitq,
+				       (atomic_read(&xcu->ucu_event) > 0));
+	if (ret)
+		return ret;
+
+	events = atomic_xchg(&xcu->ucu_event, 0);
+	if (copy_to_user(buf, &events, count))
+		return -EFAULT;
+
+	return sizeof(events);
+}
+
+static ssize_t kds_ucu_write(struct file *filp, const char __user *buf,
+			     size_t count, loff_t *ppos)
+{
+	struct xrt_cu *xcu = filp->private_data;
+	s32 enable;
+
+	if (count != sizeof(s32))
+		return -EINVAL;
+
+	if (copy_from_user(&enable, buf, count))
+		return -EFAULT;
+
+	if (!xcu->configure_irq)
+		return -EOPNOTSUPP;
+	xcu->configure_irq(xcu, enable);
+
+	return sizeof(s32);
+}
+
+static const struct file_operations ucu_fops = {
+	.release	= kds_ucu_release,
+	.poll		= kds_ucu_poll,
+	.read		= kds_ucu_read,
+	.write		= kds_ucu_write,
+	.llseek		= noop_llseek,
+};
+
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx)
+{
+	int fd;
+	struct kds_cu_mgmt *cu_mgmt;
+	struct xrt_cu *xcu;
+
+	cu_mgmt = &kds->cu_mgmt;
+
+	if (!test_bit(cu_idx, client->cu_bitmap)) {
+		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
+		return -EINVAL;
+	}
+
+	mutex_lock(&cu_mgmt->lock);
+	if (!(cu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)) {
+		kds_err(client, "cu(%d) isn't exclusively reserved\n", cu_idx);
+		mutex_unlock(&cu_mgmt->lock);
+		return -EINVAL;
+	}
+	mutex_unlock(&cu_mgmt->lock);
+
+	xcu = cu_mgmt->xcus[cu_idx];
+	if (!client_stat_read(client, s_cnt[cu_idx])) {
+		set_bit(0, xcu->is_ucu);
+		if (client_stat_read(client, s_cnt[cu_idx])) {
+			clear_bit(0, xcu->is_ucu);
+			return -EBUSY;
+		}
+	}
+
+	if (!xcu->user_manage_irq)
+		return -EOPNOTSUPP;
+
+	if (xcu->user_manage_irq(xcu, true))
+		return -EINVAL;
+
+	init_waitqueue_head(&cu_mgmt->xcus[cu_idx]->ucu_waitq);
+	atomic_set(&cu_mgmt->xcus[cu_idx]->ucu_event, 0);
+	fd = anon_inode_getfd("[user_manage_cu]", &ucu_fops,
+			      cu_mgmt->xcus[cu_idx], O_RDWR);
+
+	return fd;
 }
 
 int kds_init_sched(struct kds_sched *kds)
@@ -1075,25 +1238,6 @@ out:
 	return count;
 }
 
-struct kds_client *kds_get_client(struct kds_sched *kds, pid_t pid)
-{
-	struct kds_client *client = NULL;
-	struct kds_client *curr;
-
-	mutex_lock(&kds->lock);
-	if (list_empty(&kds->clients))
-		goto done;
-
-	list_for_each_entry(curr, &kds->clients, link) {
-		if (pid_nr(curr->pid) == pid)
-			client = curr;
-	}
-
-done:
-	mutex_unlock(&kds->lock);
-	return client;
-}
-
 /* User space execbuf command related functions below */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)
@@ -1148,8 +1292,8 @@ void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	ecmd->type = ERT_CU;
 }
 
-void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
-			  struct kds_command *xcmd)
+void start_krnl_kv_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			     struct kds_command *xcmd)
 {
 	xcmd->opcode = OP_START;
 
@@ -1167,10 +1311,10 @@ void exec_write_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	 *
 	 * Based on ert.h, ecmd->count is the number of words following header.
 	 * In ert_start_kernel_cmd, the CU register map size is
-	 * (count - (1 + extra_cu_masks)) and skip 6 words for exec_write cmd.
+	 * (count - (1 + extra_cu_masks)).
 	 */
-	xcmd->isize = (ecmd->count - xcmd->num_mask - 6) * sizeof(u32);
-	memcpy(xcmd->info, &ecmd->data[6 + ecmd->extra_cu_masks], xcmd->isize);
+	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	xcmd->payload_type = KEY_VAL;
 	ecmd->type = ERT_CU;
 }
@@ -1198,6 +1342,14 @@ void start_fa_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
 	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
 	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
 	ecmd->type = ERT_CTRL;
+}
+
+void abort_ecmd2xcmd(struct ert_abort_cmd *ecmd, struct kds_command *xcmd)
+{
+	u32 *exec_bo_handle = xcmd->info;
+
+	xcmd->opcode = OP_ABORT;
+	*exec_bo_handle = ecmd->exec_bo_handle;
 }
 
 void set_xcmd_timestamp(struct kds_command *xcmd, enum kds_status s)

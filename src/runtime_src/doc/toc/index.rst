@@ -1,3 +1,7 @@
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 ==================================
 Xilinx® Runtime (XRT) Architecture
 ==================================
@@ -97,6 +101,7 @@ FPGA. The key user APIs are defined in ``xrt.h`` header file.
    mailbox.main.rst
    mailbox.proto.rst
    cloud_vendor_support.rst
+   fpga_device_ready.rst
    vsec.rst
 
 

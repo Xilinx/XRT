@@ -145,8 +145,8 @@ show_device_conf(xrt_core::device* device)
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Security level" % sec_level;
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
   try {
@@ -170,8 +170,8 @@ show_device_conf(xrt_core::device* device)
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
     std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
   }
-  catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
   std::cout << std::flush;
@@ -333,6 +333,19 @@ OO_Config::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     return;
+  }
+
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Configuring multiple devices is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   //Option:show

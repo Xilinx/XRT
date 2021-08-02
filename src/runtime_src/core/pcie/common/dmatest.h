@@ -166,7 +166,7 @@ namespace xcldev {
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; // s
-            ostr << boost::str(boost::format("Host -> PCIe -> FPGA write bandwidth = %f MB/s\n") % rate);
+            ostr << boost::str(boost::format("Host -> PCIe -> FPGA write bandwidth = %.1f MB/s\n") % rate);
 
             timer.reset();
             result = runSync(XCL_BO_SYNC_BO_FROM_DEVICE, info.mDMAThreads);
@@ -178,7 +178,7 @@ namespace xcldev {
             rate /= 0x100000; // MB
             rate /= timer_stop;
             rate *= 1000000; //
-            ostr << boost::str(boost::format("Host <- PCIe <- FPGA read bandwidth = %f MB/s\n") % rate);
+            ostr << boost::str(boost::format("Host <- PCIe <- FPGA read bandwidth = %.1f MB/s\n") % rate);
 
             // data integrity check: compare with initialized pattern
             return validate();

@@ -95,7 +95,9 @@ py::class_<xrt::device>(m, "device")
 py::class_<xrt::run>(m, "run")
     .def(py::init<>())
     .def(py::init<const xrt::kernel &>())
-    .def("start", &xrt::run::start)
+    .def("start", [](xrt::run& r){
+                       r.start();
+                    })
     .def("set_arg", [](xrt::run &r, int i, xrt::bo & item){
                         r.set_arg(i, item);
                     })
@@ -185,17 +187,21 @@ pybo.def(py::init<xrt::device, size_t, xrt::bo::flags, xrt::memory_group>())
 
 /*
  *
- * xrt::xclbin::ip
+ * xrt::xclbin::ip xrt::xclbin::kernel
  *
  */
 py::class_<xrt::xclbin> pyxclbin(m, "xclbin");
 py::class_<xrt::xclbin::ip> pyxclbinip(pyxclbin, "xclbinip");
 py::bind_vector<std::vector<xrt::xclbin::ip>>(m, "xclbinip_vector");
+py::class_<xrt::xclbin::kernel> pyxclbinkernel(pyxclbin, "xclbinkernel");
+py::bind_vector<std::vector<xrt::xclbin::kernel>>(m, "xclbinkernel_vector");
 
 
 pyxclbinip.def(py::init<>())
     .def("get_name", &xrt::xclbin::ip::get_name);
 
+pyxclbinkernel.def(py::init<>())
+    .def("get_name", &xrt::xclbin::kernel::get_name);
 /*
  *
  * xrt::xclbin::ip
@@ -210,6 +216,7 @@ pyxclbin.def(py::init<>())
                       return new xrt::xclbin(top);
                   }))
     .def("get_ips", &xrt::xclbin::get_ips)
+    .def("get_kernels", &xrt::xclbin::get_kernels)
     .def("get_xsa_name", &xrt::xclbin::get_xsa_name)
     .def("get_uuid", &xrt::xclbin::get_uuid);
 }

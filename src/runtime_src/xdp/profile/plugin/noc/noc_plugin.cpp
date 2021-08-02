@@ -18,6 +18,7 @@
 
 #include "xdp/profile/plugin/noc/noc_plugin.h"
 #include "xdp/profile/writer/noc/noc_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 #include "core/common/system.h"
 #include "core/common/time.h"
@@ -32,7 +33,7 @@ namespace xdp {
       : XDPPlugin(), mKeepPolling(true)
   {
     db->registerPlugin(this);
-   
+    db->registerInfo(info::noc);
     // Just like HAL and power profiling, go through devices 
     //  that exist and open a file for each
     uint64_t index = 0;
@@ -45,9 +46,11 @@ namespace xdp {
       mDevices.push_back(deviceName);
 
       std::string outputFile = "noc_profile_" + deviceName + ".csv"; 
-      writers.push_back(new NOCProfilingWriter(outputFile.c_str(),
-          deviceName.c_str(), index));
-      db->getStaticInfo().addOpenedFile(outputFile.c_str(), "NOC_PROFILE") ;
+      VPWriter* writer = new NOCProfilingWriter(outputFile.c_str(),
+                                                deviceName.c_str(),
+                                                index) ;
+      writers.push_back(writer);
+      db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "NOC_PROFILE") ;
 
       // Move on to next device
       xclClose(handle);

@@ -12,9 +12,15 @@
 #include "zocl_drv.h"
 #include "xrt_cu.h"
 
+#define IRQ_DISABLED 0
+
 struct zocl_cu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
+	u32			 irq;
+	char			*irq_name;
+	DECLARE_BITMAP(flag, 1);
+	spinlock_t		 lock;
 };
 
 static ssize_t debug_show(struct device *dev,
@@ -63,16 +69,104 @@ cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(cu_info);
 
+static ssize_t
+stat_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct zocl_cu *cu = platform_get_drvdata(pdev);
+
+	return show_formatted_cu_stat(&cu->base, buf);
+}
+static DEVICE_ATTR_RO(stat);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
 	&dev_attr_cu_info.attr,
+	&dev_attr_stat.attr,
 	NULL,
 };
 
 static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
 };
+
+irqreturn_t cu_isr(int irq, void *arg)
+{
+	struct zocl_cu *zcu = arg;
+
+	xrt_cu_clear_intr(&zcu->base);
+
+	up(&zcu->base.sem_cu);
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t ucu_isr(int irq, void *arg)
+{
+	struct zocl_cu *zcu = arg;
+	unsigned long flags;
+
+	spin_lock_irqsave(&zcu->lock, flags);
+	atomic_inc(&zcu->base.ucu_event);
+
+	/* To handle level interrupt, have to disable this irq line.
+	 * We could esaily support edge interrupt if needed.
+	 * Like, provide one more gcu->flag to permanently enabl irq.
+	 */
+	if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
+		disable_irq_nosync(irq);
+	spin_unlock_irqrestore(&zcu->lock, flags);
+
+	wake_up_interruptible(&zcu->base.ucu_waitq);
+
+	return IRQ_HANDLED;
+}
+
+static int user_manage_irq(struct xrt_cu *xcu, bool user_manage)
+{
+	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
+	int ret;
+
+	if (xcu->info.intr_enable)
+		free_irq(zcu->irq, zcu);
+
+	/* Do not use IRQF_SHARED! */
+	if (user_manage)
+		ret = request_irq(zcu->irq, ucu_isr, 0, zcu->irq_name, zcu);
+	else
+		ret = request_irq(zcu->irq, cu_isr, 0, zcu->irq_name, zcu);
+	if (ret) {
+		DRM_INFO("%s: request_irq() failed\n", __func__);
+		return ret;
+	}
+
+	if (user_manage) {
+		__set_bit(IRQ_DISABLED, zcu->flag);
+		spin_lock_init(&zcu->lock);
+		disable_irq(zcu->irq);
+	}
+
+	return 0;
+}
+
+static int configure_irq(struct xrt_cu *xcu, bool enable)
+{
+	struct zocl_cu *zcu = (struct zocl_cu *)xcu;
+	unsigned long flags;
+
+	spin_lock_irqsave(&zcu->lock, flags);
+	if (enable) {
+		if (__test_and_clear_bit(IRQ_DISABLED, zcu->flag))
+			enable_irq(zcu->irq);
+	} else {
+		if (!__test_and_set_bit(IRQ_DISABLED, zcu->flag))
+			disable_irq(zcu->irq);
+	}
+	spin_unlock_irqrestore(&zcu->lock, flags);
+
+	return 0;
+}
 
 static int cu_probe(struct platform_device *pdev)
 {
@@ -118,10 +212,13 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
-	if (!args) {
-		err = -ENOMEM;
-		goto err1;
+	if(krnl_info->anums)
+	{
+		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
+		if (!args) {
+			err = -ENOMEM;
+			goto err1;
+		}
 	}
 
 	for (i = 0; i < krnl_info->anums; i++) {
@@ -137,6 +234,27 @@ static int cu_probe(struct platform_device *pdev)
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);
 		goto err1;
+	}
+
+	zcu->irq_name = kzalloc(20, GFP_KERNEL);
+	if (!zcu->irq_name)
+		return -ENOMEM;
+
+	sprintf(zcu->irq_name, "zocl_cu[%d]", info->intr_id);
+
+	if (info->intr_enable) {
+		zcu->irq = zdev->irq[info->intr_id];
+		/* Currently requesting irq if it's enable in cu config.
+		 * Not disabling it further, even user wants to use 
+		 * polling.
+		 */
+		err = request_irq(zcu->irq, cu_isr, 0,
+			  zcu->irq_name, zcu);
+		if (err) {
+			DRM_WARN("Failed to initial CU interrupt. "
+			    "Fall back to polling\n");
+			zcu->base.info.intr_enable = 0;
+		}
 	}
 
 	switch (info->model) {
@@ -159,6 +277,9 @@ static int cu_probe(struct platform_device *pdev)
 	err = sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup);
 	if (err)
 		zocl_err(&pdev->dev, "create CU attrs failed: %d", err);
+
+	zcu->base.user_manage_irq = user_manage_irq;
+	zcu->base.configure_irq = configure_irq;
 
 	return 0;
 err2:
@@ -191,6 +312,9 @@ static int cu_remove(struct platform_device *pdev)
 		break;
 	}
 
+	if (info->intr_enable)
+		free_irq(zcu->irq, zcu);
+
 	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
 	zocl_kds_del_cu(zdev, &zcu->base);
 
@@ -202,6 +326,7 @@ static int cu_remove(struct platform_device *pdev)
 
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
+	kfree(zcu->irq_name);
 	kfree(zcu);
 
 	return 0;

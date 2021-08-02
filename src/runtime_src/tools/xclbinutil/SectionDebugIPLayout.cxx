@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -63,6 +63,10 @@ SectionDebugIPLayout::getDebugIPTypeStr(enum DEBUG_IP_TYPE _debugIpType) const {
       return "AXI_DMA";
     case AXI_NOC:
       return "AXI_NOC";
+    case ACCEL_DEADLOCK_DETECTOR:
+      return "ACCEL_DEADLOCK_DETECTOR";
+    case DEBUG_IP_TYPE_MAX:
+      return "DEBUG_IP_TYPE_MAX";
   }
 
   return XUtil::format("UNKNOWN (%d)", static_cast<unsigned int>(_debugIpType));
@@ -109,8 +113,14 @@ SectionDebugIPLayout::getDebugIPType(std::string& _sDebugIPType) const {
   if ( _sDebugIPType == "AXI_STREAM_PROTOCOL_CHECKER" ) 
     return AXI_STREAM_PROTOCOL_CHECKER;
 
+  if ( _sDebugIPType == "ACCEL_DEADLOCK_DETECTOR" ) 
+    return ACCEL_DEADLOCK_DETECTOR;
+
   if (_sDebugIPType == "UNDEFINED")
     return UNDEFINED;
+
+  if (_sDebugIPType == "DEBUG_IP_TYPE_MAX")
+    return DEBUG_IP_TYPE_MAX;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sDebugIPType + "'";
   throw std::runtime_error(errMsg);

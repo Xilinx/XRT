@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -80,11 +80,15 @@ get_bdf_info(xclDeviceHandle hdl, uint16_t bdf[3]);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
+get_mailbox_info(xclDeviceHandle hdl, xcl_mailbox* value);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
 get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
-get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value);
+get_icap_info(xclDeviceHandle hdl, xcl_pr_region* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
@@ -98,6 +102,9 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret);
 } // userpf
 
 

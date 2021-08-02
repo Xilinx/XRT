@@ -40,6 +40,8 @@
 
 #if defined(__KERNEL__)
 # include <linux/types.h>
+#elif defined(__cplusplus)
+# include <cstdint>
 #else
 # include <stdint.h>
 #endif
@@ -106,6 +108,8 @@ enum xrtErrorNum {
   XRT_ERROR_NUM_AIE_LOCK,
   XRT_ERROR_NUM_AIE_DMA,
   XRT_ERROR_NUM_AIE_MEM_PARITY,
+  XRT_ERROR_NUM_KDS_CU,
+  XRT_ERROR_NUM_KDS_EXEC,
   XRT_ERROR_NUM_UNKNOWN
 };
 

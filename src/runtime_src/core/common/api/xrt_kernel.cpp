@@ -20,6 +20,7 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_kernel.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
+#include "core/include/experimental/xrt_mailbox.h"
 #include "native_profile.h"
 #include "kernel_int.h"
 
@@ -124,13 +125,11 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes);
 
 namespace {
 
+constexpr uint32_t MAILBOX_INPUT_CTRL  = (1 << 9);
+constexpr uint32_t MAILBOX_OUTPUT_CTRL = (1 << 10);
+
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
-
-// NOLINTNEXTLINE
-constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
-
-
 
 XRT_CORE_UNUSED // debug enabled function
 std::string
@@ -218,6 +217,18 @@ public:
   size() const
   {
     return words;
+  }
+
+  size_t
+  bytes() const
+  {
+    return words * sizeof(ValueType);
+  }
+
+  const ValueType*
+  data() const
+  {
+    return uval;
   }
 };
 
@@ -461,7 +472,7 @@ public:
   // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::uuid& xclbin_id,
+  open(xrt_core::device* device, const xrt::uuid& xclbin_id, size_t range,
        const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
@@ -471,7 +482,7 @@ public:
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, ip, ipidx, cuidx, am));
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, range, ip, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
 
@@ -569,14 +580,14 @@ public:
 
 private:
   // regular CU
-  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
+  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, size_t range,
              const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
     : device(dev)
     , xid(xclbin_id)
     , args(dev, xclbin_id, ipindex)
     , cuidx(cuindex)
     , address(ip->m_base_address)
-    , size(64_kb)  // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+    , size(range)
     , access(am)
   {
     if (access != access_mode::none)
@@ -1159,6 +1170,8 @@ namespace xrt {
 class kernel_impl
 {
   using ipctx = std::shared_ptr<ip_context>;
+  using property_type = xrt_core::xclbin::kernel_properties;
+  using mailbox_type = property_type::mailbox_type;
 
   std::shared_ptr<device_type> device; // shared ownership
   std::string name;                    // kernel name
@@ -1166,6 +1179,7 @@ class kernel_impl
   std::vector<ipctx> ipctxs;           // CU context locks
   ipctx vctx;                          // virtual CU context
   std::bitset<max_cus> cumask;         // cumask for command execution
+  property_type properties;            // Kernel properties from XML meta
   size_t regmap_size = 0;              // CU register map size
   size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
   size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
@@ -1173,7 +1187,7 @@ class kernel_impl
   size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
   size_t num_cumasks = 1;              // Required number of command cu masks
   uint32_t protocol = 0;               // Default opcode
-  uint32_t uid;                        // internal unique id for debug
+  uint32_t uid;                        // Internal unique id for debug
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
   //
@@ -1325,12 +1339,21 @@ public:
     if (!xml_section.first)
       throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
 
+    // initialize kernel properties from xml meta data
+    properties = xrt_core::xclbin::get_kernel_properties(xml_section.first, xml_section.second, name);
+
+    // mailbox kernels opens CU in exclusive mode for direct read/write access
+    if (properties.mailbox != mailbox_type::none || properties.counted_auto_restart > 0) {
+      XRT_DEBUGF("kernel_impl mailbox or counted auto restart detected, changing access mode to exclusive");
+      am = ip_context::access_mode::exclusive;
+    }
+
     // Compare the matching CUs against the CU sort order to create cumask
     auto kernel_cus = xrt_core::xclbin::get_cus(ip_layout, nm);
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    auto all_cus = device->core_device->get_cus(xclbin_id);  // sort order
+    const auto& all_cus = device->core_device->get_cus(xclbin_id);  // sort order
     for (const ip_data* cu : kernel_cus) {
       if (::get_ip_control(cu) == AP_CTRL_NONE)
         continue;
@@ -1339,7 +1362,7 @@ public:
         throw std::runtime_error("unexpected error");
       auto cuidx = std::distance(all_cus.begin(), itr);         // sort order index
       auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, cu, ipidx, cuidx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, properties.address_range, cu, ipidx, cuidx, am));
       cumask.set(cuidx);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
     }
@@ -1374,6 +1397,24 @@ public:
   kernel_impl(kernel_impl&&) = delete;
   kernel_impl& operator=(kernel_impl&) = delete;
   kernel_impl& operator=(kernel_impl&&) = delete;
+
+  bool
+  has_mailbox() const
+  {
+    return properties.mailbox != mailbox_type::none;
+  }
+
+  mailbox_type
+  get_mailbox_type() const
+  {
+    return properties.mailbox;
+  }
+
+  size_t
+  get_auto_restart_counters() const
+  {
+    return properties.counted_auto_restart;
+  }
 
   // Initialize kernel command and return pointer to payload
   // after mandatory static data.
@@ -1475,6 +1516,14 @@ public:
       out[n] = read_register(offset + n * 4, true);
   }
 
+  // Write 'count' 4 byte registers starting at offset
+  void
+  write_register_n(uint32_t offset, size_t count, uint32_t* data)
+  {
+    for (size_t n = 0; n < count; ++n)
+      write_register(offset + n * 4, *(data + n));
+  }
+
   const std::shared_ptr<device_type>&
   get_device() const
   {
@@ -1512,6 +1561,7 @@ public:
 // its own execution buffer (ert command object)
 class run_impl
 {
+  friend class mailbox_impl;
   using ipctx = std::shared_ptr<ip_context>;
 
   // Helper hierarchy to set argument value per control protocol type
@@ -1538,6 +1588,9 @@ class run_impl
     void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override = 0;
 
+    virtual void
+    set_offset_value(size_t offset, const arg_range<uint8_t>& value) = 0;
+
     virtual arg_range<uint8_t>
     get_arg_value(const argument& arg) = 0;
   };
@@ -1551,18 +1604,24 @@ class run_impl
     {}
 
     void
+    set_offset_value(size_t offset, const arg_range<uint8_t>& value) override
+    {
+      // max 4 bytes supported for direct register write
+      auto count = std::min<size_t>(4, value.size());
+      std::copy_n(value.begin(), count, data + offset);
+    }
+
+    void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
     {
-      auto cmdidx = arg.offset();
       auto count = std::min(arg.size(), value.size());
-      std::copy_n(value.begin(), count, data + cmdidx);
+      std::copy_n(value.begin(), count, data + arg.offset());
     }
 
     arg_range<uint8_t>
     get_arg_value(const argument& arg) override
     {
-      auto cmdidx = arg.offset();
-      return { data + cmdidx, arg.size() };
+      return { data + arg.offset(), arg.size() };
     }
   };
 
@@ -1573,6 +1632,12 @@ class run_impl
     fa_arg_setter(uint32_t* data)
       : arg_setter(data)
     {}
+
+    void
+    set_offset_value(size_t offset, const arg_range<uint8_t>& value) override
+    {
+      throw xrt_core::error(std::errc::not_supported,"fast adapter set_offset_value");
+    }
 
     void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
@@ -1601,13 +1666,22 @@ class run_impl
     return count++;
   }
 
-  std::unique_ptr<arg_setter>
+  virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
     if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
       return std::make_unique<fa_arg_setter>(data);
     else
       return std::make_unique<hs_arg_setter>(data);
+  }
+
+  arg_setter*
+  get_arg_setter()
+  {
+    if (!asetter)
+      asetter = make_arg_setter();
+
+    return asetter.get();
   }
 
   void
@@ -1660,7 +1734,7 @@ class run_impl
   std::shared_ptr<kernel_command> cmd;    // underlying command object
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t uid;                           // internal unique id for debug
-  std::unique_ptr<arg_setter> arg_setter; // helper to populate payload data
+  std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
   bool encode_cumasks = false;            // indicate if cmd cumasks must be re-encoded
 
 public:
@@ -1718,7 +1792,6 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(kernel->initialize_command(cmd.get())) // default encodes CUs
     , uid(create_uid())
-    , arg_setter(make_arg_setter())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -1734,11 +1807,11 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
-    , arg_setter(make_arg_setter())
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
 
+  virtual
   ~run_impl()
   {
     XRT_DEBUGF("run_impl::~run_impl(%d)\n" , uid);
@@ -1771,13 +1844,13 @@ public:
   arg_range<uint8_t>
   get_arg_value(const argument& arg)
   {
-    return arg_setter->get_arg_value(arg);
+    return get_arg_setter()->get_arg_value(arg);
   }
 
   void
   set_arg_value(const argument& arg, const arg_range<uint8_t>& value)
   {
-    arg_setter->set_arg_value(arg, value);
+    get_arg_setter()->set_arg_value(arg, value);
   }
 
   void
@@ -1787,9 +1860,21 @@ public:
   }
 
   void
+  set_offset_value(uint32_t offset, const arg_range<uint8_t>& value)
+  {
+    get_arg_setter()->set_offset_value(offset, value);
+  }
+
+  void
+  set_offset_value(uint32_t offset, const void* value, size_t bytes)
+  {
+    set_offset_value(offset, arg_range<uint8_t>{value, bytes});
+  }
+
+  void
   set_arg(const argument& arg, std::va_list* args)
   {
-    arg.set(arg_setter.get(), args);
+    arg.set(get_arg_setter(), args);
   }
 
   void
@@ -1833,17 +1918,23 @@ public:
     }
   }
 
-  // start() - start the run object (execbuf)
+  // If this run object's cus were filtered compared to kernel cus
+  // then update the command packet encoded cus.
   void
+  encode_compute_units()
+  {
+    if (!encode_cumasks)
+      return;
+
+    cmd->encode_compute_units(cumask, kernel->get_num_cumasks());
+    encode_cumasks = false;
+  }
+
+  // start() - start the run object (execbuf)
+  virtual void
   start()
   {
-    // If this run object's cus were filtered compared to kernel cus
-    // then update the command packet encoded cus.
-    // To avoid comparison consider bool flag set when filtering
-    if (encode_cumasks) {
-      cmd->encode_compute_units(cumask, kernel->get_num_cumasks());
-      encode_cumasks = false;
-    }
+    encode_compute_units();
 
     auto pkt = cmd->get_ert_packet();
     pkt->state = ERT_CMD_STATE_NEW;
@@ -1851,6 +1942,41 @@ public:
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
     cmd->run();
+  }
+
+  void
+  start(const autostart& iterations)
+  {
+    if (cumask.count() > 1)
+      throw xrt_core::error(std::errc::value_too_large, "Only one compute unit allowed with auto restart");
+
+    if (!kernel->get_auto_restart_counters())
+      throw xrt_core::error(ENOSYS, "No auto-restart counters found for kernel");
+
+    // TODO: find offset once in meta data
+    constexpr size_t counter_offset = 0x10;
+    uint32_t value = iterations.iterations;
+    if (!value)
+      value = std::numeric_limits<uint32_t>::max();
+    set_offset_value(counter_offset, &value, sizeof(value));
+    start();
+  }
+
+  void
+  stop()
+  {
+    if (cumask.count() > 1)
+      throw xrt_core::error(std::errc::value_too_large, "Only one compute unit allowed with auto restart");
+
+    if (!kernel->get_auto_restart_counters())
+      throw xrt_core::error(ENOSYS, "Support for auto restart counters have not been implemented");
+
+    // Clear AUTO_RESTART bit if set, then wait() for completion
+    // TODO: find offset once in meta data
+    constexpr size_t counter_offset = 0x10;
+    uint32_t value = 0;
+    set_offset_value(counter_offset, &value, sizeof(value));
+    wait(std::chrono::milliseconds{0});
   }
 
   // wait() - wait for execution to complete
@@ -1872,6 +1998,186 @@ public:
   get_ert_packet() const
   {
     return cmd->get_ert_packet();
+  }
+};
+
+// class mailbox_impl - Extension of run_impl for mailbox support
+//
+// Implements an argument setter override that writes kernel arguments
+// to mailbox using register_write.
+//
+// Overrides start() function to sync mailbox to HW compute unit
+// register map.
+class mailbox_impl : public run_impl
+{
+  using mailbox_type = xrt_core::xclbin::kernel_properties::mailbox_type;
+
+  // struct hs_arg_setter - AP_CTRL_* argument setter for mailbox
+  //
+  // This argument setter amends base argument setter by writing and
+  // reading arguments to/from mailbox.  After setting or before
+  // reading arguments, the mailbox must have been synced with HW
+  struct hs_arg_setter : run_impl::hs_arg_setter
+  {
+    uint32_t* data32;    // note that 'data' in base is uint8_t*
+    mailbox_impl* mbox;
+    static constexpr size_t wsize = sizeof(uint32_t);  // register word size
+    
+    hs_arg_setter(uint32_t* data, mailbox_impl* mimpl)
+      : run_impl::hs_arg_setter(data), data32(data), mbox(mimpl)
+    {}
+
+    void
+    set_offset_value(size_t offset, const arg_range<uint8_t>& value) override
+    {
+      // single 4 byte register write
+      run_impl::hs_arg_setter::set_offset_value(offset, value);
+
+      // write single 4 byte value to mailbox 
+      mbox->mailbox_wait();
+      mbox->kernel->write_register(offset, *(data32 + offset / wsize));
+    }
+
+    void
+    set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override
+    {
+      run_impl::hs_arg_setter::set_arg_value(arg, value);
+
+      // write argument value to mailbox
+      // arg size is always a multiple of 4 bytes
+      mbox->mailbox_wait();
+      mbox->kernel->write_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
+    }
+
+    arg_range<uint8_t>
+    get_arg_value(const argument& arg) override
+    {
+      // read arg size bytes from mailbox at arg offset
+      // arg size is alwaus a multiple of 4 bytes
+      mbox->mailbox_wait();
+      mbox->kernel->read_register_n(arg.offset(), arg.size() / wsize, data32 + arg.offset() / wsize);
+      return run_impl::hs_arg_setter::get_arg_value(arg);
+    }
+  };
+
+  void
+  poll()
+  {
+    m_ctrlreg = kernel->read_register(0x0);
+    m_busy = m_ctrlreg & (MAILBOX_INPUT_CTRL | MAILBOX_OUTPUT_CTRL);
+  }
+
+  void
+  mailbox_idle_or_error()
+  {
+    if (!m_busy)
+      return;
+
+    poll();
+
+    if (m_busy)
+      throw xrt_core::system_error(EBUSY, "Mailbox is busy");
+  }
+
+  void
+  mailbox_wait()
+  {
+    while (m_busy)
+      poll();
+  }
+
+  // All mailboxes should be writeable otherwise nothing, not even
+  // starting the kernel will work.
+  void
+  mailbox_writeable_or_error()
+  {
+    if (m_readonly)
+      throw xrt_core::system_error(EPERM, "Mailbox is read-only");
+  }
+
+  // It is possible for the mailbox to not supporting reading
+  // kernel HW outputs, so this exception can trigger if the
+  // mailbox is used incorrectly.
+  void
+  mailbox_readable_or_error()
+  {
+    if (m_writeonly)
+      throw xrt_core::system_error(EPERM, "Mailbox is write-only");
+  }
+
+  uint32_t m_ctrlreg = 0;   // last CU ctrl reg read
+  bool m_busy = false;      // true after initiating write() or read()
+  bool m_readonly = false;    // 
+  bool m_writeonly = false;   // 
+
+public:
+  explicit
+  mailbox_impl(const std::shared_ptr<kernel_impl>& k)
+    : run_impl(k)
+  {
+    if (cumask.count() > 1)
+      throw xrt_core::error(std::errc::value_too_large, "Only one compute unit allowed with mailbox");
+    auto mtype = k->get_mailbox_type();
+    m_readonly = (mtype == mailbox_type::out);
+    m_writeonly = (mtype == mailbox_type::in);
+  }
+
+  // write mailbox to hw
+  void
+  write()
+  {
+    mailbox_writeable_or_error();
+    mailbox_idle_or_error();
+    kernel->write_register(0x0, m_ctrlreg | MAILBOX_INPUT_CTRL);
+    m_busy = true;
+  }
+
+  // read hw to mailbox
+  void
+  read()
+  {
+    mailbox_readable_or_error();
+    mailbox_idle_or_error();
+    kernel->write_register(0x0, m_ctrlreg | MAILBOX_OUTPUT_CTRL);
+    m_busy = true;
+  }
+
+  // blocking read directly from mailbox
+  // assumes prior read()
+  std::pair<const void*, size_t>
+  get_arg(int index)
+  {
+    mailbox_wait();
+    auto& arg = kernel->get_arg(index);
+    auto val = get_arg_value(arg);
+    return {val.data(), val.bytes()};
+  }
+
+  ////////////////////////////////////////////////////////////////
+  // xrt::run_impl overrides
+  ////////////////////////////////////////////////////////////////
+  std::unique_ptr<arg_setter>
+  make_arg_setter() override
+  {
+    if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
+      throw xrt_core::error("Mailbox not supported with FAST_ADAPTER");
+    else
+      return std::make_unique<hs_arg_setter>(data, this); // data is run_impl::data
+  }
+
+  void
+  start() override
+  {
+    // sync command payload to mailbox if necessary
+    write();
+
+    // adjust payload count to avoid scheduler writing to mailbox
+    constexpr size_t ap_ctrl_reserved = 4;
+    auto pkt = cmd->get_ert_packet();
+    pkt->count = kernel->get_num_cumasks() + ap_ctrl_reserved;
+
+    // Regular start
+    run_impl::start();
   }
 };
 
@@ -2106,20 +2412,31 @@ get_run_update(xrtRunHandle rhdl)
   return get_run_update(run);
 }
 
-// Necessary for profile wrapper because std::make_shared cannot be unambiguated
-static std::shared_ptr<xrt::run_impl>
-alloc_run(const std::shared_ptr<xrt::kernel_impl>& h)
+static std::unique_ptr<xrt::run_impl>
+alloc_run(const std::shared_ptr<xrt::kernel_impl>& khdl)
 {
-  return std::make_shared<xrt::run_impl>(h);
+  return khdl->has_mailbox()
+    ? std::make_unique<xrt::mailbox_impl>(khdl)
+    : std::make_unique<xrt::run_impl>(khdl);
 }
 
 static std::shared_ptr<xrt::kernel_impl>
-alloc_kernel(std::shared_ptr<device_type> dev,
+alloc_kernel(const std::shared_ptr<device_type>& dev,
 	     const xrt::uuid& xclbin_id,
 	     const std::string& name,
 	     xrt::kernel::cu_access_mode mode)
 {
   return std::make_shared<xrt::kernel_impl>(dev, xclbin_id, name, mode) ;
+}
+
+static std::shared_ptr<xrt::mailbox_impl>
+get_mailbox_impl(const xrt::run& run)
+{
+  auto rimpl = run.get_handle();
+  auto mimpl = std::dynamic_pointer_cast<xrt::mailbox_impl>(rimpl);
+  if (!mimpl)
+    throw xrt_core::error("Mailbox not supported by this run object");
+  return mimpl;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -2150,7 +2467,7 @@ xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
   const auto& kernel = get_kernel(khdl);
-  auto run = std::make_unique<xrt::run_impl>(kernel);
+  auto run = alloc_run(kernel);
   auto handle = run.get();
   runs.emplace(std::make_pair(handle,std::move(run)));
   return handle;
@@ -2260,7 +2577,7 @@ set_arg_at_index(const xrt::run& run, size_t idx, const void* value, size_t byte
 xrt::run
 clone(const xrt::run& run)
 {
-  return std::make_shared<xrt::run_impl>(run.get_handle().get());
+  return xrt::run{std::make_shared<xrt::run_impl>(run.get_handle().get())};
 }
 
 const std::bitset<max_cus>&
@@ -2322,17 +2639,32 @@ namespace xrt {
 
 run::
 run(const kernel& krnl)
-  : handle(xdp::native::profiling_wrapper("xrt::run::run",
-					alloc_run, krnl.get_handle()))
+  : handle(xdp::native::profiling_wrapper
+           ("xrt::run::run",alloc_run, krnl.get_handle()))
 {}
 
 void
 run::
 start()
 {
-  xdp::native::profiling_wrapper("xrt::run::start", [this]{
+  xdp::native::profiling_wrapper
+    ("xrt::run::start", [this]{
     handle->start();
-  });
+    });
+}
+
+void
+run::
+start(const autostart& iterations)
+{
+  handle->start(iterations);
+}
+
+void
+run::
+stop()
+{
+  handle->stop();
 }
 
 ert_cmd_state
@@ -2472,6 +2804,54 @@ offset(int argno) const
 } // namespace xrt
 
 ////////////////////////////////////////////////////////////////
+// xrt_mailbox C++ experimental API implmentations
+// see experimental/xrt_mailbox.h
+////////////////////////////////////////////////////////////////
+namespace xrt { 
+
+mailbox::
+mailbox(const xrt::run& run)
+  : detail::pimpl<mailbox_impl>(get_mailbox_impl(run))
+{
+}
+
+void
+mailbox::
+read()
+{
+  handle->read();
+}
+
+void
+mailbox::
+write()
+{
+  handle->write();
+}
+
+std::pair<const void*, size_t>
+mailbox::
+get_arg(int index) const
+{
+  return handle->get_arg(index);
+}
+
+void
+mailbox::
+set_arg_at_index(int index, const void* value, size_t bytes)
+{
+  handle->set_arg_at_index(index, value, bytes);
+}
+ 
+void
+mailbox::
+set_arg_at_index(int index, const xrt::bo& glb)
+{
+  handle->set_arg_at_index(index, glb);
+}
+
+}
+////////////////////////////////////////////////////////////////
 // xrt_kernel API implmentations (xrt_kernel.h)
 ////////////////////////////////////////////////////////////////
 xrtKernelHandle
@@ -2483,10 +2863,14 @@ xrtPLKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::shared);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 xrtKernelHandle
@@ -2498,10 +2882,14 @@ xrtPLKernelOpenExclusive(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const c
       return api::xrtKernelOpen(dhdl, xclbin_uuid, name, ip_context::access_mode::exclusive);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2515,12 +2903,12 @@ xrtKernelClose(xrtKernelHandle khdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 xrtRunHandle
@@ -2531,10 +2919,14 @@ xrtRunOpen(xrtKernelHandle khdl)
       return api::xrtRunOpen(khdl);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2547,12 +2939,12 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 uint32_t
@@ -2565,12 +2957,12 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return std::numeric_limits<uint32_t>::max();
   }
+  return std::numeric_limits<uint32_t>::max();
 }
 
 int
@@ -2585,12 +2977,12 @@ xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2605,12 +2997,12 @@ xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 xrtRunHandle
@@ -2631,10 +3023,14 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
     va_end(args);
     return result;
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return XRT_NULL_HANDLE;
   }
+  return XRT_NULL_HANDLE;
 }
 
 int
@@ -2648,12 +3044,12 @@ xrtRunClose(xrtRunHandle rhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 ert_cmd_state
@@ -2663,6 +3059,10 @@ xrtRunState(xrtRunHandle rhdl)
     return xdp::native::profiling_wrapper(__func__, [rhdl]{
       return api::xrtRunState(rhdl);
     });
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
@@ -2678,10 +3078,14 @@ xrtRunWait(xrtRunHandle rhdl)
       return api::xrtRunWait(rhdl, 0);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return ERT_CMD_STATE_ABORT;
   }
+  return ERT_CMD_STATE_ABORT;
 }
 
 ert_cmd_state
@@ -2692,10 +3096,14 @@ xrtRunWaitFor(xrtRunHandle rhdl, unsigned int timeout_ms)
       return api::xrtRunWait(rhdl, timeout_ms);
     });
   }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return ERT_CMD_STATE_ABORT;
   }
+  return ERT_CMD_STATE_ABORT;
 }
 
 int
@@ -2712,12 +3120,12 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2731,12 +3139,12 @@ xrtRunStart(xrtRunHandle rhdl)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2757,12 +3165,12 @@ xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2778,12 +3186,12 @@ xrtRunUpdateArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2804,12 +3212,12 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2825,12 +3233,12 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 int
@@ -2846,12 +3254,12 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
-    return ex.get();
+    errno = ex.get_code();
   }
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
-    return -1;
   }
+  return -1;
 }
 
 void

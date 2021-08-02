@@ -92,6 +92,7 @@ struct kds_cu_mgmt {
 
 /* ERT core */
 struct kds_ert {
+	u32			slot_size;
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
@@ -120,6 +121,7 @@ struct cmdmem_info {
  * @ert_disable: remote scheduler is disabled or not
  * @cu_intr_cap: capbility of CU interrupt support
  * @cu_intr: CU or ERT interrupt. 1 for CU, 0 for ERT.
+ * @anon_client: driver own kds client used with driver generated command
  */
 struct kds_sched {
 	struct list_head	clients;
@@ -135,6 +137,7 @@ struct kds_sched {
 	u32			cu_intr;
 	struct cmdmem_info	cmdmem;
 	struct completion	comp;
+	struct kds_client      *anon_client;
 };
 
 int kds_init_sched(struct kds_sched *kds);
@@ -148,7 +151,6 @@ int kds_cfg_update(struct kds_sched *kds);
 int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
 u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist);
-struct kds_client *kds_get_client(struct kds_sched *kds, pid_t pid);
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu);
 int kds_get_cu_total(struct kds_sched *kds);
@@ -159,6 +161,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx);
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);

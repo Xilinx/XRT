@@ -649,8 +649,7 @@ inline void
 configure_cu_ooo(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
   // write register map addr, value pairs starting 
-  // past reserved 4 ctrl + 2 ctx 
-  for (size_type idx = 6; idx < regmap_size; idx += 2) {
+  for (size_type idx = 0; idx < regmap_size; idx += 2) {
     addr_type offset = read_reg(regmap_addr + (idx << 2));
     value_type value = read_reg(regmap_addr + ((idx + 1) << 2));
     write_reg(cu_addr + offset, value);
@@ -1131,6 +1130,7 @@ command_queue_fetch(size_type slot_idx)
     slot_cache[slot_idx] = val;
     addr_type addr = cu_section_addr(slot_addr);
     slot.cu_idx = read_reg(addr);
+    slot.opcode = opcode(val);
     slot.header_value = val;
     slot.regmap_addr = regmap_section_addr(val,slot_addr);
     slot.regmap_size = regmap_size(val);

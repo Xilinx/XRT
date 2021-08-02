@@ -1,6 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 set(XRT_XRT_HEADER_SRC
+  xrt_aie.h
   xrt_bo.h
   xrt_device.h
+  xrt_graph.h
   xrt_kernel.h
   xrt_uuid.h)
 

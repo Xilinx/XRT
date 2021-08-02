@@ -694,11 +694,8 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
     for (const auto & device : devices) {
       boost::property_tree::ptree ptDevice;
       auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
-      std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
-      boost::algorithm::to_upper(uuid);
       ptDevice.put("interface_type", "pcie");
       ptDevice.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
-      ptDevice.put("xclbin_uuid", uuid);
 
       bool is_mfg = false;
       try {
@@ -723,14 +720,14 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       consoleStream << dev_desc;
       consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
-      consoleStream << "Xclbin UUID" << std::endl;
-      consoleStream << "  " + uuid << std::endl;
-      consoleStream << std::endl;
+      auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
 
       for (auto &report : reportsToProcess) {
         if (report->isDeviceRequired() == false)
           continue;
-
+        //if the device is not in factory mode and is ready to use, continue to create reports
+        if(!is_mfg && !is_ready)
+          continue;
         boost::property_tree::ptree ptReport;
         report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
 

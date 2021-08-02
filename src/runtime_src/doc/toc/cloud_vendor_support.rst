@@ -1,5 +1,9 @@
 .. _cloud_vendor_support.rst:
 
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 
 MSD/MPD and Plugins
 *******************
@@ -191,3 +195,15 @@ The following picture illustrates how XRT is being deployed in different scenari
 
 .. image:: xrt-deployment-cloud.svg
    :align: center
+
+Special Case
+============
+
+There is special case where download xclbin from within user VM is not required.
+
+In this special case, neither MSD/MPD nor plugins are required since no xclbin download is allowed from guest. xclbins can be preloaded
+either by hypervisor or dom0 type VM where the mgmt PF is assigned. The apps in user VM run without any change, i.e.
+xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid of the preloaded xclbin with a XCL_MAILBOX_REQ_PEER_DATA
+mailbox opcode to xclmgmt, and if the uuid matches with that of the xclbin requested for download, the ioctl returns immediately with success.
+If the uuids don't match, download request in the guest fails.
+download happening.

@@ -32,8 +32,8 @@
 
 namespace xdp {
 
-  VPRunSummaryWriter::VPRunSummaryWriter(const char* filename) :
-    VPWriter(filename)
+  VPRunSummaryWriter::VPRunSummaryWriter(const char* filename, VPDatabase* inst)
+    : VPWriter(filename, inst, false)
   {
   }
 

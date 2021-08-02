@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -53,7 +56,9 @@ add_subdirectory(22_verify)
 add_subdirectory(56_xclbin)
 add_subdirectory(100_ert_ncu)
 add_subdirectory(fa_kernel)
+add_subdirectory(mailbox)
 add_subdirectory(query)
+add_subdirectory(perf_IOPS)
 if (NOT WIN32)
   add_subdirectory(reset)
   add_subdirectory(102_multiproc_verify)

@@ -469,7 +469,7 @@ static unsigned int icap_get_clock_frequency_counter_khz(const struct icap *icap
 	if (ICAP_PRIVILEGED(icap)) {
 		if (uuid_is_null(&icap->icap_bitstream_uuid))
 			return freq;
-		err = xocl_clock_get_freq_counter_khz(xdev, &freq, idx);
+		err = xocl_clock_get_freq_counter(xdev, &freq, idx);
 		if (err)
 			ICAP_WARN(icap, "clock subdev returns %d.", err);
 	} else {
@@ -1311,7 +1311,7 @@ static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_
 		target_m_type = MEM_DRAM;
 	else if (ecc_type == IP_DDR4_CONTROLLER)
 		target_m_type = MEM_DRAM;
-	else if (ecc_type == IP_MEM_HBM)
+	else if (ecc_type == IP_MEM_HBM_ECC)
 		target_m_type = MEM_HBM;
 	else
 		goto done;
@@ -1451,6 +1451,18 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 				ICAP_ERR(icap, "can't create SPC subdev");
 				break;
 			}
+		} else if (ip->m_type == ACCEL_DEADLOCK_DETECTOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ACCEL_DEADLOCK_DETECTOR;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
+				break;
+			}
 		}
 	}
 	return err;
@@ -1516,6 +1528,7 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	char kname[64];
 	char *kname_p;
 	int err = 0, i;
+	int inst = 0;
 
 	/* Let CU controller know the dynamic resources */
 	for (i = 0; i < ip_layout->m_count; ++i) {
@@ -1545,13 +1558,17 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 
 		krnl_info = xocl_query_kernel(xdev, info.kname);
 		if (!krnl_info) {
-			ICAP_WARN(icap, "%s has no metadata. skip", kname);
-			continue;
+			ICAP_WARN(icap, "%s has no metadata. try use default", kname);
+			/* Workaround for U30, maybe we can remove this in the future */
+			/*continue;*/
 		}
 
-		info.inst_idx = i;
+		info.inst_idx = inst++;
 		info.addr = ip->m_base_address;
-		info.size = krnl_info->range;
+		/* Workaround for U30, maybe we can remove this in the future */
+		info.size = (krnl_info) ? krnl_info->range : 0x1000;
+		if (krnl_info && (krnl_info->features & KRNL_SW_RESET))
+			info.sw_reset = true;
 		info.num_res = subdev_info.num_res;
 		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
 		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
@@ -1655,6 +1672,44 @@ static int icap_create_subdev_ip_layout(struct platform_device *pdev)
 			err = xocl_subdev_create(xdev, &subdev_info);
 			if (err) {
 				ICAP_ERR(icap, "can't create MIG subdev");
+				goto done;
+			}
+
+		} else if (ip->m_type == IP_MEM_HBM_ECC) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_MIG_HBM;
+			uint16_t memidx = icap_get_memidx(mem_topo, IP_MEM_HBM_ECC, ip->indices.m_index);
+
+			if (memidx == INVALID_MEM_IDX)
+				continue;
+
+			if (!mem_topo || memidx >= mem_topo->m_count) {
+				ICAP_ERR(icap, "bad ECC controller index: %u",
+					ip->properties);
+				continue;
+			}
+
+			if (!mem_topo->m_mem_data[memidx].m_used) {
+				ICAP_INFO(icap,
+					"ignore ECC controller for: %s",
+					mem_topo->m_mem_data[memidx].m_tag);
+				continue;
+			}
+
+			memcpy(&mig_label.tag, mem_topo->m_mem_data[memidx].m_tag, 16);
+			mig_label.mem_idx = memidx;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = &mig_label;
+			subdev_info.data_len =
+				sizeof(struct xocl_mig_label);
+
+			if (!ICAP_PRIVILEGED(icap))
+				subdev_info.num_res = 0;
+
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create MIG_HBM subdev");
 				goto done;
 			}
 
@@ -2130,12 +2185,14 @@ static void icap_probe_urpdev_all(struct platform_device *pdev,
 	/* create the rest of subdevs for both mgmt and user pf */
 	icap_probe_urpdev(pdev, xclbin, &num_dev, &subdevs);
 	if (num_dev > 0) {
-		for (i = 0; i < num_dev; i++)
+		for (i = 0; i < num_dev; i++) {
 			(void) xocl_subdev_create(xdev, &subdevs[i].info);
+			xocl_subdev_dyn_free(subdevs + i);
+		}
 	}
 
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 }
 
 /* Create specific subdev */
@@ -2159,8 +2216,10 @@ static int icap_probe_urpdev_by_id(struct platform_device *pdev,
 		}
 	}
 
+	for (i = 0; i < num_dev; i++)
+		xocl_subdev_dyn_free(subdevs + i);
 	if (subdevs)
-		vfree(subdevs);
+		kfree(subdevs);
 
 	return found ? err : -ENODATA;
 }
@@ -2221,26 +2280,16 @@ static int __icap_xclbin_download(struct icap *icap, struct axlf *xclbin, bool s
 	 *    2) DDR SRSR IP and MIG
 	 *    3) MIG calibration
 	 */
-	/* If xclbin has clock metadata, refresh all clock freq */
-	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK);
+	/* If xclbin has clock metadata, refresh all clock subdevs */
+	err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin, XOCL_SUBDEV_CLOCK_WIZ);
+	if (!err)
+		err = icap_probe_urpdev_by_id(icap->icap_pdev, xclbin,
+			XOCL_SUBDEV_CLOCK_COUNTER);
+
 	if (!err) {
 		err = icap_refresh_clock_freq(icap, xclbin);
 		if (err)
 			ICAP_ERR(icap, "not able to refresh clock freq");
-	} else if (err == -EEXIST) {
-		/* Try locating the ep_freq_cnt_aclk_kernel_* endpoints in xclbin
-		 * On u2 raptor2 shells (1RP or 2RP or 0RP), these endpoints are
-		 * available in ULP (i.e. in xclbin) but not in BLP+PLP
-		 */
-		const struct axlf_section_header *header = NULL;
-		header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
-		if (header) {
-			struct clock_counter_info clk_counter[CCT_NUM] = { {0} };
-			bool present = xocl_fdt_get_freq_cnt_eps(xdev,
-					(char *)xclbin + header->m_sectionOffset, clk_counter);
-			if (present)
-				xocl_clock_reconfig_counters(xdev, clk_counter);
-		}
 	}
 
 	icap_calib(icap, retention);
@@ -2378,6 +2427,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	 * without creating mem topo, memory corruption could happen
 	 */
 	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 
 	err = __icap_peer_xclbin_download(icap, xclbin);
 
@@ -2406,7 +2456,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_max_host_mem_aperture(icap);
 
 	/* Initialize Group Topology and Group Connectivity */
-	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
 
 	icap_probe_urpdev_all(pdev, xclbin);
@@ -2562,12 +2611,14 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	/*
 	 * If the previous frequency was very high and we load an incompatible
 	 * bitstream it may damage the hardware!
-	 * If no clock freq, must return without touching the hardware.
+	 *
+	 * But if Platform contain all fixed clocks, xclbin doesnt contain
+	 * CLOCK_FREQ_TOPOLOGY section as there are no clocks to configure,
+	 * downloading xclbin should be succesful in this case.
 	 */
 	header = xrt_xclbin_get_section_hdr(xclbin, CLOCK_FREQ_TOPOLOGY);
 	if (!header) {
-		err = -EINVAL;
-		goto done;
+		ICAP_WARN(icap, "CLOCK_FREQ_TOPOLOGY doesn't exist. XRT is not configuring any clocks");
 	}
 
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {

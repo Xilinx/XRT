@@ -6,15 +6,19 @@ OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
 CMAKE=cmake
+CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
 
-if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
-    CMAKE=cmake3
-    if [[ ! -x "$(command -v $CMAKE)" ]]; then
-        echo "$CMAKE is not installed, please run xrtdeps.sh"
-        exit 1
+if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
+    if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]]; then
+        CMAKE=cmake3
+        if [[ ! -x "$(command -v $CMAKE)" ]]; then
+            echo "$CMAKE is not installed, please run xrtdeps.sh"
+            exit 1
+        fi
     fi
 fi
+
 
 if [[ $CPU == "aarch64" ]] && [[ $OSDIST == "ubuntu" ]]; then
     # On ARM64 Ubuntu use GCC version 8 if available since default
@@ -71,7 +75,6 @@ ccache=0
 docs=0
 verbose=""
 driver=0
-clangtidy="OFF"
 checkpatch=0
 jcore=$CORE
 opt=1
@@ -82,6 +85,8 @@ nobuild=0
 noctest=0
 static_boost=""
 ertfw=""
+cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -126,12 +131,13 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -ccache)
+            cmake_flags+=" -DRDI_CCACHE=1"
             ccache=1
             shift
             ;;
         -toolchain)
             shift
-            toolchain=$1
+            cmake_flags+=" -DCMAKE_TOOLCHAIN_FILE=$1"
             shift
             ;;
         -checkpatch)
@@ -149,7 +155,7 @@ while [ $# -gt 0 ]; do
             shift
             ;;
         -clangtidy)
-            clangtidy="ON"
+            cmake_flags+=" -DXRT_CLANG_TIDY=ON"
             shift
             ;;
         -verbose)
@@ -177,7 +183,7 @@ cd $BUILDDIR
 
 if [[ $clean == 1 ]]; then
     echo $PWD
-    echo "/bin/rm -rf $debug_dir $release_dir"
+    echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
     /bin/rm -rf $debug_dir $release_dir $edge_dir
     exit 0
 fi
@@ -221,9 +227,12 @@ fi
 if [[ $dbg == 1 ]]; then
   mkdir -p $debug_dir
   cd $debug_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Debug"
+
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
+	echo "$CMAKE $cmake_flags ../../src"
+	time $CMAKE $cmake_flags ../../src
   fi
 
   echo "make -j $jcore $verbose DESTDIR=$PWD install"
@@ -238,9 +247,12 @@ fi
 if [[ $opt == 1 ]]; then
   mkdir -p $release_dir
   cd $release_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
+  
   if [[ $nocmake == 0 ]]; then
-	echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src"
-	time $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_TOOLCHAIN_FILE=$toolchain -DXRT_CLANG_TIDY=$clangtidy ../../src
+	echo "$CMAKE $cmake_flags ../../src"
+	time $CMAKE $cmake_flags ../../src
   fi
 
   if [[ $nobuild == 0 ]]; then
@@ -262,8 +274,8 @@ if [[ $opt == 1 ]]; then
   if [[ $driver == 1 ]]; then
     unset CC
     unset CXX
-    echo "make -C usr/src/xrt-2.11.0/driver/xocl"
-    make -C usr/src/xrt-2.11.0/driver/xocl
+    echo "make -C usr/src/xrt-2.12.0/driver/xocl"
+    make -C usr/src/xrt-2.12.0/driver/xocl
     if [[ $CPU == "aarch64" ]]; then
 	# I know this is dirty as it messes up the source directory with build artifacts but this is the
 	# quickest way to enable native zocl build in Travis CI environment for aarch64
@@ -278,9 +290,12 @@ fi
 if [[ $CPU != "aarch64" ]] && [[ $edge == 1 ]]; then
   mkdir -p $edge_dir
   cd $edge_dir
+
+  cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
+
   if [[ $nocmake == 0 ]]; then
-    echo "$CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src"
-    time env XRT_NATIVE_BUILD=no $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ../../src
+    echo "env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src"
+    time env XRT_NATIVE_BUILD=no $CMAKE $cmake_flags ../../src
   fi
   echo "make -j $jcore $verbose DESTDIR=$PWD"
   time make -j $jcore $verbose DESTDIR=$PWD
@@ -290,7 +305,7 @@ fi
 
 if [[ $checkpatch == 1 ]]; then
     # check only driver released files
-    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.11.0/driver`
+    DRIVERROOT=`readlink -f $BUILDDIR/$release_dir/usr/src/xrt-2.12.0/driver`
 
     # find corresponding source under src tree so errors can be fixed in place
     XOCLROOT=`readlink -f $BUILDDIR/../src/runtime_src/core/pcie/driver`

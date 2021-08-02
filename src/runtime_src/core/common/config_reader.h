@@ -156,6 +156,13 @@ get_data_transfer_trace()
   return value;
 }
 
+inline std::string
+get_profiling_directory()
+{
+  static std::string value = detail::get_string_value("Debug.profiling_directory", "") ;
+  return value ;
+}
+
 inline bool
 get_power_profile()
 {
@@ -166,6 +173,7 @@ get_power_profile()
 inline unsigned int
 get_power_profile_interval_ms()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.power_profile_interval_ms", 20) ;
   return value ;
 }
@@ -180,6 +188,7 @@ get_aie_profile()
 inline unsigned int
 get_aie_profile_interval_us()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.aie_profile_interval_us", 1000) ;
   return value ;
 }
@@ -194,6 +203,7 @@ get_noc_profile()
 inline unsigned int
 get_noc_profile_interval_ms()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.noc_profile_interval_ms", 20);
   return value;
 }
@@ -223,6 +233,7 @@ get_continuous_trace()
 inline unsigned int
 get_continuous_trace_interval_ms()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.continuous_trace_interval_ms",10);
   return value;
 }
@@ -230,6 +241,7 @@ get_continuous_trace_interval_ms()
 inline unsigned int
 get_trace_buffer_offload_interval_ms()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.trace_buffer_offload_interval_ms",10);
   return value;
 }
@@ -237,6 +249,7 @@ get_trace_buffer_offload_interval_ms()
 inline unsigned int
 get_trace_file_dump_interval_s()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Debug.trace_file_dump_interval_s",5);
   return value;
 }
@@ -377,6 +390,7 @@ get_logging()
 inline unsigned int
 get_verbosity()
 {
+  // NOLINTNEXTLINE
   static unsigned int value = detail::get_uint_value("Runtime.verbosity",4);
   return value;
 }
@@ -433,6 +447,16 @@ inline unsigned int
 get_xma_cpu_mode()
 {
   static unsigned int value = detail::get_uint_value("Runtime.xma_cpu_mode",0x1);
+  return value;
+}
+
+/**
+ * Use XMA with old KDS; Default for XMA is to assume KDS2.0
+ */
+inline bool
+get_xma_kds_old()
+{
+  static bool value = detail::get_bool_value("Runtime.xma_kds_old",false);
   return value;
 }
 
@@ -591,11 +615,44 @@ get_sw_em_driver()
   return value;
 }
 
-/**
- * WORKAROUND: KDS would only allow xclRegWrite/xclRegRead access exclusively reserved CU.
- * This switch can loose the limitation. It means xclRegWrite/xclRegRead can access
- * shared CU.
- */
+// Kernel mailbox
+// Needed until implicit meta-data support (Vitis-1147)
+// Format is "[/kernel_name/]*"
+// mailbox="/kernel1_name/kernel2_name/"
+inline std::string
+get_mailbox_kernels()
+{
+  static auto value = detail::get_string_value("Runtime.mailbox_kernels", "");
+  return value;
+}
+
+// Kernel auto restart counter
+// Needed until implicit meta-data support (Vitis-1147)
+// Format is "[/kernel_name/]*"
+// auto_restart_kernels="/kernel1_name/kernel2_name/"
+inline std::string
+get_auto_restart_kernels()
+{
+  static auto value = detail::get_string_value("Runtime.auto_restart_kernels", "");
+  return value;
+}
+
+// Kernel sw_reset
+// Needed until meta-data support (Vitis-2931)
+// Format is "[/kernel_name/]*"
+// sw_reset_kernels="/kernel1_name/kernel2_name/"
+inline std::string
+get_sw_reset_kernels()
+{
+  static auto value = detail::get_string_value("Runtime.sw_reset_kernels", "");
+  return value;
+}
+
+// WORKAROUND: KDS would only allow xclRegWrite/xclRegRead access
+// exclusively reserved CU.  This switch can loose the limitation. It
+// means xclRegWrite/xclRegRead can access shared CU.
+//
+// Currently needed for writing and reading mailbox
 inline bool
 get_rw_shared()
 {

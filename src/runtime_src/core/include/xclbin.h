@@ -194,7 +194,8 @@ extern "C" {
         IP_DNASC,
         IP_DDR4_CONTROLLER,
         IP_MEM_DDR4,
-        IP_MEM_HBM
+        IP_MEM_HBM,
+        IP_MEM_HBM_ECC,
     };
 
     enum ACTION_MASK {
@@ -366,7 +367,9 @@ extern "C" {
         TRACE_S2MM,
         AXI_DMA,
         TRACE_S2MM_FULL,
-        AXI_NOC
+        AXI_NOC,
+        ACCEL_DEADLOCK_DETECTOR,
+        DEBUG_IP_TYPE_MAX
     };
 
     struct debug_ip_data {

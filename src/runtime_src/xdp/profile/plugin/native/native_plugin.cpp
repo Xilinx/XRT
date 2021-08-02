@@ -18,15 +18,19 @@
 
 #include "xdp/profile/plugin/native/native_plugin.h"
 #include "xdp/profile/writer/native/native_writer.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 
 namespace xdp {
 
   NativeProfilingPlugin::NativeProfilingPlugin() : XDPPlugin()
   {
     db->registerPlugin(this) ;
-    writers.push_back(new NativeTraceWriter("native_trace.csv")) ;
+    db->registerInfo(info::native) ;
 
-    (db->getStaticInfo()).addOpenedFile("native_trace.csv", "VP_TRACE") ;
+    VPWriter* writer = new NativeTraceWriter("native_trace.csv") ;
+    writers.push_back(writer) ;
+
+    (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
   }
 
   NativeProfilingPlugin::~NativeProfilingPlugin()

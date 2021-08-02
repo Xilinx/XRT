@@ -1,3 +1,8 @@
+/**
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ */
+
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -26,7 +31,7 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total)
 
   while (completed < total) {
     cmds[i].wait();
-        
+
     completed++;
     if (issued < total) {
       cmds[i].start();

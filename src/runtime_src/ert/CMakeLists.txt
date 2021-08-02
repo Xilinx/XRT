@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 set(ERT_INSTALL_PREFIX "/opt/xilinx/xrt/share/fw")
 set(ERT_INSTALL_FIRMWARE_PREFIX "/lib/firmware/xilinx")
 

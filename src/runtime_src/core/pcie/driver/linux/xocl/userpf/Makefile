@@ -62,7 +62,8 @@ xocl-y := \
 	../subdev/mailbox.o \
 	../subdev/xvc.o \
 	../subdev/icap.o \
-	../subdev/clock.o \
+	../subdev/clock_wiz.o \
+	../subdev/clock_counter.o \
 	../subdev/xmc.o \
 	../subdev/xmc_u2.o \
 	../subdev/firewall.o \
@@ -89,6 +90,9 @@ xocl-y := \
 	../subdev/version_ctrl.o \
 	../subdev/msix_xdma.o \
 	../subdev/ert_user.o \
+	../subdev/accel_deadlock_detector.o \
+	../subdev/command_queue.o \
+	../subdev/cfg_gpio.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

@@ -388,7 +388,11 @@ static int aim_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct xocl_aim *aim = (struct xocl_aim *)filp->private_data;
 	BUG_ON(!aim);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= aim->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = aim->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

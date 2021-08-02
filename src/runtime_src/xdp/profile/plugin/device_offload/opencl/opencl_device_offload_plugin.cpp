@@ -61,11 +61,21 @@ namespace {
       memoryName = "DDR" ;
     }
 
-    // Catch old bank format and report as DDR
-    if (memoryName.find("bank") != std::string::npos)
-      memoryName = "DDR";
+    // If we find the old "bank" format, just return it as is since our
+    //  monitor name could also have "bank" in it.  We'll check
+    //  if converting the name to DDR works separately.
 
     return memoryName.substr(0, memoryName.find_last_of("[")) ;
+  }
+
+  static std::string convertBankToDDR(const std::string& name)
+  {
+    auto loc = name.find("bank") ;
+    if (loc == std::string::npos) return name ;
+    std::string ddr = "DDR[" ;
+    ddr += name.substr(loc + 4) ;
+    ddr += "]" ;
+    return ddr ;
   }
 
   static std::string
@@ -157,17 +167,22 @@ namespace xdp {
       if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end()) {
         deviceIdsToBeFlushed.erase(deviceId) ;
 
-        auto offloader = std::get<0>(o.second) ;
-        if (offloader->continuous_offload()) {
-          offloader->stop_offload() ;
-          // To avoid a race condition, wait until the offloader has stopped
-          while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-        }
-        else {
-          offloader->read_trace() ;
-          offloader->read_trace_end() ;
-        }
-        checkTraceBufferFullness(offloader, deviceId);
+        try {
+          auto offloader = std::get<0>(o.second) ;
+          if (offloader->continuous_offload()) {
+            offloader->stop_offload() ;
+            // To avoid a race condition, wait until the offloader has stopped
+            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+          }
+          else {
+            offloader->read_trace() ;
+            offloader->read_trace_end() ;
+          }
+          checkTraceBufferFullness(offloader, deviceId);
+	} catch (std::exception& /*e*/) {
+          // Reading the trace could throw an exception if ioctls fail.
+          //  We should continue to check other devices if they exist
+	}
       }
     }
   }
@@ -193,28 +208,31 @@ namespace xdp {
     std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = db->addDevice(path) ;
+    deviceIdsToBeFlushed.erase(deviceId) ;
     
     if (traceOffloadEnabled) {
-      if (offloaders.find(deviceId) != offloaders.end())
-      {
-        auto offloader = std::get<0>(offloaders[deviceId]) ;
-        if (offloader->continuous_offload()) {
-          offloader->stop_offload() ;
-          // To avoid a race condition, wait until the offloader has stopped
-          while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+      try {
+        if (offloaders.find(deviceId) != offloaders.end()) {
+          auto offloader = std::get<0>(offloaders[deviceId]) ;
+          if (offloader->continuous_offload()) {
+            offloader->stop_offload() ;
+            // To avoid a race condition, wait until the offloader has stopped
+            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+          }
+          else {
+            offloader->read_trace() ;
+            offloader->read_trace_end() ;
+          }
+          checkTraceBufferFullness(offloader, deviceId);
         }
-        else {
-          offloader->read_trace() ;
-          offloader->read_trace_end() ;
-        }
-        checkTraceBufferFullness(offloader, deviceId);
+      } catch (std::exception& /*e*/) {
+        // Reading the trace could throw an exception if ioctls fail.
+        //  We should continue and try to read the counters as well
       }
     }
     if (counterOffloadEnabled) {
       readCounters() ;
     }
-
-    deviceIdsToBeFlushed.erase(deviceId) ;
 
     clearOffloader(deviceId) ;
     (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
@@ -364,7 +382,9 @@ namespace xdp {
 
           // Is this particular argument heading to the right memory?
           std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-          if ((monitor->name).find(memoryName) == std::string::npos)
+          std::string convertedName = convertBankToDDR(memoryName) ;
+          if (monitor->name.find(memoryName) == std::string::npos &&
+              monitor->name.find(convertedName) == std::string::npos )
             continue ;
 
           if (arguments != "") arguments += "|" ;
@@ -397,8 +417,11 @@ namespace xdp {
 
           // Is this particular argument heading to the right memory?
           std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
-          if ((monitor->name).find(memoryName) == std::string::npos)
+          std::string convertedName = convertBankToDDR(memoryName) ;
+          if (monitor->name.find(memoryName) == std::string::npos &&
+              monitor->name.find(convertedName) == std::string::npos) {
             continue ;
+          }
 
           if (arguments != "") arguments += "|" ;
           arguments += arg.name ;

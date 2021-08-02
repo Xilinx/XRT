@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,17 +17,18 @@
 #include "shim.h"
 #include "system_hwemu.h"
 #include "xclbin.h"
-#include <cctype>
-#include <string.h>
-#include <boost/property_tree/xml_parser.hpp>
-#include <errno.h>
-#include <unistd.h>
-#include <boost/lexical_cast.hpp>
 #include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
+#include <boost/property_tree/xml_parser.hpp>
+#include <unistd.h>
+#include <array>
+#include <cctype>
+#include <cerrno>
+#include <cstring>
 #include <mutex>
 #include <set>
+#include <vector>
 
 #define SEND_RESP2QDMA() \
     { \
@@ -186,7 +187,7 @@ namespace xclhwemhal2 {
       handle->saveWaveDataBase();
 
       if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
-        systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
       }
     }
 
@@ -196,42 +197,6 @@ namespace xclhwemhal2 {
   {
     std::ifstream file(path);
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
-  }
-
-  void HwEmShim::writeStringIntoFile(const std::string& path, const std::string& content)
-  {
-    std::ofstream out(path);
-    out << content << std::endl;
-    out.close();
-  }
-
-  std::string HwEmShim::modifyContent(const std::string& simulatorName, std::string& content)
-  {
-    if (simulatorName == "xcelium") {
-      // Append "-gui " to  xmsim command line if not already present
-      if (content.find("-gui ") == std::string::npos) {
-        content.replace(content.find("xmsim "), 6, "xmsim -gui ");
-      }
-    } else if (simulatorName == "questa") {
-      // Questa always generates simulate.sh with "-c " which is batch mode. Replace "-c " with "-gui " to run in GUI mode
-      if (content.find("-c ") != std::string::npos) {
-        content.replace(content.find("-c "), 3, "-gui ");
-      }
-    }
-    return content;
-  }
-
-  void HwEmShim::writeNewSimulateScript (const std::string& simPath, const std::string& simulatorName )
-  {
-    // Write the contents of this file into a string
-    std::string content = loadFileContentsToString(simPath + "/simulate.sh");
-    // Modify as per simulator name
-    content = modifyContent(simulatorName, content);
-    // overwrite the file with modified string
-    writeStringIntoFile(simPath + "/simulate.sh", content);
-    // give permissions
-    std::string filePath = simPath + "/simulate.sh";
-    systemUtil::makeSystemCall(filePath, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
   }
 
   void HwEmShim::parseHLSPrintf(const std::string& simPath)
@@ -450,6 +415,9 @@ namespace xclhwemhal2 {
         m_scheduler = new hwemu::xocl_scheduler(this);
     } else if (xclemulation::config::getInstance()->isXgqMode()) {
         m_xgq = new hwemu::xocl_xgq(this);
+        if (m_xgq && pdi && pdiSize > 0) {
+            returnValue = m_xgq->load_xclbin(pdi, pdiSize);
+        }
     } else {
         mCore = new exec_core;
         mMBSch = new MBScheduler(this);
@@ -481,8 +449,6 @@ namespace xclhwemhal2 {
     boost::format fmt = boost::format("%1%/tempFile_%2%.zip") % deviceDirectory.c_str() % std::to_string(binaryCounter);
     std::string zip_fileName = fmt.str();
 
-    //systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
-
     if (mMemModel)
     {
       delete mMemModel;
@@ -498,8 +464,8 @@ namespace xclhwemhal2 {
     ss << deviceDirectory << "/binary_" << binaryCounter;
     std::string binaryDirectory = ss.str();
 
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE, "", boost::lexical_cast<std::string>(__LINE__));
-    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE, "", std::to_string(__LINE__));
+    systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
 
     mRunDeviceBinDir = binaryDirectory;
 
@@ -575,26 +541,36 @@ namespace xclhwemhal2 {
       for (auto it : mMembanks)
       {
         //CR 966701: alignment to 4k (instead of mDeviceInfo.mDataAlignment)
-        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));
+        mDDRMemoryManager.push_back(new xclemulation::MemoryManager(it.size, it.base_addr, getpagesize(), it.tag));        
+
+        std::size_t found = it.tag.find("HOST");
+        if (found != std::string::npos) {
+          host_sptag_idx = it.index;
+        }
       }
-      for (auto it:mDDRMemoryManager)
+
+      for (auto it : mDDRMemoryManager)
       {
-              std::string tag = it->tag();
+        std::string tag = it->tag();
 
-              if(tag.empty() || tag.find("MBG") == std::string::npos)
-        	      continue;
+        //continue if not MBG group
+        if (tag.find("MBG") == std::string::npos) {
+          continue;
+        }
 
-              for (auto it2:mDDRMemoryManager)
-              {
-        	      if(it2->size() !=0 &&
-			 it2 != it &&
-        		 it->start() <= it2->start() &&
-        		 (it->start() + it->size()) >= (it2->start() + it2->size()))
-        	      {
-			      //add child memories
-			      it->mChildMemories.push_back(it2);
-        	      }
-              }
+        // Connectivity provided with the bus direction for HBM[31:0], XCLBIN creates the large group of memory with all the HBM[31:0] size
+        // like MBG. It indicates allocation of sequential memory is possible and not to limited size of one HBM. Hence creating the 
+        // HBM child memories (HBM subsets listed in RTD which falls under the range of MBG) for MBG memory type
+        for (auto it2 : mDDRMemoryManager)
+        {
+          if (it2->size() != 0 && it2 != it &&
+            it->start() <= it2->start() &&
+            (it->start() + it->size()) >= (it2->start() + it2->size()))
+          {
+            //add HBM child memories to MBG large group[
+            it->mChildMemories.push_back(it2);
+          }
+        }
       }
     }
 
@@ -767,12 +743,12 @@ namespace xclhwemhal2 {
         if (mLogStream.is_open())
           mLogStream << __func__ << " UNZIP of sim bin started" << std::endl;
 
-        systemUtil::makeSystemCall(zip_fileName, systemUtil::systemOperation::UNZIP, binaryDirectory, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(zip_fileName, systemUtil::systemOperation::UNZIP, binaryDirectory, std::to_string(__LINE__));
 
         if (mLogStream.is_open())
           mLogStream << __func__ << " UNZIP of sim bin complete" << std::endl;
 
-        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
 
         if (mLogStream.is_open())
           mLogStream << __func__ << " Permissions operation is complete" << std::endl;
@@ -793,11 +769,12 @@ namespace xclhwemhal2 {
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
 	        if (simulatorType == "xsim") {
-            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-            << " --protoinst " << protoFileName;
-            launcherArgs = launcherArgs + cmdLineOption.str();
+                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                << " --protoinst " << protoFileName;
+                launcherArgs = launcherArgs + cmdLineOption.str();
 	        } else {
-	          writeNewSimulateScript(sim_path, simulatorType);
+                cmdLineOption << " gui ";
+                launcherArgs = launcherArgs + cmdLineOption.str();
 	        }
         }
 
@@ -864,7 +841,7 @@ namespace xclhwemhal2 {
       {
         sim_path = userSpecifiedSimPath;
         setSimPath(sim_path);
-        systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(sim_path, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
       }
       else
       {
@@ -1017,9 +994,25 @@ namespace xclhwemhal2 {
             launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
-          launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
-          launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          if (boost::filesystem::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
+            launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
+            launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
+            launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
+            launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
+          }
+
+          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_args.txt")) {
+            launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          }
 
           if (boost::filesystem::exists(sim_path + "/emulation_data/pmc_args.txt")) {
             launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
@@ -1137,8 +1130,8 @@ namespace xclhwemhal2 {
       os.close();
 
       std::string emuDataFilePath(emuDataFileName.get());
-      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath, boost::lexical_cast<std::string>(__LINE__));
-      systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(emuDataFilePath, systemUtil::systemOperation::UNZIP, simPath, std::to_string(__LINE__));
+      systemUtil::makeSystemCall(mRunDeviceBinDir, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
     }
   }
 
@@ -1185,7 +1178,8 @@ namespace xclhwemhal2 {
            }
 
            const char *curr = (const char *)hostBuf;
-           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,0,0);
            PRINTENDFUNC;
            return totalSize;
          }
@@ -1193,7 +1187,8 @@ namespace xclhwemhal2 {
          {
            const char *curr = (const char *)hostBuf;
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,0,0);
            PRINTENDFUNC;
            return size;
          }
@@ -1260,7 +1255,8 @@ namespace xclhwemhal2 {
              std::string dMsg ="INFO: [HW-EMU 03-0] Configuring registers for the kernel " + kernelName +" Started";
              logMessage(dMsg,1);
            }
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo);
+           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,0,0);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
              std::string dMsg ="INFO: [HW-EMU 04-1] Kernel " + kernelName +" is Started";
@@ -1334,14 +1330,16 @@ namespace xclhwemhal2 {
           }
 
           //const char *curr = (const char *)hostBuf;
-          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return totalSize;
         }
       case XCL_ADDR_SPACE_DEVICE_PERFMON:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return -1;
         }
@@ -1353,7 +1351,8 @@ namespace xclhwemhal2 {
       case XCL_ADDR_KERNEL_CTRL:
         {
           xclGetDebugMessages();
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size);
+          //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
           PRINTENDFUNC;
           return size;
         }
@@ -1437,6 +1436,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mMemModel->readDevMem(src,dest,size);
       return size;
     }
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << dest << ", "
         << src << ", " << size << ", " << skip << std::endl;
@@ -1531,9 +1531,19 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     uint64_t origSize = size;
     unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
-    uint64_t result = mDDRMemoryManager[flags]->alloc(size, paddingFactor,chunks);
-    if(result == xclemulation::MemoryManager::mNull)
+    uint64_t result = -1;    
+
+    if (boFlags & XCL_BO_FLAGS_HOST_ONLY) {
+      result = mDDRMemoryManager[host_sptag_idx]->alloc(size, paddingFactor, chunks);
+    }
+    else {
+      result = mDDRMemoryManager[flags]->alloc(size, paddingFactor, chunks);
+    }
+
+    if (result == xclemulation::MemoryManager::mNull) {
       return result;
+    }
+
     uint64_t finalValidAddress = result+(paddingFactor*size);
     uint64_t finalSize = size+(2*paddingFactor*size);
     mAddrMap[finalValidAddress] = finalSize;
@@ -1633,28 +1643,28 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
           }
           std::string wdbFileName = binaryDirectory + "/" + fileName + "."+extension;
           std::string destPath = "'" + std::string(path) + "/" + fileName +"." + extension + "'";
-          systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath, boost::lexical_cast<std::string>(__LINE__));
+          systemUtil::makeSystemCall(wdbFileName, systemUtil::systemOperation::COPY,destPath, std::to_string(__LINE__));
 
           // Copy waveform config
           std::string wcfgFilePath= binaryDirectory + "/" + bdName + "_behav.wcfg";
           std::string destPath2 = "'" + std::string(path) + "/" + fileName + ".wcfg'";
-          systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2, boost::lexical_cast<std::string>(__LINE__));
+          systemUtil::makeSystemCall(wcfgFilePath, systemUtil::systemOperation::COPY, destPath2, std::to_string(__LINE__));
 
           // Append to detailed kernel trace data mining results file
           std::string logFilePath= binaryDirectory + "/profile_kernels.csv";
           std::string destPath3 = "'" + std::string(path) + "/profile_kernels.csv'";
-          systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3, boost::lexical_cast<std::string>(__LINE__));
+          systemUtil::makeSystemCall(logFilePath, systemUtil::systemOperation::APPEND, destPath3, std::to_string(__LINE__));
           xclemulation::copyLogsFromOneFileToAnother(logFilePath, mDebugLogStream);
 
           // Append to detailed kernel trace "timeline" file
           std::string traceFilePath = binaryDirectory + "/timeline_kernels.csv";
           std::string destPath4 = "'" + std::string(path) + "/timeline_kernels.csv'";
-          systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4, boost::lexical_cast<std::string>(__LINE__));
+          systemUtil::makeSystemCall(traceFilePath, systemUtil::systemOperation::APPEND, destPath4, std::to_string(__LINE__));
 
           // Copy proto inst file
           std::string protoFilePath= binaryDirectory + "/" + bdName + "_behav.protoinst";
           std::string destPath6 = "'" + std::string(path) + "/" + fileName + ".protoinst'";
-          systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6, boost::lexical_cast<std::string>(__LINE__));
+          systemUtil::makeSystemCall(protoFilePath, systemUtil::systemOperation::COPY, destPath6, std::to_string(__LINE__));
 
 
           if (mLogStream.is_open())
@@ -1664,13 +1674,13 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         // Copy Simulation Log file
         std::string simulationLogFilePath= binaryDirectory + "/" + "simulate.log";
         std::string destPath5 = "'" + std::string(path) + "/" + fileName + "_simulate.log'";
-        systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(simulationLogFilePath, systemUtil::systemOperation::COPY, destPath5, std::to_string(__LINE__));
 
 
         // Copy xsc_report Log file
         std::string xscReportLogFilePath= binaryDirectory + "/" + "xsc_report.log";
         std::string destPath8 = "'" + std::string(path) + "/" + fileName + "_xsc_report.log'";
-        systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(xscReportLogFilePath, systemUtil::systemOperation::COPY, destPath8, std::to_string(__LINE__));
 
       }
       i++;
@@ -1708,7 +1718,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if (!sock)
     {
       if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
-        systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
       }
 
       if(mMBSch && mCore)
@@ -1723,6 +1733,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       {
           delete m_scheduler;
           m_scheduler = nullptr;
+      }
+      if(m_xgq)
+      {
+          delete m_xgq;
+          m_xgq = nullptr;
       }
       PRINTENDFUNC;
       if (mLogStream.is_open()) {
@@ -1755,7 +1770,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     saveWaveDataBase();
     if( xclemulation::config::getInstance()->isKeepRunDirEnabled() == false)
-      systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     google::protobuf::ShutdownProtobufLibrary();
     PRINTENDFUNC;
     if (mLogStream.is_open()) {
@@ -1794,6 +1809,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       {
           delete m_scheduler;
           m_scheduler = nullptr;
+      }
+      if(m_xgq)
+      {
+          delete m_xgq;
+          m_xgq = nullptr;
       }
       return 0;
     }
@@ -1857,7 +1877,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 #endif
       closemMessengerThread();
       //clean up directories which are created inside the driver
-      systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(socketName, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     }
 
     if(saveWdb)
@@ -1900,6 +1920,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
         delete m_scheduler;
         m_scheduler = nullptr;
+    }
+    if(m_xgq)
+    {
+        delete m_xgq;
+        m_xgq = nullptr;
     }
 
     return 0;
@@ -1948,6 +1973,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
         delete m_scheduler;
         m_scheduler = nullptr;
+    }
+    if(m_xgq)
+    {
+        delete m_xgq;
+        m_xgq = nullptr;
     }
     if(mDataSpace)
     {
@@ -2067,13 +2097,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     buf = nullptr;
     buf_size = 0;
     binaryCounter = 0;
+    host_sptag_idx = -1;
     sock = nullptr;
 
     deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
 
-    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE, "", boost::lexical_cast<std::string>(__LINE__));
-    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", boost::lexical_cast<std::string>(__LINE__));
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::CREATE, "", std::to_string(__LINE__));
+    systemUtil::makeSystemCall(deviceDirectory, systemUtil::systemOperation::PERMISSIONS, "777", std::to_string(__LINE__));
 
     mPlatformData = platformData;
     constructQueryTable();
@@ -2101,9 +2132,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       if(pPath)
       {
         std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
-        systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
         std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
-        systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+        systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
       }
     }
     bUnified = _unified;
@@ -2111,6 +2142,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mCore = nullptr;
     mMBSch = nullptr;
     m_scheduler = nullptr;
+    m_xgq = nullptr;
     mIsDebugIpLayoutRead = false;
     mIsDeviceProfiling = false;
     mMemoryProfilingNumberSlots = 0;
@@ -2212,6 +2244,11 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     return 0;
   }
 
+  std::shared_ptr<xrt_core::device> HwEmShim::getMCoreDevice()
+  {
+    return mCoreDevice;
+  }
+
   bool HwEmShim::isLegacyErt()
   {
     if(xclemulation::config::getInstance()->getLegacyErt() == xclemulation::ertmode::legacy)
@@ -2239,7 +2276,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   {
     if (xclemulation::config::getInstance()->getIsPlatformEnabled()) {
       if (mPlatformData.get_optional<std::string>("plp.numCdma").is_initialized()) {
-        int numCdma = boost::lexical_cast<int>(mPlatformData.get<std::string>("plp.numCdma"));
+        int numCdma = std::stoi(mPlatformData.get<std::string>("plp.numCdma"));
         return (numCdma > 0 ? true : false);
       }
     }
@@ -2470,24 +2507,15 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     if(pPath)
     {
       std::string sdxProfileKernelFile = std::string(path) + "/profile_kernels.csv";
-      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(sdxProfileKernelFile, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
       std::string sdxTraceKernelFile = std::string(path) + "/timeline_kernels.csv";
-      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", boost::lexical_cast<std::string>(__LINE__));
+      systemUtil::makeSystemCall(sdxTraceKernelFile, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
     }
 
-    std::string lf = "";
-    if (getenv("ENABLE_HAL_HW_EMU_DEBUG")) {
-      lf = std::string(pPath) + "/hal_log.txt";
-    }
-    else {
-      lf = "";
-    }
-
-    //if ( logfileName && (logfileName[0] != '\0'))
-    if (!lf.empty())
-    {
-      mLogStream.open(lf);
-      mLogStream << "FUNCTION, THREAD ID, ARG..."  << std::endl;
+    std::string logFilePath = xrt_core::config::get_hal_logging();
+    if (!logFilePath.empty()) {
+      mLogStream.open(logFilePath);
+      mLogStream << "FUNCTION, THREAD ID, ARG..." << std::endl;
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
@@ -2761,57 +2789,59 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     return -1;
   }
    
-  // Disabling the m2m for timebeing as it is not working as expected. So still data is getting transferred thru DMA.
-  // Will enable this logic unless we have a clarity from the m2m hw_emu kernel. Please do not remove this code 
-  /*if ( deviceQuery(key_type::m2m) && getM2MAddress() != 0 ) {
+  // Enabling the copy buffer thru the M2M under the INI option enable_m2m and its default is false.
+  // Once the issues regarding this is resolved from the sim_m2m kernel, we will remove this ini option.
+  if (xclemulation::config::getInstance()->isM2MEnabled()) {
+    if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
 
-    char hostBuf[M2M_KERNEL_ARGS_SIZE];
-    std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
+      char hostBuf[M2M_KERNEL_ARGS_SIZE];
+      std::memset(hostBuf, 0, M2M_KERNEL_ARGS_SIZE);
 
-    //src and dest addresses construction
-    uint64_t src_addr = sBO->base + src_offset;
-    uint64_t dest_addr = dBO->base + dst_offset;
+      //src and dest addresses construction
+      uint64_t src_addr = sBO->base + src_offset;
+      uint64_t dest_addr = dBO->base + dst_offset;
 
-    //fill the hostbuf with the src offset and dest offset and size offset
-    std::memcpy(hostBuf+0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
-    std::memcpy(hostBuf+0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
+      //fill the hostbuf with the src offset and dest offset and size offset
+      std::memcpy(hostBuf + 0x10, (unsigned char*)&src_addr, 8); //copying the src address to the hostbuf to the specified offset by M2M IP
+      std::memcpy(hostBuf + 0x18, (unsigned char*)&dest_addr, 8);  //copying the dest address to the hostbuf to the specified offset by M2M IP
+      std::memcpy(hostBuf + 0x20, (unsigned char*)&size, 4); //copying the size address to the hostbuf to the specified offset by M2M IP
 
-    //Configuring the kernel with hostbuf by providing the Base address of the IP
-    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
-      std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
+      //Configuring the kernel with hostbuf by providing the Base address of the IP
+      if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, M2M_KERNEL_ARGS_SIZE) != M2M_KERNEL_ARGS_SIZE) {
+        std::cerr << "ERROR: Failed to write to args to the m2m IP" << std::endl;
+      }
+
+      hostBuf[0] = 0x1; //filling the hostbuf with the start info
+      //Starting the kernel
+      if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, 4) != 4) {
+        std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
+      }
+
+      do {
+        //Read the status of the kernel by polling the hostBuf[0]
+        //check for the base_address is either 4 or 6
+        xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress() + 0x20000, hostBuf, 4);
+      } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)));
+
+      PRINTENDFUNC;
+      return 0;
     }
-
-    hostBuf[0] = 0x1; //filling the hostbuf with the start info
-    //Starting the kernel
-    if (xclWrite(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4) != 4) {
-      std::cerr << "ERROR: Failed to start the m2m kernel" << std::endl;
-    }
-
-    do {
-      //Read the status of the kernel by polling the hostBuf[0]
-      //check for the base_address is either 4 or 6
-      xclRead(XCL_ADDR_KERNEL_CTRL, getErtBaseAddress()+0x20000, hostBuf, 4);
-    } while (!(hostBuf[0] & (CONTROL_AP_DONE | CONTROL_AP_IDLE)) );
-
-    PRINTENDFUNC;
-    return 0;
-  }*/
+  }
 
   // source buffer is host_only and destination buffer is device_only
-  if (xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
+  if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(sBO->buf) + src_offset;
     if (xclCopyBufferHost2Device(dBO->base, (void*)host_only_buffer, size, dst_offset, dBO->topology) != size) {
       return -1;
     }
   } // source buffer is device_only and destination buffer is host_only
-  else if (xclemulation::xocl_bo_host_only(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
+  else if (isHostOnlyBuffer(dBO) && !xclemulation::xocl_bo_p2p(dBO) && xclemulation::xocl_bo_dev_only(sBO)) {
     unsigned char* host_only_buffer = (unsigned char*)(dBO->buf) + dst_offset;
     if (xclCopyBufferDevice2Host((void*)host_only_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
       return -1;
     }
   }// source and destination buffers are device_only
-  else if (!xclemulation::xocl_bo_host_only(sBO) && !xclemulation::xocl_bo_host_only(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
+  else if (!isHostOnlyBuffer(sBO) && !isHostOnlyBuffer(dBO) && (dBO->fd < 0) && (sBO->fd < 0)) {
     unsigned char temp_buffer[size];
     // copy data from source buffer to temp buffer
     if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
@@ -2835,7 +2865,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   }
   else{
-     std::cerr << "ERROR: Copy buffer from source to destination faliled" << std::endl;
+     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
      return -1;
   }
 
@@ -2896,7 +2926,7 @@ void *HwEmShim::xclMapBO(unsigned int boHandle, bool write)
   bo->buf = pBuf;
 
   //For Slave Bridge scenario, maintaining the map for base vs pBuf pointer
-  if (xclemulation::xocl_bo_host_only(bo)) {
+  if (isHostOnlyBuffer(bo)) {
     mHostOnlyMemMap[bo->base] = std::make_pair(pBuf, bo->size);
   }
 
@@ -2929,7 +2959,7 @@ int HwEmShim::xclSyncBO(unsigned int boHandle, xclBOSyncDirection dir, size_t si
   }
 
   int returnVal = 0;
-  if (!xclemulation::xocl_bo_host_only(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
+  if (!isHostOnlyBuffer(bo)) { // bypassed the xclCopyBufferDevice2Host/Host2Device RPC calls for Slave Bridge (host only buffer scenario)
     void* buffer = bo->userptr ? bo->userptr : bo->buf;
     if (dir == XCL_BO_SYNC_BO_TO_DEVICE)
     {
@@ -3608,47 +3638,20 @@ int HwEmShim::xclLogMsg(xrtLogMsgLevel level, const char* tag, const char* forma
     return 0;
 }
 
-  void HwEmShim::closemMessengerThread() {
-	  if(mMessengerThreadStarted) {
-		  mMessengerThread.join();
-		  mMessengerThreadStarted = false;
-	  }
-      if(mHostMemAccessThreadStarted) {
-	      mHostMemAccessThreadStarted = false;
-          if(mHostMemAccessThread.joinable()){
-              mHostMemAccessThread.join();
-          }
-      }
+void HwEmShim::closemMessengerThread()
+{
+  if (mMessengerThreadStarted) {
+    mMessengerThread.join();
+    mMessengerThreadStarted = false;
   }
 
-//Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
- int HwEmShim::getCuIdxBaseAddrMap()
- {
-   std::string errmsg;
-   if (!mCoreDevice){
-     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - core device not found";
-     std::cerr << errmsg << std::endl;
-     return -EINVAL;
-   }
-   auto buffer = mCoreDevice->get_axlf_section(IP_LAYOUT);
-   if (!buffer.first){
-     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - can't load ip_layout section";
-     std::cerr << errmsg << std::endl;
-     return -EINVAL;
-   }
-   auto map = reinterpret_cast<const ::ip_layout*>(buffer.first);
-   if (map->m_count < 0) {
-     errmsg = "ERROR: [HW-EMU] getCuIdxBaseAddrMap - invalid ip_layout section content";
-     std::cerr << errmsg << std::endl;
-     return -EINVAL;
-   }
-   mCuIndxVsBaseAddrMap.clear();
-   //Fill map with CU Index and Base address of the kernel in IP_LAYOUT section in XCLBIN
-   for (int i = 0; i < map->m_count; i++) {
-     mCuIndxVsBaseAddrMap[i] = map->m_ip_data[i].m_base_address;
-   }
-   return 0;
- }
+  if (mHostMemAccessThreadStarted) {
+    mHostMemAccessThreadStarted = false;
+    if (mHostMemAccessThread.joinable()) {
+      mHostMemAccessThread.join();
+    }
+  }
+}
 
 //CU register space for xclRegRead/Write()
 int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
@@ -3656,42 +3659,41 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
   if (mLogStream.is_open()) {
     mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
   }
-  //get cu idx vs base addr map from IP_LAYOUT section in xclbin.
-  getCuIdxBaseAddrMap();
-  std::string strCuidx = boost::lexical_cast<std::string>(cu_index);
-  if (cu_index >= mCuIndxVsBaseAddrMap.size()) {
-    std::string strMsg = "ERROR: [HW-EMU 20] xclRegRW - invalid CU index: " + strCuidx;
+
+  // get sorted cu addresses to match up with cu_index
+  const auto& cuidx2addr = mCoreDevice->get_cus();
+  if (cu_index >= cuidx2addr.size()) {
+    std::string strMsg = "ERROR: [HW-EMU 20] xclRegRW - invalid CU index: " + std::to_string(cu_index);
     logMessage(strMsg);
     return -EINVAL;
   }
   if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
-    std::string strOffset = boost::lexical_cast<std::string>(offset);
-    std::string strMsg = "ERROR: [HW-EMU 21] xclRegRW - invalid CU offset: " + strOffset;
+    std::string strMsg = "ERROR: [HW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
     logMessage(strMsg);
     return -EINVAL;
   }
-  char *buff = new char[REG_BUFF_SIZE];
-  std::memset(buff, 0, sizeof(char)*REG_BUFF_SIZE);
 
-  uint64_t baseAddr = mCuIndxVsBaseAddrMap[cu_index] + offset;
-    if (rd) {
-      if (xclRead(XCL_ADDR_KERNEL_CTRL, baseAddr, buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
-        std::string strMsg = "ERROR: [HW-EMU 22] xclRegRW - xclRead failed for CU: " + strCuidx;
-        logMessage(strMsg);
-        return -EINVAL;
-      }
-      uint32_t * tmp_buff = (uint32_t *) buff;
-      *datap = tmp_buff[0];
+  std::array<char, REG_BUFF_SIZE> buff;
+
+  uint64_t baseAddr = cuidx2addr[cu_index] + offset;
+  if (rd) {
+    if (xclRead(XCL_ADDR_KERNEL_CTRL, baseAddr, buff.data(), REG_BUFF_SIZE) != REG_BUFF_SIZE) {
+      std::string strMsg = "ERROR: [HW-EMU 22] xclRegRW - xclRead failed for CU: " + std::to_string(cu_index);
+      logMessage(strMsg);
+      return -EINVAL;
     }
-    else {
-      uint32_t * tmp_buff = (uint32_t *)buff;
-      tmp_buff[0] = *datap;
-      if (xclWrite(XCL_ADDR_KERNEL_CTRL, baseAddr, tmp_buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
-        std::string strMsg = "ERROR: [HW-EMU 23] xclRegRW - xclWrite failed for CU: " + strCuidx;
-        logMessage(strMsg);
-        return -EINVAL;
-      }
+    auto tmp_buff = reinterpret_cast<uint32_t*>(buff.data());
+    *datap = tmp_buff[0];
+  }
+  else {
+    uint32_t * tmp_buff = reinterpret_cast<uint32_t*>(buff.data());
+    tmp_buff[0] = *datap;
+    if (xclWrite(XCL_ADDR_KERNEL_CTRL, baseAddr, tmp_buff, REG_BUFF_SIZE) != REG_BUFF_SIZE) {
+      std::string strMsg = "ERROR: [HW-EMU 23] xclRegRW - xclWrite failed for CU: " + std::to_string(cu_index);
+      logMessage(strMsg);
+      return -EINVAL;
     }
+  }
   return 0;
 }
 

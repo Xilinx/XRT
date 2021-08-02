@@ -137,7 +137,7 @@ update_shell(unsigned int index, const std::string& flashType,
 static std::string 
 getBDF(unsigned int index)
 {
-  auto dev =xrt_core::get_mgmtpf_device(index);
+  auto dev = xrt_core::get_mgmtpf_device(index);
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(dev);
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
@@ -312,12 +312,30 @@ report_status(xrt_core::device_collection& deviceCollection, boost::property_tre
 
 }
 
+/*
+ * bmcVer (shown as [SC=version]) can be 3 status:
+ *   1) regular SC version;
+ *        example: [SC=4.1.7]
+ *   2) INACTIVE;
+ *        exmaple: [SC=INACTIVE], this means no xmc subdev, we should not
+ *        attemp to flash the SC;
+ *   3) UNKNOWN;
+ *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
+ *        not normal, we still allow flashing SC.
+ *   4) FIXED SC version;
+ *        example: [SC=4.1.7(FIXED)], this means SC is running on slave mgmt pf
+ *        and cannot be updated throught this pf, SC version cannot be changed.
+ */
 static void 
 isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
 {
   if (!current.dsaname().empty()) {
     same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
-    same_bmc = (current.bmcVerIsFixed() || (candidate.bmc_ver() == current.bmc_ver()));
+    same_bmc = !XBU::getForce() && 
+     (current.bmcVerIsFixed() ||
+     (current.bmcVer.compare("INACTIVE") == 0) ||
+     (candidate.bmc_ver() == current.bmc_ver()));
+
   }
 }
 
@@ -326,9 +344,10 @@ isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa
  * Helper method for auto_flash
  */
 static int 
-updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
+updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot, bool& warm_reboot)
 {
   reboot = false;
+  warm_reboot = false;
 
   Flasher flasher(boardIdx);
 
@@ -343,10 +362,8 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
 
   // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
   // so do not update
-  if (current.bmcVer.empty())
+  if (current.bmc_ver().empty())
     same_bmc = true;
-  else
-    same_bmc = (candidate.bmcVer == current.bmcVer) && !XBU::getForce();
   
   if (same_dsa && same_bmc) {
     std::cout << "update not needed" << std::endl;
@@ -358,6 +375,7 @@ updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot)
     std::cout << programFmt % flasher.sGetDBDF() % "Updating SC firmware flash image";
     try {
       update_SC(boardIdx, candidate.file);
+      warm_reboot = true;
     } catch (const xrt_core::error& e) {
       std::cout << "NOTE: Skipping SC flash: " << e.what() << std::endl;
     }
@@ -403,7 +421,7 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     // Always update Arista devices
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
     if (vendor == ARISTA_ID)
-        same_shell = false;
+      same_shell = false;
 
     if (XBU::getForce()) {
       same_shell = false;
@@ -417,14 +435,10 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     }
   }
 
-  // Temporary Symptom Fix
-  // Release all of the devices to allow for the SC flash image to be programmed 
-  // on a u30.
-  deviceCollection.clear();
-
   // Continue to flash whatever we have collected in boardsToUpdate.
   uint16_t success = 0;
   bool needreboot = false;
+  bool need_warm_reboot = false;
   std::stringstream report_status;
   if (!boardsToUpdate.empty()) {
 
@@ -434,16 +448,18 @@ auto_flash(xrt_core::device_collection& deviceCollection)
 
     // Perform DSA and BMC updating
     for (auto& p : boardsToUpdate) {
-      bool reboot;
+      bool reboot = false;
+      bool warm_reboot = false;
       std::cout << std::endl;
       try {
-        updateShellAndSC(p.first, p.second, reboot);
+        updateShellAndSC(p.first, p.second, reboot, warm_reboot);
         report_status << boost::format("  [%s] : Successfully flashed\n") % getBDF(p.first);
         success++;
       } catch (const xrt_core::error& e) {
         std::cerr << boost::format("ERROR: %s\n") % e.what();
       }
       needreboot |= reboot;
+      need_warm_reboot |= warm_reboot;
     }
   }
   std::cout << "----------------------------------------------------\n";
@@ -456,15 +472,19 @@ auto_flash(xrt_core::device_collection& deviceCollection)
   }
 
   if (success != 0) {
-    std::cout << "\n" << success << " device(s) flashed successfully." << std::endl; 
+    std::cout << "\n" << success << " device flashed successfully." << std::endl; 
   } else {
     std::cout << "\nNo devices were flashed." << std::endl; 
   }
 
   if (needreboot) {
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
+  } else if (need_warm_reboot) {
+    std::cout << "******************************************************************\n";
+    std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
+    std::cout << "******************************************************************\\n";
   }
 
   if (success != boardsToUpdate.size()) {
@@ -585,7 +605,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
     ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the partition.")
 
@@ -605,7 +625,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                     "  ospi\n"
                                                                     "  ospi_versal")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device(s).  Value values:\n"
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk\n"
                                                                     "Note: Multiple images can be specified separated by a space")
@@ -666,20 +686,17 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // We support programming all devices only for a u30 homogeneous setup
-  // --device all is deprecated 
-  for (const auto& dev : deviceCollection) {
-    if(deviceCollection.size() != 1 && xrt_core::device_query<xrt_core::query::board_name>(dev).compare("u30") != 0) {
-      std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
-      std::cout << "List of available devices:" << std::endl;
-      boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-      for(auto& kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
-      }
-      std::cout << std::endl;
-      throw xrt_core::error(std::errc::operation_canceled);
-      }
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1) {
+    std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
@@ -756,7 +773,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (!has_reset)
       return;
     std::cout << "****************************************************\n";
-    std::cout << "Cold reboot machine to load the new image on device(s).\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
     return;
   }

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # This cmake file is for native build. Host and target processor are the same.
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_INSTALL_BIN_DIR

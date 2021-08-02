@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -50,7 +50,7 @@ struct bdf
   get(const xrt_core::device* device, key_type)
   {
     auto pdev = get_pcidev(device);
-    return std::make_tuple(pdev->bus,pdev->dev,pdev->func);
+    return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
 };
 
@@ -73,7 +73,7 @@ struct kds_cu_stat
     // Using comma as separator.
     pdev->sysfs_get("", "kds_custat_raw", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -81,7 +81,7 @@ struct kds_cu_stat
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 5)
-        throw std::runtime_error("CU statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
@@ -118,7 +118,7 @@ struct kds_scu_stat
     // Using comma as separator.
     pdev->sysfs_get("", "kds_scustat_raw", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -126,7 +126,7 @@ struct kds_scu_stat
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 4)
-        throw std::runtime_error("PS kernel statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
@@ -158,7 +158,7 @@ struct kds_cu_info
     std::string errmsg;
     pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -194,7 +194,7 @@ struct qspi_status
     std::string status_str, errmsg;
     pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     std::string primary, recovery;
     for (auto status_byte : status_str) {
@@ -242,7 +242,8 @@ struct sysfs_fcn
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -252,7 +253,7 @@ struct sysfs_fcn
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -268,7 +269,8 @@ struct sysfs_fcn<std::string>
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -278,7 +280,7 @@ struct sysfs_fcn<std::string>
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -295,7 +297,8 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -305,7 +308,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 

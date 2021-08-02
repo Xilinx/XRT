@@ -355,18 +355,22 @@ struct argument_info {
 	uint32_t	dir;
 };
 
+/* Kernel features macro */
+#define KRNL_SW_RESET	(1 << 0)
 /**
  * struct kernel_info - Kernel information
  *
  * @name:	kernel name
  * @range:	kernel register range
  * @anums:	number of argument
+ * @features:	number of argument
  * @args:	argument array
  */
 struct kernel_info {
 	char			 name[64];
 	uint32_t		 range;
 	int			 anums;
+	int			 features;
 	struct argument_info	 args[];
 };
 
@@ -468,7 +472,8 @@ struct drm_xocl_pread_bo {
 
 enum drm_xocl_ctx_code {
 	XOCL_CTX_OP_ALLOC_CTX = 0,
-	XOCL_CTX_OP_FREE_CTX
+	XOCL_CTX_OP_FREE_CTX,
+	XOCL_CTX_OP_OPEN_UCU_FD,
 };
 
 #define	XOCL_CTX_SHARED		0x0

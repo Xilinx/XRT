@@ -52,6 +52,7 @@ enum {
 	XOCL_DSAFLAG_SMARTN			= (1 << 10),
 	XOCL_DSAFLAG_VERSAL			= (1 << 11),
 	XOCL_DSAFLAG_MPSOC			= (1 << 12),
+	XOCL_DSAFLAG_CUSTOM_DTB                 = (1 << 13),
 };
 
 /* sysmon flags */
@@ -76,6 +77,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X2_SINGLE	"qspi_ps_x2_single"
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
+#define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -91,7 +93,7 @@ enum {
 struct xocl_subdev_info {
 	uint32_t		id;
 	const char		*name;
-	struct resource	*res;
+	struct resource		*res;
 	int			num_res;
 	void			*priv_data;
 	int			data_len;
@@ -227,7 +229,8 @@ enum {
 #define	XOCL_XIIC		"xiic"
 #define	XOCL_MAILBOX		"mailbox"
 #define	XOCL_ICAP		"icap"
-#define	XOCL_CLOCK		"clock"
+#define	XOCL_CLOCK_WIZ		"clock_wizard"
+#define	XOCL_CLOCK_COUNTER	"clock_freq_counter"
 #define	XOCL_AXIGATE		"axigate"
 #define	XOCL_MIG		"mig"
 #define	XOCL_XMC		"xmc"
@@ -263,6 +266,9 @@ enum {
 #define	XOCL_ERT_USER		"ert_user"
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
+#define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
+#define	XOCL_CFG_GPIO		"ert_cfg_gpio"
+#define	XOCL_COMMAND_QUEUE	"command_queue"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -294,7 +300,8 @@ enum subdev_id {
 	XOCL_SUBDEV_FMGR,
 	XOCL_SUBDEV_MIG_HBM,
 	XOCL_SUBDEV_XFER_VERSAL,
-	XOCL_SUBDEV_CLOCK,
+	XOCL_SUBDEV_CLOCK_WIZ,
+	XOCL_SUBDEV_CLOCK_COUNTER,
 	XOCL_SUBDEV_AIM,
 	XOCL_SUBDEV_AM,
 	XOCL_SUBDEV_ASM,
@@ -314,6 +321,9 @@ enum subdev_id {
 	XOCL_SUBDEV_ICAP_CNTRL,
 	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_ERT_VERSAL,
+	XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,
+	XOCL_SUBDEV_CFG_GPIO,
+	XOCL_SUBDEV_COMMAND_QUEUE,
 	XOCL_SUBDEV_NUM
 };
 
@@ -837,6 +847,28 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_RES_ACCEL_DEADLOCK_DETECTOR			\
+	((struct resource []) {				\
+		{					\
+			.name   = "ACCEL_DEADLOCK_DETECTOR",	\
+			.start	= 0x0,			\
+			.end	= 0xFFF,		\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define	XOCL_DEVINFO_ACCEL_DEADLOCK_DETECTOR				\
+	{						\
+		XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,			\
+		XOCL_ACCEL_DEADLOCK_DETECTOR,				\
+		XOCL_RES_ACCEL_DEADLOCK_DETECTOR,			\
+		ARRAY_SIZE(XOCL_RES_ACCEL_DEADLOCK_DETECTOR),		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
+	}
+
+
 #define	XOCL_RES_LAPC			\
 	((struct resource []) {				\
 		{					\
@@ -1189,22 +1221,40 @@ struct xocl_subdev_map {
 		}
 
 
-#define XOCL_RES_CLOCK_LEGACY				\
+#define XOCL_RES_CLOCK_WIZ_LEGACY			\
 	((struct resource []) {				\
 		__RES_CLOCK_K1,				\
 		__RES_CLOCK_K2,				\
-		__RES_CLKFREQ_K1_K2			\
 	 })
 
-#define XOCL_DEVINFO_CLOCK_LEGACY			\
+#define XOCL_RES_CLOCK_COUNTER_LEGACY			\
+	((struct resource []) {				\
+		__RES_CLKFREQ_K1_K2,			\
+	 })
+
+#define XOCL_DEVINFO_CLOCK_WIZ_LEGACY			\
 	{						\
-		XOCL_SUBDEV_CLOCK,			\
-		XOCL_CLOCK,				\
-		XOCL_RES_CLOCK_LEGACY,			\
-		ARRAY_SIZE(XOCL_RES_CLOCK_LEGACY),	\
+		XOCL_SUBDEV_CLOCK_WIZ,			\
+		XOCL_CLOCK_WIZ,				\
+		XOCL_RES_CLOCK_WIZ_LEGACY,		\
+		ARRAY_SIZE(XOCL_RES_CLOCK_WIZ_LEGACY),	\
 		.level = XOCL_SUBDEV_LEVEL_PRP,		\
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
+
+#define XOCL_DEVINFO_CLOCK_COUNTER_LEGACY		\
+	{						\
+		XOCL_SUBDEV_CLOCK_COUNTER,		\
+		XOCL_CLOCK_COUNTER,			\
+		XOCL_RES_CLOCK_COUNTER_LEGACY,		\
+		ARRAY_SIZE(XOCL_RES_CLOCK_COUNTER_LEGACY),\
+		.level = XOCL_SUBDEV_LEVEL_PRP,		\
+		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
+	}
+
+#define XOCL_DEVINFO_CLOCK_LEGACY			\
+		XOCL_DEVINFO_CLOCK_WIZ_LEGACY,		\
+		XOCL_DEVINFO_CLOCK_COUNTER_LEGACY
 
 #define __RES_PRP_IORES_MGMT				\
 		{					\
@@ -1277,24 +1327,43 @@ struct xocl_subdev_map {
 		.override_idx = XOCL_SUBDEV_LEVEL_PRP,	\
 	}
 
-#define XOCL_RES_CLOCK_HBM				\
+#define XOCL_RES_CLOCK_WIZ_HBM				\
     ((struct resource []) {	     			\
 	__RES_CLOCK_K1,					\
 	__RES_CLOCK_K2,					\
 	__RES_CLOCK_HBM,				\
+     })
+
+#define XOCL_RES_CLOCK_COUNTER_HBM			\
+    ((struct resource []) {	     			\
 	__RES_CLKFREQ_K1_K2,				\
 	__RES_CLKFREQ_HBM,				\
      })
 
-#define XOCL_DEVINFO_CLOCK_HBM				\
+#define XOCL_DEVINFO_CLOCK_WIZ_HBM			\
      {							\
-	 XOCL_SUBDEV_CLOCK,				\
-	 XOCL_CLOCK,					\
-	 XOCL_RES_CLOCK_HBM,				\
-	 ARRAY_SIZE(XOCL_RES_CLOCK_HBM),		\
+	 XOCL_SUBDEV_CLOCK_WIZ,				\
+	 XOCL_CLOCK_WIZ,				\
+	 XOCL_RES_CLOCK_WIZ_HBM,			\
+	 ARRAY_SIZE(XOCL_RES_CLOCK_WIZ_HBM),		\
 	 .level = XOCL_SUBDEV_LEVEL_PRP,		\
 	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,	 	\
      }
+
+#define XOCL_DEVINFO_CLOCK_COUNTER_HBM			\
+     {							\
+	 XOCL_SUBDEV_CLOCK_COUNTER,			\
+	 XOCL_CLOCK_COUNTER,				\
+	 XOCL_RES_CLOCK_COUNTER_HBM,			\
+	 ARRAY_SIZE(XOCL_RES_CLOCK_COUNTER_HBM),	\
+	 .level = XOCL_SUBDEV_LEVEL_PRP,		\
+	 .override_idx = XOCL_SUBDEV_LEVEL_PRP,	 	\
+     }
+
+#define XOCL_DEVINFO_CLOCK_HBM				\
+		XOCL_DEVINFO_CLOCK_WIZ_HBM,		\
+		XOCL_DEVINFO_CLOCK_COUNTER_HBM		\
+	
 
 #define XOCL_RES_PRP_IORES_MGMT_SMARTN			\
 	((struct resource []) {				\
@@ -1679,7 +1748,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_ERT_USER					\
+#define XOCL_RES_COMMAND_QUEUE				\
 		((struct resource []) {			\
 			{				\
 			.start	= ERT_CQ_BASE_ADDR,	\
@@ -1689,14 +1758,26 @@ struct xocl_subdev_map {
 			},				\
 		})
 
+#define	XOCL_DEVINFO_COMMAND_QUEUE			\
+	{						\
+		XOCL_SUBDEV_COMMAND_QUEUE,		\
+		XOCL_COMMAND_QUEUE,			\
+		XOCL_RES_COMMAND_QUEUE,			\
+		ARRAY_SIZE(XOCL_RES_COMMAND_QUEUE),	\
+		NULL,					\
+		0,					\
+		.override_idx = -1,			\
+	}	
+
 #define	XOCL_DEVINFO_ERT_USER				\
 	{						\
 		XOCL_SUBDEV_ERT_USER,			\
 		XOCL_ERT_USER,				\
-		XOCL_RES_ERT_USER,			\
-		ARRAY_SIZE(XOCL_RES_ERT_USER),		\
+		NULL,					\
+		0,					\
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
 		.override_idx = -1,			\
 	}
 
@@ -1931,7 +2012,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_COMMAND_QUEUE,			\
 		})
 
 #define	USER_RES_DSA52_U2					\
@@ -1946,7 +2027,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_COMMAND_QUEUE,			\
 		})
 
 #define USER_RES_SMARTN							\
@@ -2564,6 +2645,43 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_CALIB_STORAGE,				\
 	 })
 
+/**********************VCK190 PCIE Golden Image START********************/
+
+#define XOCL_RES_XFER_MGMT_VCK190                                       \
+                ((struct resource []) {                                 \
+                        {                                               \
+                        .start  = 0x60000,                              \
+                        .end    = 0x6FFFF ,                             \
+                        .flags  = IORESOURCE_MEM,                       \
+                        }                                               \
+                })
+
+#define XOCL_DEVINFO_FLASH_MFG_VCK190                                   \
+        {                                                               \
+                XOCL_SUBDEV_XFER_VERSAL,                                \
+                XOCL_XFER_VERSAL,                                       \
+                XOCL_RES_XFER_MGMT_VCK190,                              \
+                ARRAY_SIZE(XOCL_RES_XFER_MGMT_VCK190),                  \
+                .override_idx = -1,                                     \
+                .bar_idx = (char []){ 0 },                              \
+        }
+
+#define RES_MFG_VCK190                                                  \
+        ((struct xocl_subdev_info []) {                                 \
+                 XOCL_DEVINFO_FLASH_MFG_VCK190,                         \
+        })
+
+#define XOCL_BOARD_XBB_MFG_VCK190                                       \
+        (struct xocl_board_private){                                    \
+                .flags = XOCL_DSAFLAG_MFG,                              \
+                .subdev_info = RES_MFG_VCK190,                          \
+                .subdev_num = ARRAY_SIZE(RES_MFG_VCK190),               \
+                .flash_type = FLASH_TYPE_QSPI_VERSAL,                   \
+                .board_name = "vck190"                                  \
+        }
+
+/**********************VCK190 PCIE Golden Image END**********************/
+
 #define RES_USER_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
@@ -2572,6 +2690,55 @@ struct xocl_subdev_map {
 		XOCL_DEVINFO_XMC_USER,					\
 		XOCL_DEVINFO_AF_USER,					\
 	 })
+
+/*********************************VCK190 USERPF START********************/
+
+/* HACK: Mailbox resource is hardcoded as VSEC is not available for this platform */
+#define XOCL_RES_PF_MAILBOX_USER_VCK190                                 \
+        ((struct resource []) {                                         \
+                {                                                       \
+                        .start  = 0x0,                                  \
+                        .end    = 0xFFFF,                               \
+                        .flags  = IORESOURCE_MEM,                       \
+                },                                                      \
+                {                                                       \
+                        .start  = 4,                                    \
+                        .end    = 4,                                    \
+                        .flags  = IORESOURCE_IRQ,                       \
+                },                                                      \
+        })
+
+#define XOCL_DEVINFO_PF_MAILBOX_USER_VCK190                             \
+        {                                                               \
+                XOCL_SUBDEV_MAILBOX,                                    \
+                XOCL_MAILBOX,                                           \
+                XOCL_RES_PF_MAILBOX_USER_VCK190,                        \
+                ARRAY_SIZE(XOCL_RES_PF_MAILBOX_USER_VCK190),            \
+                .override_idx = -1,                                     \
+                .bar_idx = (char []){ 0 },                              \
+        }
+
+#define RES_USER_VCK190_VSEC                                            \
+        ((struct xocl_subdev_info []) {                                 \
+                XOCL_DEVINFO_FEATURE_ROM_USER_DYN,                      \
+                XOCL_DEVINFO_SCHEDULER_DYN,                             \
+                XOCL_DEVINFO_ICAP_USER,                                 \
+                XOCL_DEVINFO_XMC_USER,                                  \
+                XOCL_DEVINFO_AF_USER,                                   \
+                XOCL_DEVINFO_PF_MAILBOX_USER_VCK190,                    \
+	 })
+
+#define XOCL_BOARD_VCK190_USER_RAPTOR2                                  \
+        (struct xocl_board_private){                                    \
+                .flags = XOCL_DSAFLAG_DYNAMIC_IP |                      \
+                        XOCL_DSAFLAG_CUSTOM_DTB |                       \
+                        XOCL_DSAFLAG_VERSAL,                            \
+                .subdev_info = RES_USER_VCK190_VSEC,                    \
+                .subdev_num = ARRAY_SIZE(RES_USER_VCK190_VSEC),         \
+                .board_name = "vck190"                                  \
+        }
+
+/*********************************VCK190 USERPF END**********************/
 
 /* need static scheduler for a little while, and no AF user for now */
 #define RES_USER_VERSAL_VSEC						\
@@ -2822,6 +2989,21 @@ struct xocl_subdev_map {
 		.board_name = "vck5000"					\
 	}
 
+/*********************************VCK190 MGMTPF START*******************/
+
+#define XOCL_BOARD_VCK190_MGMT_RAPTOR2                                  \
+        (struct xocl_board_private){                                    \
+                .flags = XOCL_DSAFLAG_VERSAL |                          \
+                        XOCL_DSAFLAG_FIXED_INTR |                       \
+                        XOCL_DSAFLAG_CUSTOM_DTB |                       \
+                        XOCL_DSAFLAG_DYNAMIC_IP,                        \
+                .subdev_info = RES_MGMT_VSEC,                           \
+                .subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),                \
+                .flash_type = FLASH_TYPE_QSPI_VERSAL,                   \
+                .board_name = "vck190"                                  \
+        }
+
+/*********************************VCK190 MGMTPF END**********************/
 
 #define XOCL_RES_XMC_MFG				\
 	((struct resource []) {				\
@@ -3349,6 +3531,8 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5028, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5044, PCI_ANY_ID, MGMT_VERSAL) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5048, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
+	{ XOCL_PCI_DEVID(0x10EE, 0x6098, PCI_ANY_ID, VCK190_MGMT_RAPTOR2) },    \
+	{ XOCL_PCI_DEVID(0x10EE, 0xE098, PCI_ANY_ID, XBB_MFG_VCK190) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5078, PCI_ANY_ID, VERSAL_MGMT_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5050, PCI_ANY_ID, MGMT_U25) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x504E, PCI_ANY_ID, U26Z_MGMT_RAPTOR2) },	\
@@ -3428,6 +3612,7 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5029, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5045, PCI_ANY_ID, USER_XDMA_VERSAL) },\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5049, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
+	{ XOCL_PCI_DEVID(0x10EE, 0x6099, PCI_ANY_ID, VCK190_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x10EE, 0x5079, PCI_ANY_ID, VERSAL_USER_RAPTOR2) }, \
 	{ XOCL_PCI_DEVID(0x3475, 0x5011, PCI_ANY_ID, USER_ARISTA_LB2_QDMA) }
 
@@ -3486,6 +3671,14 @@ struct xocl_subdev_map {
 		.vbnv = "xilinx_vck5000-es1",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x6098, PCI_ANY_ID,					\
+                .vbnv = "xilinx_vck190",				\
+                .priv_data = &XOCL_BOARD_VCK190_MGMT_RAPTOR2,		\
+                .type = XOCL_DSAMAP_RAPTOR2 },                        \
+        { 0x10EE, 0x6099, PCI_ANY_ID,					\
+                .vbnv = "xilinx_vck190",				\
+                .priv_data = &XOCL_BOARD_VCK190_USER_RAPTOR2,		\
+                .type = XOCL_DSAMAP_RAPTOR2 },                        \
 	{ 0x10EE, 0x5078, PCI_ANY_ID,					\
 		.vbnv = "xilinx_v65",					\
 		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\

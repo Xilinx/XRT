@@ -1,4 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # Signing xclbin images are currently only support on Linux
 
 if(NOT WIN32)
@@ -104,6 +106,10 @@ if(NOT WIN32)
     # -- SoftKernel
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/SoftKernel")
     xrt_add_test("softkernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/SoftKernel/SectionSoftKernel.py ${TEST_OPTIONS}")
+
+    # -- Partion Metadata
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata")
+    xrt_add_test("partition_metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata/SectionPartitionMetadata.py ${TEST_OPTIONS}")
 
     endif()
 endif()

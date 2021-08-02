@@ -24,6 +24,7 @@
 #include <linux/iommu.h>
 #include <linux/pagemap.h>
 #include "../xocl_drv.h"
+#include "xocl_errors.h"
 #include "common.h"
 #include "version.h"
 
@@ -199,6 +200,9 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	xuid_t *xclbin_id = NULL;
 
 	xocl_info(&pdev->dev, "PCI reset NOTIFY, prepare %d", prepare);
+	mutex_lock(&xdev->core.errors_lock);
+	xocl_clear_all_error_record(&xdev->core);
+	mutex_unlock(&xdev->core.errors_lock);
 
 	if (prepare) {
 		if (kds_mode)
@@ -696,6 +700,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	struct xocl_dev *xdev = (struct xocl_dev *)arg;
 	struct xcl_mailbox_req *req = (struct xcl_mailbox_req *)data;
 	struct xcl_mailbox_peer_state *st = NULL;
+	struct xclErrorLast err_last;
 
 	if (err != 0)
 		return;
@@ -706,6 +711,12 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_FIREWALL:
 		userpf_info(xdev,
 			"Card is in a BAD state, please issue xbutil reset");
+		err_last.pid = 0;
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_FIRWWALL_TRIP, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_FIREWALL, XRT_ERROR_CLASS_HARDWARE);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		xocl_drvinst_set_offline(xdev->core.drm, true);
 		/* Once firewall tripped, need to reset in secs */
 		xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
@@ -1101,6 +1112,7 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 
 	xocl_fini_persist_sysfs(xdev);
 	xocl_fini_sysfs(xdev);
+	xocl_fini_errors(&xdev->core);
 
 	xocl_subdev_destroy_all(xdev);
 
@@ -1573,6 +1585,12 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	char				wq_name[15];
 	int				ret, i;
 
+	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
+		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
+			 pdev->cfg_size);
+		return -EINVAL;
+	}
+
 	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
@@ -1587,11 +1605,8 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	atomic_set(&xdev->outstanding_execs, 0);
 	INIT_LIST_HEAD(&xdev->ctx_list);
 
-	/* TODO
-	 * initialize xocl_errors
-	 * xocl_init_errors(&xdev->core);
-	 */
-
+	/* initialize xocl_errors */
+	xocl_init_errors(&xdev->core);
 
 	ret = xocl_subdev_init(xdev, pdev, &userpf_pci_ops);
 	if (ret) {
@@ -1767,7 +1782,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_xmc,
 	xocl_init_xmc_u2,
 	xocl_init_icap,
-	xocl_init_clock,
+	xocl_init_clock_wiz,
+	xocl_init_clock_counter,
 	xocl_init_xvc,
 	xocl_init_firewall,
 	xocl_init_mig,
@@ -1780,6 +1796,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_fifo_full,
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
+	xocl_init_accel_deadlock_detector,
 	xocl_init_mem_hbm,
 	/* Initial intc sub-device before CU/ERT sub-devices */
 	xocl_init_intc,
@@ -1791,6 +1808,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
 	xocl_init_m2m,
+	xocl_init_config_gpio,
+	xocl_init_command_queue,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1805,7 +1824,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_xmc,
 	xocl_fini_xmc_u2,
 	xocl_fini_icap,
-	xocl_fini_clock,
+	xocl_fini_clock_wiz,
+	xocl_fini_clock_counter,
 	xocl_fini_xvc,
 	xocl_fini_firewall,
 	xocl_fini_mig,
@@ -1818,6 +1838,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_fifo_full,
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
+	xocl_fini_accel_deadlock_detector,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
 	xocl_fini_addr_translator,
@@ -1829,6 +1850,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_m2m,
 	/* Remove intc sub-device after CU/ERT sub-devices */
 	xocl_fini_intc,
+	xocl_fini_config_gpio,
+	xocl_fini_command_queue,
 };
 
 static int __init xocl_init(void)

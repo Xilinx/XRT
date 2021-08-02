@@ -1,5 +1,10 @@
 .. _xrt_ini.rst:
 
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
+
 Configuration File xrt.ini
 **************************
 
@@ -229,7 +234,7 @@ Emulation Group
 |                           |                            |     but save wdb file                             |
 |                           |                            |   - gui: Launch simulator waveform GUI, and save  |
 |                           |                            |     wdb file                                      |
-|                           |                            |   = gdb: Launch gdb mode                          |
+|                           |                            |   - gdb: Launch gdb mode                          |
 |                           |                            |                                                   |
 |                           |                            |Default: off                                       |
 |                           |                            |                                                   |

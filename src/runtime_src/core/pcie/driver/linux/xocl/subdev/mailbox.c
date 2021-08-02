@@ -248,6 +248,8 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
 #define	TEST_MSG_LEN		128
+#define	JIFFIES_TO_US(jiffies) 	(jiffies * 1000000 / HZ)
+#define	MAILBOX_TIMER_US 	JIFFIES_TO_US(MAILBOX_TIMER)
 
 #define	INVALID_MSG_ID		((u64)-1)
 
@@ -870,6 +872,8 @@ static void chan_worker(struct work_struct *work)
 			 * it or it's time'd out.
 			 */
 			usleep_range(1000, 2000);
+		} else if (mailbox_no_intr) {
+			usleep_range(MAILBOX_TIMER_US, MAILBOX_TIMER_US * 2);
 		} else {
 			/*
 			 * Wait for next poll triggered by intr or timer, which should

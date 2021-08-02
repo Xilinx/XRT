@@ -39,7 +39,7 @@ namespace po = boost::program_options;
 // ---- Reports ------
 #include "tools/common/Report.h"
 #include "tools/common/ReportHost.h"
-#include "tools/common/ReportCu.h"
+#include "tools/common/ReportDynamicRegion.h"
 #include "tools/common/ReportFirewall.h"
 #include "tools/common/ReportDebugIpStatus.h"
 #include "tools/common/ReportElectrical.h"
@@ -61,7 +61,7 @@ namespace po = boost::program_options;
     std::make_shared<ReportAieShim>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportHost>(),
-    std::make_shared<ReportCu>(),
+    std::make_shared<ReportDynamicRegion>(),
     std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportPcieInfo>(),
@@ -81,7 +81,7 @@ namespace po = boost::program_options;
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("examine", 
-             "Status of the system and device(s)")
+             "Status of the system and device")
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
                                       " generate a report of interest in a text or JSON format.";
@@ -105,7 +105,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   std::vector<std::string> devices;       // Default values determined later in the flow
   std::vector<std::string> reportNames;   // Default values determined later in the flow
   std::vector<std::string> elementsFilter;
-  std::string sFormat = "json";
+  std::string sFormat = "";
   std::string sOutput = "";
   bool bHelp = false;
 
@@ -148,11 +148,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Determine report level
   if (devices.size() == 0 && reportNames.size() == 0)
-      reportNames.push_back("host");
+    reportNames.push_back("host");
 
   if (devices.size() != 0 && reportNames.size() == 0) {
     reportNames.push_back("platform");
-    reportNames.push_back("compute-units");
+    reportNames.push_back("dynamic-regions");
   }
 
   // Determine default values
@@ -163,6 +163,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     reportNames.push_back("host");
 
   // -- DRC checks --
+  // when json is specified, make sure an accompanying output file is also specified
+  if (!sFormat.empty() && sOutput.empty()) {
+    std::cerr << "ERROR: Please specify an output file to redirect the json to" << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  if(sFormat.empty())
+    sFormat = "json";
+
   // Examine the output format
   Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
   if (schemaVersion == Report::SchemaVersion::unknown) {
@@ -218,6 +227,19 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         for (const auto & report : missingReports) 
           std::cout << boost::format("         - %s\n") % report;
       }
+    }
+
+    // enforce 1 device specification if multiple reports are requested
+    if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
+      std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
+      std::cout << "List of available devices:" << std::endl;
+      boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+      for(auto& kd : available_devices) {
+        boost::property_tree::ptree& _dev = kd.second;
+        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+      }
+      std::cout << std::endl;
+      return;
     }
   } catch (const xrt_core::error& e) {
     XBU::print_exception_and_throw_cancel(e);

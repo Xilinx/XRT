@@ -685,8 +685,7 @@ inline void
 configure_cu_ooo(addr_type cu_addr, addr_type regmap_addr, size_type regmap_size)
 {
   // write register map addr, value pairs starting 
-  // past reserved 4 ctrl + 2 ctx 
-  for (size_type idx = 6; idx < regmap_size; idx += 2) {
+  for (size_type idx = 0; idx < regmap_size; idx += 2) {
     addr_type offset = read_reg(regmap_addr + (idx << 2));
     value_type value = read_reg(regmap_addr + ((idx + 1) << 2));
     write_reg(cu_addr + offset, value);
@@ -934,6 +933,7 @@ exit_mb(size_type slot_idx)
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
   CTRL_DEBUGF("scheduler loop exits slot(%d) header=0x%x\r\n",slot_idx,slot.header_value);
+  notify_host(slot_idx);
 #ifndef ERT_HW_EMU
   mb_sleep();
 #endif

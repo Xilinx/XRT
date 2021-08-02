@@ -1121,8 +1121,12 @@ static void xclmgmt_extended_probe(struct xclmgmt_dev *lro)
 	 * like if versal has vesc, then it is a 2.0 shell. We can add the following
 	 * condition.
 	 */
+
+	/* XOCL_DSAFLAG_CUSTOM_DTB is used for non-VSEC platforms which still wanted to
+	 * use partition metadata to discover resources
+	 */
 	if ((dev_info->flags & (XOCL_DSAFLAG_VERSAL | XOCL_DSAFLAG_MPSOC)) &&
-	    xocl_subdev_is_vsec(lro))
+	    (xocl_subdev_is_vsec(lro) || dev_info->flags & XOCL_DSAFLAG_CUSTOM_DTB))
 		ret = -ENODEV;
 
 	if (!ret) {
@@ -1236,6 +1240,12 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	xocl_info(&pdev->dev, "Driver: %s", XRT_DRIVER_VERSION);
 	xocl_info(&pdev->dev, "probe(pdev = 0x%p, pci_id = 0x%p)\n", pdev, id);
+
+	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
+		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
+			 pdev->cfg_size);
+		return -EINVAL;
+	}
 
 	/* allocate zeroed device book keeping structure */
 	lro = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xclmgmt_dev));
@@ -1477,7 +1487,8 @@ static int (*drv_reg_funcs[])(void) __initdata = {
 	xocl_init_firewall,
 	xocl_init_axigate,
 	xocl_init_icap,
-	xocl_init_clock,
+	xocl_init_clock_wiz,
+	xocl_init_clock_counter,
 	xocl_init_mig,
 	xocl_init_ert,
 	xocl_init_xmc,
@@ -1510,7 +1521,8 @@ static void (*drv_unreg_funcs[])(void) = {
 	xocl_fini_firewall,
 	xocl_fini_axigate,
 	xocl_fini_icap,
-	xocl_fini_clock,
+	xocl_fini_clock_wiz,
+	xocl_fini_clock_counter,
 	xocl_fini_mig,
 	xocl_fini_ert,
 	xocl_fini_xmc,

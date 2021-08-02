@@ -1,5 +1,9 @@
 .. _xrt_native.main.rst:
 
+..
+   comment:: SPDX-License-Identifier: Apache-2.0
+   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+
 XRT Native Library C++ API
 **************************
 
@@ -11,12 +15,15 @@ Configuration APIs
    :members:
 
 
-Device and XCLBIN APIs
-~~~~~~~~~~~~~~~~~~~~~~
+Device APIs
+~~~~~~~~~~~
 
 .. doxygenclass:: xrt::device
    :project: XRT
    :members:
+
+XCLBIN APIs
+~~~~~~~~~~~
 
 .. doxygenclass:: xrt::xclbin
    :project: XRT
@@ -39,6 +46,27 @@ Kernel APIs
    :members:
 
 .. doxygenclass:: xrt::run
+   :project: XRT
+   :members:
+
+Custom IP APIs
+~~~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::ip
+   :project: XRT
+   :members:
+
+Info APIs
+~~~~~~~~~
+
+.. doxygennamespace:: xrt::info
+   :project: XRT
+   :members:
+   
+UUID APIs
+~~~~~~~~~
+
+.. doxygenclass:: xrt::uuid
    :project: XRT
    :members:
 

@@ -9,6 +9,7 @@
 
 #include <linux/workqueue.h>
 #include "common.h"
+#include "xocl_errors.h"
 #include "kds_core.h"
 /* Need detect fast adapter and find out cmdmem
  * Cound not avoid coupling xclbin.h
@@ -122,8 +123,8 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 
 	if (ret_src != ret_dst) {
 		/* One of them is not local BO, perform P2P copy */
-		xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
-		return 1;
+		int err = xocl_copy_import_bo(filp->minor->dev, filp, ecmd);
+		return err < 0 ? err : 1;
 	}
 
 	/* Both BOs are local, copy via cdma CU */
@@ -271,6 +272,24 @@ out:
 	return ret;
 }
 
+static int
+xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
+	      struct drm_xocl_ctx *args)
+{
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	int cu_idx = args->cu_index;
+
+	if (!kds->cu_intr_cap) {
+		userpf_err(xdev, "Shell not support CU to host interrupt");
+		return -EOPNOTSUPP;
+	}
+
+	userpf_info(xdev, "User manage interrupt found, disable ERT");
+	xocl_ert_user_disable(xdev);
+
+	return kds_open_ucu(kds, client, cu_idx);
+}
+
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 			      struct drm_file *filp)
 {
@@ -284,6 +303,9 @@ static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
 		break;
 	case XOCL_CTX_OP_FREE_CTX:
 		ret = xocl_del_context(xdev, client, args);
+		break;
+	case XOCL_CTX_OP_OPEN_UCU_FD:
+		ret = xocl_open_ucu(xdev, client, args);
 		break;
 	default:
 		ret = -EINVAL;
@@ -418,9 +440,13 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 				     struct drm_xocl_bo *xobj,
 				     struct ert_packet *ecmd)
 {
+	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct ert_packet *orig;
 	int pkg_size;
+	struct xcl_errors *err;
+	struct xclErrorLast err_last;
 
+	err = xdev->core.errors;
 	orig = (struct ert_packet *)xobj->vmapping;
 	orig->state = ERT_CMD_STATE_NEW;
 	ecmd->header = orig->header;
@@ -428,6 +454,10 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
 	if (xobj->base.size < pkg_size) {
 		userpf_err(xdev, "payload size bigger than exec buf\n");
+		err_last.pid = pid_nr(task_tgid(current));
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_NUM_KDS_EXEC;
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return false;
 	}
 
@@ -444,7 +474,27 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 		return false;
 	}
 
+	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+		userpf_err(xdev, "payload size bigger than CQ slot size\n");
+		return false;
+	}
+
 	return true;
+}
+
+/* This function is only used to convert ERT_EXEC_WRITE to
+ * ERT_START_KEY_VAL.
+ * The only difference is that ERT_EXEC_WRITE skip 6 words in the payload.
+ */
+static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
+{
+	/* end index of payload = count - (1 + 6) */
+	int end = ecmd->count - 7;
+	int i;
+
+	/* Shift payload 6 words up */
+	for (i = ecmd->extra_cu_masks; i < end; i++)
+		ecmd->data[i] = ecmd->data[i + 6];
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -522,6 +572,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	/* xcmd->u_execbuf points to user's original for write back/notice */
 	xcmd->u_execbuf = xobj->vmapping;
 	xcmd->gem_obj = obj;
+	xcmd->exec_bo_handle = args->exec_bo_handle;
 
 	print_ecmd_info(ecmd);
 
@@ -548,7 +599,12 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		exec_write_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		userpf_info(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+		convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
+		break;
+	case ERT_START_KEY_VAL:
+		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_FA:
 		start_fa_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
@@ -580,6 +636,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_CU_STAT:
 		xcmd->opcode = OP_GET_STAT;
 		xcmd->priv = &XDEV(xdev)->kds;
+		break;
+	case ERT_ABORT:
+		abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
 		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
@@ -710,7 +769,14 @@ int xocl_client_ioctl(struct xocl_dev *xdev, int op, void *data,
 
 int xocl_init_sched(struct xocl_dev *xdev)
 {
-	return kds_init_sched(&XDEV(xdev)->kds);
+	int ret;
+	ret = kds_init_sched(&XDEV(xdev)->kds);
+	if (ret)
+		goto out;
+
+	ret = xocl_create_client(xdev, (void **)&XDEV(xdev)->kds.anon_client);
+out:
+	return ret;
 }
 
 void xocl_fini_sched(struct xocl_dev *xdev)
@@ -723,6 +789,7 @@ void xocl_fini_sched(struct xocl_dev *xdev)
 		xocl_drm_free_bo(&bo->base);
 	}
 
+	xocl_destroy_client(xdev, (void **)&XDEV(xdev)->kds.anon_client);
 	kds_fini_sched(&XDEV(xdev)->kds);
 }
 
@@ -940,8 +1007,13 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	regmap_size = kds_get_max_regmap_size(kds);
 	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
 		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
+
+	if (ecmd->slot_size > MAX_CQ_SLOT_SIZE)
+		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
 	/* cfg->slot_size is for debug purpose */
 	/* ecmd->slot_size	= cfg->slot_size; */
+	/* Record slot size so that KDS could validate command */
+	kds->ert->slot_size = ecmd->slot_size;
 
 	/* Fill CU address */
 	for (i = 0; i < num_cu; i++) {
@@ -1080,7 +1152,6 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	struct kds_client *client;
 	struct ert_packet *ecmd;
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	pid_t pid = pid_nr(get_pid(task_pid(current)));
 	int ret = 0;
 
 	/* TODO: Use hard code size is not ideal. Let's refine this later */
@@ -1088,9 +1159,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	if (!ecmd)
 		return -ENOMEM;
 
-	client = kds_get_client(kds, pid);
-	BUG_ON(!client);
-
+	client = kds->anon_client;
 	ret = xocl_cfg_cmd(xdev, client, ecmd, &cfg);
 	if (ret) {
 		userpf_err(xdev, "ERT config command failed");
@@ -1146,6 +1215,8 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	}
 
 	/* Construct and send configure command */
+	userpf_info(xdev, "enable ert user");
+	xocl_ert_user_enable(xdev);
 	ret = xocl_config_ert(xdev, cfg);
 
 out:

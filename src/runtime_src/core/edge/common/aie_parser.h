@@ -28,6 +28,12 @@ class device;
 
 namespace edge { namespace aie {
 
+enum class module_type {
+  core = 0,
+  dma,
+  shim
+};
+
 struct tile_type
 {
   uint16_t row;
@@ -95,6 +101,18 @@ std::vector<tile_type>
 get_tiles(const xrt_core::device* device, const std::string& graph_name);
 
 /**
+ * get_event_tiles() - get tiles with active events from xclbin AIE metadata
+ *
+ * @device: device with loaded meta data
+ * @graph_name: name of graph to extract tile data for
+ * @type: type of counter set (e.g., core, memory, shim)
+ * Return: vector of tiles with active events in given graph name
+ */
+std::vector<tile_type>
+get_event_tiles(const xrt_core::device* device, const std::string& graph_name,
+                module_type type);
+
+/**
  * get_rtp() - get rtp data from xclbin AIE metadata
  *
  * @device: device with loaded meta data
@@ -154,10 +172,10 @@ struct gmio_type
 
   uint32_t        id;
   uint16_t        type;
-  uint16_t        shim_col;
-  uint16_t        channel_number;
-  uint16_t        stream_id;
-  uint16_t        burst_len;
+  uint16_t        shimColumn;
+  uint16_t        channelNum;
+  uint16_t        streamId;
+  uint16_t        burstLength;
 };
 
 /**

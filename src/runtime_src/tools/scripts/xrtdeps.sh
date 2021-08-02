@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
 FLAVOR=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 MAJOR=${VERSION%.*}
@@ -62,6 +66,7 @@ rh_package_list()
      cppcheck \
      curl \
      dkms \
+     elfutils-devel \
      gcc \
      gcc-c++ \
      gdb \
@@ -73,6 +78,7 @@ rh_package_list()
      json-glib-devel \
      libcurl-devel \
      libdrm-devel \
+     libffi-devel \
      libjpeg-turbo-devel \
      libstdc++-static \
      libtiff-devel \
@@ -84,7 +90,6 @@ rh_package_list()
      ocl-icd \
      ocl-icd-devel \
      opencl-headers \
-     opencv \
      openssl-devel \
      pciutils \
      perl \
@@ -111,10 +116,20 @@ rh_package_list()
         )
     fi
 
-    # Centos8
     if [ $MAJOR == 8 ]; then
 
         RH_LIST+=(systemd-devel)
+
+        if [ $FLAVOR == "centos" ]; then
+            #fix cmake issue in centos 8.*
+            RH_LIST+=(\
+            libarchive \
+            )
+        else
+            RH_LIST+=(\
+            opencv \
+            )
+        fi
 
         if [ $docker == 0 ]; then
             RH_LIST+=(\
@@ -130,6 +145,7 @@ rh_package_list()
          libudev-devel \
          kernel-devel-$(uname -r) \
          kernel-headers-$(uname -r) \
+         opencv \
          openssl-static \
          protobuf-static \
         )
@@ -160,6 +176,9 @@ ub_package_list()
      libboost-program-options-dev \
      libcurl4-openssl-dev \
      libdrm-dev \
+     libdw-dev \
+     libelf-dev \
+     libffi-dev \
      libgtest-dev \
      libjpeg-dev \
      libjson-glib-dev \
@@ -289,7 +308,7 @@ suse_package_list()
      gcc \
      gcc-c++ \
      gdb \
-     git \
+     git-core \
      glibc-devel-static \
      gnuplot \
      json-glib-devel \
@@ -316,9 +335,8 @@ suse_package_list()
      perl \
      pkg-config \
      protobuf-devel \
-     python \
+     python3-devel \
      python3-pip \
-     rapidjson-devel \
      rpm-build \
      strace \
      unzip \
@@ -415,8 +433,8 @@ prep_rhel8()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	 yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        yum check-update
     fi
 
     echo "Enabling CodeReady-Builder repository..."
@@ -428,15 +446,23 @@ prep_centos8()
     echo "Enabling EPEL repository..."
     rpm -q --quiet epel-release
     if [ $? != 0 ]; then
-    	 yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
-	     yum check-update
+        yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        yum check-update
     fi
-    echo "Installing cmake3 from EPEL repository..."
-    yum install -y cmake3
-    echo "Enabling PowerTools repo for CentOS8 ..."
+
     yum install -y dnf-plugins-core
-    yum config-manager --set-enabled PowerTools
-    yum config-manager --set-enabled AppStream
+
+    echo "Enabling PowerTools and AppStream repo for CentOS8 ..."
+    #minor version of CentOs
+    MINOR=`cat /etc/centos-release | awk -F. '{ print $2 }'`
+    if [ $MINOR -gt "2" ]; then
+        yum config-manager --set-enabled powertools
+        yum config-manager --set-enabled appstream
+    else
+        yum config-manager --set-enabled PowerTools
+        yum config-manager --set-enabled AppStream
+    fi
+      
 }
 
 prep_centos()
@@ -470,6 +496,22 @@ prep_amzn()
     yum install -y ocl-icd ocl-icd-devel opencl-headers
 }
 
+prep_sles()
+{
+    echo "Preparing SLES for package dependencies..."
+
+    if [ "$VERSION" == "15.2" ]; then
+	SUSEConnect -p sle-module-desktop-applications/$VERSION/x86_64
+	SUSEConnect -p sle-module-development-tools/$VERSION/x86_64
+	SUSEConnect -p PackageHub/$VERSION/x86_64
+	zypper addrepo https://download.opensuse.org/repositories/science/SLE_15_SP2/science.repo
+	zypper addrepo https://download.opensuse.org/repositories/devel:libraries:c_c++/SLE_15_SP2/devel:libraries:c_c++.repo
+	zypper --no-gpg-checks refresh
+	zypper install -y opencl-headers ocl-icd-devel rapidjson-devel
+	zypper mr -d -f science devel_libraries_c_c++ devel_languages_python
+    fi
+}
+
 install()
 {
     if [ $FLAVOR == "ubuntu" ] || [ $FLAVOR == "debian" ]; then
@@ -490,6 +532,8 @@ install()
         prep_rhel
     elif [ $FLAVOR == "amzn" ]; then
         prep_amzn
+    elif [ $FLAVOR == "sles" ]; then
+        prep_sles
     fi
 
     if [ $FLAVOR == "rhel" ] || [ $FLAVOR == "centos" ] || [ $FLAVOR == "amzn" ]; then

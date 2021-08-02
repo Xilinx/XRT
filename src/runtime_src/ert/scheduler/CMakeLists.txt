@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 # Build ERT under legacy and u50 directories
 
 if (${ERT_BUILD_ALL} STREQUAL "yes")

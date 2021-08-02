@@ -233,6 +233,14 @@ int main(int argc, char** argv)
         std::cout << "Sequence1: " << hostData.getSequence1() << "\n";
         std::cout << "Sequence2: " << hostData.getSequence2() << "\n";
 
+        std::cout << "Migrate Sequence2 to device\n";
+        err = clEnqueueMigrateMemObjects (hardware.mQueue, 1, &seq2, 0, 0, NULL, NULL);
+        checkStatus(err);
+
+        err = clFinish(hardware.mQueue);
+        checkStatus(err);
+
+        std::cout << "EnqueueCopyBuffer Sequence2 -> Sequence1\n";
         err = clEnqueueCopyBuffer(hardware.mQueue, seq2, seq1, 0, 0, hostData.getLength(), 0, NULL, NULL);
         checkStatus(err);
 

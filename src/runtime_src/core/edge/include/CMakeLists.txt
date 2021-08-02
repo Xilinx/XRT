@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
 set(MPSOC_HEADER_SRC
   xclhal2_mpsoc.h
   sk_types.h)

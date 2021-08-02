@@ -748,14 +748,15 @@ int xocl_sync_bo_ioctl(struct drm_device *dev,
 
 	xobj = to_xocl_bo(gem_obj);
 	BO_ENTER("xobj %p", xobj);
-	sgt = xobj->sgt;
-	sg = sgt->sgl;
 
 	if (!xocl_bo_sync_able(xobj->flags)) {
 		DRM_ERROR("BO %d doesn't support sync_bo\n", args->handle);
 		ret = -EOPNOTSUPP;
 		goto out;
 	}
+
+	sgt = xobj->sgt;
+	sg = sgt->sgl;
 
 	if (xocl_bo_cma(xobj) || xocl_bo_p2p(xobj)) {
 		if (dir) {

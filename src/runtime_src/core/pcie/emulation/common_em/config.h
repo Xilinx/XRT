@@ -215,10 +215,12 @@ namespace xclemulation{
       inline ertmode getLegacyErt() const         { return mLegacyErt;              }
       inline long long getCuBaseAddrForce() const         { return mCuBaseAddrForce;              }
       inline bool isSharedFmodel() const         {return mIsSharedFmodel; } 
+      inline bool isM2MEnabled() const { return mIsM2MEnabled; }
       inline TIMEOUT_SCALE getTimeOutScale() const    {return mTimeOutScale;}
 
       inline void setIsPlatformEnabled(bool isPlatformDataAvailable) {mIsPlatformDataAvailable = isPlatformDataAvailable; }
       inline bool getIsPlatformEnabled() { return mIsPlatformDataAvailable;}
+      inline bool isDisabledHostBUffer() { return mIsDisabledHostBuffer;}
       void populateEnvironmentSetup(std::map<std::string,std::string>& mEnvironmentNameValueMap);
 
     private:
@@ -252,7 +254,9 @@ namespace xclemulation{
       ertmode mLegacyErt;
       long long mCuBaseAddrForce;
       bool      mIsSharedFmodel;
+      bool mIsM2MEnabled;
       bool mIsPlatformDataAvailable;
+      bool mIsDisabledHostBuffer;
       TIMEOUT_SCALE mTimeOutScale;
       config();
       ~config() { };//empty destructor
