@@ -903,7 +903,7 @@ done:
     if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
-    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
+    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
 
     if (size_ret)
       *size_ret = mem_topology_size;
@@ -928,6 +928,138 @@ done:
 
     if (!status || bytes != mem_topology_size)
         throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
+  }
+
+  void
+  get_temp_by_mem_topology(char* buffer, size_t size, size_t* size_ret)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+    DWORD bytes = 0;
+
+    statargs.StatClass = XoclStatMemTopology;
+
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+           IOCTL_XOCL_STAT,
+           &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+           &mem_info, sizeof(struct mem_topology),
+           &bytes,
+           nullptr);
+
+      if (!status || bytes != sizeof(struct mem_topology))
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_temp_by_mem_topology) failed");
+
+      DWORD mm_size = sizeof(uint32_t)*(mem_info.m_count);
+        if (size_ret)
+          *size_ret = mm_size;
+
+      return;  // size_ret has required size
+    }
+
+    statargs.StatClass = XoclStatTempByMemTopology;
+    auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          buffer, (DWORD)size,
+          &bytes,
+          nullptr);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_temp_by_mem_topology|XoclStatTempByMemTopology) failed");
+  }
+
+  void
+  get_group_mem_topology(char* buffer, size_t size, size_t* size_ret)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass = XoclStatGroupTopology;
+
+    DWORD bytes = 0;
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &mem_info, sizeof(struct mem_topology),
+              &bytes,
+              nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology) failed");
+
+      DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
+
+      if (size_ret)
+        *size_ret = mem_topology_size;
+
+      return;  // size_ret has required size
+    }
+
+    auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+    auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          memtopology, (DWORD)size,
+          &bytes,
+          nullptr);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology|XoclStatGroupTopology) failed");
+  }
+
+  void
+  get_memstat(char* buffer, size_t size, size_t* size_ret, bool raw)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+    DWORD bytes = 0;
+
+    statargs.StatClass = XoclStatMemTopology;
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &mem_info, sizeof(struct mem_topology),
+              &bytes,
+              nullptr);
+
+      if (!status || bytes != sizeof(struct mem_topology))
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemTopology) failed");
+      if (raw)
+        *size_ret = mem_info.m_count;
+      else
+        *size_ret = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
+
+      return;  // size_ret has required size
+    }
+
+    if (raw) {
+      auto mmstat = reinterpret_cast<struct drm_xocl_mm_stat*>(buffer);
+      statargs.StatClass = XoclStatMemStatRaw;
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              mmstat, (DWORD)size,
+              &bytes,
+              nullptr);
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemStatRaw) failed");
+    }
+    else {
+      statargs.StatClass = XoclStatMemTopology;
+      auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              memtopology, (DWORD)size,
+              &bytes,
+              nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemTopology) failed");
+    }
   }
 
   void
@@ -1238,6 +1370,33 @@ get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_re
     send(xrt_core::message::severity_level::debug, "XRT", "get_mem_topology()");
   auto shim = get_shim_object(hdl);
   shim->get_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_group_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_group_mem_topology()");
+  auto shim = get_shim_object(hdl);
+  shim->get_group_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_temp_by_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_temp_by_mem_topology()");
+  auto shim = get_shim_object(hdl);
+  shim->get_temp_by_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_memstat(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret, bool raw)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_memstat()");
+  auto shim = get_shim_object(hdl);
+  shim->get_memstat(buffer, size, size_ret, raw);
 }
 
 void

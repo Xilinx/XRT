@@ -208,7 +208,11 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
-    XoclStatDebugIpLayout
+    XoclStatDebugIpLayout,
+    XoclStatTempByMemTopology,
+    XoclStatGroupTopology,
+    XoclStatMemStatRaw,
+    XoclStatMemStat
 
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
@@ -470,4 +474,9 @@ struct xcl_mailbox {
 	/* recv metrics */
 	uint64_t          mbx_recv_raw_bytes;
 	uint64_t          mbx_recv_req[XCL_MAILBOX_REQ_MAX];
+};
+
+struct drm_xocl_mm_stat {
+    size_t memory_usage;
+    unsigned int bo_count;
 };
