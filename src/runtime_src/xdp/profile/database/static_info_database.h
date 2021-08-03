@@ -450,7 +450,12 @@ class aie_cfg_tile
 
     inline Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->aimMap[slotID] ;
+        if (bin == xclbin) {
+          if(bin->aimMap.find(slotID) == bin->aimMap.end()) {
+            return nullptr;
+          }
+          return bin->aimMap[slotID] ;
+        }
       }
       return nullptr ;
     }
@@ -468,7 +473,12 @@ class aie_cfg_tile
 
     inline Monitor* getNOC(XclbinInfo* xclbin, uint64_t idx) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->nocList[idx] ;
+        if (bin == xclbin) {
+          if(bin->nocList.size() <= idx) {
+            return nullptr;
+          }
+          return bin->nocList[idx] ;
+        }
       }
       return nullptr ;
     }
@@ -1021,6 +1031,8 @@ class aie_cfg_tile
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
+      if(deviceInfo[deviceId]->gmioList.size() <= idx)
+        return nullptr;
       return deviceInfo[deviceId]->gmioList[idx];
     }
 
@@ -1028,7 +1040,7 @@ class aie_cfg_tile
            uint16_t num, uint16_t stream, uint16_t len)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-  return ;
+        return ;
       deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
     }
 
