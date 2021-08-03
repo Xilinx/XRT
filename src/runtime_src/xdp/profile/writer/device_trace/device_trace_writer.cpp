@@ -146,7 +146,7 @@ namespace xdp {
     // Generate Wave group for Read/Write if data transfer monitoring is enabled
     if (!(cu->dataTransferEnabled())) return ;
 
-    std::vector<uint32_t>* cuAIMs = cu->getAIMs() ;
+    std::vector<uint32_t>* cuAIMs = cu->getAIMsWithTrace() ;
     for (auto cuAIM : *cuAIMs) {
       Monitor* aim = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, cuAIM) ;
       if (nullptr == aim) continue ;
@@ -173,7 +173,7 @@ namespace xdp {
     // Generate Wave group for stream data transfers if enabled
     if (!(cu->streamEnabled())) return ;
 
-    std::vector<uint32_t>* cuASMs = cu->getASMs() ;
+    std::vector<uint32_t>* cuASMs = cu->getASMsWithTrace() ;
     for (auto cuASM : *cuASMs) {
       Monitor* ASM = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, cuASM) ;
       if (nullptr == ASM) continue ;

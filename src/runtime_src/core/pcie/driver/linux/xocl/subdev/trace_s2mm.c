@@ -249,7 +249,11 @@ static int trace_s2mm_mmap(struct file *filp, struct vm_area_struct *vma)
 	struct xocl_trace_s2mm *trace_s2mm = (struct xocl_trace_s2mm *)filp->private_data;
 	BUG_ON(!trace_s2mm);
 
-	off = vma->vm_pgoff << PAGE_SHIFT;
+        off = vma->vm_pgoff << PAGE_SHIFT;
+        if (off >= trace_s2mm->range) {
+            return -EINVAL;
+        }
+
 	/* BAR physical address */
 	phys = trace_s2mm->start_paddr + off;
 	vsize = vma->vm_end - vma->vm_start;

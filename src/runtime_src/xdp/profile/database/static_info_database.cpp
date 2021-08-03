@@ -228,6 +228,68 @@ namespace xdp {
     return false ;
   }
 
+  double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
+  {
+    double defaultClockSpeed = 300.0 ;
+
+    // First, check the clock frequency topology
+    const clock_freq_topology* clockSection =
+      device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        return clk->m_freq_Mhz ;
+      }
+    }
+
+    if (isEdge()) {
+      // On Edge, we can try to get the "DATA_CLK" from the embedded metadata
+      std::pair<const char*, size_t> metadataSection =
+        device->get_axlf_section(EMBEDDED_METADATA) ;
+      const char* rawXml = metadataSection.first ;
+      size_t xmlSize = metadataSection.second ;
+      if (rawXml == nullptr || xmlSize == 0)
+        return defaultClockSpeed ;
+
+      // Convert the raw character stream into a boost::property_tree
+      std::string xmlFile ;
+      xmlFile.assign(rawXml, xmlSize) ;
+      std::stringstream xmlStream ;
+      xmlStream << xmlFile ;
+      boost::property_tree::ptree xmlProject ;
+      boost::property_tree::read_xml(xmlStream, xmlProject) ;
+
+      // Dig in and find all of the kernel clocks
+      for (auto& clock : xmlProject.get_child("project.platform.device.core.kernelClocks")) {
+        if (clock.first != "clock")
+          continue ;
+
+        try {
+          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
+          if (port != "DATA_CLK")
+            continue ;
+          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
+          std::string freqNumeral = freq.substr(0, freq.find('M')) ;
+          double frequency = defaultClockSpeed ;
+          std::stringstream convert ;
+          convert << freqNumeral ;
+          convert >> frequency ;
+          return frequency ;
+        }
+        catch (std::exception& /*e*/) {
+          continue ;
+        }
+      }
+    }
+
+    // We didn't find it in any section, so just assume 300 MHz for now
+    return defaultClockSpeed ;
+  }
+
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
@@ -267,20 +329,9 @@ namespace xdp {
     
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
+    currentXclbin->clockRateMHz = findClockRate(device) ;
 
-    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
 
-    if(clockSection) {
-      for(int32_t i = 0; i < clockSection->m_count; i++) {
-        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
-        if(clk->m_type != CT_DATA) {
-          continue;
-        }
-        currentXclbin->clockRateMHz = clk->m_freq_Mhz ;
-      }
-    } else {
-      currentXclbin->clockRateMHz = 300;
-    }
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
@@ -485,173 +536,267 @@ namespace xdp {
     return true;
   }
 
+  void VPStaticDatabase::initializeAM(DeviceInfo* devInfo,
+                                      const std::string& name,
+                                      const struct debug_ip_data* debugIpData)
+  {
+    uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+      (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+    // MIN_TRACE_ID_AM is 0, so the index is always >=
+    uint64_t slotId = (index - MIN_TRACE_ID_AM) / 16;
+
+    for (auto cu : devInfo->loadedXclbins.back()->cus) {
+      ComputeUnitInstance* cuObj = cu.second ;
+      int32_t cuId = cu.second->getIndex() ;
+
+      if (0 == name.compare(cu.second->getName())) {
+        // Set properties on this specific CU
+        if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
+          cuObj->setStallEnabled(true);
+        }
+
+        Monitor* mon = new Monitor(debugIpData->m_type, index,
+                                   debugIpData->m_name, cuId, -1 /* memId */,
+                                   slotId) ;
+        // First, add this monitor to the list of all AMs
+        devInfo->loadedXclbins.back()->amList.push_back(mon);
+        // Second, determine if this is a trace-enabled AM or just a counter AM
+        //  and add it to the appropriate container
+        if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
+          devInfo->loadedXclbins.back()->amMap.emplace(slotId, mon);
+          cuObj->setAccelMon(slotId);
+        }
+        else {
+          devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
+        }
+        break ;
+      }
+    }
+  }
+
+  void VPStaticDatabase::initializeAIM(DeviceInfo* devInfo,
+                                       const std::string& name,
+                                       const struct debug_ip_data* debugIpData)
+  {
+    uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+      (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+    if (index < MIN_TRACE_ID_AIM) {
+      std::stringstream msg;
+      msg << "AIM with incorrect index: " << index ;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                              msg.str());
+      index = MIN_TRACE_ID_AIM ;
+    }
+    uint64_t slotId = (index - MIN_TRACE_ID_AIM) / 2;
+
+    // Parse name to find CU Name and Memory
+    size_t pos = name.find('/');
+    std::string monCuName = name.substr(0, pos);
+
+    std::string memName = "" ;
+    std::string portName = "" ;
+    size_t pos1 = name.find('-');
+    if(pos1 != std::string::npos) {
+      memName = name.substr(pos1+1);
+      portName = name.substr(pos+1, pos1-pos-1);
+    }
+
+    ComputeUnitInstance* cuObj = nullptr ;
+    int32_t cuId = -1 ;
+    int32_t memId = -1;
+
+    for(auto cu : devInfo->loadedXclbins.back()->cus) {
+      if(0 == monCuName.compare(cu.second->getName())) {
+        cuId = cu.second->getIndex();
+        cuObj = cu.second;
+        break;
+      }
+    }
+    for(auto mem : devInfo->loadedXclbins.back()->memoryInfo) {
+      if(0 == memName.compare(mem.second->name)) {
+        memId = mem.second->index;
+        break;
+      }
+    }
+    Monitor* mon = new Monitor(debugIpData->m_type, index,
+                               debugIpData->m_name, cuId, memId, slotId);
+    mon->port = portName;
+
+    // Add the monitor to the list of all AIMs
+    devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
+    bool traceEnabled =
+      (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) != 0 ;
+
+    // Attach to a CU if appropriate
+    if (cuObj) {
+      cuObj->addAIM(slotId, traceEnabled) ;
+    }
+    else {
+      // If not connected to CU and not a shell monitor, then a floating monitor
+      devInfo->loadedXclbins.back()->hasFloatingAIM = true;
+    }
+
+    // If the AIM is an User Space AIM with trace enabled i.e. either
+    //  connected to a CU or floating but not shell AIM
+    if(traceEnabled) {
+      devInfo->loadedXclbins.back()->aimMap.emplace(slotId, mon);
+    } else {
+      devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
+    }
+  }
+
+  void VPStaticDatabase::initializeASM(DeviceInfo* devInfo,
+                                       const std::string& name,
+                                       const struct debug_ip_data* debugIpData)
+  {
+    uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+      (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+    if (index < MIN_TRACE_ID_ASM) {
+      std::stringstream msg;
+      msg << "ASM with incorrect index: " << index ;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                              msg.str());
+      index = MIN_TRACE_ID_ASM ;
+    }
+    uint64_t slotId = (index - MIN_TRACE_ID_ASM);
+
+    // associate with the first CU
+    size_t pos = name.find('/');
+    std::string monCuName = name.substr(0, pos);
+
+    std::string portName = "";
+    ComputeUnitInstance* cuObj = nullptr ;
+    int32_t cuId = -1 ;
+
+    for(auto cu : devInfo->loadedXclbins.back()->cus) {
+      if(0 == monCuName.compare(cu.second->getName())) {
+        cuId = cu.second->getIndex();
+        cuObj = cu.second;
+        break;
+      }
+    }
+    if(-1 != cuId) {
+      size_t pos1 = name.find('-');
+      if(std::string::npos != pos1) {
+        portName = name.substr(pos+1, pos1-pos-1);
+      }
+    } else { /* (-1 == cuId) */
+      pos = name.find("-");
+      if(std::string::npos != pos) {
+        pos = name.find_first_not_of(" ", pos+1);
+        monCuName = name.substr(pos);
+        pos = monCuName.find('/');
+
+        size_t pos1 = monCuName.find('-');
+        if(std::string::npos != pos1) {
+          portName = monCuName.substr(pos+1, pos1-pos-1);
+        }
+
+        monCuName = monCuName.substr(0, pos);
+
+        for(auto cu : devInfo->loadedXclbins.back()->cus) {
+          if(0 == monCuName.compare(cu.second->getName())) {
+            cuId = cu.second->getIndex();
+            cuObj = cu.second;
+            break;
+          }
+        }
+      }
+    }
+
+    Monitor* mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+                               cuId, -1 /* memId */, slotId);
+    mon->port = portName;
+    if(debugIpData->m_properties & 0x2) {
+      mon->isRead = true;
+    }
+
+    // Add this monitor to the list of all monitors
+    devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
+    bool traceEnabled =
+      (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) != 0 ;
+
+    // If the ASM is an User Space ASM i.e. either connected to a CU or floating but not shell ASM
+    if (cuObj) {
+      cuObj->addASM(slotId, traceEnabled) ;
+    }
+    else {
+      // If not connected to CU and not a shell monitor, then a floating monitor
+      devInfo->loadedXclbins.back()->hasFloatingASM = true ;
+    }
+
+    if (traceEnabled) {
+      devInfo->loadedXclbins.back()->asmMap.emplace(slotId, mon) ;
+    }
+    else {
+      devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
+    }
+  }
+
+  void VPStaticDatabase::initializeNOC(DeviceInfo* devInfo,
+                                       const struct debug_ip_data* debugIpData)
+  {
+    uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
+      (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
+    uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
+    uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
+
+    Monitor* mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+                               readTrafficClass, writeTrafficClass);
+    devInfo->loadedXclbins.back()->nocList.push_back(mon);
+    // nocList in xdp::DeviceIntf is sorted; Is that required here?
+  }
+
+  void VPStaticDatabase::initializeTS2MM(DeviceInfo* devInfo,
+                                         const struct debug_ip_data* debugIpData)
+  {
+    // TS2MM IP for either AIE PLIO or PL trace offload
+    if (debugIpData->m_properties & 0x1)
+      devInfo->loadedXclbins.back()->numTracePLIO++;
+    else
+      devInfo->loadedXclbins.back()->usesTs2mm = true;
+  }
+
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
   {
     // Look into the debug_ip_layout section and load information about Profile Monitors
-    // Get DEBUG_IP_LAYOUT section 
-    const debug_ip_layout* debugIpLayoutSection = device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
+    // Get DEBUG_IP_LAYOUT section
+    const debug_ip_layout* debugIpLayoutSection =
+      device->get_axlf_section<const debug_ip_layout*>(DEBUG_IP_LAYOUT);
     if(debugIpLayoutSection == nullptr) return false;
 
     for(uint16_t i = 0; i < debugIpLayoutSection->m_count; i++) {
-      const struct debug_ip_data* debugIpData = &(debugIpLayoutSection->m_debug_ip_data[i]);
+      const struct debug_ip_data* debugIpData =
+        &(debugIpLayoutSection->m_debug_ip_data[i]);
       uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
-                       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-      Monitor* mon = nullptr;
+        (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
 
       std::string name(debugIpData->m_name);
-      int32_t cuId  = -1;
-      ComputeUnitInstance* cuObj = nullptr;
 
       std::stringstream msg;
-      msg << "Initializing profile monitor " << i << ": name = " << name << ", index = " << index;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg.str());
+      msg << "Initializing profile monitor " << i
+          << ": name = " << name << ", index = " << index;
+      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
+                              msg.str());
 
-      // find CU
-      if(debugIpData->m_type == ACCEL_MONITOR) {
-        for(auto cu : devInfo->loadedXclbins.back()->cus) {
-          if(0 == name.compare(cu.second->getName())) {
-            cuObj = cu.second;
-            cuId = cu.second->getIndex();
-            mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-            if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AM)) {
-              uint64_t slotID = (index - MIN_TRACE_ID_AM) / 16;
-              devInfo->loadedXclbins.back()->amMap.emplace(slotID, mon);
-              cuObj->setAccelMon(slotID);
-            } else {
-              devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
-            }
-            // Also add it to the list of all AMs
-            devInfo->loadedXclbins.back()->amList.push_back(mon);
-            if(debugIpData->m_properties & XAM_STALL_PROPERTY_MASK) {
-              cuObj->setStallEnabled(true);
-            }
-            break;
-          }
-        }
-      } else if(debugIpData->m_type == AXI_MM_MONITOR) {
-        // parse name to find CU Name and Memory
-        size_t pos = name.find('/');
-        std::string monCuName = name.substr(0, pos);
-
-        std::string memName;
-        std::string portName;
-        size_t pos1 = name.find('-');
-        if(pos1 != std::string::npos) {
-          memName = name.substr(pos1+1);
-          portName = name.substr(pos+1, pos1-pos-1);
-        }
-
-        int32_t memId = -1;
-        for(auto cu : devInfo->loadedXclbins.back()->cus) {
-          if(0 == monCuName.compare(cu.second->getName())) {
-            cuId = cu.second->getIndex();
-            cuObj = cu.second;
-            break;
-          }
-        }
-        for(auto mem : devInfo->loadedXclbins.back()->memoryInfo) {
-          if(0 == memName.compare(mem.second->name)) {
-            memId = mem.second->index;
-            break;
-          }
-        }
-        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId, memId);
-        mon->port = portName;
-        // If the AIM is an User Space AIM with trace enabled i.e. either connected to a CU or floating but not shell AIM
-        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_AIM)) {
-          uint64_t slotID = (index - MIN_TRACE_ID_AIM) / 2;
-          devInfo->loadedXclbins.back()->aimMap.emplace(slotID, mon);
-          if(cuObj) {
-            cuObj->addAIM(slotID);
-          } else {
-            // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->loadedXclbins.back()->hasFloatingAIM = true;
-          }
-        } else {
-          devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
-        }
-        // Also add it to the list of all AIMs
-        devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
-      } else if(debugIpData->m_type == AXI_STREAM_MONITOR) {
-        // associate with the first CU
-        size_t pos = name.find('/');
-        std::string monCuName = name.substr(0, pos);
-
-        std::string portName;
-        
-        for(auto cu : devInfo->loadedXclbins.back()->cus) {
-          if(0 == monCuName.compare(cu.second->getName())) {
-            cuId = cu.second->getIndex();
-            cuObj = cu.second;
-            break;
-          }
-        }
-        if(-1 != cuId) {
-          size_t pos1 = name.find('-');
-          if(std::string::npos != pos1) {
-            portName = name.substr(pos+1, pos1-pos-1);
-          }
-        } else { /* (-1 == cuId) */
-          pos = name.find("-");
-          if(std::string::npos != pos) {
-            pos = name.find_first_not_of(" ", pos+1);
-            monCuName = name.substr(pos);
-            pos = monCuName.find('/');
-
-            size_t pos1 = monCuName.find('-');
-            if(std::string::npos != pos1) {
-              portName = monCuName.substr(pos+1, pos1-pos-1);
-            }
-
-            monCuName = monCuName.substr(0, pos);
-
-            for(auto cu : devInfo->loadedXclbins.back()->cus) {
-              if(0 == monCuName.compare(cu.second->getName())) {
-                cuId = cu.second->getIndex();
-                cuObj = cu.second;
-                break;
-              }
-            }
-          }
-        }
-
-        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name, cuId);
-        mon->port = portName;
-        if(debugIpData->m_properties & 0x2) {
-          mon->isRead = true;
-        }
-        // If the ASM is an User Space ASM with trace enabled i.e. either connected to a CU or floating but not shell ASM
-        if((debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) && (index >= MIN_TRACE_ID_ASM)) {
-          uint64_t slotID = (index - MIN_TRACE_ID_ASM);
-          devInfo->loadedXclbins.back()->asmMap.emplace(slotID, mon);
-          if(cuObj) {
-            cuObj->addASM(slotID);
-          } else {
-            // If not connected to CU and not a shell monitor, then a floating monitor
-            devInfo->loadedXclbins.back()->hasFloatingASM = true;
-          }
-        } else {
-          devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
-        }
-        // Also add it to the list of all ASM monitors
-        devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
-      } else if(debugIpData->m_type == AXI_NOC) {
-        uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
-        uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
-
-        mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
-                          readTrafficClass, writeTrafficClass);
-        devInfo->loadedXclbins.back()->nocList.push_back(mon);
-        // nocList in xdp::DeviceIntf is sorted; Is that required here?
-      } else if (debugIpData->m_type == TRACE_S2MM) { 
-        // TS2MM IP for either AIE PLIO or PL trace offload
-        if (debugIpData->m_properties & 0x1)
-          devInfo->loadedXclbins.back()->numTracePLIO++;
-        else
-          devInfo->loadedXclbins.back()->usesTs2mm = true;
-      } else {
-        // Do nothing since not recognized
-        // mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name);
+      switch (debugIpData->m_type) {
+      case ACCEL_MONITOR:
+        initializeAM(devInfo, name, debugIpData) ;
+        break ;
+      case AXI_MM_MONITOR:
+        initializeAIM(devInfo, name, debugIpData) ;
+        break ;
+      case AXI_STREAM_MONITOR:
+        initializeASM(devInfo, name, debugIpData) ;
+        break ;
+      case AXI_NOC:
+        initializeNOC(devInfo, debugIpData) ;
+        break ;
+      case TRACE_S2MM:
+        initializeTS2MM(devInfo, debugIpData) ;
+        break ;
+      default:
+        break ;
       }
     }
 

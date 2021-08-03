@@ -104,7 +104,7 @@ int run(int argc, char** argv)
     std::cout << "device platform json info ======================================\n";
     std::cout << device.get_info<xrt::info::device::platform>();
     std::cout << "device pcie json info ==========================================\n";
-    std::cout << device.get_info<xrt::info::device::platform>();
+    std::cout << device.get_info<xrt::info::device::pcie_info>();
     std::cout << "device dynamic regions json info ===============================\n";
     std::cout << device.get_info<xrt::info::device::dynamic_regions>();
     std::cout << "device host json info ==========================================\n";

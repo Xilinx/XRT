@@ -417,7 +417,10 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
   }
   bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
-  domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
+  
+  // domain is not mandatory if it is "0000"
+  if(tokens.size() > 2)
+    domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {

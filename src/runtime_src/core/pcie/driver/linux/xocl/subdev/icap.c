@@ -1451,6 +1451,18 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 				ICAP_ERR(icap, "can't create SPC subdev");
 				break;
 			}
+		} else if (ip->m_type == ACCEL_DEADLOCK_DETECTOR) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ACCEL_DEADLOCK_DETECTOR;
+
+			subdev_info.res[0].start += ip->m_base_address;
+			subdev_info.res[0].end += ip->m_base_address;
+			subdev_info.priv_data = ip;
+			subdev_info.data_len = sizeof(struct debug_ip_data);
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err) {
+				ICAP_ERR(icap, "can't create ACCEL_DEADLOCK_DETECTOR subdev");
+				break;
+			}
 		}
 	}
 	return err;
@@ -2599,12 +2611,14 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	/*
 	 * If the previous frequency was very high and we load an incompatible
 	 * bitstream it may damage the hardware!
-	 * If no clock freq, must return without touching the hardware.
+	 *
+	 * But if Platform contain all fixed clocks, xclbin doesnt contain
+	 * CLOCK_FREQ_TOPOLOGY section as there are no clocks to configure,
+	 * downloading xclbin should be succesful in this case.
 	 */
 	header = xrt_xclbin_get_section_hdr(xclbin, CLOCK_FREQ_TOPOLOGY);
 	if (!header) {
-		err = -EINVAL;
-		goto done;
+		ICAP_WARN(icap, "CLOCK_FREQ_TOPOLOGY doesn't exist. XRT is not configuring any clocks");
 	}
 
 	if (xocl_xrt_version_check(xdev, xclbin, true)) {

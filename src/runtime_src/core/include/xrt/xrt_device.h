@@ -100,7 +100,7 @@ enum class device : unsigned int {
   mechanical, 
   memory, 
   platform,
-  pcie,
+  pcie_info,
   host, 
   dynamic_regions
 };
@@ -122,7 +122,7 @@ XRT_INFO_PARAM_TRAITS(device::thermal, std::string);
 XRT_INFO_PARAM_TRAITS(device::mechanical, std::string);
 XRT_INFO_PARAM_TRAITS(device::memory, std::string);
 XRT_INFO_PARAM_TRAITS(device::platform, std::string);
-XRT_INFO_PARAM_TRAITS(device::pcie, std::string);
+XRT_INFO_PARAM_TRAITS(device::pcie_info, std::string);
 XRT_INFO_PARAM_TRAITS(device::host, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
 /// @endcond 

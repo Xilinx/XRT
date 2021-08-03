@@ -298,7 +298,7 @@ get_info(info::device param) const
     return query::json_str(xrt_core::memory::memory_topology(handle.get()));
   case info::device::platform :              // std::string
     return query::json_str(xrt_core::platform::platform_info(handle.get()));
-  case info::device::pcie :                  // std::string
+  case info::device::pcie_info :                  // std::string
     return query::json_str(xrt_core::platform::pcie_info(handle.get()));
   case info::device::dynamic_regions :         // std::string
     return query::json_str(xrt_core::memory::xclbin_info(handle.get()));

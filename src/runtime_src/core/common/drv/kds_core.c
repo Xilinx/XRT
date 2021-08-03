@@ -1238,25 +1238,6 @@ out:
 	return count;
 }
 
-struct kds_client *kds_get_client(struct kds_sched *kds, pid_t pid)
-{
-	struct kds_client *client = NULL;
-	struct kds_client *curr;
-
-	mutex_lock(&kds->lock);
-	if (list_empty(&kds->clients))
-		goto done;
-
-	list_for_each_entry(curr, &kds->clients, link) {
-		if (pid_nr(curr->pid) == pid)
-			client = curr;
-	}
-
-done:
-	mutex_unlock(&kds->lock);
-	return client;
-}
-
 /* User space execbuf command related functions below */
 void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 		   struct kds_command *xcmd)

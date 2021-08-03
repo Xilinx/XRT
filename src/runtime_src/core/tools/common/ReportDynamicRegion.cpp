@@ -134,6 +134,7 @@ populate_cus(const xrt_core::device *device)
         ptCu.put( "name",			layout->m_ip_data[i].m_name);
         ptCu.put( "base_address",		boost::str(boost::format("0x%x") % base_addr));
         ptCu.put( "usage",			usage);
+        ptCu.put( "type", enum_to_str(cu_type::PL));
         ptCu.add_child( std::string("status"),	get_cu_status(status));
         pt.push_back(std::make_pair("", ptCu));
       }

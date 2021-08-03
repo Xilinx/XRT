@@ -1796,6 +1796,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_trace_fifo_full,
 	xocl_init_trace_funnel,
 	xocl_init_trace_s2mm,
+	xocl_init_accel_deadlock_detector,
 	xocl_init_mem_hbm,
 	/* Initial intc sub-device before CU/ERT sub-devices */
 	xocl_init_intc,
@@ -1807,6 +1808,8 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_msix_xdma,
 	xocl_init_ert_user,
 	xocl_init_m2m,
+	xocl_init_config_gpio,
+	xocl_init_command_queue,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1835,6 +1838,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_trace_fifo_full,
 	xocl_fini_trace_funnel,
 	xocl_fini_trace_s2mm,
+	xocl_fini_accel_deadlock_detector,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
 	xocl_fini_addr_translator,
@@ -1846,6 +1850,8 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_m2m,
 	/* Remove intc sub-device after CU/ERT sub-devices */
 	xocl_fini_intc,
+	xocl_fini_config_gpio,
+	xocl_fini_command_queue,
 };
 
 static int __init xocl_init(void)
