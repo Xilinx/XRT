@@ -934,7 +934,7 @@ int xocl_pwrite_bo_ioctl(struct drm_device *dev, void *data,
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr,
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr + args->offset,
 			args->size, 1);
 	} else {
 		kaddr = xobj->vmapping;
@@ -997,7 +997,8 @@ int xocl_pread_bo_ioctl(struct drm_device *dev, void *data,
 			ret = -EINVAL;
 			goto out;
 		}
-		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr, args->size, 0);
+		ret = xocl_migrate_unmgd(xdev, args->data_ptr, ep_addr + args->offset,
+			args->size, 0);
 
 	} else {
 		kaddr = xobj->vmapping;
