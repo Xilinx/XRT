@@ -903,7 +903,7 @@ done:
     if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
-    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
+    DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
       *size_ret = mem_topology_size;
