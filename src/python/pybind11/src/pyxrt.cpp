@@ -14,6 +14,7 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
+#include "xrt/xrt_graph.h"
 #include "experimental/xrt_xclbin.h"
 
 // Pybind11 includes
@@ -263,4 +264,36 @@ pyxclbin.def(py::init<>())
     .def("get_kernels", &xrt::xclbin::get_kernels)
     .def("get_xsa_name", &xrt::xclbin::get_xsa_name)
     .def("get_uuid", &xrt::xclbin::get_uuid);
+
+
+#if !defined(__x86_64__)
+py::enum_<xrt::graph::access_mode>(m, "xrt_graph_access_mode")
+    .value("exclusive", xrt::graph::access_mode::exclusive)
+    .value("primary", xrt::graph::access_mode::primary)
+    .value("shared", xrt::graph::access_mode::shared);
+
+
+/*
+ *
+ * xrt::graph
+ *
+ */
+py::class_<xrt::graph>(m, "graph")
+    .def(py::init([] (const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name,
+                      xrt::graph::access_mode am = xrt::graph::access_mode::primary) {
+                      return new xrt::graph(device, xclbin_id, name, am);
+                  }))
+    .def("reset", &xrt::graph::reset)
+    .def("get_timestamp", &xrt::graph::get_timestamp)
+    .def("run", &xrt::graph::run)
+    .def("wait", ([](xrt::graph &g, uint64_t cycles)  {
+                      g.wait(cycles);
+                  }))
+    .def("wait", ([](xrt::graph &g, std::chrono::milliseconds timeout_ms)  {
+                      g.wait(timeout_ms);
+                  }))
+    .def("suspend", &xrt::graph::suspend)
+    .def("resume", &xrt::graph::resume)
+    .def("end", &xrt::graph::end);
+#endif
 }
