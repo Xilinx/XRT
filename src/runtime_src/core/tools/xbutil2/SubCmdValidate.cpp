@@ -528,34 +528,24 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
     return false;
   }
 
-  int counter = 0;
-  XBU::ProgressBar run_test("Running Test on " + m_tag, 1024, XBU::is_escape_codes_disabled(), std::cout);
   if(no_dma != 0) {
      if(!p2ptest_chunk_no_dma(handle, boh,  mem_size,  mem_idx)){
        _ptTest.put("status", "failed");
       logger(_ptTest, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
       free_unmap_bo(handle, boh, boptr, bo_size);
-      run_test.finish(false, "");
-      std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
       return false;
      }
-  run_test.update(++counter);
   } else {
     for(uint64_t c = 0; c < bo_size; c += chunk_size) {
       if(!p2ptest_chunk(handle, boptr + c, addr + c, chunk_size)) {
         _ptTest.put("status", "failed");
         logger(_ptTest, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
         free_unmap_bo(handle, boh, boptr, bo_size);
-        run_test.finish(false, "");
-        std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
         return false;
       }
-     run_test.update(++counter);
     }
   } 
   free_unmap_bo(handle, boh, boptr, bo_size);
-  run_test.finish(true, "");
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
   _ptTest.put("status", "passed");
   return true;
 }
@@ -1025,6 +1015,9 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
+
+  int counter = 0;
+  XBU::ProgressBar run_test("Running Test", mem_topo->m_count, XBU::is_escape_codes_disabled(), std::cout);
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     auto midx = std::distance(mem_topo->m_mem_data, &mem);
     std::vector<std::string> sup_list = { "HBM", "bank", "DDR" };
@@ -1035,12 +1028,22 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     const std::string mem_tag(reinterpret_cast<const char *>(mem.m_tag));
     for(const auto& x : sup_list) {
       if(mem_tag.find(x) != std::string::npos && mem.m_used) {
-        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma))
-          break;
-        logger(_ptTest, "Details", mem_tag +  " validated");
+        if(!p2ptest_bank(_dev->get_device_handle(), _ptTest, mem_tag, static_cast<unsigned int>(midx), mem.m_base_address, mem.m_size << 10, no_dma)){
+           break;
+	}
+	else {
+          run_test.update(++counter);
+          logger(_ptTest, "Details", mem_tag +  " validated");
+       }
       }
     }
   }
+  if(counter < mem_topo->m_count)
+    run_test.finish(false, "");
+  else
+    run_test.finish(true, "");
+ 
+  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 }
 
 /*
