@@ -25,23 +25,23 @@ current_micro_time = lambda: int(round(time.time() * 1000000))
 
 globalbuffersize = 1024*1024*16    #16 MB
 
-def getThreshold(devHandle):
+def getThreshold(devhdl):
     threshold = 40000
-    name = d.get_info(pyxrt.xrt_info_device.name);
+    name = devhdl.get_info(pyxrt.xrt_info_device.name);
 
-    if b"qdma" in name or b"qep" in name:
+    if "qdma" in name or "qep" in name:
         threshold = 30000
-    if b"gen3x4" in name or b"_u26z_" in name:
+    if "gen3x4" in name or "_u26z_" in name:
         threshold = 20000
-    if b"u2x4" in name or b"U2x4" in name or b"u2_gen3x4" in name:
+    if "u2x4" in name or "U2x4" in name or "u2_gen3x4" in name:
         threshold = 10000
-    if b"_u25_" in name or b"_u30_" in name: # so that it doesn't set theshold for u250
+    if "_u25_" in name or "_u30_" in name: # so that it doesn't set theshold for u250
         threshold = 9000
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bo = pyxrt.bo(devhdl, globalbuffersize, pyxrt.bo.normal, krnlhdl.group_id(argno))
-    buf = numpy.asarray(bo.map(), numpy.character);
+    buf = numpy.asarray(bo.map());
 
     for i in range(globalbuffersize):
         buf[i] = i%256 if isInput else 0
@@ -95,16 +95,17 @@ def runKernel(opt):
             rhandle2.wait(5)
             end = current_micro_time()
 
-            usduration = end-start
-            limit = beats*(typesize>>3)
-            output_bo1.sync(xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
-            output_bo2.sync(xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
-            if (numpy.arrayequal(input_buf1, output_buf1) == False):
-                failed = True
+            usduration = end - start
+            limit = beats * (typesize>>3)
+            output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
+            output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
+
+            failed = not(numpy.array_equal(input_buf1[:limit], output_buf1[:limit]));
+            if (failed):
                 break
 
-            if (numpy.arrayequal(input_buf2, output_buf2) == False):
-                failed = True
+            failed = not(numpy.array_equal(input_buf2[:limit], output_buf2[:limit]));
+            if (failed):
                 break
             # print("Reps = %d, Beats = %d, Duration = %lf us" %(reps, beats, usduration)) # for debug
 
