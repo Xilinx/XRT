@@ -546,7 +546,7 @@ public:
   get_ips() const;
 
   /**
-   * get_ip() - Get a list of IPs from the xclbin
+   * get_ip() - Get a specific IP from the xclbin
    *
    * @return
    *  A list of xrt::xclbin::ip objects from xclbin.
@@ -557,6 +557,19 @@ public:
   XCL_DRIVER_DLLESPEC
   ip
   get_ip(const std::string& name) const;
+
+  /**
+   * get_mems() - Get list of memory objects
+   *
+   * @return
+   * A list of xrt::xclbin::mem objects from xclbin
+   *
+   * The returned xrt::xclbin::mem objects are extracted from
+   * the xclbin.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::vector<mem>
+  get_mems() const;
 
   /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin
