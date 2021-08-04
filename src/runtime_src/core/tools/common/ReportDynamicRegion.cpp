@@ -23,6 +23,9 @@
 #include "core/common/utils.h"
 #include "ps_kernel.h"
 
+// 3rd Party Library - Include Files
+#include <boost/property_tree/json_parser.hpp>
+
 namespace qr = xrt_core::query;
 
 enum class cu_type {
@@ -131,7 +134,7 @@ populate_cus(const xrt_core::device *device)
         ptCu.put( "name",			layout->m_ip_data[i].m_name);
         ptCu.put( "base_address",		boost::str(boost::format("0x%x") % base_addr));
         ptCu.put( "usage",			usage);
-        ptCu.put( "type",			enum_to_str(cu_type::PL));
+        ptCu.put( "type", enum_to_str(cu_type::PL));
         ptCu.add_child( std::string("status"),	get_cu_status(status));
         pt.push_back(std::make_pair("", ptCu));
       }
@@ -242,8 +245,13 @@ populate_cus_new(const xrt_core::device *device)
     }
   }
 
-  ptree.add_child("compute_units", pt);
-  return ptree;
+  boost::property_tree::ptree pt_dynamic_regions;
+  xrt::device dev(device->get_device_id());
+  std::stringstream ss;
+  ss << dev.get_info<xrt::info::device::dynamic_regions>();
+  boost::property_tree::read_json(ss, pt_dynamic_regions);
+  pt_dynamic_regions.add_child("compute_units", pt);
+  return pt_dynamic_regions;
 }
 
 void

@@ -21,6 +21,7 @@
 #include "tools/common/ReportHost.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
+#include "core/common/utils.h"
 #include "core/tools/common/ProgressBar.h"
 #include "core/tools/common/EscapeCodes.h"
 #include "core/tools/common/Process.h"
@@ -993,7 +994,13 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   std::string msg;
   XBU::xclbin_lock xclbin_lock(_dev);
-  XBU::check_p2p_config(_dev.get(), msg);
+  std::vector<std::string> config;
+  try {
+    config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
+  }
+  catch (const xrt_core::query::exception&) {  }
+
+  std::tie(std::ignore, msg) = xrt_core::query::p2p_config::parse(config);
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));

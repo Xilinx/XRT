@@ -42,6 +42,8 @@ precision(double value, int p)
   return stream.str();
 }
 
+
+
 }
 
 namespace xrt_core { namespace utils {
@@ -215,6 +217,19 @@ issue_id()
 {
   static std::atomic<uint64_t> id {0} ;
   return id++;
+}
+
+static const std::map<std::string, std::string> clock_map = {
+  {"DATA_CLK", "Data"},
+  {"KERNEL_CLK", "Kernel"},
+  {"SYSTEM_CLK", "System"},
+};
+
+std::string 
+parse_clock_id(const std::string& id)
+{
+  auto clock_str = clock_map.find(id);
+  return clock_str != clock_map.end() ? clock_str->second : "N/A";
 }
 
 }} // utils, xrt_core
