@@ -62,11 +62,6 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
 static void
 config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
 {
-  if(boost::filesystem::extension(output).compare(".ini") != 0) {
-    std::cerr << boost::format("ERROR: output file should be an INI file: '%s'") % output << "\n\n";
-    return;
-  }
-
   boost::property_tree::ptree ptRoot;
 
   boost::property_tree::ptree child;
@@ -107,8 +102,8 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration.")
-    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image.")
+    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
+    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
