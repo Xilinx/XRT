@@ -12,6 +12,7 @@ import numpy
 
 # Following found in PYTHONPATH setup by XRT
 from xrt_binding import *
+import pyxrt
 
 sys.path.append('../')
 from utils_binding import *

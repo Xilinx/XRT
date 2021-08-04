@@ -99,6 +99,9 @@ py::class_<xrt::device>(m, "device")
     .def("load_xclbin", [](xrt::device& d, const std::string& xclbin) {
                             return d.load_xclbin(xclbin);
                         })
+    .def("load_xclbin", [](xrt::device& d, const xrt::xclbin& xclbin) {
+                            return d.load_xclbin(xclbin);
+                        })
     .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid)
     .def("get_info", [] (xrt::device& d, xrt::info::device key) {
                          switch (key) {

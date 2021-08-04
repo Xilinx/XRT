@@ -25,12 +25,12 @@ def runMemTest(opt, d, mem):
     boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, mem)
     assert (boHandle1.address() != 0xffffffffffffffff), "Illegal physical address for buffer on memory bank " + str(mem)
 
-    testVector = "hello\nthis is Xilinx OpenCL memory read write test\n:-)\n"
+    testVector = bytearray(b'hello\nthis is Xilinx OpenCL memory read write test\n:-)\n')
     buf1 = boHandle1.map()
     buf1[:len(testVector)] = testVector
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, opt.DATA_SIZE, 0)
     zeros = bytearray(opt.DATA_SIZE)
-    buf1[:len(testVector)] = zeros
+    buf1[:len(testVector)] = zeros[:len(testVector)]
 #    boHandle1.write(zeros, 0)
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
     assert (buf1[:len(testVector)] == testVector[:]), "Data migration error on memory bank " + str(mem)
@@ -39,14 +39,13 @@ def runTest(opt):
     d = pyxrt.device(opt.index)
     xbin = pyxrt.xclbin(opt.bitstreamFile)
     uuid = d.load_xclbin(xbin)
-
     runMemTest(opt, d, opt.first_mem);
-    print("PASSED TEST")
 
 
 def main(args):
     opt = Options()
     Options.getOptions(opt, args)
+    opt.first_mem = 0
 
     try:
         runTest(opt)
