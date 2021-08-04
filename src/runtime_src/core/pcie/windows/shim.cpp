@@ -981,6 +981,7 @@ done:
     if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
+    // sizeof(mem_topology) already contains the size of one mem_data.
     DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
@@ -1067,6 +1068,7 @@ done:
       if (!status)
         throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology) failed");
 
+      // sizeof(mem_topology) already contains the size of one mem_data.
       DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
       if (size_ret)
@@ -1215,6 +1217,7 @@ done:
           return;
       }
 
+      // sizeof(debug_ip_layout) already contains the size of one debug_ip_data.
       DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
 
       if (size_ret)
