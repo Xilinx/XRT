@@ -24,6 +24,7 @@
 #include "native_profile.h"
 #include "device_int.h"
 #include "error_int.h"
+#include "core/include/xclerr_int.h"
 #include "core/common/error.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -205,6 +206,27 @@ class error_impl
 public:
   error_impl(const xrt_core::device* device, xrtErrorClass ecl)
   {
+    //Code for new format; Binary array of error structs in sysfs
+    try {
+      std::vector<char> buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
+      if (buf.empty())
+        return;
+      const xcl_errors *errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
+      if (errors_buf->num_err <= 0)
+        return;
+
+      for (int i = 0; i < errors_buf->num_err; i++) {
+        if (XRT_ERROR_CLASS(errors_buf->errors[i].err_code) != ecl)
+          continue;
+        m_errcode = XRT_ERROR_NUM(errors_buf->errors[i].err_code);
+        m_timestamp = errors_buf->errors[i].ts;
+      }
+      return;
+    } catch (const xrt_core::query::no_such_key&) {
+      // Ignoring for now. Check below for edge if not available
+      // query table of zocl doesn't have xocl_errors key
+    }
+    //Below code will be removed after zocl changes for new format
     auto errors = xrt_core::device_query<xrt_core::query::error>(device);
     for (auto& line : errors) {
       auto ect = xrt_core::query::error::to_value(line);
