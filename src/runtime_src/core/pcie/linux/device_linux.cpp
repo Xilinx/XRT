@@ -521,6 +521,10 @@ initialize_query_table()
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
+  emplace_sysfs_get<query::heartbeat_count>                    ("xmc", "xmc_heartbeat_count");
+  emplace_sysfs_get<query::heartbeat_err_code>                 ("xmc", "xmc_heartbeat_err_code");
+  emplace_sysfs_get<query::heartbeat_err_time>                 ("xmc", "xmc_heartbeat_err_time");
+  emplace_sysfs_get<query::heartbeat_stall>                    ("xmc", "xmc_heartbeat_stall");
   emplace_func0_request<query::xmc_qspi_status,                qspi_status>();
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 

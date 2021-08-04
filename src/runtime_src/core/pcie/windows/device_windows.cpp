@@ -409,6 +409,14 @@ struct sensor
       return query::v0v9_int_vcc_vcu_millivolts::result_type(info.vccint_vcu_0v9);
     case key_type::int_vcc_temp:
       return query::int_vcc_temp::result_type(info.vccint_temp);
+    case key_type::heartbeat_count:
+      return query::heartbeat_count::result_type(info.heartbeat_count);
+    case key_type::heartbeat_err_code:
+      return query::heartbeat_err_code::result_type(info.heartbeat_err_code);
+    case key_type::heartbeat_err_time:
+      return query::heartbeat_err_time::result_type(info.heartbeat_err_time);
+    case key_type::heartbeat_stall:
+      return query::heartbeat_stall::result_type(info.heartbeat_stall);
     default:
       unexpected_query_request_key(key);
     }
@@ -1240,6 +1248,10 @@ initialize_query_table()
   emplace_function0_getter<query::vcc_aux_pmc_millivolts,    sensor>();
   emplace_function0_getter<query::vcc_ram_millivolts,        sensor>();
   emplace_function0_getter<query::v0v9_int_vcc_vcu_millivolts, sensor>();
+  emplace_function0_getter<query::heartbeat_count,           sensor>();
+  emplace_function0_getter<query::heartbeat_err_time,        sensor>();
+  emplace_function0_getter<query::heartbeat_err_code,        sensor>();
+  emplace_function0_getter<query::heartbeat_stall,           sensor>();
   emplace_function0_getter<query::xmc_status,                xmc>();
   emplace_function0_getter<query::xmc_qspi_status,           xmc>();
   emplace_function0_getter<query::xmc_serial_num,            board>();
