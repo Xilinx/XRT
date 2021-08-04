@@ -1127,6 +1127,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		vfree(xdev->ulp_blob);
 	mutex_destroy(&xdev->dev_lock);
 
+	if (xdev->core.bars)
+		kfree(xdev->core.bars);
+
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 }

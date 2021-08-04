@@ -1461,6 +1461,87 @@ static void xocl_pack_subdev(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
 			i * XOCL_SUBDEV_RES_NAME_LEN;
 }
 
+static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
+{
+        struct xocl_dev_core    *core = XDEV(xdev_hdl);
+        int offset;
+        const u32* bar;
+        const u32* pfn;
+        const u64* base_addr;
+        const u64* range;
+        u32 pf, bar_idx;
+        int ret = 0, count = 0;
+
+#if PF == MGMTPF
+        pf = 0;
+#else
+        pf = 1;
+#endif
+
+        if (!core->fdt_blob) {
+                xocl_xdev_err(xdev_hdl, "fdt blob is empty");
+                return -EINVAL;
+        }
+
+        offset = fdt_path_offset(core->fdt_blob, "/pcie/bars");
+        if (offset < 0) {
+                xocl_xdev_dbg(xdev_hdl, "pcie bars nodes are not present in firmware data");
+                return -EINVAL;
+        }
+
+        core->bars = kmalloc(sizeof(struct pci_bars) * NUM_PCI_BARS, GFP_KERNEL);
+        if (!core->bars) {
+                ret = -ENOMEM;
+                goto done;
+        }
+        memset(core->bars, 0, sizeof(struct pci_bars) * NUM_PCI_BARS);
+
+        for (offset = fdt_first_subnode(core->fdt_blob, offset);
+                offset >= 0;
+                offset = fdt_next_subnode(core->fdt_blob, offset)) {
+
+                pfn = fdt_getprop(core->fdt_blob, offset,"physical_function", NULL);
+                if (!pfn) {
+                        xocl_xdev_err(xdev_hdl, "failed to get physical_function of pci node");
+                        ret = -EINVAL;
+			goto done;
+                }
+                if (be32_to_cpu(*pfn) != pf)
+                        continue;
+
+                bar = fdt_getprop(core->fdt_blob, offset,"bar", NULL);
+                if (!bar) {
+                        xocl_xdev_err(xdev_hdl, "failed to get bar idx");
+                        ret = -EINVAL;
+			goto done;
+                }
+                base_addr = fdt_getprop(core->fdt_blob, offset,"base_address", NULL);
+                if (!base_addr) {
+                        xocl_xdev_err(xdev_hdl, "failed to get base_address of pci node");
+                        ret = -EINVAL;
+			goto done;
+                }
+                range = fdt_getprop(core->fdt_blob, offset,"range", NULL);
+                if (!range) {
+                        xocl_xdev_err(xdev_hdl, "failed to get range of pci node");
+                        ret = -EINVAL;
+			goto done;
+                }
+                bar_idx = be32_to_cpu(*bar);
+                core->bars[bar_idx].base_addr = be64_to_cpu(*base_addr);
+                core->bars[bar_idx].range = be64_to_cpu(*range);
+                count++;
+        }
+
+done:
+	if(ret || count == 0) {
+		kfree(core->bars);
+		core->bars = NULL;
+		return ret;
+	}
+        return 0;
+}
+
 int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		struct xocl_subdev **subdevs)
 {
@@ -1692,6 +1773,9 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	if (core->fdt_blob)
 		vfree(core->fdt_blob);
 
+	if (core->bars)
+		kfree(core->bars);
+
 	if (core->dyn_subdev_store) {
 		for (i = 0; i < core->dyn_subdev_num; i++)
 			xocl_subdev_dyn_free(core->dyn_subdev_store + i);
@@ -1701,6 +1785,10 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 
 	core->fdt_blob = output_blob;
 	core->fdt_blob_sz = fdt_totalsize(output_blob);
+
+	/* get pci bar mappings of CPM */
+	xocl_fdt_get_pci_addr(core);
+
 	core->dyn_subdev_store = subdevs;
 
 	for (i = 0; i < core->dyn_subdev_num; i++)

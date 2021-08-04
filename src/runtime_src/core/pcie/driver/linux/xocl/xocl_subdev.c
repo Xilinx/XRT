@@ -418,6 +418,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	int retval = 0, i, bar_idx;
 	struct resource *res = NULL;
 	resource_size_t iostart;
+	u64 bar_start;
 
 	if (subdev->info.override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -462,6 +463,18 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 					&res[i], subdev->info.level);
 			if (retval && retval != -ENODEV)
 				goto error;
+
+			/* If any addressable end point is of 64 bit xrt has
+			 * to pass only offset.
+			 * Get the offset by comparing with bar mappings of CPM.
+			 */
+			if(core->bars) {
+				bar_start = core->bars[bar_idx].base_addr;
+				if ((bar_start >> 32) == (res[i].start >> 32))
+					res[i].start ^= bar_start;
+				if ((bar_start >> 32) == (res[i].end >> 32))
+					res[i].end ^= bar_start;
+			}
 			iostart = pci_resource_start(core->pdev, bar_idx);
 			res[i].start += iostart;
 			if (!res[i].end) {

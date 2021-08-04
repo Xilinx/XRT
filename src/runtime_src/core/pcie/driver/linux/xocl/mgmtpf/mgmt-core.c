@@ -1429,6 +1429,8 @@ static void xclmgmt_remove(struct pci_dev *pdev)
 		vfree(lro->userpf_blob);
 	if (lro->core.blp_blob)
 		vfree(lro->core.blp_blob);
+	if (lro->core.bars)
+		kfree(lro->core.bars);
 
 	if (lro->preload_xclbin)
 		vfree(lro->preload_xclbin);
