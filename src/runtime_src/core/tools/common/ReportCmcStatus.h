@@ -14,15 +14,15 @@
  * under the License.
  */
 
-#ifndef __ReportXmcStatus_h_
-#define __ReportXmcStatus_h_
+#ifndef __ReportCmcStatus_h_
+#define __ReportCmcStatus_h_
 
 // Please keep external include file dependencies to a minimum
 #include "Report.h"
 
-class ReportXmcStatus : public Report {
+class ReportCmcStatus : public Report {
  public:
-  ReportXmcStatus() : Report("xmc", "XMC status of the device", true /*deviceRequired*/) { /*empty*/ };
+  ReportCmcStatus() : Report("cmc", "CMC status of the device", true /*deviceRequired*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:

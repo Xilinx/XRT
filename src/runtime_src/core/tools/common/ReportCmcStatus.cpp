@@ -16,11 +16,11 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "ReportXmcStatus.h"
+#include "ReportCmcStatus.h"
 #include "core/common/query_requests.h"
 
 void
-ReportXmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
+ReportCmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                               boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
@@ -29,37 +29,37 @@ ReportXmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void
-ReportXmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
+ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
   try {
-    pt.put("Description", "XMC status");
+    pt.put("Description", "CMC status");
     pt.put("heartbeat_err_time", xrt_core::device_query<xrt_core::query::heartbeat_err_time>(_pDevice));
     pt.put("heartbeat_count", xrt_core::device_query<xrt_core::query::heartbeat_count>(_pDevice));
     pt.put("heartbeat_err_code", xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice));
     pt.put("heartbeat_stall", xrt_core::device_query<xrt_core::query::heartbeat_stall>(_pDevice));
   } catch(...) {}
   // There can only be 1 root node
-  _pt.add_child("xmc", pt);
+  _pt.add_child("cmc", pt);
 }
 
 void
-ReportXmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt,
                             const std::vector<std::string>& /*_elementsFilter*/,
                             std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
 
-  _output << "XMC status\n";
-  auto& xmc = _pt.get_child("xmc");
-  if(xmc.empty()) {
+  _output << "CMC status\n";
+  auto& cmc = _pt.get_child("cmc");
+  if(cmc.empty()) {
     _output << "  Information unavailable" << std::endl;
     return;
   }
-  _output << boost::format("  %-22s : %s\n") % "heartbeat_stall" % (xmc.get<bool>("heartbeat_stall") ? "true" : "false");
-  _output << boost::format("  %-22s : %u\n") % "heartbeat_count" % xmc.get<uint32_t>("heartbeat_count");
-  _output << boost::format("  %-22s : 0x%x\n") % "heartbeat_err_code" % xmc.get<uint32_t>("heartbeat_err_code");
-  _output << boost::format("  %-22s : %llu\n") % "heartbeat_err_time" % xmc.get<uint64_t>("heartbeat_err_time");
+  _output << boost::format("  %-22s : %s\n") % "heartbeat_stall" % (cmc.get<bool>("heartbeat_stall") ? "true" : "false");
+  _output << boost::format("  %-22s : %u\n") % "heartbeat_count" % cmc.get<uint32_t>("heartbeat_count");
+  _output << boost::format("  %-22s : 0x%x\n") % "heartbeat_err_code" % cmc.get<uint32_t>("heartbeat_err_code");
+  _output << boost::format("  %-22s : %llu\n") % "heartbeat_err_time" % cmc.get<uint64_t>("heartbeat_err_time");
 }

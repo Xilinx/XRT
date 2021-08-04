@@ -53,7 +53,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportPcieInfo.h"
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
-#include "tools/common/ReportXmcStatus.h"
+#include "tools/common/ReportCmcStatus.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
@@ -75,7 +75,7 @@ namespace po = boost::program_options;
     std::make_shared<ReportFirewall>(),
     std::make_shared<ReportThermal>(),
     std::make_shared<ReportQspiStatus>(),
-    std::make_shared<ReportXmcStatus>(),
+    std::make_shared<ReportCmcStatus>(),
   #endif
   };
 
