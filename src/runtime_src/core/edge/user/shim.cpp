@@ -116,15 +116,16 @@ shim(unsigned index)
   mDev = zynq_device::get_dev();
 }
 
-#ifndef __HWEM__
 shim::
 ~shim()
 {
   xclLog(XRT_INFO, "%s", __func__);
 
+#ifndef __HWEM__
 //  xdphal::finish_flush_device(handle) ;
   xdp::aie::finish_flush_device(this) ;
   xdp::aie::ctr::end_poll(this);
+#endif
 
   // The BO cache unmaps and releases all execbo, but this must
   // be done before the device (mKernelFD) is closed.
@@ -139,7 +140,6 @@ shim::
       (void) munmap(p, mCuMapSize);
   }
 }
-#endif
 
 // This function is for internal mapping CU and debug IP only.
 // For the future, this could be used to support any address aperture.
@@ -476,7 +476,6 @@ xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, size_t size,
 }
 
 
-#ifndef __HWEM__
 int
 shim::
 xclLoadXclBin(const xclBin *buffer)
@@ -490,7 +489,6 @@ xclLoadXclBin(const xclBin *buffer)
   xclLog(XRT_INFO, "%s: return %d", __func__, ret);
   return ret;
 }
-#endif
 
 int
 shim::
@@ -510,6 +508,7 @@ xclLoadAxlf(const axlf *buffer)
    * If platform is a PR-platform, but v++ generated a full bitstream (using
    * some v++ param).  User need to add enable_pr=false in xrt.ini.
    */
+#ifndef __HWEM__
   auto is_pr_platform = (buffer->m_header.m_mode == XCLBIN_PR ) ? true : false;
   auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
   auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
@@ -526,6 +525,7 @@ xclLoadAxlf(const axlf *buffer)
    */
   else if (is_flat_platform && is_flat_enabled)
     flags = DRM_ZOCL_PLATFORM_FLAT;
+#endif
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -1585,11 +1585,12 @@ setAIEAccessMode(xrt::aie::access_mode am)
 
 } // end namespace ZYNQ
 
-#ifndef __HWEM__
 unsigned
 xclProbe()
 {
+#ifndef __HWEM__
   PROBE_CB;
+#endif
 
   int fd = open("/dev/dri/renderD128", O_RDWR);
   if (fd < 0) {
@@ -1617,7 +1618,6 @@ xclProbe()
   close(fd);
   return (result == 0) ? 1 : 0;
 }
-#endif
 
 xclDeviceHandle
 xclOpen(unsigned deviceIndex, const char*, xclVerbosityLevel)

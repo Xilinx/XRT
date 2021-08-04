@@ -27,10 +27,14 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/sensor.h"
+#include "core/common/info_memory.h"
+#include "core/common/info_platform.h"
 #include "core/common/query_requests.h"
 
 #include "xclbin_int.h" // Non public xclbin APIs
 #include "native_profile.h"
+
+#include <boost/property_tree/json_parser.hpp>
 
 #include <map>
 #include <vector>
@@ -127,7 +131,7 @@ to_string(const xrt_core::device* device)
 }
 
 static std::string
-json_str(boost::property_tree::ptree pt) 
+json_str(const boost::property_tree::ptree& pt) 
 {
   std::stringstream ss;
   boost::property_tree::write_json(ss, pt);
@@ -284,14 +288,24 @@ get_info(info::device param) const
       (handle.get(), [](const auto& val) { return bool(val); });
   case info::device::offline :
     return query::raw<info::device::offline, xrt_core::query::is_offline>(handle.get());
-  case info::device::power_rails :            // std::string
-    return query::json_str(xrt_core::sensor::read_power_rails(handle.get()));
-  case info::device::thermals :               // std::string
+  case info::device::electrical :            // std::string
+    return query::json_str(xrt_core::sensor::read_electrical(handle.get()));
+  case info::device::thermal :               // std::string
     return query::json_str(xrt_core::sensor::read_thermals(handle.get()));
-  case info::device::power_consumption :      // std::string
-    return query::json_str(xrt_core::sensor::read_power_consumption(handle.get()));
-  case info::device::fans :                   // std::string
-    return query::json_str(xrt_core::sensor::read_fans(handle.get()));
+  case info::device::mechanical :            // std::string
+    return query::json_str(xrt_core::sensor::read_mechanical(handle.get()));
+  case info::device::memory :                // std::string
+    return query::json_str(xrt_core::memory::memory_topology(handle.get()));
+  case info::device::platform :              // std::string
+    return query::json_str(xrt_core::platform::platform_info(handle.get()));
+  case info::device::pcie_info :                  // std::string
+    return query::json_str(xrt_core::platform::pcie_info(handle.get()));
+  case info::device::dynamic_regions :         // std::string
+    return query::json_str(xrt_core::memory::xclbin_info(handle.get()));
+  case info::device::host :                   // std::string
+    boost::property_tree::ptree pt;
+    xrt_core::get_xrt_build_info(pt);
+    return query::json_str(pt);
   }
 
   throw std::runtime_error("internal error: unreachable");

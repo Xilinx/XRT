@@ -228,6 +228,68 @@ namespace xdp {
     return false ;
   }
 
+  double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
+  {
+    double defaultClockSpeed = 300.0 ;
+
+    // First, check the clock frequency topology
+    const clock_freq_topology* clockSection =
+      device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
+
+    if(clockSection) {
+      for(int32_t i = 0; i < clockSection->m_count; i++) {
+        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
+        if(clk->m_type != CT_DATA) {
+          continue;
+        }
+        return clk->m_freq_Mhz ;
+      }
+    }
+
+    if (isEdge()) {
+      // On Edge, we can try to get the "DATA_CLK" from the embedded metadata
+      std::pair<const char*, size_t> metadataSection =
+        device->get_axlf_section(EMBEDDED_METADATA) ;
+      const char* rawXml = metadataSection.first ;
+      size_t xmlSize = metadataSection.second ;
+      if (rawXml == nullptr || xmlSize == 0)
+        return defaultClockSpeed ;
+
+      // Convert the raw character stream into a boost::property_tree
+      std::string xmlFile ;
+      xmlFile.assign(rawXml, xmlSize) ;
+      std::stringstream xmlStream ;
+      xmlStream << xmlFile ;
+      boost::property_tree::ptree xmlProject ;
+      boost::property_tree::read_xml(xmlStream, xmlProject) ;
+
+      // Dig in and find all of the kernel clocks
+      for (auto& clock : xmlProject.get_child("project.platform.device.core.kernelClocks")) {
+        if (clock.first != "clock")
+          continue ;
+
+        try {
+          std::string port = clock.second.get<std::string>("<xmlattr>.port") ;
+          if (port != "DATA_CLK")
+            continue ;
+          std::string freq = clock.second.get<std::string>("<xmlattr>.frequency") ;
+          std::string freqNumeral = freq.substr(0, freq.find('M')) ;
+          double frequency = defaultClockSpeed ;
+          std::stringstream convert ;
+          convert << freqNumeral ;
+          convert >> frequency ;
+          return frequency ;
+        }
+        catch (std::exception& /*e*/) {
+          continue ;
+        }
+      }
+    }
+
+    // We didn't find it in any section, so just assume 300 MHz for now
+    return defaultClockSpeed ;
+  }
+
   // This function is called whenever a device is loaded with an 
   //  xclbin.  It has to clear out any previous device information and
   //  reload our information.
@@ -267,20 +329,9 @@ namespace xdp {
     
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
+    currentXclbin->clockRateMHz = findClockRate(device) ;
 
-    const clock_freq_topology* clockSection = device->get_axlf_section<const clock_freq_topology*>(CLOCK_FREQ_TOPOLOGY);
 
-    if(clockSection) {
-      for(int32_t i = 0; i < clockSection->m_count; i++) {
-        const struct clock_freq* clk = &(clockSection->m_clock_freq[i]);
-        if(clk->m_type != CT_DATA) {
-          continue;
-        }
-        currentXclbin->clockRateMHz = clk->m_freq_Mhz ;
-      }
-    } else {
-      currentXclbin->clockRateMHz = 300;
-    }
     /* Configure AMs if context monitoring is supported
      * else disable alll AMs on this device
      */
@@ -491,13 +542,7 @@ namespace xdp {
   {
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    if (index < MIN_TRACE_ID_AM) {
-      std::stringstream msg;
-      msg << "AM with incorrect index: " << index ;
-      xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
-                              msg.str());
-      index = MIN_TRACE_ID_AM ;
-    }
+    // MIN_TRACE_ID_AM is 0, so the index is always >=
     uint64_t slotId = (index - MIN_TRACE_ID_AM) / 16;
 
     for (auto cu : devInfo->loadedXclbins.back()->cus) {
