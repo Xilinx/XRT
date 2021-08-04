@@ -521,23 +521,34 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
-        char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
-        if(xilinxVivadoEnvvar)
+        
+        char *xilinxHLSEnvVar = getenv("XILINX_HLS");
+        char *xilinxVivadoEnvVar = getenv("XILINX_VIVADO");
+
+        if (xilinxHLSEnvVar && xilinxVivadoEnvVar)
         {
-          std::string sHlsBinDir = xilinxVivadoEnvvar;
+          std::string sHlsBinDir = xilinxHLSEnvVar;
+          std::string sVivadoBinDir = xilinxVivadoEnvVar;
+
           std::string sLdLibs("");
           std::string DS("/");
           std::string sPlatform("lnx64");
+
           char* sLdLib = getenv("LD_LIBRARY_PATH");
           if (sLdLib)
             sLdLibs = std::string(sLdLib) + ":";
+
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fft_v9_1" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fir_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
-          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
+          sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS;
+
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
 
