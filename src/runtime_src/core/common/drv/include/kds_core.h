@@ -96,6 +96,7 @@ struct kds_ert {
 	void (* submit)(struct kds_ert *ert, struct kds_command *xcmd);
 	void (* abort)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 	bool (* abort_done)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
+	bool (* abort_sync)(struct kds_ert *ert, struct kds_client *client, int cu_idx);
 };
 
 /* Fast adapter memory info */
