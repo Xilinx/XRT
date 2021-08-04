@@ -989,7 +989,7 @@ done:
       if (!status)
         throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology) failed");
 
-      DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
+      DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
       if (size_ret)
         *size_ret = mem_topology_size;
@@ -1030,7 +1030,7 @@ done:
       if (raw)
         *size_ret = mem_info.m_count;
       else
-        *size_ret = sizeof(struct mem_topology) + (mem_info.m_count) * sizeof(struct mem_data);
+        *size_ret = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
       return;  // size_ret has required size
     }
