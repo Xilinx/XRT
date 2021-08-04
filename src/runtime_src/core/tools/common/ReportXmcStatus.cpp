@@ -16,11 +16,11 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "ReportXmc.h"
+#include "ReportXmcStatus.h"
 #include "core/common/query_requests.h"
 
 void
-ReportXmc::getPropertyTreeInternal( const xrt_core::device * _pDevice,
+ReportXmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                               boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
@@ -29,7 +29,7 @@ ReportXmc::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 }
 
 void
-ReportXmc::getPropertyTree20202( const xrt_core::device * _pDevice,
+ReportXmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   boost::property_tree::ptree pt;
@@ -45,7 +45,7 @@ ReportXmc::getPropertyTree20202( const xrt_core::device * _pDevice,
 }
 
 void
-ReportXmc::writeReport( const xrt_core::device* /*_pDevice*/,
+ReportXmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt,
                             const std::vector<std::string>& /*_elementsFilter*/,
                             std::ostream & _output) const
