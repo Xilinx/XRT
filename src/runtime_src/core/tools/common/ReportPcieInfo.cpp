@@ -17,11 +17,10 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportPcieInfo.h"
-#include "XBUtilities.h"
-#include "core/common/query_requests.h"
 #include "core/common/device.h"
-namespace qr = xrt_core::query;
 
+// 3rd Party Library - Include Files
+#include <boost/property_tree/json_parser.hpp>
 
 void
 ReportPcieInfo::getPropertyTreeInternal( const xrt_core::device * dev, 
@@ -36,26 +35,14 @@ void
 ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev, 
                                            boost::property_tree::ptree &pt) const
 {
-  boost::property_tree::ptree ptree;
-  try {
-    ptree.add("vendor", qr::pcie_vendor::to_string(xrt_core::device_query<qr::pcie_vendor>(dev)));
-    ptree.add("device", qr::pcie_device::to_string(xrt_core::device_query<qr::pcie_device>(dev)));
-    ptree.add("sub_device", qr::pcie_subsystem_id::to_string(xrt_core::device_query<qr::pcie_subsystem_id>(dev)));
-    ptree.add("sub_vendor", qr::pcie_subsystem_vendor::to_string(xrt_core::device_query<qr::pcie_subsystem_vendor>(dev)));
-    ptree.add("link_speed_gbit_sec", xrt_core::device_query<qr::pcie_link_speed_max>(dev));
-    ptree.add("express_lane_width_count", xrt_core::device_query<qr::pcie_express_lane_width>(dev));
-
-    //this sysfs node might not be present for nodma, but it is safe to ignore.
-    try {
-      ptree.add("dma_thread_count", xrt_core::device_query<qr::dma_threads_raw>(dev).size());
-    } catch(...) {}
-    ptree.add("cpu_affinity", xrt_core::device_query<qr::cpu_affinity>(dev));
-    ptree.add("max_shared_host_mem_aperture_bytes", xrt_core::device_query<qr::max_shared_host_mem_aperture_bytes>(dev));
-    ptree.add("shared_host_mem_size_bytes", xrt_core::device_query<qr::shared_host_mem>(dev));
-  } catch(...) {}
+  xrt::device device(dev->get_device_id());
+  boost::property_tree::ptree pt_pcie_info;
+  std::stringstream ss;
+  ss << device.get_info<xrt::info::device::pcie_info>();
+  boost::property_tree::read_json(ss, pt_pcie_info);
   
   // There can only be 1 root node
-    pt.add_child("pcie_info", ptree);
+    pt.add_child("pcie_info", pt_pcie_info);
 }
 
 void 

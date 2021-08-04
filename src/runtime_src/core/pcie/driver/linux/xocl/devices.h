@@ -93,7 +93,7 @@ enum {
 struct xocl_subdev_info {
 	uint32_t		id;
 	const char		*name;
-	struct resource	*res;
+	struct resource		*res;
 	int			num_res;
 	void			*priv_data;
 	int			data_len;
@@ -267,6 +267,8 @@ enum {
 #define	XOCL_M2M		"m2m"
 #define	XOCL_PCIE_FIREWALL	"pcie_firewall"
 #define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
+#define	XOCL_CFG_GPIO		"ert_cfg_gpio"
+#define	XOCL_COMMAND_QUEUE	"command_queue"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -320,6 +322,8 @@ enum subdev_id {
 	XOCL_SUBDEV_ERT_USER,
 	XOCL_SUBDEV_ERT_VERSAL,
 	XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,
+	XOCL_SUBDEV_CFG_GPIO,
+	XOCL_SUBDEV_COMMAND_QUEUE,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1744,7 +1748,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_ERT_USER					\
+#define XOCL_RES_COMMAND_QUEUE				\
 		((struct resource []) {			\
 			{				\
 			.start	= ERT_CQ_BASE_ADDR,	\
@@ -1754,14 +1758,26 @@ struct xocl_subdev_map {
 			},				\
 		})
 
+#define	XOCL_DEVINFO_COMMAND_QUEUE			\
+	{						\
+		XOCL_SUBDEV_COMMAND_QUEUE,		\
+		XOCL_COMMAND_QUEUE,			\
+		XOCL_RES_COMMAND_QUEUE,			\
+		ARRAY_SIZE(XOCL_RES_COMMAND_QUEUE),	\
+		NULL,					\
+		0,					\
+		.override_idx = -1,			\
+	}	
+
 #define	XOCL_DEVINFO_ERT_USER				\
 	{						\
 		XOCL_SUBDEV_ERT_USER,			\
 		XOCL_ERT_USER,				\
-		XOCL_RES_ERT_USER,			\
-		ARRAY_SIZE(XOCL_RES_ERT_USER),		\
+		NULL,					\
+		0,					\
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
+		.level = XOCL_SUBDEV_LEVEL_BLD,		\
 		.override_idx = -1,			\
 	}
 
@@ -1996,7 +2012,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_COMMAND_QUEUE,			\
 		})
 
 #define	USER_RES_DSA52_U2					\
@@ -2011,7 +2027,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_ERT_USER,				\
+			XOCL_DEVINFO_COMMAND_QUEUE,			\
 		})
 
 #define USER_RES_SMARTN							\

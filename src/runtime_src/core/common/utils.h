@@ -24,6 +24,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
+#include <vector>
 
 /* HLS CU bit status */
 #define CU_AP_START	(0x1 << 0)
@@ -96,6 +97,10 @@ bdf2index(const std::string& bdf, bool _inUserDomain);
 XRT_CORE_COMMON_EXPORT
 uint64_t
 issue_id();
+
+XRT_CORE_COMMON_EXPORT
+std::string 
+parse_clock_id(const std::string& id);
 
 }} // utils, xrt_core
 

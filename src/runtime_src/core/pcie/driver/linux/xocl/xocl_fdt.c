@@ -425,11 +425,23 @@ static struct xocl_subdev_map subdev_map[] = {
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
-		.id = XOCL_SUBDEV_ERT_USER,
-		.dev_name = XOCL_ERT_USER,
+		.id = XOCL_SUBDEV_CFG_GPIO,
+		.dev_name = XOCL_CFG_GPIO,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_CFG_GPIO},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+ 	},
+	{
+		.id = XOCL_SUBDEV_COMMAND_QUEUE,
+		.dev_name = XOCL_COMMAND_QUEUE,
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_CQ},
-			{.res_name = NODE_ERT_CFG_GPIO},
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_LEGACY},
 			{NULL},
 		},

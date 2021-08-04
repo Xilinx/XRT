@@ -1,8 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
- * Author(s): Ch Vamshi Krishna
- *          : Hemant Kashyap
- * ZNYQ HAL sw_emu Driver layered on top of ZYNQ hardware driver
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,9 +14,22 @@
  * under the License.
  */
 
-namespace ZYNQ {
-//empty file. Remove this file in next PR
-}
-//end namespace ZYNQ
+#ifndef COMMON_INFO_PLATFORM_H
+#define COMMON_INFO_PLATFORM_H
 
+// Local - Include Files
+#include "device.h"
 
+namespace xrt_core { namespace platform {
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+platform_info(const xrt_core::device* device);
+
+XRT_CORE_COMMON_EXPORT
+boost::property_tree::ptree
+pcie_info(const xrt_core::device* device);
+
+}} // platform, xrt
+
+#endif

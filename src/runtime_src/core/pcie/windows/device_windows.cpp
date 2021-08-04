@@ -39,25 +39,24 @@ namespace query = xrt_core::query;
 using key_type = xrt_core::query::key_type;
 using qtype = std::underlying_type<query::key_type>::type;
 
-void
+xrt_core::query::no_such_key
 mgmtpf_not_supported_error(key_type key)
 {
-  throw xrt_core::query::no_such_key
+  return xrt_core::query::no_such_key
     (key, "query request (" + std::to_string(static_cast<qtype>(key)) + ") not supported for mgmtpf on windows");
 }
 
-void
+xrt_core::query::no_such_key
 userpf_not_supported_error(key_type key)
 {
-  throw xrt_core::query::no_such_key
+  return xrt_core::query::no_such_key
     (key, "query request (" + std::to_string(static_cast<qtype>(key)) + ") not supported for userpf on windows");
 }
 
-
-void
+xrt_core::query::no_such_key
 unexpected_query_request_key(key_type key)
 {
-  throw xrt_core::query::no_such_key
+  return xrt_core::query::no_such_key
     (key, "unexpected query request ( " + std::to_string(static_cast<qtype>(key)) + ")");
 }
 
@@ -130,7 +129,7 @@ struct firewall
     case key_type::firewall_time_sec:
       return query::firewall_time_sec::result_type(info.err_detected_time);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
     // No query for max_level, curr_status and curr_level
   }
@@ -144,7 +143,7 @@ struct firewall
   static result_type
   mgmt(const xrt_core::device*, key_type key)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -188,7 +187,7 @@ struct mig
     case key_type::mig_ecc_ue_ffa:
       return query::mig_ecc_ue_ffa::result_type(info.ecc_ue_ffa);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
     // No query for mem_type and mem_idx
   }
@@ -202,7 +201,7 @@ struct mig
   static result_type
   mgmt(const xrt_core::device*, key_type key, query::request::modifier, const std::string&)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -254,7 +253,7 @@ struct board
     case key_type::mac_addr_list:
       return std::vector<std::string>{ std::string(info.mac_addr0), std::string(info.mac_addr1), std::string(info.mac_addr2), std::string(info.mac_addr3) };
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
     // No query for mac_addr0, mac_addr1, mac_addr2, mac_addr3, revision, bd_name and config_mode
   }
@@ -418,7 +417,7 @@ struct sensor
     case key_type::heartbeat_stall:
       return query::heartbeat_stall::result_type(info.heartbeat_stall);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 
@@ -431,7 +430,7 @@ struct sensor
   static result_type
   mgmt(const xrt_core::device*, key_type key)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -479,7 +478,7 @@ struct icap
       return query::xclbin_uuid::result_type(uuid_str);
     }
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
     // No query for freq_cntr_0, freq_cntr_1, freq_cntr_2, freq_cntr_3 and uuid
   }
@@ -493,7 +492,7 @@ struct icap
   static result_type
   mgmt(const xrt_core::device*, key_type key)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -524,13 +523,13 @@ struct xclbin
       return data;
     }
 
-    unexpected_query_request_key(key);
+    throw unexpected_query_request_key(key);
   }
 
   static result_type
   mgmt(const xrt_core::device*, key_type key)
   {
-    mgmtpf_not_supported_error(key);
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -629,7 +628,7 @@ struct info
     case key_type::pcie_express_lane_width:
       return static_cast<query::pcie_express_lane_width::result_type>(info.MaximumLinkWidth);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 
@@ -663,7 +662,7 @@ struct info
     case key_type::pcie_subsystem_id:
       return static_cast<query::pcie_subsystem_id::result_type>(info.pcie_info.subsystem_device);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 };
@@ -675,7 +674,7 @@ struct xmc
   static result_type
   user(const xrt_core::device*, key_type key)
   {
-    userpf_not_supported_error(key);
+    throw userpf_not_supported_error(key);
   }
 
   static result_type
@@ -706,7 +705,7 @@ struct xmc
     case key_type::xmc_qspi_status:
       return std::pair<std::string, std::string>("N/A", "N/A");
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 };
@@ -718,7 +717,7 @@ struct devinfo
   static result_type
   user(const xrt_core::device*, key_type key)
   {
-    userpf_not_supported_error(key);
+    throw userpf_not_supported_error(key);
   }
 
   static result_type
@@ -759,7 +758,7 @@ struct devinfo
       return (shell.find("GOLDEN") != std::string::npos) ? false : true;
     }
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 };
@@ -787,7 +786,7 @@ struct uuid
   static result_type
   user(const xrt_core::device*, key_type key)
   {
-    userpf_not_supported_error(key);
+    throw userpf_not_supported_error(key);
   }
 
   static result_type
@@ -815,7 +814,7 @@ struct uuid
     case key_type::logic_uuids:
       return std::vector<std::string>{ std::string(info.blp_logic_uuid), std::string(info.plp_logic_uuid) };
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 };
@@ -892,18 +891,18 @@ struct rom
       return static_cast<query::rom_ddr_bank_count_max::result_type>(hdr.DDRChannelCount);
     case key_type::rom_fpga_name:
       return std::string(reinterpret_cast<const char*>(hdr.FPGAPartName));
+    case key_type::rom_time_since_epoch:
+      return static_cast<query::rom_time_since_epoch::result_type>(hdr.TimeSinceEpoch);
     }
 
     if (device->get_user_handle())
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
 
     switch (key) {
     case key_type::rom_uuid:
       return std::string(reinterpret_cast<const char*>(hdr.uuid),16);
-    case key_type::rom_time_since_epoch:
-      return static_cast<query::rom_time_since_epoch::result_type>(hdr.TimeSinceEpoch);
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 
@@ -917,6 +916,55 @@ struct rom
   mgmt(const xrt_core::device* device, key_type key)
   {
     return get_info(device,key);
+  }
+};
+
+struct kds_cu_info
+{
+  using result_type = query::kds_cu_info::result_type;
+
+  static XOCL_KDS_CU_INFORMATION*
+    init_kds_custat(const xrt_core::device* dev)
+  {
+    if (auto uhdl = dev->get_user_handle()) {
+      int cu_count; DWORD output_sz;
+      userpf::get_kds_custat(uhdl, nullptr, 0, &cu_count);
+      output_sz = sizeof(XOCL_KDS_CU_INFORMATION) + cu_count * sizeof(XOCL_KDS_CU);
+      std::vector<char> hdr(output_sz);
+      userpf::get_kds_custat(uhdl, hdr.data(), output_sz, nullptr);
+      return reinterpret_cast<XOCL_KDS_CU_INFORMATION*>(hdr.data());
+    }
+    else
+      throw std::runtime_error("No userpf device handle");
+  }
+
+  static result_type
+  get_info(const xrt_core::device* device, key_type key)
+  {
+    static std::map<const xrt_core::device*, XOCL_KDS_CU_INFORMATION*> hdrmap;
+    static std::mutex mutex;
+    std::lock_guard<std::mutex> lk(mutex);
+    auto it = hdrmap.find(device);
+    if (it == hdrmap.end())
+      it = hdrmap.emplace(device, init_kds_custat(device)).first;
+
+    auto& stats = (*it).second;
+    result_type cuStats;
+    for (unsigned int i = 0; i < stats->CuCount; i++)
+      cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+    return cuStats;
+  }
+
+  static result_type
+  user(const xrt_core::device* device, key_type key)
+  {
+    return get_info(device, key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device* device, key_type key)
+  {
+    throw mgmtpf_not_supported_error(key);
   }
 };
 
@@ -1003,7 +1051,7 @@ struct mailbox
       return vec;
     }
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 
@@ -1040,7 +1088,7 @@ struct mailbox
       return std::vector<std::string>(vec);
     }
     default:
-      unexpected_query_request_key(key);
+      throw unexpected_query_request_key(key);
     }
   }
 }; //end of struct mailbox
@@ -1281,6 +1329,7 @@ initialize_query_table()
   emplace_function0_getput<query::data_retention,            data_retention>();
   emplace_function0_getter<query::is_recovery,               recovery>();
   emplace_function0_getter<query::mailbox_metrics,           mailbox>();
+  emplace_function0_getter<query::kds_cu_info,               kds_cu_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

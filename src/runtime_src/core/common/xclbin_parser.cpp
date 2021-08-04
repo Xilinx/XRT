@@ -28,6 +28,7 @@
 #include <boost/range/iterator_range.hpp>
 #include <boost/optional.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 // This is xclbin parser. Update this file if xclbin format has changed.
 #ifdef _WIN32
@@ -214,6 +215,24 @@ kernel_max_ctx(const ip_data& ip)
   return ctxid;
 }
 
+// Determine the address range from kernel xml entry
+static size_t
+get_address_range(const pt::ptree& xml_kernel)
+{
+  constexpr auto default_address_range = 64_kb;
+  size_t address_range = default_address_range;
+  for (auto& xml_port : xml_kernel) {
+    if (xml_port.first != "port")
+      continue;
+
+    // one AXI slave port per kernel
+    if (xml_port.second.get<std::string>("<xmlattr>.mode") == "slave") {
+      address_range = convert(xml_port.second.get<std::string>("<xmlattr>.range"));
+      break;
+    }
+  }
+  return address_range;
+}
 
 } // namespace
 
@@ -310,12 +329,27 @@ get_max_cu_size(const char* xml_data, size_t xml_size)
     if (xml_kernel.first != "kernel")
       continue;
 
+    // determine address range to ensure args are within
+    size_t address_range = get_address_range(xml_kernel.second);
+
+    // iterate arguments and find offset and size to compute max
     for (auto& xml_arg : xml_kernel.second) {
       if (xml_arg.first != "arg")
         continue;
 
       auto ofs = convert(xml_arg.second.get<std::string>("<xmlattr>.offset"));
       auto sz = convert(xml_arg.second.get<std::string>("<xmlattr>.size"));
+
+      // Validate offset and size against address range
+      if (ofs + sz > address_range) {
+        auto knm = xml_kernel.second.get<std::string>("<xmlattr>.name");
+        auto argnm = xml_arg.second.get<std::string>("<xmlattr>.name");
+        auto fmt = boost::format
+          ("Invalid kernel offset in xclbin for kernel (%s) argument (%s).\n"
+           "The offset (0x%x) and size (0x%x) exceeds kernel address range (0x%d)")
+          % knm % argnm % ofs % sz % address_range;
+        throw xrt_core::error(fmt.str());
+      }
       maxsz = std::max(maxsz, ofs + sz);
     }
   }
@@ -721,18 +755,8 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
       continue;
 
-    // Determine kernel address range
-    size_t address_range = 64_kb; // NOLINT  default address range
-    for (auto& xml_port : xml_kernel.second) {
-      if (xml_port.first != "port")
-        continue;
-
-      // one AXI slave port per kernel
-      if (xml_port.second.get<std::string>("<xmlattr>.mode") == "slave") {
-        address_range = convert(xml_port.second.get<std::string>("<xmlattr>.range"));
-        break;
-      }
-    }
+    // kernel address range
+    size_t address_range = get_address_range(xml_kernel.second);
 
     // Determine features
     auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));

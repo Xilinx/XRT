@@ -636,6 +636,7 @@ class aie_cfg_tile
                        const struct debug_ip_data* debugIpData) ;
     void initializeTS2MM(DeviceInfo* devInfo,
                          const struct debug_ip_data* debugIpData) ;
+    double findClockRate(std::shared_ptr<xrt_core::device> device) ;
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -887,6 +888,11 @@ class aie_cfg_tile
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
         return nullptr ;
+
+      if(deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo.find(memId)
+              == deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo.end())
+        return nullptr;
+
       return deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo[memId] ;
       //return deviceInfo[deviceId]->memoryInfo[memId];
     }

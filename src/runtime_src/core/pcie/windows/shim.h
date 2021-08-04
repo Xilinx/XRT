@@ -102,6 +102,9 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret);
 } // userpf
 
 
