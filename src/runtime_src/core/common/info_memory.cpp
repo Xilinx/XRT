@@ -345,7 +345,7 @@ public:
       throw xrt_core::internal_error("incorrect memstat_raw entries");
 
     // info gathering functions indexes mem_temp by mem_topology entry index
-    if (mem_temp && mem_temp_raw.size() < static_cast<size_t>(mem_topo->m_count))
+    if (mem_topo && mem_temp && mem_temp_raw.size() < static_cast<size_t>(mem_topo->m_count))
       throw xrt_core::internal_error("incorrect temp_by_mem_topology entries");
 
     // info gathering functions indexes mem_stat by group_toplogy entry index
