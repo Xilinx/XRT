@@ -910,7 +910,8 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	offset = fdt_parent_offset(fdt, node);
 	val = fdt_get_name(fdt, offset, NULL);
 
-	if (!val || strncmp(val, NODE_ENDPOINTS, strlen(NODE_PROPERTIES)))
+	if (!val || (strncmp(val, NODE_ENDPOINTS, strlen(NODE_PROPERTIES))
+			&& strncmp(val, NODE_BARS, strlen(NODE_BARS))))
 		return true;
 
 	do {
@@ -1467,8 +1468,7 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
         int offset;
         const u32* bar;
         const u32* pfn;
-        const u64* base_addr;
-        const u64* range;
+        const u64* io_off;
         u32 pf, bar_idx;
         int ret = 0, count = 0;
 
@@ -1483,7 +1483,7 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
                 return -EINVAL;
         }
 
-        offset = fdt_path_offset(core->fdt_blob, "/pcie/bars");
+        offset = fdt_path_offset(core->fdt_blob, "/" NODE_PCIE "/" NODE_BARS);
         if (offset < 0) {
                 xocl_xdev_dbg(xdev_hdl, "pcie bars nodes are not present in firmware data");
                 return -EINVAL;
@@ -1500,7 +1500,7 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
                 offset >= 0;
                 offset = fdt_next_subnode(core->fdt_blob, offset)) {
 
-                pfn = fdt_getprop(core->fdt_blob, offset,"physical_function", NULL);
+                pfn = fdt_getprop(core->fdt_blob, offset, PROP_PF_NUM, NULL);
                 if (!pfn) {
                         xocl_xdev_err(xdev_hdl, "failed to get physical_function of pci node");
                         ret = -EINVAL;
@@ -1509,27 +1509,21 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
                 if (be32_to_cpu(*pfn) != pf)
                         continue;
 
-                bar = fdt_getprop(core->fdt_blob, offset,"bar", NULL);
+                bar = fdt_getprop(core->fdt_blob, offset, PROP_BAR_IDX, NULL);
                 if (!bar) {
                         xocl_xdev_err(xdev_hdl, "failed to get bar idx");
                         ret = -EINVAL;
 			goto done;
                 }
-                base_addr = fdt_getprop(core->fdt_blob, offset,"base_address", NULL);
-                if (!base_addr) {
-                        xocl_xdev_err(xdev_hdl, "failed to get base_address of pci node");
-                        ret = -EINVAL;
-			goto done;
-                }
-                range = fdt_getprop(core->fdt_blob, offset,"range", NULL);
-                if (!range) {
-                        xocl_xdev_err(xdev_hdl, "failed to get range of pci node");
+                io_off = fdt_getprop(core->fdt_blob, offset, PROP_IO_OFFSET, NULL);
+                if (!io_off) {
+                        xocl_xdev_err(xdev_hdl, "failed to get offset, range of pci node");
                         ret = -EINVAL;
 			goto done;
                 }
                 bar_idx = be32_to_cpu(*bar);
-                core->bars[bar_idx].base_addr = be64_to_cpu(*base_addr);
-                core->bars[bar_idx].range = be64_to_cpu(*range);
+                core->bars[bar_idx].base_addr = be64_to_cpu(io_off[0]);
+                core->bars[bar_idx].range = be64_to_cpu(io_off[1]);
                 count++;
         }
 

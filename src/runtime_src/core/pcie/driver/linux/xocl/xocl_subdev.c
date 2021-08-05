@@ -418,7 +418,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	int retval = 0, i, bar_idx;
 	struct resource *res = NULL;
 	resource_size_t iostart;
-	u64 bar_start;
+	u64 bar_start, bar_end;
 
 	if (subdev->info.override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -470,10 +470,13 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 			 */
 			if(core->bars) {
 				bar_start = core->bars[bar_idx].base_addr;
-				if ((bar_start >> 32) == (res[i].start >> 32))
-					res[i].start ^= bar_start;
-				if ((bar_start >> 32) == (res[i].end >> 32))
-					res[i].end ^= bar_start;
+				bar_end = core->bars[bar_idx].base_addr +
+						core->bars[bar_idx].range - 1;
+				if((bar_start <= res[i].start) &&
+						(res[i].end <= bar_end)) {
+					res[i].start -= bar_start;
+					res[i].end -= bar_start;
+				}
 			}
 			iostart = pci_resource_start(core->pdev, bar_idx);
 			res[i].start += iostart;
