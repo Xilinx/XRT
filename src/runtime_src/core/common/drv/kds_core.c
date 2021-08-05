@@ -441,6 +441,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
+	int wait_ms;
 
 	if (cu_idx >= cu_mgmt->num_cus) {
 		kds_err(client, "CU(%d) not found", cu_idx);
@@ -458,24 +459,51 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (submitted == completed)
 		goto skip;
 
-	if (!kds->ert_disable)
-		kds->ert->abort(kds->ert, client, cu_idx);
-	else
+	if (kds->ert_disable && !kds->ert->abort_sync) {
+		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
-	/* sub-device that handle command should do abort with a timeout */
-	do {
-		kds_warn(client, "%ld outstanding command(s) on CU(%d)",
-			 submitted - completed, cu_idx);
-		msleep(500);
-		submitted = client_stat_read(client, s_cnt[cu_idx]);
-		completed = client_stat_read(client, c_cnt[cu_idx]);
-	} while (submitted != completed);
+		/* sub-device that handle command should do abort with a timeout */
+		do {
+			kds_warn(client, "%ld outstanding command(s) on CU(%d)",
+				 submitted - completed, cu_idx);
+			msleep(wait_ms);
+			submitted = client_stat_read(client, s_cnt[cu_idx]);
+			completed = client_stat_read(client, c_cnt[cu_idx]);
+		} while (submitted != completed);
 
-	if (!kds->ert_disable)
-		bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
-	else
 		bad_state = xrt_cu_abort_done(cu_mgmt->xcus[cu_idx], client);
+	} else if (!kds->ert->abort_sync) {
+		/* TODO: once ert_user sub-dev implemented abort_sync(), we can
+		 * remove this branch.
+		 */
+		wait_ms = 500;
+		kds->ert->abort(kds->ert, client, cu_idx);
+
+		do {
+			kds_warn(client, "%ld outstanding command(s) on CU(%d)",
+				 submitted - completed, cu_idx);
+			msleep(wait_ms);
+			submitted = client_stat_read(client, s_cnt[cu_idx]);
+			completed = client_stat_read(client, c_cnt[cu_idx]);
+		} while (submitted != completed);
+
+		bad_state = kds->ert->abort_done(kds->ert, client, cu_idx);
+	} else if (kds->ert->abort_sync) {
+		/* Wait 5 seconds */
+		wait_ms = 5000;
+		do {
+			kds_warn(client, "%ld outstanding command(s) on CU(%d)",
+				 submitted - completed, cu_idx);
+			msleep(500);
+			wait_ms -= 500;
+			submitted = client_stat_read(client, s_cnt[cu_idx]);
+			completed = client_stat_read(client, c_cnt[cu_idx]);
+		} while (wait_ms || submitted != completed);
+
+		if (submitted != completed)
+			kds->ert->abort_sync(kds->ert, client, cu_idx);
+	}
 
 	if (bad_state) {
 		kds->bad_state = 1;
