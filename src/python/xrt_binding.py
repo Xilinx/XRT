@@ -1000,6 +1000,16 @@ def xrtDeviceOpen(deviceIndex):
     libcoreutil.xrtDeviceOpen.argTypes = [ctypes.c_uint]
     return _valueOrError(libcoreutil.xrtDeviceOpen(deviceIndex))
 
+def xrtDeviceOpenByBDF(bdf):
+    """
+    xrtDeviceOpenByBDF(): Open a device and obtain its xrt device handle
+
+    :param bdf: (const char *bdf) PCIe BDF identifying the device to open
+    """
+    libcoreutil.xrtDeviceOpenByBDF.restype = ctypes.POINTER(xrtDeviceHandle)
+    libcoreutil.xrtDeviceOpenByBDF.argTypes = [ctypes.c_char_p]
+    return _valueOrError(libcoreutil.xrtDeviceOpenBDF(bdf))
+
 def xrtDeviceClose(handle):
     """
     xrtDeviceClose(): Close an device handle opened with xrtDeviceOpen()
@@ -1010,6 +1020,19 @@ def xrtDeviceClose(handle):
     libcoreutil.xrtDeviceClose.restype = ctypes.c_int
     libcoreutil.xrtDeviceClose.argTypes = [xrtDeviceHandle]
     return _valueOrError(libcoreutil.xrtDeviceClose(handle))
+
+def xrtDeviceLoadXclbin(handle, buf):
+    """
+    xrtDeviceLoadXclbin(): Load an xclbin image
+
+    :param handle: XRT device handle
+    :param buf: Pointer to complete axlf in memory image
+    :return: 0 on success or appropriate error number
+    """
+    libcoreutil.xrtDeviceLoadXclbin.restype = ctypes.c_int
+    libcoreutil.xrtDeviceLoadXclbin.argTypes = [xrtDeviceHandle, ctypes.c_void_p]
+    return _valueOrError(libcoreutil.xrtDeviceLoadXclbin(handle, buf))
+
 
 def xrtDeviceToXclDevice(handle):
     """
