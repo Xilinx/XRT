@@ -910,7 +910,7 @@ static bool get_userpf_info(void *fdt, int node, u32 pf)
 	offset = fdt_parent_offset(fdt, node);
 	val = fdt_get_name(fdt, offset, NULL);
 
-	if (!val || (strncmp(val, NODE_ENDPOINTS, strlen(NODE_PROPERTIES))
+	if (!val || (strncmp(val, NODE_ENDPOINTS, strlen(NODE_ENDPOINTS))
 			&& strncmp(val, NODE_BARS, strlen(NODE_BARS))))
 		return true;
 
