@@ -270,15 +270,20 @@ struct mgmt
   }
 
   void
-  plp_program(const struct axlf* buffer)
+  plp_program(const struct axlf* buffer, bool force)
   {
+    rp_download partition = { 
+      force ? RP_DOWNLOAD_FORCE : RP_DOWNLOAD_NORMAL, 
+      buffer
+    };
+    
     DWORD buffSize = (DWORD) buffer->m_header.m_length;
     DWORD bytes = 0;
 
     auto status = DeviceIoControl
         (m_hdl,
         XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF, //ioctl code
-        (PUCHAR)buffer,                    //in buffer
+        (PUCHAR)partition,                    //in buffer
         buffSize,                          //in buffer size
         nullptr,                           //out buffer
         0,                                 //out buffer size
