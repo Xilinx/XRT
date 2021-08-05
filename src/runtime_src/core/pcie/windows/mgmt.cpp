@@ -273,7 +273,7 @@ struct mgmt
   plp_program(const struct axlf* buffer, bool force)
   {
     rp_download partition = { 
-      force ? RP_DOWNLOAD_FORCE : RP_DOWNLOAD_NORMAL, 
+      force ? static_cast<USHORT>(RP_DOWNLOAD_FORCE) : static_cast<USHORT>(RP_DOWNLOAD_NORMAL),
       buffer
     };
     
@@ -283,7 +283,7 @@ struct mgmt
     auto status = DeviceIoControl
         (m_hdl,
         XCLMGMT_OID_PRP_ICAP_PROGRAM_AXLF, //ioctl code
-        (PUCHAR)partition,                    //in buffer
+        (PUCHAR)&partition,                //in buffer
         buffSize,                          //in buffer size
         nullptr,                           //out buffer
         0,                                 //out buffer size
@@ -573,12 +573,12 @@ get_flash_addr(xclDeviceHandle hdl, uint64_t& addr)
 }
 
 void
-plp_program(xclDeviceHandle hdl, const struct axlf *buffer)
+plp_program(xclDeviceHandle hdl, const struct axlf *buffer, bool force)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "plp_program()");
   auto mgmt = get_mgmt_object(hdl);
-  mgmt->plp_program(buffer);
+  mgmt->plp_program(buffer, force);
 }
 void
 plp_program_status(xclDeviceHandle hdl, uint64_t& plp_status)
