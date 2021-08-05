@@ -258,7 +258,11 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
-    XoclStatDebugIpLayout
+    XoclStatDebugIpLayout,
+    XoclStatTempByMemTopology,
+    XoclStatGroupTopology,
+    XoclStatMemStatRaw,
+    XoclStatMemStat
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
 typedef struct _XOCL_STAT_CLASS_ARGS {
@@ -555,4 +559,10 @@ typedef struct _XOCL_ALLOC_HOST_MEM_ARGS {
 // OutBuffer = Message to be sent to Management (opaque to the caller)
 //
 #define IOCTL_XOCL_GET_XCLBIN_SW_CHANNEL       CTL_CODE(FILE_DEVICE_XOCL_USER, 2203, METHOD_OUT_DIRECT, FILE_READ_DATA)
+
+
+struct drm_xocl_mm_stat {
+    size_t memory_usage;
+    unsigned int bo_count;
+};
 

@@ -515,6 +515,111 @@ struct xclbin
       return data;
     }
 
+    if (key == key_type::temp_by_mem_topology) {
+      size_t size_ret = 0;
+      userpf::get_temp_by_mem_topology(uhdl, nullptr, 0, &size_ret);
+      std::vector<char> data(size_ret);
+      userpf::get_temp_by_mem_topology(uhdl, data.data(), size_ret, nullptr);
+      return data;
+    }
+    throw unexpected_query_request_key(key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device*, key_type key)
+  {
+    throw mgmtpf_not_supported_error(key);
+  }
+};
+
+struct group_topology
+{
+  using result_type = std::vector<char>;
+
+  static result_type
+  user(const xrt_core::device* dev, key_type key)
+  {
+    auto uhdl = dev->get_user_handle();
+    if (!uhdl)
+      throw xrt_core::internal_error("group_topology query request, missing user device handle");
+
+    size_t size_ret = 0;
+    userpf::get_group_mem_topology(uhdl, nullptr, 0, &size_ret);
+    std::vector<char> gdata(size_ret);
+    userpf::get_group_mem_topology(uhdl, gdata.data(), size_ret, nullptr);
+    return gdata;
+  }
+
+  static result_type
+  mgmt(const xrt_core::device*, key_type key)
+  {
+    throw mgmtpf_not_supported_error(key);
+  }
+};
+
+struct memstat
+{
+  using result_type = std::vector<char>;
+
+  static result_type
+  user(const xrt_core::device* dev, key_type key)
+  {
+    auto uhdl = dev->get_user_handle();
+    if (!uhdl)
+      throw xrt_core::internal_error("memstat query request, missing user device handle");
+
+    size_t size_ret = 0;
+    bool raw = false;
+    userpf::get_group_mem_topology(uhdl, nullptr, 0, &size_ret);
+    std::vector<char> gdata(size_ret);
+    userpf::get_group_mem_topology(uhdl, gdata.data(), size_ret, nullptr);
+    if (key == key_type::memstat) {
+      userpf::get_memstat(uhdl, nullptr, 0, &size_ret, raw);
+      std::vector<char> data(size_ret);
+      userpf::get_memstat(uhdl, data.data(), size_ret, nullptr, raw);
+      return data;
+    }
+    throw unexpected_query_request_key(key);
+  }
+
+  static result_type
+  mgmt(const xrt_core::device*, key_type key)
+  {
+    throw mgmtpf_not_supported_error(key);
+  }
+};
+
+struct memstat_raw
+{
+  using result_type = std::vector<std::string>;
+
+  static result_type
+  user(const xrt_core::device* dev, key_type key)
+  {
+    auto uhdl = dev->get_user_handle();
+    if (!uhdl)
+      throw xrt_core::internal_error("memstat query request, missing user device handle");
+
+    size_t size_ret = 0;
+    bool raw = true;
+    userpf::get_group_mem_topology(uhdl, nullptr, 0, &size_ret);
+    std::vector<char> gdata(size_ret);
+    userpf::get_group_mem_topology(uhdl, gdata.data(), size_ret, nullptr);
+
+    if (key == key_type::memstat_raw) {
+      userpf::get_memstat(uhdl, nullptr, 0, &size_ret, raw);
+	  auto op_size = size_ret * sizeof(struct drm_xocl_mm_stat);
+      std::vector<char> data(op_size);
+      userpf::get_memstat(uhdl, data.data(), op_size, nullptr, raw);
+      auto mm_stat = reinterpret_cast<struct drm_xocl_mm_stat*>(data.data());
+      std::vector<std::string> output;
+      for (int i = 0; i < size_ret; i++) {
+        output.push_back(boost::str(boost::format("%u %u\n") % mm_stat->memory_usage % mm_stat->bo_count));
+        mm_stat++;
+      }
+      return output;
+    }
+
     throw unexpected_query_request_key(key);
   }
 
@@ -1231,6 +1336,7 @@ initialize_query_table()
   emplace_function0_getter<query::rom_time_since_epoch,      rom>();
   emplace_function0_getter<query::mem_topology_raw,          xclbin>();
   emplace_function0_getter<query::ip_layout_raw,             xclbin>();
+  emplace_function0_getter<query::temp_by_mem_topology,      xclbin>();
   emplace_function0_getter<query::clock_freqs_mhz,           icap>();
   emplace_function0_getter<query::idcode,                    icap>();
   emplace_function0_getter<query::status_mig_calibrated,     icap>();
@@ -1318,6 +1424,9 @@ initialize_query_table()
   emplace_function0_getter<query::is_recovery,               recovery>();
   emplace_function0_getter<query::mailbox_metrics,           mailbox>();
   emplace_function0_getter<query::kds_cu_info,               kds_cu_info>();
+  emplace_function0_getter<query::memstat_raw,               memstat_raw>();
+  emplace_function0_getter<query::memstat,                   memstat>();
+  emplace_function0_getter<query::group_topology,            group_topology>();
 }
 
 struct X { X() { initialize_query_table(); }};
