@@ -55,7 +55,10 @@ namespace xdp {
       (db->getStaticInfo()).setApplicationStartTime(xrt_core::time_ns()) ;
       // If we are the first plugin, check to see if we should add xocl.log
       if (xrt_core::config::get_xocl_debug()) {
-        db->getStaticInfo().addOpenedFile(xrt_core::config::detail::get_string_value("Debug.xocl_log", "xocl.log"), "XOCL_EVENTS") ;
+	std::string logFileName =
+          xrt_core::config::detail::get_string_value("Debug.xocl_log",
+                                                     "xocl.log") ;
+        db->getStaticInfo().addOpenedFile(logFileName, "XOCL_EVENTS") ;
       }
     }
     is_write_thread_active = false;
