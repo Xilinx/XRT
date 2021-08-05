@@ -22,8 +22,9 @@ sys.path.append('../')
 from utils_binding import *
 
 def runMemTest(opt, d, mem):
-    boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, mem)
-    assert (boHandle1.address() != 0xffffffffffffffff), "Illegal physical address for buffer on memory bank " + str(mem)
+    print("Testing memory " + mem.get_tag())
+    boHandle1 = pyxrt.bo(d, opt.DATA_SIZE, pyxrt.bo.normal, mem.get_index())
+    assert (boHandle1.address() != 0xffffffffffffffff), "Illegal physical address for buffer on memory bank " + mem.get_tag()
 
     testVector = bytearray(b'hello\nthis is Xilinx OpenCL memory read write test\n:-)\n')
     buf1 = boHandle1.map()
@@ -33,14 +34,17 @@ def runMemTest(opt, d, mem):
     buf1[:len(testVector)] = zeros[:len(testVector)]
 #    boHandle1.write(zeros, 0)
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)
-    assert (buf1[:len(testVector)] == testVector[:]), "Data migration error on memory bank " + str(mem)
+    assert (buf1[:len(testVector)] == testVector[:]), "Data migration error on memory bank " + mem.get_tag()
 
 def runTest(opt):
     d = pyxrt.device(opt.index)
     xbin = pyxrt.xclbin(opt.bitstreamFile)
     uuid = d.load_xclbin(xbin)
-    runMemTest(opt, d, opt.first_mem);
-
+    memlist = xbin.get_mems()
+    for m in memlist:
+        if (m.get_used() == False):
+            continue;
+        runMemTest(opt, d, m);
 
 def main(args):
     opt = Options()
