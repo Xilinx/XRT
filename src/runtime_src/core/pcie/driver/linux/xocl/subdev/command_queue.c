@@ -369,7 +369,9 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 		ecmd->cb.notify(cmd_queue->ert_handle);
 	} else {
 
-		if (cmd_opcode(epkt) == ERT_START_CU) {
+		if (cmd_opcode(epkt) == ERT_START_CU
+			|| cmd_opcode(epkt) == ERT_EXEC_WRITE
+			|| cmd_opcode(epkt) == ERT_START_KEY_VAL) {
 			// write kds selected cu_idx in first cumask (first word after header)
 			iowrite32(ecmd->cu_idx, cmd_queue->cq_base + slot_addr + 4);
 

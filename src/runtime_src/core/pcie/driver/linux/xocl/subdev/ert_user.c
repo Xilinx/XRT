@@ -581,6 +581,8 @@ static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint
 	case ERT_CLK_CALIB:
 		return_size = sizeof(struct ert_validate_cmd);
 		break;
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
 	case ERT_START_CU:
 		cu_idx = xcmd->cu_idx;
 		break;
@@ -825,6 +827,8 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	bool bad_cmd = false;
 
 	switch (cmd_opcode(ecmd)) {
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
 	case ERT_START_CU:
 	case ERT_SK_START:
 		BUG_ON(ert_user->ctrl_busy);
@@ -885,7 +889,9 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 
 		ert_post_process(ert_user, ecmd);
 		if (xcmd) {
-			if (cmd_opcode(ecmd) == ERT_START_CU &&
+			if ((cmd_opcode(ecmd) == ERT_START_CU
+			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
+			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL) &&
 				ecmd->complete_entry.cstate == KDS_COMPLETED) {
 				ert_user->cu_stat[xcmd->cu_idx].inflight--;
 				ert_user->cu_stat[xcmd->cu_idx].usage++;
@@ -980,7 +986,9 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 		}
 
 		if (xcmd) {
-			if (cmd_opcode(ecmd) == ERT_START_CU)
+			if ((cmd_opcode(ecmd) == ERT_START_CU
+			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
+			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL))
 				ert_user->cu_stat[ecmd->xcmd->cu_idx].inflight++;
 
 			set_xcmd_timestamp(ecmd->xcmd, KDS_RUNNING);
@@ -1032,6 +1040,8 @@ static void ert_user_submit(struct kds_ert *kds_ert, struct kds_command *xcmd)
 	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
 	switch (cmd_opcode(ecmd)) {
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:	
 	case ERT_START_CU:
 	case ERT_SK_START:
 		list_add_tail(&ecmd->list, &ert_user->pq.head);
