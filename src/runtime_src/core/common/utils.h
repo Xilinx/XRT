@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -99,8 +99,15 @@ uint64_t
 issue_id();
 
 XRT_CORE_COMMON_EXPORT
-std::string 
+std::string
 parse_clock_id(const std::string& id);
+
+/**
+ * parse_cmc_status() -
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+parse_cmc_status(unsigned int val);
 
 }} // utils, xrt_core
 

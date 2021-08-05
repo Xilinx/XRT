@@ -180,6 +180,11 @@ enum class key_type
   mac_addr_list,
   oem_id,
 
+  heartbeat_count,
+  heartbeat_err_code,
+  heartbeat_err_time,
+  heartbeat_stall,
+
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -2455,6 +2460,42 @@ struct noop : request
     return std::to_string(value);
   }
 
+};
+
+struct heartbeat_err_time : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::heartbeat_err_time;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_err_code : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_err_code;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_count : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_count;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_stall : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_stall;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query
