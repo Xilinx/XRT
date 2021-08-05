@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportCmcStatus.h"
 #include "core/common/query_requests.h"
+#include "core/common/utils.h"
 
 void
 ReportCmcStatus::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -39,7 +40,8 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     pt.put("heartbeat_count", xrt_core::device_query<xrt_core::query::heartbeat_count>(_pDevice));
     pt.put("heartbeat_err_code", xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice));
     pt.put("heartbeat_stall", xrt_core::device_query<xrt_core::query::heartbeat_stall>(_pDevice));
-  } catch(...) {}
+    pt.put("status", xrt_core::utils::parse_cmc_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice))));
+  } catch(const xrt_core::query::no_such_key&) {}
   // There can only be 1 root node
   _pt.add_child("cmc", pt);
 }
@@ -58,8 +60,8 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << "  Information unavailable" << std::endl;
     return;
   }
-  _output << boost::format("  %-22s : %s\n") % "heartbeat_stall" % (cmc.get<bool>("heartbeat_stall") ? "true" : "false");
-  _output << boost::format("  %-22s : %u\n") % "heartbeat_count" % cmc.get<uint32_t>("heartbeat_count");
-  _output << boost::format("  %-22s : 0x%x\n") % "heartbeat_err_code" % cmc.get<uint32_t>("heartbeat_err_code");
-  _output << boost::format("  %-22s : %llu\n") % "heartbeat_err_time" % cmc.get<uint64_t>("heartbeat_err_time");
+  uint32_t err_code = cmc.get<uint32_t>("heartbeat_err_code");
+  _output << boost::format("  %-22s : 0x%x %s\n") % "Status" % err_code % cmc.get<std::string>("status");
+  if (err_code)
+    _output << boost::format("  %-22s : %s sec\n\n") % "err time" % cmc.get<std::string>("heartbeat_err_time");
 }
