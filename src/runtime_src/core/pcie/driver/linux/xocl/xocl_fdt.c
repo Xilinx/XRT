@@ -1504,7 +1504,7 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
                 if (!pfn) {
                         xocl_xdev_err(xdev_hdl, "failed to get physical_function of pci node");
                         ret = -EINVAL;
-			goto done;
+                        goto done;
                 }
                 if (be32_to_cpu(*pfn) != pf)
                         continue;
@@ -1513,13 +1513,13 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
                 if (!bar) {
                         xocl_xdev_err(xdev_hdl, "failed to get bar idx");
                         ret = -EINVAL;
-			goto done;
+                        goto done;
                 }
                 io_off = fdt_getprop(core->fdt_blob, offset, PROP_IO_OFFSET, NULL);
                 if (!io_off) {
                         xocl_xdev_err(xdev_hdl, "failed to get offset, range of pci node");
                         ret = -EINVAL;
-			goto done;
+                        goto done;
                 }
                 bar_idx = be32_to_cpu(*bar);
                 core->bars[bar_idx].base_addr = be64_to_cpu(io_off[0]);
