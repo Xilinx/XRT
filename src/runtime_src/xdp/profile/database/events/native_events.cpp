@@ -36,7 +36,7 @@ namespace xdp {
     fout << "," << functionName << "\n" ;
   }
 
-  void NativeAPICall::dumpSync(std::ofstream& fout, uint32_t bucket)
+  void NativeAPICall::dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/)
   {
   }
 
