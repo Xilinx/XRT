@@ -71,10 +71,14 @@ py::enum_<xrt::info::device>(m, "xrt_info_device")
     .value("name", xrt::info::device::name)
     .value("nodma", xrt::info::device::nodma)
     .value("offline", xrt::info::device::offline)
-    .value("power_rails", xrt::info::device::power_rails)
-    .value("thermals", xrt::info::device::thermals)
-    .value("power_consumption", xrt::info::device::power_consumption)
-    .value("fans", xrt::info::device::fans);
+    .value("electrical", xrt::info::device::electrical)
+    .value("thermal", xrt::info::device::thermal)
+    .value("mechanical", xrt::info::device::mechanical)
+    .value("memory", xrt::info::device::memory)
+    .value("platform", xrt::info::device::platform)
+    .value("pcie_info", xrt::info::device::pcie_info)
+    .value("host", xrt::info::device::host)
+    .value("dynamic_regions", xrt::info::device::dynamic_regions);
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
@@ -104,6 +108,7 @@ py::class_<xrt::device>(m, "device")
                         })
     .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid)
     .def("get_info", [] (xrt::device& d, xrt::info::device key) {
+                         /* Convert the value to string since we can have only one return type for get_info() */
                          switch (key) {
                          case xrt::info::device::bdf:
                              return d.get_info<xrt::info::device::bdf>();
@@ -121,14 +126,22 @@ py::class_<xrt::device>(m, "device")
                              return std::to_string(d.get_info<xrt::info::device::nodma>());
                          case xrt::info::device::offline:
                              return std::to_string(d.get_info<xrt::info::device::offline>());
-                         case xrt::info::device::power_rails:
-                             return d.get_info<xrt::info::device::power_rails>();
-                         case xrt::info::device::thermals:
-                             return d.get_info<xrt::info::device::thermals>();
-                         case xrt::info::device::power_consumption:
-                             return d.get_info<xrt::info::device::power_consumption>();
-                         case xrt::info::device::fans:
-                             return d.get_info<xrt::info::device::fans>();
+                         case xrt::info::device::electrical:
+                             return d.get_info<xrt::info::device::electrical>();
+                         case xrt::info::device::thermal:
+                             return d.get_info<xrt::info::device::thermal>();
+                         case xrt::info::device::mechanical:
+                             return d.get_info<xrt::info::device::mechanical>();
+                         case xrt::info::device::memory:
+                             return d.get_info<xrt::info::device::memory>();
+                         case xrt::info::device::platform:
+                             return d.get_info<xrt::info::device::platform>();
+                         case xrt::info::device::pcie_info:
+                             return d.get_info<xrt::info::device::pcie_info>();
+                         case xrt::info::device::host:
+                             return d.get_info<xrt::info::device::host>();
+                         case xrt::info::device::dynamic_regions:
+                             return d.get_info<xrt::info::device::dynamic_regions>();
                          default:
                              return std::string("NA");
                          }
@@ -243,6 +256,8 @@ py::class_<xrt::xclbin::ip> pyxclbinip(pyxclbin, "xclbinip");
 py::bind_vector<std::vector<xrt::xclbin::ip>>(m, "xclbinip_vector");
 py::class_<xrt::xclbin::kernel> pyxclbinkernel(pyxclbin, "xclbinkernel");
 py::bind_vector<std::vector<xrt::xclbin::kernel>>(m, "xclbinkernel_vector");
+py::class_<xrt::xclbin::mem> pyxclbinmem(pyxclbin, "xclbinmem");
+py::bind_vector<std::vector<xrt::xclbin::mem>>(m, "xclbinmem_vector");
 
 
 pyxclbinip.def(py::init<>())
@@ -250,9 +265,16 @@ pyxclbinip.def(py::init<>())
 
 pyxclbinkernel.def(py::init<>())
     .def("get_name", &xrt::xclbin::kernel::get_name);
+
+pyxclbinmem.def(py::init<>())
+    .def("get_tag", &xrt::xclbin::mem::get_tag)
+    .def("get_base_address", &xrt::xclbin::mem::get_base_address)
+    .def("get_size_kb", &xrt::xclbin::mem::get_size_kb)
+    .def("get_used", &xrt::xclbin::mem::get_used)
+    .def("get_index", &xrt::xclbin::mem::get_index);
 /*
  *
- * xrt::xclbin::ip
+ * xrt::xclbin
  *
  */
 
@@ -266,7 +288,8 @@ pyxclbin.def(py::init<>())
     .def("get_ips", &xrt::xclbin::get_ips)
     .def("get_kernels", &xrt::xclbin::get_kernels)
     .def("get_xsa_name", &xrt::xclbin::get_xsa_name)
-    .def("get_uuid", &xrt::xclbin::get_uuid);
+    .def("get_uuid", &xrt::xclbin::get_uuid)
+    .def("get_mems", &xrt::xclbin::get_mems);
 
 
 #if !defined(__x86_64__)
