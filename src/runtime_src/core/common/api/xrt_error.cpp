@@ -214,11 +214,13 @@ public:
       const xcl_errors *errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
       if (errors_buf->num_err <= 0)
         return;
+      if (errors_buf->num_err > XCL_ERROR_CAPACITY)
+        return;
 
       for (int i = 0; i < errors_buf->num_err; i++) {
         if (XRT_ERROR_CLASS(errors_buf->errors[i].err_code) != ecl)
           continue;
-        m_errcode = XRT_ERROR_NUM(errors_buf->errors[i].err_code);
+        m_errcode = errors_buf->errors[i].err_code;
         m_timestamp = errors_buf->errors[i].ts;
       }
       return;
