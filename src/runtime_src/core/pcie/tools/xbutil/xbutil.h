@@ -1674,7 +1674,7 @@ public:
         ostr << "Xclbin UUID\n"
              << sensor_tree::get<std::string>( "board.xclbin.uuid", "N/A" ) << std::endl;
         ostr << "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n";
-        ostr << std::setw(41) << "Compute Unit Status"
+        ostr << std::setw(71) << "Compute Unit Status"
              << std::setw(18) << "Addr"
              << std::setw(14) << "Status"
              << std::setw(14) << "Usage" << std::endl;
@@ -1703,7 +1703,7 @@ public:
               else
                 ostr << "CU[" << std::right << std::setw(3) << cu_i << "]: ";
 
-              ostr << std::left << std::setw(32) << cu_n
+              ostr << std::left << std::setw(60) << cu_n
                    << "@" << std::setw(18) << cu_ba
                    << std::setw(14) << cu_s 
                    << std::setw(14) << cu_u << std::endl;
