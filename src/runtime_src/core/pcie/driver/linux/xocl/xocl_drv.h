@@ -536,6 +536,13 @@ struct xocl_work {
 	int			op;
 };
 
+#define NUM_PCI_BARS 6
+/* structure for holding pci bar mappings of CPM */
+struct pci_bars {
+        u64 base_addr;
+        u64 range;
+};
+
 #define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
@@ -593,6 +600,11 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+
+	/*
+	 * Store information about pci bar mappings of CPM.
+	 */
+	struct pci_bars         *bars;
 	/*
 	 * u30 reset relies on working SC and SN info. SN is read and saved in
 	 * parent device so that even if for some reason the xmc is offline
