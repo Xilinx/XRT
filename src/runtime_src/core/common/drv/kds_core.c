@@ -459,7 +459,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (submitted == completed)
 		goto skip;
 
-	if (kds->ert_disable && !kds->ert->abort_sync) {
+	if (kds->ert_disable) {
 		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
@@ -499,7 +499,9 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 			wait_ms -= 500;
 			submitted = client_stat_read(client, s_cnt[cu_idx]);
 			completed = client_stat_read(client, c_cnt[cu_idx]);
-		} while (wait_ms || submitted != completed);
+			if (submitted == completed)
+				break;
+		} while (wait_ms);
 
 		if (submitted != completed)
 			kds->ert->abort_sync(kds->ert, client, cu_idx);
