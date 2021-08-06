@@ -293,7 +293,7 @@ ReportDynamicRegion::writeReport( const xrt_core::device* /*_pDevice*/,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
-  boost::format cuFmt("    %-8s%-30s%-16s%-8s%-8s\n");
+  boost::format cuFmt("    %-8s%-50s%-16s%-8s%-8s\n");
 
   //check if a valid CU report is generated
   const boost::property_tree::ptree& pt_dfx = _pt.get_child("dynamic_regions", empty_ptree);
