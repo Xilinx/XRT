@@ -211,18 +211,8 @@ public:
       auto buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
       if (buf.empty())
         return;
-      auto errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
-      if (errors_buf->num_err <= 0)
-        return;
-      if (errors_buf->num_err > XCL_ERROR_CAPACITY)
-        return;
-
-      for (int i = 0; i < errors_buf->num_err; i++) {
-        if (XRT_ERROR_CLASS(errors_buf->errors[i].err_code) != ecl)
-          continue;
-        m_errcode = errors_buf->errors[i].err_code;
-        m_timestamp = errors_buf->errors[i].ts;
-      }
+      auto ect = xrt_core::query::xocl_errors::to_value(buf, ecl);
+      std::tie(m_errcode, m_timestamp) = ect;
       return;
     } catch (const xrt_core::query::no_such_key&) {
       // Ignoring for now. Check below for edge if not available
