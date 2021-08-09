@@ -58,7 +58,7 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   endif()
 
   SET(CPACK_DEBIAN_AWS_PACKAGE_DEPENDS "xrt (>= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH})")
-  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), lsb-release, dkms (>= 2.2.0), udev, python3")
+  SET(CPACK_DEBIAN_XRT_PACKAGE_DEPENDS "ocl-icd-libopencl1 (>= 2.2.0), lsb-release, dkms (>= 2.2.0), udev, python3 , python3-pip")
 
   if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
     # applications link with -luuid
@@ -116,9 +116,9 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
   SET(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/usr/local" "/usr/src" "/opt" "/etc/OpenCL" "/etc/OpenCL/vendors" "/usr/lib" "/usr/lib/pkgconfig" "/usr/lib64/pkgconfig" "/lib" "/lib/firmware")
   SET(CPACK_RPM_AWS_PACKAGE_REQUIRES "xrt >= ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_PATCH}")
   if (${LINUX_FLAVOR} MATCHES "^(SUSE)")
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, lsb-release, dkms >= 2.2.0, python3 >= 3.6")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd-devel >= 2.2, lsb-release, dkms >= 2.2.0, python3 >= 3.6 , python3-pip")
   else()
-    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6")
+    SET(CPACK_RPM_XRT_PACKAGE_REQUIRES "ocl-icd >= 2.2, redhat-lsb-core, dkms >= 2.5.0, python3 >= 3.6 , python3-pip")
   endif()
 
   if (${XRT_DEV_COMPONENT} STREQUAL "xrt")
