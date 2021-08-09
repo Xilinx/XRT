@@ -16,45 +16,34 @@
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
-#include <getopt.h>
 #define LENGTH 64
-
-const static struct option long_options[] = {{"path", required_argument, 0, 'p'},
-                                             {"device", required_argument, 0, 'd'},
-                                             {"supported", no_argument, 0, 's'},
-                                             {0, 0, 0, 0}};
 
 static void printHelp() {
     std::cout << "usage: %s <options>\n";
-    std::cout << "  -p <platform_test_area_path>\n";
+    std::cout << "  -p <path>\n";
     std::cout << "  -d <device> \n";
-    std::cout << "  -s <check_supported>\n";
+    std::cout << "  -s <supported>\n";
+    std::cout << "  -h <help>\n";
 }
 
 int main(int argc, char** argv) {
-    int option_index = 0;
     std::string dev_id = "0";
     std::string test_path;
     std::string b_file = "/verify.xclbin";
     bool flag_s = false;
-    // Commandline
-    int c = 0;
-    while ((c = getopt_long(argc, argv, "p:d:s", long_options, &option_index)) != -1) {
-        switch (c) {
-            case 'p':
-                test_path = optarg;
-                break;
-            case 'd':
-                dev_id = optarg;
-                break;
-            case 's':
-                flag_s = true;
-                break;
-            default:
-                printHelp();
-                return 1;
+    for (int i = 1; i < argc; i++) {
+        if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
+            test_path = argv[i + 1];
+        } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
+            dev_id = argv[i + 1];
+        } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
+            flag_s = true;
+        } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
+            printHelp();
+            return 1;
         }
     }
+
     if (test_path.empty()) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;

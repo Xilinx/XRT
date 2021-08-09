@@ -17,49 +17,36 @@
 #include <boost/property_tree/ptree.hpp>
 #include <math.h>
 #include <sys/time.h>
-#include <getopt.h>
 #include <xcl2.hpp>
-
-const static struct option long_options[] = {{"path", required_argument, 0, 'p'},
-                                             {"device", required_argument, 0, 'd'},
-                                             {"iter_cnt", required_argument, 0, 'l'},
-                                             {"supported", no_argument, 0, 's'},
-                                             {0, 0, 0, 0}};
 
 static void printHelp() {
     std::cout << "usage: %s <options>\n";
-    std::cout << "  -p <platform_test_area_path>\n";
+    std::cout << "  -p <path>\n";
     std::cout << "  -d <device> \n";
     std::cout << "  -l <loop_iter_cnt> \n";
-    std::cout << "  -s <check_supported>\n";
+    std::cout << "  -s <supported>\n";
+    std::cout << "  -h <help>\n";
 }
 
 int main(int argc, char** argv) {
-    int option_index = 0;
     std::string dev_id = "0";
     std::string test_path;
     std::string iter_cnt = "10000";
     std::string b_file = "/slavebridge.xclbin";
     bool flag_s = false;
-    // Commandline
-    int c = 0;
-    while ((c = getopt_long(argc, argv, "p:d:l:s", long_options, &option_index)) != -1) {
-        switch (c) {
-            case 'p':
-                test_path = optarg;
-                break;
-            case 'd':
-                dev_id = optarg;
-                break;
-            case 's':
-                flag_s = true;
-                break;
-            case 'l':
-                iter_cnt = atoi(optarg);
-                break;
-            default:
-                printHelp();
-                return 1;
+
+    for (int i = 1; i < argc; i++) {
+        if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
+            test_path = argv[i + 1];
+        } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
+            dev_id = argv[i + 1];
+        } else if ((strcmp(argv[i], "-l") == 0) || (strcmp(argv[i], "--loop_iter_cnt") == 0)) {
+            iter_cnt = atoi(argv[i + 1]);
+        } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
+            flag_s = true;
+        } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
+            printHelp();
+            return 1;
         }
     }
     if (test_path.empty()) {
