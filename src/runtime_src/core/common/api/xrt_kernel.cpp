@@ -232,6 +232,19 @@ public:
   }
 };
 
+// Copy byte-by-byte from value to a uint64_t.
+// At most sizeof(uint64_t) bytes are copied.
+template <typename ValueType>
+uint64_t
+to_uint64_t(ValueType value)
+{
+  uint64_t ret = 0;
+  auto data = reinterpret_cast<uint8_t*>(&ret);
+  arg_range<uint8_t> range{&value, sizeof(ValueType)};
+  std::copy_n(range.begin(), std::min<size_t>(sizeof(ret), range.size()), data);
+  return ret;
+}
+
 inline bool
 is_sw_emulation()
 {
@@ -667,6 +680,22 @@ public:
     }
   }
 
+  // Check if this kernel_command object is in done state
+  bool
+  is_done() const
+  {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return m_done;
+  }
+
+  // Return state of underlying exec buffer packet
+  ert_cmd_state
+  get_state() const
+  {
+    auto pkt = get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
   // Cast underlying exec buffer to its requested type
   template <typename ERT_COMMAND_TYPE>
   const ERT_COMMAND_TYPE
@@ -793,8 +822,7 @@ public:
       xrt_core::exec::unmanaged_wait(this);
     }
 
-    auto pkt = get_ert_packet();
-    return static_cast<ert_cmd_state>(pkt->state);
+    return get_state();
   }
 
   ert_cmd_state
@@ -803,14 +831,14 @@ public:
     if (m_managed) {
       std::unique_lock<std::mutex> lk(m_mutex);
       while (!m_done)
-        m_exec_done.wait_for(lk, timeout_ms);
+        if (m_exec_done.wait_for(lk, timeout_ms) == std::cv_status::timeout)
+          break;
     }
     else {
       xrt_core::exec::unmanaged_wait(this);
     }
 
-    auto pkt = get_ert_packet();
-    return static_cast<ert_cmd_state>(pkt->state);
+    return get_state();
   }
 
   ////////////////////////////////////////////////////////////////
@@ -1979,6 +2007,33 @@ public:
     wait(std::chrono::milliseconds{0});
   }
 
+  ert_cmd_state
+  abort()
+  {
+    // don't bother if command is done by the time abort is called
+    if (cmd->is_done()) {
+      if (cmd->get_state() == ERT_CMD_STATE_NEW)
+        throw xrt_core::error("Cannot abort command that wasn't started");
+      return cmd->get_state();
+    }
+
+    // create and populate abort command
+    auto abort_cmd = std::make_shared<kernel_command>(kernel->get_device());
+    auto abort_pkt = abort_cmd->get_ert_cmd<ert_abort_cmd*>();
+    abort_pkt->state = ERT_CMD_STATE_NEW;
+    abort_pkt->count = sizeof(abort_pkt->exec_bo_handle) / sizeof(uint32_t);
+    abort_pkt->opcode = ERT_ABORT;
+    abort_pkt->type = ERT_CTRL;
+    abort_pkt->exec_bo_handle = to_uint64_t(cmd->get_exec_bo());
+
+    // schedule abort command and wait for it to complete
+    abort_cmd->run();
+    abort_cmd->wait();
+
+    // wait for current run command to be aborted, return cmd status
+    return cmd->wait();
+  }
+
   // wait() - wait for execution to complete
   ert_cmd_state
   wait(const std::chrono::milliseconds& timeout_ms) const
@@ -2665,6 +2720,13 @@ run::
 stop()
 {
   handle->stop();
+}
+
+ert_cmd_state
+run::
+abort()
+{
+  return handle->abort();
 }
 
 ert_cmd_state
