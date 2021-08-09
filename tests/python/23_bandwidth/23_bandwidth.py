@@ -10,7 +10,6 @@ import ctypes.util
 import sys
 import time
 import math
-import numpy
 
 # Following found in PYTHONPATH setup by XRT
 from xrt_binding import *
@@ -41,7 +40,7 @@ def getThreshold(devhdl):
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bo = pyxrt.bo(devhdl, globalbuffersize, pyxrt.bo.normal, krnlhdl.group_id(argno))
-    buf = numpy.asarray(bo.map());
+    buf = bo.map();
 
     for i in range(globalbuffersize):
         buf[i] = i%256 if isInput else 0
@@ -100,11 +99,11 @@ def runKernel(opt):
             output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
 
-            failed = not(numpy.array_equal(input_buf1[:limit], output_buf1[:limit]));
+            failed = (input_buf1[:limit] != output_buf1[:limit]);
             if (failed):
                 break
 
-            failed = not(numpy.array_equal(input_buf2[:limit], output_buf2[:limit]));
+            failed = (input_buf2[:limit] != output_buf2[:limit]);
             if (failed):
                 break
             # print("Reps = %d, Beats = %d, Duration = %lf us" %(reps, beats, usduration)) # for debug
