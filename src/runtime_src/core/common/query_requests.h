@@ -180,6 +180,11 @@ enum class key_type
   mac_addr_list,
   oem_id,
 
+  heartbeat_count,
+  heartbeat_err_code,
+  heartbeat_err_time,
+  heartbeat_stall,
+
   firewall_detect_level,
   firewall_status,
   firewall_time_sec,
@@ -229,17 +234,42 @@ enum class key_type
   noop
 };
 
-class no_such_key : public std::exception
+// Base class for query request exceptions.
+//
+// Provides granularity for calling code to catch errors specific to
+// query request which are often acceptable errors because some
+// devices may not support all types of query requests.
+//  
+// Other non query exceptions signal a different kind of error which
+// should maybe not be caught.
+//
+// The addition of the query request exception hierarchy does not
+// break existing code that catches std::exception (or all errors)
+// because ultimately the base query exception is-a std::exception
+class exception : public std::runtime_error
+{
+public:
+  explicit
+  exception(const std::string& err)
+    : std::runtime_error(err)
+  {}
+};
+
+class no_such_key : public exception
 {
   key_type m_key;
-  std::string msg;
 
   using qtype = std::underlying_type<query::key_type>::type;
 public:
   explicit
   no_such_key(key_type k)
-    : m_key(k)
-    , msg(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
+    : exception(boost::str(boost::format("No such query request (%d)") % static_cast<qtype>(k)))
+    , m_key(k)
+  {}
+
+  no_such_key(key_type k, const std::string& msg)
+    : exception(msg)
+    , m_key(k)
   {}
 
   key_type
@@ -247,14 +277,25 @@ public:
   {
     return m_key;
   }
-
-  const char*
-  what() const noexcept
-  {
-    return msg.c_str();
-  }
 };
 
+class sysfs_error : public exception
+{
+public:
+  explicit
+  sysfs_error(const std::string& msg)
+    : exception(msg)
+  {}
+};
+
+class not_supported : public exception
+{
+public:
+  explicit
+  not_supported(const std::string& msg)
+    : exception(msg)
+  {}
+};
 
 struct pcie_vendor : request
 {
@@ -558,9 +599,8 @@ struct interface_uuids : request
   }
 
   // Convert string value to proper uuid string if necessary
-  // and return xrt::uuid
-  static uuid
-  to_uuid(const std::string& value)
+  static std::string
+  to_uuid_string(const std::string& value)
   {
     std::string str = value;
     if (str.length() < 24)  // for '-' insertion
@@ -570,7 +610,21 @@ struct interface_uuids : request
         str.insert(idx,1,'-');
     if (str.length() != 36) // final uuid length must be 36 chars
       throw xrt_core::system_error(EINVAL, "invalid uuid: " + value);
-    return uuid(str);
+    return str;
+  }
+
+  // Convert string value to proper uuid upper cased string if necessary
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  to_uuid_upper_string(const std::string& value);
+
+  // Convert string value to proper uuid string if necessary
+  // and return xrt::uuid
+  static uuid
+  to_uuid(const std::string& value)
+  {
+    auto str = to_uuid_string(value);
+    return uuid{str};
   }
 };
 
@@ -770,6 +824,11 @@ struct clock_freq_topology_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::clock_freq_topology_raw;
+
+  // parse a clock_freq_topo::clock_freq::m_name (null terminated string)
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  parse(const std::string& value);
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1150,6 +1209,18 @@ struct p2p_config : request
   using result_type = std::vector<std::string>;
   static const key_type key = key_type::p2p_config;
   static const char* name() { return "p2p_config"; }
+
+  enum class value_type { disabled, enabled, error, reboot, not_supported };
+
+  // parse a config result and return value and msg
+  XRT_CORE_COMMON_EXPORT
+  static std::pair<value_type, std::string>
+  parse(const result_type& config);
+
+  // convert value_type enumerator to std::string
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  to_string(value_type value);
 
   virtual boost::any
   get(const device*) const = 0;
@@ -1939,6 +2010,11 @@ struct oem_id : request
   static const key_type key = key_type::oem_id;
   static const char* name() { return "oem_id"; }
 
+  // parse an oem_id and return value as string
+  XRT_CORE_COMMON_EXPORT
+  static std::string
+  parse(const result_type& value);
+
   virtual boost::any
   get(const device*) const = 0;
 };
@@ -2384,6 +2460,42 @@ struct noop : request
     return std::to_string(value);
   }
 
+};
+
+struct heartbeat_err_time : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::heartbeat_err_time;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_err_code : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_err_code;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_count : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_count;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct heartbeat_stall : request
+{
+  using result_type = uint32_t;
+  static const key_type key = key_type::heartbeat_stall;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query

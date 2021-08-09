@@ -933,6 +933,7 @@ exit_mb(size_type slot_idx)
   slot.header_value = (slot.header_value & ~0xF) | 0x4; // free
   write_reg(slot.slot_addr,slot.header_value); // acknowledge the completed control command
   CTRL_DEBUGF("scheduler loop exits slot(%d) header=0x%x\r\n",slot_idx,slot.header_value);
+  notify_host(slot_idx);
 #ifndef ERT_HW_EMU
   mb_sleep();
 #endif

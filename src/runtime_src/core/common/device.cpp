@@ -291,7 +291,7 @@ get_memory_type(size_t memidx) const
     : mtype;
 }
 
-const std::vector<uint64_t>
+const std::vector<uint64_t>&
 device::
 get_cus(const uuid& xclbin_id) const
 {

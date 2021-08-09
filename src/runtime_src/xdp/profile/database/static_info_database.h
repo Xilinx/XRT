@@ -48,7 +48,10 @@ namespace xdp {
     uint64_t    portWidth; // For OpenCL monitors associated with a port
     bool        isRead;
 
-    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1)
+    // The index in the xclCounterResults to use for counter values
+    uint64_t slotIndex ;
+
+    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1, uint64_t slotId = 0)
       : type(ty),
         index(idx),
         cuIndex(cuId),
@@ -57,7 +60,8 @@ namespace xdp {
         args(""),
         port(""),
         portWidth(0),
-        isRead(false)
+        isRead(false),
+        slotIndex(slotId)
     {}
   };
 
@@ -197,8 +201,11 @@ class aie_cfg_tile
 
     // All of the slot IDs inside the counter results structure for any
     //  monitors attached to this CU
-    std::vector<uint32_t> aimIds;
-    std::vector<uint32_t> asmIds;
+    std::vector<uint32_t> aimIds; // All AIMs (counters only and trace enabled)
+    std::vector<uint32_t> asmIds; // All ASMs (counters only and trace enabled)
+
+    std::vector<uint32_t> aimIdsWithTrace ; // Only AIMs with trace
+    std::vector<uint32_t> asmIdsWithTrace ; // Only ASMs with trace
 
     bool stall        = false;
     bool dataflow     = false;
@@ -222,11 +229,16 @@ class aie_cfg_tile
     void    setAccelMon(int32_t id) { amId = id; }
     int32_t getAccelMon() { return amId; }
  
-    void addAIM(uint32_t id) { aimIds.push_back(id); }
-    void addASM(uint32_t id) { asmIds.push_back(id); }
+    void addAIM(uint32_t id, bool trace = false)
+      { aimIds.push_back(id); if (trace) aimIdsWithTrace.push_back(id) ; }
+    void addASM(uint32_t id, bool trace = false)
+      { asmIds.push_back(id); if (trace) asmIdsWithTrace.push_back(id) ; }
 
     inline std::vector<uint32_t>* getAIMs() { return &aimIds; }
     inline std::vector<uint32_t>* getASMs() { return &asmIds; }
+
+    inline std::vector<uint32_t>* getAIMsWithTrace() {return &aimIdsWithTrace;}
+    inline std::vector<uint32_t>* getASMsWithTrace() {return &asmIdsWithTrace;}
 
     void setStallEnabled(bool b) { stall = b; }
     bool stallEnabled() { return stall; }
@@ -418,7 +430,7 @@ class aie_cfg_tile
       return 0 ;
     }
 
-    inline uint64_t getNumASM(XclbinInfo* xclbin) {
+    inline uint64_t getNumASMWithTrace(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
         if (bin == xclbin) return bin->asmMap.size() ;
       }
@@ -441,21 +453,35 @@ class aie_cfg_tile
 
     inline Monitor* getAIMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->aimMap[slotID] ;
+        if (bin == xclbin) {
+          if(bin->aimMap.find(slotID) == bin->aimMap.end()) {
+            return nullptr;
+          }
+          return bin->aimMap[slotID] ;
+        }
       }
       return nullptr ;
     }
 
     inline Monitor* getASMonitor(XclbinInfo* xclbin, uint64_t slotID) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->asmMap[slotID] ;
+        if (bin == xclbin) {
+          for (auto mon : bin->asmList) {
+            if (mon->slotIndex == slotID) return mon ;
+	  }
+        }
       }
       return nullptr ;
     }
 
     inline Monitor* getNOC(XclbinInfo* xclbin, uint64_t idx) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->nocList[idx] ;
+        if (bin == xclbin) {
+          if(bin->nocList.size() <= idx) {
+            return nullptr;
+          }
+          return bin->nocList[idx] ;
+        }
       }
       return nullptr ;
     }
@@ -613,6 +639,17 @@ class aie_cfg_tile
     bool setXclbinName(XclbinInfo*, const std::shared_ptr<xrt_core::device>& device);
     bool initializeComputeUnits(XclbinInfo*, const std::shared_ptr<xrt_core::device>&);
     bool initializeProfileMonitors(DeviceInfo*, const std::shared_ptr<xrt_core::device>&);
+    void initializeAM(DeviceInfo* devInfo, const std::string& name,
+                      const struct debug_ip_data* debugIpData) ;
+    void initializeAIM(DeviceInfo* devInfo, const std::string& name,
+                       const struct debug_ip_data* debugIpData) ;
+    void initializeASM(DeviceInfo* devInfo, const std::string& name,
+                       const struct debug_ip_data* debugIpData) ;
+    void initializeNOC(DeviceInfo* devInfo,
+                       const struct debug_ip_data* debugIpData) ;
+    void initializeTS2MM(DeviceInfo* devInfo,
+                         const struct debug_ip_data* debugIpData) ;
+    double findClockRate(std::shared_ptr<xrt_core::device> device) ;
 
   public:
     VPStaticDatabase(VPDatabase* d) ;
@@ -864,6 +901,11 @@ class aie_cfg_tile
         return nullptr;
       if (deviceInfo[deviceId]->loadedXclbins.size() <= 0)
         return nullptr ;
+
+      if(deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo.find(memId)
+              == deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo.end())
+        return nullptr;
+
       return deviceInfo[deviceId]->loadedXclbins.back()->memoryInfo[memId] ;
       //return deviceInfo[deviceId]->memoryInfo[memId];
     }
@@ -891,11 +933,11 @@ class aie_cfg_tile
      * Note : May not match xdp::DeviceIntf::getNumMonitors(XCL_PERF_MON_STR)
      *        as that includes both user-space and shell ASM
      */
-    inline uint64_t getNumASM(uint64_t deviceId, XclbinInfo* xclbin)
+    inline uint64_t getNumASMWithTrace(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return 0;
-      return deviceInfo[deviceId]->getNumASM(xclbin);
+      return deviceInfo[deviceId]->getNumASMWithTrace(xclbin);
     }
 
     inline uint64_t getNumNOC(uint64_t deviceId, XclbinInfo* xclbin)
@@ -992,6 +1034,8 @@ class aie_cfg_tile
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return nullptr;
+      if(deviceInfo[deviceId]->gmioList.size() <= idx)
+        return nullptr;
       return deviceInfo[deviceId]->gmioList[idx];
     }
 
@@ -999,7 +1043,7 @@ class aie_cfg_tile
            uint16_t num, uint16_t stream, uint16_t len)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
-  return ;
+        return ;
       deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len);
     }
 

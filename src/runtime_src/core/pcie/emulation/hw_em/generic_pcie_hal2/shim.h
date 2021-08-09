@@ -280,8 +280,6 @@ using addr_type = uint64_t;
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
-      //Construct CU index vs Base address map from IP_LAYOUT section in xclbin.
-      int getCuIdxBaseAddrMap();
       bool isHostOnlyBuffer(const struct xclemulation::drm_xocl_bo *bo) {
     	  if(xclemulation::config::getInstance()->isDisabledHostBUffer()) {
     		  return false;
@@ -389,8 +387,6 @@ using addr_type = uint64_t;
       bool mHostMemAccessThreadStarted;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
-      //CU register space for xclRegRead/Write()
-      std::map<uint32_t, uint64_t> mCuIndxVsBaseAddrMap;
       uint32_t mCuIndx;
       const size_t mCuMapSize = 64 * 1024;
       std::string simulatorType;

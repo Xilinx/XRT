@@ -20,6 +20,7 @@
 #include "xrt_mem.h"
 #include "xclfeatures.h"
 #include "core/common/config_reader.h"
+#include "core/common/xclbin_parser.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -31,6 +32,7 @@
 #include <winioctl.h>
 #include <setupapi.h>
 #include <strsafe.h>
+#include <crtdefs.h>
 
 
 // To be simplified
@@ -550,15 +552,116 @@ done:
     HANDLE deviceHandle = m_dev;
     DWORD error = 0;
     DWORD bytesWritten;
-    ULONG return_status = 0;
+    size_t off = 0;
+    size_t len = 0;
 
+    auto top = reinterpret_cast<const axlf*>(ImageBuffer);
+
+    XOCL_READ_AXLF_ARGS axlf_obj = {0};
+
+    auto kernels = xrt_core::xclbin::get_kernels(top);
+    /* Calculate size of kernels */
+    for (auto& kernel : kernels) {
+        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
+     * while loading xclbin.
+     *
+     * Why we extract data from XML metadata?
+     *  1. Kernel is NOT a good place to parse xml. It prefers binary.
+     *  2. All kernel details are in the xml today.
+     *
+     * What would happen in the future?
+     *  XCLBIN would contain fdt as metadata. At that time, this
+     *  could be removed.
+     *
+     * Binary format:
+     * +-----------------------+
+     * | Kernel[0]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[1]             |
+     * |   name[64]            |
+     * |   anums               |
+     * |   argument[0]         |
+     * |   argument[1]         |
+     * |   argument[...]       |
+     * |-----------------------|
+     * | Kernel[...]           |
+     * |   ...                 |
+     * +-----------------------+
+     */
+    std::vector<char> krnl_binary(axlf_obj.ksize);
+    axlf_obj.kernels = krnl_binary.data();
+    for (auto& kernel : kernels) {
+        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        if (kernel.name.size() > sizeof(krnl->name))
+            return 1;
+        std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
+        krnl->name[sizeof(krnl->name)-1] = '\0';
+        krnl->anums = kernel.args.size();
+        krnl->range = kernel.range;
+        // Initialize pointer to first argument array element
+        krnl->args = reinterpret_cast<argument_info *>((char *)krnl + sizeof(kernel_info));
+
+        int ai = 0;
+        for (auto& arg : kernel.args) {
+            if (arg.name.size() > sizeof(krnl->args[ai].name)) {
+
+               xrt_core::message::
+                send(xrt_core::message::severity_level::error, "XRT", "Argument name length invalid.");
+               return 1;
+            }
+            std::strncpy(krnl->args[ai].name, arg.name.c_str(), sizeof(krnl->args[ai].name)-1);
+            krnl->args[ai].name[sizeof(krnl->args[ai].name)-1] = '\0';
+            krnl->args[ai].offset = arg.offset;
+            krnl->args[ai].size   = arg.size;
+            // XCLBIN doesn't define argument direction yet and it only support
+            // input arguments.
+            // Driver use 1 for input argument and 2 for output.
+            // Let's refine this line later.
+            krnl->args[ai].dir    = 1;
+            ai++;
+        }
+        off += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+    }
+
+    /* To make download xclbin and configure KDS/ERT as an atomic operation. */
+    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(top);
+    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(top);
+    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+
+    /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
+     * But we cannot do this here, since the xclbin is not registered.
+     * Currently, emulation flow use get_ert_slots() as well.
+     * We will consider how to better determine slot size in new kds.
+     */
+    //axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots().second;
+    auto xml_hdr = xrt_core::xclbin::get_axlf_section(top, EMBEDDED_METADATA);
+    if (!xml_hdr)
+        throw std::runtime_error("No xml metadata in xclbin");
+    auto xml_size = xml_hdr->m_sectionSize;
+    auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset);
+    axlf_obj.kds_cfg.slot_size = (uint32_t)m_core_device->get_ert_slots(xml_data, xml_size).second;
+
+    /* calculate the complete length of buffer to be sent as output buffer. */
+    len = off + sizeof(struct xocl_kds);
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
                          ImageBuffer,
                          BuffSize,
-                         &return_status,
-                         sizeof(ULONG),
+                         &axlf_obj,
+                         (DWORD)len,
                          &bytesWritten,
                          nullptr)) {
 
@@ -566,32 +669,7 @@ done:
 
       xrt_core::message::
         send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with error %d", error);
-
-      goto out;
-
     }
-    if (return_status != NTSTATUS_STATUS_SUCCESS)
-    {
-
-        error = return_status;
-
-        if (return_status == NTSTATUS_REVISION_MISMATCH)
-        {
-            xrt_core::message::
-                send(xrt_core::message::severity_level::error, "XRT", "Xclbin does not match Shell on card. Use 'xbmgmt flash' to update Shell.");
-
-        }
-        else {
-
-            xrt_core::message::
-                send(xrt_core::message::severity_level::error, "XRT", "DeviceIoControl failed with NTSTATUS %x", return_status);
-
-        }
-
-    }
-
-
-  out:
 
     return error ? false : true;
 
@@ -903,6 +981,7 @@ done:
     if (!status || bytes != sizeof(struct mem_topology))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
 
+    // sizeof(mem_topology) already contains the size of one mem_data.
     DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
 
     if (size_ret)
@@ -928,6 +1007,139 @@ done:
 
     if (!status || bytes != mem_topology_size)
         throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_mem_topology) failed");
+  }
+
+  void
+  get_temp_by_mem_topology(char* buffer, size_t size, size_t* size_ret)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+    DWORD bytes = 0;
+
+    statargs.StatClass = XoclStatMemTopology;
+
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+           IOCTL_XOCL_STAT,
+           &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+           &mem_info, sizeof(struct mem_topology),
+           &bytes,
+           nullptr);
+
+      if (!status || bytes != sizeof(struct mem_topology))
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_temp_by_mem_topology) failed");
+
+      DWORD mm_size = sizeof(uint32_t)*(mem_info.m_count);
+        if (size_ret)
+          *size_ret = mm_size;
+
+      return;  // size_ret has required size
+    }
+
+    statargs.StatClass = XoclStatTempByMemTopology;
+    auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          buffer, (DWORD)size,
+          &bytes,
+          nullptr);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_temp_by_mem_topology|XoclStatTempByMemTopology) failed");
+  }
+
+  void
+  get_group_mem_topology(char* buffer, size_t size, size_t* size_ret)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+
+    statargs.StatClass = XoclStatGroupTopology;
+
+    DWORD bytes = 0;
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &mem_info, sizeof(struct mem_topology),
+              &bytes,
+              nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology) failed");
+
+      // sizeof(mem_topology) already contains the size of one mem_data.
+      DWORD mem_topology_size = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
+
+      if (size_ret)
+        *size_ret = mem_topology_size;
+
+      return;  // size_ret has required size
+    }
+
+    auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+    auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          memtopology, (DWORD)size,
+          &bytes,
+          nullptr);
+
+    if (!status)
+      throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_group_mem_topology|XoclStatGroupTopology) failed");
+  }
+
+  void
+  get_memstat(char* buffer, size_t size, size_t* size_ret, bool raw)
+  {
+    struct mem_topology mem_info;
+    XOCL_STAT_CLASS_ARGS statargs;
+    DWORD bytes = 0;
+
+    statargs.StatClass = XoclStatMemTopology;
+    if (!buffer) {
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &mem_info, sizeof(struct mem_topology),
+              &bytes,
+              nullptr);
+
+      if (!status || bytes != sizeof(struct mem_topology))
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemTopology) failed");
+      if (raw)
+        *size_ret = mem_info.m_count;
+      else
+        *size_ret = sizeof(struct mem_topology) + (mem_info.m_count - 1) * sizeof(struct mem_data);
+
+      return;  // size_ret has required size
+    }
+
+    if (raw) {
+      auto mmstat = reinterpret_cast<struct drm_xocl_mm_stat*>(buffer);
+      statargs.StatClass = XoclStatMemStatRaw;
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              mmstat, (DWORD)size,
+              &bytes,
+              nullptr);
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemStatRaw) failed");
+    }
+    else {
+      statargs.StatClass = XoclStatMemTopology;
+      auto memtopology = reinterpret_cast<struct mem_topology*>(buffer);
+      auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              memtopology, (DWORD)size,
+              &bytes,
+              nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_memstat|XoclStatMemTopology) failed");
+    }
   }
 
   void
@@ -1005,6 +1217,7 @@ done:
           return;
       }
 
+      // sizeof(debug_ip_layout) already contains the size of one debug_ip_data.
       DWORD debug_ip_layout_size = sizeof(struct debug_ip_layout) + ((debug_iplayout_hdr.m_count - 1) * sizeof(struct debug_ip_data));
 
       if (size_ret)
@@ -1074,7 +1287,7 @@ done:
   }
 
   void
-  get_icap_info(xcl_hwicap* value)
+  get_icap_info(xcl_pr_region* value)
   {
     DWORD bytes = 0;
     bool status = DeviceIoControl(m_dev,
@@ -1082,11 +1295,11 @@ done:
         nullptr,
         0,
         value,
-        sizeof(xcl_hwicap),
+        sizeof(xcl_pr_region),
         &bytes,
         nullptr);
 
-    if (!status || bytes != sizeof(xcl_hwicap))
+    if (!status || bytes != sizeof(xcl_pr_region))
       throw std::runtime_error("DeviceIoControl IOCTL_XOCL_ICAP_INFO (get_icap_info) failed");
   }
 
@@ -1165,6 +1378,40 @@ done:
                      });
   }
 
+  void
+  get_kds_custat(char* buffer, DWORD output_sz, int* size_ret)
+  {
+      XOCL_STAT_CLASS_ARGS statargs;
+      statargs.StatClass = XoclStatKdsCU;
+      DWORD bytes = 0;
+      XOCL_KDS_CU_INFORMATION kds_cu;
+
+      if (output_sz == 0) {
+          //Retrieve CU count in this ioctl request
+          auto status = DeviceIoControl(m_dev,
+              IOCTL_XOCL_STAT,
+              &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+              &kds_cu, sizeof(XOCL_KDS_CU_INFORMATION),
+              &bytes,
+              nullptr);
+
+          if (!status)
+              throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_kds_custat) failed in retrieving KDS CU count");
+          *size_ret = kds_cu.CuCount;
+          return;
+      }
+
+      auto kds_cu2 = reinterpret_cast<XOCL_KDS_CU_INFORMATION*>(buffer);
+	  auto status = DeviceIoControl(m_dev,
+          IOCTL_XOCL_STAT,
+          &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
+          kds_cu2, output_sz,
+          &bytes,
+          nullptr);
+
+      if (!status)
+        throw std::runtime_error("DeviceIoControl IOCTL_XOCL_STAT (get_kds_custat) failed in retrieving KDS CU info");
+  }
 
 }; // struct shim
 
@@ -1204,6 +1451,33 @@ get_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_re
     send(xrt_core::message::severity_level::debug, "XRT", "get_mem_topology()");
   auto shim = get_shim_object(hdl);
   shim->get_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_group_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_group_mem_topology()");
+  auto shim = get_shim_object(hdl);
+  shim->get_group_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_temp_by_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_temp_by_mem_topology()");
+  auto shim = get_shim_object(hdl);
+  shim->get_temp_by_mem_topology(buffer, size, size_ret);
+}
+
+void
+get_memstat(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret, bool raw)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_memstat()");
+  auto shim = get_shim_object(hdl);
+  shim->get_memstat(buffer, size, size_ret, raw);
 }
 
 void
@@ -1251,7 +1525,7 @@ get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value)
 }
 
 void
-get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value)
+get_icap_info(xclDeviceHandle hdl, xcl_pr_region* value)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "icap_info()");
@@ -1286,6 +1560,14 @@ get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value)
   shim->get_firewall_info(value);
 }
 
+void
+get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "get_kds_custat()");
+  shim* shim = get_shim_object(hdl);
+  shim->get_kds_custat(buffer, size, size_ret);
+}
 } // namespace userpf
 
 // Basic

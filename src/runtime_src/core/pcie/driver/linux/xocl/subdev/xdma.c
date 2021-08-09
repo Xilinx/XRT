@@ -481,6 +481,10 @@ static int xdma_probe(struct platform_device *pdev)
 		ret = -EIO;
 		goto failed;
 	}
+	if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+		xocl_info(&pdev->dev, "VERSAL ES3, set to 2 channels");
+		xdma->channel = 2;
+	}
 
 	xdma->user_msix_table = devm_kzalloc(&pdev->dev,
 			xdma->max_user_intr *

@@ -46,7 +46,7 @@ namespace xdp {
     amLastTrans.resize(numAM);
 
     aimLastTrans.resize((db->getStaticInfo()).getNumAIM(deviceId, xclbin)) ;
-    asmLastTrans.resize((db->getStaticInfo()).getNumASM(deviceId, xclbin)) ;
+    asmLastTrans.resize((db->getStaticInfo()).getNumASMWithTrace(deviceId, xclbin)) ;
   }
 
   void DeviceEventCreatorFromTrace::addCUEndEvent(double hostTimestamp,
@@ -579,7 +579,7 @@ namespace xdp {
   {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
-    for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASM(deviceId, xclbin); ++asmIndex) {
+    for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASMWithTrace(deviceId, xclbin); ++asmIndex) {
       uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {

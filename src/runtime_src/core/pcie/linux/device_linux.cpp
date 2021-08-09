@@ -73,7 +73,7 @@ struct kds_cu_stat
     // Using comma as separator.
     pdev->sysfs_get("", "kds_custat_raw", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -81,7 +81,7 @@ struct kds_cu_stat
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 5)
-        throw std::runtime_error("CU statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
@@ -118,7 +118,7 @@ struct kds_scu_stat
     // Using comma as separator.
     pdev->sysfs_get("", "kds_scustat_raw", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -126,7 +126,7 @@ struct kds_scu_stat
       tokenizer tokens(line, sep);
 
       if (std::distance(tokens.begin(), tokens.end()) != 4)
-        throw std::runtime_error("PS kernel statistic sysfs node corrupted");
+        throw xrt_core::query::sysfs_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
@@ -158,7 +158,7 @@ struct kds_cu_info
     std::string errmsg;
     pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     result_type cuStats;
     for (auto& line : stats) {
@@ -194,7 +194,7 @@ struct qspi_status
     std::string status_str, errmsg;
     pdev->sysfs_get("xmc", "xmc_qspi_status", errmsg, status_str);
     if (!errmsg.empty())
-      throw std::runtime_error(errmsg);
+      throw xrt_core::query::sysfs_error(errmsg);
 
     std::string primary, recovery;
     for (auto status_byte : status_str) {
@@ -242,7 +242,8 @@ struct sysfs_fcn
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value, static_cast<ValueType>(-1));
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -252,7 +253,7 @@ struct sysfs_fcn
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -268,7 +269,8 @@ struct sysfs_fcn<std::string>
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -278,7 +280,7 @@ struct sysfs_fcn<std::string>
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -295,7 +297,8 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     ValueType value;
     dev->sysfs_get(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
+
     return value;
   }
 
@@ -305,7 +308,7 @@ struct sysfs_fcn<std::vector<VectorValueType>>
     std::string err;
     dev->sysfs_put(subdev, entry, err, value);
     if (!err.empty())
-      throw std::runtime_error(err);
+      throw xrt_core::query::sysfs_error(err);
   }
 };
 
@@ -518,6 +521,10 @@ initialize_query_table()
   emplace_sysfs_get<query::mac_contiguous_num>                 ("xmc", "mac_contiguous_num");
   emplace_sysfs_get<query::mac_addr_first>                     ("xmc", "mac_addr_first");
   emplace_sysfs_get<query::oem_id>                             ("xmc", "xmc_oem_id");
+  emplace_sysfs_get<query::heartbeat_count>                    ("xmc", "xmc_heartbeat_count");
+  emplace_sysfs_get<query::heartbeat_err_code>                 ("xmc", "xmc_heartbeat_err_code");
+  emplace_sysfs_get<query::heartbeat_err_time>                 ("xmc", "xmc_heartbeat_err_time");
+  emplace_sysfs_get<query::heartbeat_stall>                    ("xmc", "xmc_heartbeat_stall");
   emplace_func0_request<query::xmc_qspi_status,                qspi_status>();
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
