@@ -96,7 +96,7 @@ void  main_(int argc, char** argv,
     // Something bad happen with parsing our options
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     XBU::report_commands_help(_executable, _description, globalOptions, hiddenOptions, _subCmds);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
  
   // -- Enable/Disable helper "global" options
@@ -128,7 +128,7 @@ void  main_(int argc, char** argv,
   if ( !subCommand) {
     std::cerr << "ERROR: " << "Unknown command: '" << sCommand << "'" << std::endl;
     XBU::report_commands_help( _executable, _description, globalOptions, hiddenOptions, _subCmds);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- Prepare the data

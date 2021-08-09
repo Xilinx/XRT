@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -126,7 +126,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
@@ -147,7 +147,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification
@@ -168,7 +168,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
 
   // Ask user for permission
   if(!XBU::can_proceed(XBU::getForce()))
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
 
   //perform reset actions
   for (const auto & dev : deviceCollection) {
@@ -184,7 +184,5 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
         % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
     }
   }
-
-  return;
 }
 
