@@ -298,6 +298,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_DSA_IS_VERSAL(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL)
 
+#define XOCL_DSA_IS_VERSAL_ES3(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL_ES3)
+
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
