@@ -204,9 +204,7 @@ PYBIND11_MODULE(pyxrt, m) {
                              r.start();
                              return r;
                          })
-        .def("group_id", &xrt::kernel::group_id, "Get the memory bank group id of an kernel argument")
-        .def("write_register", &xrt::kernel::write_register)
-        .def("read_register", &xrt::kernel::read_register);
+        .def("group_id", &xrt::kernel::group_id, "Get the memory bank group id of an kernel argument");
 
 
 /*
@@ -242,7 +240,7 @@ PYBIND11_MODULE(pyxrt, m) {
                       }), "Synchronize (DMA or cache flush/invalidation) the buffer in the requested direction")
         .def("map", ([](xrt::bo &b)  {
                          return py::memoryview::from_memory(b.map(), b.size());
-                     }), "Create a byte accessible mmemory view of the buffer object")
+                     }), "Create a byte accessible memory view of the buffer object")
         .def("size", &xrt::bo::size, "Return the size of the buffer object")
         .def("address", &xrt::bo::address, "Return the device physical address of the buffer object");
 
@@ -251,12 +249,12 @@ PYBIND11_MODULE(pyxrt, m) {
  * xrt::xclbin::ip xrt::xclbin::kernel
  *
  */
-    py::class_<xrt::xclbin> pyxclbin(m, "xclbin");
+    py::class_<xrt::xclbin> pyxclbin(m, "xclbin", "Represents an xclbin and provides APIs to access meta data");
     py::class_<xrt::xclbin::ip> pyxclbinip(pyxclbin, "xclbinip");
     py::bind_vector<std::vector<xrt::xclbin::ip>>(m, "xclbinip_vector");
-    py::class_<xrt::xclbin::kernel> pyxclbinkernel(pyxclbin, "xclbinkernel");
+    py::class_<xrt::xclbin::kernel> pyxclbinkernel(pyxclbin, "xclbinkernel", "Represents a kernel in an xclbin");
     py::bind_vector<std::vector<xrt::xclbin::kernel>>(m, "xclbinkernel_vector");
-    py::class_<xrt::xclbin::mem> pyxclbinmem(pyxclbin, "xclbinmem");
+    py::class_<xrt::xclbin::mem> pyxclbinmem(pyxclbin, "xclbinmem", "Represents a physical device memory bank");
     py::bind_vector<std::vector<xrt::xclbin::mem>>(m, "xclbinmem_vector");
 
 
@@ -264,15 +262,15 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("get_name", &xrt::xclbin::ip::get_name);
 
     pyxclbinkernel.def(py::init<>())
-        .def("get_name", &xrt::xclbin::kernel::get_name)
-        .def("get_num_args", &xrt::xclbin::kernel::get_num_args);
+        .def("get_name", &xrt::xclbin::kernel::get_name, "Get kernel name")
+        .def("get_num_args", &xrt::xclbin::kernel::get_num_args, "Number of arguments");
 
     pyxclbinmem.def(py::init<>())
-        .def("get_tag", &xrt::xclbin::mem::get_tag)
-        .def("get_base_address", &xrt::xclbin::mem::get_base_address)
-        .def("get_size_kb", &xrt::xclbin::mem::get_size_kb)
-        .def("get_used", &xrt::xclbin::mem::get_used)
-        .def("get_index", &xrt::xclbin::mem::get_index);
+        .def("get_tag", &xrt::xclbin::mem::get_tag, "Get tag name")
+        .def("get_base_address", &xrt::xclbin::mem::get_base_address, "Get the base address of the memory bank")
+        .def("get_size_kb", &xrt::xclbin::mem::get_size_kb, "Get the size of the memory in KB")
+        .def("get_used", &xrt::xclbin::mem::get_used, "Get used status of the memory")
+        .def("get_index", &xrt::xclbin::mem::get_index, "Get the index of the memory");
 /*
  *
  * xrt::xclbin
@@ -287,10 +285,10 @@ PYBIND11_MODULE(pyxrt, m) {
                           return new xrt::xclbin(top);
                       }))
         .def("get_ips", &xrt::xclbin::get_ips)
-        .def("get_kernels", &xrt::xclbin::get_kernels)
-        .def("get_xsa_name", &xrt::xclbin::get_xsa_name)
-        .def("get_uuid", &xrt::xclbin::get_uuid)
-        .def("get_mems", &xrt::xclbin::get_mems);
+        .def("get_kernels", &xrt::xclbin::get_kernels, "Get list of kernels from xclbin")
+        .def("get_xsa_name", &xrt::xclbin::get_xsa_name, "Get Xilinx Support Archive (XSA) name of xclbin")
+        .def("get_uuid", &xrt::xclbin::get_uuid, "Get the uuid of the xclbin")
+        .def("get_mems", &xrt::xclbin::get_mems, "Get list of memory objects");
 
 
 #if !defined(__x86_64__)
