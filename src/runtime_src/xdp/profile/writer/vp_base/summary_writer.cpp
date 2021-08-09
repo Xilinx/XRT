@@ -1474,9 +1474,9 @@ namespace xdp {
               fout << "READ," ;
               fout << values.ReadTranx[AIMIndex] << "," ;
               fout << readTransferRate << "," ;
-	      fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
+              fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
               fout << (totalReadTime / one_million) << "," ;
-	      fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
+              fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
               fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << ",\n" ;
             }
             if (values.WriteTranx[AIMIndex] > 0) {
@@ -1491,9 +1491,9 @@ namespace xdp {
               fout << "WRITE," ;
               fout << values.WriteTranx[AIMIndex] << "," ;
               fout << writeTransferRate << "," ;
-	      fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
+              fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
               fout << (totalWriteTime / one_million) << "," ;
-	      fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
+              fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
               fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << ",\n" ;
             }
           }
