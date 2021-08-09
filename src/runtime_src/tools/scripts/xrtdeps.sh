@@ -565,6 +565,7 @@ install()
     # Install/upgrade pybind11 for building the XRT python bindings
     # We need 2.6.0 minimum version
     pip3 install -U pybind11
+    pip3 install -U numpy 
 }
 
 update_package_list
