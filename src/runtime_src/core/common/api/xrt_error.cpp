@@ -208,10 +208,10 @@ public:
   {
     //Code for new format; Binary array of error structs in sysfs
     try {
-      std::vector<char> buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
+      auto buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
       if (buf.empty())
         return;
-      const xcl_errors *errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
+      auto errors_buf = reinterpret_cast<xcl_errors *>(buf.data());
       if (errors_buf->num_err <= 0)
         return;
       if (errors_buf->num_err > XCL_ERROR_CAPACITY)
