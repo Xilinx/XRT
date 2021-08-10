@@ -1674,7 +1674,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
@@ -1732,7 +1732,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
 
@@ -1746,7 +1746,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
   } catch (const std::runtime_error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification

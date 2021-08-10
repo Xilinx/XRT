@@ -1,8 +1,8 @@
 /**
- * Copyright (C) 2020 Licensed under the Apache License, Version
- * 2.0 (the "License"). You may not use this file except in
- * compliance with the License. A copy of the License is located
- * at
+ * Copyright (C) 2020-2021 Licensed under the Apache License,
+ * Version 2.0 (the "License"). You may not use this file except
+ * in compliance with the License. A copy of the License is
+ * located at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -293,7 +293,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check the options
@@ -311,14 +311,14 @@ OO_Config::execute(const SubCmdOptions& _options) const
         (m_retention != "DISABLE")) {
       std::cerr << "ERROR: Invalidate '--retention' option: " << m_retention << std::endl;
       printHelp();
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
   }
 
   if (m_devices.empty() && !m_daemon)  {
     std::cerr << "ERROR: If the daemon is to be used (e.g., set to true) then a device must also be declared." << std::endl;
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // -- process option: device -----------------------------------------------
@@ -332,7 +332,7 @@ OO_Config::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification

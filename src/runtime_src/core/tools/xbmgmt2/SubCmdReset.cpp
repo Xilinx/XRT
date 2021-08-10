@@ -137,7 +137,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
@@ -161,7 +161,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification
@@ -183,7 +183,7 @@ SubCmdReset::execute(const SubCmdOptions& _options) const
   // Ask user for permission
   XBUtilities::sudo_or_throw("Root privileges are required to perform management resets");
   if(!XBU::can_proceed(XBU::getForce()))
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
 
   //perform reset actions
   for (const auto & dev : deviceCollection) {

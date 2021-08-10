@@ -76,7 +76,7 @@ XBU::verbose("SubCommand option: read mem");
   catch (po::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   //-- Working variables
@@ -102,11 +102,11 @@ XBU::verbose("SubCommand option: read mem");
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   catch (const std::runtime_error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   try {
@@ -115,7 +115,7 @@ XBU::verbose("SubCommand option: read mem");
   }
   catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   try {
@@ -124,7 +124,7 @@ XBU::verbose("SubCommand option: read mem");
   }
   catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--size'\n") % m_sizeBytes;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   if(!m_fill.empty()) {
@@ -134,7 +134,7 @@ XBU::verbose("SubCommand option: read mem");
     }
     catch(const std::invalid_argument&) {
       std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--fill'. Please specify a value between 0 and 255\n") % m_fill;
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
   }
 
