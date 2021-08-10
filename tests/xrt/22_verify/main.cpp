@@ -48,7 +48,7 @@ static void usage()
 static void
 run(const xrt::device& device, const xrt::uuid& uuid, bool verbose)
 {
-  auto hello = xrt::kernel(device, uuid.get(), "hello:hello_1");
+  auto hello = xrt::kernel(device, uuid.get(), "hello:{hello_1}");
 
   auto bo = xrt::bo(device, 1024, hello.group_id(0));
   auto bo_data = bo.map<char*>();
