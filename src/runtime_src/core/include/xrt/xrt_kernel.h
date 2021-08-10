@@ -174,6 +174,22 @@ class run
   stop();
 
   /**
+   * abort() - Abort a run object that has been started
+   *
+   * @return
+   *  State of aborted command
+   *
+   * If the run object has been sent to scheduler for execution, then
+   * this function can be used to abort the scheduled command.
+   *
+   * The function is synchronous and will wait for abort to complete.
+   * The return value is the state of the aborted command.
+   */
+  XCL_DRIVER_DLLESPEC
+  ert_cmd_state
+  abort();
+
+  /**
    * wait() - Wait for a run to complete execution
    *
    * @param timeout  

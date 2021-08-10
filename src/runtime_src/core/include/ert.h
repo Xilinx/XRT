@@ -361,7 +361,7 @@ struct ert_abort_cmd {
   };
 
   /* payload */
-  uint32_t exec_bo_handle;
+  uint64_t exec_bo_handle;
 };
 
 /**
