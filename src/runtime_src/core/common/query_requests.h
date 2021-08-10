@@ -1085,46 +1085,14 @@ struct xocl_errors : request
   get(const device*) const = 0;
 
   // Parse sysfs line and from class get error code and timestamp
+  XRT_CORE_COMMON_EXPORT
   static std::pair<uint64_t, uint64_t>
-  to_value(const std::vector<char>& buf, xrtErrorClass ecl)
-  {
-    uint64_t errcode = 0;
-    uint64_t ts = 0;
-    if (buf.empty())
-      return std::make_pair(errcode, ts);
-    auto errors_buf = reinterpret_cast<const xcl_errors *>(buf.data());
-    if (errors_buf->num_err <= 0)
-      return std::make_pair(errcode, ts);
-    if (errors_buf->num_err > XCL_ERROR_CAPACITY)
-      return std::make_pair(errcode, ts);
-
-    for (int i = 0; i < errors_buf->num_err; i++) {
-      if (XRT_ERROR_CLASS(errors_buf->errors[i].err_code) != ecl)
-        continue;
-      errcode = errors_buf->errors[i].err_code;
-      ts = errors_buf->errors[i].ts;
-    }
-    return std::make_pair(errcode, ts);
-  }
+  to_value(const std::vector<char>& buf, xrtErrorClass ecl);
 
   // Parse sysfs raw data and get list of errors
+  XRT_CORE_COMMON_EXPORT
   static std::vector<xclErrorLast>
-  to_errors(const std::vector<char>& buf)
-  {
-    std::vector<xclErrorLast> errors;
-    if (buf.empty())
-      return errors;
-    auto errors_buf = reinterpret_cast<const xcl_errors *>(buf.data());
-    if (errors_buf->num_err <= 0)
-      return errors;
-    if (errors_buf->num_err > XCL_ERROR_CAPACITY)
-      return errors;
-
-    for (int i = 0; i < errors_buf->num_err; i++) {
-      errors.emplace_back(errors_buf->errors[i]);
-    }
-    return errors;
-  }
+  to_errors(const std::vector<char>& buf);
 };
 
 struct dna_serial_num : request
