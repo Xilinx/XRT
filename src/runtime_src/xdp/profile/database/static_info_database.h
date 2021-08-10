@@ -283,6 +283,9 @@ class aie_cfg_tile
     bool usesTs2mm = false ;
     bool hasFloatingAIM = false;
     bool hasFloatingASM = false;
+    // Memory AIMs are configured for counters only, so are separate
+    //  from floating AIMs that have trace
+    bool hasMemoryAIM = false ;
     DeviceIntf* deviceIntf = nullptr;
 
     xrt_core::uuid uuid ; 

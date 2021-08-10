@@ -343,7 +343,6 @@ namespace xdp {
   void
   SummaryWriter::writeAPICalls(APIType type)
   {
- 
     // For each function call, across all of the threads, 
     //  consolidate all the information into what we need
     std::map<std::string,
@@ -1423,6 +1422,85 @@ namespace xdp {
     }
   }
 
+  void SummaryWriter::writeDataTransferMemory()
+  {
+    std::vector<DeviceInfo*> infos = db->getStaticInfo().getDeviceInfos() ;
+    if (infos.size() == 0) return ;
+
+    bool hasMemoryMonitors = false ;
+    for (auto device : infos) {
+      for (auto xclbin : device->loadedXclbins) {
+        hasMemoryMonitors |= xclbin->hasMemoryAIM ;
+        if (hasMemoryMonitors) break ;
+      }
+      if (hasMemoryMonitors) break ;
+    }
+
+    if (!hasMemoryMonitors) return ;
+
+    fout << "TITLE:Data Transfer: Memory Resource\n" ;
+    fout << "SECTION:Host Data Transfers,Memory Bank Data Transfer\n" ;
+    fout << "COLUMN:Device,string,Name of device\n" ;
+    fout << "COLUMN:Memory Resource,string,Memory resource on the device\n" ;
+    fout << "COLUMN:Transfer Type,string,Read or write transfer\n" ;
+    fout << "COLUMN:Number of Transfers,int,Number of data transfers\n" ;
+    fout << "COLUMN:Transfer Rate(MB/s),float,Total transfer rate = (Total Data Transfer) / (Total active time)\n" ;
+    fout << "COLUMN:Total Data Transfer (MB),float,Total data read and written on this memory resource\n" ;
+    fout << "COLUMN:Average Size (KB),float,Average Size in KB of each transaction\n" ;
+    fout << "COLUMN:Average Latency (ns),float,Average latency in ns of each transaction\n" ;
+
+    for (auto device : infos) {
+      for (auto xclbin : device->loadedXclbins) {
+        uint64_t AIMIndex = 0;
+        xclCounterResults values =
+          db->getDynamicInfo().getCounterResults(device->deviceId,
+                                                 xclbin->uuid) ;
+        for (auto aim : xclbin->aimList) {
+          auto loc = aim->name.find("memory_subsystem") ;
+          if (loc != std::string::npos) {
+	    std::string memoryResource = aim->name.substr(loc + 16) ;
+
+	    if (values.ReadTranx[AIMIndex] > 0) {
+ 	      uint64_t totalReadBusyCycles = values.ReadBusyCycles[AIMIndex] ;
+	      double totalReadTime =
+	        (double)(totalReadBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	      double readTransferRate = (totalReadTime == zero) ? 0 :
+	        (double)(values.ReadBytes[AIMIndex]) / (one_thousand * totalReadTime);
+
+              fout << "ENTRY:" ;
+              fout << device->getUniqueDeviceName() << "," ;
+              fout << memoryResource << "," ;
+              fout << "READ," ;
+              fout << values.ReadTranx[AIMIndex] << "," ;
+              fout << readTransferRate << "," ;
+              fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
+              fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
+              fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << ",\n" ;
+            }
+            if (values.WriteTranx[AIMIndex] > 0) {
+ 	      uint64_t totalWriteBusyCycles = values.WriteBusyCycles[AIMIndex] ;
+	      double totalWriteTime =
+	        (double)(totalWriteBusyCycles) / (one_thousand * xclbin->clockRateMHz);
+	      double writeTransferRate = (totalWriteTime == zero) ? 0 :
+	        (double)(values.WriteBytes[AIMIndex]) / (one_thousand * totalWriteTime);
+              fout << "ENTRY:" ;
+              fout << device->getUniqueDeviceName() << "," ;
+              fout << memoryResource << "," ;
+              fout << "WRITE," ;
+              fout << values.WriteTranx[AIMIndex] << "," ;
+              fout << writeTransferRate << "," ;
+              fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
+              fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
+              fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << ",\n" ;
+            }
+          }
+          ++AIMIndex ;
+        }
+      }
+    }
+
+  }
+
   void SummaryWriter::writeDataTransferGlobalMemoryToGlobalMemory()
   {
     std::vector<DeviceInfo*> infos = (db->getStaticInfo()).getDeviceInfos() ;
@@ -1903,6 +1981,7 @@ namespace xdp {
       }
       writeDataTransferDMA() ;                           fout << "\n" ;
       writeDataTransferDMABypass() ;                     fout << "\n" ;
+      writeDataTransferMemory() ;                        fout << "\n" ;
       writeStreamDataTransfers() ;                       fout << "\n" ;
       writeDataTransferKernelsToGlobalMemory() ;         fout << "\n" ;
       writeTopDataTransferKernelAndGlobal() ;            fout << "\n" ;
