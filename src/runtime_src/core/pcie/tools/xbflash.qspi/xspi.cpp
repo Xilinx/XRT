@@ -986,7 +986,7 @@ int XSPI_Flasher::macronixConfigure()
 {
     bool ready = isFlashReady();
     if(!ready){
-        std::cout << "Unable to get flash ready" << std::endl;
+        std::cout << "ERROR: Unable to get flash ready" << std::endl;
         return false;
     }
 
@@ -1001,7 +1001,7 @@ int XSPI_Flasher::macronixConfigure()
 
     ready = isFlashReady();
     if(!ready){
-        std::cout << "Unable to get flash ready" << std::endl;
+        std::cout << "ERROR: Unable to get flash ready" << std::endl;
         return false;
     }
 
