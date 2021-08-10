@@ -22,7 +22,7 @@ from utils_binding import *
 
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
-globalbuffersize = 1024*1024*16    #16 MB
+DATASIZE = 1024*1024*16    #16 MB
 
 def getThreshold(devhdl):
     threshold = 40000
@@ -39,13 +39,13 @@ def getThreshold(devhdl):
     return threshold
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
-    bo = pyxrt.bo(devhdl, globalbuffersize, pyxrt.bo.normal, krnlhdl.group_id(argno))
+    bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.normal, krnlhdl.group_id(argno))
     buf = bo.map();
 
-    for i in range(globalbuffersize):
+    for i in range(DATASIZE):
         buf[i] = i%256 if isInput else 0
 
-    bo.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, globalbuffersize, 0)
+    bo.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_TO_DEVICE, DATASIZE, 0)
     return bo, buf
 
 def runKernel(opt):
@@ -61,10 +61,8 @@ def runKernel(opt):
     input_bo1, input_buf1 = getInputOutputBuffer(d, khandle1, 1, True)
     input_bo2, input_buf2 = getInputOutputBuffer(d, khandle2, 1, True)
 
-    typesize = 512
+    TYPESIZE = 512
     threshold = getThreshold(d)
-    globalbuffersizeinbeats = globalbuffersize/(typesize>>3)
-    tests= int(math.log(globalbuffersizeinbeats, 2.0))+1
     beats = 16
 
     #lists
@@ -75,7 +73,7 @@ def runKernel(opt):
     bpersec     = []
     mbpersec    = []
 
-    #run tests with burst length 1 beat to globalbuffersize
+    #run tests with burst length 1 beat to DATASIZE
     #double burst length each test
     test=0
     throughput = []
@@ -95,7 +93,7 @@ def runKernel(opt):
             end = current_micro_time()
 
             usduration = end - start
-            limit = beats * (typesize>>3)
+            limit = beats * (TYPESIZE / 8)
             output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
 
@@ -113,7 +111,7 @@ def runKernel(opt):
 
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000.0)
-        dbytes.append(reps*beats*(typesize>>3))
+        dbytes.append(reps*beats*(TYPESIZE / 8))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(2.0*dbytes[test]/dsduration[test])
         mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
