@@ -41,8 +41,6 @@ SectionPartitionMetadata::_init SectionPartitionMetadata::_initializer;
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
   { "__INFO", FDTProperty::DF_sz },
   { "alias_name", FDTProperty::DF_sz },
-  { "bar", FDTProperty::DF_u32},
-  { "base_address", FDTProperty::DF_u64 },
   { "compatible", FDTProperty::DF_asz },
   { "firmware_branch_name", FDTProperty::DF_sz },
   { "firmware_product_name", FDTProperty::DF_sz },
@@ -57,7 +55,6 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "minor", FDTProperty::DF_u32 },
   { "pcie_bar_mapping", FDTProperty::DF_u32},
   { "pcie_physical_function", FDTProperty::DF_u32},
-  { "physical_function", FDTProperty::DF_u32},
   { "range", FDTProperty::DF_u64 },
   { "reg", FDTProperty::DF_au64 },
   { "resolves_interface_uuid", FDTProperty::DF_sz },
@@ -231,11 +228,25 @@ SchemaTransformToDTC_pcie( const boost::property_tree::ptree& _ptOriginal,
   boost::property_tree::ptree ptBarArray;
   for (auto barEntryOrig : ptBarOriginal) {
     boost::property_tree::ptree ptBarEntry;
+    boost::property_tree::ptree _ptBarOriginalEntry = barEntryOrig.second;
 
-    SchemaTransform_nameValue("bar", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("physical_function", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("base_address", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("range", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+    SchemaTransform_nameValue("pcie_base_address_register", "pcie_bar_mapping",  true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+    SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptBarOriginalEntry , ptBarEntry);
+
+    // -- Transform 'offset' and 'range' to 'reg'
+    if ((_ptBarOriginalEntry.find("offset") != _ptBarOriginalEntry.not_found()) &&
+      (_ptBarOriginalEntry.find("range") != _ptBarOriginalEntry.not_found())) {
+      boost::property_tree::ptree ptRegOffset;
+      ptRegOffset.put("", _ptBarOriginalEntry.get<std::string>("offset").c_str());
+      boost::property_tree::ptree ptRegRange;
+
+      ptRegRange.put("", _ptBarOriginalEntry.get<std::string>("range").c_str());
+      boost::property_tree::ptree ptReg;
+
+      ptReg.push_back(std::make_pair("", ptRegOffset));
+      ptReg.push_back(std::make_pair("", ptRegRange));
+      ptBarEntry.add_child("reg", ptReg);
+    }
 
     ptBarArray.add_child(std::to_string(count++), ptBarEntry);
   }
@@ -516,11 +527,20 @@ SchemaTransformToPM_pcie( const boost::property_tree::ptree& _ptOriginal,
   boost::property_tree::ptree ptBarArray;
   for (auto barEntryOrig : ptBarOriginal) {
     boost::property_tree::ptree ptBarEntry;
+    boost::property_tree::ptree _ptBarOriginalEntry = barEntryOrig.second;
 
-    SchemaTransform_nameValue("bar", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("physical_function", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("base_address", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("range", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
+    SchemaTransform_nameValue("pcie_bar_mapping", "pcie_base_address_register", true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+    SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+
+    // -- Transform 'reg' to 'offset' and 'range'
+    if (_ptBarOriginalEntry.find("reg") != _ptBarOriginalEntry.not_found()) {
+      std::vector<std::string> regVector = as_vector<std::string>(_ptBarOriginalEntry, "reg");
+
+      if (regVector.size() == 2) {
+	ptBarEntry.put("offset", regVector[0].c_str());
+	ptBarEntry.put("range", regVector[1].c_str());
+      }
+    }
 
     ptBarArray.push_back(std::make_pair("", ptBarEntry));
   }
