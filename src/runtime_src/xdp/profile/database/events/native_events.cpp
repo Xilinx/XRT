@@ -33,7 +33,35 @@ namespace xdp {
   void NativeAPICall::dump(std::ofstream& fout, uint32_t bucket)
   {
     VTFEvent::dump(fout, bucket) ;
-    fout << "," << functionName << std::endl ;
+    fout << "," << functionName << "\n" ;
+  }
+
+  void NativeAPICall::dumpSync(std::ofstream& /*fout*/, uint32_t /*bucket*/)
+  {
+  }
+
+  NativeSyncRead::NativeSyncRead(uint64_t s_id, double ts, uint64_t name,
+                                 uint64_t r) :
+    NativeAPICall(s_id, ts, name), readStr(r)
+  {
+  }
+
+  void NativeSyncRead::dumpSync(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << "," << readStr << "\n" ;
+  }
+
+  NativeSyncWrite::NativeSyncWrite(uint64_t s_id, double ts, uint64_t name,
+                                   uint64_t w) :
+    NativeAPICall(s_id, ts, name), writeStr(w)
+  {
+  }
+
+  void NativeSyncWrite::dumpSync(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << "," << writeStr << "\n" ;
   }
 
 } // end namespace xdp
