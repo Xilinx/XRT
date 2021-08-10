@@ -27,6 +27,7 @@
 #include "xdp/config.h"
 
 #include "core/common/device.h"
+#include "core/edge/common/aie_parser.h"
 #include "xaiefal/xaiefal.hpp"
 
 extern "C" {
@@ -34,6 +35,8 @@ extern "C" {
 }
 
 namespace xdp {
+
+  using tile_type = xrt_core::edge::aie::tile_type;
 
   class AIEProfilingPlugin : public XDPPlugin
   {
@@ -49,6 +52,13 @@ namespace xdp {
   private:
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
+
+    // Find minimum number of counters that are available across all tiles
+    uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
+                            const std::vector<tile_type>& tiles,
+                            bool isCore,
+                            const std::string& metricSet);
+    void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
@@ -66,6 +76,9 @@ namespace xdp {
     std::map<std::string, std::vector<XAie_Events>> mCoreStartEvents;
     std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
     std::map<std::string, std::vector<int>> broadcastCoreConfig;
+
+    std::map<std::string, std::vector<std::string>> mCoreEventStrings;
+    std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
 
     std::set<std::string> mMemoryMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
