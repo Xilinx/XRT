@@ -309,7 +309,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   // Validate the correct action value is used
   try {
      string2action(m_action);
-  } catch (const xrt_core::generic_error e) {
+  } catch (const xrt_core::generic_error &e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
