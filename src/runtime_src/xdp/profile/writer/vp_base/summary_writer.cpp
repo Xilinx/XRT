@@ -1446,7 +1446,6 @@ namespace xdp {
     fout << "COLUMN:Number of Transfers,int,Number of data transfers\n" ;
     fout << "COLUMN:Transfer Rate(MB/s),float,Total transfer rate = (Total Data Transfer) / (Total active time)\n" ;
     fout << "COLUMN:Total Data Transfer (MB),float,Total data read and written on this memory resource\n" ;
-    fout << "COLUMN:Total Time (ms),float,Total time transactions were active\n" ;
     fout << "COLUMN:Average Size (KB),float,Average Size in KB of each transaction\n" ;
     fout << "COLUMN:Average Latency (ns),float,Average latency in ns of each transaction\n" ;
 
@@ -1475,7 +1474,6 @@ namespace xdp {
               fout << values.ReadTranx[AIMIndex] << "," ;
               fout << readTransferRate << "," ;
               fout << ((double)(values.ReadBytes[AIMIndex] / one_million)) << "," ;
-              fout << (totalReadTime / one_million) << "," ;
               fout << ((double)(values.ReadBytes[AIMIndex]) / (double)(values.ReadTranx[AIMIndex])) / one_thousand << "," ;
               fout << ((one_thousand * values.ReadLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.ReadTranx[AIMIndex]) << ",\n" ;
             }
@@ -1492,7 +1490,6 @@ namespace xdp {
               fout << values.WriteTranx[AIMIndex] << "," ;
               fout << writeTransferRate << "," ;
               fout << ((double)(values.WriteBytes[AIMIndex] / one_million)) << "," ;
-              fout << (totalWriteTime / one_million) << "," ;
               fout << ((double)(values.WriteBytes[AIMIndex]) / (double)(values.WriteTranx[AIMIndex])) / one_thousand << "," ;
               fout << ((one_thousand * values.WriteLatency[AIMIndex]) / xclbin->clockRateMHz) / (values.WriteTranx[AIMIndex]) << ",\n" ;
             }
