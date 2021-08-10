@@ -111,9 +111,9 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
       auto units = m_size.substr(m_size.length()-1);
       boost::to_upper(units);
       if(units.compare("M") == 0)
-        bytes = 1024;
-      else if(units.compare("G") ==0)
         bytes = 1024*1024;
+      else if(units.compare("G") ==0)
+        bytes = 1024*1024*1024;
       else
         throw xrt_core::error(std::errc::invalid_argument, "Please specify a valid size unit (M|G), eg: `256M`");
 
@@ -158,11 +158,11 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
   } 
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   catch (const std::runtime_error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
