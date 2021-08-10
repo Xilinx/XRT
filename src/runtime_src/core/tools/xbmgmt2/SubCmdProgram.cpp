@@ -509,7 +509,7 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
   stream.read(buffer.data(), total_size);
 
   try {
-    xrt_core::program_plp(dev, buffer);
+    xrt_core::program_plp(dev, buffer, XBU::getForce());
   } 
   catch(xrt_core::error& e) {
     std::cout << "ERROR: " << e.what() << std::endl;

@@ -196,9 +196,9 @@ get_monitor_access_type()
 }
 
 void
-program_plp(const device* dev, const std::vector<char> &buffer)
+program_plp(const device* dev, const std::vector<char> &buffer, bool force)
 {
-  instance().program_plp(dev, buffer);
+  instance().program_plp(dev, buffer, force);
 }
 
 void
