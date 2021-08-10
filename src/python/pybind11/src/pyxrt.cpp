@@ -59,8 +59,7 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("ERT_CMD_STATE_TIMEOUT", ert_cmd_state::ERT_CMD_STATE_TIMEOUT)
         .value("ERT_CMD_STATE_NORESPONSE", ert_cmd_state::ERT_CMD_STATE_NORESPONSE)
         .value("ERT_CMD_STATE_SKERROR", ert_cmd_state::ERT_CMD_STATE_SKERROR)
-        .value("ERT_CMD_STATE_SKCRASHED", ert_cmd_state::ERT_CMD_STATE_SKCRASHED)
-        .value("ERT_CMD_STATE_MAX", ert_cmd_state::ERT_CMD_STATE_MAX);
+        .value("ERT_CMD_STATE_SKCRASHED", ert_cmd_state::ERT_CMD_STATE_SKCRASHED);
 
     py::enum_<xrt::info::device>(m, "xrt_info_device", "Device feature and sensor information")
         .value("bdf", xrt::info::device::bdf)

@@ -22,7 +22,7 @@ from utils_binding import *
 
 current_micro_time = lambda: int(round(time.time() * 1000000))
 
-DATASIZE = 1024*1024*16    #16 MB
+DATASIZE = int(1024*1024*16)    #16 MB
 
 def getThreshold(devhdl):
     threshold = 40000
@@ -93,7 +93,7 @@ def runKernel(opt):
             end = current_micro_time()
 
             usduration = end - start
-            limit = beats * (TYPESIZE / 8)
+            limit = beats * int(TYPESIZE / 8)
             output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
 
@@ -111,7 +111,7 @@ def runKernel(opt):
 
         dnsduration.append(usduration)
         dsduration.append(dnsduration[test]/1000000.0)
-        dbytes.append(reps*beats*(TYPESIZE / 8))
+        dbytes.append(reps*beats*int(TYPESIZE / 8))
         dmbytes.append(dbytes[test]/(1024 * 1024))
         bpersec.append(2.0*dbytes[test]/dsduration[test])
         mbpersec.append(2.0*bpersec[test]/(1024 * 1024))
