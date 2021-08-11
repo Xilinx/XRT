@@ -926,6 +926,9 @@ public:
   {
     virtual void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) = 0;
+
+    virtual void
+    set_arg_value(const argument& arg, const xrt::bo& bo) = 0;
   };
 
 private:
@@ -1609,6 +1612,13 @@ class run_impl
     void
     set_arg_value(const argument& arg, const arg_range<uint8_t>& value) override = 0;
 
+    void
+    set_arg_value(const argument& arg, const xrt::bo& bo) override
+    {
+      auto value = bo.address();
+      set_arg_value(arg, arg_range<uint8_t>{&value, sizeof(value)});
+    }
+
     virtual void
     set_offset_value(size_t offset, const arg_range<uint8_t>& value) = 0;
 
@@ -1680,6 +1690,22 @@ class run_impl
     }
   };
 
+  // PS_KERNEL
+  struct ps_arg_setter : hs_arg_setter
+  {
+    explicit
+    ps_arg_setter(uint32_t* data)
+      : hs_arg_setter(data)
+    {}
+
+    void
+    set_arg_value(const argument& arg, const xrt::bo& bo) override
+    {
+      uint64_t value[2] = {bo.address(), bo.size()};
+      hs_arg_setter::set_arg_value(arg, arg_range<uint8_t>{value, sizeof(value)});
+    }
+  };
+
   static uint32_t
   create_uid()
   {
@@ -1690,10 +1716,16 @@ class run_impl
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
-    if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
+    switch (kernel->get_ip_control_protocol()) {
+    case FAST_ADAPTER:
       return std::make_unique<fa_arg_setter>(data);
-    else
+#if 0
+    case PS_KERNEL:
+      return std::make_unique<ps_arg_setter>(data);
+#endif
+    default:
       return std::make_unique<hs_arg_setter>(data);
+    }
   }
 
   arg_setter*
@@ -1875,6 +1907,12 @@ public:
   }
 
   void
+  set_arg_value(const argument& arg, const xrt::bo& bo)
+  {
+    get_arg_setter()->set_arg_value(arg, bo);
+  }
+
+  void
   set_arg_value(const argument& arg, const void* value, size_t bytes)
   {
     set_arg_value(arg, arg_range<uint8_t>{value, bytes});
@@ -1902,8 +1940,8 @@ public:
   set_arg_at_index(size_t index, const xrt::bo& bo)
   {
     validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo));
-    auto value = xrt_core::bo::address(bo);
-    set_arg_at_index(index, &value, sizeof(value));
+    auto& arg = kernel->get_arg(index);
+    set_arg_value(arg, bo);
   }
 
   void
