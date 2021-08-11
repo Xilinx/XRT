@@ -178,7 +178,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     printHelp(commonOptions, hiddenOptions);
     throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!output.empty() && boost::filesystem::exists(output)) {
+  if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
     std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
