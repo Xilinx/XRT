@@ -514,6 +514,26 @@ command_queue_max_slot_num(void *queue_handle)
 	return ERT_MAX_SLOTS;
 }
 
+static void
+command_queue_abort(void *client, void *queue_handle)
+{
+	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
+	struct xrt_ert_command *ecmd = NULL, *next = NULL;
+
+	list_for_each_entry_safe(ecmd, next, &cmd_queue->sq, list) {
+		if (ecmd->client != client)
+			continue;
+
+		if (ecmd->complete_entry.cstate != KDS_COMPLETED)
+			ecmd->complete_entry.cstate = KDS_TIMEOUT;
+
+		list_del(&ecmd->list);
+		cmd_queue->sq_num--;
+		command_queue_complete(ecmd, cmd_queue);
+	}
+}
+
+
 static struct xrt_ert_queue_funcs command_queue_func = {
 
 	.poll    = command_queue_poll,
@@ -526,6 +546,7 @@ static struct xrt_ert_queue_funcs command_queue_func = {
 
 	.max_slot_num = command_queue_max_slot_num,
 
+	.abort = command_queue_abort,
 };
 
 static int command_queue_remove(struct platform_device *pdev)
