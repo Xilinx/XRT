@@ -88,7 +88,6 @@ namespace xdp {
       auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
       uint64_t timeMsec = value.count() ;
 
-
       std::string pathToFile = "" ;
 #ifdef _WIN32
       char buffer[MAX_PATH] ;
