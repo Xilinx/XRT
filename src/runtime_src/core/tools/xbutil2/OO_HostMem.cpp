@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 20211 Licensed under the Apache License, Version
+ * Copyright (C) 2021 Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is located
  * at
@@ -25,17 +25,41 @@ namespace po = boost::program_options;
 
 namespace {
 bool
-string2action(std::string str)
+string2action(const std::string &str)
 {
-  std::transform(str.begin(), str.end(), str.begin(),
-                 [](auto c) { return static_cast<char>(std::tolower(c)); });
-
-  if (str == "enable")
+  if (boost::iequals(str, "enable"))
     return true;
-  else if (str == "disable")
+  else if (boost::iequals(str, "disable"))
     return false;
   else
     throw xrt_core::generic_error(EINVAL, "Invalid host-mem action '" + str + "'");
+}
+
+uint64_t 
+string2size(const std::string &str)
+{
+  uint64_t size = 0;
+  if(!str.empty()) {
+    uint64_t bytes = 0;
+    auto units = str.substr(str.length()-1);
+    boost::to_upper(units);
+    if(units.compare("M") == 0)
+      bytes = 1024*1024;
+    else if(units.compare("G") ==0)
+      bytes = 1024*1024*1024;
+    else
+      throw xrt_core::error(std::errc::invalid_argument, "Please specify a valid size unit (M|G), eg: `256M`");
+      
+    try {
+      size = std::stoll(str.substr(0, str.length()-1));
+    } 
+    catch (const std::exception& ex) {
+      //out of range, invalid argument ex
+      throw xrt_core::error(std::errc::invalid_argument, "Value supplied to --size option is invalid");
+    }
+    size = size*bytes;
+  }
+  return size;
 }
 
 void
@@ -59,7 +83,7 @@ OO_HostMem::OO_HostMem( const std::string &_longName, bool _isHidden )
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE or DISABLE")
-    ("size,s", boost::program_options::value<decltype(m_size)>(&m_size), "Size of host memory to be enabled (e.g. 256M, 1G)")
+    ("size,s", boost::program_options::value<decltype(m_size)>(&m_size), "Size of host memory (bytes) to be enabled (e.g. 256M, 1G)")
     ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
@@ -92,41 +116,27 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
   }
   catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << "\n\n";
-
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Exit if neither action or device specified
-  if(m_help || (m_action.empty() || m_devices.empty())) {
+  if(m_help) {
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+  // Exit if neither action or device specified
+  if(m_action.empty()) {
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+  if(m_devices.empty()) {
+    printHelp();
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   bool enable = false;
   try {
-    uint64_t size = 0;
-    if(!m_size.empty()) {
-      uint64_t bytes = 0;
-      auto units = m_size.substr(m_size.length()-1);
-      boost::to_upper(units);
-      if(units.compare("M") == 0)
-        bytes = 1024*1024;
-      else if(units.compare("G") ==0)
-        bytes = 1024*1024*1024;
-      else
-        throw xrt_core::error(std::errc::invalid_argument, "Please specify a valid size unit (M|G), eg: `256M`");
-
-      try {
-        size = std::stoll(m_size.substr(0, m_size.length()-1));
-      } 
-      catch (const std::exception& ex) {
-        //out of range, invalid argument ex
-        throw xrt_core::error(std::errc::invalid_argument, "Value supplied to --size option is invalid");
-      }
-      size = size*bytes;
-    }
-
+    auto size = string2size(m_size);
     enable = string2action(m_action);
     // Exit if ENABLE action is specified but size is not
     if(enable && size == 0)

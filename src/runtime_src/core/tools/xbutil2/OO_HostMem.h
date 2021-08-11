@@ -31,7 +31,6 @@ class OO_HostMem : public OptionOptions {
   std::string m_action;
   std::string m_size;
   bool m_help;
-
 };
 
 #endif
