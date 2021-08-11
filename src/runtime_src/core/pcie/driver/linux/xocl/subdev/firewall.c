@@ -416,7 +416,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			xocl_info(&pdev->dev,
 				"AXI Firewall %d tripped, status: 0x%x, bar offset 0x%llx, resource %s",
 				i, val, bar_off, (res && res->name) ? res->name : "N/A");
-			if (fw->af[i].version == IP_VER_11) {
+			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
 				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
 				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
@@ -453,7 +453,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 				"Firewall %d, ep %s, status: 0x%x, bar offset 0x%llx",
 				i, (res && res->name) ? res->name : "N/A",
 				READ_STATUS(fw, i), bar_off);
-			if (fw->af[i].version == IP_VER_11) {
+			if (fw->af[i].version >= IP_VER_11) {
 				xocl_info(&pdev->dev, "ARADDR 0x%lx, AWADDR 0x%lx, ARUSER 0x%x, AWUSER 0x%x",
 				    READ_ARADDR(fw, i), READ_AWADDR(fw, i),
 				    READ_ARUSER(fw, i), READ_AWUSER(fw, i));
@@ -662,7 +662,7 @@ static int firewall_probe(struct platform_device *pdev)
 		}
 
 		fw->af[i].version = AF_READ32(fw, i, IP_VERSION);
-		if (fw->af[i].version == IP_VER_11 &&
+		if (fw->af[i].version >= IP_VER_11 &&
 		    AF_READ32(fw, i, MAX_CONTINUOUS_WTRANSFERS_WAITS) != 0)
 			fw->af[i].mode = SI_MODE;
 
