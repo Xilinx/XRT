@@ -46,7 +46,7 @@ namespace xclcpuemhal2 {
   void * remotePortMappedPointer = NULL;
   namespace pt = boost::property_tree;
 
-  bool initRemotePortMap()
+  bool initRemotePortMap(std::string fpgaDevice)
   {
     int fd;
     unsigned addr;//, page_addr , page_offset;
@@ -58,16 +58,15 @@ namespace xclcpuemhal2 {
       exit(-1);
     }
 
-#if defined(CONFIG_ARM64)
-    addr = PL_RP_MP_ALLOCATED_ADD;
-#else
-    addr = PL_RP_ALLOCATED_ADD;
-#endif
-
-    addr = 0xa4000000;// Temp. fix
-
-    //page_addr = (addr & ~(page_size - 1));
-    //page_offset = addr - page_addr;
+    if (fpgaDevice.find("versal:") != std::string::npos) {
+      addr = PL_RP_VERSAL_ALLOCATED_ADD;
+    }
+    else if (fpgaDevice.find("zynquplus:") != std::string::npos) {
+      addr = PL_RP_MP_ALLOCATED_ADD;
+    }
+    else {
+      addr = PL_RP_ALLOCATED_ADD;
+    }
 
     remotePortMappedPointer = mmap(NULL, page_size, PROT_READ | PROT_WRITE,
       MAP_SHARED, fd, (addr & ~(page_size - 1)));
@@ -80,7 +79,7 @@ namespace xclcpuemhal2 {
     return true;
   }
 
-  bool validateXclBin(const xclBin *header, std::string &xclBinName, bool &deviceProcessInQemu)
+  bool validateXclBin(const xclBin *header, std::string &xclBinName, bool &deviceProcessInQemu , std::string &fpgaDevice)
   {
     char *bitstreambin = reinterpret_cast<char*> (const_cast<xclBin*> (header));
     //int result = 0; Not used. Removed to get rid of compiler warning, and probably a Coverity CID.
@@ -130,9 +129,7 @@ namespace xclcpuemhal2 {
       {
         //Give error and return from here
       }
-    }
-
-    std::string fpgaDevice = "";
+    }   
     // iterate devices
     count = 0;
     for (auto& xml_device : xml_project.get_child("project.platform"))
@@ -158,8 +155,8 @@ namespace xclcpuemhal2 {
       }
     }
     xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
-    //check for Versal Platforms
-    if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+    //check for Versal,zynqmp Platforms
+    if (fpgaDevice != "" && (fpgaDevice.find("versal:") != std::string::npos || fpgaDevice.find("zynquplus:") != std::string::npos)) {
       deviceProcessInQemu = false;
     }
     return true;
@@ -222,6 +219,7 @@ namespace xclcpuemhal2 {
     bXPR = _xpr;
     mIsKdsSwEmu = (xclemulation::is_sw_emulation()) ? xrt_core::config::get_flag_kds_sw_emu() : false;
     mDeviceProcessInQemu = true;
+    mFpgaDevice = "";
   }
 
   size_t CpuemShim::alloc_void(size_t new_size)
@@ -611,7 +609,7 @@ namespace xclcpuemhal2 {
   { 
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
     std::string xclBinName = "";
-    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu)) {
+    if (!xclcpuemhal2::validateXclBin(header, xclBinName, mDeviceProcessInQemu, mFpgaDevice)) {
       printf("ERROR:Xclbin validation failed\n");
       return 1;
     }
@@ -897,7 +895,7 @@ namespace xclcpuemhal2 {
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
       if (!xclcpuemhal2::isRemotePortMapped) {
-        xclcpuemhal2::initRemotePortMap();
+        xclcpuemhal2::initRemotePortMap(mFpgaDevice);
       }
       
       //Send the LoadXclBin
@@ -927,8 +925,10 @@ namespace xclcpuemhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
 
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
     if (!sock)
       sock = new unix_socket(true);
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
 
     if (header)
     {
@@ -1004,6 +1004,8 @@ namespace xclcpuemhal2 {
         return -1;
       }
 
+      if (mLogStream.is_open()) mLogStream << __func__ << "Extracted xclbin data" << std::endl;
+
       if (memTopology && connectvitybuf)
       {
         auto m_mem = (reinterpret_cast<const ::mem_topology*>(memTopology.get()));
@@ -1061,6 +1063,7 @@ namespace xclcpuemhal2 {
         mSWSch = new SWScheduler(this);
         mSWSch->init_scheduler_thread();
       }
+      if (mLogStream.is_open()) mLogStream << __func__ << " xclLoadXclbinContent_RPC_CALL : started " << std::endl;
       //Send xclbin content i.e. sharedlib, xclbin xml, emudata over tcp sockets. its scoped call
       {
         bool keepdirc = xclemulation::config::getInstance()->isKeepRunDirEnabled() ? true : false;
@@ -1071,6 +1074,8 @@ namespace xclcpuemhal2 {
           return -1;
         }
       }
+
+      if (mLogStream.is_open()) mLogStream << __func__ << " xclLoadXclbinContent_RPC_CALL : done " << std::endl;
 
       bool ack = true;
       bool verbose = false;
