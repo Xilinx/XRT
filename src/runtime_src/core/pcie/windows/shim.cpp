@@ -553,17 +553,21 @@ done:
     DWORD error = 0;
     DWORD bytesWritten;
     size_t off = 0;
-    size_t len = 0;
+    size_t ksize = 0;
+    PXOCL_READ_AXLF_ARGS axlf_obj = nullptr;
 
     auto top = reinterpret_cast<const axlf*>(ImageBuffer);
-
-    XOCL_READ_AXLF_ARGS axlf_obj = {0};
 
     auto kernels = xrt_core::xclbin::get_kernels(top);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
-        axlf_obj.ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+        ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
     }
+
+    /* create buffer of total size to be sent via ioctl*/
+    std::vector<char> axlf_binary(ksize + sizeof (XOCL_READ_AXLF_ARGS));
+    axlf_obj = reinterpret_cast<XOCL_READ_AXLF_ARGS*>(axlf_binary.data());
+    axlf_obj->ksize = ksize;
 
     /* To enhance CU subdevice and KDS/ERT, driver needs all details about kernels
      * while loading xclbin.
@@ -596,18 +600,15 @@ done:
      * |   ...                 |
      * +-----------------------+
      */
-    std::vector<char> krnl_binary(axlf_obj.ksize);
-    axlf_obj.kernels = krnl_binary.data();
     for (auto& kernel : kernels) {
-        auto krnl = reinterpret_cast<kernel_info *>(axlf_obj.kernels + off);
+        auto krnl = reinterpret_cast<kernel_info *>(&axlf_obj->kernels[0] + off);
+
         if (kernel.name.size() > sizeof(krnl->name))
             return 1;
         std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
         krnl->name[sizeof(krnl->name)-1] = '\0';
         krnl->anums = kernel.args.size();
         krnl->range = kernel.range;
-        // Initialize pointer to first argument array element
-        krnl->args = reinterpret_cast<argument_info *>((char *)krnl + sizeof(kernel_info));
 
         int ai = 0;
         for (auto& arg : kernel.args) {
@@ -632,13 +633,13 @@ done:
     }
 
     /* To make download xclbin and configure KDS/ERT as an atomic operation. */
-    axlf_obj.kds_cfg.ert = xrt_core::config::get_ert();
-    axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
-    axlf_obj.kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
-    axlf_obj.kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(top);
-    axlf_obj.kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
-    axlf_obj.kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(top);
-    axlf_obj.kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
+    axlf_obj->kds_cfg.ert = xrt_core::config::get_ert();
+    axlf_obj->kds_cfg.polling = xrt_core::config::get_ert_polling();
+    axlf_obj->kds_cfg.cu_dma = xrt_core::config::get_ert_cudma();
+    axlf_obj->kds_cfg.cu_isr = xrt_core::config::get_ert_cuisr() && xrt_core::xclbin::get_cuisr(top);
+    axlf_obj->kds_cfg.cq_int = xrt_core::config::get_ert_cqint();
+    axlf_obj->kds_cfg.dataflow = xrt_core::config::get_feature_toggle("Runtime.dataflow") || xrt_core::xclbin::get_dataflow(top);
+    axlf_obj->kds_cfg.rw_shared = xrt_core::config::get_rw_shared();
 
     /* TODO: In scheduler.cpp init() function, it use get_ert_slots(void) to get slot size.
      * But we cannot do this here, since the xclbin is not registered.
@@ -651,17 +652,14 @@ done:
         throw std::runtime_error("No xml metadata in xclbin");
     auto xml_size = xml_hdr->m_sectionSize;
     auto xml_data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) + xml_hdr->m_sectionOffset);
-    axlf_obj.kds_cfg.slot_size = (uint32_t)m_core_device->get_ert_slots(xml_data, xml_size).second;
-
-    /* calculate the complete length of buffer to be sent as output buffer. */
-    len = off + sizeof(struct xocl_kds);
+    axlf_obj->kds_cfg.slot_size = (uint32_t)m_core_device->get_ert_slots(xml_data, xml_size).second;
 
     if (!DeviceIoControl(deviceHandle,
                          IOCTL_XOCL_READ_AXLF,
                          ImageBuffer,
                          BuffSize,
-                         &axlf_obj,
-                         (DWORD)len,
+                         axlf_obj,
+                         (DWORD)axlf_binary.size(),
                          &bytesWritten,
                          nullptr)) {
 

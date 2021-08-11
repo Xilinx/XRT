@@ -189,7 +189,7 @@ struct kernel_info {
     char                    name[64];
     size_t                  range;
     size_t                  anums;
-    struct argument_info    *args;
+    struct argument_info    args[1];
 };
 
 struct xocl_kds{
@@ -211,9 +211,9 @@ struct xocl_kds{
 // OutBuffer = XOCL_READ_AXLF_ARGS
 //
 typedef struct _XOCL_READ_AXLF_ARGS {
-    struct xocl_kds  kds_cfg; // IN: KDS user configuration
-    size_t           ksize;   // IN: size of kernels in bytes
-    CHAR*            kernels; // IN: pointer of kernel_info array
+    struct xocl_kds  kds_cfg;    // IN: KDS user configuration
+    size_t           ksize;      // IN: size of kernels in bytes
+    CHAR             kernels[1]; // IN: pointer of kernel_info array
 } XOCL_READ_AXLF_ARGS, * PXOCL_READ_AXLF_ARGS;
 
 #define IOCTL_XOCL_READ_AXLF        CTL_CODE(FILE_DEVICE_XOCL_USER, 2076, METHOD_IN_DIRECT, FILE_READ_DATA)
