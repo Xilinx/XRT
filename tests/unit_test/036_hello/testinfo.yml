@@ -7,6 +7,7 @@ level: 6
 owner: qinz
 user:
   allowed_test_modes: [sw_emu, hw_emu, hw]
+  excl_platforms: [/.*nodma.*/]
   force_makefile: "--force"
   host_args: {all: bin_hello.xclbin}
   host_cflags: ' -DDSA64 -DFPGA_DEVICE'
