@@ -1588,12 +1588,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	char				wq_name[15];
 	int				ret, i;
 
-	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
-		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
-			 pdev->cfg_size);
-		return -EINVAL;
-	}
-
 	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {
 		xocl_err(&pdev->dev, "failed to alloc xocl_dev");
