@@ -1398,13 +1398,6 @@ public:
     // set kernel protocol
     protocol = get_ip_control(kernel_cus);
 
-    // Collect ip_layout index of the selected CUs so that xclbin
-    // connectivity section can be used to gather memory group index
-    // for each kernel argument.
-    std::vector<int32_t> ip2idx(kernel_cus.size());
-    std::transform(kernel_cus.begin(), kernel_cus.end(), ip2idx.begin(),
-        [ip_layout](auto& ip) { return std::distance(ip_layout->m_ip_data, ip); });
-
     // get kernel arguments from xml parser
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
