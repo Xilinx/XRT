@@ -151,6 +151,10 @@ namespace XBUtilities {
   std::string 
   parse_clock_id(const std::string& id);
 
+
+  uint64_t 
+  stringToBytes(const std::string &str);
+
  /*
   * xclbin locking
   */

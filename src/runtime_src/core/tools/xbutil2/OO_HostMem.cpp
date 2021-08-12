@@ -25,33 +25,6 @@ namespace po = boost::program_options;
 
 namespace {
 
-uint64_t 
-string2size(const std::string &str)
-{
-  uint64_t size = 0;
-  if(!str.empty()) {
-    uint64_t bytes = 0;
-    auto units = str.substr(str.length()-1);
-    boost::to_upper(units);
-    if(units.compare("M") == 0)
-      bytes = 1024*1024;
-    else if(units.compare("G") ==0)
-      bytes = 1024*1024*1024;
-    else
-      throw xrt_core::error(std::errc::invalid_argument, "Please specify a valid size unit (M|G), eg: `256M`");
-      
-    try {
-      size = std::stoll(str.substr(0, str.length()-1));
-    } 
-    catch (const std::exception&) {
-      //out of range, invalid argument ex
-      throw xrt_core::error(std::errc::invalid_argument, "Value supplied to --size option is invalid");
-    }
-    size = size*bytes;
-  }
-  return size;
-}
-
 void
 host_mem(xrt_core::device* device, bool action, uint64_t size)
 {
@@ -124,9 +97,18 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  uint64_t size = 0;
+  try {
+    size = XBUtilities::stringToBytes(m_size);
+  } 
+  catch(const xrt_core::error&) {
+    std::cerr << "Value supplied to --size option is invalid" << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
   bool enable = false;
   try {
-    auto size = string2size(m_size);
+    
     
     if ((boost::iequals(m_action, "ENABLE") != 0) && (boost::iequals(m_action, "DISABLE") != 0)) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
