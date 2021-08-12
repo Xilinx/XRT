@@ -435,7 +435,7 @@ struct shim : public DeviceType
     if(ret == -EBUSY)
       throw system_error(ret, "Host mem is already enabled or in-use");
     if(ret)
-      throw system_error(ret, strerror(std::abs(ret)));
+      throw system_error(ret);
   }
 
   virtual void

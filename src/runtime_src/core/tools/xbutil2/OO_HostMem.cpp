@@ -24,16 +24,6 @@
 namespace po = boost::program_options;
 
 namespace {
-bool
-string2action(const std::string &str)
-{
-  if (boost::iequals(str, "enable"))
-    return true;
-  else if (boost::iequals(str, "disable"))
-    return false;
-  else
-    throw xrt_core::generic_error(EINVAL, "Invalid host-mem action '" + str + "'");
-}
 
 uint64_t 
 string2size(const std::string &str)
@@ -53,7 +43,7 @@ string2size(const std::string &str)
     try {
       size = std::stoll(str.substr(0, str.length()-1));
     } 
-    catch (const std::exception& ex) {
+    catch (const std::exception&) {
       //out of range, invalid argument ex
       throw xrt_core::error(std::errc::invalid_argument, "Value supplied to --size option is invalid");
     }
@@ -137,7 +127,14 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
   bool enable = false;
   try {
     auto size = string2size(m_size);
-    enable = string2action(m_action);
+    
+    if ((boost::iequals(m_action, "ENABLE") != 0) && (boost::iequals(m_action, "DISABLE") != 0)) {
+      std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
+      printHelp();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    enable =  boost::iequals(m_action, "ENABLE");
+
     // Exit if ENABLE action is specified but size is not
     if(enable && size == 0)
       throw xrt_core::error(std::errc::invalid_argument, "Please specify the memory size for enablement");

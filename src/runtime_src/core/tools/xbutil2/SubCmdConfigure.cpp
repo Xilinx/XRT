@@ -94,7 +94,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     po::store(parsedCommonTop, vm);  // Can throw
     po::notify(vm);                  // Can throw (but really isn't used)
 
-    // Multual DRC
+    // Mutual DRC
     for (unsigned int index1 = 0; index1 < subOptionOptions.size(); ++index1) {
       for (unsigned int index2 = index1 + 1; index2 < subOptionOptions.size(); ++index2) {
         conflictingOptions(vm, subOptionOptions[index1]->longName(), subOptionOptions[index2]->longName());
@@ -123,9 +123,8 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
   // 2) Process the top level options
   std::vector<std::string> topOptions = po::collect_unrecognized(parsedCommonTop.options, po::include_positional);
-  if (help) {
+  if (help)
     topOptions.push_back("--help");
-  }
 
   optionOption->setGlobalOptions(getGlobalOptions());
   
