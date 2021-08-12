@@ -46,6 +46,7 @@ void  main_(int argc, char** argv,
   bool bBatchMode = false;
   bool bShowHidden = false;
   bool bForce = false;
+  bool bVersion = false;
 
   // Build Options
   po::options_description globalSubCmdOptions("Global Command Options");
@@ -58,6 +59,7 @@ void  main_(int argc, char** argv,
   po::options_description globalOptions("Global Options");
   globalOptions.add_options()
     ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
+    ("version",    boost::program_options::bool_switch(&bVersion), "Version of this application")
   ;
   globalOptions.add(globalSubCmdOptions);
 
@@ -96,6 +98,11 @@ void  main_(int argc, char** argv,
     // Something bad happen with parsing our options
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     XBU::report_commands_help(_executable, _description, globalOptions, hiddenOptions, _subCmds);
+    return;
+  }
+
+  if(bVersion) {
+    XBU::pretty_print_xrt_version();
     return;
   }
  
