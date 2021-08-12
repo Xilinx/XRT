@@ -422,12 +422,17 @@ namespace xdp {
   {
     fout << "TITLE:Native API Calls\n" ;
     fout << "SECTION:API Calls,Native API Calls\n" ;
-    fout << "COLUMN:API Name,string,Name of Native XRT API,\n" ;
-    fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
-    fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
-    fout << "COLUMN:Minimum Time (ms),float,Minimum execution time (in ms),\n";
-    fout << "COLUMN:Average Time (ms),float,Average execution time (in ms),\n";
-    fout << "COLUMN:Maximum Time (ms),float,Maximum execution time (in ms),\n";
+    fout << "COLUMN:<html>API Name</html>,string,Name of Native XRT API,\n" ;
+    fout << "COLUMN:<html>Number<br>Of Calls</html>,int,"
+         << "Number of calls to API,\n" ;
+    fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
+         << "Total execution time (in ms),\n" ;
+    fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
+         << "Minimum execution time (in ms),\n";
+    fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
+         << "Average execution time (in ms),\n";
+    fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
+         << "Maximum execution time (in ms),\n";
     writeAPICalls(NATIVE) ;
   }
 
@@ -435,12 +440,17 @@ namespace xdp {
   {
     fout << "TITLE:HAL API Calls\n" ;
     fout << "SECTION:API Calls,HAL API Calls\n" ;
-    fout << "COLUMN:API Name,string,Name of HAL XRT API,\n" ;
-    fout << "COLUMN:Number Of Calls,int,Number of calls to API,\n" ;
-    fout << "COLUMN:Total Time (ms),float,Total execution time (in ms),\n" ;
-    fout << "COLUMN:Minimum Time (ms),float,Minimum execution time (in ms),\n";
-    fout << "COLUMN:Average Time (ms),float,Average execution time (in ms),\n";
-    fout << "COLUMN:Maximum Time (ms),float,Maximum execution time (in ms),\n";
+    fout << "COLUMN:<html>API Name</html>,string,Name of HAL XRT API,\n" ;
+    fout << "COLUMN:<html>Number<br>Of Calls</html>,int,"
+         << "Number of calls to API,\n" ;
+    fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
+         << "Total execution time (in ms),\n" ;
+    fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
+         << "Minimum execution time (in ms),\n";
+    fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
+         << "Average execution time (in ms),\n";
+    fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
+         << "Maximum execution time (in ms),\n";
     writeAPICalls(HAL) ;
   }
 
@@ -925,31 +935,31 @@ namespace xdp {
 
     fout << "TITLE:Host Reads from Global Memory\n" ;
     fout << "SECTION:Host Data Transfers,Host Reads from Global Memory\n" ;
-    fout << "COLUMN:Number of Reads,int,"
+    fout << "COLUMN:<html>Number<br>of Reads</html>,int,"
          << "Number of host reads (note: may contain OpenCL printf transfers),"
          << "\n" ;
-    fout << "COLUMN:Maximum Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Maximum<br>Buffer<br>Size (KB)</html>,float,"
          << "Maximum buffer size of host reads,\n";
-    fout << "COLUMN:Minimum Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Minimum<br>Buffer<br>Size (KB)</html>,float,"
          << "Minimum buffer size of host reads,\n";
-    fout << "COLUMN:Average Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Average<br>Buffer<br>Size (KB)</html>,float,"
          << "Average buffer size of host reads: "
          << "Average Size = (Total KB) / (Number of Transfers),\n";
 
     if (getFlowMode() == HW) {
-      fout << "COLUMN:Transfer Rate (MB/s),float,"
+      fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host reads (in MB/s): "
            << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
-      fout << "COLUMN:Average Bandwidth Utilization (%),float,"
-           << "Average bandwidth of host reads: "
+      fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
+           << "float,Average bandwidth of host reads: "
            << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
-      fout << "COLUMN:Maximum Time (ms),float,"
+      fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
            << "Maximum time of a single host read,\n" ;
-      fout << "COLUMN:Minimum Time (ms),float,"
+      fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
            << "Minimum time of a single host read,\n" ;
-      fout << "COLUMN:Total Time (ms),float,"
+      fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
            << "Combined time of all host reads,\n" ;
-      fout << "COLUMN:Average Time (ms),float,"
+      fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
            << "Average of read durations (in ms),\n" ;
     }
 
@@ -990,30 +1000,30 @@ namespace xdp {
 
     fout << "TITLE:Host Writes to Global Memory\n" ;
     fout << "SECTION:Host Data Transfers,Host Writes to Global Memory\n" ;
-    fout << "COLUMN:Number of Writes,int,"
+    fout << "COLUMN:<html>Number<br>of Writes</html>,int,"
          << "Number of host writes,\n" ;
-    fout << "COLUMN:Maximum Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Maximum<br>Buffer<br>Size (KB)</html>,float,"
          << "Maximum buffer size of host writes,\n";
-    fout << "COLUMN:Minimum Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Minimum<br>Buffer<br>Size (KB)</html>,float,"
          << "Minimum buffer size of host writes,\n";
-    fout << "COLUMN:Average Buffer Size (KB),float,"
+    fout << "COLUMN:<html>Average<br>Buffer<br>Size (KB)</html>,float,"
          << "Average buffer size of host writes: "
          << "Average Size = (Total KB) / (Number of Transfers),\n";
 
     if (getFlowMode() == HW) {
-      fout << "COLUMN:Transfer Rate (MB/s),float,"
+      fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
            << "Rate of host writes (in MB/s): "
            << "Transfer Rate = (Total Bytes) / (Total Time in us),\n" ;
-      fout << "COLUMN:Average Bandwidth Utilization (%),float,"
-           << "Average bandwidth of host writes: "
+      fout << "COLUMN:<html>Average<br>Bandwidth<br>Utilization (%)</html>,"
+           << "float,Average bandwidth of host writes: "
            << "Bandwidth Utilization (%) = (100 * Transfer Rate) / (Max. Theoretical Rate),\n" ;
-      fout << "COLUMN:Maximum Time (ms),float,"
+      fout << "COLUMN:<html>Maximum<br>Time (ms)</html>,float,"
            << "Maximum time of a single host write,\n" ;
-      fout << "COLUMN:Minimum Time (ms),float,"
+      fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
            << "Minimum time of a single host write,\n" ;
-      fout << "COLUMN:Total Time (ms),float,"
+      fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
            << "Combined time of all host write,\n" ;
-      fout << "COLUMN:Average Time (ms),float,"
+      fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
            << "Average of write durations (in ms),\n" ;
     }
 
@@ -1440,14 +1450,21 @@ namespace xdp {
 
     fout << "TITLE:Data Transfer: Memory Resource\n" ;
     fout << "SECTION:Host Data Transfers,Memory Bank Data Transfer\n" ;
-    fout << "COLUMN:Device,string,Name of device\n" ;
-    fout << "COLUMN:Memory Resource,string,Memory resource on the device\n" ;
-    fout << "COLUMN:Transfer Type,string,Read or write transfer\n" ;
-    fout << "COLUMN:Number of Transfers,int,Number of data transfers\n" ;
-    fout << "COLUMN:Transfer Rate(MB/s),float,Total transfer rate = (Total Data Transfer) / (Total active time)\n" ;
-    fout << "COLUMN:Total Data Transfer (MB),float,Total data read and written on this memory resource\n" ;
-    fout << "COLUMN:Average Size (KB),float,Average Size in KB of each transaction\n" ;
-    fout << "COLUMN:Average Latency (ns),float,Average latency in ns of each transaction\n" ;
+    fout << "COLUMN:<html>Device</html>,string,Name of device\n" ;
+    fout << "COLUMN:<html>Memory<br>Resource</html>,string,"
+         << "Memory resource on the device\n" ;
+    fout << "COLUMN:<html>Transfer<br>Type</html>,string,"
+         << "Read or write transfer\n" ;
+    fout << "COLUMN:<html>Number<br>of Transfers</html>,int,"
+         << "Number of data transfers\n" ;
+    fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
+         << "Total transfer rate = (Total Data Transfer) / (Total active time)\n" ;
+    fout << "COLUMN:<html>Total<br>Data<br>Transfer (MB)</html>,float,"
+         << "Total data read and written on this memory resource\n" ;
+    fout << "COLUMN:<html>Average<br>Size (KB)</html>,float,"
+         << "Average Size in KB of each transaction\n" ;
+    fout << "COLUMN:<html>Average<br>Latency (ns)</html>,float,"
+         << "Average latency in ns of each transaction\n" ;
 
     for (auto device : infos) {
       for (auto xclbin : device->loadedXclbins) {
@@ -1859,11 +1876,15 @@ namespace xdp {
 
     fout << "TITLE:Top Memory Reads: Host from Global Memory\n" ;
     fout << "SECTION:Host Data Transfers,Top Memory Reads\n" ;
-    fout << "COLUMN:Start Time (ms),float,Start time of read transfer (in ms),\n" ;
-    fout << "COLUMN:Buffer Size (KB),float,Size of read transfer (in KB),\n" ;
+    fout << "COLUMN:<html>Start<br>Time (ms)</html>,float,"
+         << "Start time of read transfer (in ms),\n" ;
+    fout << "COLUMN:<html>Buffer<br>Size (KB)</html>,float,"
+         << "Size of read transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
-      fout << "COLUMN:Duration (ms),float,Duration of read transfer (in ms),\n" ;
-      fout << "COLUMN:Reading Rate(MB/s),float,Transfer rate of reads: Reading Rate = (Buffer Size) / (Duration),\n";
+      fout << "COLUMN:<html>Duration (ms)</html>,float,"
+           << "Duration of read transfer (in ms),\n" ;
+      fout << "COLUMN:<html>Reading<br>Rate (MB/s)</html>,float,"
+           << "Transfer rate of reads: Reading Rate = (Buffer Size) / (Duration),\n";
     }
 
     for (auto& iter : db->getStats().getTopHostReads()) {
@@ -1887,11 +1908,15 @@ namespace xdp {
 
     fout << "TITLE:Top Memory Writes: Host to Global Memory\n" ;
     fout << "SECTION:Host Data Transfers,Top Memory Writes\n" ;
-    fout << "COLUMN:Start Time (ms),float,Start time of write transfer (in ms),\n" ;
-    fout << "COLUMN:Buffer Size (KB),float,Size of write transfer (in KB),\n" ;
+    fout << "COLUMN:<html>Start<br>Time (ms)</html>,float,"
+         << "Start time of write transfer (in ms),\n" ;
+    fout << "COLUMN:<html>Buffer<br>Size (KB)</html>,float,"
+         << "Size of write transfer (in KB),\n" ;
     if (getFlowMode() == HW) {
-      fout << "COLUMN:Duration (ms),float,Duration of write transfer (in ms),\n" ;
-      fout << "COLUMN:Writing Rate(MB/s),float,Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
+      fout << "COLUMN:<html>Duration (ms)</html>,float,"
+           << "Duration of write transfer (in ms),\n" ;
+      fout << "COLUMN:<html>Writing<br>Rate (MB/s)</html>,float,"
+           << "Transfer rate of writes: Writing Rate = (Buffer Size) / (Duration),\n";
     }
 
     for (auto& iter : db->getStats().getTopHostWrites()) {
