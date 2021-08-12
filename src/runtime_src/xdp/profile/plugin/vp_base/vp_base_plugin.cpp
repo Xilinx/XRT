@@ -51,8 +51,16 @@ namespace xdp {
 
   XDPPlugin::XDPPlugin() : db(VPDatabase::Instance())
   {
-    if ((db->getStaticInfo()).getApplicationStartTime() == 0)
+    if ((db->getStaticInfo()).getApplicationStartTime() == 0) {
       (db->getStaticInfo()).setApplicationStartTime(xrt_core::time_ns()) ;
+      // If we are the first plugin, check to see if we should add xocl.log
+      if (xrt_core::config::get_xocl_debug()) {
+	std::string logFileName =
+          xrt_core::config::detail::get_string_value("Debug.xocl_log",
+                                                     "xocl.log") ;
+        db->getStaticInfo().addOpenedFile(logFileName, "XOCL_EVENTS") ;
+      }
+    }
     is_write_thread_active = false;
   }
 

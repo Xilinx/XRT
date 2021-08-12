@@ -87,6 +87,7 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   {
     handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
     bDefaultDevice = true;
+    xclcpuemhal2::devices[deviceIndex++] = handle;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {

@@ -45,7 +45,7 @@ namespace xrt {
  *
  * @details
  * The xclbin object is constructed by the user from a file.
- * 
+ *
  * When the xclbin object is constructed from a complete xclbin, then it
  * can be used by xrt::device to program the xclbin onto the device.
  *
@@ -57,7 +57,7 @@ namespace xrt {
  *
  * From the xclbin object
  * xrt::xclbin::kernel or xrt::xclbin::ip objects can be constructed.
- * 
+ *
  * The xrt:xclbin::kernel is a concept modelled only in the xclbin XML
  * metadata, it corresponds to a function that can be executed by one
  * or more compute units modelled by xrt::xclbin::ip objects.  An
@@ -98,7 +98,7 @@ public:
   {
   public:
     /**
-     * @enum memory_type - type of memory 
+     * @enum memory_type - type of memory
      *
      * @details
      * See `xclbin.h`
@@ -116,8 +116,10 @@ public:
       streaming_connection = MEM_STREAMING_CONNECTION,
       host                 = MEM_HOST
     };
-  
+
   public:
+    mem() = default;
+
     explicit
     mem(std::shared_ptr<mem_impl> handle)
       : detail::pimpl<mem_impl>(std::move(handle))
@@ -136,7 +138,7 @@ public:
     /**
      * get_base_address() - Get the base address of the memory bank
      *
-     * @return 
+     * @return
      *  Base address of the memory bank, or -1 for invalid base address
      */
     XCL_DRIVER_DLLESPEC
@@ -158,7 +160,7 @@ public:
      *
      * @return
      *  True of this memory bank is used by kernels in the xclbin
-     *  or false otherwise.  
+     *  or false otherwise.
      *
      * A value of false indicates that no buffer can be allocated
      * in this memory bank.
@@ -181,7 +183,7 @@ public:
     /**
      * get_index() - Get the index of the memory
      *
-     * @return 
+     * @return
      *  Index of the memory within the memory topology
      *
      * The returned index can be used when allocating buffers using
@@ -198,11 +200,11 @@ public:
    * @brief
    * class arg - xrt::xclbin::arg represents a compute unit argument
    *
-   * @details 
+   * @details
    * The argument object constructed from the xclbin connectivity
    * section.  An argument is connected to a memory bank or a memory
    * group, which dictates where in device memory a global buffer
-   * used with this kernel argument must be allocated.  
+   * used with this kernel argument must be allocated.
    */
   class arg_impl;
   class arg : public detail::pimpl<arg_impl>
@@ -249,7 +251,7 @@ public:
 
     /**
      * get_size() - Argument size in bytes
-     * 
+     *
      * @return
      *   Argument size
      */
@@ -259,7 +261,7 @@ public:
 
     /**
      * get_offset() - Argument offset
-     * 
+     *
      * @return
      *   Argument offset
      */
@@ -269,7 +271,7 @@ public:
 
     /**
      * get_host_type() - Get the argument host type
-     * 
+     *
      * @return
      *   Argument host type
      */
@@ -279,14 +281,14 @@ public:
   };
 
   /*!
-   * @class ip 
+   * @class ip
    *
-   * @brief 
+   * @brief
    * xrt::xclbin::ip represents a IP in an xclbin.
    *
    * @details
    * The ip corresponds to an entry in the IP_LAYOUT section of the
-   * xclbin.  
+   * xclbin.
    */
   class ip_impl;
   class ip : public detail::pimpl<ip_impl>
@@ -402,7 +404,7 @@ public:
      * get_cu() - Get compute unit by name
      *
      * @return
-     *  The xct::xclbin::ip object matching the specified name, or error if 
+     *  The xct::xclbin::ip object matching the specified name, or error if
      *  not present.
      */
     XCL_DRIVER_DLLESPEC
@@ -546,7 +548,7 @@ public:
   get_ips() const;
 
   /**
-   * get_ip() - Get a list of IPs from the xclbin
+   * get_ip() - Get a specific IP from the xclbin
    *
    * @return
    *  A list of xrt::xclbin::ip objects from xclbin.
@@ -559,9 +561,22 @@ public:
   get_ip(const std::string& name) const;
 
   /**
+   * get_mems() - Get list of memory objects
+   *
+   * @return
+   * A list of xrt::xclbin::mem objects from xclbin
+   *
+   * The returned xrt::xclbin::mem objects are extracted from
+   * the xclbin.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::vector<mem>
+  get_mems() const;
+
+  /**
    * get_xsa_name() - Get Xilinx Support Archive (XSA) name of xclbin
    *
-   * @return 
+   * @return
    *  Name of XSA (vbnv name).
    *
    * An exception is thrown if the data is missing.
@@ -573,7 +588,7 @@ public:
   /**
    * get_uuid() - Get the uuid of the xclbin
    *
-   * @return 
+   * @return
    *  UUID of xclbin
    *
    * An exception is thrown if the data is missing.
@@ -585,7 +600,7 @@ public:
   /**
    * get_axlf() - Get the axlf data of the xclbin
    *
-   * @return 
+   * @return
    *  The axlf data of the xclbin object
    *
    * An exception is thrown if the data is missing.

@@ -23,6 +23,12 @@
 
 #define XDP_SOURCE
 
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "xdp/profile/writer/vp_base/vp_run_summary.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/static_info_database.h"
@@ -71,7 +77,7 @@ namespace xdp {
     {
       boost::property_tree::ptree ptSchema ;
       ptSchema.put("major", "1") ;
-      ptSchema.put("minor", "1") ;
+      ptSchema.put("minor", "2") ;
       ptSchema.put("patch", "0") ; 
       ptRunSummary.add_child("schema_version", ptSchema) ;
     }
@@ -82,7 +88,24 @@ namespace xdp {
       auto value = std::chrono::duration_cast<std::chrono::milliseconds>(timestamp) ;
       uint64_t timeMsec = value.count() ;
 
+      std::string pathToFile = "" ;
+#ifdef _WIN32
+      char buffer[MAX_PATH] ;
+      char* result = _getcwd(buffer, sizeof(buffer)) ;
+#else
+      char buffer[PATH_MAX] ;
+      char* result = getcwd(buffer, sizeof(buffer)) ;
+#endif
+      if (result != nullptr) {
+        pathToFile = buffer ;
+        pathToFile += separator ; // From base class
+        pathToFile += getcurrentFileName() ;
+      }
+
       boost::property_tree::ptree ptGeneration ;
+      if (pathToFile != "") {
+        ptGeneration.put("this_file", pathToFile) ;
+      }
       ptGeneration.put("source", "vp") ;
       ptGeneration.put("PID", std::to_string(pid)) ;
       ptGeneration.put("timestamp", std::to_string(timeMsec)) ;

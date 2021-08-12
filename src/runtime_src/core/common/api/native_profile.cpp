@@ -38,17 +38,18 @@ std::function<void (const char*, unsigned long long int)> function_start_cb ;
 std::function<void (const char*, unsigned long long int, unsigned long long int)> function_end_cb ;
 
 // Callbacks for individual functions to track start/stop and statistics
-std::function<void (const char*, unsigned long long int)> sync_start_cb ;
+  std::function<void (const char*, unsigned long long int, bool)> sync_start_cb ;
 std::function<void (const char*, unsigned long long int, unsigned long long int, bool, unsigned long long int)> sync_end_cb ;
   
 void register_functions(void* handle)
 {
-  using start_type    = void (*)(const char*, unsigned long long int) ;
-  using end_type      = void (*)(const char*, unsigned long long int,
-                                 unsigned long long int) ;
-  using end_sync_type = void (*)(const char*, unsigned long long int,
-                                 unsigned long long int, bool,
-                                 unsigned long long int) ;
+  using start_type      = void (*)(const char*, unsigned long long int) ;
+  using sync_start_type = void (*)(const char*, unsigned long long int, bool) ;
+  using end_type        = void (*)(const char*, unsigned long long int,
+                                   unsigned long long int) ;
+  using end_sync_type   = void (*)(const char*, unsigned long long int,
+                                   unsigned long long int, bool,
+                                   unsigned long long int) ;
 
   // Generic callbacks
   function_start_cb =
@@ -63,7 +64,7 @@ void register_functions(void* handle)
 
   // Sync callbacks
   sync_start_cb =
-    reinterpret_cast<start_type>(xrt_core::dlsym(handle, "native_sync_start")) ;
+    reinterpret_cast<sync_start_type>(xrt_core::dlsym(handle, "native_sync_start")) ;
   if (xrt_core::dlerror() != nullptr)
     sync_start_cb = nullptr ;
 
@@ -112,7 +113,7 @@ sync_logger(const char* function, bool w, size_t s)
 {
   if (sync_start_cb) {
     m_funcid = xrt_core::utils::issue_id() ;
-    sync_start_cb(m_fullname, m_funcid) ;
+    sync_start_cb(m_fullname, m_funcid, m_is_write) ;
   }
 }
 

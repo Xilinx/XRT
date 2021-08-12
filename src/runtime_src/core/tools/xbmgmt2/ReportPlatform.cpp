@@ -20,10 +20,7 @@
 #include "flash/flasher.h"
 #include "flash/firmware_image.h"
 #include "core/common/query_requests.h"
-
-// Utilities
-#include "tools/common/XBUtilities.h"
-namespace XBU = XBUtilities;
+#include "core/common/utils.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -138,15 +135,17 @@ get_installed_partitions(std::string interface_uuid)
     pt_plp.put("vbnv", installedDSA.name);
 
     //the first UUID is always the logic UUID
-    std::string uuid = installedDSA.uuids.empty() ? "" : XBU::string_to_UUID(installedDSA.uuids[0]);
-    pt_plp.put("logic-uuid", uuid);
+    std::string luuid = installedDSA.uuids.empty()
+      ? ""
+      : xrt_core::query::interface_uuids::to_uuid_upper_string(installedDSA.uuids[0]);
+    pt_plp.put("logic-uuid", luuid);
 
     // Find the UUID that it exposes for other partitions
     for(unsigned int j = 1; j < installedDSA.uuids.size(); j++){
       //check if the interface UUID is resolution of BLP
       if(interface_uuid.compare(installedDSA.uuids[j]) != 0)
         continue;
-      pt_plp.put("interface-uuid", XBU::string_to_UUID(installedDSA.uuids[j]));
+      pt_plp.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(installedDSA.uuids[j]));
     }
     pt_plp.put("file", installedDSA.file);
 
@@ -206,8 +205,8 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     try {
       DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], "");
       pt_current_shell.put("vbnv", part.name);
-      pt_current_shell.put("logic-uuid", XBU::string_to_UUID(logic_uuids[0]));
-      pt_current_shell.put("interface-uuid", XBU::string_to_UUID(interface_uuids[0]));
+      pt_current_shell.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+      pt_current_shell.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
       pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
     } catch (...) {
       //safe to ignore exceptions. We print out whatever information that is available to us
@@ -218,8 +217,8 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
         boost::property_tree::ptree pt_plp;
         DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], ""); 
         pt_plp.put("vbnv", partition.name);
-        pt_plp.put("logic-uuid", XBU::string_to_UUID(logic_uuids[i]));
-        pt_plp.put("interface-uuid", XBU::string_to_UUID(interface_uuids[i]));
+        pt_plp.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[i]));
+        pt_plp.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[i]));
         pt_plps.push_back( std::make_pair("", pt_plp) );
       }
       pt_platform.put_child("current_partitions", pt_plps);
@@ -248,8 +247,10 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_available_shell.put("vbnv", installedDSA.name);
     pt_available_shell.put("sc_version", installedDSA.bmcVer);
     pt_available_shell.put("id", (boost::format("0x%x") % installedDSA.timestamp));
-        //the first UUID is always the logic UUID
-    std::string uuid = installedDSA.uuids.empty() ? "" : XBU::string_to_UUID(installedDSA.uuids[0]);
+    //the first UUID is always the logic UUID
+    std::string uuid = installedDSA.uuids.empty()
+      ? ""
+      : xrt_core::query::interface_uuids::to_uuid_upper_string(installedDSA.uuids[0]);
     pt_available_shell.put("logic-uuid", uuid);
     pt_available_shell.put("file", installedDSA.file);
 

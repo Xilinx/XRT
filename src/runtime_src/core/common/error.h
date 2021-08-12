@@ -99,7 +99,7 @@ public:
   {}
 
   explicit
-    error(std::errc ec, const std::string& what = "")
+  error(std::errc ec, const std::string& what = "")
     : generic_error(ec, what)
   {}
 

@@ -88,7 +88,7 @@ get_sensor_info(xclDeviceHandle hdl, xcl_sensor* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
-get_icap_info(xclDeviceHandle hdl, xcl_hwicap* value);
+get_icap_info(xclDeviceHandle hdl, xcl_pr_region* value);
 
 XRT_CORE_PCIE_WINDOWS_EXPORT
 void
@@ -102,6 +102,21 @@ XRT_CORE_PCIE_WINDOWS_EXPORT
 void
 get_firewall_info(xclDeviceHandle hdl, xcl_firewall* value);
 
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_kds_custat(xclDeviceHandle hdl, char* buffer, DWORD size, int* size_ret);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_temp_by_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_group_mem_topology(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
+
+XRT_CORE_PCIE_WINDOWS_EXPORT
+void
+get_memstat(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret, bool raw);
 } // userpf
 
 

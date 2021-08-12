@@ -664,6 +664,13 @@ get_ip(const std::string& name) const
   return handle ? handle->get_ip(name) : xclbin::ip{};
 }
 
+std::vector<xclbin::mem>
+xclbin::
+get_mems() const
+{
+  return handle ? handle->get_mems() : std::vector<xclbin::mem>{};
+}
+
 std::string
 xclbin::
 get_xsa_name() const

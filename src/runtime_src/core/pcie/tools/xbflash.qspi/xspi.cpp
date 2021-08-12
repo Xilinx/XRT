@@ -59,6 +59,10 @@ uint32_t selected_sector = -1;
 #define COMMAND_QUAD_READ               0x6B /* Quad Output Fast Read */
 #define COMMAND_QUAD_IO_READ            0xEB /* Quad IO Fast Read */
 #define COMMAND_IDCODE_READ             0x9F /* Read ID Code */
+
+//Macronix Only
+#define COMMAND_GBULK                   0x98 /* Gang Block UnLock */
+
 //read commands
 #define COMMAND_STATUSREG_READ               0x05 /* Status read command */
 #define COMMAND_FLAG_STATUSREG_READ          0x70 /* Status flag read command */
@@ -978,6 +982,39 @@ bool XSPI_Flasher::writeEnable() {
     return waitTxEmpty();
 }
 
+int XSPI_Flasher::macronixConfigure()
+{
+    bool ready = isFlashReady();
+    if(!ready){
+        std::cout << "ERROR: Unable to get flash ready" << std::endl;
+        return false;
+    }
+
+    if(!writeEnable())
+        return false;
+
+    WriteBuffer[BYTE1] = COMMAND_STATUSREG_WRITE;
+    WriteBuffer[BYTE2] = 0x40;
+    WriteBuffer[BYTE3] = 0x07;
+    if(!finalTransfer(WriteBuffer, NULL, STATUS_WRITE_BYTES + 1))
+        return false;
+
+    ready = isFlashReady();
+    if(!ready){
+        std::cout << "ERROR: Unable to get flash ready" << std::endl;
+        return false;
+    }
+
+    if(!writeEnable())
+        return false;
+
+    WriteBuffer[BYTE1] = COMMAND_GBULK;
+    if(!finalTransfer(WriteBuffer, NULL, BULK_ERASE_BYTES))
+        return false;
+
+    return true;
+}
+
 bool XSPI_Flasher::getFlashId()
 {
     if(!isFlashReady()) {
@@ -1482,6 +1519,13 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
     if(!getFlashId()) {
         std::cout << "Exiting now, as could not get correct idcode" << std::endl;
         exit(-EOPNOTSUPP);
+    }
+
+    if(flashVendor == MACRONIX_VENDOR_ID) {
+        if(!macronixConfigure()) {
+	          std::cout << "Exiting now, Macronix configuration failed" << std::endl;
+	          exit(-EOPNOTSUPP);
+	      }
     }
 
 #if defined(_debug)

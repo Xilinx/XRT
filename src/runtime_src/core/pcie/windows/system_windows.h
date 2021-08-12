@@ -46,7 +46,7 @@ public:
   get_mgmtpf_device(device::id_type id) const;
 
   void
-  program_plp(const device* dev, const std::vector<char> &buffer) const;
+  program_plp(const device* dev, const std::vector<char> &buffer, bool force) const;
 
   void
   mem_read(const device* dev, long long addr, long long size, const std::string& output_file) const;

@@ -308,6 +308,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_DSA_IS_VERSAL(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL)
 
+#define XOCL_DSA_IS_VERSAL_ES3(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL_ES3)
+
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
@@ -536,6 +539,13 @@ struct xocl_work {
 	int			op;
 };
 
+#define NUM_PCI_BARS 6
+/* structure for holding pci bar mappings of CPM */
+struct pci_bars {
+        u64 base_addr;
+        u64 range;
+};
+
 #define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
@@ -593,6 +603,11 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+
+	/*
+	 * Store information about pci bar mappings of CPM.
+	 */
+	struct pci_bars         *bars;
 	/*
 	 * u30 reset relies on working SC and SN info. SN is read and saved in
 	 * parent device so that even if for some reason the xmc is offline
@@ -1877,8 +1892,7 @@ struct xocl_intc_funcs {
 /* Only used in ERT sub-device polling mode */
 #define xocl_intc_ert_read32(xdev, off) \
 	(INTC_CB(xdev, csr_read32) ? \
-	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : \
-	 -ENODEV)
+	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : 0)
 #define xocl_intc_ert_write32(xdev, val, off) \
 	(INTC_CB(xdev, csr_write32) ? \
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \
@@ -1918,6 +1932,7 @@ struct xocl_ert_user_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (* bulletin)(struct platform_device *pdev, struct ert_cu_bulletin *brd);
 	int (* enable)(struct platform_device *pdev, bool enable);
+	void (* init_queue)(struct platform_device *pdev, void *queue);
 };
 
 #define	ERT_USER_DEV(xdev)	\
@@ -1943,9 +1958,42 @@ struct xocl_ert_user_funcs {
 	 ERT_USER_OPS(xdev)->enable(ERT_USER_DEV(xdev), false) : \
 	 -ENODEV)
 
+#define xocl_ert_user_init_queue(xdev, queue) \
+	(ERT_USER_CB(xdev, init_queue) ? \
+	 ERT_USER_OPS(xdev)->init_queue(ERT_USER_DEV(xdev), queue) : \
+	 -ENODEV)
+
+
 #define xocl_ert_on(xdev) \
 	(xocl_mb_sched_on(xdev) || xocl_ps_sched_on(xdev))
 
+
+enum ert_gpio_cfg {
+	INTR_TO_ERT,
+	INTR_TO_CU,
+	MB_WAKEUP,
+	MB_SLEEP,
+	MB_STATUS,
+};
+
+struct xocl_config_gpio_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (* gpio_cfg)(struct platform_device *pdev, enum ert_gpio_cfg type);
+};
+
+#define	CFG_GPIO_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_CFG_GPIO) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_CFG_GPIO)->pldev : NULL)
+#define CFG_GPIO_OPS(xdev)  \
+	(SUBDEV(xdev, XOCL_SUBDEV_CFG_GPIO) ? \
+	(struct xocl_config_gpio_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CFG_GPIO)->ops : NULL)
+#define CFG_GPIO_CB(xdev, cb)  \
+	(CFG_GPIO_DEV(xdev) && CFG_GPIO_OPS(xdev) && CFG_GPIO_OPS(xdev)->cb)
+
+#define xocl_gpio_cfg(xdev, val) \
+	(CFG_GPIO_CB(xdev, gpio_cfg) ? \
+	 CFG_GPIO_OPS(xdev)->gpio_cfg(CFG_GPIO_DEV(xdev), val) : \
+	 -ENODEV)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2475,6 +2523,9 @@ void xocl_fini_trace_funnel(void);
 int __init xocl_init_trace_s2mm(void);
 void xocl_fini_trace_s2mm(void);
 
+int __init xocl_init_accel_deadlock_detector(void);
+void xocl_fini_accel_deadlock_detector(void);
+
 int __init xocl_init_mem_hbm(void);
 void xocl_fini_mem_hbm(void);
 
@@ -2528,5 +2579,11 @@ void xocl_fini_ert_user(void);
 
 int __init xocl_init_pcie_firewall(void);
 void xocl_fini_pcie_firewall(void);
+
+int __init xocl_init_command_queue(void);
+void xocl_fini_command_queue(void);
+
+int __init xocl_init_config_gpio(void);
+void xocl_fini_config_gpio(void);
 
 #endif

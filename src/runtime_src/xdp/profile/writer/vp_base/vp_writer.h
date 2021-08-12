@@ -41,8 +41,9 @@ namespace xdp {
 
     // The directory where all the files will be dumped
     std::string directory ;
+  protected:
     char separator ;
-
+  private:
     // The number of files created by this writer (in continuous offload)
     uint32_t fileNum ;
     static bool warnFileNum;

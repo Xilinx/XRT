@@ -55,14 +55,6 @@ static const uint32_t FDT_PROP = 0x3;
 static const uint32_t FDT_END = 0x9;
 
 // ------ L O C A L  F U N C T I O N S  A N D  S T R U C T S ------------------
-enum class p2p_config {
-  disabled,
-  enabled,
-  error,
-  reboot,
-  not_supported
-};
-
 struct fdt_header {
   uint32_t magic;
   uint32_t totalsize;
@@ -352,13 +344,19 @@ XBUtilities::get_available_devices(bool inUserDomain)
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
-      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {}
+        pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+      } catch(...) 
+      {
+        // The id wasn't added
+      }
+
       try { //2RP
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
-      } catch(...) {}
+      } catch(...) {
+        // The id wasn't added
+      }
     }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
@@ -425,7 +423,10 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
   }
   bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
-  domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
+  
+  // domain is not mandatory if it is "0000"
+  if(tokens.size() > 2)
+    domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (uint16_t i = 0; i < devices; i++) {
@@ -670,59 +671,6 @@ XBUtilities::get_uuids(const void *dtbuf)
     p = PALIGN(p + sz, 4);
   }
   return uuids;
-}
-
-int
-XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
-{
-  std::vector<std::string> config;
-  try {
-    config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
-  }
-  catch (const std::runtime_error&) {
-    msg = "P2P config failed. P2P is not available";
-    return static_cast<int>(p2p_config::not_supported);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    return static_cast<int>(p2p_config::not_supported);
-  }
-
-  int64_t bar = -1;
-  int64_t rbar = -1;
-  int64_t remap = -1;
-  int64_t exp_bar = -1;
-
-  //parse the query
-  for(const auto& val : config) {
-    auto pos = val.find(':') + 1;
-    if(val.find("rbar") == 0)
-      rbar = std::stoll(val.substr(pos));
-    else if(val.find("exp_bar") == 0)
-      exp_bar = std::stoll(val.substr(pos));
-    else if(val.find("bar") == 0)
-      bar = std::stoll(val.substr(pos));
-    else if(val.find("remap") == 0)
-      remap = std::stoll(val.substr(pos));
-  }
-
-  //return the config with a message
-  if (bar == -1) {
-    msg = "P2P config failed. P2P is not supported. Can't find P2P BAR.";
-    return static_cast<int>(p2p_config::not_supported);
-  }
-  else if (rbar != -1 && rbar > bar) {
-    msg = "Warning:Please WARM reboot to enable p2p now.";
-    return static_cast<int>(p2p_config::reboot);
-  }
-  else if (remap > 0 && remap != bar) {
-    msg = "Error:P2P config failed. P2P remapper is not set correctly";
-    return static_cast<int>(p2p_config::error);
-  }
-  else if (bar == exp_bar) {
-    return static_cast<int>(p2p_config::enabled);
-  }
-  msg = "P2P bar is not enabled";
-  return static_cast<int>(p2p_config::disabled);
 }
 
 static const std::map<std::string, xrt_core::query::reset_type> reset_map = {

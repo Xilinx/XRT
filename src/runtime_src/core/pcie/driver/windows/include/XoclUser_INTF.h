@@ -1,7 +1,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
+//    (C) Copyright 2021 OSR Open Systems Resources, Inc.
 //    (C) Copyright 2019-2021 Xilinx, Inc.
-//    (C) Copyright 2019 OSR Open Systems Resources, Inc.
+//    (C) Copyright 2019-2021 OSR Open Systems Resources, Inc.
 //    All Rights Reserved
 //
 //    ABSTRACT:
@@ -17,6 +18,7 @@
 #include <initguid.h>
 #include <stdint.h>
 #include "xclbin.h"
+#include "mailbox_proto.h"
 
 // {45A6FFCA-EF63-4933-9983-F63DEC5816EB}
 DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
@@ -24,9 +26,9 @@ DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
 
 #define FILE_DEVICE_XOCL_USER   ((ULONG)0x8879)   // "XO"
 
-// 
+//
 // Constant string for the symbolic link associated with the device
-// 
+//
 #define XOCL_USER_BASE_DEVICE_NAME               L"XOCL_USER-"
 
 //
@@ -35,13 +37,9 @@ DEFINE_GUID(GUID_DEVINTERFACE_XOCL_USER,
 #define XOCL_USER_DEVICE_BUFFER_OBJECT_NAMESPACE L"\\Buffer"
 #define XOCL_USER_DEVICE_DEVICE_NAMESPACE        L"\\Device"
 
-// Windows kernel return status values. The values is equal to definitions in <ntstatus.h>
-#define NTSTATUS_REVISION_MISMATCH   0xC0000059
-#define NTSTATUS_STATUS_SUCCESS      0x00000000
-
 //
 // IOCTL Codes and structures supported by XoclUser
-// 
+//
 
 typedef enum _XOCL_BUFFER_SYNC_DIRECTION {
 
@@ -56,9 +54,11 @@ typedef enum _XOCL_BUFFER_TYPE {
     XOCL_BUFFER_TYPE_NORMAL = 0x3323,
     XOCL_BUFFER_TYPE_USERPTR,
     XOCL_BUFFER_TYPE_IMPORT,
-    XOCL_BUFFER_TYPE_CMA,
+    XOCL_BUFFER_TYPE_CMA,   // NOT USED
     XOCL_BUFFER_TYPE_P2P,
-    XOCL_BUFFER_TYPE_EXECBUF
+    XOCL_BUFFER_TYPE_EXECBUF,
+    XOCL_BUFFER_TYPE_HOST_ONLY,
+    XOCL_BUFFER_TYPE_DEVICE_ONLY
 
 } XOCL_BUFFER_TYPE, *PXOCL_BUFFER_TYPE;
 
@@ -108,7 +108,7 @@ typedef struct _XOCL_CREATE_BO_ARGS {
 //
 // InBuffer  = XOCL_USERPTR_BO_ARGS
 // OutBuffer = (not used)
-// 
+//
 #define IOCTL_XOCL_USERPTR_BO       CTL_CODE(FILE_DEVICE_XOCL_USER, 2071, METHOD_BUFFERED, FILE_READ_DATA)
 //
 typedef struct _XOCL_USERPTR_BO_ARGS {
@@ -159,19 +159,70 @@ typedef struct _XOCL_INFO_BO_RESULT {
     XOCL_BUFFER_TYPE    BufferType;     // OUT: Buffer Type
 } XOCL_INFO_BO_RESULT, *PXOCL_INFO_BO_RESULT;
 
+
+#define	ICAP_XCLBIN_V2		"xclbin2"
+
+/**
+ * struct argument_info - Kernel argument information
+ *
+ * @name:	argument name
+ * @offset:	argument offset in CU
+ * @size:	argument size in bytes
+ * @dir:	input or output argument for a CU
+ */
+struct argument_info {
+    char        name[64];
+    size_t      offset;
+    size_t      size;
+    uint32_t    dir;
+};
+
+/**
+ * struct kernel_info - Kernel information
+ *
+ * @name:	kernel name
+ * @range:	kernel register range
+ * @anums:	number of argument
+ * @args:	argument array
+ */
+struct kernel_info {
+    char                    name[64];
+    size_t                  range;
+    size_t                  anums;
+    struct argument_info    *args;
+};
+
+struct xocl_kds{
+    uint32_t slot_size;
+    uint32_t ert : 1;
+    uint32_t polling : 1;
+    uint32_t cu_dma : 1;
+    uint32_t cu_isr : 1;
+    uint32_t cq_int : 1;
+    uint32_t dataflow : 1;
+    uint32_t rw_shared : 1;
+    uint32_t unused : 25;
+};
+
 //
 // IOCTL_XOCL_READ_AXLF
 //
 // InBuffer =  User data buffer pointer and size (containing AXLF File)
-// OutBuffer = (not used)
+// OutBuffer = XOCL_READ_AXLF_ARGS
 //
-#define IOCTL_XOCL_READ_AXLF        CTL_CODE(FILE_DEVICE_XOCL_USER, 2076, METHOD_BUFFERED, FILE_READ_DATA)
+typedef struct _XOCL_READ_AXLF_ARGS {
+    struct xocl_kds  kds_cfg; // IN: KDS user configuration
+    size_t           ksize;   // IN: size of kernels in bytes
+    CHAR*            kernels; // IN: pointer of kernel_info array
+} XOCL_READ_AXLF_ARGS, * PXOCL_READ_AXLF_ARGS;
+
+#define IOCTL_XOCL_READ_AXLF        CTL_CODE(FILE_DEVICE_XOCL_USER, 2076, METHOD_IN_DIRECT, FILE_READ_DATA)
 
 
 //
 // IOCTL_XOCL_MAP_BAR
 //
-// InBuffer =  (not used)
+// InBuffer =  XOCL_MAP_BAR_ARGS
 // OutBuffer = XOCL_MAP_BAR_RESULT
 //
 #define IOCTL_XOCL_MAP_BAR      CTL_CODE(FILE_DEVICE_XOCL_USER, 2077, METHOD_BUFFERED, FILE_READ_DATA)
@@ -186,7 +237,7 @@ typedef struct _XOCL_MAP_BAR_ARGS {
 } XOCL_MAP_BAR_ARGS, *PXOCL_MAP_BAR_ARGS;
 
 typedef struct _XOCL_MAP_BAR_RESULT {
-    PVOID       Bar;           // OUT: User VA of mapped buffer
+    PVOID           Bar;           // OUT: User VA of mapped buffer
     ULONGLONG       BarLength;     // OUT: Length of mapped buffer
 } XOCL_MAP_BAR_RESULT, *PXOCL_MAP_BAR_RESULT;
 
@@ -207,8 +258,11 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
-    XoclStatDebugIpLayout
-
+    XoclStatDebugIpLayout,
+    XoclStatTempByMemTopology,
+    XoclStatGroupTopology,
+    XoclStatMemStatRaw,
+    XoclStatMemStat
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
 typedef struct _XOCL_STAT_CLASS_ARGS {
@@ -217,9 +271,9 @@ typedef struct _XOCL_STAT_CLASS_ARGS {
 
 } XOCL_STAT_CLASS_ARGS, *PXOCL_STAT_CLASS_ARGS;
 
-// 
+//
 // XoclStatDevice
-// 
+//
 typedef struct _XOCL_DEVICE_INFORMATION {
     ULONG  DeviceNumber;
     USHORT Vendor;
@@ -235,18 +289,10 @@ typedef struct _XOCL_DEVICE_INFORMATION {
     ULONG  LinkSpeed;
 
 } XOCL_DEVICE_INFORMATION, *PXOCL_DEVICE_INFORMATION;
-#if 0
-// 
-// XoclStatMemTopology
-// 
-typedef GUID xuid_t;
-#else
-typedef unsigned char xuid_t[16];
-#endif
 
-// 
+//
 // XoclStatMemRaw
-// 
+//
 typedef struct _XOCL_MEM_RAW {
     ULONGLONG               MemoryUsage;
     ULONGLONG               BOCount;
@@ -258,6 +304,7 @@ typedef struct _XOCL_MEM_RAW_INFORMATION {
     XOCL_MEM_RAW MemRaw[XOCL_MAX_DDR_BANKS];
 
 } XOCL_MEM_RAW_INFORMATION, *PXOCL_MEM_RAW_INFORMATION;
+
 #if 0
 //
 // XoclStatIpInfo
@@ -270,9 +317,9 @@ enum IP_TYPE {
 };
 #endif
 
-// 
+//
 // XoclStatKds
-// 
+//
 typedef struct _XOCL_KDS_INFORMATION {
     xuid_t    XclBinUuid;
     ULONG     OutstandingExecs;
@@ -282,9 +329,9 @@ typedef struct _XOCL_KDS_INFORMATION {
     ULONG     CuCount;
 } XOCL_KDS_INFORMATION, *PXOCL_KDS_INFORMATION;
 
-// 
+//
 // XoclStatKdsCU
-// 
+//
 typedef struct _XOCL_KDS_CU {
 
     ULONG BaseAddress;
@@ -303,10 +350,10 @@ typedef struct _XOCL_KDS_CU_INFORMATION {
 // XoclStatRomInfo
 //
 typedef struct _XOCL_ROM_INFORMATION {
-	UCHAR FPGAPartName[64];
-	UCHAR VBNVName[64];
-	uint8_t DDRChannelCount;
-	uint8_t DDRChannelSize;
+    UCHAR FPGAPartName[64];
+    UCHAR VBNVName[64];
+    uint8_t DDRChannelCount;
+    uint8_t DDRChannelSize;
 } XOCL_ROM_INFORMATION, *PXOCL_ROM_INFORMATION;
 
 //
@@ -319,7 +366,7 @@ typedef struct _XOCL_ROM_INFORMATION {
 #define IOCTL_XOCL_PREAD_BO         CTL_CODE(FILE_DEVICE_XOCL_USER, 2100, METHOD_OUT_DIRECT, FILE_READ_DATA)
 
 typedef struct _XOCL_PREAD_BO_ARGS {
-    ULONGLONG   Offset;     // IN: BO offset to read from 
+    ULONGLONG   Offset;     // IN: BO offset to read from
 } XOCL_PREAD_BO_ARGS, *PXOCL_PREAD_BO_ARGS;
 
 
@@ -333,7 +380,7 @@ typedef struct _XOCL_PREAD_BO_ARGS {
 #define IOCTL_XOCL_PWRITE_BO        CTL_CODE(FILE_DEVICE_XOCL_USER, 2101, METHOD_IN_DIRECT, FILE_READ_DATA)
 
 typedef struct _XOCL_PWRITE_BO_ARGS {
-    ULONGLONG   Offset;     // IN: BI offset to write to 
+    ULONGLONG   Offset;     // IN: BI offset to write to
 } XOCL_PWRITE_BO_ARGS, *PXOCL_PWRITE_BO_ARGS;
 
 
@@ -352,8 +399,20 @@ typedef enum _XOCL_CTX_OPERATION {
 
 }XOCL_CTX_OPERATION, *PXOCL_CTX_OPERATION;
 
-#define XOCL_CTX_FLAG_SHARED    0x0
-#define XOCL_CTX_FLAG_EXCLUSIVE 0x1
+/* Context properties */
+#define XOCL_CTX_PROP_MASK         0x0F
+#define XOCL_CTX_FLAG_SHARED       0x00
+#define XOCL_CTX_FLAG_EXCLUSIVE    0x01
+
+//
+// M2 NOTE
+// Is this used?
+//
+/* Virtual CU index
+ * This is useful when there is no need to open a context on hardware CU,
+ * but still need to lockdown the xclbin.
+ */
+#define	CU_CTX_VIRT_CU		0xffffffff
 
 typedef struct _XOCL_CTX_ARGS {
     XOCL_CTX_OPERATION Operation;   // IN: Alloc or free context
@@ -372,7 +431,6 @@ typedef struct _XOCL_CTX_ARGS {
 
 typedef struct _XOCL_EXECBUF_ARGS {
     HANDLE      ExecBO;
-    HANDLE      Deps[8];    // IN: Dependent Buffer Object handles
 } XOCL_EXECBUF_ARGS, *PXOCL_EXECBUF_ARGS;
 
 //
@@ -390,7 +448,7 @@ typedef struct _XOCL_EXECPOLL_ARGS {
 //
 // XOCL_PREAD_PWRITE_UNMGD_ARGS
 //Read IOCTL to unmanaged DDR memory
-// InputBuffer -  XOCL_PREAD_PWRITE_BO_UNMGD_ARGS  
+// InputBuffer -  XOCL_PREAD_PWRITE_BO_UNMGD_ARGS
 //OutputBuffer - (not used)
 
 #define IOCTL_XOCL_PREAD_UNMGD         CTL_CODE(FILE_DEVICE_XOCL_USER, 2105, METHOD_BUFFERED, FILE_READ_DATA)
@@ -406,7 +464,7 @@ typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
 //
 // IOCTL_XOCL_PWRITE_UNMGD
 //Write IOCTL to unmanaged DDR memory
-// InputBuffer -  XOCL_PREAD_PWRITE_UNMGD_ARGS  
+// InputBuffer -  XOCL_PREAD_PWRITE_UNMGD_ARGS
 //OutputBuffer - (not used)
 
 #define IOCTL_XOCL_PWRITE_UNMGD        CTL_CODE(FILE_DEVICE_XOCL_USER, 2106, METHOD_BUFFERED, FILE_WRITE_DATA)
@@ -419,86 +477,13 @@ typedef struct _XOCL_PREAD_PWRITE_UNMGD_ARGS {
 //
 #define IOCTL_XOCL_SENSOR_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2107, METHOD_BUFFERED, FILE_READ_DATA)
 
-
-/**
- * struct xcl_sensor - Data structure used to fetch SENSOR group
- */
-struct xcl_sensor {
-    uint32_t vol_12v_pex;
-    uint32_t vol_12v_aux;
-    uint32_t cur_12v_pex;
-    uint32_t cur_12v_aux;
-    uint32_t vol_3v3_pex;
-    uint32_t vol_3v3_aux;
-    uint32_t cur_3v3_aux;
-    uint32_t ddr_vpp_btm;
-    uint32_t sys_5v5;
-    uint32_t top_1v2;
-    uint32_t vol_1v8;
-    uint32_t vol_0v85;
-    uint32_t ddr_vpp_top;
-    uint32_t mgt0v9avcc;
-    uint32_t vol_12v_sw;
-    uint32_t mgtavtt;
-    uint32_t vcc1v2_btm;
-    uint32_t fpga_temp;
-    uint32_t fan_temp;
-    uint32_t fan_rpm;
-    uint32_t dimm_temp0;
-    uint32_t dimm_temp1;
-    uint32_t dimm_temp2;
-    uint32_t dimm_temp3;
-    uint32_t vccint_vol;
-    uint32_t vccint_curr;
-    uint32_t se98_temp0;
-    uint32_t se98_temp1;
-    uint32_t se98_temp2;
-    uint32_t cage_temp0;
-    uint32_t cage_temp1;
-    uint32_t cage_temp2;
-    uint32_t cage_temp3;
-    uint32_t hbm_temp0;
-    uint32_t cur_3v3_pex;
-    uint32_t cur_0v85;
-    uint32_t vol_3v3_vcc;
-    uint32_t vol_1v2_hbm;
-    uint32_t vol_2v5_vpp;
-    uint32_t vccint_bram;
-    uint32_t version;
-    uint32_t power_warn;
-    uint32_t oem_id;
-    uint32_t vccint_temp;
-};
-
 //
 // IOCTL_XOCL_ICAP_INFO
 // Get sensor info
 // Inbuffer = (not used)
-// OutBuffer = struct xcl_hwicap
+// OutBuffer = struct xcl_pr_region
 //
 #define IOCTL_XOCL_ICAP_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2108, METHOD_BUFFERED, FILE_READ_DATA)
-
-/*
-  * UUID_SZ should ALWAYS have the same number
-  * as the MACRO UUID_SIZE defined in linux/uuid.h
-  */
-#define UUID_SZ 16
-/**
- * Data structure used to fetch ICAP group
- */
-struct xcl_hwicap {
-    uint64_t freq_0;
-    uint64_t freq_1;
-    uint64_t freq_2;
-    uint64_t freq_3;
-    uint64_t freq_cntr_0;
-    uint64_t freq_cntr_1;
-    uint64_t freq_cntr_2;
-    uint64_t freq_cntr_3;
-    uint64_t idcode;
-    uint8_t uuid[UUID_SZ];
-    uint64_t mig_calib;
-};
 
 //
 // IOCTL_XOCL_BOARD_INFO
@@ -507,24 +492,6 @@ struct xcl_hwicap {
 // OutBuffer = struct xcl_board_info
 //
 #define IOCTL_XOCL_BOARD_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2109, METHOD_BUFFERED, FILE_READ_DATA)
-
-/**
- * struct xcl_board_info - Data structure used to fetch BDINFO group
- */
-struct xcl_board_info {
-    char     serial_num[256];
-    char     mac_addr0[32];
-    char     mac_addr1[32];
-    char     mac_addr2[32];
-    char     mac_addr3[32];
-    char     revision[256];
-    char     bd_name[256];
-    char     bmc_ver[256];
-    uint32_t max_power;
-    uint32_t fan_presence;
-    uint32_t config_mode;
-    char     exp_bmc_ver[256];
-};
 
 //
 // IOCTL_XOCL_MIG_ECC_INFO
@@ -536,20 +503,6 @@ struct xcl_board_info {
 
 #define MAX_M_COUNT      64
 
-/**
- * struct xcl_mig_ecc -  Data structure used to fetch MIG_ECC group
- */
-struct xcl_mig_ecc {
-    uint64_t mem_type;
-    uint64_t mem_idx;
-    uint64_t ecc_enabled;
-    uint64_t ecc_status;
-    uint64_t ecc_ce_cnt;
-    uint64_t ecc_ue_cnt;
-    uint64_t ecc_ce_ffa;
-    uint64_t ecc_ue_ffa;
-};
-
 //
 // IOCTL_XOCL_FIREWALL_INFO
 // Get firewall info
@@ -559,18 +512,6 @@ struct xcl_mig_ecc {
 #define IOCTL_XOCL_FIREWALL_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2111, METHOD_BUFFERED, FILE_READ_DATA)
 
 
-/**
- * struct xcl_firewall -  Data structure used to fetch FIREWALL group
- */
-struct xcl_firewall {
-    uint64_t max_level;
-    uint64_t curr_status;
-    uint64_t curr_level;
-    uint64_t err_detected_status;
-    uint64_t err_detected_level;
-    uint64_t err_detected_time;
-};
-
 //
 // IOCTL_XOCL_MAILBOX_INFO
 // Get sensor info
@@ -579,32 +520,49 @@ struct xcl_firewall {
 //
 #define IOCTL_XOCL_MAILBOX_INFO          CTL_CODE(FILE_DEVICE_XOCL_USER, 2112, METHOD_BUFFERED, FILE_READ_DATA)
 
-enum mailbox_request {
-	MAILBOX_REQ_UNKNOWN = 0,
-	MAILBOX_REQ_TEST_READY = 1,
-	MAILBOX_REQ_TEST_READ = 2,
-	MAILBOX_REQ_LOCK_BITSTREAM = 3,
-	MAILBOX_REQ_UNLOCK_BITSTREAM = 4,
-	MAILBOX_REQ_HOT_RESET = 5,
-	MAILBOX_REQ_FIREWALL = 6,
-	MAILBOX_REQ_LOAD_XCLBIN_KADDR = 7,
-	MAILBOX_REQ_LOAD_XCLBIN = 8,
-	MAILBOX_REQ_RECLOCK = 9,
-	MAILBOX_REQ_PEER_DATA = 10,
-	MAILBOX_REQ_USER_PROBE = 11,
-	MAILBOX_REQ_MGMT_STATE = 12,
-	MAILBOX_REQ_CHG_SHELL = 13,
-	MAILBOX_REQ_PROGRAM_SHELL = 14,
-	MAILBOX_REQ_READ_P2P_BAR_ADDR = 15,
-	MAILBOX_REQ_MAX = 16,
-	/* Version 0 OP code ends */
-};
-
 /**
  * struct xcl_mailbox -  Data structure used to fetch mailbox group
  */
 struct xcl_mailbox {
 	/* recv metrics */
-	uint32_t          mbx_recv_raw_bytes;
-	uint32_t          mbx_recv_req[MAILBOX_REQ_MAX];
+	uint64_t          mbx_recv_raw_bytes;
+	uint64_t          mbx_recv_req[XCL_MAILBOX_REQ_MAX];
 };
+
+//
+// IOCTL_XOCL_ALLOC_HOST_MEM
+//
+// InBuffer = XOCL_ALLOC_HOST_MEM_ARGS
+// OutBuffer = (not used)
+//
+//
+#define IOCTL_XOCL_ALLOC_HOST_MEM       CTL_CODE(FILE_DEVICE_XOCL_USER, 2201, METHOD_BUFFERED, FILE_READ_DATA)
+
+typedef struct _XOCL_ALLOC_HOST_MEM_ARGS {
+    ULONGLONG   SizeToAllocate;     // IN: Size, in bytes, to allocate
+} XOCL_ALLOC_HOST_MEM_ARGS, *PXOCL_ALLOC_HOST_MEM_ARGS;
+
+//
+// IOCTL_XOCL_FREE_HOST_MEM
+//
+// InBuffer = (not used)
+// OutBuffer = (not used)
+//
+//
+#define IOCTL_XOCL_FREE_HOST_MEM       CTL_CODE(FILE_DEVICE_XOCL_USER, 2202, METHOD_BUFFERED, FILE_READ_DATA)
+
+
+//
+// IOCTL_XOCL_GET_XCLBIN_SW_CHANNEL
+//
+// InBuffer = (not used)
+// OutBuffer = Message to be sent to Management (opaque to the caller)
+//
+#define IOCTL_XOCL_GET_XCLBIN_SW_CHANNEL       CTL_CODE(FILE_DEVICE_XOCL_USER, 2203, METHOD_OUT_DIRECT, FILE_READ_DATA)
+
+
+struct drm_xocl_mm_stat {
+    size_t memory_usage;
+    unsigned int bo_count;
+};
+

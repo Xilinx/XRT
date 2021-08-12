@@ -1013,7 +1013,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 /* This function return True if given region is reserved
  * on device tree. Else return False
  */
-static int check_for_reserved_memory(uint64_t start_addr, size_t size)
+static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 {
 	struct device_node *mem_np;
 	struct device_node *np_it;
@@ -1022,7 +1022,7 @@ static int check_for_reserved_memory(uint64_t start_addr, size_t size)
 
 	mem_np = of_find_node_by_name(of_root, "reserved-memory");
 	if(!mem_np)
-		return -EINVAL;
+		return false;
 
 	/* Traverse through all the child nodes */
 	for (np_it = NULL; (np_it = of_get_next_child(mem_np, np_it)) != NULL;) {

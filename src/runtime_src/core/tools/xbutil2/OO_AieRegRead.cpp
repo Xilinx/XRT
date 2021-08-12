@@ -431,7 +431,7 @@ OO_AieRegRead::execute(const SubCmdOptions& _options) const
     std::cerr << "ERROR: " << e.what() << "\n\n";
 
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Exit if neither action or device specified
@@ -450,17 +450,22 @@ OO_AieRegRead::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  bool errorOccured = false;
   for (auto& device : deviceCollection) {
     try {
       uint32_t val = xrt_core::device_query<qr::aie_reg_read>(device, m_row, m_col, m_reg);
       std::cout << boost::format("Register %s Value of Row:%d Column:%d is 0x%08x\n") % m_reg.c_str() % m_row %  m_col % val;
     } catch (const std::exception& e){
       std::cerr << boost::format("ERROR: %s\n") % e.what();
+      errorOccured = true;
     }
   }
+
+  if (errorOccured)
+    throw xrt_core::error(std::errc::operation_canceled);
 
 }
 

@@ -56,6 +56,9 @@ Flasher::E_FlasherType Flasher::typeStr_to_E_FlasherType(const std::string& type
     else if (typeStr.compare("ospi_versal") == 0) {
         type = E_FlasherType::OSPIVERSAL;
     }
+    else if (typeStr.compare("qspi_versal") == 0) {
+        type = E_FlasherType::QSPIVERSAL;
+    }
     return type;
 }
 
@@ -156,6 +159,23 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         else
         {
             retVal = xospi_versal.xclUpgradeFirmware(*primary);
+        }
+        break;
+    }
+    case QSPIVERSAL:
+    {
+        XOSPIVER_Flasher xqspi_versal(m_device);
+        if (primary == nullptr)
+        {
+            std::cout << "ERROR: QSPIVERSAL mode does not support reverting to MFG." << std::endl;
+        }
+        else if(secondary != nullptr)
+        {
+            std::cout << "ERROR: QSPIVERSAL mode does not support two mcs files." << std::endl;
+        }
+        else
+        {
+            retVal = xqspi_versal.xclUpgradeFirmware(*primary);
         }
         break;
     }
