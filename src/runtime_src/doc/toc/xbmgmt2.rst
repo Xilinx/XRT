@@ -16,7 +16,7 @@ This document describes the new next-generation ``xbmgmt`` commands. These new c
  - ``--batch``: Enable batch mode
  - ``--force``: When possible, force an operation
  - ``--help`` : Get help message
- - ``--version`` : Get XRT version
+ - ``--version`` : Report the version of XRT and its drivers
 
 The next-generation ``xbmgmt`` commands are
 

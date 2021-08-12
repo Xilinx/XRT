@@ -59,7 +59,7 @@ void  main_(int argc, char** argv,
   po::options_description globalOptions("Global Options");
   globalOptions.add_options()
     ("help",    boost::program_options::bool_switch(&bHelp), "Help to use this application")
-    ("version",    boost::program_options::bool_switch(&bVersion), "Version of this application")
+    ("version", boost::program_options::bool_switch(&bVersion), "Report the version of XRT and its drivers")
   ;
   globalOptions.add(globalSubCmdOptions);
 
@@ -102,7 +102,7 @@ void  main_(int argc, char** argv,
   }
 
   if(bVersion) {
-    XBU::pretty_print_xrt_version();
+    std::cout << XBU::get_xrt_pretty_version();
     return;
   }
  

@@ -130,7 +130,8 @@ namespace XBUtilities {
 
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
-  void pretty_print_xrt_version();
+  std::string
+  get_xrt_pretty_version();
 
   /**
    * OEM ID is a unique number called as the 
