@@ -1384,7 +1384,7 @@ public:
     const auto& all_cus = device->core_device->get_cus(xclbin_id);  // sort order
     for (const ip_data* cu : kernel_cus) {
       if (::get_ip_control(cu) == AP_CTRL_NONE)
-        continue;
+        throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is not supported by xrt::kernel, use xrt::ip instead");
       auto itr = std::find(all_cus.begin(), all_cus.end(), cu->m_base_address);
       if (itr == all_cus.end())
         throw std::runtime_error("unexpected error");
