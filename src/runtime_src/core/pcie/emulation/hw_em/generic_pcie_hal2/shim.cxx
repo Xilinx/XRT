@@ -20,6 +20,7 @@
 #include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
 #include "xcl_perfmon_parameters.h"
+#include <fstream>
 #include <boost/property_tree/xml_parser.hpp>
 #include <unistd.h>
 #include <array>
@@ -726,7 +727,25 @@ namespace xclhwemhal2 {
     unsetenv("VITIS_KERNEL_PROFILE_FILENAME");
     unsetenv("VITIS_KERNEL_TRACE_FILENAME");
 
-    if (!simDontRun)
+    if (args.m_emuData) {
+      extractEmuData(binaryDirectory, binaryCounter, args);
+      std::string emuSettingsFilePath = binaryDirectory + "/emulation_data/emu_meta_data.json";
+      if (boost::filesystem::exists(emuSettingsFilePath)) {
+        if (readEmuSettingsJsonFile(emuSettingsFilePath)) {
+          if (simDontRun) {
+            mSimDontRun = simDontRun;
+          }
+        }
+      }
+      else {
+        mSimDontRun = simDontRun;
+      }
+    }
+    else {
+      mSimDontRun = simDontRun;
+    }
+
+    if (!mSimDontRun)
     {
       wdbFileName = std::string(mDeviceInfo.mName) + "-" + std::to_string(mDeviceIndex) + "-" + xclBinName;
       xclemulation::debug_mode lWaveform = xclemulation::config::getInstance()->getLaunchWaveform();
@@ -981,44 +1000,43 @@ namespace xclhwemhal2 {
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
-          extractEmuData(sim_path, binaryCounter, args);
-
-          if (boost::filesystem::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
-            launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-          } else if (boost::filesystem::exists(sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
-            launcherArgs += " -emuData " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          }
+          else if (boost::filesystem::exists(binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt";
           } else {
-            launcherArgs += " -emuData " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
+            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
-            launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/BOOT_bh.bin")) {
+            launcherArgs += " -boot-bh " + binaryDirectory + "/emulation_data/BOOT_bh.bin";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
-            launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_ospi.bin")) {
+            launcherArgs += " -ospi-image " + binaryDirectory + "/emulation_data/qemu_ospi.bin";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
-            launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_qspi_low.bin")) {
+            launcherArgs += " -qspi-low-image " + binaryDirectory + "/emulation_data/qemu_qspi_low.bin";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
-            launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_qspi_high.bin")) {
+            launcherArgs += " -qspi-high-image " + binaryDirectory + "/emulation_data/qemu_qspi_high.bin";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/qemu_args.txt")) {
-            launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_args.txt")) {
+            launcherArgs += " -qemu-args-file " + binaryDirectory + "/emulation_data/qemu_args.txt";
           }
 
-          if (boost::filesystem::exists(sim_path + "/emulation_data/pmc_args.txt")) {
-            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
+          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/pmc_args.txt")) {
+            launcherArgs += " -pmc-args-file " + binaryDirectory + "/emulation_data/pmc_args.txt";
           }
-          else if (boost::filesystem::exists(sim_path + "/emulation_data/pmu_args.txt")) {
-            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmu_args.txt";
+          else if (boost::filesystem::exists(binaryDirectory + "/emulation_data/pmu_args.txt")) {
+            launcherArgs += " -pmc-args-file " + binaryDirectory + "/emulation_data/pmu_args.txt";
           }
           else {
             std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;
@@ -1099,6 +1117,40 @@ namespace xclhwemhal2 {
     }
 
     return 0;
+  }
+
+  bool HwEmShim::readEmuSettingsJsonFile(std::string emuSettingsFilePath) {
+    try
+    {
+      std::ifstream emuSettingsFile(emuSettingsFilePath.c_str());
+      if (!emuSettingsFile.good()) {
+        return false;
+      }
+
+      namespace pt = boost::property_tree;
+      pt::ptree iroot;
+      pt::read_json(emuSettingsFilePath, iroot);
+
+      for (pt::ptree::value_type &iter : iroot.get_child("settings"))
+      {
+        std::string settingName = iter.first;
+        std::string settingValue = iter.second.get_value<std::string>();
+        if (settingName == "defer_device_process") {
+          mSimDontRun = (settingValue == "true") ? true : false;
+        }
+      }
+    }
+    catch (const boost::property_tree::ptree_error &e)
+    {
+      std::cerr << "property_tree error = " << e.what() << std::endl;
+      return false;
+    }
+    catch (std::exception const& e)
+    {
+      std::cerr << "exception = " << e.what() << std::endl;
+      return false;
+    }
+    return true;
   }
 
   void HwEmShim::createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath) {
@@ -1757,8 +1809,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       logMessage(waitingMsg);
     }
 
-    bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!simDontRun)
+    //bool simDontRun = xclemulation::config::getInstance()->isDontRun();
+    if(!mSimDontRun)
       while (-1 == waitpid(0, &status, 0));
 
     if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
@@ -1891,8 +1943,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
         logMessage(waitingMsg);
       }
 
-      bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-      if(!simDontRun)
+      //bool simDontRun = xclemulation::config::getInstance()->isDontRun();
+      if (!mSimDontRun)
         while (-1 == waitpid(0, &status, 0));
 
       if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off )
@@ -2079,6 +2131,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     mReqCounter = 0;
     simulatorType = "xsim";
     sim_path = "";
+    mSimDontRun = false;
 
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);

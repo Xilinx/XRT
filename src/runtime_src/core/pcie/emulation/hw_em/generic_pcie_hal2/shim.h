@@ -288,6 +288,8 @@ using addr_type = uint64_t;
     	  }
       }
 
+      bool readEmuSettingsJsonFile(std::string emuSettingsFilePath);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       bool simulator_started;
@@ -393,6 +395,7 @@ using addr_type = uint64_t;
       std::string sim_path;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
       unsigned int host_sptag_idx;
+      bool mSimDontRun;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;
