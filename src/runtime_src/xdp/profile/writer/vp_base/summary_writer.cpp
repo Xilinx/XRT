@@ -1649,10 +1649,14 @@ namespace xdp {
     bool monitorsExist = false ;
     for (auto device : infos) {
       for (auto xclbin : device->getLoadedXclbins()) {
-        if (xclbin->aimList.size() > 0 || xclbin->asmList.size() > 0) {
-          monitorsExist = true ;
-          break ;
+        for (auto aim : xclbin->aimList) {
+          if (aim->cuIndex != -1) {
+            monitorsExist = true ;
+            break ;
+          }
+          // else a floating monitor or shell monitor not reported in this table
         }
+        if (monitorsExist) break ;
       }
       if (monitorsExist) break ;
     }
@@ -1777,10 +1781,14 @@ namespace xdp {
     bool monitorsExist = false ;
     for (auto device : infos) {
       for (auto xclbin : device->getLoadedXclbins()) {
-        if (xclbin->aimList.size() > 0 || xclbin->asmList.size() > 0) {
-          monitorsExist = true ;
-          break ;
+        for (auto aim : xclbin->aimList) {
+          if (aim->cuIndex != -1) {
+            monitorsExist = true ;
+            break ;
+          }
+          // else a floating monitor or shell monitor not reported in this table
         }
+        if (monitorsExist) break ;
       }
       if (monitorsExist) break ;
     }
