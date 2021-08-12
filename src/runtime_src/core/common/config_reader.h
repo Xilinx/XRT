@@ -348,7 +348,7 @@ get_aie_profile_core_metrics()
 inline std::string
 get_aie_profile_memory_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "dma_locks");
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
   return value;
 }
 

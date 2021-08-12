@@ -58,7 +58,7 @@ namespace xdp {
                             const std::vector<tile_type>& tiles,
                             bool isCore,
                             const std::string& metricSet);
-    void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
+    void printTileModStats(xaiefal::XAieDev* aieDevice, const tile_type& tile, bool isCore);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();

@@ -202,11 +202,14 @@ namespace xdp {
     //}
   }
 
-  void AIEProfilingPlugin::printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile)
+  void AIEProfilingPlugin::printTileModStats(xaiefal::XAieDev* aieDevice, const tile_type& tile, bool isCore)
   {
     auto col = tile.col;
     auto row = tile.row + 1;
     auto loc = XAie_TileLoc(col, row);
+    std::string modType = isCore ? "Core" : "Memory";
+    XAie_ModuleType mod = isCore ? XAIE_CORE_MOD :  XAIE_MEM_MOD;
+    std::stringstream msg;
 
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
@@ -214,30 +217,20 @@ namespace xdp {
       XAIEDEV_DEFAULT_GROUP_AVAIL
     };
 
-    std::cout << "Stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : " << modType << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
-      auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
-      auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-      auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
-      std::cout << "Resource Group : " << std::left <<  std::setw(10) << g << " "
-                << "Performance Counters : " << pc << " "
-                << "Trace Slots : " << ts << " "
-                << "Broadcast Channels : " << bc << " "
-                << std::endl;
+      auto pc = stats.getNumRsc(loc, mod, XAIE_PERFCNT_RSC);
+      auto ts = stats.getNumRsc(loc, mod, xaiefal::XAIE_TRACE_EVENTS_RSC);
+      auto bc = stats.getNumRsc(loc, mod, XAIE_BCAST_CHANNEL_RSC);
+      msg << "Resource Group : " << std::left <<  std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " "
+          << std::endl;
     }
-    std::cout << "Stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
-    for (auto&g : groups) {
-    auto stats = aieDevice->getRscStat(g);
-    auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
-    auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
-    auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
-    std::cout << "Resource Group : "  << std::left <<  std::setw(10) << g << " "
-              << "Performance Counters : " << pc << " "
-              << "Trace Slots : " << ts << " "
-              << "Broadcast Channels : " << bc << " "
-              << std::endl;
-    }
+
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
   uint32_t AIEProfilingPlugin::getNumFreeCtr(xaiefal::XAieDev* aieDevice,
@@ -271,22 +264,23 @@ namespace xdp {
       std::stringstream msg;
       std::string modType = isCore ? "core" : "memory";
       msg << "Only " << numFreeCtr << " out of " << numTotalEvents
-          << " metrics will be available for aie "
-          << modType <<  " module profiling";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      std::cout << "Offending tile Resource Utilization : " << std::endl;
-      printTileStats(aieDevice, tiles[tileId]);
+          << " metrics were available for aie "
+          << modType <<  " module profiling due to resource constraints."
+          << std::endl;
 
-      std::cout << "Available metrics : ";
+      msg << "Available metrics : ";
       for (unsigned int i=0; i < numFreeCtr; i++) {
-        std::cout << EventStrings[i] << " ";
+        msg << EventStrings[i] << " ";
       }
-      std::cout << std::endl;
-      std::cout << "Unavailable metrics : ";
+      msg << std::endl;
+
+      msg << "Unavailable metrics : ";
       for (unsigned int i=numFreeCtr; i < numTotalEvents; i++) {
-        std::cout << EventStrings[i] << " ";
+        msg << EventStrings[i] << " ";
       }
-      std::cout << std::endl;
+
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      printTileModStats(aieDevice, tiles[tileId], isCore);
     }
 
     return numFreeCtr;
@@ -344,7 +338,7 @@ namespace xdp {
       // Ensure requested metric set is supported (if not, use default)
       if ((isCore && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
           || (!isCore && (mMemoryStartEvents.find(metricSet) == mMemoryStartEvents.end()))) {
-        std::string defaultSet = isCore ? "heat_map" : "dma_locks";
+        std::string defaultSet = isCore ? "heat_map" : "conflicts";
         std::stringstream msg;
         msg << "Unable to find " << moduleName << " metric set " << metricSet 
             << ". Using default of " << defaultSet << ".";

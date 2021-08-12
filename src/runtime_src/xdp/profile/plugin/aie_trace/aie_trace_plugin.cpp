@@ -201,36 +201,67 @@ namespace xdp {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
     uint32_t required = 0;
+    std::stringstream msg;
 
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = coreCounterStartEvents.size();
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available core module performance counters : " << available << std::endl
+          << "Required core module performance counters : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
     // Core Module trace slots
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available core module trace slots : " << available << std::endl
+          << "Required core module trace slots : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
     // Core Module broadcasts. 2 events for starting/ending trace
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = memoryEventSets[metricSet].size() + 2;
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available core module broadcast channels : " << available << std::endl
+          << "Required core module broadcast channels : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
    // Memory Module perf counters
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = memoryCounterStartEvents.size();
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available memory module performance counters : " << available << std::endl
+          << "Required memory module performance counters : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
     // Memory Module trace slots
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available memory module trace slots : " << available << std::endl
+          << "Required memory module trace slots : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
     // Memory Module broadcasts. 2 events for starting/ending trace
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = memoryEventSets[metricSet].size() + 2;
-    if (available < required) return false;
+    if (available < required) {
+      msg << "Available memory module broadcast channels : " << available << std::endl
+          << "Required memory module broadcast channels : "  << required << std::endl;
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return false;
+    }
 
     return true;
   }
@@ -240,6 +271,7 @@ namespace xdp {
     auto col = tile.col;
     auto row = tile.row + 1;
     auto loc = XAie_TileLoc(col, row);
+    std::stringstream msg;
 
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
@@ -247,30 +279,31 @@ namespace xdp {
       XAIEDEV_DEFAULT_GROUP_AVAIL
     };
 
-    std::cout << "Stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Core" << std::endl;
     for (auto&g : groups) {
       auto stats = aieDevice->getRscStat(g);
       auto pc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
       auto ts = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
       auto bc = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
-      std::cout << "Resource Group : " << std::left <<  std::setw(10) << g << " "
-                << "Performance Counters : " << pc << " "
-                << "Trace Slots : " << ts << " "
-                << "Broadcast Channels : " << bc << " "
-                << std::endl;
+      msg << "Resource Group : " << std::left <<  std::setw(10) << g << " "
+          << "Performance Counters : " << pc << " "
+          << "Trace Slots : " << ts << " "
+          << "Broadcast Channels : " << bc << " "
+          << std::endl;
     }
-    std::cout << "Stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
+    msg << "Resource usage stats for Tile : (" << col << "," << row << ") Module : Memory" << std::endl;
     for (auto&g : groups) {
     auto stats = aieDevice->getRscStat(g);
     auto pc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     auto ts = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     auto bc = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
-    std::cout << "Resource Group : "  << std::left <<  std::setw(10) << g << " "
-              << "Performance Counters : " << pc << " "
-              << "Trace Slots : " << ts << " "
-              << "Broadcast Channels : " << bc << " "
-              << std::endl;
+    msg << "Resource Group : "  << std::left <<  std::setw(10) << g << " "
+        << "Performance Counters : " << pc << " "
+        << "Trace Slots : " << ts << " "
+        << "Broadcast Channels : " << bc << " "
+        << std::endl;
     }
+    xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
   // Configure all resources necessary for trace control and events
