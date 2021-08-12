@@ -207,8 +207,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = coreCounterStartEvents.size();
     if (available < required) {
-      msg << "Available core module performance counters : " << available << std::endl
-          << "Required core module performance counters : "  << required << std::endl;
+      msg << "Available core module performance counters for aie trace : " << available << std::endl
+          << "Required core module performance counters for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -217,8 +217,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
-      msg << "Available core module trace slots : " << available << std::endl
-          << "Required core module trace slots : "  << required << std::endl;
+      msg << "Available core module trace slots for aie trace : " << available << std::endl
+          << "Required core module trace slots for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -227,8 +227,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
-      msg << "Available core module broadcast channels : " << available << std::endl
-          << "Required core module broadcast channels : "  << required << std::endl;
+      msg << "Available core module broadcast channels for aie trace : " << available << std::endl
+          << "Required core module broadcast channels for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -237,8 +237,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_PERFCNT_RSC);
     required = memoryCounterStartEvents.size();
     if (available < required) {
-      msg << "Available memory module performance counters : " << available << std::endl
-          << "Required memory module performance counters : "  << required << std::endl;
+      msg << "Available memory module performance counters for aie trace : " << available << std::endl
+          << "Required memory module performance counters for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -247,8 +247,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, xaiefal::XAIE_TRACE_EVENTS_RSC);
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
-      msg << "Available memory module trace slots : " << available << std::endl
-          << "Required memory module trace slots : "  << required << std::endl;
+      msg << "Available memory module trace slots for aie trace : " << available << std::endl
+          << "Required memory module trace slots for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -257,8 +257,8 @@ namespace xdp {
     available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
-      msg << "Available memory module broadcast channels : " << available << std::endl
-          << "Required memory module broadcast channels : "  << required << std::endl;
+      msg << "Available memory module broadcast channels for aie trace : " << available << std::endl
+          << "Required memory module broadcast channels for aie trace : "  << required << std::endl;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
