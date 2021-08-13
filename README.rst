@@ -20,7 +20,7 @@ U280, VCK190 and MPSoC based embedded platforms. XRT provides a standardized sof
 interface to Xilinx FPGA. The key user APIs are defined in
 `xrt.h <src/runtime_src/core/include/xrt.h>`_ header file.
 
--------------------------------------------------------------------------------
+----------------------------------------------------------------------------------
 
 `System Requirements <https://xilinx.github.io/XRT/master/html/system_requirements.html>`_
 
