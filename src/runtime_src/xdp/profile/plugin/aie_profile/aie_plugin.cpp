@@ -265,7 +265,8 @@ namespace xdp {
       std::string modType = isCore ? "core" : "memory";
       msg << "Only " << numFreeCtr << " out of " << numTotalEvents
           << " metrics were available for aie "
-          << modType <<  " module profiling due to resource constraints."
+          << modType <<  " module profiling due to resource constraints. "
+          << "AIE profiling uses performance counters which could be taken up by aie trace, ecc etc."
           << std::endl;
 
       msg << "Available metrics : ";

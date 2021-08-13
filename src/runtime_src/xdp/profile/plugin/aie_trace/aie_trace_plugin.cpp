@@ -208,7 +208,7 @@ namespace xdp {
     required = coreCounterStartEvents.size();
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
-          << "Required core module performance counters for aie trace : "  << required << std::endl;
+          << "Required core module performance counters for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -218,7 +218,7 @@ namespace xdp {
     required = coreCounterStartEvents.size() + coreEventSets[metricSet].size();
     if (available < required) {
       msg << "Available core module trace slots for aie trace : " << available << std::endl
-          << "Required core module trace slots for aie trace : "  << required << std::endl;
+          << "Required core module trace slots for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -228,7 +228,7 @@ namespace xdp {
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available core module broadcast channels for aie trace : " << available << std::endl
-          << "Required core module broadcast channels for aie trace : "  << required << std::endl;
+          << "Required core module broadcast channels for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -238,7 +238,7 @@ namespace xdp {
     required = memoryCounterStartEvents.size();
     if (available < required) {
       msg << "Available memory module performance counters for aie trace : " << available << std::endl
-          << "Required memory module performance counters for aie trace : "  << required << std::endl;
+          << "Required memory module performance counters for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -248,7 +248,7 @@ namespace xdp {
     required = memoryCounterStartEvents.size() + memoryEventSets[metricSet].size();
     if (available < required) {
       msg << "Available memory module trace slots for aie trace : " << available << std::endl
-          << "Required memory module trace slots for aie trace : "  << required << std::endl;
+          << "Required memory module trace slots for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -258,7 +258,7 @@ namespace xdp {
     required = memoryEventSets[metricSet].size() + 2;
     if (available < required) {
       msg << "Available memory module broadcast channels for aie trace : " << available << std::endl
-          << "Required memory module broadcast channels for aie trace : "  << required << std::endl;
+          << "Required memory module broadcast channels for aie trace : "  << required;
       xrt_core::message::send(severity_level::info, "XRT", msg.str());
       return false;
     }
@@ -443,9 +443,7 @@ namespace xdp {
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-        // Following function is broken on FAL so we need to directly call aie driver api
-        // perfCounter->changeThreshold(coreCounterEventValues.at(i));
-        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_CORE_MOD, idx, coreCounterEventValues.at(i));
+        perfCounter->changeThreshold(coreCounterEventValues.at(i));
 
         // Set reset event based on counter number
         perfCounter->changeRstEvent(mod, counterEvent);
@@ -487,9 +485,7 @@ namespace xdp {
         XAie_Events counterEvent;
         perfCounter->getCounterEvent(mod, counterEvent);
         int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-        // Following function is broken on FAL so we need to directly call aie driver api
-        // perfCounter->changeThreshold(memoryCounterEventValues.at(i));
-        XAie_PerfCounterEventValueSet(aieDevInst, loc, XAIE_MEM_MOD, idx, memoryCounterEventValues.at(i));
+        perfCounter->changeThreshold(memoryCounterEventValues.at(i));
 
         perfCounter->changeRstEvent(mod, counterEvent);
         memoryEvents.push_back(counterEvent);
