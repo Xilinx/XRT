@@ -705,6 +705,17 @@ get_flag_kds_sw_emu()
   return value;
 }
 
+// This flag is added for force xclbin download eventhough it is already loaded.
+// This is required for resetting aie in next run. Aie is not clean after first
+// run. Will remove once we have some other solution to reset/reinit AIE
+// This flag is used only in edge flow
+inline bool
+get_force_program_xclbin()
+{
+  static bool value = detail::get_bool_value("Runtime.force_program_xclbin", false);
+  return value;
+}
+
 inline bool
 get_is_enable_prep_target()
 {
