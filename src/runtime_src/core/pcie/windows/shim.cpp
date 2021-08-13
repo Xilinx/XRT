@@ -1382,16 +1382,16 @@ done:
   get_kds_custat(char* buffer, DWORD output_sz, int* size_ret)
   {
       XOCL_STAT_CLASS_ARGS statargs;
-      statargs.StatClass = XoclStatKdsCU;
+      statargs.StatClass = XoclStatKds;
       DWORD bytes = 0;
-      XOCL_KDS_CU_INFORMATION kds_cu;
+      XOCL_KDS_INFORMATION kds_cu;
 
       if (output_sz == 0) {
           //Retrieve CU count in this ioctl request
           auto status = DeviceIoControl(m_dev,
               IOCTL_XOCL_STAT,
               &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
-              &kds_cu, sizeof(XOCL_KDS_CU_INFORMATION),
+              &kds_cu, sizeof(XOCL_KDS_INFORMATION),
               &bytes,
               nullptr);
 
@@ -1402,6 +1402,7 @@ done:
       }
 
       auto kds_cu2 = reinterpret_cast<XOCL_KDS_CU_INFORMATION*>(buffer);
+      statargs.StatClass = XoclStatKdsCU;
 	  auto status = DeviceIoControl(m_dev,
           IOCTL_XOCL_STAT,
           &statargs, sizeof(XOCL_STAT_CLASS_ARGS),
