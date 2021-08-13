@@ -730,18 +730,11 @@ namespace xclhwemhal2 {
     if (args.m_emuData) {
       extractEmuData(binaryDirectory, binaryCounter, args);
       std::string emuSettingsFilePath = binaryDirectory + "/emulation_data/emu_meta_data.json";
-      if (boost::filesystem::exists(emuSettingsFilePath)) {
-        if (readEmuSettingsJsonFile(emuSettingsFilePath)) {
-          if (simDontRun) {
-            mSimDontRun = simDontRun;
-          }
-        }
-      }
-      else {
-        mSimDontRun = simDontRun;
-      }
+      readEmuSettingsJsonFile(emuSettingsFilePath);
     }
-    else {
+
+    //xrt.ini setting (dont_run=true) is getting the high priority
+    if (simDontRun) {
       mSimDontRun = simDontRun;
     }
 
@@ -1119,9 +1112,14 @@ namespace xclhwemhal2 {
     return 0;
   }
 
-  bool HwEmShim::readEmuSettingsJsonFile(std::string emuSettingsFilePath) {
+  bool HwEmShim::readEmuSettingsJsonFile(const std::string& emuSettingsFilePath) {
+
+    if (emuSettingsFilePath.empty() || !boost::filesystem::exists(emuSettingsFilePath)) {
+      return false;
+    }
+
     try
-    {
+    {      
       std::ifstream emuSettingsFile(emuSettingsFilePath.c_str());
       if (!emuSettingsFile.good()) {
         return false;

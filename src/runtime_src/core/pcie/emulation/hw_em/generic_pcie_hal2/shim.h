@@ -288,7 +288,7 @@ using addr_type = uint64_t;
     	  }
       }
 
-      bool readEmuSettingsJsonFile(std::string emuSettingsFilePath);
+      bool readEmuSettingsJsonFile(const std::string& emuSettingsFilePath);
 
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
