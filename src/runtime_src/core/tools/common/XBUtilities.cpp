@@ -787,3 +787,27 @@ XBUtilities::stringToBytes(const std::string &str)
   }
   return size;
 }
+
+std::string
+XBUtilities::
+get_xrt_pretty_version()
+{
+  std::stringstream ss;
+  boost::property_tree::ptree pt_xrt;
+  xrt_core::get_xrt_info(pt_xrt);
+  boost::property_tree::ptree empty_ptree;
+
+  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+  const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
+  for(auto& drv : available_drivers) {
+    const boost::property_tree::ptree& driver = drv.second;
+    std::string drv_name = driver.get<std::string>("name", "N/A");
+    boost::algorithm::to_upper(drv_name);
+    ss << boost::format("%-20s : %s, %s\n") % drv_name
+        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+  }
+  return ss.str();
+}

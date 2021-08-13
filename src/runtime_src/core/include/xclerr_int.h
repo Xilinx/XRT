@@ -47,7 +47,7 @@
 
 #include "xrt_error_code.h"
 
-#define	XCL_ERROR_CAPACITY	16
+#define	XCL_ERROR_CAPACITY	32
 
 /**
  * struct xclErrorLast - Container for all last(latest) error records

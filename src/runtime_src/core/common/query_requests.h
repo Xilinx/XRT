@@ -17,6 +17,7 @@
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
 
+#include "core/include/xclerr_int.h"
 #include "query.h"
 #include "error.h"
 #include "uuid.h"
@@ -81,6 +82,7 @@ enum class key_type
   kds_cu_stat,
   kds_scu_stat,
   ps_kernel,
+  xocl_errors,
   xclbin_full,
 
   xmc_version,
@@ -1076,6 +1078,26 @@ struct error : request
     auto time = std::stoul(line.substr(pos));
     return std::make_pair(code, time);
   }
+};
+
+// Retrieve asynchronous xocl errors from xocl driver
+struct xocl_errors : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::xocl_errors;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  // Parse sysfs line and from class get error code and timestamp
+  XRT_CORE_COMMON_EXPORT
+  static std::pair<uint64_t, uint64_t>
+  to_value(const std::vector<char>& buf, xrtErrorClass ecl);
+
+  // Parse sysfs raw data and get list of errors
+  XRT_CORE_COMMON_EXPORT
+  static std::vector<xclErrorLast>
+  to_errors(const std::vector<char>& buf);
 };
 
 struct dna_serial_num : request

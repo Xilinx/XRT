@@ -68,7 +68,7 @@ sw_reset_cu(struct xrt_cu *xcu)
 		time -= 1000;
 		if (xrt_cu_reset_done(xcu))
 			break;
-	} while (time < 0);
+	} while (time > 0);
 
 	if (time < 0) {
 		xcu_info(xcu, "CU(%d) Reset timeout", xcu->info.cu_idx);
@@ -448,6 +448,9 @@ int xrt_cu_polling_thread(void *data)
 		if (!xcu->num_sq && !xcu->num_cq) {
 			loop_cnt = 0;
 			xcu->sleep_cnt++;
+			/* Record CU status before sleep */
+			if (!xcu->num_pq)
+				xrt_cu_check_force(xcu);
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
 		}
@@ -515,6 +518,9 @@ int xrt_cu_intr_thread(void *data)
 
 		if (!xcu->num_sq && !xcu->num_cq) {
 			loop_cnt = 0;
+			/* Record CU status before sleep */
+			if (!xcu->num_pq)
+				xrt_cu_check_force(xcu);
 			if (down_interruptible(&xcu->sem))
 				ret = -ERESTARTSYS;
 		}
