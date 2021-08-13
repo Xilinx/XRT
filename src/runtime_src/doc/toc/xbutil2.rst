@@ -5,8 +5,8 @@
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
 
-xbutil (Next Generation)
-========================
+xbutil
+======
 
 This document describes the new next-generation ``xbutil`` commands. These new commands are default from 21.1 release.   
 
