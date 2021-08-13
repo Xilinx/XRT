@@ -755,7 +755,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
 			if (is_aie_only(axlf)) {
 				write_unlock(&zdev->attr_rwlock);
-				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,client);
+				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
 				write_lock(&zdev->attr_rwlock);
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
