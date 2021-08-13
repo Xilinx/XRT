@@ -561,7 +561,7 @@ done:
     auto kernels = xrt_core::xclbin::get_kernels(top);
     /* Calculate size of kernels */
     for (auto& kernel : kernels) {
-        ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size();
+        ksize += sizeof(kernel_info) + sizeof(argument_info) * kernel.args.size() -1;
     }
 
     /* create buffer of total size to be sent via ioctl*/
