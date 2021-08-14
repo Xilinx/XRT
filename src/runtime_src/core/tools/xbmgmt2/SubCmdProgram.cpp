@@ -142,6 +142,15 @@ getBDF(unsigned int index)
   return xrt_core::query::pcie_bdf::to_string(bdf);
 }
 
+
+static bool
+is_SC_fixed(unsigned int index)
+{
+  auto device = xrt_core::get_mgmtpf_device(index);
+
+  return xrt_core::device_query<xrt_core::query::is_sc_fixed>(device);
+}
+
 /*
  * Update SC firmware on the board
  */
@@ -149,14 +158,16 @@ static void
 update_SC(unsigned int  index, const std::string& file)
 {
   Flasher flasher(index);
+
   if(!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   auto dev = xrt_core::get_mgmtpf_device(index);
-  //if SC is fixed, stop flashing immidiately
-  if (xrt_core::device_query<xrt_core::query::is_sc_fixed>(dev)) {
-    throw xrt_core::error("Flashing a fixed SC is not allowed");
-  }
+
+  // If SC is fixed, stop flashing immediately
+  if (is_SC_fixed(index)) 
+    throw xrt_core::error("SC is fixed, unable to flash image.");
+
   //don't trigger reset for u30. let python helper handle everything
   
   if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
@@ -180,7 +191,7 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
 
   if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
-    throw xrt_core::error("Failed to update SC");
+    throw xrt_core::error("Failed to update SC flash image");
 }
 
 /* 
@@ -278,203 +289,238 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
 }
 
 static void
-report_status(xrt_core::device_collection& deviceCollection, boost::property_tree::ptree& _pt) 
+report_status(std::shared_ptr<xrt_core::device> & workingDevice, 
+              boost::property_tree::ptree& pt) 
 {
-  std::vector<std::string> elementsFilter;
-  //get platform report for all the devices
+  // Clear returning values.
+  pt.clear();
+
+  boost::property_tree::ptree ptDevice;
+  auto rep = std::make_unique<ReportPlatform>();
+  rep->getPropertyTreeInternal(workingDevice.get(), ptDevice);
+  pt.push_back(std::make_pair(std::to_string(workingDevice->get_device_id()), ptDevice));
+
   std::cout << "----------------------------------------------------\n";
-  for (const auto & device : deviceCollection) {
-    boost::property_tree::ptree _ptDevice;
-    auto _rep = std::make_unique<ReportPlatform>();
-    _rep->getPropertyTreeInternal(device.get(), _ptDevice);
-    _pt.push_back(std::make_pair(std::to_string(device->get_device_id()), _ptDevice));
-    try {
-      pretty_print_platform_info(_ptDevice);
-    } catch (xrt_core::error& e) {
-      std::cerr << "  " << e.what() << std::endl;
-      return;
-    }
-    std::cout << "----------------------------------------------------\n";
-  }
+  pretty_print_platform_info(ptDevice);
+  std::cout << "----------------------------------------------------\n";
 
   std::stringstream action_list;
-  for (const auto & device : deviceCollection) {
-    if (!_pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell"))
-      action_list << boost::format("  [%s] : Program base (FLASH) image\n") % _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf");
-    if (!_pt.get<bool>(std::to_string(device->get_device_id())+".platform.status.sc"))
-      action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % _pt.get<std::string>(std::to_string(device->get_device_id())+".platform.bdf");
-  }
+
+  if (!pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.shell"))
+    action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt.get<std::string>(std::to_string(workingDevice->get_device_id())+".platform.bdf");
+
+  if (!pt.get<bool>(std::to_string(workingDevice->get_device_id())+".platform.status.sc"))
+    action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt.get<std::string>(std::to_string(workingDevice->get_device_id())+".platform.bdf");
   
   if(!action_list.str().empty()) {
     std::cout << "Actions to perform:\n" << action_list.str();
     std::cout << "----------------------------------------------------\n";
   }
-
 }
 
-/*
- * bmcVer (shown as [SC=version]) can be 3 status:
- *   1) regular SC version;
- *        example: [SC=4.1.7]
- *   2) INACTIVE;
- *        exmaple: [SC=INACTIVE], this means no xmc subdev, we should not
- *        attemp to flash the SC;
- *   3) UNKNOWN;
- *        example: [SC=UNKNOWN], this means xmc subdev is online, but status in
- *        not normal, we still allow flashing SC.
- *   4) FIXED SC version;
- *        example: [SC=4.1.7(FIXED)], this means SC is running on slave mgmt pf
- *        and cannot be updated throught this pf, SC version cannot be changed.
- */
-static void 
-isSameShellOrSC(const DSAInfo& candidate, const DSAInfo& current, bool& same_dsa, bool& same_bmc)
+
+static bool
+are_shells_equal(const DSAInfo& candidate, const DSAInfo& current)
 {
-  if (!current.dsaname().empty()) {
-    same_dsa = ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
-    same_bmc = !XBU::getForce() && 
-     (current.bmcVerIsFixed() ||
-     (current.bmcVer.compare("INACTIVE") == 0) ||
-     (candidate.bmc_ver() == current.bmc_ver()));
+  if (current.dsaname().empty())
+    throw std::runtime_error("Current shell name is empty.");
 
-  }
+  return ((candidate.dsaname() == current.dsaname()) && candidate.matchId(current));
 }
+
+
+static bool
+are_scs_equal(const DSAInfo& candidate, const DSAInfo& current)
+{
+  if (current.dsaname().empty())
+    throw std::runtime_error("Current shell name is empty.");
+
+  return ((current.bmcVer.compare("INACTIVE") == 0) ||
+          (candidate.bmc_ver() == current.bmc_ver()));
+}
+
+static bool 
+update_sc(unsigned int boardIdx, DSAInfo& candidate)
+{
+  Flasher flasher(boardIdx);
+
+  // Determine if the SC images are the same
+  bool same_bmc = false;
+  DSAInfo current = flasher.getOnBoardDSA();
+  if (!current.dsaname().empty()) 
+    same_bmc = are_scs_equal(candidate, current);
+
+  // -- Some DRCs (Design Rule Checks) --
+  // Is the SC present
+  if (current.bmc_ver().empty()) {
+     std::cout << "INFO: Satellite controller is not present.\n";
+     return false;
+  }
+  
+  // Can the SC be programmed  
+  if (is_SC_fixed(boardIdx)) {
+    std::cout << "INFO: Fixed Satellite Controller.\n";
+    return false;
+  }
+   
+  // Check to see if force is being used
+  if ((same_bmc == true) && (XBU::getForce() == true)) {
+    std::cout << "INFO: Forcing flashing of the Satellite Controller (SC) image (Force flag is set).\n";
+    same_bmc = false;
+  }
+
+  // Don't program the same images
+  if (same_bmc == true) {
+    std::cout << "INFO: Satellite Controller (SC) images are the same.\n";
+    return false;
+  }
+
+  // -- Program the SC image --
+  boost::format programFmt("[%s] : %s...\n");
+  std::cout << programFmt % flasher.sGetDBDF() % "Updating Satellite Controller (SC) firmware flash image";
+  update_SC(boardIdx, candidate.file);
+  std::cout << std::endl;
+
+  return true;
+}
+
 
 /* 
  * Flash shell and sc firmware
  * Helper method for auto_flash
  */
-static int 
-updateShellAndSC(unsigned int  boardIdx, DSAInfo& candidate, bool& reboot, bool& warm_reboot)
+static bool  
+update_shell(unsigned int boardIdx, DSAInfo& candidate)
 {
-  reboot = false;
-  warm_reboot = false;
-
   Flasher flasher(boardIdx);
 
+  // Determine if the shells are the same
   bool same_dsa = false;
-  bool same_bmc = false;
   DSAInfo current = flasher.getOnBoardDSA();
-  isSameShellOrSC(candidate, current, same_dsa, same_bmc);
+  if (!current.dsaname().empty()) 
+    same_dsa = are_shells_equal(candidate, current);
 
+  // -- Some DRCs (Design Rule Checks) --
   // Always update Arista devices
-  if (candidate.vendor_id == ARISTA_ID)
+  if (candidate.vendor_id == ARISTA_ID) {
+    std::cout << "INFO: Arista device (Force flashing).\n";
     same_dsa = false;
-
-  // getOnBoardDSA() returns an empty bmcVer in the case there is no SC,
-  // so do not update
-  if (current.bmc_ver().empty())
-    same_bmc = true;
-  
-  if (same_dsa && same_bmc) {
-    std::cout << "update not needed" << std::endl;
-    return 0;
   }
 
+  // Check to see if force is being used
+  if ((same_dsa == true) && (XBU::getForce() == true)) {
+    std::cout << "INFO: Forcing flashing of the base (e.g., shell) image (Force flag is set).\n";
+    same_dsa = false;
+  }
+
+  // Don't program the same images
+  if (same_dsa == true) {
+    std::cout << "INFO: Base (e.g., shell) flash images are the same.\n";
+    return false;
+  }
+
+  // Program the shell
   boost::format programFmt("[%s] : %s...\n");
-  if (!same_bmc) {
-    std::cout << programFmt % flasher.sGetDBDF() % "Updating SC firmware flash image";
-    try {
-      update_SC(boardIdx, candidate.file);
-      warm_reboot = true;
-    } catch (const xrt_core::error& e) {
-      std::cout << "NOTE: Skipping SC flash: " << e.what() << std::endl;
-    }
-    std::cout << std::endl;
-  }
-
-  if (!same_dsa) {
-    std::cout << programFmt % flasher.sGetDBDF() % "Updating base flash image";
-    update_shell(boardIdx, candidate.file, candidate.file);
-    reboot = true;
-  }
-
-  if (!same_dsa && !reboot)
-    return -EINVAL;
-
-  return 0;
+  std::cout << programFmt % flasher.sGetDBDF() % "Updating base (e.g., shell) flash image";
+  update_shell(boardIdx, candidate.file, candidate.file);
+  return true;
 }
 
 /* 
- * Update shell and sc firmware on the device automatically
+ * Update shell and sc firmware on the device automatically 
+ * Refactor code to support only 1 device. 
  */
 static void 
-auto_flash(xrt_core::device_collection& deviceCollection) 
+auto_flash(std::shared_ptr<xrt_core::device> & workingDevice) 
 {
   //report status of all the devices
-  boost::property_tree::ptree _pt;
-  report_status(deviceCollection, _pt);
+  boost::property_tree::ptree pt;
+  report_status(workingDevice, pt);
 
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
-  for (const auto & device : deviceCollection) {
-    static boost::property_tree::ptree ptEmpty;
-    auto available_shells = _pt.get_child(std::to_string(device->get_device_id()) + ".platform.available_shells", ptEmpty);
-    // Check if any base packages are available
-    if(available_shells.empty())
-      return;
+
+  static boost::property_tree::ptree ptEmpty;
+  auto available_shells = pt.get_child(std::to_string(workingDevice->get_device_id()) + ".platform.available_shells", ptEmpty);
+
+  // Check if any base packages are available
+  if (available_shells.empty()) {
+    std::cout << "ERROR: No base (e.g., shell) images installed on the server. Operation cancelled.\n";
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
     
-    DSAInfo dsa(available_shells.front().second.get<std::string>("file"));
-    //if the shell is not up-to-date and dsa has a flash image, queue the board for update
-    bool same_shell = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.shell");
-    bool same_sc = _pt.get<bool>(std::to_string(device->get_device_id()) + ".platform.status.sc");
+  DSAInfo dsa(available_shells.front().second.get<std::string>("file"));
 
-    // Always update Arista devices
-    auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(device);
-    if (vendor == ARISTA_ID)
-      same_shell = false;
+  // If the shell is not up-to-date and dsa has a flash image, queue the board for update
+  bool same_shell = pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.shell");
+  bool same_sc = pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.sc");
 
-    if (XBU::getForce()) {
-      same_shell = false;
-      same_sc = false;
-    }
+  // Always update Arista devices
+  auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(workingDevice);
+  if (vendor == ARISTA_ID)
+    same_shell = false;
 
-    if (!same_shell || !same_sc) {
-      if(!dsa.hasFlashImage)
-        throw xrt_core::error("Flash image is not available");
-      boardsToUpdate.push_back(std::make_pair(device->get_device_id(), dsa));
-    }
+  if (XBU::getForce()) {
+    same_shell = false;
+    same_sc = false;
   }
 
-  // Continue to flash whatever we have collected in boardsToUpdate.
-  uint16_t success = 0;
-  bool needreboot = false;
-  bool need_warm_reboot = false;
-  std::stringstream report_status;
-  if (!boardsToUpdate.empty()) {
+  if (!same_shell || !same_sc) {
+    if(!dsa.hasFlashImage)
+      throw xrt_core::error("Flash image is not available");
 
-    // Prompt user about what boards will be updated and ask for permission.
-    if(!XBU::can_proceed(XBU::getForce()))
-      return;
-
-    // Perform DSA and BMC updating
-    for (auto& p : boardsToUpdate) {
-      bool reboot = false;
-      bool warm_reboot = false;
-      std::cout << std::endl;
-      try {
-        updateShellAndSC(p.first, p.second, reboot, warm_reboot);
-        report_status << boost::format("  [%s] : Successfully flashed\n") % getBDF(p.first);
-        success++;
-      } catch (const xrt_core::error& e) {
-        std::cerr << boost::format("ERROR: %s\n") % e.what();
-      }
-      needreboot |= reboot;
-      need_warm_reboot |= warm_reboot;
-    }
+    boardsToUpdate.push_back(std::make_pair(workingDevice->get_device_id(), dsa));
   }
-  std::cout << "----------------------------------------------------\n";
-  std::cout << "Report\n";
-  //report status of devices
-  std::cout << report_status.str();
-  if (boardsToUpdate.size() == 0) {
-    std::cout << "\nDevice(s) up-to-date and do not need to be flashed." << std::endl;
+  
+  // Is there anything to flash
+  if (boardsToUpdate.empty() == true) {
+    std::cout << "\nDevice is up-to-date.  No flashing to performed.\n";
     return;
   }
 
-  if (success != 0) {
-    std::cout << "\n" << success << " device flashed successfully." << std::endl; 
+  // Continue to flash whatever we have collected in boardsToUpdate.
+  bool needreboot = false;
+  bool need_warm_reboot = false;
+  std::stringstream report_stream;
+
+  // Prompt user about what boards will be updated and ask for permission.
+  if(!XBU::can_proceed(XBU::getForce()))
+    return;
+
+  // Perform DSA and BMC updating
+  std::stringstream error_stream;
+  for (auto& p : boardsToUpdate) {
+    try {
+      std::cout << std::endl;
+      // 1) Flash the Satellite Controller image
+      if (update_sc(p.first, p.second) == true)  {
+        report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
+        need_warm_reboot = true;
+      } else
+        report_stream << boost::format("  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or not installed. No actions taken.\n") % getBDF(p.first);
+
+      // 2) Flash shell image
+      if (update_shell(p.first, p.second) == true)  {
+        report_stream << boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n") % getBDF(p.first);
+        needreboot = true;
+      } else
+        report_stream << boost::format("  [%s] : Base (e.g., shell) image is up-to-date.  No actions taken.\n") % getBDF(p.first);
+      } catch (const xrt_core::error& e) {
+        error_stream << boost::format("ERROR: %s\n") % e.what();
+      }
+  }
+
+  std::cout << "----------------------------------------------------\n";
+  std::cout << "Report\n";
+  std::cout << report_stream.str();
+
+
+  if (error_stream.str().empty()) {
+    std::cout << "\nDevice flashed successfully.\n"; 
   } else {
-    std::cout << "\nNo devices were flashed." << std::endl; 
+    std::cout << "\nDevice flashing encountered errors:\n";
+    std::cerr << error_stream.str();
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   if (needreboot) {
@@ -485,10 +531,6 @@ auto_flash(xrt_core::device_collection& deviceCollection)
     std::cout << "******************************************************************\n";
     std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
     std::cout << "******************************************************************\\n";
-  }
-
-  if (success != boardsToUpdate.size()) {
-    std::cout << "WARNING:" << boardsToUpdate.size()-success << " Device(s) not flashed. " << std::endl;
   }
 }
 
@@ -674,48 +716,54 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
+
   xrt_core::device_collection deviceCollection;
   for (const auto & deviceName : device) 
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
-  try {
-    XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
-  } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
-    std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
-  }
+  XBU::collect_devices(deviceNames, false /*inUserDomain*/, deviceCollection);
 
-  // enforce 1 device specification
-  if(deviceCollection.size() > 1) {
+  // Enforce 1 device specification
+  if (deviceCollection.size() > 1) {
     std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
     std::cout << "List of available devices:" << std::endl;
+
     boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
     for(auto& kd : available_devices) {
       boost::property_tree::ptree& _dev = kd.second;
       std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
     }
+
     std::cout << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  // Make sure we have at least 1 device
+  if (deviceCollection.size() == 0) 
+    throw std::runtime_error("No devices found.");
+
+  // Get the device
+  auto & workingDevice = deviceCollection[0];
+
   // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
 
-  if(!image.empty()) {
-    //image is a sub-option of update
-    if(update.empty())
+  if (!image.empty()) {
+
+    // image is a sub-option of update
+    if (update.empty())
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
 
-    //we support only 2 flash images atm
-    if(image.size() > 2)
+    // We support up to 2 flash images 
+    if (image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
 
-    //find the absolute path to the specified image
+    // Find the absolute path to the specified image
     auto image_paths = find_flash_image_paths(image);
-    if(!XBU::can_proceed(XBU::getForce()))
+
+    if (!XBU::can_proceed(XBU::getForce()))
       return;
-    for (const auto & dev : deviceCollection)
-      update_shell(dev->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
+
+    update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     return;
   }
 
@@ -723,15 +771,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     XBU::verbose("Sub command: --base");
     XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
     std::string empty = "";
-    if(update.compare("all") == 0)
+    if (update.compare("all") == 0)
       // Note: To get around a bug in the SC flashing code base,
       //       auto_flash will clear the collection. This code need to be refactored and clean up.
-      auto_flash(deviceCollection);
+      auto_flash( workingDevice );
     else {
-      if(update.compare("flash") == 0)
+      if (update.compare("flash") == 0)
         throw xrt_core::error("Platform only update is not supported");
 
-      if(update.compare("sc") == 0)
+      if (update.compare("sc") == 0)
         throw xrt_core::error("SC only update is not supported");
        
       throw xrt_core::error("Please specify a valid value");
