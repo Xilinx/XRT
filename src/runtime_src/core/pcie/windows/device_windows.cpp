@@ -731,7 +731,7 @@ struct info
     case key_type::pcie_express_lane_width_max:
       return static_cast<query::pcie_express_lane_width_max::result_type>(info.MaximumLinkWidth);
     case key_type::pcie_express_lane_width:
-      return static_cast<query::pcie_express_lane_width::result_type>(info.MaximumLinkWidth);
+      return static_cast<query::pcie_express_lane_width::result_type>(info.LinkWidth);
     default:
       throw unexpected_query_request_key(key);
     }
