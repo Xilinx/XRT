@@ -527,8 +527,7 @@ xclLoadAxlf(const axlf *buffer)
   else if (is_flat_platform && is_flat_enabled)
     flags = DRM_ZOCL_PLATFORM_FLAT;
 
-  if(force_program)
-  {
+  if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
   }
 #endif
