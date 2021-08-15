@@ -438,11 +438,11 @@ enum drm_xocl_axlf_flags {
  * @flags:	flags passed while programming xclbin
  */
 struct drm_xocl_axlf {
-	struct axlf 		*xclbin;
+	struct axlf		*xclbin;
 	int			 ksize;
 	char			*kernels;
 	struct drm_xocl_kds	 kds_cfg;
-	uint32_t          	 flags;
+	uint32_t		 flags;
 };
 
 /**
