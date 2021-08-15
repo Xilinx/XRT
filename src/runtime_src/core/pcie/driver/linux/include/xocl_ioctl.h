@@ -439,10 +439,10 @@ enum drm_xocl_axlf_flags {
  */
 struct drm_xocl_axlf {
 	struct axlf 		*xclbin;
-	int			ksize;
+	int			 ksize;
 	char			*kernels;
-	struct drm_xocl_kds	kds_cfg;
-	uint32_t          	flags;
+	struct drm_xocl_kds	 kds_cfg;
+	uint32_t          	 flags;
 };
 
 /**
