@@ -386,6 +386,7 @@ namespace xclcpuemhal2 {
       SWScheduler* mSWSch;
       bool mIsKdsSwEmu;
       bool mDeviceProcessInQemu;
+      std::string mFpgaDevice;
   };
 
   class GraphType {
