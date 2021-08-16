@@ -1050,7 +1050,8 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   else
     run_test.finish(true, "");
  
-  std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
+  if (XBU::is_escape_codes_disabled() == true) 
+    std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
 }
 
 /*
