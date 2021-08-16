@@ -52,13 +52,13 @@ struct xrt_ert_queue_funcs {
 
 	int (*submit)(struct xrt_ert_command *ecmd, void *queue_handle);
 
-	irqreturn_t (*irq_handle)(int irq, void *queue_handle);
-
 	int  (*queue_config)(uint32_t slot_size, void *ert_handle, void *queue_handle);
 
 	uint32_t (*max_slot_num)(void *queue_handle);
 
 	void (*abort)(void *client, void *queue_handle);
+
+	void (*intc_config)(bool enable, void *queue_handle);
 
 };
 
