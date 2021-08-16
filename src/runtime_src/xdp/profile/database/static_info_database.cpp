@@ -593,6 +593,10 @@ namespace xdp {
     size_t pos = name.find('/');
     std::string monCuName = name.substr(0, pos);
 
+    if (monCuName == "memory_subsystem") {
+      devInfo->loadedXclbins.back()->hasMemoryAIM = true ;
+    }
+
     std::string memName = "" ;
     std::string portName = "" ;
     size_t pos1 = name.find('-');
