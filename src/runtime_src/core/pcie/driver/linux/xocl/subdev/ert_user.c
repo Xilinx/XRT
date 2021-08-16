@@ -667,7 +667,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	ert_num_slots = cq_range / slot_size;
 
-	if (cfg->cu_dma && ert_num_slots > 32) {
+	if (!dataflow_enabled && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
 		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
 		slot_size = cq_range / 32;
