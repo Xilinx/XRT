@@ -266,7 +266,7 @@ namespace xdp {
       msg << "Only " << numFreeCtr << " out of " << numTotalEvents
           << " metrics were available for aie "
           << modType <<  " module profiling due to resource constraints. "
-          << "AIE profiling uses performance counters which could be taken up by aie trace, ecc etc."
+          << "AIE profiling uses performance counters which could be already used by AIE trace, ECC, etc."
           << std::endl;
 
       msg << "Available metrics : ";
