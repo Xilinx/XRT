@@ -1360,7 +1360,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   oStream << boost::format("    %-22s: %s\n") % "Platform ID" % ptTree.get<std::string>("platform_id");
 }
 
-static void
+static test_status
 run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
                        Report::SchemaVersion schemaVersion,
                        std::vector<TestCollection *> testObjectsToRun,
@@ -1411,6 +1411,8 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
   ptDeviceInfo.put_child("tests", ptDeviceTestSuite);
   ptDevCollectionTestSuite.push_back( std::make_pair("", ptDeviceInfo) );
+
+  return status;
 }
 
 static
@@ -1561,12 +1563,13 @@ create_report_summary( const boost::property_tree::ptree& ptDevCollectionTestSui
   }
 }
 
-static void
+static bool
 run_tests_on_devices( xrt_core::device_collection &deviceCollection,
                       Report::SchemaVersion schemaVersion,
                       std::vector<TestCollection *> testObjectsToRun,
                       std::ostream & output)
 {
+  bool has_failures = false;
   // -- Root property tree
   boost::property_tree::ptree ptDevCollectionTestSuite;
 
@@ -1575,8 +1578,8 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 
   // -- Run the various tests and collect the test data
   boost::property_tree::ptree ptDeviceTested;
-  for(auto const& dev : deviceCollection)
-    run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested);
+  for(auto const& dev : deviceCollection) 
+    has_failures |= (run_test_suite_device(dev, schemaVersion, testObjectsToRun, ptDeviceTested) == test_status::failed);
 
   ptDevCollectionTestSuite.put_child("logical_devices", ptDeviceTested);
 
@@ -1594,6 +1597,8 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
       // Do nothing
       break;
   }
+
+  return has_failures;
 }
 
 }
@@ -1793,7 +1798,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
   // -- Run the tests --------------------------------------------------
   std::ostringstream oSchemaOutput;
-  run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, oSchemaOutput);
+  bool has_failures = run_tests_on_devices(deviceCollection, schemaVersion, testObjectsToRun, oSchemaOutput);
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {
@@ -1806,4 +1811,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
+
+  if (has_failures == true) 
+    throw xrt_core::error(std::errc::operation_canceled);
 }
