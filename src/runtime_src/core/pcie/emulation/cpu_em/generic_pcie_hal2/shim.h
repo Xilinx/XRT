@@ -379,7 +379,9 @@ namespace xclcpuemhal2 {
     std::vector<std::string> rtps;
     static unsigned int mGraphHandle;
   };
+
   extern std::map<unsigned int, CpuemShim*> devices;
+  extern std::map<void*, CpuemShim*> shimHandleMap;
 }
 
 #endif

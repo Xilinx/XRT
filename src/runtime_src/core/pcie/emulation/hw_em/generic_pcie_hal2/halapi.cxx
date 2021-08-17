@@ -223,8 +223,8 @@ unsigned xclProbe()
     FeatureRomHeader fRomHeader = std::get<4>(it);
     boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclhwemhal2::HwEmShim *handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
-    xclhwemhal2::devices[deviceIndex++] = handle;
+    xclhwemhal2::HwEmShim *shimObj = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    xclhwemhal2::devices[deviceIndex++] = shimObj;
   }
 
   xclProbeCallCnt++;
@@ -265,31 +265,35 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
 
-  xclhwemhal2::HwEmShim *handle = NULL;
+  xclhwemhal2::HwEmShim *shimObj = NULL;
+  void* handle;
 
   bool bDefaultDevice = false;
   std::map<unsigned int, xclhwemhal2::HwEmShim*>::iterator it = xclhwemhal2::devices.find(deviceIndex);
   if(it != xclhwemhal2::devices.end())
   {
-    handle = (*it).second;
+    xclhwemhal2::shimHandleMap[handle] = (*it).second;
   }
   else
   {
-    handle = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
+    shimObj = new xclhwemhal2::HwEmShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    xclhwemhal2::shimHandleMap[handle] = shimObj;
   }
 
   if (!xclhwemhal2::HwEmShim::handleCheck(handle)) {
-    delete handle;
-    handle = 0;
+    delete shimObj;
+    shimObj = 0;
   }
-  if(handle)
+
+  if (xclhwemhal2::HwEmShim::handleCheck(handle))
   {
-    handle->xclOpen(logfileName);
+    shimObj = xclhwemhal2::HwEmShim::handleCheck(handle);
+    shimObj->xclOpen(logfileName);
     if(bDefaultDevice)
     {
       std::string sDummyDeviceMsg ="CRITICAL WARNING: [HW-EMU 08-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
-      handle->logMessage(sDummyDeviceMsg);
+      shimObj->logMessage(sDummyDeviceMsg);
     }
   }
   return (xclDeviceHandle *)handle;
@@ -322,7 +326,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
   auto ret = drv->xclLoadXclBin(buffer);
 #endif
   if (!ret) {
-    auto device = xrt_core::get_userpf_device(drv);
+    auto device = xrt_core::get_userpf_device(handle);
     device->register_axlf(buffer);
 #ifndef DISABLE_DOWNLOAD_XCLBIN
     ret = xrt_core::scheduler::init(handle, buffer);

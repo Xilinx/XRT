@@ -76,26 +76,31 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   FeatureRomHeader fRomHeader;
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
 
-  xclcpuemhal2::CpuemShim *handle = nullptr;
+  xclcpuemhal2::CpuemShim *shimObj = NULL;
+  void* handle;
+
   bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
-    handle = (*it).second;
+    xclcpuemhal2::shimHandleMap[handle] = (*it).second;
   }
   else
-  {
-    handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList,false,false,fRomHeader);
+  {    
+    shimObj  = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader);;
+    xclcpuemhal2::shimHandleMap[handle] = shimObj;
     bDefaultDevice = true;
-    xclcpuemhal2::devices[deviceIndex++] = handle;
+    xclcpuemhal2::devices[deviceIndex++] = shimObj;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
-    delete handle;
-    handle = 0;
+    delete shimObj;
+    shimObj = 0;
   }
-  if (handle) {
-    handle->xclOpen(logfileName);
+
+  if (xclcpuemhal2::CpuemShim::handleCheck(handle)) {
+    shimObj = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    shimObj->xclOpen(logfileName);
   }
   return (xclDeviceHandle *)handle;
 }
@@ -107,7 +112,7 @@ void xclClose(xclDeviceHandle handle)
     return ;
   drv->xclClose();
   if (xclcpuemhal2::CpuemShim::handleCheck(handle) && xclcpuemhal2::devices.size() == 0) {
-    delete ((xclcpuemhal2::CpuemShim*)handle);
+    delete ((xclcpuemhal2::CpuemShim*)drv);
   }
 }
 
@@ -127,7 +132,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
   if (!ret) {
-    auto device = xrt_core::get_userpf_device(drv);
+    auto device = xrt_core::get_userpf_device(handle);
     device->register_axlf(buffer);
     if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
       ret = xrt_core::scheduler::init(handle, buffer);
@@ -411,8 +416,8 @@ unsigned xclProbe()
       std::size_t length = deviceName.copy(info.mName, deviceName.length(), 0);
       info.mName[length] = '\0';
     }
-    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
-    xclcpuemhal2::devices[deviceIndex++] = handle;
+    xclcpuemhal2::CpuemShim *shimObj = new xclcpuemhal2::CpuemShim(deviceIndex,info,DDRBankList, bUnified, bXPR, fRomHeader);
+    xclcpuemhal2::devices[deviceIndex++] = shimObj;
   }
 
   xclProbeCallCnt++;

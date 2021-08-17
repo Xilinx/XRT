@@ -80,6 +80,8 @@ namespace xclhwemhal2 {
 
   namespace pt = boost::property_tree;
   std::map<unsigned int, HwEmShim*> devices;
+  std::map<void*, HwEmShim*> shimHandleMap;
+
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
   std::ofstream HwEmShim::mDebugLogStream;
@@ -182,13 +184,13 @@ namespace xclhwemhal2 {
     std::map<unsigned int, HwEmShim*>::iterator end = devices.end();
     for(; start != end; start++)
     {
-      HwEmShim* handle = (*start).second;
-      if(!handle)
+      HwEmShim* shimObj = (*start).second;
+      if (!shimObj)
         continue;
-      handle->saveWaveDataBase();
+      shimObj->saveWaveDataBase();
 
       if (xclemulation::config::getInstance()->isKeepRunDirEnabled() == false) {
-        systemUtil::makeSystemCall(handle->deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
+        systemUtil::makeSystemCall(shimObj->deviceDirectory, systemUtil::systemOperation::REMOVE, "", std::to_string(__LINE__));
       }
     }
 
@@ -1445,7 +1447,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
     std::string dMsg ="INFO: [HW-EMU 02-0] Copying buffer from host to device started : size = " + std::to_string(size);
     logMessage(dMsg,1);
-    void *handle = this;
+    void *shimObj = this;
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
@@ -1463,7 +1465,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       // TODO: Windows build support
       // *_RPC_CALL uses unix_socket
       uint32_t space = getAddressSpace(topology);
-      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device,handle,c_dest,c_src,c_size,seek,space);
+      xclCopyBufferHost2Device_RPC_CALL(xclCopyBufferHost2Device, shimObj, c_dest, c_src, c_size, seek, space);
 #endif
       processed_bytes += c_size;
     }
@@ -1494,7 +1496,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
 
     std::string dMsg ="INFO: [HW-EMU 05-0] Copying buffer from device to host started. size := " + std::to_string(size);
     logMessage(dMsg,1);
-    void *handle = this;
+    void *shimObj = this;
 
     uint64_t messageSize = xclemulation::config::getInstance()->getPacketSize();
     uint64_t c_size = messageSize;
@@ -1511,7 +1513,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       uint64_t c_src = src + processed_bytes;
 #ifndef _WINDOWS
       uint32_t space = getAddressSpace(topology);
-      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host,handle,c_dest,c_src,c_size,skip,space);
+      xclCopyBufferDevice2Host_RPC_CALL(xclCopyBufferDevice2Host, shimObj, c_dest, c_src, c_size, skip, space);
 #endif
 
       processed_bytes += c_size;
@@ -1762,8 +1764,17 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // Shim object is not deleted as part of closing device.
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
+
     mCoreDevice.reset();
-    device_handles::remove(this);
+    void* handle = nullptr;
+    for (auto &item : xclhwemhal2::shimHandleMap) {
+      if (item.second == this) {
+        handle = item.first;
+        break;
+      }
+    }
+
+    device_handles::remove(handle);
 
     if (!sock)
     {
@@ -1981,11 +1992,13 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
   }
 
   HwEmShim *HwEmShim::handleCheck(void *handle) {
-    if (!handle)
+
+    HwEmShim *shimObj = xclhwemhal2::shimHandleMap[handle];
+
+    if (!shimObj)
       return 0;
 
-    return (HwEmShim *)handle;
-
+    return shimObj;
   }
 
   HwEmShim::~HwEmShim() {
@@ -2576,12 +2589,20 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mGlobalOutMemStream.open("global_out.mem");
     }
 
+    void* handle = nullptr;
+    for (auto &item : xclhwemhal2::shimHandleMap) {
+      if (item.second == this) {
+        handle = item.first;
+        break; 
+      }
+    }
+
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::hwemu::get_userpf_device(this, mDeviceIndex);
+    mCoreDevice = xrt_core::hwemu::get_userpf_device(handle, mDeviceIndex);
 
-    device_handles::add(this);
+    device_handles::add(handle);
   }
 
 /**********************************************HAL2 API's START HERE **********************************************/

@@ -30,6 +30,7 @@
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
+  std::map<void*, CpuemShim*> shimHandleMap;
   unsigned int CpuemShim::mBufferCount = 0;
   unsigned int GraphType::mGraphHandle = 0;
   std::map<int, std::tuple<std::string,int,void*> > CpuemShim::mFdToFileNameMap;
@@ -265,15 +266,17 @@ namespace xclcpuemhal2 {
 
   CpuemShim *CpuemShim::handleCheck(void *handle)
   {
+    CpuemShim *shimObj = xclcpuemhal2::shimHandleMap[handle];
+
     // Sanity checks
-    if (!handle)
+    if (!shimObj)
       return 0;
-    if (*(unsigned *)handle != TAG)
+    if (*(unsigned *)shimObj != TAG)
       return 0;
-    if (!((CpuemShim *)handle)->isGood()) {
+    if (!shimObj->isGood()) {
       return 0;
     }
-    return (CpuemShim *)handle;
+    return shimObj;
   }
 
   static void saveDeviceProcessOutputs()
@@ -1376,7 +1379,15 @@ namespace xclcpuemhal2 {
     // Shim object creation doesn't follow xclOpen/xclClose.
     // The core device must correspond to open and close, so
     // create here rather than in constructor
-    mCoreDevice = xrt_core::swemu::get_userpf_device(this, mDeviceIndex);
+    void* handle = nullptr;
+    for (auto &item : xclcpuemhal2::shimHandleMap) {
+      if (item.second == this) {
+        handle = item.first;
+        break;
+      }
+    }
+
+    mCoreDevice = xrt_core::swemu::get_userpf_device(handle, mDeviceIndex);
   }
 
   void CpuemShim::fillDeviceInfo(xclDeviceInfo2* dest, xclDeviceInfo2* src)

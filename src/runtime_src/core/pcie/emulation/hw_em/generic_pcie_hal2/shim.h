@@ -399,5 +399,6 @@ using addr_type = uint64_t;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;
+  extern std::map<void*, HwEmShim*> shimHandleMap;
  }
 #endif

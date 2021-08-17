@@ -48,25 +48,30 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
   std::memset(&fRomHeader, 0, sizeof(FeatureRomHeader));
   boost::property_tree::ptree platformData;
 
-  xclcpuemhal2::CpuemShim *handle = NULL;
+  xclcpuemhal2::CpuemShim *shimObj = NULL;
+  void* handle;
+
   bool bDefaultDevice = false;
   std::map<unsigned int, xclcpuemhal2::CpuemShim*>::iterator it = xclcpuemhal2::devices.find(deviceIndex);
   if(it != xclcpuemhal2::devices.end())
   {
-    handle = (*it).second;
+    xclcpuemhal2::shimHandleMap[handle] = (*it).second;
   }
   else
   {
-    handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
+    shimObj = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, false, false, fRomHeader, platformData);
     bDefaultDevice = true;
+    xclcpuemhal2::shimHandleMap[handle] = shimObj;
   }
 
   if (!xclcpuemhal2::CpuemShim::handleCheck(handle)) {
-    delete handle;
-    handle = 0;
+    delete shimObj;
+    shimObj = 0;
   }
-  if (handle) {
-    handle->xclOpen(logfileName);
+
+  if (xclcpuemhal2::CpuemShim::handleCheck(handle)) {
+    shimObj = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    shimObj->xclOpen(logfileName);
     if (bDefaultDevice)
     {
       std::string sDummyDeviceMsg = "CRITICAL WARNING: [SW-EM 09-0] Unable to find emconfig.json. Using default device \"xilinx:pcie-hw-em:7v3:1.0\"";
@@ -84,7 +89,7 @@ void xclClose(xclDeviceHandle handle)
     return ;
   drv->xclClose();
   if (xclcpuemhal2::CpuemShim::handleCheck(handle) && xclcpuemhal2::devices.size() == 0) {
-    delete ((xclcpuemhal2::CpuemShim*)handle);
+    delete ((xclcpuemhal2::CpuemShim*)drv);
   }
 }
 
@@ -104,7 +109,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     return -1;
   auto ret = drv->xclLoadXclBin(buffer);
   if (!ret) {
-    auto device = xrt_core::get_userpf_device(drv);
+    auto device = xrt_core::get_userpf_device(handle);
     device->register_axlf(buffer);
     if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_kds_sw_emu())
       ret = xrt_core::scheduler::init(handle, buffer);
@@ -371,8 +376,8 @@ unsigned xclProbe()
     FeatureRomHeader fRomHeader = std::get<4>(it);
     boost::property_tree::ptree platformData = std::get<5>(it);
 
-    xclcpuemhal2::CpuemShim *handle = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
-    xclcpuemhal2::devices[deviceIndex++] = handle;
+    xclcpuemhal2::CpuemShim *shimObj = new xclcpuemhal2::CpuemShim(deviceIndex, info, DDRBankList, bUnified, bXPR, fRomHeader, platformData);
+    xclcpuemhal2::devices[deviceIndex++] = shimObj;
   }
 
   xclProbeCallCnt++;
