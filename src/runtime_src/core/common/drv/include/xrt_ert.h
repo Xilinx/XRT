@@ -30,6 +30,7 @@ struct xrt_ert_command {
 
 	uint32_t			handle;
 
+	void 				*client;
 	struct ert_cmd_ops		cb;
 	uint32_t			*payload;
 	// payload size in words
@@ -56,6 +57,8 @@ struct xrt_ert_queue_funcs {
 	int  (*queue_config)(uint32_t slot_size, void *ert_handle, void *queue_handle);
 
 	uint32_t (*max_slot_num)(void *queue_handle);
+
+	void (*abort)(void *client, void *queue_handle);
 
 };
 

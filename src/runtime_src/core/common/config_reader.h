@@ -348,7 +348,7 @@ get_aie_profile_core_metrics()
 inline std::string
 get_aie_profile_memory_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "dma_locks");
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
   return value;
 }
 
@@ -702,6 +702,17 @@ inline bool
 get_flag_kds_sw_emu()
 {
   static bool value = detail::get_bool_value("Runtime.kds_sw_emu", true);
+  return value;
+}
+
+// This flag is added to support force xclbin download eventhough same xclbin is already programmed.
+// This is required for aie reset/reinit in next run. Aie is not clean after first
+// run. We need to work with aie team to figureout a solution to reset/reinit AIE in second run.
+// This flow is enabled in both edge/dc
+inline bool
+get_force_program_xclbin()
+{
+  static bool value = detail::get_bool_value("Runtime.force_program_xclbin", false);
   return value;
 }
 

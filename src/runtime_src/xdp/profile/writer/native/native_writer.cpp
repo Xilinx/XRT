@@ -18,6 +18,7 @@
 
 #include "xdp/profile/writer/native/native_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/events/native_events.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -44,9 +45,13 @@ namespace xdp {
     fout << "STRUCTURE" << "\n" ;
     fout << "Group_Start,Host APIs" << "\n" ;
     fout << "Group_Start,Native XRT API Calls" << "\n" ;
-    fout << "Dynamic_Row," << 1 << ",General,API Events" << "\n" ;
+    fout << "Dynamic_Row," << APIBucket << ",General,API Events" << "\n" ;
     fout << "Group_End,Native XRT API Calls" << "\n" ;
     fout << "Group_End,Host APIs" << "\n" ;
+    fout << "Group_Start,Host to Device Data Transfers\n" ;
+    fout << "Dynamic_Row," << readBucket << ",Reads,Read Transfers\n" ;
+    fout << "Dynamic_Row," << writeBucket << ",Writes,Write Transfers\n" ;
+    fout << "Group_End,Host to Device Data Transfers\n" ;
   }
 
   void NativeTraceWriter::writeStringTable()
@@ -73,7 +78,17 @@ namespace xdp {
 
     fout << "EVENTS" << "\n" ;
     for (auto& e : APIEvents) {
-      e->dump(fout, 1) ; // 1 is the only bucket
+      e->dump(fout, APIBucket) ;
+      // If this is also a read/write, then dump the event in the other bucket
+      NativeAPICall* call = dynamic_cast<NativeAPICall*>(e) ;
+      if (call != nullptr) {
+        if (call->isRead()) {
+          call->dumpSync(fout, readBucket) ;
+        }
+        if (call->isWrite()) {
+          call->dumpSync(fout, writeBucket) ;
+        }
+      }
     }
 
     for (auto& e : APIEvents) {

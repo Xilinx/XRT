@@ -124,7 +124,7 @@ public:
   }
 
   virtual void
-  program_plp(const device*, const std::vector<char>&) const
+  program_plp(const device*, const std::vector<char>&, bool) const
   {
     throw std::runtime_error("plp program is not supported");
   }
@@ -262,7 +262,7 @@ get_monitor_access_type();
 
 XRT_CORE_COMMON_EXPORT
 void
-program_plp(const device* dev, const std::vector<char> &buffer);
+program_plp(const device* dev, const std::vector<char> &buffer, bool force);
 
 XRT_CORE_COMMON_EXPORT
 void

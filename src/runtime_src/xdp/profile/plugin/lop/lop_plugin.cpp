@@ -134,8 +134,6 @@ namespace xdp {
     VPWriter* writer = new LowOverheadTraceWriter("lop_trace.csv") ;
     writers.push_back(writer) ;
 
-    emulationSetup() ;
-
     (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     // In order to avoid overhead later, preallocate the string table
@@ -156,6 +154,10 @@ namespace xdp {
   {
     if (VPDatabase::alive())
     {
+      // OpenCL could be running hardware emulation or software emulation,
+      //  so be sure to account for any peculiarities here
+      emulationSetup() ;
+
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
       XDPPlugin::endWrite(false);

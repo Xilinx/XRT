@@ -241,7 +241,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
       }
       std::cout << std::endl;
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
   } catch (const xrt_core::error& e) {
     XBU::print_exception_and_throw_cancel(e);

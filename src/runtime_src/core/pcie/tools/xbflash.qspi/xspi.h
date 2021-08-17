@@ -54,6 +54,7 @@ private:
     unsigned readReg(unsigned offset);
     int writeReg(unsigned regOffset, unsigned value);
     bool waitTxEmpty();
+    int macronixConfigure();
     bool isFlashReady();
     bool sectorErase(unsigned Addr, unsigned erase_cmd);
     bool writeBitstreamGuard(unsigned Addr);

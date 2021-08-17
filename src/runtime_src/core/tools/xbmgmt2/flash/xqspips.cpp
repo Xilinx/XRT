@@ -245,7 +245,7 @@ XQSPIPS_Flasher::XQSPIPS_Flasher(std::shared_ptr<xrt_core::device> dev)
     try{
         flash_base = xrt_core::device_query<xrt_core::query::flash_bar_offset>(mDev.get());
     } catch(...) { }
-	if (flash_base == 0)
+    if (flash_base == 0)
         flash_base = FLASH_BASE;
 
     // maybe initialized QSPI here

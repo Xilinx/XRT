@@ -78,18 +78,13 @@ static ssize_t xocl_errors_show(struct device *dev,
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	struct xcl_errors *err = xdev->core.errors;
-	int size = 0, i = 0;
+	int size = 0;
 	if (!err)
-		return sprintf(buf, "%s\n", "Error: Device errors not found");
+		return sprintf(buf, "%d%d, %s\n", 0, 0, "Error: Device errors not found");
 
-	size += sprintf(buf, "Num of xocl_errors: %d\n", err->num_err);
-	for (i = 0; i < err->num_err; i++) {
-		size += sprintf(buf + size, "Error# %d: PID: %d, Timestamp: %llu, Class: %llu, Module: %llu, Severity: %llu, Code: %llu\n", 
-			i, err->errors[i].pid, err->errors[i].ts, XRT_ERROR_CLASS(err->errors[i].err_code),
-			XRT_ERROR_MODULE(err->errors[i].err_code),
-			XRT_ERROR_SEVERITY(err->errors[i].err_code),
-			XRT_ERROR_NUM(err->errors[i].err_code));
-	}
+	size = sizeof(xcl_errors);
+
+	memcpy(buf, err, size);
 	return size;
 }
 static DEVICE_ATTR_RO(xocl_errors);

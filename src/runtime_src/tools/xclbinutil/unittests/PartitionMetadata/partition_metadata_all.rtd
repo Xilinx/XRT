@@ -13,21 +13,21 @@
         "pcie": {
             "bars": [
                 {
-                    "bar": "0x0",
-                    "physical_function": "0x0",
-                    "base_address": "0x0000020100000000",
+                    "pcie_base_address_register": "0x0",
+                    "pcie_physical_function": "0x0",
+                    "offset": "0x0000020100000000",
                     "range": "0x0000000002000000"
                 },
                 {
-                    "bar": "0x2",
-                    "physical_function": "0x0",
-                    "base_address": "0x0000020200000000",
+                    "pcie_base_address_register": "0x2",
+                    "pcie_physical_function": "0x0",
+                    "offset": "0x0000020200000000",
                     "range": "0x0000000002000000"
                 },
                 {
-                    "bar": "0x4",
-                    "physical_function": "0x0",
-                    "base_address": "0x0000020200000000",
+                    "pcie_base_address_register": "0x4",
+                    "pcie_physical_function": "0x0",
+                    "offset": "0x0000020200000000",
                     "range": "0x0000000002000000"
                 }
             ]

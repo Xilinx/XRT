@@ -1892,8 +1892,7 @@ struct xocl_intc_funcs {
 /* Only used in ERT sub-device polling mode */
 #define xocl_intc_ert_read32(xdev, off) \
 	(INTC_CB(xdev, csr_read32) ? \
-	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : \
-	 -ENODEV)
+	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : 0)
 #define xocl_intc_ert_write32(xdev, val, off) \
 	(INTC_CB(xdev, csr_write32) ? \
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \

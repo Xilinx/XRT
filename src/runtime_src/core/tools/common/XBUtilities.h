@@ -130,6 +130,9 @@ namespace XBUtilities {
 
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
+  std::string
+  get_xrt_pretty_version();
+
   /**
    * OEM ID is a unique number called as the 
    * Private Enterprise Number (PEN) maintained by IANA

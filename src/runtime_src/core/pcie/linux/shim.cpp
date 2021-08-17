@@ -1355,7 +1355,13 @@ int shim::xclLoadAxlf(const axlf *buffer)
 {
     xrt_logmsg(XRT_INFO, "%s, buffer: %s", __func__, buffer);
     drm_xocl_axlf axlf_obj = {const_cast<axlf *>(buffer), 0};
+    unsigned int flags = XOCL_AXLF_BASE;
     int off = 0;
+
+    auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
+    if(force_program) {
+        axlf_obj.flags = flags | XOCL_AXLF_FORCE_PROGRAM;
+    }
 
     auto kernels = xrt_core::xclbin::get_kernels(buffer);
     /* Calculate size of kernels */

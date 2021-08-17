@@ -31,6 +31,8 @@ namespace {
 
   static void deviceExecTime(xdp::VPDatabase* db, std::ofstream& fout)
   {
+    if (!db->infoAvailable(xdp::info::opencl_counters)) return ;
+
     if (xdp::getFlowMode() == xdp::SW_EMU) {
       std::string deviceName =
         db->getStaticInfo().getSoftwareEmulationDeviceName();

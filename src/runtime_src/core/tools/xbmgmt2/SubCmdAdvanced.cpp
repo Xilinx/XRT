@@ -112,7 +112,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
   } catch (const std::exception & e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     printHelp(commonOptions, hiddenOptions, subOptionOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Find the subOption;

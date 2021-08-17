@@ -551,11 +551,11 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
   stream.read(buffer.data(), total_size);
 
   try {
-    xrt_core::program_plp(dev, buffer);
+    xrt_core::program_plp(dev, buffer, XBU::getForce());
   } 
   catch(xrt_core::error& e) {
     std::cout << "ERROR: " << e.what() << std::endl;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   std::cout << "Programmed shell successfully" << std::endl;
 }
@@ -688,7 +688,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
@@ -711,7 +711,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
     }
     std::cout << std::endl;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Collect all of the devices of interest
@@ -809,7 +809,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     //ask user's permission
     if(!XBU::can_proceed(XBU::getForce()))
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     
     for(auto& f : flasher_list) {
       if (!f.upgradeFirmware("", nullptr, nullptr)) {
@@ -820,9 +820,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     if (!has_reset)
       return;
+
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on device.\n";
     std::cout << "****************************************************\n";
+
     return;
   }
 
@@ -852,6 +854,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "Partition file: " << dsa.file << std::endl;
     
     for (const auto& uuid : dsa.uuids) {
+
       //check if plp is compatible with the installed blp
       if (xrt_core::device_query<xrt_core::query::interface_uuids>(dev).front().compare(uuid) == 0) {
         XBUtilities::sudo_or_throw("Root privileges are required to load the PLP image");
@@ -859,6 +862,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
         return;
       }
     }
+
+    // Fall through error
     throw xrt_core::error("uuid does not match BLP");
   }
 
@@ -888,13 +893,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       dev->xclmgmt_load_xclbin(xclbin_buffer.data());
     } catch (xrt_core::error& e) {
       std::cout << "ERROR: " << e.what() << std::endl;
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
     std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
-
     return;
 }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
   printHelp(commonOptions, hiddenOptions);
+  throw xrt_core::error(std::errc::operation_canceled);
 }

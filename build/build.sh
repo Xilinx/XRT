@@ -249,7 +249,7 @@ if [[ $opt == 1 ]]; then
   cd $release_dir
 
   cmake_flags+=" -DCMAKE_BUILD_TYPE=Release"
-  
+
   if [[ $nocmake == 0 ]]; then
 	echo "$CMAKE $cmake_flags ../../src"
 	time $CMAKE $cmake_flags ../../src
@@ -268,6 +268,8 @@ if [[ $opt == 1 ]]; then
 
   if [[ $docs == 1 ]]; then
       echo "make xrt_docs"
+      # Source the XRT environment so we can find modules like pyxrt
+      source ./opt/xilinx/xrt/setup.sh
       make xrt_docs
   fi
 

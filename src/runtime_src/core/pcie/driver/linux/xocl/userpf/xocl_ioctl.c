@@ -406,8 +406,16 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		}
 	}
 
-	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid))
-		goto done;
+	//
+	if (xclbin_downloaded(xdev, &bin_obj.m_header.uuid)) {
+		if ((axlf_ptr->flags & XOCL_AXLF_FORCE_PROGRAM)) {
+			// We come here if user sets force_xclbin_program
+			// option "true" in xrt.ini under [Runtime] section
+			DRM_WARN("%s Force xclbin download", __func__);
+		} else {
+			goto done;
+		}
+	}
 
 	/*
 	 * Support for multiple processes

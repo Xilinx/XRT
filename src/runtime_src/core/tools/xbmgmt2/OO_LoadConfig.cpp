@@ -90,7 +90,7 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   // -- process "device" option -----------------------------------------------
   if(m_devices.empty()) {
     std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Collect all of the devices of interest
@@ -104,14 +104,14 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification
   if(deviceCollection.size() != 1) {
     std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
@@ -120,15 +120,17 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   if (m_path.empty()) {
     std::cerr << "ERROR: Please specify an input file" << "\n\n";
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
+
   if (!boost::filesystem::exists(m_path)) {
     std::cerr << boost::format("ERROR: Input file does not exist: '%s'") % m_path << "\n\n";
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
+
   if(boost::filesystem::extension(m_path).compare(".ini") != 0) {
     std::cerr << boost::format("ERROR: Input file should be an INI file: '%s'") % m_path << "\n\n";
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   try {
@@ -137,7 +139,7 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cout << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 }
 

@@ -121,7 +121,7 @@ static void cu_fa_start(void *core)
 		cu_fa->head_slot = 0;
 }
 
-static void cu_fa_check(void *core, struct xcu_status *status)
+static void cu_fa_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_fa *cu_fa = core;
 	u32 task_count;
@@ -137,7 +137,7 @@ static void cu_fa_check(void *core, struct xcu_status *status)
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
 	 */
-	if (!cu_fa->run_cnts)
+	if (!force && !cu_fa->run_cnts)
 		return;
 
 	cu_fa->check_count++;

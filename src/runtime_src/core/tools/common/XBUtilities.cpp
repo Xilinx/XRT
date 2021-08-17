@@ -344,13 +344,19 @@ XBUtilities::get_available_devices(bool inUserDomain)
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
-      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {}
+        pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+      } catch(...) 
+      {
+        // The id wasn't added
+      }
+
       try { //2RP
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
-      } catch(...) {}
+      } catch(...) {
+        // The id wasn't added
+      }
     }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
@@ -684,4 +690,28 @@ XBUtilities::str_to_reset_obj(const std::string& str)
   if (it != reset_map.end())
     return it->second;
   throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
+}
+
+std::string
+XBUtilities::
+get_xrt_pretty_version()
+{
+  std::stringstream ss;
+  boost::property_tree::ptree pt_xrt;
+  xrt_core::get_xrt_info(pt_xrt);
+  boost::property_tree::ptree empty_ptree;
+
+  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+  const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
+  for(auto& drv : available_drivers) {
+    const boost::property_tree::ptree& driver = drv.second;
+    std::string drv_name = driver.get<std::string>("name", "N/A");
+    boost::algorithm::to_upper(drv_name);
+    ss << boost::format("%-20s : %s, %s\n") % drv_name
+        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
+  }
+  return ss.str();
 }

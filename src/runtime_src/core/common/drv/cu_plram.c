@@ -59,7 +59,7 @@ static void cu_plram_start(void *core)
 	iowrite32(0x0, cu_plram->vaddr + 0x10);
 }
 
-static void cu_plram_check(void *core, struct xcu_status *status)
+static void cu_plram_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_plram *cu_plram = core;
 	u32 done_reg = 0;

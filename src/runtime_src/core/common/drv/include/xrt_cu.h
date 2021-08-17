@@ -137,7 +137,7 @@ struct xcu_funcs {
 	 *
 	 * Check CU status and the pending task status.
 	 */
-	void (*check)(void *core, struct xcu_status *status);
+	void (*check)(void *core, struct xcu_status *status, bool force);
 
 	/**
 	 * @reset:
@@ -345,18 +345,28 @@ static inline bool xrt_cu_reset_done(struct xrt_cu *xcu)
 	return xcu->funcs->reset_done(xcu->core);
 }
 
-static inline void xrt_cu_check(struct xrt_cu *xcu)
+static inline void __xrt_cu_check(struct xrt_cu *xcu, bool force)
 {
 	struct xcu_status status;
 
 	status.num_done = 0;
 	status.num_ready = 0;
 	status.new_status = 0;
-	xcu->funcs->check(xcu->core, &status);
+	xcu->funcs->check(xcu->core, &status, force);
 	/* XRT CU assume command finished in order */
 	xcu->done_cnt += status.num_done;
 	xcu->ready_cnt += status.num_ready;
 	xcu->status = status.new_status;
+}
+
+static inline void xrt_cu_check(struct xrt_cu *xcu)
+{
+	__xrt_cu_check(xcu, false);
+}
+
+static inline void xrt_cu_check_force(struct xrt_cu *xcu)
+{
+	__xrt_cu_check(xcu, true);
 }
 
 static inline int xrt_cu_get_credit(struct xrt_cu *xcu)

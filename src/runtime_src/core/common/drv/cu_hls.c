@@ -121,7 +121,7 @@ static void cu_hls_start(void *core)
  * register.
  */
 static inline void
-cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
+cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bool force)
 {
 	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
@@ -130,7 +130,7 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
 	 */
-	if (!cu_hls->run_cnts)
+	if (!force && !cu_hls->run_cnts)
 		return;
 
 	ctrl_reg = cu_read32(cu_hls, CTRL);
@@ -154,7 +154,7 @@ cu_hls_ctrl_hs_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
  * stall until ap_continue bit is set.
  */
 static inline void
-cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
+cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status, bool force)
 {
 	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
@@ -167,7 +167,7 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	/* Access CU when there are unsed credits or running commands
 	 * This has a huge impact on performance.
 	 */
-	if (!used_credit && !cu_hls->run_cnts)
+	if (!force && !used_credit && !cu_hls->run_cnts)
 		return;
 
 	/* HLS ap_ctrl_chain reqiured software to set ap_continue before
@@ -200,7 +200,7 @@ cu_hls_ctrl_chain_check(struct xrt_cu_hls *cu_hls, struct xcu_status *status)
 	status->new_status = ctrl_reg;
 }
 
-static void cu_hls_check(void *core, struct xcu_status *status)
+static void cu_hls_check(void *core, struct xcu_status *status, bool force)
 {
 	struct xrt_cu_hls *cu_hls = core;
 
@@ -213,9 +213,9 @@ static void cu_hls_check(void *core, struct xcu_status *status)
 	}
 
 	if (cu_hls->ctrl_chain)
-		cu_hls_ctrl_chain_check(cu_hls, status);
+		cu_hls_ctrl_chain_check(cu_hls, status, force);
 	else
-		cu_hls_ctrl_hs_check(cu_hls, status);
+		cu_hls_ctrl_hs_check(cu_hls, status, force);
 }
 
 static void cu_hls_enable_intr(void *core, u32 intr_type)

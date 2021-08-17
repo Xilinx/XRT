@@ -70,8 +70,8 @@ namespace xdp {
 
   void OpenCLCountersProfilingPlugin::emulationSetup()
   {
-    XDPPlugin::emulationSetup() 
-;
+    XDPPlugin::emulationSetup() ;
+
     char* internalsSummary = getenv("VITIS_KERNEL_PROFILE_FILENAME") ;
     if (internalsSummary != nullptr) {
       (db->getStaticInfo()).addOpenedFile(internalsSummary, "KERNEL_PROFILE");

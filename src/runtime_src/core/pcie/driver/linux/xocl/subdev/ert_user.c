@@ -56,10 +56,11 @@
 })
 
 struct ert_user_event {
-	struct mutex		  lock;
-	void			 *client;
-	int			  state;
+	struct list_head	ev_entry;
+	void			*client;
+	struct completion	cmp;
 };
+
 
 struct ert_user_queue {
 	struct list_head	head;
@@ -71,6 +72,7 @@ struct ert_cu_stat {
 	u64		usage;
 	u32		inflight;
 };
+
 
 struct xocl_ert_user {
 	struct device		*dev;
@@ -437,6 +439,17 @@ ert_queue_max_slot_num(struct xocl_ert_user *ert_user)
 	return queue->func->max_slot_num(queue->handle);
 }
 
+static inline void
+ert_queue_abort(struct xocl_ert_user *ert_user, void *client)
+{
+	struct ert_queue *queue = ert_user->queue;
+
+	if (!queue)
+		return;
+
+	queue->func->abort(client, queue->handle);
+}
+
 static int ert_user_bulletin(struct platform_device *pdev, struct ert_cu_bulletin *brd)
 {
 	struct xocl_ert_user *ert_user = platform_get_drvdata(pdev);
@@ -601,6 +614,7 @@ static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint
 	ecmd->cb.complete = ert_user_cmd_complete;
 	ecmd->cb.notify = ert_user_cmd_notify;
 
+	ecmd->client = xcmd->client;
 
 	return ecmd;
 }
@@ -640,10 +654,10 @@ static inline bool ert_special_cmd(struct xrt_ert_command *ecmd)
 	return ret;
 }
 
-static inline struct kds_client *
+static inline struct ert_user_event *
 first_event_client_or_null(struct xocl_ert_user *ert_user)
 {
-	struct kds_client *curr = NULL;
+	struct ert_user_event *curr = NULL;
 
 	if (list_empty(&ert_user->events))
 		return NULL;
@@ -652,7 +666,7 @@ first_event_client_or_null(struct xocl_ert_user *ert_user)
 	if (list_empty(&ert_user->events))
 		goto done;
 
-	curr = list_first_entry(&ert_user->events, struct kds_client, ev_entry);
+	curr = list_first_entry(&ert_user->events, struct ert_user_event, ev_entry);
 
 done:
 	mutex_unlock(&ert_user->ev_lock);
@@ -908,6 +922,23 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 }
 
 /**
+ * process_ert_sq() - Process cmd witch is submitted
+ * @ert_user: Target XRT CU
+ */
+
+static inline
+void process_ert_sq(struct xocl_ert_user *ert_user, struct ert_user_event *ev_client)
+{
+	if (!ert_user->sq.num)
+		return;
+
+	ert_queue_poll(ert_user);
+
+	if (unlikely(ev_client))
+		ert_queue_abort(ert_user, ev_client->client);
+}
+
+/**
  * process_ert_rq() - Process run queue
  * @ert_user: Target XRT ERT
  * @rq: Target running queue
@@ -915,11 +946,11 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
  * Return: return 0 if run queue is empty or no available slot
  *	   Otherwise, return 1
  */
-static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq)
+static inline
+int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq, struct ert_user_event *ev_client)
 {
 	struct xrt_ert_command *ecmd, *next;
 	struct ert_packet *epkt = NULL;
-	struct kds_client *ev_client = NULL;
 	bool bad_cmd = false;
 
 	if (!rq->num)
@@ -927,13 +958,12 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 
 	ERTUSER_DBG(ert_user, "%s =>\n", __func__);
 
-	ev_client = first_event_client_or_null(ert_user);
 	list_for_each_entry_safe(ecmd, next, &rq->head, list) {
 		struct kds_command *xcmd = ecmd->xcmd;
 
-		if (unlikely(ert_user->bad_state || (xcmd && ev_client == xcmd->client))) {
+		if (unlikely(ert_user->bad_state || (xcmd && ev_client && ev_client->client == xcmd->client))) {
 			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
-			ecmd->complete_entry.cstate = KDS_ERROR;
+			ecmd->complete_entry.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
@@ -1110,22 +1140,46 @@ static inline bool ert_user_thread_sleep_condition(struct xocl_ert_user *ert_use
 	return ret;
 }
 
+static void xocl_ert_user_remove_event(struct xocl_ert_user *ert_user, struct ert_user_event *client)
+{
+	struct ert_user_event *next = NULL, *curr = NULL;
+
+	mutex_lock(&ert_user->ev_lock);
+	if (list_empty(&ert_user->events))
+		goto done;
+
+	list_for_each_entry_safe(curr, next, &ert_user->events, ev_entry) {
+		if (client != curr)
+			continue;
+
+		list_del(&curr->ev_entry);
+		break;
+	}
+
+done:
+	mutex_unlock(&ert_user->ev_lock);
+}
+
 int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
 	int ret = 0;
+	struct ert_user_event *ev_client = NULL;
 
 	mod_timer(&ert_user->timer, jiffies + ERT_TIMER);
 
 	while (!ert_user->stop) {
+
+		ev_client = first_event_client_or_null(ert_user);
+
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
 		 * CU busy, especially CU has hardware queue.
 		 */
-		if (process_ert_rq(ert_user, &ert_user->rq_ctrl))
+		if (process_ert_rq(ert_user, &ert_user->rq_ctrl, ev_client))
 			continue;
 
-		if (process_ert_rq(ert_user, &ert_user->rq))
+		if (process_ert_rq(ert_user, &ert_user->rq, ev_client))
 			continue;
 		/* process completed queue before submitted queue, for
 		 * two reasons:
@@ -1134,10 +1188,14 @@ int ert_user_thread(void *data)
 		 * - process_ert_sq_polling will check CU status, which is thru slow bus
 		 */
 
-		if (ert_user->sq.num != 0)
-			ert_queue_poll(ert_user);
+		process_ert_sq(ert_user, ev_client);
 
 		process_ert_cq(ert_user);
+
+		if (unlikely(ev_client)) {
+			complete(&ev_client->cmp);
+			xocl_ert_user_remove_event(ert_user, ev_client);
+		}
 
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
@@ -1158,6 +1216,28 @@ int ert_user_thread(void *data)
 	return ret;
 }
 
+static struct ert_user_event*
+alloc_ert_user_event(struct kds_client *client)
+{
+	struct ert_user_event *event = kzalloc(sizeof(struct ert_user_event), GFP_KERNEL);
+
+	if (!event)
+		return NULL;
+
+	event->client = client;
+
+	init_completion(&event->cmp);
+	INIT_LIST_HEAD(&event->ev_entry);
+
+	return event;
+}
+
+static void
+free_ert_user_event(struct ert_user_event *event)
+{
+	kfree(event);
+}
+
 /**
  * xocl_ert_abort() - Sent an abort event to ERT thread
  * @ert: Target XRT ERT
@@ -1167,7 +1247,7 @@ int ert_user_thread(void *data)
  */
 static void xocl_ert_user_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	struct kds_client *curr;
+	struct ert_user_event *event = NULL, *curr = NULL;
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 
 	mutex_lock(&ert_user->ev_lock);
@@ -1176,16 +1256,21 @@ static void xocl_ert_user_abort(struct kds_ert *ert, struct kds_client *client, 
 
 	/* avoid re-add the same client */
 	list_for_each_entry(curr, &ert_user->events, ev_entry) {
-		if (client == curr)
+		if (client == curr->client)
 			goto done;
 	}
 
 add_event:
+	event = alloc_ert_user_event(client);
+	if (!event)
+		goto done;
+
 	client->ev_type = EV_ABORT;
-	list_add_tail(&client->ev_entry, &ert_user->events);
+	list_add_tail(&event->ev_entry, &ert_user->events);
 	/* The process thread may asleep, we should wake it up if
 	 * abort event takes place
 	 */
+
 	up(&ert_user->sem);
 done:
 	mutex_unlock(&ert_user->ev_lock);
@@ -1199,8 +1284,7 @@ done:
  */
 static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	struct kds_client *curr;
-	struct kds_client *next;
+	struct ert_user_event *next = NULL, *curr = NULL;
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 
 	mutex_lock(&ert_user->ev_lock);
@@ -1208,7 +1292,7 @@ static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *cli
 		goto done;
 
 	list_for_each_entry_safe(curr, next, &ert_user->events, ev_entry) {
-		if (client != curr)
+		if (client != curr->client)
 			continue;
 
 		list_del(&curr->ev_entry);
@@ -1220,6 +1304,53 @@ done:
 
 	return ert_user->bad_state;
 }
+
+/**
+ * xocl_ert_abort_sync() - Sent an abort event to ERT thread
+ * @ert: Target XRT ERT
+ * @client: The client tries to abort commands
+ *
+ * This is used to ask ERT thread to abort all commands from the client.
+ */
+static bool xocl_ert_user_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
+	struct ert_user_event *event = NULL, *curr = NULL;
+
+	mutex_lock(&ert_user->ev_lock);
+	if (list_empty(&ert_user->events))
+		goto add_event;
+
+	/* avoid re-add the same client */
+	list_for_each_entry(curr, &ert_user->events, ev_entry) {
+		if (client == curr->client) {
+			mutex_unlock(&ert_user->ev_lock);
+			return ert_user->bad_state;
+		}
+	}
+
+add_event:
+	event = alloc_ert_user_event(client);
+	if (!event) {
+		mutex_unlock(&ert_user->ev_lock);
+		return ert_user->bad_state;
+	}
+	client->ev_type = EV_ABORT;
+	list_add_tail(&event->ev_entry, &ert_user->events);
+	/* The process thread may asleep, we should wake it up if
+	 * abort event takes place
+	 */
+	up(&ert_user->sem);
+
+	mutex_unlock(&ert_user->ev_lock);
+
+	wait_for_completion(&event->cmp);
+
+	free_ert_user_event(event);
+
+	return  ert_user->bad_state;
+}
+
 
 static int ert_user_remove(struct platform_device *pdev)
 {
@@ -1316,6 +1447,7 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;
 	ert_user->ert.abort_done = xocl_ert_user_abort_done;
+	ert_user->ert.abort_sync = xocl_ert_user_abort_sync;
 	xocl_kds_init_ert(xdev, &ert_user->ert);
 
 done:
