@@ -513,6 +513,7 @@ xclLoadAxlf(const axlf *buffer)
   auto is_flat_platform = (buffer->m_header.m_mode == XCLBIN_FLAT ) ? true : false;
   auto is_pr_enabled = xrt_core::config::get_enable_pr(); //default value is true
   auto is_flat_enabled = xrt_core::config::get_enable_flat(); //default value is false
+  auto force_program = xrt_core::config::get_force_program_xclbin(); //default value is false
 
   if (is_pr_platform && is_pr_enabled)
     flags = DRM_ZOCL_PLATFORM_PR;
@@ -525,6 +526,10 @@ xclLoadAxlf(const axlf *buffer)
    */
   else if (is_flat_platform && is_flat_enabled)
     flags = DRM_ZOCL_PLATFORM_FLAT;
+
+  if (force_program) {
+    flags = flags | DRM_ZOCL_FORCE_PROGRAM;
+  }
 #endif
 
     drm_zocl_axlf axlf_obj = {

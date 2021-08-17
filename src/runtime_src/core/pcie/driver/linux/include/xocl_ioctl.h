@@ -418,6 +418,14 @@ struct drm_xocl_kds {
 	uint32_t unused:25;
 };
 
+/*
+ * enum drm_xocl_axlf_flags - used for axlf programming
+ */
+enum drm_xocl_axlf_flags {
+	XOCL_AXLF_BASE		        = 0,
+	XOCL_AXLF_FORCE_PROGRAM		= (1 << 0)
+};
+
 /**
  * struct drm_xocl_axlf - load xclbin (AXLF) device image
  * used with DRM_IOCTL_XOCL_READ_AXLF ioctl
@@ -426,12 +434,15 @@ struct drm_xocl_kds {
  * @xclbin:	Pointer to user's xclbin structure in memory
  * @ksize:	size of kernels in bytes
  * @kernels:	pointer of argument array
+ * @kds_cfg:	kds configuration
+ * @flags:	flags passed while programming xclbin
  */
 struct drm_xocl_axlf {
 	struct axlf		*xclbin;
 	int			 ksize;
 	char			*kernels;
 	struct drm_xocl_kds	 kds_cfg;
+	uint32_t		 flags;
 };
 
 /**
