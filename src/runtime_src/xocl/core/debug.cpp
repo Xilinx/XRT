@@ -40,8 +40,15 @@
 
 namespace {
 
+static unsigned long get_time_zero()
+{
+  // Originally: return xocl::time_ns();
+  return 0 ;
+}
+
 static bool s_debug_on = false;
 static std::string s_debug_log;
+static unsigned long s_zero = get_time_zero();
 
 // Event information
 namespace event {
@@ -67,10 +74,10 @@ struct info
     if (!m_times[CL_RUNNING])
         m_times[CL_RUNNING] = m_times[CL_COMPLETE];
     ostr << id << " " << m_command_type << " "
-         << m_times[CL_QUEUED] << " "
-         << m_times[CL_SUBMITTED] << " "
-         << m_times[CL_RUNNING] << " "
-         << m_times[CL_COMPLETE];
+         << (m_times[CL_QUEUED]-s_zero) << " "
+         << (m_times[CL_SUBMITTED]-s_zero) << " "
+         << (m_times[CL_RUNNING]-s_zero) << " "
+         << (m_times[CL_COMPLETE]-s_zero);
     for (auto d : m_dependencies)
       ostr << " " << d;
     return ostr;
@@ -185,6 +192,8 @@ init()
   s_debug_log = xrt_xocl::config::detail::get_string_value("Debug.xocl_log","xocl.log");
 
   ::event::init();
+
+  s_zero = get_time_zero();
 
   return s_debug_on;
 }
