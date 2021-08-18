@@ -865,6 +865,13 @@ namespace xclcpuemhal2 {
     return aieFlag;
   }
 
+  void CpuemShim::socketConnection(bool isTCPSocket) {
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
+    if (!sock)
+      sock = new unix_socket(isTCPSocket);
+    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
+  }
+
   int CpuemShim::xclLoadXclBinNewFlow(const xclBin *header)
   {
     if (mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;  
@@ -891,13 +898,14 @@ namespace xclcpuemhal2 {
         }
       }
     }
+    //Create thread for TCP socket connection    
+    std::thread tcpSockThread = std::thread(&CpuemShim::socketConnection, this, true);
 
     bool simDontRun = xclemulation::config::getInstance()->isDontRun();
     if (!simDontRun) {
       if (!xclcpuemhal2::isRemotePortMapped) {
         xclcpuemhal2::initRemotePortMap(mFpgaDevice);
-      }
-      
+      }      
       //Send the LoadXclBin
       PLLAUNCHER::OclCommand *cmd = new PLLAUNCHER::OclCommand();
       cmd->setCommand(PLLAUNCHER::PL_OCL_LOADXCLBIN_ID); 
@@ -924,11 +932,11 @@ namespace xclcpuemhal2 {
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::CREATE);
     systemUtil::makeSystemCall(binaryDirectory, systemUtil::systemOperation::PERMISSIONS, "777");
     binaryCounter++;
-
-    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection started" << std::endl;
-    if (!sock)
-      sock = new unix_socket(true);
-    if (mLogStream.is_open()) mLogStream << __func__ << "TCP connection established" << std::endl;
+   
+    //Join tcp socket thread.
+    if (tcpSockThread.joinable()) {
+       tcpSockThread.join();
+    }
 
     if (header)
     {
