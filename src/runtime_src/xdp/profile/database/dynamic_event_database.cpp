@@ -349,6 +349,7 @@ namespace xdp {
 
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)
   {
+    std::lock_guard<std::mutex> lock(stringLock) ;
     // Windows compilation fails unless c_str() is used
     for (auto s : stringTable)
     {
