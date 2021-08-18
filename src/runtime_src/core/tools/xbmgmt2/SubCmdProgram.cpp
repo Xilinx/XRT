@@ -146,9 +146,15 @@ getBDF(unsigned int index)
 static bool
 is_SC_fixed(unsigned int index)
 {
-  auto device = xrt_core::get_mgmtpf_device(index);
-
-  return xrt_core::device_query<xrt_core::query::is_sc_fixed>(device);
+  try {
+    auto device = xrt_core::get_mgmtpf_device(index);
+    return xrt_core::device_query<xrt_core::query::is_sc_fixed>(device);
+  }
+  catch (...) {
+    //TODO Catching all the exceptions for now. We may need to catch specific exceptions
+    //Work-around. Assume that sc is fixed if above query failed
+    return true;
+  }
 }
 
 /*
