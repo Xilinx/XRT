@@ -715,7 +715,7 @@ XBUtilities::string_to_UUID(std::string str)
   return uuid;
 }
 
-static const std::map<int, std::string> oemid_map = {
+static const std::map<uint64_t, std::string> oemid_map = {
   {0x10da, "Xilinx"},
   {0x02a2, "Dell"},
   {0x12a1, "IBM"},
