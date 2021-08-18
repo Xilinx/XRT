@@ -721,12 +721,15 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       consoleStream << std::string(dev_desc.length(), '-') << std::endl;
 
       auto is_ready = xrt_core::device_query<xrt_core::query::is_ready>(device);
+      auto is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
 
       for (auto &report : reportsToProcess) {
         if (report->isDeviceRequired() == false)
           continue;
-        //if the device is not in factory mode and is ready to use, continue to create reports
-        if(!is_mfg && !is_ready)
+        //if the device is either of the following, continue to create reports:
+        // 1. not in factory mode and is ready to use
+        // 2. is in recovery mode
+        if((!is_mfg && !is_ready) && !is_recovery)
           continue;
         boost::property_tree::ptree ptReport;
         report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
