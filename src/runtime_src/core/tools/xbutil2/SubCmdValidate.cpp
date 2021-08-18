@@ -288,7 +288,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     logger(_ptTest, "Testcase", xrtTestCasePath);
 
     boost::filesystem::path test_dir(xclbinPath);
-    std::vector<std::string> args = { test_dir.parent_path().string(),
+    std::vector<std::string> args = { "-p", test_dir.parent_path().string(),
                                       "-d", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_dev)) };
     try {
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
