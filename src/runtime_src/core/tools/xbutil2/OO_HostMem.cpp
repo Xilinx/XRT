@@ -99,7 +99,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
   uint64_t size = 0;
   try {
-    size = XBUtilities::stringToBytes(m_size);
+    size = XBUtilities::string_to_bytes(m_size);
   } 
   catch(const xrt_core::error&) {
     std::cerr << "Value supplied to --size option is invalid" << std::endl;

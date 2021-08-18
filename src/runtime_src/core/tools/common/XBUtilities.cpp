@@ -730,12 +730,11 @@ static const std::map<int, std::string> oemid_map = {
 std::string 
 XBUtilities::parse_oem_id(const std::string& oemid)
 {
-  unsigned int oem_id_val = 0;
+  uint64_t oem_id_val = 0;
   std::stringstream ss;
 
   try {
-    ss << std::hex << oemid;
-    ss >> oem_id_val;
+    oem_id_val = std::stoul(oemid, nullptr, 16);
   } catch (const std::exception&) {
     //failed to parse oemid to hex value, ignore erros and print original value
   }
@@ -754,37 +753,47 @@ std::string
 XBUtilities::parse_clock_id(const std::string& id)
 {
   auto clock_str = clock_map.find(id);
-  return clock_str != clock_map.end() ? clock_str->second : "N/A";
+  if (clock_str != clock_map.end())
+    return clock_str->second;
+  
+  throw xrt_core::error(std::errc::invalid_argument);
 }
 
 uint64_t 
-XBUtilities::stringToBytes(const std::string &str)
+XBUtilities::string_to_bytes(const std::string &str)
 {
   uint64_t size = 0;
-  if(!str.empty()) {
-    uint64_t bytes = 0;
-    auto units = str.substr(str.length()-1);
-    boost::to_upper(units);
-    if(units.compare("B") == 0)
-      bytes = 1;
-    else if(units.compare("k") == 0)
-      bytes = 1024;
-    else if(units.compare("M") == 0)
-      bytes = 1024*1024;
-    else if(units.compare("G") == 0)
-      bytes = 1024*1024*1024;
-    else
-      throw xrt_core::error(std::errc::invalid_argument);
-      
-    try {
-      size = std::stoll(str.substr(0, str.length()-1));
-    } 
-    catch (const std::exception&) {
-      //out of range, invalid argument ex
-      throw xrt_core::error(std::errc::invalid_argument);
+  if(str.empty())
+    throw xrt_core::error(std::errc::invalid_argument);
+
+  uint64_t unit_bytes = 0;
+  std::string units;
+  try {
+    for(const auto& x : str) {
+      if(std::isdigit(x))
+        size = size*10 + (x - '0');
+      else if(std::isalpha(x))
+        units += x;
     }
-    size = size*bytes;
+    size = std::stoll(str.substr(0, str.length()-1));
+  } 
+  catch (const std::exception&) {
+    //out of range, invalid argument ex
+    throw xrt_core::error(std::errc::invalid_argument);
   }
+  boost::to_upper(units);
+  if(units.empty() || units.compare("B") == 0)
+    unit_bytes = 1;
+  else if(units.compare("K") == 0)
+    unit_bytes = 1024;
+  else if(units.compare("M") == 0)
+    unit_bytes = 1024*1024;
+  else if(units.compare("G") == 0)
+    unit_bytes = 1024*1024*1024;
+  else
+    throw xrt_core::error(std::errc::invalid_argument);
+
+  size *= unit_bytes;
   return size;
 }
 
