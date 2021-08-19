@@ -1351,17 +1351,20 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
   ptTree.put("device_id", xrt_core::query::pcie_bdf::to_string(bdf));
 
   boost::property_tree::ptree platform_report;
-  boost::property_tree::ptree empty_ptree;
+  const boost::property_tree::ptree empty_ptree;
   auto report = std::make_shared<ReportPlatforms>();
   report->getPropertyTreeInternal(device.get(), platform_report);
   
   const boost::property_tree::ptree& platforms = platform_report.get_child("platforms", empty_ptree);
+  if(platforms.size() > 1)
+    throw xrt_core::error(std::errc::operation_canceled);
+
   for(auto& kp : platforms) {
     const boost::property_tree::ptree& pt_platform = kp.second;
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
-    ptTree.put("platform", pt_static_region.get<std::string>("vbnv"));
-    ptTree.put("platform_id", pt_static_region.get<std::string>("interface_uuid"));
-    ptTree.put("sc_version", pt_platform.get<std::string>("controller.satellite_controller.version"));
+    ptTree.put("platform", pt_static_region.get<std::string>("vbnv", "N/A"));
+    ptTree.put("platform_id", pt_static_region.get<std::string>("interface_uuid", "N/A"));
+    ptTree.put("sc_version", pt_platform.get<std::string>("controller.satellite_controller.version", "N/A"));
 
   }
 
