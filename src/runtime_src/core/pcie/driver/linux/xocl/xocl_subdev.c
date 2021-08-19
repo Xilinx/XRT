@@ -418,6 +418,7 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 	int retval = 0, i, bar_idx;
 	struct resource *res = NULL;
 	resource_size_t iostart;
+	u64 bar_start, bar_end;
 
 	if (subdev->info.override_name)
 		snprintf(devname, sizeof(devname) - 1, "%s",
@@ -462,6 +463,21 @@ static int __xocl_subdev_construct(xdev_handle_t xdev_hdl,
 					&res[i], subdev->info.level);
 			if (retval && retval != -ENODEV)
 				goto error;
+
+			/* If any addressable end point is of 64 bit xrt has
+			 * to pass only offset.
+			 * Get the offset by comparing with bar mappings of CPM.
+			 */
+			if(core->bars) {
+				bar_start = core->bars[bar_idx].base_addr;
+				bar_end = core->bars[bar_idx].base_addr +
+						core->bars[bar_idx].range - 1;
+				if((bar_start <= res[i].start) &&
+						(res[i].end <= bar_end)) {
+					res[i].start -= bar_start;
+					res[i].end -= bar_start;
+				}
+			}
 			iostart = pci_resource_start(core->pdev, bar_idx);
 			res[i].start += iostart;
 			if (!res[i].end) {
@@ -1351,6 +1367,13 @@ xocl_fetch_dynamic_platform(struct xocl_dev_core *core,
 	u32 type;
 
 	ret = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_VNDR);
+	/*
+	 * Also try find VSEC in basic config space if we don't find it in
+	 * extended config space
+	 */
+	if (!ret)
+		ret = pci_find_capability(pdev, PCI_CAP_ID_VNDR);
+
 	if (ret)
 		type = XOCL_DSAMAP_RAPTOR2;
 	else
@@ -1520,7 +1543,7 @@ int xocl_subdev_find_vsec_offset(xdev_handle_t xdev)
 	 */
 	do {
 		cap = pci_find_next_ext_capability(pdev,
-						offset_vsec, PCI_EXT_CAP_ID_VNDR);
+			offset_vsec, PCI_EXT_CAP_ID_VNDR);
 		if (cap == 0)
 			break;
 
@@ -1536,6 +1559,32 @@ int xocl_subdev_find_vsec_offset(xdev_handle_t xdev)
 			break;
 
 		offset_vsec = cap;
+	} while (cap != 0);
+
+	/*
+	 * If we don't find VSEC in extended config space, also try search in
+	 * basic config space. This applies in some virtualization case, the
+	 * vsec is emulated in basic config space when the FPGA is assigned
+	 * to VM
+	 */
+
+	if (cap)
+		return cap;
+
+	cap = pci_find_capability(pdev, PCI_CAP_ID_VNDR);
+	do {
+		ret = pci_read_config_word(pdev, (cap + PCI_VNDR_HEADER), &vsec_id);
+		if (ret != 0) {
+			xocl_err(&pdev->dev, "pci read failed for offset: 0x%x, err: %d",
+					 (cap + PCI_VNDR_HEADER), ret);
+			cap = 0;
+			break;
+		}
+
+		if (vsec_id == XOCL_VSEC_ALF_VSEC_ID)
+			break;
+
+		cap = pci_find_next_capability(pdev, cap, PCI_CAP_ID_VNDR);
 	} while (cap != 0);
 
 	return cap;

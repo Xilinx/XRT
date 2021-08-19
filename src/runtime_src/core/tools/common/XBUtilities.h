@@ -128,16 +128,10 @@ namespace XBUtilities {
    */
   std::vector<std::string> get_uuids(const void *dtbuf);
 
-  int check_p2p_config(const xrt_core::device* _dev, std::string &err);
-
   xrt_core::query::reset_type str_to_reset_obj(const std::string& str);
 
-  /**
-   * string_to_UUID(): convert a string to hyphen formatted UUID
-   * 
-   * Returns: 00000000-0000-0000-0000-000000000000 formatted uuid
-   */
-  std::string string_to_UUID(std::string str);
+  std::string
+  get_xrt_pretty_version();
 
   /**
    * OEM ID is a unique number called as the 

@@ -69,17 +69,29 @@ void native_function_end(const char* functionName, unsigned long long int functi
 }
 
 extern "C"
-void native_sync_start(const char* functionName, unsigned long long int functionID)
+void native_sync_start(const char* functionName, unsigned long long int functionID, bool isWrite)
 {
   // Don't include the profiling overhead in the time that we show.
   //  That means there will be "empty gaps" in the timeline trace when
   //  the profiling overhead exists.
   xdp::VPDatabase* db = xdp::nativePluginInstance.getDatabase() ;
 
-  xdp::VTFEvent* event =
-    new xdp::NativeAPICall(0,
-                           0,
-                           (db->getDynamicInfo()).addString(functionName)) ;
+  xdp::VTFEvent* event = nullptr ;
+  if (isWrite) {
+    event =
+      new xdp::NativeSyncWrite(0,
+                               0,
+                               db->getDynamicInfo().addString(functionName),
+                               db->getDynamicInfo().addString("WRITE")) ;
+  }
+  else {
+    event =
+      new xdp::NativeSyncRead(0,
+                              0,
+                              db->getDynamicInfo().addString(functionName),
+                              db->getDynamicInfo().addString("READ")) ;
+  }
+
   (db->getDynamicInfo()).addUnsortedEvent(event);
   (db->getDynamicInfo()).markStart(static_cast<uint64_t>(functionID), event->getEventId()) ;
 
@@ -110,10 +122,21 @@ void native_sync_end(const char* functionName, unsigned long long int functionID
   uint64_t start =
     (db->getDynamicInfo()).matchingStart(static_cast<uint64_t>(functionID)) ;
 
-  xdp::VTFEvent* event =
-    new xdp::NativeAPICall(start,
-                           static_cast<double>(timestamp),
-                           (db->getDynamicInfo()).addString(functionName)) ;
+  xdp::VTFEvent* event = nullptr ;
+  if (isWrite) {
+    event =
+      new xdp::NativeSyncWrite(start,
+                               static_cast<double>(timestamp),
+                               db->getDynamicInfo().addString(functionName),
+                               db->getDynamicInfo().addString("WRITE")) ;
+  }
+  else {
+    event =
+      new xdp::NativeSyncRead(start,
+                              static_cast<double>(timestamp),
+                              db->getDynamicInfo().addString(functionName),
+                              db->getDynamicInfo().addString("READ")) ;
+  }
   (db->getDynamicInfo()).addUnsortedEvent(event) ;
 
   if (isWrite) {

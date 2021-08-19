@@ -402,10 +402,14 @@ namespace xclcpuemhal2 {
             xilinxInstall = std::string(installEnvvar);
           }
         }
-        char *xilinxVivadoEnvvar = getenv("XILINX_VIVADO");
-        if(xilinxVivadoEnvvar && vitisInstallEnvvar)
+        
+        char *xilinxHLSEnvVar = getenv("XILINX_HLS");
+        char *xilinxVivadoEnvVar = getenv("XILINX_VIVADO");
+
+        if (vitisInstallEnvvar && xilinxHLSEnvVar && xilinxVivadoEnvVar)
         {
-          std::string sHlsBinDir = xilinxVivadoEnvvar;
+          std::string sHlsBinDir = xilinxHLSEnvVar;
+          std::string sVivadoBinDir = xilinxVivadoEnvVar;
           std::string sVitisBinDir = vitisInstallEnvvar;
           std::string sLdLibs("");
           std::string DS("/");
@@ -421,7 +425,10 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sVitisBinDir + DS + "lib" + DS + "lnx64.o" + DS;
+          
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
         

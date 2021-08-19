@@ -74,7 +74,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   catch (po::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   //-- Working variables
@@ -103,11 +103,11 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   } catch (const xrt_core::error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   catch (const std::runtime_error& e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   try {
@@ -116,7 +116,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   }
   catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--address'\n") % m_baseAddress;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   try {
@@ -125,7 +125,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
   }
   catch(const std::invalid_argument&) {
     std::cerr << boost::format("ERROR: '%s' is an invalid argument for '--size'\n") % m_sizeBytes;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   XBU::verbose(boost::str(boost::format("Device: %s") % xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device))));
@@ -140,7 +140,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     xrt_core::mem_read(device.get(), addr, size, m_outputFile);
   } catch(const xrt_core::error& e) {
     std::cerr << e.what() << std::endl;
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   std::cout << "Memory read succeeded" << std::endl;
 }

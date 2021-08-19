@@ -56,10 +56,11 @@
 })
 
 struct ert_user_event {
-	struct mutex		  lock;
-	void			 *client;
-	int			  state;
+	struct list_head	ev_entry;
+	void			*client;
+	struct completion	cmp;
 };
+
 
 struct ert_user_queue {
 	struct list_head	head;
@@ -71,6 +72,7 @@ struct ert_cu_stat {
 	u64		usage;
 	u32		inflight;
 };
+
 
 struct xocl_ert_user {
 	struct device		*dev;
@@ -352,67 +354,17 @@ ert_queue_submit(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	return queue->func->submit(ecmd, queue->handle);
 }
 
-static irqreturn_t
-ert_user_versal_isr(void *arg)
-{
-	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	struct ert_queue *queue = NULL;
-	xdev_handle_t xdev;
-
-	BUG_ON(!ert_user);
-
-	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
-	xdev = xocl_get_xdev(ert_user->pdev);
-	queue = ert_user->queue;
-
-	if (!queue || ert_user->polling_mode)
-		return IRQ_NONE;
-
-	return queue->func->irq_handle(0, queue->handle);
-}
-
-static irqreturn_t
-ert_user_isr(int irq, void *arg)
-{
-	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	struct ert_queue *queue = NULL;
-	xdev_handle_t xdev;
-
-	BUG_ON(!ert_user);
-
-	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
-	xdev = xocl_get_xdev(ert_user->pdev);
-	queue = ert_user->queue;
-
-	if (!queue || ert_user->polling_mode)
-		return IRQ_NONE;
-
-	return queue->func->irq_handle(irq, queue->handle);
-}
-
 static inline void
-ert_intc_config(struct xocl_ert_user *ert_user, bool enable)
+ert_queue_intc_config(struct xocl_ert_user *ert_user, bool enable)
 {
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-	uint32_t i;
+	struct ert_queue *queue = ert_user->queue;
 
-	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		if (enable)
-			xocl_mailbox_versal_request_intr(xdev, ert_user_versal_isr, ert_user);
-		else
-			xocl_mailbox_versal_free_intr(xdev);
+	if (!queue) {
+		ERTUSER_ERR(ert_user, "Couldn't find queue %s\n", __func__);
 		return;
 	}
 
-	for (i = 0; i < ert_user->num_slots; i++) {
-		if (enable) {
-			xocl_intc_ert_request(xdev, i, ert_user_isr, ert_user);
-			xocl_intc_ert_config(xdev, i, true);
-		} else {
-			xocl_intc_ert_config(xdev, i, false);
-			xocl_intc_ert_request(xdev, i, NULL, NULL);
-		}
-	}
+	queue->func->intc_config(enable, queue->handle);
 }
 
 static inline int
@@ -435,6 +387,17 @@ ert_queue_max_slot_num(struct xocl_ert_user *ert_user)
 		return 0;
 
 	return queue->func->max_slot_num(queue->handle);
+}
+
+static inline void
+ert_queue_abort(struct xocl_ert_user *ert_user, void *client)
+{
+	struct ert_queue *queue = ert_user->queue;
+
+	if (!queue)
+		return;
+
+	queue->func->abort(client, queue->handle);
 }
 
 static int ert_user_bulletin(struct platform_device *pdev, struct ert_cu_bulletin *brd)
@@ -509,13 +472,13 @@ static int ert_user_enable(struct platform_device *pdev, bool enable)
 	if (enable) {
 		xocl_gpio_cfg(xdev, MB_WAKEUP);
 
-		ert_intc_config(ert_user, true);
+		ert_queue_intc_config(ert_user, true);
 		xocl_gpio_cfg(xdev, INTR_TO_ERT);
 	} else {
 		ert_submit_exit_cmd(ert_user);
 		xocl_gpio_cfg(xdev, MB_SLEEP);
 
-		ert_intc_config(ert_user, false);
+		ert_queue_intc_config(ert_user, false);
 		xocl_gpio_cfg(xdev, INTR_TO_CU);
 	}
 
@@ -581,6 +544,8 @@ static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint
 	case ERT_CLK_CALIB:
 		return_size = sizeof(struct ert_validate_cmd);
 		break;
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
 	case ERT_START_CU:
 		cu_idx = xcmd->cu_idx;
 		break;
@@ -599,6 +564,7 @@ static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint
 	ecmd->cb.complete = ert_user_cmd_complete;
 	ecmd->cb.notify = ert_user_cmd_notify;
 
+	ecmd->client = xcmd->client;
 
 	return ecmd;
 }
@@ -638,10 +604,10 @@ static inline bool ert_special_cmd(struct xrt_ert_command *ecmd)
 	return ret;
 }
 
-static inline struct kds_client *
+static inline struct ert_user_event *
 first_event_client_or_null(struct xocl_ert_user *ert_user)
 {
-	struct kds_client *curr = NULL;
+	struct ert_user_event *curr = NULL;
 
 	if (list_empty(&ert_user->events))
 		return NULL;
@@ -650,7 +616,7 @@ first_event_client_or_null(struct xocl_ert_user *ert_user)
 	if (list_empty(&ert_user->events))
 		goto done;
 
-	curr = list_first_entry(&ert_user->events, struct kds_client, ev_entry);
+	curr = list_first_entry(&ert_user->events, struct ert_user_event, ev_entry);
 
 done:
 	mutex_unlock(&ert_user->ev_lock);
@@ -664,14 +630,9 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 	unsigned int dsa = ert_user->ert_cfg_priv.dsa;
 	unsigned int major = ert_user->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
-	bool ert_enabled = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    xocl_mb_sched_on(xdev);
-	bool ert_full = !cfg->dataflow;
-	bool ert_poll = cfg->dataflow;
+	bool dataflow_enabled = cfg->dataflow;
 	unsigned int ert_num_slots = 0, slot_size = 0, max_slot_num;
 	uint64_t cq_range = ert_user->queue->size;
-
-	BUG_ON(!ert_enabled);
 
 	if (cmd_opcode(ecmd) != ERT_CONFIGURE)
 		return -EINVAL;
@@ -682,16 +643,6 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 	}
 
 	ERTUSER_DBG(ert_user, "dsa52 = %d", dsa);
-
-	if (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) {
-		ERTUSER_INFO(ert_user, "MPSoC polling mode %d", cfg->polling);
-
-		// For MPSoC device, we will use ert_full if we are
-		// configured as ert mode even dataflow is configured.
-		// And we do not support ert_poll.
-		ert_full = cfg->ert;
-		ert_poll = false;
-	}
 
 	// Mark command as control command to force slot 0 execution
 	/*  1. cfg->slot_size need to be 32-bit aligned
@@ -716,7 +667,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	ert_num_slots = cq_range / slot_size;
 
-	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
+	if (!dataflow_enabled && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
 		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
 		slot_size = cq_range / 32;
@@ -724,19 +675,14 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	cfg->slot_size = slot_size;
 
-	if (ert_poll) {
-		ERTUSER_INFO(ert_user, "configuring dataflow mode with ert polling\n");
-		cfg->cu_isr = 0;
-		cfg->cu_dma = 0;
-	} else if (ert_full) {
-		ERTUSER_INFO(ert_user, "configuring embedded scheduler mode\n");
-		cfg->dsa52 = dsa;
-		cfg->cdma = cdma ? 1 : 0;
-	}
+	if (dataflow_enabled)
+		ERTUSER_INFO(ert_user, "configuring embedded scheduler dataflow mode\n");
 
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
 		cfg->cu_dma = 0;
 
+	cfg->dsa52 = dsa;
+	cfg->cdma = cdma ? 1 : 0;
 	cfg->dmsg = ert_user->ert_dmsg;
 	cfg->echo = ert_user->echo;
 	cfg->intr = ert_user->intr;
@@ -763,13 +709,9 @@ static int
 ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 {
 	int ret = 0;
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
-	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-		xocl_mb_sched_on(xdev);
 
 	BUG_ON(cmd_opcode(ecmd) != ERT_CONFIGURE);
-	BUG_ON(!ert);
 
 	ret = ert_config_queue(ert_user, cfg->slot_size);
 	if (ret)
@@ -781,7 +723,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 
 	ert_user->polling_mode = cfg->polling;
 	/* if polling, disable intc, vice versa */
-	ert_intc_config(ert_user, !ert_user->polling_mode);
+	ert_queue_intc_config(ert_user, !ert_user->polling_mode);
 
 	memset(ert_user->cu_stat, 0, cfg->num_cus * sizeof(struct ert_cu_stat));
 
@@ -825,6 +767,8 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	bool bad_cmd = false;
 
 	switch (cmd_opcode(ecmd)) {
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
 	case ERT_START_CU:
 	case ERT_SK_START:
 		BUG_ON(ert_user->ctrl_busy);
@@ -885,7 +829,9 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 
 		ert_post_process(ert_user, ecmd);
 		if (xcmd) {
-			if (cmd_opcode(ecmd) == ERT_START_CU &&
+			if ((cmd_opcode(ecmd) == ERT_START_CU
+			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
+			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL) &&
 				ecmd->complete_entry.cstate == KDS_COMPLETED) {
 				ert_user->cu_stat[xcmd->cu_idx].inflight--;
 				ert_user->cu_stat[xcmd->cu_idx].usage++;
@@ -902,6 +848,23 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 }
 
 /**
+ * process_ert_sq() - Process cmd witch is submitted
+ * @ert_user: Target XRT CU
+ */
+
+static inline
+void process_ert_sq(struct xocl_ert_user *ert_user, struct ert_user_event *ev_client)
+{
+	if (!ert_user->sq.num)
+		return;
+
+	ert_queue_poll(ert_user);
+
+	if (unlikely(ev_client))
+		ert_queue_abort(ert_user, ev_client->client);
+}
+
+/**
  * process_ert_rq() - Process run queue
  * @ert_user: Target XRT ERT
  * @rq: Target running queue
@@ -909,11 +872,11 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
  * Return: return 0 if run queue is empty or no available slot
  *	   Otherwise, return 1
  */
-static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq)
+static inline
+int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq, struct ert_user_event *ev_client)
 {
 	struct xrt_ert_command *ecmd, *next;
 	struct ert_packet *epkt = NULL;
-	struct kds_client *ev_client = NULL;
 	bool bad_cmd = false;
 
 	if (!rq->num)
@@ -921,13 +884,12 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 
 	ERTUSER_DBG(ert_user, "%s =>\n", __func__);
 
-	ev_client = first_event_client_or_null(ert_user);
 	list_for_each_entry_safe(ecmd, next, &rq->head, list) {
 		struct kds_command *xcmd = ecmd->xcmd;
 
-		if (unlikely(ert_user->bad_state || (xcmd && ev_client == xcmd->client))) {
+		if (unlikely(ert_user->bad_state || (xcmd && ev_client && ev_client->client == xcmd->client))) {
 			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
-			ecmd->complete_entry.cstate = KDS_ERROR;
+			ecmd->complete_entry.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
@@ -980,7 +942,9 @@ static inline int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user
 		}
 
 		if (xcmd) {
-			if (cmd_opcode(ecmd) == ERT_START_CU)
+			if ((cmd_opcode(ecmd) == ERT_START_CU
+			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
+			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL))
 				ert_user->cu_stat[ecmd->xcmd->cu_idx].inflight++;
 
 			set_xcmd_timestamp(ecmd->xcmd, KDS_RUNNING);
@@ -1032,6 +996,8 @@ static void ert_user_submit(struct kds_ert *kds_ert, struct kds_command *xcmd)
 	ERTUSER_DBG(ert_user, "->%s ecmd %llx\n", __func__, (u64)ecmd);
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
 	switch (cmd_opcode(ecmd)) {
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:	
 	case ERT_START_CU:
 	case ERT_SK_START:
 		list_add_tail(&ecmd->list, &ert_user->pq.head);
@@ -1100,22 +1066,46 @@ static inline bool ert_user_thread_sleep_condition(struct xocl_ert_user *ert_use
 	return ret;
 }
 
+static void xocl_ert_user_remove_event(struct xocl_ert_user *ert_user, struct ert_user_event *client)
+{
+	struct ert_user_event *next = NULL, *curr = NULL;
+
+	mutex_lock(&ert_user->ev_lock);
+	if (list_empty(&ert_user->events))
+		goto done;
+
+	list_for_each_entry_safe(curr, next, &ert_user->events, ev_entry) {
+		if (client != curr)
+			continue;
+
+		list_del(&curr->ev_entry);
+		break;
+	}
+
+done:
+	mutex_unlock(&ert_user->ev_lock);
+}
+
 int ert_user_thread(void *data)
 {
 	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)data;
 	int ret = 0;
+	struct ert_user_event *ev_client = NULL;
 
 	mod_timer(&ert_user->timer, jiffies + ERT_TIMER);
 
 	while (!ert_user->stop) {
+
+		ev_client = first_event_client_or_null(ert_user);
+
 		/* Make sure to submit as many commands as possible.
 		 * This is why we call continue here. This is important to make
 		 * CU busy, especially CU has hardware queue.
 		 */
-		if (process_ert_rq(ert_user, &ert_user->rq_ctrl))
+		if (process_ert_rq(ert_user, &ert_user->rq_ctrl, ev_client))
 			continue;
 
-		if (process_ert_rq(ert_user, &ert_user->rq))
+		if (process_ert_rq(ert_user, &ert_user->rq, ev_client))
 			continue;
 		/* process completed queue before submitted queue, for
 		 * two reasons:
@@ -1124,10 +1114,14 @@ int ert_user_thread(void *data)
 		 * - process_ert_sq_polling will check CU status, which is thru slow bus
 		 */
 
-		if (ert_user->sq.num != 0)
-			ert_queue_poll(ert_user);
+		process_ert_sq(ert_user, ev_client);
 
 		process_ert_cq(ert_user);
+
+		if (unlikely(ev_client)) {
+			complete(&ev_client->cmp);
+			xocl_ert_user_remove_event(ert_user, ev_client);
+		}
 
 		/* If any event occured, we should drain all the related commands ASAP
 		 * It only goes to sleep if there is no event
@@ -1148,6 +1142,28 @@ int ert_user_thread(void *data)
 	return ret;
 }
 
+static struct ert_user_event*
+alloc_ert_user_event(struct kds_client *client)
+{
+	struct ert_user_event *event = kzalloc(sizeof(struct ert_user_event), GFP_KERNEL);
+
+	if (!event)
+		return NULL;
+
+	event->client = client;
+
+	init_completion(&event->cmp);
+	INIT_LIST_HEAD(&event->ev_entry);
+
+	return event;
+}
+
+static void
+free_ert_user_event(struct ert_user_event *event)
+{
+	kfree(event);
+}
+
 /**
  * xocl_ert_abort() - Sent an abort event to ERT thread
  * @ert: Target XRT ERT
@@ -1157,7 +1173,7 @@ int ert_user_thread(void *data)
  */
 static void xocl_ert_user_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	struct kds_client *curr;
+	struct ert_user_event *event = NULL, *curr = NULL;
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 
 	mutex_lock(&ert_user->ev_lock);
@@ -1166,16 +1182,21 @@ static void xocl_ert_user_abort(struct kds_ert *ert, struct kds_client *client, 
 
 	/* avoid re-add the same client */
 	list_for_each_entry(curr, &ert_user->events, ev_entry) {
-		if (client == curr)
+		if (client == curr->client)
 			goto done;
 	}
 
 add_event:
+	event = alloc_ert_user_event(client);
+	if (!event)
+		goto done;
+
 	client->ev_type = EV_ABORT;
-	list_add_tail(&client->ev_entry, &ert_user->events);
+	list_add_tail(&event->ev_entry, &ert_user->events);
 	/* The process thread may asleep, we should wake it up if
 	 * abort event takes place
 	 */
+
 	up(&ert_user->sem);
 done:
 	mutex_unlock(&ert_user->ev_lock);
@@ -1189,8 +1210,7 @@ done:
  */
 static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
-	struct kds_client *curr;
-	struct kds_client *next;
+	struct ert_user_event *next = NULL, *curr = NULL;
 	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
 
 	mutex_lock(&ert_user->ev_lock);
@@ -1198,7 +1218,7 @@ static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *cli
 		goto done;
 
 	list_for_each_entry_safe(curr, next, &ert_user->events, ev_entry) {
-		if (client != curr)
+		if (client != curr->client)
 			continue;
 
 		list_del(&curr->ev_entry);
@@ -1211,6 +1231,53 @@ done:
 	return ert_user->bad_state;
 }
 
+/**
+ * xocl_ert_abort_sync() - Sent an abort event to ERT thread
+ * @ert: Target XRT ERT
+ * @client: The client tries to abort commands
+ *
+ * This is used to ask ERT thread to abort all commands from the client.
+ */
+static bool xocl_ert_user_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+{
+	struct xocl_ert_user *ert_user = container_of(ert, struct xocl_ert_user, ert);
+	struct ert_user_event *event = NULL, *curr = NULL;
+
+	mutex_lock(&ert_user->ev_lock);
+	if (list_empty(&ert_user->events))
+		goto add_event;
+
+	/* avoid re-add the same client */
+	list_for_each_entry(curr, &ert_user->events, ev_entry) {
+		if (client == curr->client) {
+			mutex_unlock(&ert_user->ev_lock);
+			return ert_user->bad_state;
+		}
+	}
+
+add_event:
+	event = alloc_ert_user_event(client);
+	if (!event) {
+		mutex_unlock(&ert_user->ev_lock);
+		return ert_user->bad_state;
+	}
+	client->ev_type = EV_ABORT;
+	list_add_tail(&event->ev_entry, &ert_user->events);
+	/* The process thread may asleep, we should wake it up if
+	 * abort event takes place
+	 */
+	up(&ert_user->sem);
+
+	mutex_unlock(&ert_user->ev_lock);
+
+	wait_for_completion(&event->cmp);
+
+	free_ert_user_event(event);
+
+	return  ert_user->bad_state;
+}
+
+
 static int ert_user_remove(struct platform_device *pdev)
 {
 	struct xocl_ert_user *ert_user;
@@ -1222,7 +1289,7 @@ static int ert_user_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ert_intc_config(ert_user, false);
+	ert_queue_intc_config(ert_user, false);
 
 	sysfs_remove_group(&pdev->dev.kobj, &ert_user_attr_group);
 
@@ -1306,6 +1373,7 @@ static int ert_user_probe(struct platform_device *pdev)
 	ert_user->ert.submit = ert_user_submit;
 	ert_user->ert.abort = xocl_ert_user_abort;
 	ert_user->ert.abort_done = xocl_ert_user_abort_done;
+	ert_user->ert.abort_sync = xocl_ert_user_abort_sync;
 	xocl_kds_init_ert(xdev, &ert_user->ert);
 
 done:

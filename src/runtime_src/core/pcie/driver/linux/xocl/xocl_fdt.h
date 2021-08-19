@@ -109,6 +109,8 @@
 #define NODE_RESERVED_PSMEM "ep_reserved_ps_mem"
 #define NODE_PS_RESET_CTRL "ep_reset_ps_00"
 #define NODE_ICAP_CONTROLLER "ep_iprog_ctrl_00"
+#define NODE_PCIE "pcie"
+#define NODE_BARS "bars"
 
 #define PROP_BARM_CTRL "axi_bram_ctrl"
 #define PROP_HWICAP "axi_hwicap"

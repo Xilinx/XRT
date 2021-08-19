@@ -20,6 +20,8 @@
 #include "core/common/device.h"
 #include "core/common/sensor.h"
 
+#include <boost/property_tree/json_parser.hpp>
+
 void
 ReportThermal::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
                                               boost::property_tree::ptree &_pt) const
@@ -35,7 +37,7 @@ ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   xrt::device device(_pDevice->get_device_id());
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::thermals>();
+  ss << device.get_info<xrt::info::device::thermal>();
   boost::property_tree::read_json(ss, _pt);
 }
 

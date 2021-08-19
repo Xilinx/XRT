@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author: Hem C Neema
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -42,6 +42,8 @@ precision(double value, int p)
   return stream.str();
 }
 
+
+
 }
 
 namespace xrt_core { namespace utils {
@@ -83,9 +85,36 @@ parse_cu_status(unsigned int val)
     }
     if (status.size())
       status += ')';
-    else 
+    else
       status = "(UNKNOWN)";
   }
+  return status;
+}
+
+std::string
+parse_cmc_status(unsigned int val)
+{
+  char delim = '(';
+  std::string status;
+  if (!val) {
+    status += delim;
+    status += "GOOD";
+    delim = '|';
+  }
+  if (val & bit(0)) {
+    status += delim;
+    status += "SINGLE_SENSOR_UPDATE_ERR";
+    delim = '|';
+  }
+  if (val & bit(1)) {
+    status += delim;
+    status += "MULTIPLE_SENSOR_UPDATE_ERR";
+    delim = '|';
+  }
+  if (status.size())
+    status += ')';
+  else
+    status = "(UNDEFINED_ERR)";
   return status;
 }
 
@@ -215,6 +244,19 @@ issue_id()
 {
   static std::atomic<uint64_t> id {0} ;
   return id++;
+}
+
+static const std::map<std::string, std::string> clock_map = {
+  {"DATA_CLK", "Data"},
+  {"KERNEL_CLK", "Kernel"},
+  {"SYSTEM_CLK", "System"},
+};
+
+std::string 
+parse_clock_id(const std::string& id)
+{
+  auto clock_str = clock_map.find(id);
+  return clock_str != clock_map.end() ? clock_str->second : "N/A";
 }
 
 }} // utils, xrt_core

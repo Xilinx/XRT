@@ -31,6 +31,8 @@ namespace {
 
   static void deviceExecTime(xdp::VPDatabase* db, std::ofstream& fout)
   {
+    if (!db->infoAvailable(xdp::info::opencl_counters)) return ;
+
     if (xdp::getFlowMode() == xdp::SW_EMU) {
       std::string deviceName =
         db->getStaticInfo().getSoftwareEmulationDeviceName();
@@ -547,7 +549,7 @@ namespace {
     uint64_t startTime = db->getStaticInfo().getApplicationStartTime() ;
     uint64_t endTime = xrt_core::time_ns() ; 
 
-    fout << "APPLICATON_RUN_TIME_MS,all," 
+    fout << "APPLICATION_RUN_TIME_MS,all," 
          << (double)(endTime - startTime) / 1e06
          << ",\n" ;
   }

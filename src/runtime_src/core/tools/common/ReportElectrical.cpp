@@ -17,8 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportElectrical.h"
-#include "core/common/device.h"
-#include "core/common/sensor.h"
+
+// 3rd Party Library - Include Files
+#include <boost/property_tree/json_parser.hpp>
 
 void
 ReportElectrical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
@@ -34,28 +35,13 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
                                         boost::property_tree::ptree &_pt) const
 {
   xrt::device device(_pDevice->get_device_id());
-  
-  boost::property_tree::ptree pt;
-  {
-    std::stringstream ss;
-    ss << device.get_info<xrt::info::device::power_rails>();
-    boost::property_tree::read_json(ss, pt);
-  }
-
-  boost::property_tree::ptree pt_power_consumption;
-  {
-    std::stringstream ss;
-    ss << device.get_info<xrt::info::device::power_consumption>();
-    boost::property_tree::read_json(ss, pt_power_consumption);
-  }
-  
-  pt_power_consumption = pt_power_consumption.get_child("power_consumption");
-  for(auto& it : pt_power_consumption) {
-    pt.put(it.first, it.second.data());
-  }
+  boost::property_tree::ptree pt_electrical;
+  std::stringstream ss;
+  ss << device.get_info<xrt::info::device::electrical>();
+  boost::property_tree::read_json(ss, pt_electrical);
 
   // There can only be 1 root node
-  _pt.add_child("electrical", pt);
+  _pt.add_child("electrical", pt_electrical);
 }
 
 void 

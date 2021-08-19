@@ -70,6 +70,54 @@ struct command_queue {
 	void			*ert_handle;
 };
 
+static ssize_t
+ert_cq_debug(struct file *filp, struct kobject *kobj,
+	    struct bin_attribute *attr, char *buf,
+	    loff_t offset, size_t count)
+{
+	struct command_queue *cmd_queue;
+	struct device *dev = container_of(kobj, struct device, kobj);
+	ssize_t nread = 0;
+	size_t size = 0;
+
+	cmd_queue = (struct command_queue *)dev_get_drvdata(dev);
+	if (!cmd_queue || !cmd_queue->cq_base)
+		return nread;
+
+	size = cmd_queue->cq_range;
+	if (offset >= size)
+		goto done;
+
+	if (offset + count < size)
+		nread = count;
+	else
+		nread = size - offset;
+
+	xocl_memcpy_fromio(buf, cmd_queue->cq_base + offset, nread);
+
+done:
+	return nread;
+}
+
+static struct bin_attribute cq_attr = {
+	.attr = {
+		.name ="cq_debug",
+		.mode = 0444
+	},
+	.read = ert_cq_debug,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute *cmd_queue_bin_attrs[] = {
+	&cq_attr,
+	NULL,
+};
+
+static struct attribute_group cmd_queue_attr_group = {
+	.bin_attrs = cmd_queue_bin_attrs,
+};
+
 /*
  * cmd_opcode() - Command opcode
  *
@@ -321,7 +369,9 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 		ecmd->cb.notify(cmd_queue->ert_handle);
 	} else {
 
-		if (cmd_opcode(epkt) == ERT_START_CU) {
+		if (cmd_opcode(epkt) == ERT_START_CU
+			|| cmd_opcode(epkt) == ERT_EXEC_WRITE
+			|| cmd_opcode(epkt) == ERT_START_KEY_VAL) {
 			// write kds selected cu_idx in first cumask (first word after header)
 			iowrite32(ecmd->cu_idx, cmd_queue->cq_base + slot_addr + 4);
 
@@ -361,7 +411,7 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 }
 
 static irqreturn_t
-cmd_queue_versal_isr(int irq, void *arg)
+cmd_queue_versal_isr(void *arg)
 {
 	struct command_queue *cmd_queue = (struct command_queue *)arg;
 	xdev_handle_t xdev;
@@ -411,7 +461,6 @@ cmd_queue_isr(int irq, void *arg)
 	xdev = xocl_get_xdev(cmd_queue->pdev);
 
 	BUG_ON(irq >= ERT_MAX_SLOTS);
-
 
 	ecmd = cmd_queue->submit_queue[irq];
 	if (ecmd) {
@@ -464,18 +513,66 @@ command_queue_max_slot_num(void *queue_handle)
 	return ERT_MAX_SLOTS;
 }
 
+static void
+command_queue_abort(void *client, void *queue_handle)
+{
+	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
+	struct xrt_ert_command *ecmd = NULL, *next = NULL;
+
+	list_for_each_entry_safe(ecmd, next, &cmd_queue->sq, list) {
+		if (ecmd->client != client)
+			continue;
+
+		if (ecmd->complete_entry.cstate != KDS_COMPLETED)
+			ecmd->complete_entry.cstate = KDS_TIMEOUT;
+
+		list_del(&ecmd->list);
+		cmd_queue->sq_num--;
+		command_queue_complete(ecmd, cmd_queue);
+	}
+}
+
+static void
+command_queue_intc_config(bool enable, void *queue_handle)
+{
+	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
+	xdev_handle_t xdev = xocl_get_xdev(cmd_queue->pdev);
+	uint32_t i = 0;
+
+	CMDQUEUE_DBG(cmd_queue, "-> %s\n", __func__);
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		if (enable)
+			xocl_mailbox_versal_request_intr(xdev, cmd_queue_versal_isr, cmd_queue);
+		else
+			xocl_mailbox_versal_free_intr(xdev);
+		return;
+	}
+
+	for (i = 0; i < cmd_queue->num_slots; i++) {
+		if (enable) {
+			xocl_intc_ert_request(xdev, i, cmd_queue_isr, cmd_queue);
+			xocl_intc_ert_config(xdev, i, true);
+		} else {
+			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_request(xdev, i, NULL, NULL);
+		}
+	}
+}
+
 static struct xrt_ert_queue_funcs command_queue_func = {
 
 	.poll    = command_queue_poll,
 
 	.submit  = command_queue_submit,
 
-	.irq_handle = cmd_queue_isr,
-
 	.queue_config = command_queue_config,
 
 	.max_slot_num = command_queue_max_slot_num,
 
+	.abort = command_queue_abort,
+
+	.intc_config = command_queue_intc_config,
 };
 
 static int command_queue_remove(struct platform_device *pdev)
@@ -491,6 +588,8 @@ static int command_queue_remove(struct platform_device *pdev)
 	}
 
 	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_ERT_USER);
+
+	sysfs_remove_group(&pdev->dev.kobj, &cmd_queue_attr_group);
 
 	xocl_drvinst_release(command_queue, &hdl);
 
@@ -545,11 +644,14 @@ static int command_queue_probe(struct platform_device *pdev)
 		}
 	}
 
+	err = sysfs_create_group(&pdev->dev.kobj, &cmd_queue_attr_group);
+	if (err) {
+		xocl_err(&pdev->dev, "create ert_cq sysfs attrs failed: %d", err);
+		goto done;
+	}
+
 	cmd_queue->num_slots = ERT_MAX_SLOTS;
 	INIT_LIST_HEAD(&cmd_queue->sq);
-
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		command_queue_func.irq_handle = cmd_queue_versal_isr;
 
 	cmd_queue->queue.handle = cmd_queue;
 	cmd_queue->queue.func = &command_queue_func;

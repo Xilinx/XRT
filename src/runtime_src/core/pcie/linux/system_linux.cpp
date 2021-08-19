@@ -227,7 +227,7 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_linux::
-program_plp(const device* dev, const std::vector<char> &buffer) const
+program_plp(const device* dev, const std::vector<char> &buffer, bool force) const
 {
   try {
     xrt_core::scope_value_guard<int, std::function<void()>> fd = dev->file_open("icap", O_WRONLY);

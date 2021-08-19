@@ -196,7 +196,7 @@ typedef struct xclmgmt_ioc_uuid_info {
 
 struct rp_download {
     USHORT rp_type;
-    axlf *axlf_buf;
+    const axlf *axlf_buf;
 };
 enum {
     RP_DOWNLOAD_NORMAL,

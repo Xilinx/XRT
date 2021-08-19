@@ -189,7 +189,7 @@ struct kernel_info {
     char                    name[64];
     size_t                  range;
     size_t                  anums;
-    struct argument_info    *args;
+    struct argument_info    args[1];
 };
 
 struct xocl_kds{
@@ -211,9 +211,9 @@ struct xocl_kds{
 // OutBuffer = XOCL_READ_AXLF_ARGS
 //
 typedef struct _XOCL_READ_AXLF_ARGS {
-    struct xocl_kds  kds_cfg; // IN: KDS user configuration
-    size_t           ksize;   // IN: size of kernels in bytes
-    CHAR*            kernels; // IN: pointer of kernel_info array
+    struct xocl_kds  kds_cfg;    // IN: KDS user configuration
+    size_t           ksize;      // IN: size of kernels in bytes
+    CHAR             kernels[1]; // IN: pointer of kernel_info array
 } XOCL_READ_AXLF_ARGS, * PXOCL_READ_AXLF_ARGS;
 
 #define IOCTL_XOCL_READ_AXLF        CTL_CODE(FILE_DEVICE_XOCL_USER, 2076, METHOD_IN_DIRECT, FILE_READ_DATA)
@@ -258,7 +258,11 @@ typedef enum _XOCL_STAT_CLASS {
     XoclStatKds,
     XoclStatKdsCU,
     XoclStatRomInfo,
-    XoclStatDebugIpLayout
+    XoclStatDebugIpLayout,
+    XoclStatTempByMemTopology,
+    XoclStatGroupTopology,
+    XoclStatMemStatRaw,
+    XoclStatMemStat
 } XOCL_STAT_CLASS, *PXOCL_STAT_CLASS;
 
 typedef struct _XOCL_STAT_CLASS_ARGS {
@@ -555,4 +559,10 @@ typedef struct _XOCL_ALLOC_HOST_MEM_ARGS {
 // OutBuffer = Message to be sent to Management (opaque to the caller)
 //
 #define IOCTL_XOCL_GET_XCLBIN_SW_CHANNEL       CTL_CODE(FILE_DEVICE_XOCL_USER, 2203, METHOD_OUT_DIRECT, FILE_READ_DATA)
+
+
+struct drm_xocl_mm_stat {
+    size_t memory_usage;
+    unsigned int bo_count;
+};
 

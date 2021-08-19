@@ -57,16 +57,11 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
  * [Device]
  * mailbox_channel_disable = 0x100
  * mailbox_channel_switch = 0
- * cahce_xclbin = 0
+ * cache_xclbin = 0
  */
 static void
 config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string output)
 {
-  if(boost::filesystem::extension(output).compare(".ini") != 0) {
-    std::cerr << boost::format("ERROR: output file should be an INI file: '%s'") % output << "\n\n";
-    return;
-  }
-
   boost::property_tree::ptree ptRoot;
 
   boost::property_tree::ptree child;
@@ -107,8 +102,8 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration.")
-    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image.")
+    ("config,c", boost::program_options::bool_switch(&config), "Dumps the output of system configuration, requires a .ini output file by -o option")
+    ("flash,f", boost::program_options::bool_switch(&flash), "Dumps the output of programmed system image, requires a .bin output file by -o option")
     ("output,o", boost::program_options::value<decltype(output)>(&output), "Direct the output to the given file")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -128,7 +123,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested or no command was found
@@ -148,7 +143,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   if(devices.empty()) {
     std::cerr << "ERROR: Please specify a single device using --device option" << "\n\n";
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Collect all of the devices of interest
@@ -162,14 +157,14 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   } catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // enforce 1 device specification
   if(deviceCollection.size() != 1) {
     std::cerr << "ERROR: Please specify a single device. Multiple devices are not supported" << "\n\n";
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
@@ -181,11 +176,11 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   if (output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
-  if (!output.empty() && boost::filesystem::exists(output)) {
+  if (!output.empty() && boost::filesystem::exists(output) && !XBU::getForce()) {
     std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
     
   //decide the contents of the dump file
@@ -200,5 +195,5 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
 
   std::cerr << "ERROR: Please specify a valid option to determine the type of dump" << "\n\n";
   printHelp(commonOptions, hiddenOptions);
-
+  throw xrt_core::error(std::errc::operation_canceled);
 }

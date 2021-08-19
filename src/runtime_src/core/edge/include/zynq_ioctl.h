@@ -356,6 +356,7 @@ enum drm_zocl_axlf_flags {
 	DRM_ZOCL_PLATFORM_BASE		= 0,
 	DRM_ZOCL_PLATFORM_PR		= (1 << 0),
 	DRM_ZOCL_PLATFORM_FLAT		= (1 << 1),
+	DRM_ZOCL_FORCE_PROGRAM		= (1 << 2)
 };
 
 /**

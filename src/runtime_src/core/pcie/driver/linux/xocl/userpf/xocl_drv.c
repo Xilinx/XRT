@@ -1127,6 +1127,9 @@ void xocl_userpf_remove(struct pci_dev *pdev)
 		vfree(xdev->ulp_blob);
 	mutex_destroy(&xdev->dev_lock);
 
+	if (xdev->core.bars)
+		kfree(xdev->core.bars);
+
 	pci_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
 }
@@ -1584,12 +1587,6 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	struct xocl_dev			*xdev;
 	char				wq_name[15];
 	int				ret, i;
-
-	if (pdev->cfg_size < XOCL_PCI_CFG_SPACE_EXP_SIZE) {
-		xocl_err(&pdev->dev, "ext config space is not accessible, %d",
-			 pdev->cfg_size);
-		return -EINVAL;
-	}
 
 	xdev = xocl_drvinst_alloc(&pdev->dev, sizeof(*xdev));
 	if (!xdev) {

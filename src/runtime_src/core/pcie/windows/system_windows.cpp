@@ -187,9 +187,9 @@ get_mgmtpf_device(device::id_type id) const
 
 void
 system_windows::
-program_plp(const device* dev, const std::vector<char> &buffer) const
+program_plp(const device* dev, const std::vector<char> &buffer, bool force) const
 {
-  mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()));
+  mgmtpf::plp_program(dev->get_mgmt_handle(), reinterpret_cast<const axlf*>(buffer.data()), force);
 
   // asynchronously check if the download is complete
   std::this_thread::sleep_for(std::chrono::seconds(5));

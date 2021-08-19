@@ -26,6 +26,10 @@ namespace xdp {
   private:
     NativeTraceWriter() = delete ;
 
+    const uint32_t APIBucket = 1 ;
+    const uint32_t readBucket = 2 ;
+    const uint32_t writeBucket = 3 ;
+
   protected:
     virtual void writeHeader() ;
     virtual void writeStructure() ;

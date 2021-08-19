@@ -7,6 +7,7 @@ level: 6
 owner: haeseung
 user:
   allowed_test_modes: [hw]
+  excl_platforms: [/.*nodma.*/]
   force_makefile: "--force"
   host_args: {all: -k kernel.xclbin}
   host_cflags: ' -g -std=c++14 -Wall -fmessage-length=0 -I${HOST_SRC_PATH} -I${XILINX_XRT}/include -L${XILINX_XRT}/lib -Wl,-rpath-link,${XILINX_XRT}/lib -lstdc++ -ldl -luuid -lpthread -lrt -lxrt_coreutil '

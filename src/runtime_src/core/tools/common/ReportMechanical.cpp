@@ -17,9 +17,9 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMechanical.h"
-#include "core/common/device.h"
-#include "xrt/xrt_device.h"
-#include "core/common/sensor.h"
+
+// 3rd Party Library - Include Files
+#include <boost/property_tree/json_parser.hpp>
 
 void
 ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
@@ -37,7 +37,7 @@ ReportMechanical::getPropertyTree20202( const xrt_core::device * _pDevice,
   xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_mechanical;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::fans>();
+  ss << device.get_info<xrt::info::device::mechanical>();
   boost::property_tree::read_json(ss, pt_mechanical);
 
   // There can only be 1 root node

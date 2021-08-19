@@ -36,6 +36,10 @@ namespace xdp {
   NativeProfilingPlugin::~NativeProfilingPlugin()
   {
     if (VPDatabase::alive()) {
+      // Applications using the Native API may be running hardware emulation,
+      //  so be sure to account for any emulation specific information
+      emulationSetup() ;
+
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
       for (auto w : writers) {

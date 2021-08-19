@@ -308,6 +308,9 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_DSA_IS_VERSAL(xdev)                \
 	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL)
 
+#define XOCL_DSA_IS_VERSAL_ES3(xdev)                \
+	(XDEV(xdev)->priv.flags & XOCL_DSAFLAG_VERSAL_ES3)
+
 #define	XOCL_DEV_ID(pdev)			\
 	((pci_domain_nr(pdev->bus) << 16) |	\
 	PCI_DEVID(pdev->bus->number, pdev->devfn))
@@ -536,6 +539,13 @@ struct xocl_work {
 	int			op;
 };
 
+#define NUM_PCI_BARS 6
+/* structure for holding pci bar mappings of CPM */
+struct pci_bars {
+        u64 base_addr;
+        u64 range;
+};
+
 #define SERIAL_NUM_LEN	32
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
@@ -593,6 +603,11 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+
+	/*
+	 * Store information about pci bar mappings of CPM.
+	 */
+	struct pci_bars         *bars;
 	/*
 	 * u30 reset relies on working SC and SN info. SN is read and saved in
 	 * parent device so that even if for some reason the xmc is offline
@@ -1877,8 +1892,7 @@ struct xocl_intc_funcs {
 /* Only used in ERT sub-device polling mode */
 #define xocl_intc_ert_read32(xdev, off) \
 	(INTC_CB(xdev, csr_read32) ? \
-	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : \
-	 -ENODEV)
+	 INTC_OPS(xdev)->csr_read32(INTC_DEV(xdev), off) : 0)
 #define xocl_intc_ert_write32(xdev, val, off) \
 	(INTC_CB(xdev, csr_write32) ? \
 	 INTC_OPS(xdev)->csr_write32(INTC_DEV(xdev), val, off) : \

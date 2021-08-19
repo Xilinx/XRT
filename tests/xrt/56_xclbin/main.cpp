@@ -38,6 +38,17 @@ usage()
 }
 
 std::ostream&
+operator << (std::ostream& ostr, const xrt::xclbin::mem& mem)
+{
+  ostr << "mem tag:        " << mem.get_tag() << "\n";
+  ostr << "mem used:       " << (mem.get_used() ? "true" : "false") << "\n";
+  ostr << "mem index:      " << mem.get_index() << "\n";
+  ostr << "mem size (kb):  0x" << std::hex << mem.get_size_kb() << std::dec << "\n";
+  ostr << "mem base addr:  0x" << std::hex << mem.get_base_address() << std::dec << "\n";
+  return ostr;
+}
+
+std::ostream&
 operator << (std::ostream& ostr, const xrt::xclbin::arg& arg)
 {
   ostr << "argument:       " << arg.get_name() << "\n";
@@ -100,6 +111,9 @@ run_cpp(const std::string& xclbin_fnm)
 
   for (auto& kernel : xclbin.get_kernels())
     std::cout << kernel << '\n';
+
+  for (auto& mem : xclbin.get_mems())
+    std::cout << mem << '\n';
 }
 
 void

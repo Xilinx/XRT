@@ -70,9 +70,15 @@ device(std::shared_ptr<operations> ops, unsigned int idx)
 device::
 ~device()
 {
-  if (is_emulation())
-    // xsim will not shutdown unless there is a guaranteed call to xclClose
-    close();
+  if (is_emulation()) {
+    try {
+      // xsim will not shutdown unless there is a guaranteed call to xclClose
+      close();
+    }
+    catch (...) {
+      // dtor cannot throw, and  close() can throw
+    }
+  }
 
   for (auto& q : m_queue)
     q.stop();

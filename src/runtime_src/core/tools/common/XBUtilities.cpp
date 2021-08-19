@@ -55,14 +55,6 @@ static const uint32_t FDT_PROP = 0x3;
 static const uint32_t FDT_END = 0x9;
 
 // ------ L O C A L  F U N C T I O N S  A N D  S T R U C T S ------------------
-enum class p2p_config {
-  disabled,
-  enabled,
-  error,
-  reboot,
-  not_supported
-};
-
 struct fdt_header {
   uint32_t magic;
   uint32_t totalsize;
@@ -352,13 +344,19 @@ XBUtilities::get_available_devices(bool inUserDomain)
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
-      pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) {}
+        pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
+      } catch(...) 
+      {
+        // The id wasn't added
+      }
+
       try { //2RP
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
           pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
-      } catch(...) {}
+      } catch(...) {
+        // The id wasn't added
+      }
     }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
@@ -675,59 +673,6 @@ XBUtilities::get_uuids(const void *dtbuf)
   return uuids;
 }
 
-int
-XBUtilities::check_p2p_config(const xrt_core::device* _dev, std::string &msg)
-{
-  std::vector<std::string> config;
-  try {
-    config = xrt_core::device_query<xrt_core::query::p2p_config>(_dev);
-  }
-  catch (const xrt_core::query::no_such_key&) {
-    return static_cast<int>(p2p_config::not_supported);
-  }
-  catch (const std::runtime_error&) {
-    msg = "P2P config failed. P2P is not available";
-    return static_cast<int>(p2p_config::not_supported);
-  }
-
-  int64_t bar = -1;
-  int64_t rbar = -1;
-  int64_t remap = -1;
-  int64_t exp_bar = -1;
-
-  //parse the query
-  for(const auto& val : config) {
-    auto pos = val.find(':') + 1;
-    if(val.find("rbar") == 0)
-      rbar = std::stoll(val.substr(pos));
-    else if(val.find("exp_bar") == 0)
-      exp_bar = std::stoll(val.substr(pos));
-    else if(val.find("bar") == 0)
-      bar = std::stoll(val.substr(pos));
-    else if(val.find("remap") == 0)
-      remap = std::stoll(val.substr(pos));
-  }
-
-  //return the config with a message
-  if (bar == -1) {
-    msg = "P2P config failed. P2P is not supported. Can't find P2P BAR.";
-    return static_cast<int>(p2p_config::not_supported);
-  }
-  else if (rbar != -1 && rbar > bar) {
-    msg = "Warning:Please WARM reboot to enable p2p now.";
-    return static_cast<int>(p2p_config::reboot);
-  }
-  else if (remap > 0 && remap != bar) {
-    msg = "Error:P2P config failed. P2P remapper is not set correctly";
-    return static_cast<int>(p2p_config::error);
-  }
-  else if (bar == exp_bar) {
-    return static_cast<int>(p2p_config::enabled);
-  }
-  msg = "P2P bar is not enabled";
-  return static_cast<int>(p2p_config::disabled);
-}
-
 static const std::map<std::string, xrt_core::query::reset_type> reset_map = {
     { "hot", xrt_core::query::reset_type(xrt_core::query::reset_key::hot, "HOT Reset", "", "mgmt_reset", "Please make sure xocl driver is unloaded.", "1") },
     { "kernel", xrt_core::query::reset_type(xrt_core::query::reset_key::kernel, "KERNEL Reset", "", "mgmt_reset", "Please make sure no application is currently running.", "2") },
@@ -748,66 +693,25 @@ XBUtilities::str_to_reset_obj(const std::string& str)
 }
 
 std::string
-XBUtilities::string_to_UUID(std::string str)
+XBUtilities::
+get_xrt_pretty_version()
 {
-  //make sure that a UUID is passed in
-  assert(str.length() == 32);
-  std::string uuid = "";
-  //positions to insert hyphens
-  //before: 00000000000000000000000000000000
-  std::vector<int> pos = {8, 4, 4, 4};
-  //before: 00000000-0000-0000-0000-000000000000
-
-  for(auto const p : pos) {
-    std::string token = str.substr(0, p);
-    boost::to_upper(token);
-    uuid.append(token + "-");
-    str.erase(0, p);
-  }
-  boost::to_upper(str);
-  uuid.append(str);
-
-  return uuid;
-}
-
-static const std::map<int, std::string> oemid_map = {
-  {0x10da, "Xilinx"},
-  {0x02a2, "Dell"},
-  {0x12a1, "IBM"},
-  {0xb85c, "HP"},
-  {0x2a7c, "Super Micro"},
-  {0x4a66, "Lenovo"},
-  {0xbd80, "Inspur"},
-  {0x12eb, "Amazon"},
-  {0x2b79, "Google"}
-};
-
-std::string 
-XBUtilities::parse_oem_id(const std::string& oemid)
-{
-  unsigned int oem_id_val = 0;
   std::stringstream ss;
+  boost::property_tree::ptree pt_xrt;
+  xrt_core::get_xrt_info(pt_xrt);
+  boost::property_tree::ptree empty_ptree;
 
-  try {
-    ss << std::hex << oemid;
-    ss >> oem_id_val;
-  } catch (const std::exception&) {
-    //failed to parse oemid to hex value, ignore erros and print original value
+  ss << boost::format("%-20s : %s\n") % "Version" % pt_xrt.get<std::string>("version", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Branch" % pt_xrt.get<std::string>("branch", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash" % pt_xrt.get<std::string>("hash", "N/A");
+  ss << boost::format("%-20s : %s\n") % "Hash Date" % pt_xrt.get<std::string>("build_date", "N/A");
+  const boost::property_tree::ptree& available_drivers = pt_xrt.get_child("drivers", empty_ptree);
+  for(auto& drv : available_drivers) {
+    const boost::property_tree::ptree& driver = drv.second;
+    std::string drv_name = driver.get<std::string>("name", "N/A");
+    boost::algorithm::to_upper(drv_name);
+    ss << boost::format("%-20s : %s, %s\n") % drv_name
+        % driver.get<std::string>("version", "N/A") % driver.get<std::string>("hash", "N/A");
   }
-
-  auto oemstr = oemid_map.find(oem_id_val);
-  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
-}
-
-static const std::map<std::string, std::string> clock_map = {
-  {"DATA_CLK", "Data"},
-  {"KERNEL_CLK", "Kernel"},
-  {"SYSTEM_CLK", "System"},
-};
-
-std::string 
-XBUtilities::parse_clock_id(const std::string& id)
-{
-  auto clock_str = clock_map.find(id);
-  return clock_str != clock_map.end() ? clock_str->second : "N/A";
+  return ss.str();
 }

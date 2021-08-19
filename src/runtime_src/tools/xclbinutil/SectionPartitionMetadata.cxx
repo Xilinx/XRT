@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2020 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,8 +41,6 @@ SectionPartitionMetadata::_init SectionPartitionMetadata::_initializer;
 const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFormat = {
   { "__INFO", FDTProperty::DF_sz },
   { "alias_name", FDTProperty::DF_sz },
-  { "bar", FDTProperty::DF_u32},
-  { "base_address", FDTProperty::DF_u64 },
   { "compatible", FDTProperty::DF_asz },
   { "firmware_branch_name", FDTProperty::DF_sz },
   { "firmware_product_name", FDTProperty::DF_sz },
@@ -57,7 +55,6 @@ const FDTProperty::PropertyNameFormat SectionPartitionMetadata::m_propertyNameFo
   { "minor", FDTProperty::DF_u32 },
   { "pcie_bar_mapping", FDTProperty::DF_u32},
   { "pcie_physical_function", FDTProperty::DF_u32},
-  { "physical_function", FDTProperty::DF_u32},
   { "range", FDTProperty::DF_u64 },
   { "reg", FDTProperty::DF_au64 },
   { "resolves_interface_uuid", FDTProperty::DF_sz },
@@ -166,40 +163,6 @@ SchemaTransformUniversal_firmware( const boost::property_tree::ptree& _ptOrigina
 }
 
 /**
- * Helper method to transform a generic node
- * 
- * @param _ptOriginal The original firmware property tree
- * @param _ptTransformed The transform firmware property tree
- */
-void 
-SchemaTransformUniversal_pcie( const boost::property_tree::ptree& _ptOriginal,
-                               boost::property_tree::ptree & _ptTransformed)
-{
-  boost::property_tree::ptree ptEmpty;
-
-  // --- Bars ---
-  boost::property_tree::ptree ptBarOriginal;
-  ptBarOriginal = _ptOriginal.get_child("bars", ptEmpty);
-
-  if (ptBarOriginal.empty()) 
-    throw std::runtime_error("Error: pcie.bars[] list not found.");
-
-  boost::property_tree::ptree ptBarArray;
-  for (auto barEntryOrig : ptBarOriginal) {
-    boost::property_tree::ptree ptBarEntry;
-
-    SchemaTransform_nameValue("bar", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("physical_function", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("base_address", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-    SchemaTransform_nameValue("range", "", true  /*required*/, barEntryOrig.second, ptBarEntry);
-
-    ptBarArray.push_back(std::make_pair("", ptBarEntry));
-  }
-
-  _ptTransformed.add_child("bars", ptBarArray);
-}
-
-/**
  * Transform the schema version
  *
  * @param _ptOriginal The original version property tree
@@ -241,6 +204,56 @@ SchemaTransformUniversal_schema_version( const boost::property_tree::ptree& _ptO
 }
 
 // -- Transform to DTC schema functions ---------------------------------------
+
+/**
+ * Helper method to transform a generic node
+ * 
+ * @param _ptOriginal The original firmware property tree
+ * @param _ptTransformed The transform firmware property tree
+ */
+void 
+SchemaTransformToDTC_pcie( const boost::property_tree::ptree& _ptOriginal,
+                           boost::property_tree::ptree & _ptTransformed)
+{
+  boost::property_tree::ptree ptEmpty;
+
+  // --- Bars ---
+  boost::property_tree::ptree ptBarOriginal;
+  ptBarOriginal = _ptOriginal.get_child("bars", ptEmpty);
+
+  if (ptBarOriginal.empty()) 
+    throw std::runtime_error("Error: pcie.bars[] list not found.");
+
+  unsigned int count = 0;
+  boost::property_tree::ptree ptBarArray;
+  for (auto barEntryOrig : ptBarOriginal) {
+    boost::property_tree::ptree ptBarEntry;
+    boost::property_tree::ptree _ptBarOriginalEntry = barEntryOrig.second;
+
+    SchemaTransform_nameValue("pcie_base_address_register", "pcie_bar_mapping",  true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+    SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptBarOriginalEntry , ptBarEntry);
+
+    // -- Transform 'offset' and 'range' to 'reg'
+    if ((_ptBarOriginalEntry.find("offset") != _ptBarOriginalEntry.not_found()) &&
+      (_ptBarOriginalEntry.find("range") != _ptBarOriginalEntry.not_found())) {
+      boost::property_tree::ptree ptRegOffset;
+      ptRegOffset.put("", _ptBarOriginalEntry.get<std::string>("offset").c_str());
+      boost::property_tree::ptree ptRegRange;
+
+      ptRegRange.put("", _ptBarOriginalEntry.get<std::string>("range").c_str());
+      boost::property_tree::ptree ptReg;
+
+      ptReg.push_back(std::make_pair("", ptRegOffset));
+      ptReg.push_back(std::make_pair("", ptRegRange));
+      ptBarEntry.add_child("reg", ptReg);
+    }
+
+    ptBarArray.add_child(std::to_string(count++), ptBarEntry);
+  }
+
+  _ptTransformed.add_child("bars", ptBarArray);
+}
+
 void 
 SchemaTransformToDTC_interrupt_endpoint( const std::string _sEndPointName,
                                          const boost::property_tree::ptree& _ptOriginal,
@@ -477,7 +490,7 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "pcie", false /*required*/, 
-                           SchemaTransformUniversal_pcie,
+                           SchemaTransformToDTC_pcie,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 
@@ -491,6 +504,50 @@ SchemaTransformToDTC_root( const boost::property_tree::ptree & _ptOriginal,
 
 
 // -- Transform to partition metadata schema functions -----------------------
+
+/**
+ * Helper method to transform a generic node
+ * 
+ * @param _ptOriginal The original firmware property tree
+ * @param _ptTransformed The transform firmware property tree
+ */
+void 
+SchemaTransformToPM_pcie( const boost::property_tree::ptree& _ptOriginal,
+                          boost::property_tree::ptree & _ptTransformed)
+{
+  boost::property_tree::ptree ptEmpty;
+
+  // --- Bars ---
+  boost::property_tree::ptree ptBarOriginal;
+  ptBarOriginal = _ptOriginal.get_child("bars", ptEmpty);
+
+  if (ptBarOriginal.empty()) 
+    throw std::runtime_error("Error: pcie.bars[] list not found.");
+
+  boost::property_tree::ptree ptBarArray;
+  for (auto barEntryOrig : ptBarOriginal) {
+    boost::property_tree::ptree ptBarEntry;
+    boost::property_tree::ptree _ptBarOriginalEntry = barEntryOrig.second;
+
+    SchemaTransform_nameValue("pcie_bar_mapping", "pcie_base_address_register", true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+    SchemaTransform_nameValue("pcie_physical_function", "", true  /*required*/, _ptBarOriginalEntry, ptBarEntry);
+
+    // -- Transform 'reg' to 'offset' and 'range'
+    if (_ptBarOriginalEntry.find("reg") != _ptBarOriginalEntry.not_found()) {
+      std::vector<std::string> regVector = as_vector<std::string>(_ptBarOriginalEntry, "reg");
+
+      if (regVector.size() == 2) {
+	ptBarEntry.put("offset", regVector[0].c_str());
+	ptBarEntry.put("range", regVector[1].c_str());
+      }
+    }
+
+    ptBarArray.push_back(std::make_pair("", ptBarEntry));
+  }
+
+  _ptTransformed.add_child("bars", ptBarArray);
+}
+
 
 void 
 SchemaTransformToPM_interrupt_endpoint( const boost::property_tree::ptree& _ptOriginal,
@@ -703,7 +760,7 @@ SchemaTransformToPM_root( const boost::property_tree::ptree & _ptOriginal,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "pcie", false /*required*/, 
-                           SchemaTransformUniversal_pcie,
+                           SchemaTransformToPM_pcie,
                            _ptOriginal, _ptTransformed);
 
   SchemaTransform_subNode( "addressable_endpoints", false /*required*/, 

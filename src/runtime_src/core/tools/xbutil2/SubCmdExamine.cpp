@@ -32,7 +32,7 @@ namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 
 // System - Include Files
-#include <iostream> 
+#include <iostream>
 #include <fstream>
 #include <regex>
 
@@ -53,6 +53,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportPcieInfo.h"
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
+#include "tools/common/ReportCmcStatus.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
@@ -74,13 +75,14 @@ namespace po = boost::program_options;
     std::make_shared<ReportFirewall>(),
     std::make_shared<ReportThermal>(),
     std::make_shared<ReportQspiStatus>(),
+    std::make_shared<ReportCmcStatus>(),
   #endif
   };
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("examine", 
+    : SubCmd("examine",
              "Status of the system and device")
 {
   const std::string longDescription = "This command will 'examine' the state of the system/device and will"
@@ -110,7 +112,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   bool bHelp = false;
 
   // -- Retrieve and parse the subcommand options -----------------------------
-  po::options_description commonOptions("Common Options");  
+  po::options_description commonOptions("Common Options");
   commonOptions.add_options()
     ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
@@ -119,12 +121,12 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
-  po::options_description hiddenOptions("Hidden Options");  
+  po::options_description hiddenOptions("Hidden Options");
   hiddenOptions.add_options()
     ("element,e", boost::program_options::value<decltype(elementsFilter)>(&elementsFilter)->multitoken(), "Filters individual elements(s) from the report. Format: '/<key>/<key>/...'")
   ;
 
-  po::options_description allOptions("All Options");  
+  po::options_description allOptions("All Options");
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
@@ -140,7 +142,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  // Check to see if help was requested 
+  // Check to see if help was requested
   if (bHelp == true)  {
     printHelp(commonOptions, hiddenOptions);
     return;
@@ -197,7 +199,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     // Collect all of the devices of interest
     std::set<std::string> deviceNames;
-    for (const auto & deviceName : devices) 
+    for (const auto & deviceName : devices)
       deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
@@ -214,7 +216,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         auto dev_pt = XBU::get_available_devices(true);
         if(dev_pt.empty())
           std::cout << "0 devices found" << std::endl;
-        else 
+        else
           std::cout << "Device list" << std::endl;
 
         for(auto& kd : dev_pt) {
@@ -222,9 +224,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
           std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
         }
-        
+
         std::cout << boost::format("Warning: Due to missing devices, the following reports will not be generated:\n");
-        for (const auto & report : missingReports) 
+        for (const auto & report : missingReports)
           std::cout << boost::format("         - %s\n") % report;
       }
     }
@@ -239,7 +241,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
       }
       std::cout << std::endl;
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
   } catch (const xrt_core::error& e) {
     XBU::print_exception_and_throw_cancel(e);

@@ -40,9 +40,15 @@
 
 namespace {
 
+static unsigned long get_time_zero()
+{
+  // Originally: return xocl::time_ns();
+  return 0 ;
+}
+
 static bool s_debug_on = false;
 static std::string s_debug_log;
-static unsigned long s_zero = xocl::time_ns();
+static unsigned long s_zero = get_time_zero();
 
 // Event information
 namespace event {
@@ -187,8 +193,7 @@ init()
 
   ::event::init();
 
-  // reset time zero
-  s_zero = xocl::time_ns();
+  s_zero = get_time_zero();
 
   return s_debug_on;
 }

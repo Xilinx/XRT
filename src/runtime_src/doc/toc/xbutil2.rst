@@ -17,6 +17,7 @@ This document describes the new next-generation ``xbutil`` commands. These new c
  - ``--batch``: Enable batch mode
  - ``--force``: When possible, force an operation
  - ``--help`` : Get help message
+ - ``--version`` : Report the version of XRT and its drivers
 
 The next-generation ``xbutil`` commands are
 
@@ -157,6 +158,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
     - ``platform``: Platforms flashed on the device (default when ``--device`` is provided)
     - ``qspi-status``: QSPI write protection status
     - ``thermal``: Reports thermal sensors present on the device
+    - ``cmc-status``: Reports cmc status of the device
 
 - The ``--format`` (or ``-f``) specifies the report format. Note that ``--format`` also needs an ``--output`` to dump the report in json format. If ``--output`` is missing text format will be shown in stdout
     
