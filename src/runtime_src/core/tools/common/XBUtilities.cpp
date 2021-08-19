@@ -323,7 +323,7 @@ boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
 {
   xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  collect_devices(std::set<std::string> {"_all_"}, inUserDomain, deviceCollection);
   boost::property_tree::ptree pt;
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
@@ -487,7 +487,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     return;
 
   // -- Collect all of devices if the "all" option is used...anywhere in the collection
-  if (_deviceBDFs.find("all") != _deviceBDFs.end()) {
+  if (_deviceBDFs.find("_all_") != _deviceBDFs.end()) {
     xrt_core::device::id_type total = 0;
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
