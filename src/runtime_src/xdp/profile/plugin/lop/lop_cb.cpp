@@ -39,11 +39,11 @@ namespace xdp {
       (db->getStaticInfo()).addCommandQueueAddress(queueAddress) ;
 
     VTFEvent* event = new OpenCLAPICall(0,
-					timestamp,
-					functionID,
-					(db->getDynamicInfo()).addString(functionName),
-					queueAddress
-					) ;
+                                        timestamp,
+                                        functionID,
+                                        (db->getDynamicInfo()).addString(functionName),
+                                        queueAddress,
+                                        true); // is Low Overhead
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
   }
@@ -58,10 +58,11 @@ namespace xdp {
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
 
     VTFEvent* event = new OpenCLAPICall(start,
-					timestamp,
-					functionID,
-					(db->getDynamicInfo()).addString(functionName),
-					queueAddress) ;
+                                        timestamp,
+                                        functionID,
+                                        (db->getDynamicInfo()).addString(functionName),
+                                        queueAddress,
+                                        true) ; // is Low Overhead
     (db->getDynamicInfo()).addEvent(event) ;
   }
 

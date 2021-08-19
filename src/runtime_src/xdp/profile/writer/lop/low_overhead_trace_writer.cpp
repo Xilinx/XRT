@@ -103,7 +103,7 @@ namespace xdp {
     auto APIEvents = 
       (db->getDynamicInfo()).filterEraseHostEvents( [](VTFEvent* e)
                                            {
-                                             return e->isOpenCLAPI() ||
+                                             return e->isLOPAPI() ||
                                                     e->isLOPHostEvent() ;
                                            }
                                          ) ;
