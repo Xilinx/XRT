@@ -73,7 +73,7 @@ namespace xdp {
   void OpenCLTraceWriter::writeHumanReadableStructure()
   {
     fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,Host APIs" << std::endl ;
+    fout << "Group_Start,OpenCL Host Trace" << std::endl ;
     fout << "Group_Start,OpenCL API Calls" << std::endl ;
     fout << "Dynamic_Row," << generalAPIBucket
          << ",General,API Events not associated with a Queue" << std::endl ;
@@ -105,7 +105,7 @@ namespace xdp {
            << ",Kernel Enqueue" << std::endl ;
     }
     fout << "Group_End,Kernel Enqueues" << std::endl ;
-    fout << "Group_End,Host APIs" << std::endl ;
+    fout << "Group_End,OpenCL Host Trace" << std::endl ;
   }
 
   void OpenCLTraceWriter::writeHumanReadableStringTable()

@@ -66,7 +66,7 @@ namespace xdp {
   void LowOverheadTraceWriter::writeHumanReadableStructure()
   {
     fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,Host APIs" << std::endl ;
+    fout << "Group_Start,Low Overhead OpenCL Host Trace" << std::endl ;
     fout << "Group_Start,OpenCL API Calls" << std::endl ;
     fout << "Dynamic_Row," << generalAPIBucket
          << ",General,API Events not associated with a Queue" << std::endl ;
@@ -88,7 +88,7 @@ namespace xdp {
     fout << "Group_End,Data Transfer" << std::endl ;
     fout << "Dynamic_Row_Summary," << enqueueBucket 
          << ",Kernel Enqueues,Activity in kernel enqueues" << std::endl ;
-    fout << "Group_End,Host APIs" << std::endl ;
+    fout << "Group_End,Low Overhead OpenCL Host Trace" << std::endl ;
   }
 
   void LowOverheadTraceWriter::writeHumanReadableStringTable()
