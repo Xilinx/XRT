@@ -760,7 +760,7 @@ XBUtilities::parse_clock_id(const std::string& id)
 }
 
 uint64_t 
-XBUtilities::string_to_bytes(std::string& str)
+XBUtilities::string_to_bytes(std::string str)
 {
   boost::algorithm::trim(str);
 
