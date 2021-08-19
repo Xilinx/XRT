@@ -760,29 +760,22 @@ XBUtilities::parse_clock_id(const std::string& id)
 }
 
 uint64_t 
-XBUtilities::string_to_bytes(const std::string &str)
+XBUtilities::string_to_bytes(std::string& str)
 {
-  uint64_t size = 0;
+  boost::algorithm::trim(str);
+
   if(str.empty())
     throw xrt_core::error(std::errc::invalid_argument);
 
-  uint64_t unit_bytes = 0;
-  std::string units;
-  try {
-    for(const auto& x : str) {
-      if(std::isdigit(x))
-        size = size*10 + (x - '0');
-      else if(std::isalpha(x))
-        units += x;
-    }
-    size = std::stoll(str.substr(0, str.length()-1));
-  } 
-  catch (const std::exception&) {
-    //out of range, invalid argument ex
-    throw xrt_core::error(std::errc::invalid_argument);
+  std::string units = "B";
+  if(std::isalpha(str.at(str.length()))) {
+    units = str.at(str.length());
+    str.pop_back();
   }
+
+  uint64_t unit_bytes = 0;
   boost::to_upper(units);
-  if(units.empty() || units.compare("B") == 0)
+  if(units.compare("B") == 0)
     unit_bytes = 1;
   else if(units.compare("K") == 0)
     unit_bytes = 1024;
@@ -792,6 +785,16 @@ XBUtilities::string_to_bytes(const std::string &str)
     unit_bytes = 1024*1024*1024;
   else
     throw xrt_core::error(std::errc::invalid_argument);
+
+  boost::algorithm::trim(str);
+  uint64_t size = 0;
+  try {
+    size = std::stoll(str);
+  } 
+  catch (const std::exception&) {
+    //out of range, invalid argument ex
+    throw xrt_core::error(std::errc::invalid_argument);
+  }
 
   size *= unit_bytes;
   return size;

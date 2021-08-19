@@ -150,7 +150,7 @@ namespace XBUtilities {
   string_to_UUID(std::string str);
 
   uint64_t 
-  string_to_bytes(const std::string &str);
+  string_to_bytes(std::string &str);
 
  /*
   * xclbin locking
