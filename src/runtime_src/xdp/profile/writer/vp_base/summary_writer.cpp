@@ -1449,7 +1449,7 @@ namespace xdp {
     if (!hasMemoryMonitors) return ;
 
     fout << "TITLE:Data Transfer: Memory Resource\n" ;
-    fout << "SECTION:Host Data Transfers,Memory Bank Data Transfer\n" ;
+    fout << "SECTION:Memory Data Transfers,Memory Bank Data Transfer\n" ;
     fout << "COLUMN:<html>Device</html>,string,Name of device\n" ;
     fout << "COLUMN:<html>Memory<br>Resource</html>,string,"
          << "Memory resource on the device\n" ;

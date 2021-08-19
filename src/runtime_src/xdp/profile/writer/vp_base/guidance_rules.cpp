@@ -549,7 +549,7 @@ namespace {
     uint64_t startTime = db->getStaticInfo().getApplicationStartTime() ;
     uint64_t endTime = xrt_core::time_ns() ; 
 
-    fout << "APPLICATON_RUN_TIME_MS,all," 
+    fout << "APPLICATION_RUN_TIME_MS,all," 
          << (double)(endTime - startTime) / 1e06
          << ",\n" ;
   }
