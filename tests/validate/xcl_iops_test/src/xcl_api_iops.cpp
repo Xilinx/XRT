@@ -43,7 +43,7 @@ struct krnl_info {
 
 bool verbose = false;
 barrier barrier;
-thread_local struct krnl_info krnl = {"hello", false};
+struct krnl_info krnl = {"hello", false};
 
 static void usage(char *prog)
 {
@@ -197,13 +197,18 @@ void runTestThread(arg_t &arg)
 
     // CU name shoue be "hello:hello_1" or "verify:verify_1"
     std::string cu_name = krnl.name + ":" + krnl.name + "_1";
-    krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
-    if (krnl.cu_idx < 0) {
+    // Do not store cu_idx directly in krnl object. This object is shared between multiple threads
+    // Update this object when we get the valid index.
+    int cu_idx = xclIPName2Index(handle, cu_name.c_str());
+    if (cu_idx >= 0)
+        krnl.cu_idx = cu_idx;
+    else {
         // hello:hello_cu0 is U2 shell special
         cu_name = krnl.name + ":" + krnl.name + "_cu0";
-        krnl.cu_idx = xclIPName2Index(handle, cu_name.c_str());
-        if (krnl.cu_idx < 0)
+        cu_idx = xclIPName2Index(handle, cu_name.c_str());
+        if (cu_idx < 0)
             throw std::runtime_error(cu_name + " not found");
+	krnl.cu_idx = cu_idx;
     }
 
     if (xclOpenContext(handle, uuid, krnl.cu_idx, true))
