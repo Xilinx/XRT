@@ -354,67 +354,17 @@ ert_queue_submit(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	return queue->func->submit(ecmd, queue->handle);
 }
 
-static irqreturn_t
-ert_user_versal_isr(void *arg)
-{
-	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	struct ert_queue *queue = NULL;
-	xdev_handle_t xdev;
-
-	BUG_ON(!ert_user);
-
-	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
-	xdev = xocl_get_xdev(ert_user->pdev);
-	queue = ert_user->queue;
-
-	if (!queue || ert_user->polling_mode)
-		return IRQ_NONE;
-
-	return queue->func->irq_handle(0, queue->handle);
-}
-
-static irqreturn_t
-ert_user_isr(int irq, void *arg)
-{
-	struct xocl_ert_user *ert_user = (struct xocl_ert_user *)arg;
-	struct ert_queue *queue = NULL;
-	xdev_handle_t xdev;
-
-	BUG_ON(!ert_user);
-
-	ERTUSER_DBG(ert_user, "-> %s\n", __func__);
-	xdev = xocl_get_xdev(ert_user->pdev);
-	queue = ert_user->queue;
-
-	if (!queue || ert_user->polling_mode)
-		return IRQ_NONE;
-
-	return queue->func->irq_handle(irq, queue->handle);
-}
-
 static inline void
-ert_intc_config(struct xocl_ert_user *ert_user, bool enable)
+ert_queue_intc_config(struct xocl_ert_user *ert_user, bool enable)
 {
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
-	uint32_t i;
+	struct ert_queue *queue = ert_user->queue;
 
-	if (XOCL_DSA_IS_VERSAL(xdev)) {
-		if (enable)
-			xocl_mailbox_versal_request_intr(xdev, ert_user_versal_isr, ert_user);
-		else
-			xocl_mailbox_versal_free_intr(xdev);
+	if (!queue) {
+		ERTUSER_ERR(ert_user, "Couldn't find queue %s\n", __func__);
 		return;
 	}
 
-	for (i = 0; i < ert_user->num_slots; i++) {
-		if (enable) {
-			xocl_intc_ert_request(xdev, i, ert_user_isr, ert_user);
-			xocl_intc_ert_config(xdev, i, true);
-		} else {
-			xocl_intc_ert_config(xdev, i, false);
-			xocl_intc_ert_request(xdev, i, NULL, NULL);
-		}
-	}
+	queue->func->intc_config(enable, queue->handle);
 }
 
 static inline int
@@ -522,13 +472,13 @@ static int ert_user_enable(struct platform_device *pdev, bool enable)
 	if (enable) {
 		xocl_gpio_cfg(xdev, MB_WAKEUP);
 
-		ert_intc_config(ert_user, true);
+		ert_queue_intc_config(ert_user, true);
 		xocl_gpio_cfg(xdev, INTR_TO_ERT);
 	} else {
 		ert_submit_exit_cmd(ert_user);
 		xocl_gpio_cfg(xdev, MB_SLEEP);
 
-		ert_intc_config(ert_user, false);
+		ert_queue_intc_config(ert_user, false);
 		xocl_gpio_cfg(xdev, INTR_TO_CU);
 	}
 
@@ -680,14 +630,9 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 	unsigned int dsa = ert_user->ert_cfg_priv.dsa;
 	unsigned int major = ert_user->ert_cfg_priv.major;
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
-	bool ert_enabled = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-	    xocl_mb_sched_on(xdev);
-	bool ert_full = !cfg->dataflow;
-	bool ert_poll = cfg->dataflow;
+	bool dataflow_enabled = cfg->dataflow;
 	unsigned int ert_num_slots = 0, slot_size = 0, max_slot_num;
 	uint64_t cq_range = ert_user->queue->size;
-
-	BUG_ON(!ert_enabled);
 
 	if (cmd_opcode(ecmd) != ERT_CONFIGURE)
 		return -EINVAL;
@@ -698,16 +643,6 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 	}
 
 	ERTUSER_DBG(ert_user, "dsa52 = %d", dsa);
-
-	if (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) {
-		ERTUSER_INFO(ert_user, "MPSoC polling mode %d", cfg->polling);
-
-		// For MPSoC device, we will use ert_full if we are
-		// configured as ert mode even dataflow is configured.
-		// And we do not support ert_poll.
-		ert_full = cfg->ert;
-		ert_poll = false;
-	}
 
 	// Mark command as control command to force slot 0 execution
 	/*  1. cfg->slot_size need to be 32-bit aligned
@@ -732,7 +667,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	ert_num_slots = cq_range / slot_size;
 
-	if (ert_full && cfg->cu_dma && ert_num_slots > 32) {
+	if (!dataflow_enabled && cfg->cu_dma && ert_num_slots > 32) {
 		// Max slot size is 32 because of cudma bug
 		ERTUSER_INFO(ert_user, "Limitting CQ size to 32 due to ERT CUDMA bug\n");
 		slot_size = cq_range / 32;
@@ -740,19 +675,14 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	cfg->slot_size = slot_size;
 
-	if (ert_poll) {
-		ERTUSER_INFO(ert_user, "configuring dataflow mode with ert polling\n");
-		cfg->cu_isr = 0;
-		cfg->cu_dma = 0;
-	} else if (ert_full) {
-		ERTUSER_INFO(ert_user, "configuring embedded scheduler mode\n");
-		cfg->dsa52 = dsa;
-		cfg->cdma = cdma ? 1 : 0;
-	}
+	if (dataflow_enabled)
+		ERTUSER_INFO(ert_user, "configuring embedded scheduler dataflow mode\n");
 
 	if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUDMA_OFF)
 		cfg->cu_dma = 0;
 
+	cfg->dsa52 = dsa;
+	cfg->cdma = cdma ? 1 : 0;
 	cfg->dmsg = ert_user->ert_dmsg;
 	cfg->echo = ert_user->echo;
 	cfg->intr = ert_user->intr;
@@ -779,13 +709,9 @@ static int
 ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 {
 	int ret = 0;
-	xdev_handle_t xdev = xocl_get_xdev(ert_user->pdev);
 	struct ert_configure_cmd *cfg = (struct ert_configure_cmd *)ecmd->xcmd->execbuf;
-	bool ert = (XOCL_DSA_IS_VERSAL(xdev) || XOCL_DSA_IS_MPSOC(xdev)) ? 1 :
-		xocl_mb_sched_on(xdev);
 
 	BUG_ON(cmd_opcode(ecmd) != ERT_CONFIGURE);
-	BUG_ON(!ert);
 
 	ret = ert_config_queue(ert_user, cfg->slot_size);
 	if (ret)
@@ -797,7 +723,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 
 	ert_user->polling_mode = cfg->polling;
 	/* if polling, disable intc, vice versa */
-	ert_intc_config(ert_user, !ert_user->polling_mode);
+	ert_queue_intc_config(ert_user, !ert_user->polling_mode);
 
 	memset(ert_user->cu_stat, 0, cfg->num_cus * sizeof(struct ert_cu_stat));
 
@@ -1363,7 +1289,7 @@ static int ert_user_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	ert_intc_config(ert_user, false);
+	ert_queue_intc_config(ert_user, false);
 
 	sysfs_remove_group(&pdev->dev.kobj, &ert_user_attr_group);
 

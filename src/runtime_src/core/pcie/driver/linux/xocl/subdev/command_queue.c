@@ -411,7 +411,7 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 }
 
 static irqreturn_t
-cmd_queue_versal_isr(int irq, void *arg)
+cmd_queue_versal_isr(void *arg)
 {
 	struct command_queue *cmd_queue = (struct command_queue *)arg;
 	xdev_handle_t xdev;
@@ -461,7 +461,6 @@ cmd_queue_isr(int irq, void *arg)
 	xdev = xocl_get_xdev(cmd_queue->pdev);
 
 	BUG_ON(irq >= ERT_MAX_SLOTS);
-
 
 	ecmd = cmd_queue->submit_queue[irq];
 	if (ecmd) {
@@ -533,6 +532,33 @@ command_queue_abort(void *client, void *queue_handle)
 	}
 }
 
+static void
+command_queue_intc_config(bool enable, void *queue_handle)
+{
+	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
+	xdev_handle_t xdev = xocl_get_xdev(cmd_queue->pdev);
+	uint32_t i = 0;
+
+	CMDQUEUE_DBG(cmd_queue, "-> %s\n", __func__);
+
+	if (XOCL_DSA_IS_VERSAL(xdev)) {
+		if (enable)
+			xocl_mailbox_versal_request_intr(xdev, cmd_queue_versal_isr, cmd_queue);
+		else
+			xocl_mailbox_versal_free_intr(xdev);
+		return;
+	}
+
+	for (i = 0; i < cmd_queue->num_slots; i++) {
+		if (enable) {
+			xocl_intc_ert_request(xdev, i, cmd_queue_isr, cmd_queue);
+			xocl_intc_ert_config(xdev, i, true);
+		} else {
+			xocl_intc_ert_config(xdev, i, false);
+			xocl_intc_ert_request(xdev, i, NULL, NULL);
+		}
+	}
+}
 
 static struct xrt_ert_queue_funcs command_queue_func = {
 
@@ -540,13 +566,13 @@ static struct xrt_ert_queue_funcs command_queue_func = {
 
 	.submit  = command_queue_submit,
 
-	.irq_handle = cmd_queue_isr,
-
 	.queue_config = command_queue_config,
 
 	.max_slot_num = command_queue_max_slot_num,
 
 	.abort = command_queue_abort,
+
+	.intc_config = command_queue_intc_config,
 };
 
 static int command_queue_remove(struct platform_device *pdev)
@@ -626,9 +652,6 @@ static int command_queue_probe(struct platform_device *pdev)
 
 	cmd_queue->num_slots = ERT_MAX_SLOTS;
 	INIT_LIST_HEAD(&cmd_queue->sq);
-
-	if (XOCL_DSA_IS_VERSAL(xdev))
-		command_queue_func.irq_handle = cmd_queue_versal_isr;
 
 	cmd_queue->queue.handle = cmd_queue;
 	cmd_queue->queue.func = &command_queue_func;
