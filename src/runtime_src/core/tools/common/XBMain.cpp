@@ -161,10 +161,10 @@ void  main_(int argc, char** argv,
     // If there are multiple devices, then no default device can be found.
     if (available_devices.size() > 1) {
       std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
-      std::cout << "List of available devices:" << std::endl;
+      std::cerr << "List of available devices:" << std::endl;
       for (auto &kd : available_devices) {
-        boost::property_tree::ptree& _dev = kd.second;
-        std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+        boost::property_tree::ptree& dev = kd.second;
+        std::cerr << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
       }
 
       std::cout << std::endl;
