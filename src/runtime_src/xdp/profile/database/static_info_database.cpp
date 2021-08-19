@@ -635,8 +635,8 @@ namespace xdp {
     if (cuObj) {
       cuObj->addAIM(slotId, traceEnabled) ;
     }
-    else {
-      // If not connected to CU and not a shell monitor, then a floating monitor
+    else if(traceEnabled) {
+      // If not connected to CU and not a shell monitor, then a floating monitor enabled for trace
       devInfo->loadedXclbins.back()->hasFloatingAIM = true;
     }
 
