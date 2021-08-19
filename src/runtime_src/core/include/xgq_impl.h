@@ -88,7 +88,7 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
 #define XGQ_ATTACH_MAGIC		0x58475121	/* XGQ! */
 #define XGQ_MAJOR			1
 #define XGQ_MINOR			0
-#define XGQ_MIN_NUM_SLOTS		4
+#define XGQ_MIN_NUM_SLOTS		2
 #define XGQ_RING_LEN(nslots, slotsz)	\
 	(sizeof(struct xgq_header) + (nslots) * ((slotsz) + sizeof(struct xrt_com_queue_entry)))
 
