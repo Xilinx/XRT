@@ -43,7 +43,7 @@ struct krnl_info {
 
 bool verbose = false;
 barrier barrier;
-struct krnl_info krnl = {"hello", false};
+thread_local struct krnl_info krnl = {"hello", false};
 
 static void usage(char *prog)
 {
