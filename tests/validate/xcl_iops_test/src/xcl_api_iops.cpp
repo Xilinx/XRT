@@ -200,16 +200,14 @@ void runTestThread(arg_t &arg)
     // Do not store cu_idx directly in krnl object. This object is shared between multiple threads
     // Update this object when we get the valid index.
     int cu_idx = xclIPName2Index(handle, cu_name.c_str());
-    if (cu_idx >= 0)
-        krnl.cu_idx = cu_idx;
-    else {
+    if (cu_idx < 0) {
         // hello:hello_cu0 is U2 shell special
         cu_name = krnl.name + ":" + krnl.name + "_cu0";
         cu_idx = xclIPName2Index(handle, cu_name.c_str());
         if (cu_idx < 0)
             throw std::runtime_error(cu_name + " not found");
-	krnl.cu_idx = cu_idx;
     }
+    krnl.cu_idx = cu_idx;
 
     if (xclOpenContext(handle, uuid, krnl.cu_idx, true))
         throw std::runtime_error("Cound not open context");
