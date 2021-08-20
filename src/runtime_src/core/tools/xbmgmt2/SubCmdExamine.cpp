@@ -131,7 +131,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Determine default values
   if (devices.size() == 0)
-    devices.push_back("all");
+    devices.push_back("_all_");
 
   if (reportNames.size() == 0)
     reportNames.push_back("host");
