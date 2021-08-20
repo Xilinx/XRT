@@ -102,7 +102,7 @@ namespace xdp {
 
       fout << "Group_End," << cu->getName() << std::endl ;
     }
-    // Create structure for all floating monitors not attached to a CU
+    // Create structure for all floating monitors not attached to a CU, and enabled for trace
     writeFloatingMemoryTransfersStructure(xclbin, rowCount) ;
     writeFloatingStreamTransfersStructure(xclbin, rowCount) ;
   }
@@ -192,7 +192,7 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingMemoryTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo().hasFloatingAIM(deviceId, xclbin))) return ;
+    if (!(db->getStaticInfo().hasFloatingAIMwithTrace(deviceId, xclbin))) return ;
     fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
 
     // Go through all of the AIMs in this xclbin to find the floating ones
@@ -229,7 +229,7 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingStreamTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo()).hasFloatingASM(deviceId, xclbin)) return ;
+    if (!(db->getStaticInfo()).hasFloatingASMwithTrace(deviceId, xclbin)) return ;
     fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
 
     std::map<uint64_t, Monitor*> *asmMap =

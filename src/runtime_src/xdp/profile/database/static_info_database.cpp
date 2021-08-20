@@ -636,8 +636,9 @@ namespace xdp {
       cuObj->addAIM(slotId, traceEnabled) ;
     }
     else if(traceEnabled) {
-      // If not connected to CU and not a shell monitor, then a floating monitor enabled for trace
-      devInfo->loadedXclbins.back()->hasFloatingAIM = true;
+      // If not connected to CU and not a shell monitor, then a floating monitor
+      // This floating monitor is enabled for trace too
+      devInfo->loadedXclbins.back()->hasFloatingAIMwithTrace = true;
     }
 
     // If the AIM is an User Space AIM with trace enabled i.e. either
@@ -724,9 +725,10 @@ namespace xdp {
     if (cuObj) {
       cuObj->addASM(slotId, traceEnabled) ;
     }
-    else {
+    else if (traceEnabled) {
       // If not connected to CU and not a shell monitor, then a floating monitor
-      devInfo->loadedXclbins.back()->hasFloatingASM = true ;
+      // This floating monitor is enabled for trace too
+      devInfo->loadedXclbins.back()->hasFloatingASMwithTrace = true ;
     }
 
     if (traceEnabled) {
