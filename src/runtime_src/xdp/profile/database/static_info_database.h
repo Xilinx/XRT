@@ -281,8 +281,8 @@ class aie_cfg_tile
     double maxWriteBW = 0.0 ;
     double clockRateMHz = 300 ;
     bool usesTs2mm = false ;
-    bool hasFloatingAIM = false;
-    bool hasFloatingASM = false;
+    bool hasFloatingAIMwithTrace = false;
+    bool hasFloatingASMwithTrace = false;
     // Memory AIMs are configured for counters only, so are separate
     //  from floating AIMs that have trace
     bool hasMemoryAIM = false ;
@@ -402,16 +402,16 @@ class aie_cfg_tile
       loadedXclbins.push_back(xclbin) ;
     }
 
-    bool hasFloatingAIM(XclbinInfo* xclbin) {
+    bool hasFloatingAIMwithTrace(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->hasFloatingAIM ;
+        if (bin == xclbin) return bin->hasFloatingAIMwithTrace ;
       }
       return false ;
     }
 
-    bool hasFloatingASM(XclbinInfo* xclbin) {
+    bool hasFloatingASMwithTrace(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->hasFloatingASM ;
+        if (bin == xclbin) return bin->hasFloatingASMwithTrace ;
       }
       return false ;
     }
@@ -1154,18 +1154,18 @@ class aie_cfg_tile
       return deviceInfo[deviceId]->ctxInfo;
     }
 
-    inline bool hasFloatingAIM(uint64_t deviceId, XclbinInfo* xclbin)
+    inline bool hasFloatingAIMwithTrace(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
-      return deviceInfo[deviceId]->hasFloatingAIM(xclbin);
+      return deviceInfo[deviceId]->hasFloatingAIMwithTrace(xclbin);
     }
 
-    inline bool hasFloatingASM(uint64_t deviceId, XclbinInfo* xclbin)
+    inline bool hasFloatingASMwithTrace(uint64_t deviceId, XclbinInfo* xclbin)
     {
       if(deviceInfo.find(deviceId) == deviceInfo.end())
         return false;
-      return deviceInfo[deviceId]->hasFloatingASM(xclbin);
+      return deviceInfo[deviceId]->hasFloatingASMwithTrace(xclbin);
     }
 
     inline uint64_t getNumTracePLIO(uint64_t deviceId)
