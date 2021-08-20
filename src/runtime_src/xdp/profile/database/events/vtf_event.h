@@ -103,7 +103,8 @@ namespace xdp {
 
     // Functions that can be used as filters
     virtual bool isUserEvent()       { return false ; }
-    virtual bool isOpenCLAPI()       { return false ; } 
+    virtual bool isOpenCLAPI()       { return false ; }
+    virtual bool isLOPAPI()          { return false ; }
     virtual bool isHALAPI()          { return false ; }
     virtual bool isHostEvent()       { return false ; }
     virtual bool isNativeHostEvent() { return false ; } 

@@ -52,7 +52,7 @@ namespace xdp {
     uint32_t rowCount = 0;
     fout << "STRUCTURE" << std::endl ;
     
-    fout << "Group_Start,Host" << std::endl ;
+    fout << "Group_Start,HAL Host Trace" << std::endl ;
 
     fout << "Group_Start,HAL API Calls" << std::endl ;
     fout << "Dynamic_Row," << ++rowCount << ",General,0x0,API_CALL" << std::endl;
@@ -66,7 +66,7 @@ namespace xdp {
     eventTypeBucketIdMap[WRITE_BUFFER] = rowCount;
     fout << "Group_End,Data Transfer" << std::endl ;
     
-    fout << "Group_End,Host" << std::endl ;
+    fout << "Group_End,HAL Host Trace" << std::endl ;
   }
 
   void HALHostTraceWriter::writeStringTable()
