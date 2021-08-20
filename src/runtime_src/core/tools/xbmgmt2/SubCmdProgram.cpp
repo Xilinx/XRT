@@ -437,7 +437,7 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate)
  * Refactor code to support only 1 device. 
  */
 static void 
-auto_flash(std::shared_ptr<xrt_core::device> & workingDevice) 
+auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string& image = "") 
 {
   //report status of all the devices
   boost::property_tree::ptree pt;
@@ -446,16 +446,42 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice)
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
 
-  static boost::property_tree::ptree ptEmpty;
-  auto available_shells = pt.get_child(std::to_string(workingDevice->get_device_id()) + ".platform.available_shells", ptEmpty);
+  std::string image_path;
+  if(!image.empty()) {
+  //iterate over installed shells
+  //check the vbnv against the vnbv passed in by the user
+  auto installedShells = firmwareImage::getIntalledDSAs();
+  int multiple_shells = 0;
+    
+  for(auto const& shell : installedShells) {
+    if(image.compare(shell.name) == 0) {
+      multiple_shells++;
+      image_path = shell.file;
+    }
+  }
 
-  // Check if any base packages are available
-  if (available_shells.empty()) {
-    std::cout << "ERROR: No base (e.g., shell) images installed on the server. Operation cancelled.\n";
-    throw xrt_core::error(std::errc::operation_canceled);
+  //error-handling
+  if(multiple_shells == 0) 
+    throw xrt_core::error("Specified base not found on the system");
+    
+  //if multiple shells with the same vbnv are installed on the system, we don't want to 
+  //blindly update the device. in this case, the user needs to specify the complete path
+  if(multiple_shells > 1) 
+    throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
+  }
+  else {
+    static boost::property_tree::ptree ptEmpty;
+    auto available_shells = pt.get_child(std::to_string(workingDevice->get_device_id()) + ".platform.available_shells", ptEmpty);
+
+    // Check if any base packages are available
+    if (available_shells.empty()) {
+      std::cout << "ERROR: No base (e.g., shell) images installed on the server. Operation cancelled.\n";
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    image_path = available_shells.front().second.get<std::string>("file");
   }
     
-  DSAInfo dsa(available_shells.front().second.get<std::string>("file"));
+  DSAInfo dsa(image_path);
 
   // If the shell is not up-to-date and dsa has a flash image, queue the board for update
   bool same_shell = pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.shell");
@@ -664,6 +690,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  SC    - Satellite controller"*/)
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk\n"
+                                                                    "Note: Multiple images can be specified separated by a space")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -673,10 +703,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
                                                                     "  ospi\n"
                                                                     "  ospi_versal")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
-                                                                    "  Name (and path) to the mcs image on disk\n"
-                                                                    "  Name (and path) to the xsabin image on disk\n"
-                                                                    "Note: Multiple images can be specified separated by a space")
   ;
 
   po::options_description allOptions("All Options");  
@@ -760,16 +786,14 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
 
     // We support up to 2 flash images 
-    if (image.size() > 2)
+    if (image.size() == 1)
+      auto_flash(workingDevice, image.front());
+    else if (image.size() == 2) {
+      auto image_paths = find_flash_image_paths(image);
+      update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
+    }
+    else if (image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
-
-    // Find the absolute path to the specified image
-    auto image_paths = find_flash_image_paths(image);
-
-    if (!XBU::can_proceed(XBU::getForce()))
-      return;
-
-    update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     return;
   }
 
