@@ -590,6 +590,12 @@ xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 }
 
 int
+xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t force)
+{
+  return -ENOSYS;
+}
+
+int
 xclUpdateSchedulerStat(xclDeviceHandle handle)
 {
   return -ENOSYS;

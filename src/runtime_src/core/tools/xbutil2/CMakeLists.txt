@@ -22,11 +22,13 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdReset.cpp"
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
+  "SubCmdConfigure.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"
   "OO_P2P.cpp"
   "OO_AieRegRead.cpp"
+  "OO_HostMem.cpp"
 )
 
 # Merge the files into one collection

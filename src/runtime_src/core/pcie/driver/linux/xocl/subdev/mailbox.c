@@ -248,8 +248,6 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	MSG_TX_PER_MB_TTL	1UL	/* in seconds */
 #define	MSG_MAX_TTL		0xFFFFFFFF /* used to disable timer */
 #define	TEST_MSG_LEN		128
-#define	JIFFIES_TO_US(jiffies) 	(jiffies * 1000000 / HZ)
-#define	MAILBOX_TIMER_US 	JIFFIES_TO_US(MAILBOX_TIMER)
 
 #define	INVALID_MSG_ID		((u64)-1)
 
@@ -378,6 +376,8 @@ struct mailbox_channel {
 	atomic_t		sw_num_pending_msg;
 
 	u64			polling_count;
+
+	unsigned long		idle_peroid; /* num of us while being idle */
 };
 
 enum {
@@ -857,6 +857,27 @@ static void handle_timer_event(struct mailbox_channel *ch)
 	clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 }
 
+static void chan_sleep(struct mailbox_channel *ch, bool idle)
+{
+	const u32 short_sleep = 100; /* in us */
+	const u32 long_sleep = short_sleep * 1000; /* in us */
+	const u32 transit_time = long_sleep * 10; /* in us, time before switching to long sleep */
+	unsigned long sleep_time = 0;
+
+	if (idle) {
+		if (ch->idle_peroid <= transit_time)
+			sleep_time = short_sleep;
+		else
+			sleep_time = long_sleep;
+		ch->idle_peroid += sleep_time;
+	} else {
+		sleep_time = short_sleep;
+		ch->idle_peroid = 0;
+	}
+
+	usleep_range(sleep_time / 2, sleep_time);
+}
+
 static void chan_worker(struct work_struct *work)
 {
 	struct mailbox_channel *ch =
@@ -866,14 +887,13 @@ static void chan_worker(struct work_struct *work)
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
 		if (ch->mbc_cur_msg) {
 			/*
-			 * Fast poll (500 ~ 1000/s) when we have outstanding msg.
-			 * This will not last long since outstanding msg will
-			 * be removed shortly either because we finish processing
-			 * it or it's time'd out.
+			 * Fast poll when we have outstanding msg. This will not last long
+			 * since outstanding msg will be removed shortly either because we
+			 * finish processing it or it's time'd out.
 			 */
-			usleep_range(1000, 2000);
+			chan_sleep(ch, false);
 		} else if (mailbox_no_intr) {
-			usleep_range(MAILBOX_TIMER_US, MAILBOX_TIMER_US * 2);
+			chan_sleep(ch, true);
 		} else {
 			/*
 			 * Wait for next poll triggered by intr or timer, which should

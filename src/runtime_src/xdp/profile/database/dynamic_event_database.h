@@ -144,8 +144,7 @@ namespace xdp {
     // Trace parser states and other metadata data structures
     std::mutex deviceLock ;
     std::mutex hostLock ;
-
-    //std::map<uint64_t, uint64_t> traceIDMap;
+    std::mutex stringLock ;
 
     void addHostEvent(VTFEvent* event) ;
     void addDeviceEvent(uint64_t deviceId, VTFEvent* event) ;

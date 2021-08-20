@@ -216,8 +216,8 @@ namespace xdp {
 
   uint64_t VPDynamicDatabase::addString(const std::string& value)
   {
-    if (stringTable.find(value) == stringTable.end())
-    {
+    std::lock_guard<std::mutex> lock(stringLock) ;
+    if (stringTable.find(value) == stringTable.end()) {
       stringTable[value] = stringId++ ;
     }
     return stringTable[value] ;
@@ -349,6 +349,7 @@ namespace xdp {
 
   void VPDynamicDatabase::dumpStringTable(std::ofstream& fout)
   {
+    std::lock_guard<std::mutex> lock(stringLock) ;
     // Windows compilation fails unless c_str() is used
     for (auto s : stringTable)
     {

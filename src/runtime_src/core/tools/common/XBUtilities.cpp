@@ -323,7 +323,7 @@ boost::property_tree::ptree
 XBUtilities::get_available_devices(bool inUserDomain)
 {
   xrt_core::device_collection deviceCollection;
-  collect_devices(std::set<std::string> {"all"}, inUserDomain, deviceCollection);
+  collect_devices(std::set<std::string> {"_all_"}, inUserDomain, deviceCollection);
   boost::property_tree::ptree pt;
   for (const auto & device : deviceCollection) {
     boost::property_tree::ptree pt_dev;
@@ -487,7 +487,7 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
     return;
 
   // -- Collect all of devices if the "all" option is used...anywhere in the collection
-  if (_deviceBDFs.find("all") != _deviceBDFs.end()) {
+  if (_deviceBDFs.find("_all_") != _deviceBDFs.end()) {
     xrt_core::device::id_type total = 0;
     try {
       // If there are no devices in the server a runtime exception is thrown in  mgmt.cpp probe()
@@ -690,6 +690,114 @@ XBUtilities::str_to_reset_obj(const std::string& str)
   if (it != reset_map.end())
     return it->second;
   throw xrt_core::error(str + " is invalid. Please specify a valid reset type");
+}
+
+std::string
+XBUtilities::string_to_UUID(std::string str)
+{
+  //make sure that a UUID is passed in
+  assert(str.length() == 32);
+  std::string uuid = "";
+  //positions to insert hyphens
+  //before: 00000000000000000000000000000000
+  std::vector<int> pos = {8, 4, 4, 4};
+  //before: 00000000-0000-0000-0000-000000000000
+
+  for(auto const p : pos) {
+    std::string token = str.substr(0, p);
+    boost::to_upper(token);
+    uuid.append(token + "-");
+    str.erase(0, p);
+  }
+  boost::to_upper(str);
+  uuid.append(str);
+
+  return uuid;
+}
+
+static const std::map<uint64_t, std::string> oemid_map = {
+  {0x10da, "Xilinx"},
+  {0x02a2, "Dell"},
+  {0x12a1, "IBM"},
+  {0xb85c, "HP"},
+  {0x2a7c, "Super Micro"},
+  {0x4a66, "Lenovo"},
+  {0xbd80, "Inspur"},
+  {0x12eb, "Amazon"},
+  {0x2b79, "Google"}
+};
+
+std::string 
+XBUtilities::parse_oem_id(const std::string& oemid)
+{
+  uint64_t oem_id_val = 0;
+  std::stringstream ss;
+
+  try {
+    oem_id_val = std::stoul(oemid, nullptr, 16);
+  } catch (const std::exception&) {
+    //failed to parse oemid to hex value, ignore erros and print original value
+  }
+
+  auto oemstr = oemid_map.find(oem_id_val);
+  return oemstr != oemid_map.end() ? oemstr->second : "N/A";
+}
+
+static const std::map<std::string, std::string> clock_map = {
+  {"DATA_CLK", "Data"},
+  {"KERNEL_CLK", "Kernel"},
+  {"SYSTEM_CLK", "System"},
+};
+
+std::string 
+XBUtilities::parse_clock_id(const std::string& id)
+{
+  auto clock_str = clock_map.find(id);
+  if (clock_str != clock_map.end())
+    return clock_str->second;
+  
+  throw xrt_core::error(std::errc::invalid_argument);
+}
+
+uint64_t 
+XBUtilities::string_to_bytes(std::string str)
+{
+  boost::algorithm::trim(str);
+
+  if(str.empty())
+    throw xrt_core::error(std::errc::invalid_argument);
+
+  std::string units = "B";
+  if(std::isalpha(str.at(str.length()))) {
+    units = str.at(str.length());
+    str.pop_back();
+  }
+
+  uint64_t unit_bytes = 0;
+  boost::to_upper(units);
+  if(units.compare("B") == 0)
+    unit_bytes = 1;
+  else if(units.compare("K") == 0)
+    unit_bytes = 1024;
+  else if(units.compare("M") == 0)
+    unit_bytes = 1024*1024;
+  else if(units.compare("G") == 0)
+    unit_bytes = 1024*1024*1024;
+  else
+    throw xrt_core::error(std::errc::invalid_argument);
+
+  boost::algorithm::trim(str);
+  uint64_t size = 0;
+  try {
+    size = std::stoll(str);
+  } 
+  catch (const std::exception&) {
+    //out of range, invalid argument ex
+    throw xrt_core::error(std::errc::invalid_argument);
+  }
+
+  size *= unit_bytes;
+  return size;
 }
 
 std::string
