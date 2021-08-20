@@ -29,6 +29,7 @@
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
 int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
 
 namespace xrt_core {
 
@@ -113,6 +114,9 @@ struct ishim
 
   virtual void
   p2p_disable(bool force) = 0;
+
+  virtual void
+  set_cma(bool enable, uint64_t size) = 0;
 
   virtual
   void update_scheduler_status() = 0;
@@ -412,6 +416,26 @@ struct shim : public DeviceType
   {
     if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force))
       throw system_error(ret, "failed to disable p2p");
+  }
+
+  virtual void
+  set_cma(bool enable, uint64_t size)
+  {
+    auto ret = xclCmaEnable(DeviceType::get_device_handle(), enable, size);
+    if(ret == EXIT_SUCCESS)
+      return;
+    if(ret == -ENOMEM)
+      throw system_error(ret, "Not enough host mem. Please check grub settings.");
+    if(ret == -EINVAL)
+      throw system_error(ret, "Invalid host mem size.");
+    if(ret == -ENXIO)
+      throw system_error(ret, "Huge page is not supported on this platform");
+    if(ret == -ENODEV)
+      throw system_error(ret, "Does not support host mem feature");
+    if(ret == -EBUSY)
+      throw system_error(ret, "Host mem is already enabled or in-use");
+    if(ret)
+      throw system_error(ret);
   }
 
   virtual void
