@@ -789,6 +789,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (image.size() == 1)
       auto_flash(workingDevice, image.front());
     else if (image.size() == 2) {
+      std::cout << "CAUTION! Force flashing the platform on the device without any checks." <<
+                   "Please make sure that the correct information is passed in." << std::endl;
       auto image_paths = find_flash_image_paths(image);
       update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     }
