@@ -1974,6 +1974,7 @@ enum ert_gpio_cfg {
 	MB_WAKEUP,
 	MB_SLEEP,
 	MB_STATUS,
+	MB_WAKEUP_CLR,
 };
 
 struct xocl_config_gpio_funcs {
