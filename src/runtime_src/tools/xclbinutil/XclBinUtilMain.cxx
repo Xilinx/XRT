@@ -325,6 +325,10 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // If the user is specifying the xclbin's UUID, honor it
+  if (!XclBin::findKeyAndGetValue("SYS","XclbinUUID", keyValuePairs).empty())
+    bSkipUUIDInsertion = true;
+
   // Signing DRCs
   if (bValidateSignature == true) {
     if (sCertificate.empty()) {
