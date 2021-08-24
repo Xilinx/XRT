@@ -211,7 +211,7 @@ download happening.
 Note
 ====
 
-There could be some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
+There are some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
 One of the configs is "Firwall" Settings to enable or disable:
 1. firewall disable command: ufw disable
 2. firewall enable command: ufw enable
