@@ -506,19 +506,26 @@ skip1:
 		}
 		memcpy(xdev->ulp_blob, ulp_blob, fdt_totalsize(ulp_blob));
 
-		xocl_xdev_info(xdev, "check interface uuid");
-		if (!XDEV(xdev)->fdt_blob) {
-			userpf_err(xdev, "did not find platform dtb");
-			err = -EINVAL;
-			goto done;
-		}
-		err = xocl_fdt_check_uuids(xdev,
-			(const void *)XDEV(xdev)->fdt_blob,
-			(const void *)((char*)xdev->ulp_blob));
-		if (err) {
-			userpf_err(xdev, "interface uuids do not match");
-			err = -EINVAL;
-			goto done;
+		/*
+		 * don't check uuid if the xclbin is a lite one
+		 * the lite xclbin will have neither BITSTREAM nor SOFT_KERNEL 
+		 */
+		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) ||
+			xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
+			xocl_xdev_info(xdev, "check interface uuid");
+			if (!XDEV(xdev)->fdt_blob) {
+				userpf_err(xdev, "did not find platform dtb");
+				err = -EINVAL;
+				goto done;
+			}
+			err = xocl_fdt_check_uuids(xdev,
+				(const void *)XDEV(xdev)->fdt_blob,
+				(const void *)((char*)xdev->ulp_blob));
+			if (err) {
+				userpf_err(xdev, "interface uuids do not match");
+				err = -EINVAL;
+				goto done;
+			}
 		}
 	}
 
