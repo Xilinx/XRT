@@ -137,7 +137,13 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     sc.add("version", xrt_core::device_query<xq::xmc_sc_version>(device));
     sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
     ptree_type cmc;
-    cmc.add("version", xrt_core::device_query<xq::xmc_version>(device));
+    std::stringstream version;
+    
+    try {
+       version << "0x" << std::hex << std::stoi(xrt_core::device_query<xq::xmc_version>(device));
+    }
+    catch (...) {}
+    cmc.add("version", version.str());
     cmc.add("serial_number", xrt_core::device_query<xq::xmc_serial_num>(device));
     cmc.add("oem_id", xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device)));
     controller.put_child("satellite_controller", sc);
