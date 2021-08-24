@@ -440,7 +440,7 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 
 	if (intc->mode == mode)
 		return 0;
-
+#if 0
 	/* Check if all interrupts are disabled in previous mode */
 	for (i = 0; i < INTR_NUM; i++) {
 		data = (mode == CU_INTR) ? &intc->ert[i] : &intc->cu[i];
@@ -448,7 +448,7 @@ static int sel_ert_intr(struct platform_device *pdev, int mode)
 			return -EBUSY;
 		xocl_user_interrupt_reg(xdev, data->intr, NULL, NULL);
 	}
-
+#endif
 	for (i = 0; i < INTR_NUM; i++) {
 		data = (mode == CU_INTR) ? &intc->cu[i] : &intc->ert[i];
 

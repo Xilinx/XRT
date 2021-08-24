@@ -89,6 +89,10 @@ static int32_t gpio_cfg(struct platform_device *pdev, enum ert_gpio_cfg type)
 		while (!ret)
 			ret = ioread32(cfg_gpio->cfg_gpio+GPIO_CFG_STA_CHANNEL);
 		break;
+	case MB_WAKEUP_CLR:
+		val &= CLEAR_MB_WAKEUP;
+		iowrite32(val, cfg_gpio->cfg_gpio+GPIO_CFG_CTRL_CHANNEL);
+		break;
 	case MB_STATUS:
 		ret = ioread32(cfg_gpio->cfg_gpio+GPIO_CFG_STA_CHANNEL);
 		break;

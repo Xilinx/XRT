@@ -132,6 +132,8 @@ struct xocl_ert_user {
 	struct ert_cu_stat	cu_stat[MAX_CUS];
 	uint32_t		num_cus;
 
+	struct completion	comp;
+
 	struct ert_queue	*queue;
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
@@ -235,6 +237,7 @@ static ssize_t mb_sleep_store(struct device *dev,
 	}
 
 	if (go_sleep) {
+		xocl_gpio_cfg(xdev, MB_WAKEUP_CLR);
 		ert_submit_exit_cmd(ert_user);
 		xocl_gpio_cfg(xdev, MB_SLEEP);
 	} else
@@ -424,6 +427,17 @@ static void ert_user_cmd_complete(struct xrt_ert_command *ecmd, void *core)
 	++ert_user->cq.num;
 }
 
+static void ert_user_exit_cmd_complete(struct xrt_ert_command *ecmd, void *core)
+{
+	struct xocl_ert_user *ert_user = ((struct xocl_ert_user *)(core));
+
+	complete(&ert_user->comp);
+
+	list_add_tail(&ecmd->list, &ert_user->cq.head);
+	--ert_user->sq.num;
+	++ert_user->cq.num;
+}
+
 static void ert_user_cmd_notify(void *core)
 {
 	struct xocl_ert_user *ert_user = ((struct xocl_ert_user *)(core));
@@ -438,7 +452,7 @@ static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user)
 	unsigned long flags = 0;
 
 
-	ERTUSER_ERR(ert_user, "%s\n", __func__);
+	ERTUSER_INFO(ert_user, "%s\n", __func__);
 
 	if (!ecmd)
 		return;
@@ -448,7 +462,7 @@ static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user)
 
 	ecmd->payload = &ecmd->cu_idx;
 	ecmd->payload_size = 1;
-	ecmd->cb.complete = ert_user_cmd_complete;
+	ecmd->cb.complete = ert_user_exit_cmd_complete;
 	ecmd->cb.notify = ert_user_cmd_notify;
 
 	spin_lock_irqsave(&ert_user->pq_lock, flags);
@@ -475,8 +489,11 @@ static int ert_user_enable(struct platform_device *pdev, bool enable)
 		ert_queue_intc_config(ert_user, true);
 		xocl_gpio_cfg(xdev, INTR_TO_ERT);
 	} else {
+		xocl_gpio_cfg(xdev, MB_WAKEUP_CLR);
 		ert_submit_exit_cmd(ert_user);
 		xocl_gpio_cfg(xdev, MB_SLEEP);
+
+		wait_for_completion(&ert_user->comp);
 
 		ert_queue_intc_config(ert_user, false);
 		xocl_gpio_cfg(xdev, INTR_TO_CU);
@@ -1348,6 +1365,8 @@ static int ert_user_probe(struct platform_device *pdev)
 	timer_setup(&ert_user->timer, ert_timer, 0);
 #endif
 	atomic_set(&ert_user->tick, 0);
+
+	init_completion(&ert_user->comp);
 
 	ert_user->thread = kthread_run(ert_user_thread, ert_user, "ert_thread");
 
