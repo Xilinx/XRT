@@ -1516,6 +1516,14 @@ XclBin::setKeyValue(const std::string & _keyValue)
       return; // Key processed 
     }
 
+    if (sKey == "XclbinUUID") {
+      std::cout << "Warning: Changing this 'XclbinUUID' property to a non-unique value can result in non-determinist negative runtime behavior.\n";
+      sValue.erase(std::remove(sValue.begin(), sValue.end(), '-'), sValue.end()); // Remove the '-'
+      XUtil::hexStringToBinaryBuffer(sValue, (unsigned char*)&m_xclBinHeader.m_header.uuid, sizeof(axlf_header::uuid));
+      return; // Key processed 
+    }
+
+
     std::string errMsg = XUtil::format("ERROR: Unknown key '%s' for key-value pair '%s'.", sKey.c_str(), _keyValue.c_str());
     throw std::runtime_error(errMsg);
   } 
