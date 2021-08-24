@@ -20,6 +20,7 @@
 #include <linux/spinlock.h>
 #include <linux/io.h>
 #include <linux/kthread.h>
+#include <linux/circ_buf.h>
 #include "kds_command.h"
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
@@ -222,6 +223,18 @@ struct per_custat {
 #define CU_STATE_GOOD  0x1
 #define CU_STATE_BAD   0x2
 
+/* The Buf size and xrt_cu_log size must be power of 2 */
+#define CIRC_BUF_SIZE 2 * 4096
+struct xrt_cu_log {
+	u64		stage:32;
+	uintptr_t	cmd_id:32;
+	u64		ts;
+};
+#define CU_LOG_STAGE_RQ		1
+#define CU_LOG_STAGE_ISR	2
+#define CU_LOG_STAGE_SQ		3
+#define CU_LOG_STAGE_CQ		4
+
 /* Supported event type */
 struct xrt_cu {
 	struct device		 *dev;
@@ -293,6 +306,11 @@ struct xrt_cu {
 	atomic_t		   ucu_event;
 	int (* user_manage_irq)(struct xrt_cu *xcu, bool user_manage);
 	int (* configure_irq)(struct xrt_cu *xcu, bool enable);
+
+	/* For debug/analysis */
+	char			   debug;
+	char			   log_buf[CIRC_BUF_SIZE] __aligned(sizeof(u64));
+	struct circ_buf		   crc_buf;
 };
 
 static inline char *prot2str(enum CU_PROTOCOL prot)
@@ -425,6 +443,9 @@ ssize_t show_cu_stat(struct xrt_cu *xcu, char *buf);
 ssize_t show_cu_info(struct xrt_cu *xcu, char *buf);
 ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf);
 
+void xrt_cu_circ_produce(struct xrt_cu *xcu, u32 stage, uintptr_t cmd);
+ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size);
+
 /* CU Implementations */
 #define to_cu_hls(core) ((struct xrt_cu_hls *)(core))
 struct xrt_cu_hls {
@@ -487,5 +508,4 @@ struct xrt_cu_plram {
 
 int xrt_cu_plram_init(struct xrt_cu *xcu);
 void xrt_cu_plram_fini(struct xrt_cu *xcu);
-
 #endif /* _XRT_CU_H */
