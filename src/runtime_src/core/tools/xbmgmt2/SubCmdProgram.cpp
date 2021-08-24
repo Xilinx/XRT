@@ -447,29 +447,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
 
   std::string image_path;
-  if(!image.empty()) {
-  //iterate over installed shells
-  //check the vbnv against the vnbv passed in by the user
-  auto installedShells = firmwareImage::getIntalledDSAs();
-  int multiple_shells = 0;
-    
-  for(auto const& shell : installedShells) {
-    if(image.compare(shell.name) == 0) {
-      multiple_shells++;
-      image_path = shell.file;
-    }
-  }
-
-  //error-handling
-  if(multiple_shells == 0) 
-    throw xrt_core::error("Specified base not found on the system");
-    
-  //if multiple shells with the same vbnv are installed on the system, we don't want to 
-  //blindly update the device. in this case, the user needs to specify the complete path
-  if(multiple_shells > 1) 
-    throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
-  }
-  else {
+  if(image.empty()) {
     static boost::property_tree::ptree ptEmpty;
     auto available_shells = pt.get_child(std::to_string(workingDevice->get_device_id()) + ".platform.available_shells", ptEmpty);
 
@@ -479,6 +457,27 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
       throw xrt_core::error(std::errc::operation_canceled);
     }
     image_path = available_shells.front().second.get<std::string>("file");
+  }
+  else {
+    //iterate over installed shells
+    //check the vbnv against the vnbv passed in by the user
+    auto installedShells = firmwareImage::getIntalledDSAs();
+    int multiple_shells = 0;
+      
+    for(auto const& shell : installedShells) {
+      if(image.compare(shell.name) == 0) {
+        multiple_shells++;
+        image_path = shell.file;
+      }
+    }
+
+    //if multiple shells with the same vbnv are installed on the system, we don't want to 
+    //blindly update the device. in this case, the user needs to specify the complete path
+    if(multiple_shells > 1) 
+      throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
+
+    if(multiple_shells == 0) 
+      throw xrt_core::error("Specified base not found on the system");
   }
     
   DSAInfo dsa(image_path);
@@ -692,8 +691,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) of the xclbin.")
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
-                                                                    "  Name (and path) to the xsabin image on disk\n"
-                                                                    "Note: Multiple images can be specified separated by a space")
+                                                                    "  Name (and path) to the xsabin image on disk")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
@@ -788,13 +786,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     // We support up to 2 flash images 
     if (image.size() == 1)
       auto_flash(workingDevice, image.front());
-    else if (image.size() == 2) {
+    
+    if (image.size() == 2) {
       std::cout << "CAUTION! Force flashing the platform on the device without any checks." <<
                    "Please make sure that the correct information is passed in." << std::endl;
       auto image_paths = find_flash_image_paths(image);
       update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
     }
-    else if (image.size() > 2)
+    
+    if (image.size() > 2)
       throw xrt_core::error("Please specify either 1 or 2 flash images");
     return;
   }
