@@ -13,7 +13,6 @@
 * License for the specific language governing permissions and limitations
 * under the License.
 */
-#include "cmdlineparser.h"
 #include "xcl2.hpp"
 #include <algorithm>
 #include <vector>
@@ -21,29 +20,48 @@
 
 #define TEST_INSTANCE_ID 0
 
+static void printHelp() {
+    std::cout << "usage: %s <options>\n";
+    std::cout << "  -p, --path <path>\n";
+    std::cout << "  -d, --device <device> \n";
+    std::cout << "  -s, --supported <supported>\n";
+    std::cout << "  -h, --help <help>\n";
+}
+
 int main(int argc, char** argv) {
-  if (argc < 2) {
-    std::cout << "Usage: " << argv[0] << " <Platform Test Area Path>"
-      << "<optional> -d device_id" << std::endl;
-    return EXIT_FAILURE;
+  std::string dev_id = "0";
+  std::string test_path;
+  bool flag_s = false;
+
+  for (int i = 1; i < argc; i++) {
+    if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
+        test_path = argv[i + 1];
+    } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
+        dev_id = argv[i + 1];
+    } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
+        printHelp();
+        return 1;
+    }
   }
 
-  // Command Line Parser
-  sda::utils::CmdLineParser parser;
-
-  // Switches
-  //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
-  parser.addSwitch("--device", "-d", "device id", "0");
-  parser.parse(argc, argv);
-
-  // Read settings
-  std::string dev_id = parser.value("device");
-
-  std::string test_path = argv[1];
+  if (test_path.empty()) {
+    std::cout << "ERROR : please provide the platform test path to -p option\n";
+    return EXIT_FAILURE;
+  }
 
   std::string b_file = "/transcode.xclbin";
   std::string binaryFile = test_path + b_file;
   std::ifstream infile(binaryFile);
+  if (flag_s) {    
+    if (!infile.good()) {
+        std::cout << "\nNOT SUPPORTED" << std::endl;
+        return EOPNOTSUPP;
+    } else {
+        std::cout << "\nSUPPORTED" << std::endl;
+        return EXIT_SUCCESS;
+    }
+  }
+
   if (!infile.good()) {
     std::cout << "NOT SUPPORTED" << std::endl;
     return EOPNOTSUPP;
