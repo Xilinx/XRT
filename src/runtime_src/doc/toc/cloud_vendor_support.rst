@@ -207,3 +207,11 @@ xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid 
 mailbox opcode to xclmgmt, and if the uuid matches with that of the xclbin requested for download, the ioctl returns immediately with success.
 If the uuids don't match, download request in the guest fails.
 download happening.
+
+Note
+====
+
+There could be some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
+One of the configs is "Firwall" Settings to enable or disable:
+1. firewall disable command: ufw disable
+2. firewall enable command: ufw enable
