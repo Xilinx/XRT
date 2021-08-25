@@ -370,17 +370,10 @@ namespace xcldev {
         return -1;
       }
 
-      if (bankcnt > 1) {
-        std::cout << "INFO: Reading " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << " straddles " << bankcnt << " banks" << std::dec << std::endl;
-      }
       std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
 
       size_t count = size;
       for(auto it = startbank; it!=vec_banks.end(); ++it) {
-        std::string bank_name = getBankName(it->m_type);
-        std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
-                                    << std::dec << std::endl;
         unsigned long long available_bank_size;
         if (it != startbank) {
           startAddr = it->m_base_address;
@@ -391,6 +384,9 @@ namespace xcldev {
           available_bank_size = it->m_size - (startAddr - it->m_base_address);
         }
         if (size != 0) {
+          std::string bank_name = getBankName(it->m_type);
+          std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
+                                    << std::dec << std::endl;
           unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
           if( readBank(outFile, startAddr, readsize) == -1) {
             return -1;
