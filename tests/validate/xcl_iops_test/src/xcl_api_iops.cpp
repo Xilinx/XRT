@@ -5,6 +5,7 @@
 #include <memory>
 #include <chrono>
 #include <thread>
+#include <string.h>
 
 #include "cmdlineparser.h"
 
@@ -45,16 +46,17 @@ bool verbose = false;
 barrier barrier;
 struct krnl_info krnl = {"hello", false};
 
-static void usage(char *prog)
-{
-  std::cout << "Usage: " << prog << " <Platform Test Area Path> [options]\n"
-            << "options:\n"
-            << "    -d       device BDF\n"
-            << "    -t       number of threads\n"
-            << "    -l       length of queue (send how many commands without waiting)\n"
-            << "    -a       total amount of commands per thread\n"
-            << "    -v       verbose result\n"
-            << std::endl;
+static void printHelp() {
+    std::cout << "usage: %s <options>\n";
+    std::cout << "  -p, --path <path>\n";
+    std::cout << "  -k, --kernel <kernel> (imply old style verify.xclbin is used) \n";
+    std::cout << "  -d, --device <device> \n";
+    std::cout << "  -t, --threads <number of threads> \n";
+    std::cout << "  -l, --length <length of queue> (send how many commands without waiting) \n";
+    std::cout << "  -a, --total <total amount of commands per thread>\n";
+    std::cout << "  -v, --verbose <verbose result>\n";
+    std::cout << "  -s, --supported <supported>\n";
+    std::cout << "  -h, --help <help>\n";
 }
 
 static std::vector<char>
@@ -282,38 +284,48 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
 
 int _main(int argc, char* argv[])
 {
-    if (argc < 2) {
-        usage(argv[0]);
-        throw std::runtime_error("Number of argument should not less than 2");
+    std::string device_str = "0";
+    std::string test_path;
+    int threadNumber = 2;
+    int queueLength = 128;
+    int total = 50000;
+    std::string xclbin_fn;
+    bool verbose = true;
+    bool flag_s = false;
+
+    for (int i = 1; i < argc; i++) {
+        if ((strcmp(argv[i], "-p") == 0) || (strcmp(argv[i], "--path") == 0)) {
+            test_path = argv[i + 1];
+        } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
+            device_str = argv[i + 1];
+        } else if ((strcmp(argv[i], "-k") == 0) || (strcmp(argv[i], "--kernel") == 0)) {
+            xclbin_fn = test_path + argv[i + 1];
+        } else if ((strcmp(argv[i], "-t") == 0) || (strcmp(argv[i], "--threads") == 0)) {
+            threadNumber = atoi(argv[i + 1]);
+        } else if ((strcmp(argv[i], "-l") == 0) || (strcmp(argv[i], "--length") == 0)) {
+            queueLength = atoi(argv[i + 1]);
+        } else if ((strcmp(argv[i], "-a") == 0) || (strcmp(argv[i], "--total") == 0)) {
+            total = atoi(argv[i + 1]);
+        } else if ((strcmp(argv[i], "-v") == 0) || (strcmp(argv[i], "--verbose") == 0)) {
+            verbose = atoi(argv[i + 1]);
+        } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
+            flag_s = true;
+        } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
+            printHelp();
+            return 1;
+        }
     }
 
-    // Command Line Parser
-    sda::utils::CmdLineParser parser;
+    if (test_path.empty()) {
+        std::cout << "ERROR : please provide the platform test path to -p option\n";
+        return EXIT_FAILURE;
+    }
 
-    // Switches
-    //**************//"<Full Arg>",  "<Short Arg>", "<Description>", "<Default>"
-    parser.addSwitch("--kernel",  "-k", "kernel (imply old style verify.xclbin is used)", "");
-    parser.addSwitch("--device",  "-d", "device id", "0");
-    parser.addSwitch("--threads", "-t", "number of threads", "2");
-    parser.addSwitch("--length",  "-l", "length of queue", "128");
-    parser.addSwitch("--total",   "-a", "total amount of commands per thread", "50000");
-    parser.addSwitch("--verbose", "-v", "verbose output", "", true);
-    parser.parse(argc, argv);
-
-    /* Could be BDF or device index */
-    std::string device_str = parser.value("device");
-    int threadNumber = parser.value_to_int("threads");
-    int queueLength = parser.value_to_int("length");
-    int total = parser.value_to_int("total");
-    std::string xclbin_fn = parser.value("kernel");
     if (xclbin_fn.empty()) {
-        std::string test_path = argv[1];
         xclbin_fn = test_path + "/verify.xclbin";
         krnl.name = "verify";
         krnl.new_style = true;
     }
-    verbose = parser.isValid("verbose");
-
     /* Sanity check */
     std::ifstream infile(xclbin_fn);
     if (!infile.good())
@@ -328,7 +340,16 @@ int _main(int argc, char* argv[])
     if (threadNumber <= 0)
         throw std::runtime_error("Invalid thread number");
 
-    testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total);
+    if (flag_s) {
+        if (!infile.good()) {
+            std::cout << "\nNOT SUPPORTED" << std::endl;
+            return EOPNOTSUPP;
+        } else {
+            std::cout << "\nSUPPORTED" << std::endl;
+            return EXIT_SUCCESS;
+        }
+    }
+        testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total);
 
     return 0;
 }
