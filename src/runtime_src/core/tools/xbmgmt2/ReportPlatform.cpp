@@ -204,7 +204,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
     try {
       DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], "");
-      pt_current_shell.put("vbnv", part.name);
+      pt_current_shell.put("vbnv", (part.name).empty() ? xrt_core::device_query<xrt_core::query::rom_vbnv>(device) : part.name);
       pt_current_shell.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
       pt_current_shell.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
       pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
