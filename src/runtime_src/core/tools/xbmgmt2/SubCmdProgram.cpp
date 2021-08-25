@@ -616,9 +616,9 @@ find_flash_image_paths(const std::vector<std::string> image_list)
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program", 
-             "Update device and/or Satellite Controller (SC) firmware image for a given device")
+             "Update images for a given device")
 {
-  const std::string longDescription = "Updates the flash image for the device and/or the Satellite Controller (SC) firmware image for a given device.";
+  const std::string longDescription = "Updates the images for a given device.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -658,7 +658,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) of the partition.")
 
     // TODO: Auto update the 'base' values
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images."/*  Value values:\n"
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image."/*  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
