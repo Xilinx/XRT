@@ -145,12 +145,13 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
 static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 {
   void *sk_handle;
-  kernel_t kernel;
+  void *kernel;
   struct sk_operations ops;
   uint32_t *args_from_host;
   int32_t kernel_return;
   unsigned int boh;
   int ret;
+  
 
   devHdl = initXRTHandle(0);
   if (!devHdl) {
@@ -171,7 +172,10 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     return;
   }
 
-  kernel = (kernel_t)dlsym(sk_handle, name);
+  // Parse PS kernel for arguments and map buffers
+  std::vector<kernel_argument> args = pskernel_parser(path,name);
+
+  kernel = dlsym(sk_handle, name);
   if (!kernel) {
     syslog(LOG_ERR, "Cannot find kernel %s\n", name);
     return;
@@ -194,6 +198,28 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       return;
   }
 
+  // Prep FFI type for all kernel arguments
+  ffi_cif cif;
+  std::vector<ffi_type> ffi_args;
+  void *values[args.count()];
+  ffi_arg rc;
+  void* ffi_arg_values[args.size()];
+
+  // Buffer Objects
+  std::vector<unsigned int> boHandles;
+  std::vector<std::pair<int32_t*,int> > bos;
+  
+  for(auto arg : args) {
+    ffi_args.empalce_back(arg->ffitype);
+  }
+  
+  if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI,&ffi_type_uint32,ffi_args) != FFI_OK) {
+    syslog(LOG_ERR, "Cannot prep FFI arguments!");
+    return;
+  }
+
+
+  
   while (1) {
     ret = waitNextCmd(cu_idx);
 
@@ -207,9 +233,41 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     if (!(args_from_host[0] & 0x1))
       continue; //AP_START bit is not set; New Cmd is not available
 
-    /* Start run the soft kernel. */
-    kernel_return = kernel(&args_from_host[1], &ops);
+    // Original PS Kernel implementation
+    if(args.size()==2 && args[0].ffitype==ffi_type_pointer && args[1].ffitype==ffi_type_pointer && args[1].name.compare("ops")==0) {
+      ffi_arg_values[0] = &args_from_host[1];
+      ffi_arg_values[1] = &ops;
+    } else {
+      // FFI PS Kernel implementation
+      // Map buffers used by kernel
+      for(auto arg : args) {
+	if(arg->type == xrt_core::pskernel::kernel_argument::argtype::global) {
+	  boHandles.emplace_back(getHostBO(&args_from_host[arg->offset],args_from_host[arg->offset+2]));
+	  std::pair<int32_t*,int> bo = std::make_pair(mapBO(boHandles,true),args_from_host[arg->offset+2]);
+	  bos.emplace_back(bo);
+
+	  ffi_arg_values[i] = bos.back().first;
+	} else {
+	  ffi_arg_values[i] = &args_from_host[arg-offset];
+	}
+      }
+    
+    }
+
+    ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
     args_from_host[1] = (uint32_t)kernel_return;
+
+    // Unmap Buffers
+    if(args.size()==2 && args[0].ffitype==ffi_type_pointer && args[1].ffitype==ffi_type_pointer && args[1].name.compare("ops")==0) {
+      // Nothing to be done here for original PS kernel implementation
+    } else {
+      for(auto bo : bos) {
+	munmap(bo.first,bo.second);
+      }
+      for(auto boHandle : boHandles) {
+	freeBO(boHandle);
+      }
+    }
   }
 
   dlclose(sk_handle);

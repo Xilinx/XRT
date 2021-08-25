@@ -431,6 +431,10 @@ public:
   get_axlf_section(axlf_section_kind section) const = 0;
 
   virtual
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections(axlf_section_kind section) const = 0;
+
+  virtual
   const std::vector<char>&
   get_data() const
   {
@@ -523,7 +527,8 @@ class xclbin_full : public xclbin_impl
   std::vector<char> m_axlf;  // complete copy of xclbin raw data
   const axlf* m_top = nullptr;
   uuid m_uuid;
-  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+  //  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+  std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
 
   void
   init_axlf()
@@ -548,7 +553,7 @@ class xclbin_full : public xclbin_impl
         if (!data.empty()) {
           auto pos = m_axlf_sections.emplace(kind, std::move(data));
           if (kind == IP_LAYOUT)
-            ip_layout = reinterpret_cast<const ::ip_layout*>((pos.first)->second.data());
+            ip_layout = reinterpret_cast<const ::ip_layout*>((pos)->second.data());
         }
       }
 
@@ -602,6 +607,25 @@ public:
     return itr != m_axlf_sections.end()
       ? std::make_pair((*itr).second.data(), (*itr).second.size())
       : std::make_pair(nullptr, size_t(0));
+  }
+
+  std::vector< std::pair<const char*, size_t> >
+  get_axlf_sections(axlf_section_kind kind) const override
+  {
+    auto result = m_axlf_sections.equal_range(kind);
+
+    int count = std::distance(result.first, result.second);
+
+    if(count>0) {
+      std::vector< std::pair<const char*, size_t> > return_sections;
+
+      for (auto itr = result.first; itr != result.second; itr++)
+	return_sections.emplace_back(std::make_pair((*itr).second.data(), (*itr).second.size()));
+
+      return return_sections;
+    } else {
+      return {};
+    }
   }
 
   const axlf*
@@ -960,6 +984,12 @@ std::pair<const char*, size_t>
 get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind)
 {
   return xclbin.get_handle()->get_axlf_section(kind);
+}
+
+std::vector<std::pair<const char*, size_t>>
+get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind)
+{
+  return xclbin.get_handle()->get_axlf_sections(kind);
 }
 
 std::vector<char>
