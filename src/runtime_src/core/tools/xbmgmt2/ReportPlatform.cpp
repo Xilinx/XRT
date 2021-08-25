@@ -302,26 +302,26 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
                              const std::vector<std::string>& /*_elementsFilter*/,
                              std::ostream & _output) const
 {
-  auto pretty_print =[](std::string str) {
+  auto string_or_NA =[](std::string str) {
     return str.empty() ? "N/A" : str;
   };
 
   _output << "Flash properties\n";
-  _output << fmtBasic % "Type" % pretty_print(_pt.get<std::string>("platform.flash_type"));
-  _output << fmtBasic % "Serial Number" % pretty_print(_pt.get<std::string>("platform.hardware.serial_num"));
+  _output << fmtBasic % "Type" % string_or_NA(_pt.get<std::string>("platform.flash_type"));
+  _output << fmtBasic % "Serial Number" % string_or_NA(_pt.get<std::string>("platform.hardware.serial_num"));
   _output << std::endl;
 
   const boost::property_tree::ptree& dev_properties = _pt.get_child("platform.device_properties");
   _output << "Device properties\n";
-  _output << fmtBasic % "Type" % pretty_print(dev_properties.get<std::string>("board_type"));
-  _output << fmtBasic % "Name" % pretty_print(dev_properties.get<std::string>("board_name"));
-  _output << fmtBasic % "Config Mode" % pretty_print(dev_properties.get<std::string>("config_mode"));
-  _output << fmtBasic % "Max Power" % pretty_print(dev_properties.get<std::string>("max_power_watts"));
+  _output << fmtBasic % "Type" % string_or_NA(dev_properties.get<std::string>("board_type"));
+  _output << fmtBasic % "Name" % string_or_NA(dev_properties.get<std::string>("board_name"));
+  _output << fmtBasic % "Config Mode" % string_or_NA(dev_properties.get<std::string>("config_mode"));
+  _output << fmtBasic % "Max Power" % string_or_NA(dev_properties.get<std::string>("max_power_watts"));
   _output << std::endl;
 
   _output << "Flashable partitions running on FPGA\n";
-  _output << fmtBasic % "Platform" % pretty_print(_pt.get<std::string>("platform.current_shell.vbnv"));
-  _output << fmtBasic % "SC Version" % pretty_print(_pt.get<std::string>("platform.current_shell.sc_version"));
+  _output << fmtBasic % "Platform" % string_or_NA(_pt.get<std::string>("platform.current_shell.vbnv"));
+  _output << fmtBasic % "SC Version" % string_or_NA(_pt.get<std::string>("platform.current_shell.sc_version"));
 
   // print platform ID, for 2RP, platform ID = logic UUID 
   auto logic_uuid = _pt.get<std::string>("platform.current_shell.logic-uuid", "");
@@ -330,7 +330,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Platform UUID" % logic_uuid;
     _output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
-    _output << fmtBasic % "Platform ID" % pretty_print(_pt.get<std::string>("platform.current_shell.id"));
+    _output << fmtBasic % "Platform ID" % string_or_NA(_pt.get<std::string>("platform.current_shell.id"));
   }
   _output << std::endl;
 
@@ -340,9 +340,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   const boost::property_tree::ptree& plps = _pt.get_child("platform.current_partitions", pt_empty);
   for(auto& kv : plps) {
     const boost::property_tree::ptree& plp = kv.second;
-    _output << fmtBasic % "Platform" % pretty_print(plp.get<std::string>("vbnv"));
-    _output << fmtBasic % "Logic UUID" % pretty_print(plp.get<std::string>("logic-uuid"));
-    _output << fmtBasic % "Interface UUID" % pretty_print(plp.get<std::string>("interface-uuid"));
+    _output << fmtBasic % "Platform" % string_or_NA(plp.get<std::string>("vbnv"));
+    _output << fmtBasic % "Logic UUID" % string_or_NA(plp.get<std::string>("logic-uuid"));
+    _output << fmtBasic % "Interface UUID" % string_or_NA(plp.get<std::string>("interface-uuid"));
     _output << std::endl;
   }
 
@@ -354,14 +354,14 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   
   for(auto& kv : available_shells) {
     const boost::property_tree::ptree& available_shell = kv.second;
-    _output << fmtBasic % "Platform" % pretty_print(available_shell.get<std::string>("vbnv"));
-    _output << fmtBasic % "SC Version" % pretty_print(available_shell.get<std::string>("sc_version"));
+    _output << fmtBasic % "Platform" % string_or_NA(available_shell.get<std::string>("vbnv"));
+    _output << fmtBasic % "SC Version" % string_or_NA(available_shell.get<std::string>("sc_version"));
     // print platform ID, for 2RP, platform ID = logic UUID 
     auto platform_uuid = available_shell.get<std::string>("logic-uuid", "");
     if (!platform_uuid.empty()) {
       _output << fmtBasic % "Platform UUID" % platform_uuid;
     } else {
-      _output << fmtBasic % "Platform ID" % pretty_print(available_shell.get<std::string>("id"));
+      _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }
       _output << std::endl;
   }
@@ -370,9 +370,9 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
   const boost::property_tree::ptree& available_plps = _pt.get_child("platform.available_partitions", pt_empty);
   for(auto& kv : available_plps) {
     const boost::property_tree::ptree& plp = kv.second;
-    _output << fmtBasic % "Platform" % pretty_print(plp.get<std::string>("vbnv"));
-    _output << fmtBasic % "Logic UUID" % pretty_print(plp.get<std::string>("logic-uuid"));
-    _output << fmtBasic % "Interface UUID" % pretty_print(plp.get<std::string>("interface-uuid"));
+    _output << fmtBasic % "Platform" % string_or_NA(plp.get<std::string>("vbnv"));
+    _output << fmtBasic % "Logic UUID" % string_or_NA(plp.get<std::string>("logic-uuid"));
+    _output << fmtBasic % "Interface UUID" % string_or_NA(plp.get<std::string>("interface-uuid"));
     _output << std::endl;
   }
 
@@ -382,7 +382,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     std::string formattedStr;
     
     for(auto & km : macs) 
-      formattedStr += boost::str(fmtBasic % (formattedStr.empty() ? "Mac Address" : "") % pretty_print(km.second.get<std::string>("address")));
+      formattedStr += boost::str(fmtBasic % (formattedStr.empty() ? "Mac Address" : "") % string_or_NA(km.second.get<std::string>("address")));
     _output << formattedStr << std::endl;
   }
 

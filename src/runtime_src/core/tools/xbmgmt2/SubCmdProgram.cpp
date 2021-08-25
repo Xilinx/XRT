@@ -616,9 +616,9 @@ find_flash_image_paths(const std::vector<std::string> image_list)
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program", 
-             "Update images for a given device")
+             "Update image(s) for a given device")
 {
-  const std::string longDescription = "Updates the images for a given device.";
+  const std::string longDescription = "Updates the image(s) for a given device.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -664,7 +664,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                          "  SC    - Satellite controller"*/)
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller (MSP432) will not be reverted for a golden image does not exist.")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
