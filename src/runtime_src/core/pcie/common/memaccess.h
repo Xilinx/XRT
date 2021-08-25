@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author: Sonal Santan
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -101,7 +101,8 @@ namespace xcldev {
       uint64_t m_base_address;
       uint64_t m_size;
       int m_index;
-      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex) : m_base_address(aAddr), m_size(aSize), m_index(aIndex) {}
+      int m_type;
+      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, int aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
     };
 
     /*
@@ -148,7 +149,7 @@ namespace xcldev {
         mem_topology *map = (mem_topology *)buffer;
         for( int i = 0; i < map->m_count; i++ ) {
             if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING ) {
-                aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i );
+                aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
             }
         }
         std::sort (aBanks.begin(), aBanks.end(),
@@ -316,6 +317,44 @@ namespace xcldev {
         return bankcnt;
     }
 
+    std::string getBankName(int type)
+    {
+        std::string output = "";
+        switch(type) {
+        case 0:
+            output = "DDR3";
+            break;
+        case 1:
+            output = "DDR4";
+            break;
+        case 2:
+            output = "DRAM";
+            break;
+        case 3:
+            output = "STREAMING";
+            break;
+        case 4:
+            output = "MEM_PREALLOCATED_GLOB";
+            break;
+        case 5:
+            output = "MEM_ARE";
+            break;
+        case 6:
+            output = "HBM";
+            break;
+        case 7:
+            output = "BRAM";
+            break;
+        case 8:
+            output = "URAM";
+            break;
+        case 9:
+            output = "MEM_STREAMING_CONNECTION";
+            break;
+        }
+        return output;
+    }
+
     /*
      * read()
      */
@@ -335,14 +374,13 @@ namespace xcldev {
         std::cout << "INFO: Reading " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
                                     << " straddles " << bankcnt << " banks" << std::dec << std::endl;
       }
-      else {
-        std::cout << "INFO: Reading from single bank, " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << std::dec << std::endl;
-      }
       std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
 
       size_t count = size;
       for(auto it = startbank; it!=vec_banks.end(); ++it) {
+        std::string bank_name = getBankName(it->m_type);
+        std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
+                                    << std::dec << std::endl;
         unsigned long long available_bank_size;
         if (it != startbank) {
           startAddr = it->m_base_address;
