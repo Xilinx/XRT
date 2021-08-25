@@ -1052,7 +1052,8 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
 		userpf_err(xdev, "Cfg command state %d", ecmd->state);
-		ret = -EINVAL;
+		ret = 0;
+		kds->ert_disable = true;
 		goto out;
 	}
 
@@ -1138,7 +1139,8 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
 		userpf_err(xdev, "PS kernel cfg command state %d", ecmd->state);
-		ret = -EINVAL;
+		ret = 0;
+		kds->ert_disable = true;
 	} else
 		userpf_info(xdev, "PS kernel cfg command completed");
 

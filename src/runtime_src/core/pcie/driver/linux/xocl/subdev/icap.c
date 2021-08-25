@@ -998,21 +998,10 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				release_firmware(sche_fw);
 			}
 		}
+
 		if (!load_sched) {
-			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
-					SCHED_FIRMWARE);
-			if (mbHeader) {
-				mbBinaryOffset = mbHeader->m_sectionOffset;
-				mbBinaryLength = mbHeader->m_sectionSize;
-				xocl_mb_load_sche_image(xdev,
-					fw_buf + mbBinaryOffset,
-					mbBinaryLength);
-				ICAP_INFO(icap,
-					"stashed mb sche binary, len %lld",
-					mbBinaryLength);
-				load_sched = true;
-				err = 0;
-			}
+			ICAP_WARN(icap, "Couldn't find /lib/firmware/%s", sched_bin);
+			err = 0;
 		}
 	}
 
