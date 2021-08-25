@@ -56,6 +56,7 @@ enum class key_type
   pcie_express_lane_width_max,
   pcie_bdf,
 
+  instance,
   edge_vendor,
 
   dma_threads_raw,
@@ -851,6 +852,24 @@ struct xmc_version : request
     return value;
   }
 };
+
+
+struct instance : request
+{
+  using result_type = int64_t;
+  static const key_type key = key_type::instance;
+  static const char* name() { return "instance"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string 
+  to_string(const result_type& value)
+  {
+    return std::to_string(value);
+  }
+};
+
 
 struct xmc_board_name : request
 {

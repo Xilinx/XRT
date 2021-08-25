@@ -79,6 +79,7 @@ static bool m_disableEscapeCodes = false;
 static bool m_bShowHidden = false;
 static bool m_bForce = false;
 
+namespace xq = xrt_core::query;
 
 // ------ F U N C T I O N S ---------------------------------------------------
 void
@@ -357,6 +358,16 @@ XBUtilities::get_available_devices(bool inUserDomain)
       } catch(...) {
         // The id wasn't added
       }
+
+     try {
+       std::string stream;
+       auto  instance = xrt_core::device_query<xrt_core::query::instance>(device);
+       std::string pf = device->is_userpf() ? "user" : "mgmt";
+       pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
+     } catch(const xrt_core::query::exception&) {
+         // The instance wasn't added 
+       }
+
     }
 
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
