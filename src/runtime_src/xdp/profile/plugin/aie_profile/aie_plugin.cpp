@@ -150,11 +150,11 @@ namespace xdp {
     // String event values for guidance and output
     mCoreEventStrings = {
       {"heat_map",              {"ACTIVE_CORE",               "GROUP_CORE_STALL_CORE",
-                                 "MEMORY_STALL_CORE",         "STREAM_STALL_CORE"}},
+                                 "INSTR_VECTOR_CORE",         "GROUP_CORE_PROGRAM_FLOW"}},
       {"stalls",                {"MEMORY_STALL_CORE",         "STREAM_STALL_CORE",
                                  "LOCK_STALL_CORE",           "CASCADE_STALL_CORE"}},
-      {"execution",             {"INSTR_CALL_CORE",           "INSTR_VECTOR_CORE",
-                                 "INSTR_LOAD_CORE",           "INSTR_STORE_CORE"}},
+      {"execution",             {"INSTR_VECTOR_CORE",         "INSTR_LOAD_CORE",
+                                 "INSTR_STORE_CORE",          "GROUP_CORE_PROGRAM_FLOW"}},
       {"floating_point",        {"FP_OVERFLOW_CORE",          "FP_UNDERFLOW_CORE",
                                  "FP_INVALID_CORE",           "FP_DIV_BY_ZERO_CORE"}},
       {"stream_put_get",        {"INSTR_CASCADE_GET_CORE",    "INSTR_CASCADE_PUT_CORE",

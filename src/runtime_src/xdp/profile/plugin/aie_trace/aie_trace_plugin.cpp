@@ -253,15 +253,7 @@ namespace xdp {
       return false;
     }
 
-    // Memory Module broadcasts. 2 events for starting/ending trace
-    available = stats.getNumRsc(loc, XAIE_MEM_MOD, XAIE_BCAST_CHANNEL_RSC);
-    required = memoryEventSets[metricSet].size() + 2;
-    if (available < required) {
-      msg << "Available memory module broadcast channels for aie trace : " << available << std::endl
-          << "Required memory module broadcast channels for aie trace : "  << required;
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return false;
-    }
+    // No need to check memory module broadcast
 
     return true;
   }
