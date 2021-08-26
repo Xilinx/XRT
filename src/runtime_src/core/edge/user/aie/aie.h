@@ -51,9 +51,10 @@ namespace zynqaie {
 
 struct BD {
     uint16_t bd_num;
-    char     *vaddr;
-    size_t   size;
     int      buf_fd;
+#ifndef __AIESIM__
+    XAie_MemInst memInst;
+#endif
 };
 
 struct DMAChannel {
