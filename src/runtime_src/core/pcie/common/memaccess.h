@@ -101,8 +101,8 @@ namespace xcldev {
       uint64_t m_base_address;
       uint64_t m_size;
       int m_index;
-      int m_type;
-      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, int aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
+      uint8_t m_type;
+      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, uint8_t aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
     };
 
     std::map <int, std::string> bankEnumStringMap = {
