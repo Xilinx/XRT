@@ -105,6 +105,20 @@ namespace xcldev {
       mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, int aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
     };
 
+    std::map <int, std::string> getBankName = {
+      { MEM_DDR3, "DDR3" },
+      { MEM_DDR4, "DDR4" },
+      { MEM_DRAM, "DRAM" },
+      { MEM_STREAMING, "MEM_STREAMING" },
+      { MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB" },
+      { MEM_ARE, "MEM_ARE" },
+      { MEM_HBM, "HBM" },
+      { MEM_BRAM, "BRAM" },
+      { MEM_URAM, "URAM" },
+      { MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION" },
+      { MEM_HOST, "MEM_HOST" },
+    };
+
     /*
      * getDDRBanks()
      *
@@ -317,44 +331,6 @@ namespace xcldev {
         return bankcnt;
     }
 
-    std::string getBankName(int type)
-    {
-        std::string output = "";
-        switch(type) {
-        case 0:
-            output = "DDR3";
-            break;
-        case 1:
-            output = "DDR4";
-            break;
-        case 2:
-            output = "DRAM";
-            break;
-        case 3:
-            output = "STREAMING";
-            break;
-        case 4:
-            output = "MEM_PREALLOCATED_GLOB";
-            break;
-        case 5:
-            output = "MEM_ARE";
-            break;
-        case 6:
-            output = "HBM";
-            break;
-        case 7:
-            output = "BRAM";
-            break;
-        case 8:
-            output = "URAM";
-            break;
-        case 9:
-            output = "MEM_STREAMING_CONNECTION";
-            break;
-        }
-        return output;
-    }
-
     /*
      * read()
      */
@@ -384,7 +360,7 @@ namespace xcldev {
           available_bank_size = it->m_size - (startAddr - it->m_base_address);
         }
         if (size != 0) {
-          std::string bank_name = getBankName(it->m_type);
+          std::string bank_name = getBankName[it->m_type];
           std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
                                     << std::dec << std::endl;
           unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
