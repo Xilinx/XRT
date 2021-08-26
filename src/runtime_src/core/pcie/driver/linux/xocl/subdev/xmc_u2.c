@@ -4179,9 +4179,7 @@ static void clock_status_check(struct platform_device *pdev, bool *latched)
 
 		if (status & XMC_CLOCK_SCALING_CLOCK_STATUS_SHUTDOWN) {
 			xocl_err(&pdev->dev, "Critical temperature event, "
-					"kernel clocks have been stopped, run "
-					"'xbutil validate -q' to continue. "
-					"See AR 73398 for more details.");
+					"kernel clocks have been stopped.");
 			/* explicitly indicate reset should be latched */
 			*latched = true;
 		}

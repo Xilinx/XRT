@@ -1211,6 +1211,19 @@ int kds_cfg_update(struct kds_sched *kds)
 	return ret;
 }
 
+void kds_cus_irq_enable(struct kds_sched *kds, bool enable)
+{
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	int i;
+
+	for (i = 0; i < cu_mgmt->num_cus; i++) {
+		if (!cu_mgmt->xcus[i]->info.intr_enable)
+			continue;
+
+		cu_mgmt->xcus[i]->configure_irq(cu_mgmt->xcus[i], enable);
+	}
+}
+
 int is_bad_state(struct kds_sched *kds)
 {
 	return kds->bad_state;

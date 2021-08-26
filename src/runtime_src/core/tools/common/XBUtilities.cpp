@@ -768,8 +768,8 @@ XBUtilities::string_to_bytes(std::string str)
     throw xrt_core::error(std::errc::invalid_argument);
 
   std::string units = "B";
-  if(std::isalpha(str.at(str.length()))) {
-    units = str.at(str.length());
+  if(std::isalpha(str.back())) {
+    units = str.back();
     str.pop_back();
   }
 

@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdConfigure.h"
 #include "OO_HostMem.h"
+#include "OO_P2P.h"
 
 #include "common/system.h"
 #include "common/device.h"
@@ -65,6 +66,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
   // -- Define the supporting option options ----
   SubOptionOptions subOptionOptions;
   subOptionOptions.emplace_back(std::make_shared<OO_HostMem>("host-mem"));
+  subOptionOptions.emplace_back(std::make_shared<OO_P2P>("p2p"));
 
   for (auto & subOO : subOptionOptions) {
     if (subOO->isHidden()) 

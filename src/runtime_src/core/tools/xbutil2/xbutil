@@ -222,9 +222,18 @@ if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
     echo "---------------------------------------------------------------------"
 fi
 
-# -- Find and call the loader
-XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
+# -- Find loader directory
+XRT_LOADER_DIR="`dirname \"$0\"`"
 
+# For edge platforms loader is not required as tools are in standard location(/usr).
+# So calling unwrapped tool from this script itself.
+if [[ $XRT_LOADER_DIR =~ "/usr" ]]; then
+    "${XRT_LOADER_DIR}/unwrapped/${XRT_PROG}" "${XRTWRAP_PROG_ARGS[@]}"
+    exit 0
+fi
+
+# Call loader for dc platforms
+XRT_LOADER="${XRT_LOADER_DIR}/unwrapped/loader"
 if [ ! -f "$XRT_LOADER" ]; then
     echo "ERROR: Could not find 64-bit loader executable."
     echo "ERROR: ${XRT_LOADER} does not exist."

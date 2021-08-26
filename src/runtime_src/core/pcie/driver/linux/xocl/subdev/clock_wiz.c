@@ -1100,9 +1100,7 @@ static int clock_wiz_status_check(struct platform_device *pdev, bool *latched)
 		ucs_status_ch1 = (struct ucs_control_status_ch1 *)&status;
 		if (ucs_status_ch1->shutdown_clocks_latched) {
 			CLOCK_W_ERR(clock_w, "Critical temperature or power event, "
-			    "kernel clocks have been stopped, run "
-			    "'xbutil validate -q' to continue. "
-			    "See AR 73398 for more details.");
+			    "kernel clocks have been stopped.");
 			/* explicitly indicate reset should be latched */
 			*latched = true;
 		} else if (ucs_status_ch1->clock_throttling_average > CLK_MAX_VALUE) {
