@@ -223,7 +223,13 @@ if [[ ${XRT_PROG} == "xbutil" ]] && [[ -t 1 ]]; then
 fi
 
 # -- Find and call the loader
-XRT_LOADER="`dirname \"$0\"`/unwrapped/loader"
+XRT_LOADER_DIR="`dirname \"$0\"`"
+XRT_LOADER="${XRT_LOADER_DIR}/unwrapped/loader"
+
+if [[ $XRT_LOADER_DIR =~ "/usr" ]]; then
+    "${XRT_LOADER_DIR}/unwrapped/${XRT_PROG}" "${XRTWRAP_PROG_ARGS[@]}"
+    exit 0
+fi
 
 if [ ! -f "$XRT_LOADER" ]; then
     echo "ERROR: Could not find 64-bit loader executable."
