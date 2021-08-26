@@ -203,26 +203,22 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     std::string vbnv = "xilinx_" + board_name + "_GOLDEN_" + std::to_string( mGoldenVer);
     pt_current_shell.put("vbnv", vbnv);
   } else if(!logic_uuids.empty() && !interface_uuids.empty()) { // 2RP
-    try {
-      DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], "");
-      pt_current_shell.put("vbnv", part.name);
-      pt_current_shell.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
-      pt_current_shell.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
-      pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
-    } catch (...) {
-      //safe to ignore exceptions. We print out whatever information that is available to us
-    }
+    DSAInfo part("", NULL_TIMESTAMP, logic_uuids[0], "");
+    pt_current_shell.put("vbnv", (part.name).empty() ? xrt_core::device_query<xrt_core::query::rom_vbnv>(device) : part.name);
+    pt_current_shell.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+    pt_current_shell.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
+    pt_current_shell.put("id", (boost::format("0x%x") % part.timestamp));
 
-      boost::property_tree::ptree pt_plps;
-      for(unsigned int i = 1; i < logic_uuids.size(); i++) {
-        boost::property_tree::ptree pt_plp;
-        DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], ""); 
-        pt_plp.put("vbnv", partition.name);
-        pt_plp.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[i]));
-        pt_plp.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[i]));
-        pt_plps.push_back( std::make_pair("", pt_plp) );
-      }
-      pt_platform.put_child("current_partitions", pt_plps);
+    boost::property_tree::ptree pt_plps;
+    for(unsigned int i = 1; i < logic_uuids.size(); i++) {
+      boost::property_tree::ptree pt_plp;
+      DSAInfo partition("", NULL_TIMESTAMP, logic_uuids[i], ""); 
+      pt_plp.put("vbnv", partition.name);
+      pt_plp.put("logic-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[i]));
+      pt_plp.put("interface-uuid", xrt_core::query::interface_uuids::to_uuid_upper_string(interface_uuids[i]));
+      pt_plps.push_back( std::make_pair("", pt_plp) );
+    }
+    pt_platform.put_child("current_partitions", pt_plps);
   } else { //1RP
     pt_current_shell.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
     pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
