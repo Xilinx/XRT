@@ -28,7 +28,7 @@ For the detailed list of supported OS, please refer to the specific release vers
 
 XRT is needed on both application development and deployment environments. 
 
-To install XRT on the host, please refer to page :ref:`install.rst` for dependencies installation steps and XRT installation steps.
+To install XRT on the host, please refer to page linkfix :ref:`install.rst` for dependencies installation steps and XRT installation steps.
 
 To build a custom XRT package, please refer to page :ref:`build.rst` for dependencies installation steps and building steps.
 
