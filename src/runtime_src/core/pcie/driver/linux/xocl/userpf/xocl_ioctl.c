@@ -499,10 +499,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 		/*
 		 * don't check uuid if the xclbin is a lite one
-		 * the lite xclbin will have neither BITSTREAM nor SOFT_KERNEL 
+		 * the lite xclbin will not have BITSTREAM 
 		 */
-		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM) ||
-			xocl_axlf_section_header(xdev, axlf, SOFT_KERNEL)) {
+		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
 			xocl_xdev_info(xdev, "check interface uuid");
 			if (!XDEV(xdev)->fdt_blob) {
 				userpf_err(xdev, "did not find platform dtb");
