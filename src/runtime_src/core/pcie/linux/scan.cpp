@@ -1149,6 +1149,37 @@ get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
   return uuids.size() ? 0 : -EINVAL;
 }
 
+/*
+ * This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids sysfs
+ * node for the Linux power driver. Hence, to get the active kids under a abridge we need this
+ * alternative solution.
+ */
+int
+get_runtime_active_kids(std::string pci_bridge_path)
+{
+  int curr_act_dev = 0;
+  std::vector<bfs::path> vec{bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator()};
+
+  // Under the bridge check how many xilinx devices are present. 
+  for (auto& path : vec) {
+    if (bfs::is_directory(path)) {
+      path += "/vendor";
+      if(!bfs::exists(path))
+        continue;
+
+      unsigned int vendor_id;
+      bfs::ifstream file(path);
+      file >> std::hex >> vendor_id;
+      if (vendor_id != XILINX_ID)
+        continue;
+
+      curr_act_dev++;
+    }
+  }
+
+  return curr_act_dev;
+}
+
 int
 shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgmt)
 {
@@ -1205,17 +1236,21 @@ shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgm
   if (!remove_user && !remove_mgmt)
     return 0;
 
-  int active_dev_num;
-  mgmt_dev->sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
-  if (!errmsg.empty()) {
-    std::cout << "ERROR: can not read active device number" << std::endl;
-    return -ENOENT;
-  }
-
   /* Cache the parent sysfs path before remove the PF */
   std::string parent_path = mgmt_dev->get_sysfs_path("", "dparent/power/runtime_active_kids");
   /* Get the absolute path from the symbolic link */
   parent_path = (bfs::canonical(parent_path)).c_str();
+
+  int active_dev_num;
+  mgmt_dev->sysfs_get<int>("", "dparent/power/runtime_active_kids", errmsg, active_dev_num, EINVAL);
+  if (!errmsg.empty()) {
+    // RHEL 8.x onwards this sysfs node is deprecated
+    active_dev_num = get_runtime_active_kids(parent_path);
+    if (!active_dev_num) {
+      std::cout << "ERROR: can not read active device number" << std::endl;
+      return -ENOENT;
+    }
+  }
 
   int rem_dev_cnt = 0;
   if (remove_user) {
@@ -1241,8 +1276,15 @@ shutdown(std::shared_ptr<pci_device> mgmt_dev, bool remove_user, bool remove_mgm
 
   for (int wait = 0; wait < DEV_TIMEOUT; wait++) {
     int curr_act_dev;
-    bfs::ifstream file(parent_path);
-    file >> curr_act_dev;
+    std::string active_kids_path = parent_path + "power/runtime_active_kids";
+    if (!bfs::exists(active_kids_path)) {
+      // RHEL 8.x specific 
+      curr_act_dev = get_runtime_active_kids(parent_path);
+    }
+    else {
+      bfs::ifstream file(active_kids_path);
+      file >> curr_act_dev;
+    }
 
     if (curr_act_dev + rem_dev_cnt == active_dev_num)
       return 0;
