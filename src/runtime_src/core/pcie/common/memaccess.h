@@ -105,7 +105,7 @@ namespace xcldev {
       mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, int aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
     };
 
-    std::map <int, std::string> getBankName = {
+    std::map <int, std::string> bankEnumStringMap = {
       { MEM_DDR3, "DDR3" },
       { MEM_DDR4, "DDR4" },
       { MEM_DRAM, "DRAM" },
@@ -360,7 +360,11 @@ namespace xcldev {
           available_bank_size = it->m_size - (startAddr - it->m_base_address);
         }
         if (size != 0) {
-          std::string bank_name = getBankName[it->m_type];
+          if (it->m_type > bankEnumStringMap.size()) {
+            std::cout << "Error: Invalid Bank type received, bank_type = " << it->m_type << std::endl;
+            return -1;
+          }
+          std::string bank_name = bankEnumStringMap[it->m_type];
           std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
                                     << std::dec << std::endl;
           unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
