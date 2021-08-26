@@ -641,9 +641,9 @@ find_flash_image_paths(const std::vector<std::string> image_list)
 
 SubCmdProgram::SubCmdProgram(bool _isHidden, bool _isDepricated, bool _isPreliminary)
     : SubCmd("program", 
-             "Update device and/or Satallite Controler (SC) firmware image for a given device")
+             "Update image(s) for a given device")
 {
-  const std::string longDescription = "Updates the flash image for the device and/or the Satallite Controller (SC) firmware image for a given device.";
+  const std::string longDescription = "Updates the image(s) for a given device.";
   setLongDescription(longDescription);
   setExampleSyntax("");
   setIsHidden(_isHidden);
@@ -683,7 +683,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) of the partition.")
 
     // TODO: Auto update the 'base' values
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images."/*  Value values:\n"
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image."/*  Value values:\n"
                                                                          "  ALL   - All images will be updated"
                                                                          "  FLASH - Flash image\n"
                                                                          "  SC    - Satellite controller"*/)
@@ -692,7 +692,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Control (MSP432) will not be reverted for a golden image does not exist.")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
