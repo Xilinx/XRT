@@ -127,6 +127,7 @@ XclBinUtilities::encode_byte_string(const std::string& byte_string)
 {
   std::string encodeBuf = encode_major_type(MajorTypes::byte_string, byte_string.length());
   encodeBuf += byte_string;
+  XUtil::TRACE(std::string("CBOR: [Encode] Byte String"));
 
   return encodeBuf;
 }
