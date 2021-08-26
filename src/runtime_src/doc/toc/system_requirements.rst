@@ -30,7 +30,7 @@ XRT is needed on both application development and deployment environments.
 
 To install XRT on the host, please refer to page linkfix `install <install.rst>`_. for dependencies installation steps and XRT installation steps.
 
-To build a custom XRT package, please refer to page :ref:`build.rst` for dependencies installation steps and building steps.
+To build a custom XRT package, please refer to page _`build <build.rst>`_ for dependencies installation steps and building steps.
 
 XRT Software Stack for Embedded Platforms
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
