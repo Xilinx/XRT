@@ -152,8 +152,8 @@ is_SC_fixed(unsigned int index)
   }
   catch (...) {
     //TODO Catching all the exceptions for now. We may need to catch specific exceptions
-    //Work-around. Assume that sc is fixed if above query failed
-    return true;
+    //Work-around. Assume that sc is not fixed if above query failed.
+    return false;
   }
 }
 
