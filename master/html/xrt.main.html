@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -405,6 +403,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -414,9 +416,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xrt.main.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xrt.main.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -486,9 +486,9 @@
 <p>Header file <em>xrt.h</em> defines data structures and function signatures
 exported by Xilinx Runtime (XRT) Library. XRT is part of software
 stack which is integrated into Xilinx reference platform.</p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">typedef</span> <span class="pre">xclDeviceHandle</span></span></dt>
+<dl class="type">
+<dt id="c.xclDeviceHandle">
+typedef <code class="descname">xclDeviceHandle</code><a class="headerlink" href="#c.xclDeviceHandle" title="Permalink to this definition">¶</a></dt>
 <dd><p>opaque device handle</p>
 </dd></dl>
 
@@ -498,209 +498,209 @@ device. Clients pass this device handle to refer to the opened
 device in all future interaction with XRT.</p>
 <p><strong>XRT Device Management APIs</strong></p>
 <hr class="docutils" />
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">xclProbe</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.xclProbe">
+XCL_DRIVER_DLLESPEC unsigned int <code class="descname">xclProbe</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.xclProbe" title="Permalink to this definition">¶</a></dt>
 <dd><p>Enumerate devices found in the system</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Return</strong></p>
 <p>count of devices found</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclDeviceHandle</span> <span class="pre">xclOpen</span> <span class="pre">(unsigned</span> <span class="pre">int</span> <span class="pre">deviceIndex,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">unused1,</span> <span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">unused2)</span></span></dt>
+<dl class="function">
+<dt id="c.xclOpen">
+XCL_DRIVER_DLLESPEC <a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a> <code class="descname">xclOpen</code><span class="sig-paren">(</span>unsigned int<em>&nbsp;deviceIndex</em>, const char *<em>&nbsp;unused1</em>, enum xclVerbosityLevel<em>&nbsp;unused2</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpen" title="Permalink to this definition">¶</a></dt>
 <dd><p>Open a device and obtain its handle.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">deviceIndex</span></code></dt><dd><p>Slot number of device 0 for first device, 1 for the second device…</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">unused1</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">unused2</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">deviceIndex</span></code></dt>
+<dd>Slot number of device 0 for first device, 1 for the second device…</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">unused1</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclVerbosityLevel</span> <span class="pre">unused2</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Device handle</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void</span> <span class="pre">xclClose</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle)</span></span></dt>
+<dl class="function">
+<dt id="c.xclClose">
+XCL_DRIVER_DLLESPEC void <code class="descname">xclClose</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclClose" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close an opened device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
 </dl>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetDeviceInfo2</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
+<dl class="function">
+<dt id="c.xclGetDeviceInfo2">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetDeviceInfo2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclDeviceInfo2 *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetDeviceInfo2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain various bits of information from the device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info</span></code></dt><dd><p>Information record</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclDeviceInfo2</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetUsageInfo</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
+<dl class="function">
+<dt id="c.xclGetUsageInfo">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetUsageInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclDeviceUsage *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetUsageInfo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain usage information from the device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info</span></code></dt><dd><p>Information record</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclDeviceUsage</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetErrorStatus</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">struct</span> <span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info)</span></span></dt>
+<dl class="function">
+<dt id="c.xclGetErrorStatus">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetErrorStatus</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, struct xclErrorStatus *<em>&nbsp;info</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetErrorStatus" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain error information from the device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info</span></code></dt><dd><p>Information record</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclErrorStatus</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dd>Information record</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclLoadXclBin</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer)</span></span></dt>
+<dl class="function">
+<dt id="c.xclLoadXclBin">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclLoadXclBin</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const struct axlf *<em>&nbsp;buffer</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclLoadXclBin" title="Permalink to this definition">¶</a></dt>
 <dd><p>Download FPGA image (xclbin) to the device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer</span></code></dt><dd><p>Pointer to device image (xclbin) in memory</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">struct</span> <span class="pre">axlf</span> <span class="pre">*</span> <span class="pre">buffer</span></code></dt>
+<dd>Pointer to device image (xclbin) in memory</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Download FPGA image (AXLF) to the device. The PR bitstream is
 encapsulated inside xclbin as a section. xclbin may also contains
 other sections which are suitably handled by the driver.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetSectionInfo</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">info,</span> <span class="pre">size_t</span> <span class="pre">*</span> <span class="pre">size,</span> <span class="pre">enum</span> <span class="pre">axlf_section_kind</span> <span class="pre">kind,</span> <span class="pre">int</span> <span class="pre">index)</span></span></dt>
+<dl class="function">
+<dt id="c.xclGetSectionInfo">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetSectionInfo</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, void *<em>&nbsp;info</em>, size_t *<em>&nbsp;size</em>, enum axlf_section_kind<em>&nbsp;kind</em>, int<em>&nbsp;index</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetSectionInfo" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get Information from sysfs about the downloaded xclbin sections</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">info</span></code></dt><dd><p>Pointer to preallocated memory which will store the return value.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">*</span> <span class="pre">size</span></code></dt><dd><p>Pointer to preallocated memory which will store the return size.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">axlf_section_kind</span> <span class="pre">kind</span></code></dt><dd><p>axlf_section_kind for which info is being queried</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">index</span></code></dt><dd><p>The (sub)section index for the “kind” type.</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">info</span></code></dt>
+<dd>Pointer to preallocated memory which will store the return value.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">*</span> <span class="pre">size</span></code></dt>
+<dd>Pointer to preallocated memory which will store the return size.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">axlf_section_kind</span> <span class="pre">kind</span></code></dt>
+<dd>axlf_section_kind for which info is being queried</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">index</span></code></dt>
+<dd>The (sub)section index for the “kind” type.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Get the section information from sysfs. The index corrresponds to the (section) entry
 of the axlf_section_kind data being queried. The info and the size contain the return
 binary value of the subsection and its size.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclReClock2</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">region,</span> <span class="pre">const</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">*</span> <span class="pre">targetFreqMHz)</span></span></dt>
+<dl class="function">
+<dt id="c.xclReClock2">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclReClock2</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned short<em>&nbsp;region</em>, const unsigned short *<em>&nbsp;targetFreqMHz</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclReClock2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Configure PR region frequncies</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">region</span></code></dt><dd><p>PR region (always 0)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">*</span> <span class="pre">targetFreqMHz</span></code></dt><dd><p>Array of target frequencies in order for the Clock Wizards driving
-the PR region</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">region</span></code></dt>
+<dd>PR region (always 0)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">unsigned</span> <span class="pre">short</span> <span class="pre">*</span> <span class="pre">targetFreqMHz</span></code></dt>
+<dd>Array of target frequencies in order for the Clock Wizards driving
+the PR region</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclOpenContext</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex,</span> <span class="pre">bool</span> <span class="pre">shared)</span></span></dt>
+<dl class="function">
+<dt id="c.xclOpenContext">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclOpenContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const xuid_t<em>&nbsp;xclbinId</em>, unsigned int<em>&nbsp;ipIndex</em>, bool<em>&nbsp;shared</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclOpenContext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create shared/exclusive context on compute units</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId</span></code></dt><dd><p>UUID of the xclbin image running on the device</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex</span></code></dt><dd><p>IP index</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">shared</span></code></dt><dd><p>Shared access or exclusive access</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId</span></code></dt>
+<dd>UUID of the xclbin image running on the device</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex</span></code></dt>
+<dd>IP index</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">shared</span></code></dt>
+<dd>Shared access or exclusive access</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>The context is necessary before submitting execution jobs using
-<code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code>. Contexts may be exclusive or shared. Allocation of
+<a class="reference internal" href="#c.xclExecBuf" title="xclExecBuf"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code></a>. Contexts may be exclusive or shared. Allocation of
 exclusive contexts on a hardware IP would succeed only if another
 client has not already setup up a context on that hardware IP.
 Shared contexts can be concurrently allocated by many
 processes on the same compute units.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclCloseContext</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex)</span></span></dt>
+<dl class="function">
+<dt id="c.xclCloseContext">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclCloseContext</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const xuid_t<em>&nbsp;xclbinId</em>, unsigned int<em>&nbsp;ipIndex</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCloseContext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Close previously opened context</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId</span></code></dt><dd><p>UUID of the xclbin image running on the device</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex</span></code></dt><dd><p>ipIndex</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">xuid_t</span> <span class="pre">xclbinId</span></code></dt>
+<dd>UUID of the xclbin image running on the device</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">ipIndex</span></code></dt>
+<dd>ipIndex</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Close a previously allocated shared/exclusive context for a hardware IP.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclLogMsg</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">enum</span> <span class="pre">xrtLogMsgLevel</span> <span class="pre">level,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">tag,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format,</span>&#160; <span class="pre">...)</span></span></dt>
+<dl class="function">
+<dt id="c.xclLogMsg">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclLogMsg</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, enum xrtLogMsgLevel<em>&nbsp;level</em>, const char *<em>&nbsp;tag</em>, const char *<em>&nbsp;format</em>, ...<span class="sig-paren">)</span><a class="headerlink" href="#c.xclLogMsg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Send message to log file as per settings in ini file.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xrtLogMsgLevel</span> <span class="pre">level</span></code></dt><dd><p>Severity level of the msg</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">tag</span></code></dt><dd><p>Tag supplied by the client, like “OCL”, “XMA”, etc.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format</span></code></dt><dd><p>Format of Msg string to write to log file</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">...</span></code></dt><dd><p>All other arguments as per the format</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xrtLogMsgLevel</span> <span class="pre">level</span></code></dt>
+<dd>Severity level of the msg</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">tag</span></code></dt>
+<dd>Tag supplied by the client, like “OCL”, “XMA”, etc.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">format</span></code></dt>
+<dd>Format of Msg string to write to log file</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">...</span></code></dt>
+<dd>All other arguments as per the format</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
@@ -708,99 +708,99 @@ processes on the same compute units.</p>
 <hr class="docutils" />
 <p>Buffer management APIs are used for managing device memory and migrating buffers
 between host and device memory</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclAllocBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">int</span> <span class="pre">unused,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
+<dl class="function">
+<dt id="c.xclAllocBO">
+XCL_DRIVER_DLLESPEC xclBufferHandle <code class="descname">xclAllocBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, size_t<em>&nbsp;size</em>, int<em>&nbsp;unused</em>, unsigned int<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO of requested size with appropriate flags</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of buffer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unused</span></code></dt><dd><p>This argument is ignored</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt><dd><p>Specify bank information, etc</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">unused</span></code></dt>
+<dd>This argument is ignored</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt>
+<dd>Specify bank information, etc</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>BO handle</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclAllocUserPtrBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">userptr,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
+<dl class="function">
+<dt id="c.xclAllocUserPtrBO">
+XCL_DRIVER_DLLESPEC xclBufferHandle <code class="descname">xclAllocUserPtrBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, void *<em>&nbsp;userptr</em>, size_t<em>&nbsp;size</em>, unsigned int<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclAllocUserPtrBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Allocate a BO using userptr provided by the user</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">userptr</span></code></dt><dd><p>Pointer to 4K aligned user memory</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of buffer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt><dd><p>Specify bank information, etc</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">userptr</span></code></dt>
+<dd>Pointer to 4K aligned user memory</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt>
+<dd>Specify bank information, etc</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>BO handle</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void</span> <span class="pre">xclFreeBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle)</span></span></dt>
+<dl class="function">
+<dt id="c.xclFreeBO">
+XCL_DRIVER_DLLESPEC void <code class="descname">xclFreeBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclFreeBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Free a previously allocated BO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
 </dl>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xclWriteBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">seek)</span></span></dt>
+<dl class="function">
+<dt id="c.xclWriteBO">
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xclWriteBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, const void *<em>&nbsp;src</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;seek</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclWriteBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Copy-in user data to host backing storage of BO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src</span></code></dt><dd><p>Source data pointer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">seek</span></code></dt><dd><p>Offset within the BO</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">src</span></code></dt>
+<dd>Source data pointer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to copy</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">seek</span></code></dt>
+<dd>Offset within the BO</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>Copy host buffer contents to previously allocated device
 memory. <code class="docutils literal notranslate"><span class="pre">seek</span></code> specifies how many bytes to skip at the beginning
 of the BO before copying-in <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes of host buffer.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">size_t</span> <span class="pre">xclReadBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">skip)</span></span></dt>
+<dl class="function">
+<dt id="c.xclReadBO">
+XCL_DRIVER_DLLESPEC size_t <code class="descname">xclReadBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, void *<em>&nbsp;dst</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;skip</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclReadBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Copy-out user data from host backing storage of BO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt><dd><p>Destination data pointer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">skip</span></code></dt><dd><p>Offset within the BO</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">dst</span></code></dt>
+<dd>Destination data pointer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to copy</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">skip</span></code></dt>
+<dd>Offset within the BO</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
@@ -808,84 +808,84 @@ of the BO before copying-in <code class="docutils literal notranslate"><span cla
 buffer. <code class="docutils literal notranslate"><span class="pre">skip</span></code> specifies how many bytes to skip from the
 beginning of the BO before copying-out <code class="docutils literal notranslate"><span class="pre">size</span></code> bytes of device
 buffer.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">void*</span> <span class="pre">xclMapBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">bool</span> <span class="pre">write)</span></span></dt>
+<dl class="function">
+<dt id="c.xclMapBO">
+XCL_DRIVER_DLLESPEC void* <code class="descname">xclMapBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, bool<em>&nbsp;write</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclMapBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Memory map BO into user’s address space</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">write</span></code></dt><dd><p>READ only or READ/WRITE mapping</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">bool</span> <span class="pre">write</span></code></dt>
+<dd>READ only or READ/WRITE mapping</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Memory mapped buffer</p>
 <p>Map the contents of the buffer object into host memory
-To unmap the buffer call <code class="xref c c-func docutils literal notranslate"><span class="pre">xclUnmapBO()</span></code>.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclUnmapBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">addr)</span></span></dt>
+To unmap the buffer call <a class="reference internal" href="#c.xclUnmapBO" title="xclUnmapBO"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclUnmapBO()</span></code></a>.</p>
+<dl class="function">
+<dt id="c.xclUnmapBO">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclUnmapBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, void *<em>&nbsp;addr</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclUnmapBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Unmap a BO that was previously mapped with xclMapBO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">addr</span></code></dt><dd><p>The mapped void * pointer returned from <code class="xref c c-func docutils literal notranslate"><span class="pre">xclMapBO()</span></code></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">addr</span></code></dt>
+<dd>The mapped void * pointer returned from <a class="reference internal" href="#c.xclMapBO" title="xclMapBO"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclMapBO()</span></code></a></dd>
 </dl>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclSyncBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">enum</span> <span class="pre">xclBOSyncDirection</span> <span class="pre">dir,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">offset)</span></span></dt>
+<dl class="function">
+<dt id="c.xclSyncBO">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclSyncBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, enum xclBOSyncDirection<em>&nbsp;dir</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclSyncBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Synchronize buffer contents in requested direction</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclBOSyncDirection</span> <span class="pre">dir</span></code></dt><dd><p>To device or from device</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to synchronize</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt><dd><p>Offset within the BO</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">enum</span> <span class="pre">xclBOSyncDirection</span> <span class="pre">dir</span></code></dt>
+<dd>To device or from device</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to synchronize</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">offset</span></code></dt>
+<dd>Offset within the BO</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or standard errno</p>
 <p>Synchronize the buffer contents between host and device. Depending
 on the memory model this may require DMA to/from device or CPU
 cache flushing/invalidation</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclCopyBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">dstBoHandle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">srcBoHandle,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">size_t</span> <span class="pre">dst_offset,</span> <span class="pre">size_t</span> <span class="pre">src_offset)</span></span></dt>
+<dl class="function">
+<dt id="c.xclCopyBO">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclCopyBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;dstBoHandle</em>, xclBufferHandle<em>&nbsp;srcBoHandle</em>, size_t<em>&nbsp;size</em>, size_t<em>&nbsp;dst_offset</em>, size_t<em>&nbsp;src_offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclCopyBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Copy device buffer contents to another buffer</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">dstBoHandle</span></code></dt><dd><p>Destination BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">srcBoHandle</span></code></dt><dd><p>Source BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to synchronize</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">dst_offset</span></code></dt><dd><p>dst  Offset within the BO</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">src_offset</span></code></dt><dd><p>src  Offset within the BO</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">dstBoHandle</span></code></dt>
+<dd>Destination BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">srcBoHandle</span></code></dt>
+<dd>Source BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to synchronize</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">dst_offset</span></code></dt>
+<dd>dst  Offset within the BO</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">src_offset</span></code></dt>
+<dd>src  Offset within the BO</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or standard errno</p>
@@ -893,78 +893,78 @@ cache flushing/invalidation</p>
 device to device or device to host.  Always perform WRITE to
 achieve better performance, destination buffer can be on device or
 host require DMA from device</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferExportHandle</span> <span class="pre">xclExportBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle)</span></span></dt>
+<dl class="function">
+<dt id="c.xclExportBO">
+XCL_DRIVER_DLLESPEC xclBufferExportHandle <code class="descname">xclExportBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclExportBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain DMA-BUF file descriptor for a BO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle which needs to be exported</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle which needs to be exported</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>File handle to the BO or standard errno</p>
 <p>Export a BO for import into another device or Linux subsystem which
 accepts DMA-BUF fd This operation is backed by Linux DMA-BUF
 framework</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">xclBufferHandle</span> <span class="pre">xclImportBO</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferExportHandle</span> <span class="pre">fd,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags)</span></span></dt>
+<dl class="function">
+<dt id="c.xclImportBO">
+XCL_DRIVER_DLLESPEC xclBufferHandle <code class="descname">xclImportBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferExportHandle<em>&nbsp;fd</em>, unsigned int<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclImportBO" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain BO handle for a BO represented by DMA-BUF file descriptor</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferExportHandle</span> <span class="pre">fd</span></code></dt><dd><p>File handle to foreign BO owned by another device which needs to be imported</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt><dd><p>Unused</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferExportHandle</span> <span class="pre">fd</span></code></dt>
+<dd>File handle to foreign BO owned by another device which needs to be imported</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>BO handle of the imported BO</p>
 <p>Import a BO exported by another device.     *
 This operation is backed by Linux DMA-BUF framework</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclGetBOProperties</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">boHandle,</span> <span class="pre">struct</span> <span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties)</span></span></dt>
+<dl class="function">
+<dt id="c.xclGetBOProperties">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclGetBOProperties</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;boHandle</em>, struct xclBOProperties *<em>&nbsp;properties</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclGetBOProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain xclBOProperties struct for a BO</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt><dd><p>BO handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties</span></code></dt><dd><p>BO properties struct pointer</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">boHandle</span></code></dt>
+<dd>BO handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">xclBOProperties</span> <span class="pre">*</span> <span class="pre">properties</span></code></dt>
+<dd>BO properties struct pointer</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success</p>
 <p>This is the prefered method for obtaining BO property information.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclIPName2Index</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ipName)</span></span></dt>
+<dl class="function">
+<dt id="c.xclIPName2Index">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclIPName2Index</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, const char *<em>&nbsp;ipName</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclIPName2Index" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain IP index by IP name</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ipName</span></code></dt><dd><p>IP name. usually “&lt;kernel name&gt;:&lt;instance name&gt;”</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">char</span> <span class="pre">*</span> <span class="pre">ipName</span></code></dt>
+<dd>IP name. usually “&lt;kernel name&gt;:&lt;instance name&gt;”</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>IP index or appropriate error number</p>
-<p><code class="xref c c-func docutils literal notranslate"><span class="pre">xclIPName2Index()</span></code> should be used to obtain unique index of IP as understood by other XRT APIs
-like <code class="xref c c-func docutils literal notranslate"><span class="pre">xclOpenContext()</span></code>.</p>
+<p><a class="reference internal" href="#c.xclIPName2Index" title="xclIPName2Index"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclIPName2Index()</span></code></a> should be used to obtain unique index of IP as understood by other XRT APIs
+like <a class="reference internal" href="#c.xclOpenContext" title="xclOpenContext"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclOpenContext()</span></code></a>.</p>
 <p><strong>XRT Unmanaged DMA APIs</strong></p>
 <hr class="docutils" />
 <p>Unmanaged DMA APIs are for exclusive use by the debuggers and
@@ -976,48 +976,48 @@ should instead use XRT sub-buffer infrastructure for fine grained
 placement of buffers as it also provides better DMA performancce
 and richer set of features like mmap/munmap, etc.</p>
 <p>The unmanaged APIs are planned to be be deprecated in future.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">ssize_t</span> <span class="pre">xclUnmgdPread</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags,</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">uint64_t</span> <span class="pre">offset)</span></span></dt>
+<dl class="function">
+<dt id="c.xclUnmgdPread">
+XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclUnmgdPread</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;flags</em>, void *<em>&nbsp;buf</em>, size_t<em>&nbsp;size</em>, uint64_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclUnmgdPread" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform unmanaged device memory read operation</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt><dd><p>Unused</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt><dd><p>Destination data pointer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt><dd><p>Absolute offset inside device</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>Destination data pointer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to copy</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
+<dd>Absolute offset inside device</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
 <p>This API may be used to perform DMA operation from absolute
 location specified. As stated before this API is for use by
 debuggers and profilers. Do not use it in your application.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">ssize_t</span> <span class="pre">xclUnmgdPwrite</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags,</span> <span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf,</span> <span class="pre">size_t</span> <span class="pre">size,</span> <span class="pre">uint64_t</span> <span class="pre">offset)</span></span></dt>
+<dl class="function">
+<dt id="c.xclUnmgdPwrite">
+XCL_DRIVER_DLLESPEC ssize_t <code class="descname">xclUnmgdPwrite</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, unsigned int<em>&nbsp;flags</em>, const void *<em>&nbsp;buf</em>, size_t<em>&nbsp;size</em>, uint64_t<em>&nbsp;offset</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclUnmgdPwrite" title="Permalink to this definition">¶</a></dt>
 <dd><p>Perform unmanaged device memory read operation</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt><dd><p>Unused</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt><dd><p>Source data pointer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt><dd><p>Size of data to copy</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt><dd><p>Absolute offset inside device</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">unsigned</span> <span class="pre">int</span> <span class="pre">flags</span></code></dt>
+<dd>Unused</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">const</span> <span class="pre">void</span> <span class="pre">*</span> <span class="pre">buf</span></code></dt>
+<dd>Source data pointer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size_t</span> <span class="pre">size</span></code></dt>
+<dd>Size of data to copy</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uint64_t</span> <span class="pre">offset</span></code></dt>
+<dd>Absolute offset inside device</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 on success or appropriate error number</p>
@@ -1027,36 +1027,36 @@ debuggers and profilers. Do not use it in your application.</p>
 <p><strong>XRT Compute Unit Execution Management APIs</strong></p>
 <p>These APIs are under development. These functions will be used to
 start compute units and wait for them to finish.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclExecBuf</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">xclBufferHandle</span> <span class="pre">cmdBO)</span></span></dt>
+<dl class="function">
+<dt id="c.xclExecBuf">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclExecBuf</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferHandle<em>&nbsp;cmdBO</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclExecBuf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submit an execution request to the embedded (or software) scheduler</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">cmdBO</span></code></dt><dd><p>BO handle containing command packet</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclBufferHandle</span> <span class="pre">cmdBO</span></code></dt>
+<dd>BO handle containing command packet</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>0 or standard error number</p>
 <p>Submit an exec buffer for execution. The exec buffer layout is
 defined by struct ert_packet which is defined in file <em>ert.h</em>. The
 BO should been allocated with DRM_XOCL_BO_EXECBUF flag.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">XCL_DRIVER_DLLESPEC</span> <span class="pre">int</span> <span class="pre">xclExecWait</span> <span class="pre">(xclDeviceHandle</span> <span class="pre">handle,</span> <span class="pre">int</span> <span class="pre">timeoutMilliSec)</span></span></dt>
+<dl class="function">
+<dt id="c.xclExecWait">
+XCL_DRIVER_DLLESPEC int <code class="descname">xclExecWait</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, int<em>&nbsp;timeoutMilliSec</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclExecWait" title="Permalink to this definition">¶</a></dt>
 <dd><p>Wait for one or more execution events on the device</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt><dd><p>Device handle</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">timeoutMilliSec</span></code></dt><dd><p>How long to wait for</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclDeviceHandle</span> <span class="pre">handle</span></code></dt>
+<dd>Device handle</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int</span> <span class="pre">timeoutMilliSec</span></code></dt>
+<dd>How long to wait for</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Same code as poll system call</p>
@@ -1098,7 +1098,7 @@ different threads.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,12 +55,10 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="xbutil (Next Generation)" href="xbutil2.html" />
+    <link rel="next" title="Utility Migration Guide" href="xbtools_map.html" />
     <link rel="prev" title="xbutil" href="xbutil.html" /> 
 	</head>
 	<body>
@@ -382,15 +380,17 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">xbmgmt</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#flashing-a-card">Flashing a card</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#downloading-shell-on-a-card">Downloading shell on a card</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-dump">xbmgmt dump</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-examine">xbmgmt examine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-program">xbmgmt program</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-reset">xbmgmt reset</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -409,6 +409,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -418,9 +422,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xbmgmt.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbmgmt.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -486,26 +488,191 @@
             
   <span class="target" id="xbmgmt-rst"></span><div class="section" id="xbmgmt">
 <h1>xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h1>
-<p>Xilinx® Board Management (xbmgmt) utility is a standalone command line tool that is included
-with the XRT installation package. The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> command supports both Alveo Data Center
-accelerator cards, and embedded processor-based platforms.</p>
-<p>This utility is used for card installation and administration, and requires sudo privileges when
-running it. The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> supported tasks include flashing the card firmware, and scanning the
-current device configuration.</p>
-<div class="section" id="flashing-a-card">
-<h2>Flashing a card<a class="headerlink" href="#flashing-a-card" title="Permalink to this headline">¶</a></h2>
-<ol class="arabic simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">flash</span> <span class="pre">--update</span></code></p></li>
-<li><p>Cold reboot</p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">flash</span> <span class="pre">--scan</span></code> to verify that the card is flashed correctly</p></li>
-</ol>
+<p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. These latest commands are default from 21.1 release.</p>
+<p>P.S: The older version of the commands can only be executed by adding <code class="docutils literal notranslate"><span class="pre">--legacy</span></code> switch.</p>
+<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable</li>
+<li><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode</li>
+<li><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation</li>
+<li><code class="docutils literal notranslate"><span class="pre">--help</span></code> : Get help message</li>
+<li><code class="docutils literal notranslate"><span class="pre">--version</span></code> : Report the version of XRT and its drivers</li>
+</ul>
+</div></blockquote>
+<p>Currently supported <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands are</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code></li>
+</ul>
+</div></blockquote>
+<div class="section" id="xbmgmt-dump">
+<h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dump out content of the specified option</p>
+<p><strong>The supported options</strong></p>
+<p>Dumping the output of system configuration.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--config<span class="p">|</span> -c<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+</pre></div>
 </div>
-<div class="section" id="downloading-shell-on-a-card">
-<h2>Downloading shell on a card<a class="headerlink" href="#downloading-shell-on-a-card" title="Permalink to this headline">¶</a></h2>
-<p>Note: On Linux, please run the following with <code class="docutils literal notranslate"><span class="pre">--new</span></code> option
-1. <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span> <span class="pre">--partition</span> <span class="pre">&lt;path/to/partition.xsabin&gt;</span> <span class="pre">--device</span> <span class="pre">0000:00:00.0</span></code>
-2. Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">status</span></code> to verify the partition download</p>
-<p>For more details please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2020_2/vitis_doc/xbmgmtutility.html#utg1569948694132">Vitis Application Acceleration Development Flow Documentation</a></p>
+<p>Dumping the output of programmed system image</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt dump <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--flash<span class="p">|</span> -f<span class="o">]</span> <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename with .ini extension&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--flash</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) option dumps the output of programmed system image.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--config</span></code> (or <code class="docutils literal notranslate"><span class="pre">-c</span></code>) option dumps the output of system configuration.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the dumped output. For <code class="docutils literal notranslate"><span class="pre">--config</span></code> the output file must have extension .ini</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Dump programmed system image data</span>
+xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --flash -o /tmp/flash_dump.txt
+
+<span class="c1">#Dump system configaration</span>
+xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config_dump.ini
+</pre></div>
+</div>
+</div>
+<div class="section" id="xbmgmt-examine">
+<h2>xbmgmt examine<a class="headerlink" href="#xbmgmt-examine" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> command reports detail status information of the specified device</p>
+<p><strong>The supported options</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--report</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) switch can be used to view specific report(s) of interest from the following options</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">all</span></code>: All known reports are produced</li>
+<li><code class="docutils literal notranslate"><span class="pre">firewall</span></code>: Firewall status</li>
+<li><code class="docutils literal notranslate"><span class="pre">host</span></code>: Host information</li>
+<li><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</li>
+<li><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</li>
+<li><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platform information</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</li>
+<li><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Report all the information for a specific device</span>
+xbmgmt examine --device <span class="m">0000</span>:d8:00.0 --report all
+
+<span class="c1">#Reports platform information in JSON format</span>
+xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --format JSON --output output.json
+</pre></div>
+</div>
+</div>
+<div class="section" id="xbmgmt-program">
+<h2>xbmgmt program<a class="headerlink" href="#xbmgmt-program" title="Permalink to this headline">¶</a></h2>
+<p><strong>The supported usecases and their options</strong></p>
+<p>Program the Base partition (applicable for 1RP platform too)</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span>
+</pre></div>
+</div>
+<p>Program the Shell Partition for 2RP platform</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--shell<span class="p">|</span>-s<span class="o">]</span> &lt;shell partition file with path&gt;
+</pre></div>
+</div>
+<p>Program the user partition with an XCLBIN file</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;XCLBIN file with path&gt;
+</pre></div>
+</div>
+<p>Revert to golden image</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --revert-to-golden
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--base</span></code> option is used to update the base partition. This option is applicable for both the 1RP and 2RP platform. No action is performed if the card’s existing base partition is already up-to-date, or in a higher version, or a different platform’s partition.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--shell</span></code> option is used to program shell partition, applicable for 2RP platform only. The user can get the full path of installed shell partition in the system from the json file generated by <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span> <span class="pre">-r</span> <span class="pre">platform</span> <span class="pre">--format</span> <span class="pre">json</span> <span class="pre">--output</span> <span class="pre">&lt;output&gt;.json</span></code> command</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;shell partition with path&gt; : The shell partition with full path to program the shell partition</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--user</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>) is required to specify the .xclbin file</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;xclbin file&gt; : The xclbin file with full-path to program the device</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--revert-to-golden</span></code> command is used to reverts the flash image back to the golden version of the card.</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Program the base partition</span>
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --base
+
+<span class="c1">#Program the shell partition</span>
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --shell &lt;partition file with path&gt;
+
+xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
+</pre></div>
+</div>
+</div>
+<div class="section" id="xbmgmt-reset">
+<h2>xbmgmt reset<a class="headerlink" href="#xbmgmt-reset" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code> command can be used to reset device.</p>
+<p><strong>The supported options</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt;
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to reset</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset --device <span class="m">0000</span>:65:00.0
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -525,7 +692,7 @@ current device configuration.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xbutil2.html" class="btn btn-neutral float-right" title="xbutil (Next Generation)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xbtools_map.html" class="btn btn-neutral float-right" title="Utility Migration Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="xbutil.html" class="btn btn-neutral float-left" title="xbutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -538,7 +705,7 @@ current device configuration.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -380,11 +378,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -403,6 +401,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -412,9 +414,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/newxsa-bringup.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/newxsa-bringup.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -485,8 +485,8 @@
 <div class="section" id="assumption">
 <h2>Assumption<a class="headerlink" href="#assumption" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>The firmware(.dsabin) file along with the new XSA is installed to the host properly. This firmware file could contain FPGA flash image, XMC image, microblaze image etc. which is consumed by driver and tools.</p></li>
-<li><p>The new XSA bitstream is programed to the FPGA board properly.</p></li>
+<li>The firmware(.dsabin) file along with the new XSA is installed to the host properly. This firmware file could contain FPGA flash image, XMC image, microblaze image etc. which is consumed by driver and tools.</li>
+<li>The new XSA bitstream is programed to the FPGA board properly.</li>
 </ol>
 </div>
 <div class="section" id="identify-xsa">
@@ -494,10 +494,11 @@
 <p>There are two factor could be used to identify the new XSA. The first is PCI vendor-id, device-id and subsystem-id combination. The second is XSA VBNV name. For XRT driver <code class="docutils literal notranslate"><span class="pre">src/runtime_src/core/pcie/driver/linux/xocl/devices.h</span></code> need to be changed to identify the new XSA.</p>
 <div class="section" id="add-new-pci-id-combination">
 <h3>Add new PCI ID combination<a class="headerlink" href="#add-new-pci-id-combination" title="Permalink to this headline">¶</a></h3>
-<dl>
-<dt>Open devices.h and search</dt><dd><p><code class="docutils literal notranslate"><span class="pre">XOCL_MGMT_PCI_IDS</span></code>      for management PCI function</p>
+<dl class="docutils">
+<dt>Open devices.h and search</dt>
+<dd><p class="first"><code class="docutils literal notranslate"><span class="pre">XOCL_MGMT_PCI_IDS</span></code>      for management PCI function</p>
 <p><code class="docutils literal notranslate"><span class="pre">XOCL_USER_XDMA_PCI_IDS</span></code> for XDMA user PCI function</p>
-<p><code class="docutils literal notranslate"><span class="pre">XOCL_USER_QDMA_PCI_IDS</span></code> for QDMA user PCI function</p>
+<p class="last"><code class="docutils literal notranslate"><span class="pre">XOCL_USER_QDMA_PCI_IDS</span></code> for QDMA user PCI function</p>
 </dd>
 </dl>
 <p>Then add entries corresponding for the new XSA. The PCI ID combination has to be unique. <code class="docutils literal notranslate"><span class="pre">PCI_ANY_ID</span></code> is acceptable wildcast. The behavior of overlapped combination is undefined.</p>
@@ -563,7 +564,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

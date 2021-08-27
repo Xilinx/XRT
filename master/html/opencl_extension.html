@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -404,11 +402,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -427,6 +425,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -436,9 +438,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/opencl_extension.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/opencl_extension.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -513,17 +513,17 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <div class="section" id="specify-a-special-buffer-such-as-p2p-buffer-host-only-buffer-etc">
 <h3>Specify a special buffer such as P2P buffer, Host only buffer, etc.<a class="headerlink" href="#specify-a-special-buffer-such-as-p2p-buffer-host-only-buffer-etc" title="Permalink to this headline">¶</a></h3>
 <p>An example of a P2P Buffer specification</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span> <span class="n">p2p_buf_ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-<span class="n">p2p_buf_ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_P2P_BUFFER</span><span class="p">;</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>cl_mem_ext_ptr_t p2p_buf_ext = {0};
+p2p_buf_ext.flags = XCL_MEM_EXT_P2P_BUFFER;
 
-<span class="n">cl_mem</span> <span class="n">p2p_buf</span> <span class="o">=</span> <span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span> <span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">buffersize</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">p2p_buf_ext</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">err</span><span class="p">);</span>
+cl_mem p2p_buf = clCreateBuffer(context, CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, buffersize, &amp;p2p_buf_ext, &amp;err);
 </pre></div>
 </div>
 <p>An example of a host only buffer specification</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span> <span class="n">host_buffer_ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-<span class="n">host_buffer_ext</span><span class="p">.</span><span class="n">flags</span> <span class="o">=</span> <span class="n">XCL_MEM_EXT_HOST_ONLY</span><span class="p">;</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>cl_mem_ext_ptr_t host_buffer_ext = {0};
+host_buffer_ext.flags = XCL_MEM_EXT_HOST_ONLY;
 
-<span class="n">cl</span><span class="o">::</span><span class="n">Buffer</span> <span class="n">host_buffer</span> <span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_READ_ONLY</span> <span class="o">|</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">host_buffer_ext</span><span class="p">);</span>
+cl::Buffer host_buffer (context,CL_MEM_READ_ONLY |CL_MEM_EXT_PTR_XILINX, size, &amp;host_buffer_ext);
 </pre></div>
 </div>
 </div>
@@ -532,48 +532,48 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>Optionally, for regular buffer, the buffer location can be specified using <code class="docutils literal notranslate"><span class="pre">CL_MEM_EXT_PTR_XILINX</span></code> and <code class="docutils literal notranslate"><span class="pre">cl_mem_ext_ptr_t</span></code>. These can be done by any of these three methods</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><p>Specify a Buffer location by DDR bank name (legacy)</p></li>
-<li><p>Specify a Buffer location by memory bank index</p></li>
-<li><p>Specify a Buffer location by kernel name and argument index</p></li>
+<li>Specify a Buffer location by DDR bank name (legacy)</li>
+<li>Specify a Buffer location by memory bank index</li>
+<li>Specify a Buffer location by kernel name and argument index</li>
 </ol>
 </div></blockquote>
 <div class="section" id="specify-a-buffer-location-by-ddr-bank-name-legacy">
 <h4>1. Specify a Buffer location by DDR bank name (legacy)<a class="headerlink" href="#specify-a-buffer-location-by-ddr-bank-name-legacy" title="Permalink to this headline">¶</a></h4>
 <p>Here is an example of specifying explicit name of the bank, this works for only DDR banks. The supported flags are <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK0</span></code>, <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK1</span></code>, <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK2</span></code>, and <code class="docutils literal notranslate"><span class="pre">XCL_MEM_DDR_BANK3</span></code>.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_mem_ext_ptr_t</span> <span class="n">ext</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">};</span>
-<span class="n">ext</span><span class="p">.</span><span class="n">banks</span> <span class="o">=</span> <span class="n">XCL_MEM_DDR_BANK0</span><span class="p">;</span>
-<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
-<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>cl_mem_ext_ptr_t ext = {0};
+ext.banks = XCL_MEM_DDR_BANK0;
+cl_int error;
+clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,size,&amp;ext,&amp;error);
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><strong>Note</strong>: Explicit bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</p></li>
+<li><strong>Note</strong>: Explicit bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</li>
 </ul>
 </div>
 <div class="section" id="specify-a-buffer-location-by-memory-bank-index">
 <h4>2. Specify a Buffer location by memory bank index<a class="headerlink" href="#specify-a-buffer-location-by-memory-bank-index" title="Permalink to this headline">¶</a></h4>
 <p>This approach works for all types of memory banks as it accept index of the memory. The memory index can be obtained by inspecting .xclbin.info file or by xbutil query.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Check the memory index from xclbin.info file</span>
-<span class="n">ext</span><span class="p">.</span><span class="n">banks</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">|</span> <span class="n">XCL_MEM_TOPOLOGY</span><span class="p">;</span>
-<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
-<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">)</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>// Check the memory index from xclbin.info file
+ext.banks = 2 | XCL_MEM_TOPOLOGY;
+cl_int error;
+clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,size,&amp;ext,&amp;error)
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><strong>Note</strong>: Explicit bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</p></li>
+<li><strong>Note</strong>: Explicit bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</li>
 </ul>
 </div>
 <div class="section" id="specify-a-buffer-location-by-kernel-name-and-argument-index">
 <h4>3. Specify a Buffer location by kernel name and argument index<a class="headerlink" href="#specify-a-buffer-location-by-kernel-name-and-argument-index" title="Permalink to this headline">¶</a></h4>
 <p>In relative specification style, the memory bank is detected from the kernel arguments, for this purpose the kernel handle and argument index is used as below</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">ext</span><span class="p">.</span><span class="n">argidx</span> <span class="o">=</span> <span class="n">idx</span><span class="p">;</span>
-<span class="n">ext</span><span class="p">.</span><span class="n">kernel</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">;</span>
-<span class="n">cl_int</span> <span class="n">error</span><span class="p">;</span>
-<span class="n">clCreateBuffer</span><span class="p">(</span><span class="n">context</span><span class="p">,</span><span class="n">CL_MEM_EXT_PTR_XILINX</span><span class="p">,</span><span class="n">size</span><span class="p">,</span><span class="o">&amp;</span><span class="n">ext</span><span class="p">,</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>ext.argidx = idx;
+ext.kernel = kernel;
+cl_int error;
+clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,size,&amp;ext,&amp;error);
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><strong>Note</strong>: This style of relative bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</p></li>
+<li><strong>Note</strong>: This style of relative bank specification is not required in most of the host code development. The XRT can obtain the bank location for the buffer if the buffer is used for setting the kernel arguments right after the buffer creation, i.e. before any enqueue operation on the buffer.</li>
 </ul>
 </div>
 </div>
@@ -583,8 +583,8 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>For some use-cases, for example p2p, multiprocess it may required to use buffer sharing. The XRT provides a couple of related APIs for import/export FD from the OpenCL buffer object.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFd</span></code> : To obtain FD from OpenCL memory object</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFromFd</span></code>: To obtain OpenCL memory object from FD</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFd</span></code> : To obtain FD from OpenCL memory object</li>
+<li><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFromFd</span></code>: To obtain OpenCL memory object from FD</li>
 </ul>
 </div></blockquote>
 <p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <span class="xref std std-ref">p2p.rst</span></p>
@@ -600,18 +600,18 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>The API <code class="docutils literal notranslate"><span class="pre">xclGetComputeUnitInfo</span></code> is used to get information of Compute Unit. The API should be used together with specific flags to obtain the related information</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_NAME</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_INDEX</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_BASE_ADDRESS</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_CONNECTIONS</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_NAME</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_INDEX</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_BASE_ADDRESS</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">XCL_COMPUTE_UNIT_CONNECTIONS</span></code></li>
 </ul>
 </div></blockquote>
 <p>Example to get CU index and CU base address</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_uint</span> <span class="n">cuidx</span><span class="p">;</span>  <span class="c1">// retrieve index of first cu in kernel</span>
-<span class="n">xclGetComputeUnitInfo</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">XCL_COMPUTE_UNIT_INDEX</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">cuidx</span><span class="p">),</span><span class="o">&amp;</span><span class="n">cuidx</span><span class="p">,</span><span class="k">nullptr</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>cl_uint cuidx;  // retrieve index of first cu in kernel
+xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_INDEX,sizeof(cuidx),&amp;cuidx,nullptr);
 
-<span class="kt">size_t</span> <span class="n">cuaddr</span><span class="p">;</span>
-<span class="n">xclGetComputeUnitInfo</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="n">XCL_COMPUTE_UNIT_BASE_ADDRESS</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">cuaddr</span><span class="p">),</span><span class="o">&amp;</span><span class="n">cuaddr</span><span class="p">,</span><span class="k">nullptr</span><span class="p">);</span>
+size_t cuaddr;
+xclGetComputeUnitInfo(kernel,0,XCL_COMPUTE_UNIT_BASE_ADDRESS,sizeof(cuaddr),&amp;cuaddr,nullptr);
 </pre></div>
 </div>
 </div>
@@ -620,13 +620,13 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>These XRT specific parameters are provided for <code class="docutils literal notranslate"><span class="pre">cl_kernel_info</span></code> to be used with API <code class="docutils literal notranslate"><span class="pre">clGetKernelInfo</span></code>.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CL_KERNEL_COMPUTE_UNIT_COUNT</span></code>: Can be used to get the number of CUs from the kernel handle/object</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">CL_KERNEL_INSTANCE_BASE_ADDRESS</span></code>: The base address of this kernel object</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">CL_KERNEL_COMPUTE_UNIT_COUNT</span></code>: Can be used to get the number of CUs from the kernel handle/object</li>
+<li><code class="docutils literal notranslate"><span class="pre">CL_KERNEL_INSTANCE_BASE_ADDRESS</span></code>: The base address of this kernel object</li>
 </ul>
 </div></blockquote>
 <p>The below example is showing to get the number of Compute Unit information from the kernel object</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="n">cl_uint</span> <span class="n">numcus</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">clGetKernelInfo</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span><span class="n">CL_KERNEL_COMPUTE_UNIT_COUNT</span><span class="p">,</span><span class="k">sizeof</span><span class="p">(</span><span class="n">cl_uint</span><span class="p">),</span><span class="o">&amp;</span><span class="n">numcus</span><span class="p">,</span><span class="k">nullptr</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>cl_uint numcus = 0;
+clGetKernelInfo(kernel,CL_KERNEL_COMPUTE_UNIT_COUNT,sizeof(cl_uint),&amp;numcus,nullptr);
 </pre></div>
 </div>
 </div>
@@ -635,12 +635,12 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>This XRT specific parameter is provided for <code class="docutils literal notranslate"><span class="pre">cl_kernel_arg_info</span></code> to be used with API <code class="docutils literal notranslate"><span class="pre">clGetKernelArgInfo</span></code>.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CL_KERNAL_ARG_OFFSET</span></code>: To get the argument offset for a specific argument.</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">CL_KERNAL_ARG_OFFSET</span></code>: To get the argument offset for a specific argument.</li>
 </ul>
 </div></blockquote>
 <p>Example shows below to get the offset for the argument 2 for the kernel.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">size_t</span> <span class="n">foo_offset</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">clGetKernelArgInfo</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">CL_KERNEL_ARG_OFFSET</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">foo_offset</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">foo_offset</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>size_t foo_offset = 0;
+clGetKernelArgInfo(kernel, 2, CL_KERNEL_ARG_OFFSET, sizeof(foo_offset), &amp;foo_offset, nullptr);
 </pre></div>
 </div>
 </div>
@@ -649,12 +649,12 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>This XRT specific parameter is provided for <code class="docutils literal notranslate"><span class="pre">cl_mem_info</span></code> to be used with API <code class="docutils literal notranslate"><span class="pre">clGetMemObjectInfo</span></code>.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CL_MEM_BANK</span></code>: Memory bank index associated with the OpenCL Buffer</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">CL_MEM_BANK</span></code>: Memory bank index associated with the OpenCL Buffer</li>
 </ul>
 </div></blockquote>
 <p>Example shows below to get the offset for the argument 2 for the kernel.</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="n">mem_bank_index</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
-<span class="n">clGetMemObjectInfo</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="n">CL_MEM_BANK</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="kt">int</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">mem_bank_index</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>int mem_bank_index = 0;
+clGetMemObjectInfo(buf, CL_MEM_BANK, sizeof(int), &amp;mem_bank_index, nullptr);
 </pre></div>
 </div>
 </div>
@@ -663,12 +663,12 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
 <p>This XRT specific parameter is provided for <code class="docutils literal notranslate"><span class="pre">cl_device_info</span></code> to be used with API <code class="docutils literal notranslate"><span class="pre">clGetDeviceInfo</span></code>.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">CL_DEVICE_PCIE_BDF</span></code>: To obtain the Bus/Device/Function information of the Pcie based Device</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">CL_DEVICE_PCIE_BDF</span></code>: To obtain the Bus/Device/Function information of the Pcie based Device</li>
 </ul>
 </div></blockquote>
 <p>Example shows below to get PCie BDF information from the OpenCL device</p>
-<div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span><span class="p">[</span><span class="mi">20</span><span class="p">]</span> <span class="n">bdf</span><span class="p">;</span>
-<span class="n">clGetDeviceInfo</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">CL_DEVICE_PCIE_BDF</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">bdf</span><span class="p">),</span> <span class="o">&amp;</span><span class="n">bdf</span><span class="p">,</span> <span class="k">nullptr</span><span class="p">);</span>
+<div class="code c++ highlight-none notranslate"><div class="highlight"><pre><span></span>char[20] bdf;
+clGetDeviceInfo(device, CL_DEVICE_PCIE_BDF, sizeof(bdf), &amp;bdf, nullptr);
 </pre></div>
 </div>
 </div>
@@ -704,7 +704,7 @@ Xilinx OpenCL extension doesn’t require additional compiler features. Normally
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

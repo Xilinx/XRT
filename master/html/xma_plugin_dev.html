@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -390,11 +388,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -413,6 +411,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -422,9 +424,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xma_plugin_dev.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xma_plugin_dev.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -503,31 +503,31 @@ software ‘driver’ in this regard.</p>
 <p>The first step in developing an XMA plugin requires you to decide which XMA
 kernel interface accurately represents the type of hardware kernel for which
 you seek to provide support:</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 49%" />
-<col style="width: 51%" />
+<col width="49%" />
+<col width="51%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Kernel Type</p></th>
-<th class="head"><p>XMA Plugin Interface</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Kernel Type</th>
+<th class="head">XMA Plugin Interface</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>Encoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgenc</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>Encoders (VP9, H.264, H.265)</td>
+<td>xmaplgenc</td>
 </tr>
-<tr class="row-odd"><td><p>Decoders (VP9, H.264, H.265)</p></td>
-<td><p>xmaplgdec</p></td>
+<tr class="row-odd"><td>Decoders (VP9, H.264, H.265)</td>
+<td>xmaplgdec</td>
 </tr>
-<tr class="row-even"><td><p>Filters (colorspace converter, scalers)</p></td>
-<td><p>xmaplgfilter or xmaplgscaler</p></td>
+<tr class="row-even"><td>Filters (colorspace converter, scalers)</td>
+<td>xmaplgfilter or xmaplgscaler</td>
 </tr>
-<tr class="row-odd"><td><p>Scalers</p></td>
-<td><p>xmaplgscaler</p></td>
+<tr class="row-odd"><td>Scalers</td>
+<td>xmaplgscaler</td>
 </tr>
-<tr class="row-even"><td><p>Other (embedded cpu)</p></td>
-<td><p>xmaplgkernel</p></td>
+<tr class="row-even"><td>Other (embedded cpu)</td>
+<td>xmaplgkernel</td>
 </tr>
 </tbody>
 </table>
@@ -549,37 +549,37 @@ response to the xma_app_intf.</p>
 <p>From the application perspective, the following operations
 will be peformed:</p>
 <ol class="arabic simple">
-<li><p>Create session</p></li>
-<li><p>Send data/frame or write**</p></li>
-<li><p>Receive data/frame or read**</p></li>
-<li><p>Destroy</p></li>
+<li>Create session</li>
+<li>Send data/frame or write**</li>
+<li>Receive data/frame or read**</li>
+<li>Destroy</li>
 </ol>
 <p>** in the case of a non-video kernel</p>
 <p>Steps 2 and 3 will form the runtime processing of frames/data and likely
 repeated for as long as there is data to be processed.</p>
 <p>A general mapping between the application interface and plugin interface:</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 40%" />
-<col style="width: 60%" />
+<col width="40%" />
+<col width="60%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Application Call</p></th>
-<th class="head"><p>Plugin Callbacks Invoked</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Application Call</th>
+<th class="head">Plugin Callbacks Invoked</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>session_create()</p></td>
-<td><p>init()</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>session_create()</td>
+<td>init()</td>
 </tr>
-<tr class="row-odd"><td><p>send_(data|frame)()</p></td>
-<td><p>send_(data|frame)()</p></td>
+<tr class="row-odd"><td>send_(data|frame)()</td>
+<td>send_(data|frame)()</td>
 </tr>
-<tr class="row-even"><td><p>recv_(data|frame)()</p></td>
-<td><p>recv_(data|frame)()</p></td>
+<tr class="row-even"><td>recv_(data|frame)()</td>
+<td>recv_(data|frame)()</td>
 </tr>
-<tr class="row-odd"><td><p>destroy()</p></td>
-<td><p>close()</p></td>
+<tr class="row-odd"><td>destroy()</td>
+<td>close()</td>
 </tr>
 </tbody>
 </table>
@@ -588,8 +588,8 @@ repeated for as long as there is data to be processed.</p>
 <p>Initialization is the time for a plugin to perform one or more of the
 following:</p>
 <ol class="arabic simple">
-<li><p>allocate device buffers to handle input data as well as output data</p></li>
-<li><p>initalize the state of the kernel</p></li>
+<li>allocate device buffers to handle input data as well as output data</li>
+<li>initalize the state of the kernel</li>
 </ol>
 <p>When a session has been created in response to an application request,
 XMA will allocate plugin data that
@@ -601,8 +601,8 @@ termination; XMA frees this data for you.</p>
 <p>To allocate buffers necessary to handle both incoming and outgoing
 data, please see</p>
 <ol class="arabic simple">
-<li><p>xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank</p></li>
-<li><p>xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument</p></li>
+<li>xma_plg_buffer_alloc(): Allocate device buffer on default session ddr_bank</li>
+<li>xma_plg_buffer_alloc_arg_num(): Allocate device buffer on ddr_bank connected to a kernel argument</li>
 </ol>
 </div>
 <div class="section" id="handling-incoming-application-data">
@@ -691,7 +691,7 @@ Plugins may use dev_index, bank_index &amp; device_only info from BufferObject t
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

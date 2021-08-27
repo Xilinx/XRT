@@ -62,7 +62,7 @@ into subdevices and handles the following functionality:
   embedded Microblazes. The embedded Microblazes perform the functionality of ERT and CMC.
 * Access to in-band sensors: temperature, voltage, current, power, fan RPM etc.
 * AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted user partition.
-* Shell upgrade by grogramming QSPI flash constroller.
+* Shell upgrade by programming QSPI flash constroller.
 * Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.
 * Communication with user pf driver xocl via hardware mailbox. The protocol is defined :ref:`mailbox.proto.rst`
 * Interrupt handling for AXI Firewall and Mailbox HW IPs.

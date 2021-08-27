@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -405,6 +403,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -414,9 +416,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/mgmt-ioctl.main.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/mgmt-ioctl.main.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -485,63 +485,63 @@
 <p><strong>PCIe Kernel Driver for Managament Physical Function</strong></p>
 <p>Interfaces exposed by <em>xclmgmt</em> driver are defined in file, <em>mgmt-ioctl.h</em>.
 Core functionality provided by <em>xclmgmt</em> driver is described in the following table:</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 4%" />
-<col style="width: 36%" />
-<col style="width: 28%" />
-<col style="width: 32%" />
+<col width="4%" />
+<col width="36%" />
+<col width="28%" />
+<col width="32%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>#</p></th>
-<th class="head"><p>Functionality</p></th>
-<th class="head"><p>ioctl request code</p></th>
-<th class="head"><p>data format</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">#</th>
+<th class="head">Functionality</th>
+<th class="head">ioctl request code</th>
+<th class="head">data format</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>1</p></td>
-<td><p>FPGA image download</p></td>
-<td><p>XCLMGMT_IOCICAPDOWNLOAD_AXLF</p></td>
-<td><p>xclmgmt_ioc_bitstream_axlf</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>1</td>
+<td>FPGA image download</td>
+<td>XCLMGMT_IOCICAPDOWNLOAD_AXLF</td>
+<td>xclmgmt_ioc_bitstream_axlf</td>
 </tr>
-<tr class="row-odd"><td><p>2</p></td>
-<td><p>CL frequency scaling</p></td>
-<td><p>XCLMGMT_IOCFREQSCALE</p></td>
-<td><p>xclmgmt_ioc_freqscaling</p></td>
+<tr class="row-odd"><td>2</td>
+<td>CL frequency scaling</td>
+<td>XCLMGMT_IOCFREQSCALE</td>
+<td>xclmgmt_ioc_freqscaling</td>
 </tr>
-<tr class="row-even"><td><p>3</p></td>
-<td><p>PCIe hot reset</p></td>
-<td><p>XCLMGMT_IOCHOTRESET</p></td>
-<td><p>NA</p></td>
+<tr class="row-even"><td>3</td>
+<td>PCIe hot reset</td>
+<td>XCLMGMT_IOCHOTRESET</td>
+<td>NA</td>
 </tr>
-<tr class="row-odd"><td><p>4</p></td>
-<td><p>CL reset</p></td>
-<td><p>XCLMGMT_IOCOCLRESET</p></td>
-<td><p>NA</p></td>
+<tr class="row-odd"><td>4</td>
+<td>CL reset</td>
+<td>XCLMGMT_IOCOCLRESET</td>
+<td>NA</td>
 </tr>
-<tr class="row-even"><td><p>5</p></td>
-<td><p>Live boot FPGA from PROM</p></td>
-<td><p>XCLMGMT_IOCREBOOT</p></td>
-<td><p>NA</p></td>
+<tr class="row-even"><td>5</td>
+<td>Live boot FPGA from PROM</td>
+<td>XCLMGMT_IOCREBOOT</td>
+<td>NA</td>
 </tr>
-<tr class="row-odd"><td><p>6</p></td>
-<td><p>Device sensors (current, voltage and
-temperature)</p></td>
-<td><p>NA</p></td>
-<td><p><em>hwmon</em> (xclmgmt_microblaze and
-xclmgmt_sysmon) interface on sysfs</p></td>
+<tr class="row-odd"><td>6</td>
+<td>Device sensors (current, voltage and
+temperature)</td>
+<td>NA</td>
+<td><em>hwmon</em> (xclmgmt_microblaze and
+xclmgmt_sysmon) interface on sysfs</td>
 </tr>
-<tr class="row-even"><td><p>7</p></td>
-<td><p>Querying device errors</p></td>
-<td><p>XCLMGMT_IOCERRINFO</p></td>
-<td><p>xclErrorStatus</p></td>
+<tr class="row-even"><td>7</td>
+<td>Querying device errors</td>
+<td>XCLMGMT_IOCERRINFO</td>
+<td>xclErrorStatus</td>
 </tr>
 </tbody>
 </table>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xclmgmt_ioc_info</span></span></dt>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_info">
+struct <code class="descname">xclmgmt_ioc_info</code><a class="headerlink" href="#c.xclmgmt_ioc_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain information from the device used with XCLMGMT_IOCINFO ioctl</p>
 </dd></dl>
 
@@ -553,9 +553,9 @@ xclmgmt_sysmon) interface on sysfs</p></td>
 <p><strong>Members</strong></p>
 <p><strong>Description</strong></p>
 <p>Note that this structure will be obsoleted in future and the same functionality will be exposed via sysfs nodes</p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xclmgmt_ioc_bitstream_axlf</span></span></dt>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_bitstream_axlf">
+struct <code class="descname">xclmgmt_ioc_bitstream_axlf</code><a class="headerlink" href="#c.xclmgmt_ioc_bitstream_axlf" title="Permalink to this definition">¶</a></dt>
 <dd><p>load xclbin (AXLF) device image used with XCLMGMT_IOCICAPDOWNLOAD_AXLF ioctl</p>
 </dd></dl>
 
@@ -566,13 +566,13 @@ xclmgmt_sysmon) interface on sysfs</p></td>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt><dd><p>Pointer to user’s xclbin structure in memory</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">xclbin</span></code></dt>
+<dd>Pointer to user’s xclbin structure in memory</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xclmgmt_ioc_freqscaling</span></span></dt>
+<dl class="type">
+<dt id="c.xclmgmt_ioc_freqscaling">
+struct <code class="descname">xclmgmt_ioc_freqscaling</code><a class="headerlink" href="#c.xclmgmt_ioc_freqscaling" title="Permalink to this definition">¶</a></dt>
 <dd><p>scale frequencies on the board using Xilinx clock wizard used with XCLMGMT_IOCFREQSCALE ioctl</p>
 </dd></dl>
 
@@ -584,11 +584,11 @@ xclmgmt_sysmon) interface on sysfs</p></td>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">ocl_region</span></code></dt><dd><p>PR region (currently only 0 is supported)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt><dd><p>Array of requested frequencies, a value o zero in the array indicates leave untouched</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_region</span></code></dt>
+<dd>PR region (currently only 0 is supported)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ocl_target_freq</span></code></dt>
+<dd>Array of requested frequencies, a value o zero in the array indicates leave untouched</dd>
 </dl>
 </div>
 
@@ -621,7 +621,7 @@ xclmgmt_sysmon) interface on sysfs</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

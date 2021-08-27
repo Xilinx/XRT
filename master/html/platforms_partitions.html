@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -394,11 +392,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -417,6 +415,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -426,9 +428,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/platforms_partitions.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/platforms_partitions.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -504,16 +504,16 @@ thin partition called <em>Base</em> and second partition called <em>Shell</em>.<
 has two interface UUIDs: <em>parent</em> UUID and <em>child</em> UUID. For simple single stage platforms Shell → User forms parent child
 relationship. For complex two stage platforms Base → Shell → User forms the parent child relationship chain.</p>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Partition compatibility matching is key design component of Alveo platforms and XRT. Partitions have child and parent relationship. A loaded partition exposes child partition UUID to advertise its compatibility requirement for child partition. When loading a child partition the xclmgmt management driver matches parent UUID of the child partition against child UUID exported by the parent. Parent and child partition UUIDs are stored in the xclbin (for user) or xsabin (for base and shell).</p>
+<p class="first admonition-title">Note</p>
+<p class="last">Partition compatibility matching is key design component of Alveo platforms and XRT. Partitions have child and parent relationship. A loaded partition exposes child partition UUID to advertise its compatibility requirement for child partition. When loading a child partition the xclmgmt management driver matches parent UUID of the child partition against child UUID exported by the parent. Parent and child partition UUIDs are stored in the xclbin (for user) or xsabin (for base and shell).</p>
 </div>
 <div class="section" id="single-stage-platforms">
 <h2>Single Stage Platforms<a class="headerlink" href="#single-stage-platforms" title="Permalink to this headline">¶</a></h2>
 <p>As mentioned before simple platforms have two partitions: Shell and User.</p>
 <div class="section" id="shell">
 <h3>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h3>
-<div class="align-center figure align-default" id="id2">
-<img alt="_images/XSA-shell-partitions-1RP.svg" src="_images/XSA-shell-partitions-1RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for simple platform</span><a class="headerlink" href="#id2" title="Permalink to this image">¶</a></p>
+<div class="align-center figure" id="id2">
+<img alt="_images/XSA-shell-partitions-1RP.svg" src="_images/XSA-shell-partitions-1RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for simple platform</span></p>
 </div>
 <p>Shell partition is loaded from flash at system boot time. It establishes the PCIe link and exposes two physical functions to the BIOS. After OS boot, xclmgmt driver attaches to PCIe physical function 0 exposed by the Shell and then looks for VSEC in PCIe extended configuration space. Using VSEC it determines the logic UUID of Shell and uses the UUID to load matching <em>xsabin</em> file from Linux firmware directory. The xsabin file contains metadata to discover peripherals that are part of Shell and firmware(s) for any embedded processors in Shell.</p>
 <p>When xocl driver comes online it requests for Shell metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode over mailbox. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA or Address Re-mapper that should be managed by xocl driver.</p>
@@ -530,8 +530,8 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 </div>
 <div class="section" id="id1">
 <h3>Shell<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
-<div class="align-center figure align-default" id="id3">
-<img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+<div class="align-center figure" id="id3">
+<img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span></p>
 </div>
 <p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">partition</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
 </div>
@@ -540,8 +540,8 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 <h2>User<a class="headerlink" href="#user" title="Permalink to this headline">¶</a></h2>
 <p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Refer to <span class="xref std std-ref">mailbox.main.rst</span> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
+<p class="first admonition-title">Note</p>
+<p class="last">Refer to <span class="xref std std-ref">mailbox.main.rst</span> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
 </div>
 </div>
 </div>
@@ -575,7 +575,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

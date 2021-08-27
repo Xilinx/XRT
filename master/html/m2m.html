@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -386,11 +384,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -409,6 +407,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -418,9 +420,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/m2m.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/m2m.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -494,10 +494,11 @@ as data does not need to be transferred via host while moving from one DDR bank 
 <p>K1 interacts with DDR0 due to location proximity on the FPGA.</p>
 <p>Similarly, K2 interacts with DDR1 due to location proximity on the FPGA.</p>
 <p>The output of the K1 is consumed by K2 for its input. So there has to be data transfer from DDR bank0 to DDR bank1.</p>
-<img alt="_images/M2M-transfer.svg" class="align-center" src="_images/M2M-transfer.svg" /><p>In OpenCL host code, let’s assume four buffers: Buf1, Buf2, Buf3, Buf4.</p>
-<dl class="simple">
-<dt>So the data transfer from the host follow the order</dt><dd><p>Buf1 -&gt; K1 -&gt; Buf2 -&gt; Buf3 -&gt; K2 -&gt; Buf4</p>
-</dd>
+<div align="center" class="align-center"><img alt="_images/M2M-transfer.svg" src="_images/M2M-transfer.svg" /></div>
+<p>In OpenCL host code, let’s assume four buffers: Buf1, Buf2, Buf3, Buf4.</p>
+<dl class="docutils">
+<dt>So the data transfer from the host follow the order</dt>
+<dd>Buf1 -&gt; K1 -&gt; Buf2 -&gt; Buf3 -&gt; K2 -&gt; Buf4</dd>
 </dl>
 <p>We can perform a copy from Buf2 to Buf3 using standard OpenCL API <code class="docutils literal notranslate"><span class="pre">clEnqueueCopyBuffer</span></code>. See below a code segment.</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>clEnqueueTask(queue, K1 ,0,nullptr,&amp;events1);
@@ -509,10 +510,10 @@ clEnqueueTask(queue,K2,1,&amp;event2,nullptr);
 <div class="section" id="some-limitations">
 <h2>Some limitations<a class="headerlink" href="#some-limitations" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM</p></li>
-<li><p>The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API</p></li>
-<li><p>Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API</p></li>
-<li><p>M2M copy of OpenCL sub-buffers is not properly supported</p></li>
+<li>Hardware supports M2M between two DDR banks, not other memory types such as HBM or PLRAM</li>
+<li>The data being copied has to be 64 bit aligned. Otherwise, XRT will do copy via host using the same API</li>
+<li>Not all the cards are M2M capable, in that case, XRT will do copy via host using the same API</li>
+<li>M2M copy of OpenCL sub-buffers is not properly supported</li>
 </ol>
 </div>
 </div>
@@ -546,7 +547,7 @@ clEnqueueTask(queue,K2,1,&amp;event2,nullptr);
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

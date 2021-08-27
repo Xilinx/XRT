@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -405,6 +403,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -414,9 +416,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/ert.main.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/ert.main.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -484,10 +484,10 @@
 <h1>Embedded Runtime Library<a class="headerlink" href="#embedded-runtime-library" title="Permalink to this headline">¶</a></h1>
 <p><strong>XRT Embedded Runtime definition</strong></p>
 <p>Header file <em>ert.h</em> defines data structures used by Emebdded Runtime (ERT) and
-XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code> API.</p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_packet</span></span></dt>
+XRT <a class="reference internal" href="xrt.main.html#c.xclExecBuf" title="xclExecBuf"><code class="xref c c-func docutils literal notranslate"><span class="pre">xclExecBuf()</span></code></a> API.</p>
+<dl class="type">
+<dt id="c.ert_packet">
+struct <code class="descname">ert_packet</code><a class="headerlink" href="#c.ert_packet" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -498,15 +498,15 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count number of words representing packet payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count number of words representing packet payload</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_start_kernel_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_start_kernel_cmd">
+struct <code class="descname">ert_start_kernel_cmd</code><a class="headerlink" href="#c.ert_start_kernel_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -517,19 +517,19 @@ XRT <code class="xref c c-func docutils literal notranslate"><span class="pre">x
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-1 number of words representing interpreted payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count-1 number of words representing interpreted payload</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>The packet payload is comprised of reserved id field, a mandatory CU mask,
 and extra_cu_masks per header field, followed by a CU register map of size
 (count - (1 + extra_cu_masks)) uint32_t words.</p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_init_kernel_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_init_kernel_cmd">
+struct <code class="descname">ert_init_kernel_cmd</code><a class="headerlink" href="#c.ert_init_kernel_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -541,31 +541,31 @@ and extra_cu_masks per header field, followed by a CU register map of size
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt><dd><p>first mandatory CU mask</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>count-9 number of words representing interpreted payload</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_mask</span></code></dt>
+<dd>first mandatory CU mask</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>count-9 number of words representing interpreted payload</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>this command initializes CUs by writing CU registers. CUs are
 represented by cu_mask and extra_cu_masks.</p>
-<dl class="simple">
-<dt><strong>cu_run_timeout</strong>   the configured CU timeout value in Microseconds</dt><dd><p>setting to 0 means CU should not timeout</p>
-</dd>
-<dt><strong>cu_reset_timeout</strong> the configured CU reset timeout value in Microseconds</dt><dd><p>when CU timeout, CU will be reset. this indicates
+<dl class="docutils">
+<dt><strong>cu_run_timeout</strong>   the configured CU timeout value in Microseconds</dt>
+<dd>setting to 0 means CU should not timeout</dd>
+<dt><strong>cu_reset_timeout</strong> the configured CU reset timeout value in Microseconds</dt>
+<dd>when CU timeout, CU will be reset. this indicates
 CU reset should be completed within the timeout value.
-if cu_run_timeout is set to 0, this field is undefined.</p>
-</dd>
+if cu_run_timeout is set to 0, this field is undefined.</dd>
 </dl>
 <p>The packet payload is comprised of reserved id field, 8 reserved fields,
 a mandatory CU mask, and extra_cu_masks per header field, followed by a
 CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_configure_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_configure_cmd">
+struct <code class="descname">ert_configure_cmd</code><a class="headerlink" href="#c.ert_configure_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -587,37 +587,37 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">slot_size</span></code></dt><dd><p>command queue slot size</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt><dd><p>number of compute units in program</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_shift</span></code></dt><dd><p>shift value to convert CU idx to CU addr</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_base_addr</span></code></dt><dd><p>base address to add to CU addr for actual physical address</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">ert</span></code></dt><dd><p>1            enable embedded HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt><dd><p>1        poll for command completion</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_dma</span></code></dt><dd><p>1         enable CUDMA custom module for HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cu_isr</span></code></dt><dd><p>1         enable CUISR custom module for HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cq_int</span></code></dt><dd><p>1         enable interrupt from host to HW scheduler</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">cdma</span></code></dt><dd><p>1           enable CDMA kernel</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">dsa52</span></code></dt><dd><p>1          reserved for internal use</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>addresses of <strong>num_cus</strong> CUs</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">slot_size</span></code></dt>
+<dd>command queue slot size</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_shift</span></code></dt>
+<dd>shift value to convert CU idx to CU addr</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_base_addr</span></code></dt>
+<dd>base address to add to CU addr for actual physical address</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">ert</span></code></dt>
+<dd>1            enable embedded HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">polling</span></code></dt>
+<dd>1        poll for command completion</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_dma</span></code></dt>
+<dd>1         enable CUDMA custom module for HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cu_isr</span></code></dt>
+<dd>1         enable CUISR custom module for HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cq_int</span></code></dt>
+<dd>1         enable interrupt from host to HW scheduler</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">cdma</span></code></dt>
+<dd>1           enable CDMA kernel</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">dsa52</span></code></dt>
+<dd>1          reserved for internal use</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>addresses of <strong>num_cus</strong> CUs</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_configure_sk_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_configure_sk_cmd">
+struct <code class="descname">ert_configure_sk_cmd</code><a class="headerlink" href="#c.ert_configure_sk_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -628,15 +628,15 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_image</span></code></dt><dd><p>number of images</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_image</span></code></dt>
+<dd>number of images</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_unconfigure_sk_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_unconfigure_sk_cmd">
+struct <code class="descname">ert_unconfigure_sk_cmd</code><a class="headerlink" href="#c.ert_unconfigure_sk_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -648,33 +648,36 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt><dd><p>start index of compute units</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt><dd><p>number of compute units in program</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">start_cuidx</span></code></dt>
+<dd>start index of compute units</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">num_cus</span></code></dt>
+<dd>number of compute units in program</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_abort_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_abort_cmd">
+struct <code class="descname">ert_abort_cmd</code><a class="headerlink" href="#c.ert_abort_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct ert_abort_cmd {
   union {unnamed_union};
+  uint64_t exec_bo_handle;
 };
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exec_bo_handle</span></code></dt>
+<dd>The bo handle of execbuf command to abort</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">ert_validate_cmd</span></span></dt>
+<dl class="type">
+<dt id="c.ert_validate_cmd">
+struct <code class="descname">ert_validate_cmd</code><a class="headerlink" href="#c.ert_validate_cmd" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -684,27 +687,27 @@ CU register map of size (count - (9 + extra_cu_masks)) uint32_t words.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt><dd><p>anonymous</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">{unnamed_union}</span></code></dt>
+<dd>anonymous</dd>
 </dl>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_WORD_SIZE</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_WORD_SIZE">
+<code class="descname">ERT_WORD_SIZE</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_WORD_SIZE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_STATUS_REGISTER_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_STATUS_REGISTER_ADDR">
+<code class="descname">ERT_STATUS_REGISTER_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_STATUS_REGISTER_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MicroBlaze write, host reads.  MB(W) / HOST(COR)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CU_DMA_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CU_DMA_ENABLE_ADDR">
+<code class="descname">ERT_CU_DMA_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_DMA_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -714,50 +717,50 @@ run, then writes the 1&lt;&lt;CU back to the command slot CU mask and
 writes the slot index to the CU DMA REGISTER.  HW is notified when
 the register is written and now does the DMA transfer of CU regmap
 map from command to CU, while MB continues its work. MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CQ_SLOT_SIZE_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CQ_SLOT_SIZE_ADDR">
+<code class="descname">ERT_CQ_SLOT_SIZE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_SLOT_SIZE_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>configurable per xclbin. MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CU_OFFSET_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CU_OFFSET_ADDR">
+<code class="descname">ERT_CU_OFFSET_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_OFFSET_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>example a 64K regmap is 2^16 so 16 is written to the CU_OFFSET_ADDR.
 MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CQ_NUMBER_OF_SLOTS_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CQ_NUMBER_OF_SLOTS_ADDR">
+<code class="descname">ERT_CQ_NUMBER_OF_SLOTS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_NUMBER_OF_SLOTS_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CU_BASE_ADDRESS_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CU_BASE_ADDRESS_ADDR">
+<code class="descname">ERT_CU_BASE_ADDRESS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_BASE_ADDRESS_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>CU_BASE_ADDRESS is the address of the first CU. MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CQ_BASE_ADDRESS_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CQ_BASE_ADDRESS_ADDR">
+<code class="descname">ERT_CQ_BASE_ADDRESS_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_BASE_ADDRESS_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MB(W) / HW(R)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CU_ISR_HANDLER_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CU_ISR_HANDLER_ENABLE_ADDR">
+<code class="descname">ERT_CU_ISR_HANDLER_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CU_ISR_HANDLER_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -765,62 +768,62 @@ MB(W) / HW(R)</p>
 <p>CU interrupts.  When a CU interrupts (when done), hardware handles
 the interrupt and writes the index of the CU that completed into
 the CU_STATUS_REGISTER (HW(W)/MB(COR)) as a bitmask</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CQ_STATUS_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CQ_STATUS_ENABLE_ADDR">
+<code class="descname">ERT_CQ_STATUS_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CQ_STATUS_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>MB to indicate the presense of a new command in some slot.  The
 slot index is written to the CQ_STATUS_REGISTER (HOST(W)/MB(R))</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_NUMBER_OF_CU_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_NUMBER_OF_CU_ADDR">
+<code class="descname">ERT_NUMBER_OF_CU_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_NUMBER_OF_CU_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>xclbin.  This is an optimization that allows HW to only check CU
 completion on actual CUs.</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_HOST_INTERRUPT_ENABLE_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_HOST_INTERRUPT_ENABLE_ADDR">
+<code class="descname">ERT_HOST_INTERRUPT_ENABLE_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_HOST_INTERRUPT_ENABLE_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>When enabled writing to STATUS_REGISTER causes an interrupt in HOST.
 MB(W)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_INTC_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_INTC_ADDR">
+<code class="descname">ERT_INTC_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_INTC_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
 <p><strong>Description</strong></p>
 <p>This value is per hardware BSP (XPAR_INTC_SINGLE_BASEADDR)</p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_CUISR_LUT_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_CUISR_LUT_ADDR">
+<code class="descname">ERT_CUISR_LUT_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_CUISR_LUT_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_EXIT_CMD</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_EXIT_CMD">
+<code class="descname">ERT_EXIT_CMD</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_EXIT_CMD" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_HLS_MODULE_IDLE</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_HLS_MODULE_IDLE">
+<code class="descname">ERT_HLS_MODULE_IDLE</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_HLS_MODULE_IDLE" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">ERT_INTC_IPR_ADDR</span> <span class="pre">()</span></span></dt>
+<dl class="function">
+<dt id="c.ERT_INTC_IPR_ADDR">
+<code class="descname">ERT_INTC_IPR_ADDR</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#c.ERT_INTC_IPR_ADDR" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Parameters</strong></p>
@@ -857,7 +860,7 @@ MB(W)</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

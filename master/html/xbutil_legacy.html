@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,13 +55,11 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="xbmgmt (Next Generation)" href="xbmgmt2.html" />
-    <link rel="prev" title="xbmgmt" href="xbmgmt.html" /> 
+    <link rel="next" title="xbmgmt (Legacy)" href="xbmgmt_legacy.html" />
+    <link rel="prev" title="xclbinutil" href="xclbintools.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -382,17 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">xbutil (Next Generation)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil-program">xbutil program</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil-validate">xbutil validate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil-examine">xbutil examine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#xbutil-reset">xbutil reset</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -411,6 +403,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -419,10 +415,8 @@
             
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
-				  <li class="toctree-l1"><a href="_sources/xbutil2.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xbutil2.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+				  <li class="toctree-l1"><a href="_sources/xbutil_legacy.rst.txt"
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -467,13 +461,13 @@
     
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
-      <li>xbutil (Next Generation)</li>
+      <li>xbutil (Legacy)</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="_sources/xbutil2.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/xbutil_legacy.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -486,203 +480,9 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <span class="target" id="xbutil2-rst"></span><div class="section" id="xbutil-next-generation">
-<h1>xbutil (Next Generation)<a class="headerlink" href="#xbutil-next-generation" title="Permalink to this headline">¶</a></h1>
-<p>This document describes the new next-generation <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands. These new commands are default from 21.1 release.</p>
-<p><strong>Global options</strong>: These are the global options can be used with any command.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">--verbose</span></code>: Turn on verbosity and shows more outputs whenever applicable</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--batch</span></code>: Enable batch mode</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--force</span></code>: When possible, force an operation</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">--help</span></code> : Get help message</p></li>
-</ul>
-</div></blockquote>
-<p>The next-generation <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands are</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">validate</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code></p></li>
-</ul>
-</div></blockquote>
-<div class="section" id="xbutil-program">
-<h2>xbutil program<a class="headerlink" href="#xbutil-program" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> command downloads a specified xclbin binary to the programmable region on the card.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;xclbin&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to program</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--user</span></code> (or <code class="docutils literal notranslate"><span class="pre">-u</span></code>) is required to specify the .xclbin file</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;xclbin file&gt; : The xclbin file with full-path to program the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil program --device <span class="m">0000</span>:b3:00.1 --user ./my_kernel.xclbin
-</pre></div>
-</div>
-</div>
-<div class="section" id="xbutil-validate">
-<h2>xbutil validate<a class="headerlink" href="#xbutil-validate" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">validate</span></code> validates the installed card by running precompiled basic tests.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil validate <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--run<span class="p">|</span> -r<span class="o">]</span> &lt;test&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to validate</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--run</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) specifies the perticular test(s) to execute</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code> (<strong>default</strong>): runs all the tests listed below</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Aux</span> <span class="pre">connection</span></code>: Check if auxiliary power is connected</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">PCIE</span> <span class="pre">link</span></code>: Check if PCIE link is active</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">SC</span> <span class="pre">version</span></code>: Check if SC firmware is up-to-date</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Verify</span> <span class="pre">kernel</span></code>: Run ‘Hello World’ kernel test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">DMA</span></code>: Run dma test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">iops</span></code>: Run test to measure performance of scheduler (number of <cite>hello world</cite> kernel execution per second)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Bandwidth</span> <span class="pre">kernel</span></code>: Run ‘bandwidth kernel’ and check the throughput</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Peer</span> <span class="pre">to</span> <span class="pre">peer</span> <span class="pre">bar</span></code>: Run peer-to-peer test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Memory</span> <span class="pre">to</span> <span class="pre">memory</span> <span class="pre">DMA</span></code>: Run zero copy memory to memory data transfer test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Host</span> <span class="pre">memory</span> <span class="pre">bandwidth</span> <span class="pre">test</span></code>: Run ‘bandwidth kernel’ when host memory is enabled</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bist</span></code>: Run BIST test</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">vcu</span></code>: Run decoder test (only applicable for specific platform).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">quick</span></code>: Run first four tests (Aux connection, PCIE link, SC version and Verify kernel)</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Run all the tests</span>
-xbutil validate --device <span class="m">0000</span>:b3:00.1
-
-<span class="c1"># Run &quot;DMA&quot; test, produce text output in stdout</span>
-xbutil validate --device <span class="m">0000</span>:b3:00.1 --run DMA
-
-<span class="c1"># Run &quot;DMA&quot; and &quot;Validate Kernel&quot; test and generates Json format</span>
-xbutil validate --device <span class="m">0000</span>:b3:00.1 --run DMA <span class="s2">&quot;Verify Kernel&quot;</span> --format JSON --output xyz.json
-</pre></div>
-</div>
-</div>
-<div class="section" id="xbutil-examine">
-<h2>xbutil examine<a class="headerlink" href="#xbutil-examine" title="Permalink to this headline">¶</a></h2>
-<p>The command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code>  can be used to find the details of the specific device,</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil examine <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to examine</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--report</span></code> (or <code class="docutils literal notranslate"><span class="pre">-r</span></code>) switch can be used to view specific report(s) of interest from the following options</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">aie</span></code>: Reports AIE kernels metadata from the .xclbin</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">aieshim</span></code>: Reports AIE shim tile status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code>: All known reports are generated</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">debug-ip-status</span></code>: Reports information related to Debug-IPs inserted during the kernel compilation</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">dynamic-regions</span></code>: Information about the xclbin and the compute units (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">electrical</span></code>: Reports  Electrical and power sensors present on the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: Asyncronus Error present on the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">firewall</span></code>: Reports the current firewall status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code>: Reports the host configuration and drivers (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is not provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mailbox</span></code>: Mailbox metrics of the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mechanical</span></code>: Mechanical sensors on and surrounding the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">memory</span></code>: Reports memory topology of the XCLBIN (if XCLBIN is already loaded)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pcie-info</span></code> : Pcie information of the device</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">platform</span></code>: Platforms flashed on the device (default when <code class="docutils literal notranslate"><span class="pre">--device</span></code> is provided)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">qspi-status</span></code>: QSPI write protection status</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">thermal</span></code>: Reports thermal sensors present on the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--format</span></code> (or <code class="docutils literal notranslate"><span class="pre">-f</span></code>) specifies the report format. Note that <code class="docutils literal notranslate"><span class="pre">--format</span></code> also needs an <code class="docutils literal notranslate"><span class="pre">--output</span></code> to dump the report in json format. If <code class="docutils literal notranslate"><span class="pre">--output</span></code> is missing text format will be shown in stdout</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON</span></code>: The report is shown in latest JSON schema</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">JSON-2020.2</span></code>: The report is shown in JSON 2020.2 schema</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--output</span></code> (or <code class="docutils literal notranslate"><span class="pre">-o</span></code>) specifies the output file to direct the output</p></li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Shows ``xbutil examine --host``</span>
-xbutil examine
-
-<span class="c1"># Reports electrical information in the stdout</span>
-xbutil examine --device <span class="m">0000</span>:b3:00.1 --report electrical
-
-<span class="c1"># Reports &quot;electrical&quot; and &quot;firewall&quot; and dump in json format</span>
-xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical firewall --format JSON --output n.json
-</pre></div>
-</div>
-</div>
-<div class="section" id="xbutil-reset">
-<h2>xbutil reset<a class="headerlink" href="#xbutil-reset" title="Permalink to this headline">¶</a></h2>
-<p>This <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> command can be used to reset device.</p>
-<p><strong>The supported options</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--type<span class="p">|</span> -t<span class="o">]</span> &lt;reset type&gt;
-</pre></div>
-</div>
-<p><strong>The details of the supported options</strong></p>
-<ul>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to reset</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">--type</span></code> (or <code class="docutils literal notranslate"><span class="pre">-t</span></code>) can be used to specify the reset type. Currently only supported reset type is</p>
-<blockquote>
-<div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">hot</span></code> (<strong>default</strong>): Complete reset of the device</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<p><strong>Example commands</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil reset --device <span class="m">0000</span>:65:00.1
-</pre></div>
-</div>
-</div>
+  <span class="target" id="xbutil-legacy-rst"></span><div class="section" id="xbutil-legacy">
+<h1>xbutil (Legacy)<a class="headerlink" href="#xbutil-legacy" title="Permalink to this headline">¶</a></h1>
+<p>For information regarding the legacy version of the tool commands please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk1967146758.html">Vitis Application Acceleration Development Flow Documentation</a></p>
 </div>
 
 
@@ -701,10 +501,10 @@ xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="xbmgmt2.html" class="btn btn-neutral float-right" title="xbmgmt (Next Generation)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="xbmgmt_legacy.html" class="btn btn-neutral float-right" title="xbmgmt (Legacy)" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xbmgmt.html" class="btn btn-neutral float-left" title="xbmgmt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xclbintools.html" class="btn btn-neutral float-left" title="xclbinutil" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -714,7 +514,7 @@ xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

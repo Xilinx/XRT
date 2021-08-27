@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,12 +55,10 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="Security of Alveo Platform" href="security.html" /> 
+    <link rel="prev" title="XRT Python Bindings" href="pyxrt.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -381,11 +379,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -403,6 +401,10 @@
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul class="current">
@@ -429,9 +431,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/debug-faq.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/debug-faq.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -500,21 +500,22 @@
 <p>Debugging failures on board runs can be a daunting task which often requires <em>tribal knowledge</em> to be effective. This document attempts to document the tricks of the trade to help reduce debug cycles for all users. This is a living document and will be continuously updated.</p>
 <div class="section" id="tools-of-the-trade">
 <h2>Tools of the Trade<a class="headerlink" href="#tools-of-the-trade" title="Permalink to this headline">¶</a></h2>
-<dl>
-<dt><code class="docutils literal notranslate"><span class="pre">dmesg</span></code></dt><dd><p>Capture Linux kernel and XRT drivers log</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">strace</span></code></dt><dd><p>Capture trace of system calls made by an XRT application</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">gdb</span></code></dt><dd><p>Capture stack trace of an XRT application</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">lspci</span></code></dt><dd><p>Enumerate Xilinx® PCIe devices</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xbutil</span></code></dt><dd><p>Query status of Xilinx® PCIe device</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code></dt><dd><p>Retrieve info from an xclbin</p>
-</dd>
-<dt>XRT API Trace</dt><dd><p>Run failing application with XRT logging enabled in <span class="xref std std-ref">xrt_ini.rst</span></p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">dmesg</span></code></dt>
+<dd>Capture Linux kernel and XRT drivers log</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">strace</span></code></dt>
+<dd>Capture trace of system calls made by an XRT application</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">gdb</span></code></dt>
+<dd>Capture stack trace of an XRT application</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">lspci</span></code></dt>
+<dd>Enumerate Xilinx® PCIe devices</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xbutil</span></code></dt>
+<dd>Query status of Xilinx® PCIe device</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code></dt>
+<dd>Retrieve info from an xclbin</dd>
+<dt>XRT API Trace</dt>
+<dd><p class="first">Run failing application with XRT logging enabled in <span class="xref std std-ref">xrt_ini.rst</span></p>
+<div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>[Runtime]
 runtime_log=my_run.log
 </pre></div>
 </div>
@@ -524,23 +525,25 @@ runtime_log=my_run.log
 <div class="section" id="validating-a-working-setup">
 <h2>Validating a Working Setup<a class="headerlink" href="#validating-a-working-setup" title="Permalink to this headline">¶</a></h2>
 <p>When observing an application failure on a board, it is important to step back and validate the board setup. That will help establish and validate a clean working environment before running the failing application. We need to ensure that the board is enumerating and functioning.</p>
-<dl>
-<dt>Board Enumeration</dt><dd><p>Check if BIOS and Linux can see the board. So for Xilinx® boards use <code class="docutils literal notranslate"><span class="pre">lspci</span></code> utility</p>
+<dl class="docutils">
+<dt>Board Enumeration</dt>
+<dd><p class="first">Check if BIOS and Linux can see the board. So for Xilinx® boards use <code class="docutils literal notranslate"><span class="pre">lspci</span></code> utility</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>lspci -v -d 10ee:
 </pre></div>
 </div>
 <p>Check if XRT can see the board and reports sane values</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil scan
+<div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil scan
 xbutil query
 </pre></div>
 </div>
 </dd>
-<dt>XSA Sanity Test</dt><dd><p>Card validation on kernel, bandwidth, dmatest and etc. (-d for pointing a specific board)</p>
+<dt>XSA Sanity Test</dt>
+<dd><p class="first">Card validation on kernel, bandwidth, dmatest and etc. (-d for pointing a specific board)</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil validate -d 0
 </pre></div>
 </div>
 <p>Check DDR and PCIe bandwidth</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil dmatest
+<div class="last highlight-none notranslate"><div class="highlight"><pre><span></span>xbutil dmatest
 </pre></div>
 </div>
 </dd>
@@ -557,8 +560,8 @@ xbutil query
 <h3>Memory Read Before Write<a class="headerlink" href="#memory-read-before-write" title="Permalink to this headline">¶</a></h3>
 <p>Read-Before-Write in 5.0+ XSAs will cause MIG <em>ECC</em> error. This is typically a user error. For example if user expects a kernel to write 4KB of data in DDR but it produced only 1KB of data and now the user tries to transfer full 4KB of data to host. It can also happen if user supplied 1KB sized buffer to a kernel but the kernel tries to read 4KB of data. Note ECC read-before-write error occurs if – since the last bitstream download which results in MIG initialization – no data has been written to a memory location but a read request is made for that same memory location. ECC errors stall the affected MIG since usually kernels are not able to handle this error. This can manifest in two different ways:</p>
 <ol class="arabic simple">
-<li><p>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</p></li>
-<li><p>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</p></li>
+<li>CU may hang or stall because it does not know how to handle this error while reading/writing to/from the affected MIG. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show that the CU is stuck in <em>BUSY</em> state and not making progress.</li>
+<li>AXI Firewall may trip if PCIe DMA request is made to the affected MIG as the DMA engine will be unable to complete request. AXI Firewall trips result in the Linux kernel driver killing all processes which have opened the device node with <em>SIGBUS</em> signal. <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> will show if an AXI Firewall has indeed tripped including its timestamp.</li>
 </ol>
 <p>Users should review the host code carefully. One common example is compression where the size of the compressed data is not known upfront and an application may try to migrate more data to host than was produced by the kernel.</p>
 </div>
@@ -571,10 +574,10 @@ reconfiguration) region are frozen at compile time and specified in
 are running at incorrect — higher than specified — frequency,
 kernels will demonstrate weird behavior.</p>
 <ol class="arabic simple">
-<li><p>Often a CU will produce completely incorrect result with no identifiable pattern</p></li>
-<li><p>A CU might hang</p></li>
-<li><p>When run several times, a CU may produce correct results a few times and incorrect results rest of the time</p></li>
-<li><p>A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.</p></li>
+<li>Often a CU will produce completely incorrect result with no identifiable pattern</li>
+<li>A CU might hang</li>
+<li>When run several times, a CU may produce correct results a few times and incorrect results rest of the time</li>
+<li>A single CU run may produce a pattern of correct and incorrect result segments. Hence for a CU which produces a very long vector output (e.g. vector add), a pattern of correct — typically 64 bytes or one AXI burst — segment followed by incorrect segments are generated.</li>
 </ol>
 <p>Users should check the frequency of the board with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> and compare it against the metadata in xclbin. <code class="docutils literal notranslate"><span class="pre">xclbinutil</span></code> may be used to extract metadata from xclbin.</p>
 </div>
@@ -588,17 +591,18 @@ kernels will demonstrate weird behavior.</p>
 </div>
 <div class="section" id="platform-bugs">
 <h3>Platform Bugs<a class="headerlink" href="#platform-bugs" title="Permalink to this headline">¶</a></h3>
-<dl>
-<dt>Bitsream Download Failures</dt><dd><p>Bitstream download failures are usually
+<dl class="docutils">
+<dt>Bitsream Download Failures</dt>
+<dd><p class="first">Bitstream download failures are usually
 caused because of incompatible <code class="docutils literal notranslate"><span class="pre">xclbin</span></code>s. <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> log would
 provide more insight into why the download failed. At OpenCL level
 they usually manifest as Invalid Binary (error -44).</p>
-<p>Rarely MIG calibration might fail after bitstream download. This
+<p class="last">Rarely MIG calibration might fail after bitstream download. This
 will also show up as bitstream download failure. Usually XRT driver
 messages in <code class="docutils literal notranslate"><span class="pre">dmesg</span></code> would reveal if MIG calibration failed.</p>
 </dd>
-<dt>Incorrect Timing Constraints</dt><dd><p>If the platform or dynamic region has invalid timing constraints — which is really a platform or Vitis tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.</p>
-</dd>
+<dt>Incorrect Timing Constraints</dt>
+<dd>If the platform or dynamic region has invalid timing constraints — which is really a platform or Vitis tool bug — CUs would show bizarre behaviors. This may result in incorrect outputs or CU/application hangs.</dd>
 </dl>
 </div>
 </div>
@@ -614,8 +618,8 @@ may be recovered with PCIe hot reset</p>
 <p>If this does not recover the board perform a warm reboot. After reset/reboot please follow steps in <a class="reference internal" href="#validating-a-working-setup">Validating a Working Setup</a></p>
 <p>If for some reason communication between xocl driver and management driver gets disrupted, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> may not be successful to reset the board. In those cases the following steps are recommended with the help of the sysadmin who has the root previledge</p>
 <ol class="arabic simple">
-<li><p>unload xocl driver (also shut down VM if xocl is running on a VM)</p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span> <span class="pre">--hot</span></code></p></li>
+<li>unload xocl driver (also shut down VM if xocl is running on a VM)</li>
+<li>Run <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span> <span class="pre">--hot</span></code></li>
 </ol>
 </div>
 <div class="section" id="xrt-scheduling-options">
@@ -631,12 +635,12 @@ kds=false
 <h2>Writing Good Bug Reports<a class="headerlink" href="#writing-good-bug-reports" title="Permalink to this headline">¶</a></h2>
 <p>When creating bug reports please include the following:</p>
 <ol class="arabic simple">
-<li><p>Output of <code class="docutils literal notranslate"><span class="pre">dmesg</span></code></p></li>
-<li><p>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code></p></li>
-<li><p>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">scan</span></code></p></li>
-<li><p>Application binaries: xclbin, host executable and code, any data files used by the application</p></li>
-<li><p>XRT version</p></li>
-<li><p>XSA name and version</p></li>
+<li>Output of <code class="docutils literal notranslate"><span class="pre">dmesg</span></code></li>
+<li>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code></li>
+<li>Output of <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">scan</span></code></li>
+<li>Application binaries: xclbin, host executable and code, any data files used by the application</li>
+<li>XRT version</li>
+<li>XSA name and version</li>
 </ol>
 </div>
 </div>
@@ -658,7 +662,7 @@ kds=false
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="security.html" class="btn btn-neutral float-left" title="Security of Alveo Platform" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="pyxrt.html" class="btn btn-neutral float-left" title="XRT Python Bindings" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -668,7 +672,7 @@ kds=false
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

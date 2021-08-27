@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -405,6 +403,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -414,9 +416,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/mailbox.proto.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/mailbox.proto.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -482,53 +482,53 @@
             
   <span class="target" id="mailbox-proto-rst"></span><div class="section" id="mailbox-inter-domain-communication-protocol">
 <h1>Mailbox Inter-domain Communication Protocol<a class="headerlink" href="#mailbox-inter-domain-communication-protocol" title="Permalink to this headline">¶</a></h1>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">xcl_mailbox_request</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_request">
+enum <code class="descname">xcl_mailbox_request</code><a class="headerlink" href="#c.xcl_mailbox_request" title="Permalink to this definition">¶</a></dt>
 <dd><p>List of all mailbox request OPCODE. Some OP code requires arguments, which is defined as corresponding data structures below. Response to the request usually is a int32_t containing the error code. Some responses are more complicated and require a data structure, which is also defined below in this file.</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNKNOWN</span></code></dt><dd><p>invalid OP code</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READY</span></code></dt><dd><p>test msg is ready (post only, internal test only)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READ</span></code></dt><dd><p>fetch test msg from peer (internal test only)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOCK_BITSTREAM</span></code></dt><dd><p>lock down xclbin on mgmt pf (not implemented)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNLOCK_BITSTREAM</span></code></dt><dd><p>unlock xclbin on mgmt pf (not implemented)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_HOT_RESET</span></code></dt><dd><p>request mgmt pf driver to reset the board</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_FIREWALL</span></code></dt><dd><p>firewall trip detected on mgmt pf (post only)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR</span></code></dt><dd><p>download xclbin (pointed to by a pointer)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN</span></code></dt><dd><p>download xclbin (bitstream is in payload)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_RECLOCK</span></code></dt><dd><p>set clock frequency</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code></dt><dd><p>read specified data from peer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_USER_PROBE</span></code></dt><dd><p>for user pf to probe the peer mgmt pf</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code></dt><dd><p>for mgmt pf to notify user pf of its state change
-(post only)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_CHG_SHELL</span></code></dt><dd><p>shell change is required on mgmt pf (post only)</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PROGRAM_SHELL</span></code></dt><dd><p>request mgmt pf driver to reprogram shell</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MAX</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNKNOWN</span></code></dt>
+<dd>invalid OP code</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READY</span></code></dt>
+<dd>test msg is ready (post only, internal test only)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_TEST_READ</span></code></dt>
+<dd>fetch test msg from peer (internal test only)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOCK_BITSTREAM</span></code></dt>
+<dd>lock down xclbin on mgmt pf (not implemented)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_UNLOCK_BITSTREAM</span></code></dt>
+<dd>unlock xclbin on mgmt pf (not implemented)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_HOT_RESET</span></code></dt>
+<dd>request mgmt pf driver to reset the board</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_FIREWALL</span></code></dt>
+<dd>firewall trip detected on mgmt pf (post only)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR</span></code></dt>
+<dd>download xclbin (pointed to by a pointer)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_LOAD_XCLBIN</span></code></dt>
+<dd>download xclbin (bitstream is in payload)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_RECLOCK</span></code></dt>
+<dd>set clock frequency</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code></dt>
+<dd>read specified data from peer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_USER_PROBE</span></code></dt>
+<dd>for user pf to probe the peer mgmt pf</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code></dt>
+<dd>for mgmt pf to notify user pf of its state change
+(post only)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_CHG_SHELL</span></code></dt>
+<dd>shell change is required on mgmt pf (post only)</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PROGRAM_SHELL</span></code></dt>
+<dd>request mgmt pf driver to reprogram shell</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MAX</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_req_bitstream_lock</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_req_bitstream_lock">
+struct <code class="descname">xcl_mailbox_req_bitstream_lock</code><a class="headerlink" href="#c.xcl_mailbox_req_bitstream_lock" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_LOCK_BITSTREAM and MAILBOX_REQ_UNLOCK_BITSTREAM payload type</p>
 </dd></dl>
 
@@ -540,38 +540,38 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">reserved</span></code></dt><dd><p>reserved for future use</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt><dd><p>uuid of the xclbin</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">reserved</span></code></dt>
+<dd>reserved for future use</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt>
+<dd>uuid of the xclbin</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">xcl_group_kind</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_group_kind">
+enum <code class="descname">xcl_group_kind</code><a class="headerlink" href="#c.xcl_group_kind" title="Permalink to this definition">¶</a></dt>
 <dd><p>Groups of data that can be fetched from mgmt side</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_SENSOR</span></code></dt><dd><p>all kinds of sensor readings</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_ICAP</span></code></dt><dd><p>ICAP IP related information</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_BDINFO</span></code></dt><dd><p>Board Info, serial_num, mac_address</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_MIG_ECC</span></code></dt><dd><p>ECC statistics</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_FIREWALL</span></code></dt><dd><p>AF detected time, status</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_DNA</span></code></dt><dd><p>Device DNA information</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt><dd><p>PLP subdevices information</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SENSOR</span></code></dt>
+<dd>all kinds of sensor readings</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_ICAP</span></code></dt>
+<dd>ICAP IP related information</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_BDINFO</span></code></dt>
+<dd>Board Info, serial_num, mac_address</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_MIG_ECC</span></code></dt>
+<dd>ECC statistics</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_FIREWALL</span></code></dt>
+<dd>AF detected time, status</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_DNA</span></code></dt>
+<dd>Device DNA information</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XCL_SUBDEV</span></code></dt>
+<dd>PLP subdevices information</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_board_info</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_board_info">
+struct <code class="descname">xcl_board_info</code><a class="headerlink" href="#c.xcl_board_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch BDINFO group</p>
 </dd></dl>
 
@@ -581,9 +581,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_sensor</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_sensor">
+struct <code class="descname">xcl_sensor</code><a class="headerlink" href="#c.xcl_sensor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch SENSOR group</p>
 </dd></dl>
 
@@ -593,9 +593,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_pr_region</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_pr_region">
+struct <code class="descname">xcl_pr_region</code><a class="headerlink" href="#c.xcl_pr_region" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch ICAP group</p>
 </dd></dl>
 
@@ -605,9 +605,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mig_ecc</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mig_ecc">
+struct <code class="descname">xcl_mig_ecc</code><a class="headerlink" href="#c.xcl_mig_ecc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch MIG_ECC group</p>
 </dd></dl>
 
@@ -617,9 +617,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_firewall</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_firewall">
+struct <code class="descname">xcl_firewall</code><a class="headerlink" href="#c.xcl_firewall" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch FIREWALL group</p>
 </dd></dl>
 
@@ -629,9 +629,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_dna</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_dna">
+struct <code class="descname">xcl_dna</code><a class="headerlink" href="#c.xcl_dna" title="Permalink to this definition">¶</a></dt>
 <dd><p>Data structure used to fetch DNA group</p>
 </dd></dl>
 
@@ -641,9 +641,9 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_subdev_peer</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_subdev_peer">
+struct <code class="descname">xcl_mailbox_subdev_peer</code><a class="headerlink" href="#c.xcl_mailbox_subdev_peer" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_PEER_DATA payload type</p>
 </dd></dl>
 
@@ -655,15 +655,15 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">kind</span></code></dt><dd><p>data group</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt><dd><p>buffer size for receiving response</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">kind</span></code></dt>
+<dd>data group</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">size</span></code></dt>
+<dd>buffer size for receiving response</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_conn</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_conn">
+struct <code class="descname">xcl_mailbox_conn</code><a class="headerlink" href="#c.xcl_mailbox_conn" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_USER_PROBE payload type</p>
 </dd></dl>
 
@@ -677,19 +677,19 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">kaddr</span></code></dt><dd><p>KVA of the verification data buffer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt><dd><p>physical addresss of the verification data buffer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">crc32</span></code></dt><dd><p>CRC value of the verification data buffer</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt><dd><p>protocol version supported by peer</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">kaddr</span></code></dt>
+<dd>KVA of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">paddr</span></code></dt>
+<dd>physical addresss of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">crc32</span></code></dt>
+<dd>CRC value of the verification data buffer</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt>
+<dd>protocol version supported by peer</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_conn_resp</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_conn_resp">
+struct <code class="descname">xcl_mailbox_conn_resp</code><a class="headerlink" href="#c.xcl_mailbox_conn_resp" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_USER_PROBE response payload type</p>
 </dd></dl>
 
@@ -703,19 +703,19 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt><dd><p>protocol version should be used</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">conn_flags</span></code></dt><dd><p>connection status</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">chan_switch</span></code></dt><dd><p>bitmap to indicate SW / HW channel for each OP code msg</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">comm_id</span></code></dt><dd><p>user defined cookie</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">version</span></code></dt>
+<dd>protocol version should be used</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">conn_flags</span></code></dt>
+<dd>connection status</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">chan_switch</span></code></dt>
+<dd>bitmap to indicate SW / HW channel for each OP code msg</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">comm_id</span></code></dt>
+<dd>user defined cookie</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_peer_state</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_peer_state">
+struct <code class="descname">xcl_mailbox_peer_state</code><a class="headerlink" href="#c.xcl_mailbox_peer_state" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_MGMT_STATE payload type</p>
 </dd></dl>
 
@@ -726,13 +726,13 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">state_flags</span></code></dt><dd><p>peer state flags</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">state_flags</span></code></dt>
+<dd>peer state flags</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_bitstream_kaddr</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_bitstream_kaddr">
+struct <code class="descname">xcl_mailbox_bitstream_kaddr</code><a class="headerlink" href="#c.xcl_mailbox_bitstream_kaddr" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_LOAD_XCLBIN_KADDR payload type</p>
 </dd></dl>
 
@@ -743,13 +743,13 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt><dd><p>pointer to xclbin body</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">addr</span></code></dt>
+<dd>pointer to xclbin body</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_clock_freqscaling</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_clock_freqscaling">
+struct <code class="descname">xcl_mailbox_clock_freqscaling</code><a class="headerlink" href="#c.xcl_mailbox_clock_freqscaling" title="Permalink to this definition">¶</a></dt>
 <dd><p>MAILBOX_REQ_RECLOCK payload type</p>
 </dd></dl>
 
@@ -761,15 +761,15 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">region</span></code></dt><dd><p>region of clock</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">target_freqs</span></code></dt><dd><p>array of target clock frequencies (max clocks: 16)</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">region</span></code></dt>
+<dd>region of clock</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">target_freqs</span></code></dt>
+<dd>array of target clock frequencies (max clocks: 16)</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_req</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_req">
+struct <code class="descname">xcl_mailbox_req</code><a class="headerlink" href="#c.xcl_mailbox_req" title="Permalink to this definition">¶</a></dt>
 <dd><p>mailbox request message header</p>
 </dd></dl>
 
@@ -782,17 +782,17 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>flags of this message</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">req</span></code></dt><dd><p>opcode</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>payload of variable length</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>flags of this message</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">req</span></code></dt>
+<dd>opcode</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>payload of variable length</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_sw_chan</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_sw_chan">
+struct <code class="descname">xcl_sw_chan</code><a class="headerlink" href="#c.xcl_sw_chan" title="Permalink to this definition">¶</a></dt>
 <dd><p>mailbox software channel message metadata. This defines the interface between daemons (MPD and MSD) and mailbox’s read or write callbacks. A mailbox message (either a request or response) is wrapped by this data structure as payload. A sw_chan is passed between mailbox driver and daemon via read / write driver callbacks. And it is also passed between MPD and MSD via vendor defined interface (TCP socket, etc).</p>
 </dd></dl>
 
@@ -806,19 +806,19 @@
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">sz</span></code></dt><dd><p>payload size</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt><dd><p>flags of this message as in struct mailbox_req</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">id</span></code></dt><dd><p>message ID</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt><dd><p>payload (struct mailbox_req or response data matching the request)</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">sz</span></code></dt>
+<dd>payload size</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flags</span></code></dt>
+<dd>flags of this message as in struct mailbox_req</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">id</span></code></dt>
+<dd>message ID</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">data</span></code></dt>
+<dd>payload (struct mailbox_req or response data matching the request)</dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">xcl_mailbox_p2p_bar_addr</span></span></dt>
+<dl class="type">
+<dt id="c.xcl_mailbox_p2p_bar_addr">
+struct <code class="descname">xcl_mailbox_p2p_bar_addr</code><a class="headerlink" href="#c.xcl_mailbox_p2p_bar_addr" title="Permalink to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <p><strong>Definition</strong></p>
@@ -858,7 +858,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

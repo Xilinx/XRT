@@ -90,6 +90,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:af4d538a36fb17a6b7dc58e9c9fd4cda6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae133bb9766ad5daac80bbad0bc748720"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">stop</a> ()</td></tr>
 <tr class="separator:ae133bb9766ad5daac80bbad0bc748720"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac4697b4f95bbb0d67711772ced21b1cd"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">abort</a> ()</td></tr>
+<tr class="separator:ac4697b4f95bbb0d67711772ced21b1cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afaf1ff8225e15d8802401982f62321e5"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait</a> (const std::chrono::milliseconds &amp;timeout=std::chrono::milliseconds{0}) const</td></tr>
 <tr class="separator:afaf1ff8225e15d8802401982f62321e5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a788df7565091221de5376d6c1d4a5f24"><td class="memItemLeft" align="right" valign="top">ert_cmd_state&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">wait</a> (unsigned int timeout_ms) const</td></tr>
@@ -189,6 +191,27 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="ac4697b4f95bbb0d67711772ced21b1cd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac4697b4f95bbb0d67711772ced21b1cd">&#9670;&nbsp;</a></span>abort()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">ert_cmd_state xrt::run::abort </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1run.html#ac4697b4f95bbb0d67711772ced21b1cd">abort()</a> - Abort a run object that has been started</p>
+<dl class="section return"><dt>Returns</dt><dd>State of aborted command</dd></dl>
+<p>If the run object has been sent to scheduler for execution, then this function can be used to abort the scheduled command.</p>
+<p>The function is synchronous and will wait for abort to complete. The return value is the state of the aborted command. </p>
+
+</div>
+</div>
 <a id="a268c7ad2d9bab32d6ba2878a0b00c628"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a268c7ad2d9bab32d6ba2878a0b00c628">&#9670;&nbsp;</a></span>add_callback()</h2>
 

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -380,11 +378,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -403,6 +401,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -412,9 +414,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/streaming_data_support.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/streaming_data_support.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -482,49 +482,49 @@
 <h1>XRT Streaming Platform Support<a class="headerlink" href="#xrt-streaming-platform-support" title="Permalink to this headline">¶</a></h1>
 <p>Starting from the 2019.1 release, XRT supports a new programming model which supports the direct streaming of data from host to kernel and kernel to host without having to go through global memory. This feature is an addition to the existing host to kernel and kernel to host data transfer using global memories. By using streams, you can get some of the advantages such as:</p>
 <ul class="simple">
-<li><p>The host application does not necessarily need to know the size of the data coming from the kernel. Data resides on the host memory can be transferred to the kernel as soon as it is needed. Similarly, the processed data can be transferred back when it is required.</p></li>
-<li><p>This programming model uses minimal storage compared to the larger and slower global memory bank, and thus improving the performance and power.</p></li>
+<li>The host application does not necessarily need to know the size of the data coming from the kernel. Data resides on the host memory can be transferred to the kernel as soon as it is needed. Similarly, the processed data can be transferred back when it is required.</li>
+<li>This programming model uses minimal storage compared to the larger and slower global memory bank, and thus improving the performance and power.</li>
 </ul>
 <div class="section" id="apis-required-for-streaming-data-tranfer">
 <h2>APIs required for streaming data tranfer<a class="headerlink" href="#apis-required-for-streaming-data-tranfer" title="Permalink to this headline">¶</a></h2>
 <p><strong>OpenCL™ extension APIs for streaming operation</strong></p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 25%" />
-<col style="width: 75%" />
+<col width="25%" />
+<col width="75%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>APIs</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">APIs</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>clCreateStream</p></td>
-<td><p>Creates a read or write stream</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>clCreateStream</td>
+<td>Creates a read or write stream</td>
 </tr>
-<tr class="row-odd"><td><p>clReleaseStream</p></td>
-<td><p>Frees the created stream and its associated memory</p></td>
+<tr class="row-odd"><td>clReleaseStream</td>
+<td>Frees the created stream and its associated memory</td>
 </tr>
-<tr class="row-even"><td><p>clWriteStream</p></td>
-<td><p>Writes data to stream</p></td>
+<tr class="row-even"><td>clWriteStream</td>
+<td>Writes data to stream</td>
 </tr>
-<tr class="row-odd"><td><p>clReadStream</p></td>
-<td><p>Gets data from stream</p></td>
+<tr class="row-odd"><td>clReadStream</td>
+<td>Gets data from stream</td>
 </tr>
-<tr class="row-even"><td><p>clPollStreams</p></td>
-<td><p>Polls for any stream on the device to finish.
-Required only for non-blocking stream operation.</p></td>
+<tr class="row-even"><td>clPollStreams</td>
+<td>Polls for any stream on the device to finish.
+Required only for non-blocking stream operation.</td>
 </tr>
 </tbody>
 </table>
 <p>The typical API flow is described below:</p>
 <ul>
-<li><p>Create the required number of the read/write streams by clCreateStream.</p>
+<li><p class="first">Create the required number of the read/write streams by clCreateStream.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Streams should be directly attached to the OpenCL device object because it does not use any command queue. A stream itself is a command queue that only passes the data to a particular direction, either from host to kernel or from kernel to host.</p></li>
-<li><p>An appropriate flag should be used to denote stream write/read operation (from the kernel perspective).</p></li>
-<li><p>To specify how the stream is connected to the device, a predefined extension pointer (cl_mem_ext_ptr_t) should be used to denote the kernel and its argument the stream is associated with.</p></li>
+<li>Streams should be directly attached to the OpenCL device object because it does not use any command queue. A stream itself is a command queue that only passes the data to a particular direction, either from host to kernel or from kernel to host.</li>
+<li>An appropriate flag should be used to denote stream write/read operation (from the kernel perspective).</li>
+<li>To specify how the stream is connected to the device, a predefined extension pointer (cl_mem_ext_ptr_t) should be used to denote the kernel and its argument the stream is associated with.</li>
 </ul>
 </div></blockquote>
 </li>
@@ -548,7 +548,7 @@ Required only for non-blocking stream operation.</p></td>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>Set the remaining non-stream kernel arguments and enqueue the kernel. The following code block shows typical kernel argument (non-stream arguments such as buffer and/or scalar) setting and kernel enqueuing.</p></li>
+<li>Set the remaining non-stream kernel arguments and enqueue the kernel. The following code block shows typical kernel argument (non-stream arguments such as buffer and/or scalar) setting and kernel enqueuing.</li>
 </ul>
 <div class="highlight-c++ notranslate"><div class="highlight"><pre><span></span><span class="c1">// Set kernel non-stream argument (if any)</span>
 <span class="n">clSetKernelArg</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="mi">0</span><span class="p">,...,...);</span>
@@ -561,19 +561,21 @@ Required only for non-blocking stream operation.</p></td>
 </pre></div>
 </div>
 <ul>
-<li><p>Initiate Read and Write transfer by clReadStream and clWriteStream.</p>
+<li><p class="first">Initiate Read and Write transfer by clReadStream and clWriteStream.</p>
 <blockquote>
 <div><ul>
-<li><p>Note the usage of attribute cl_stream_xfer_req associated with read and write request.</p></li>
-<li><p>The .flag is used to denote transfer mechanism.</p>
+<li><p class="first">Note the usage of attribute cl_stream_xfer_req associated with read and write request.</p>
+</li>
+<li><p class="first">The .flag is used to denote transfer mechanism.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><strong>CL_STREAM_EOT:</strong> Currently, successful stream transfer mechanism depends on identifying the end of the transfer by an End of Transfer signal. This flag is mandatory in the current release.</p></li>
-<li><p><strong>CL_STREAM_NONBLOCKING:</strong> By default the Read and Write transfers are blocking. For non-blocking transfer, CL_STREAM_NONBLOCKING has to be set.</p></li>
+<li><strong>CL_STREAM_EOT:</strong> Currently, successful stream transfer mechanism depends on identifying the end of the transfer by an End of Transfer signal. This flag is mandatory in the current release.</li>
+<li><strong>CL_STREAM_NONBLOCKING:</strong> By default the Read and Write transfers are blocking. For non-blocking transfer, CL_STREAM_NONBLOCKING has to be set.</li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>The .priv_data is used to specify a string (as a name for tagging purpose) associated with the transfer. This will help identify specific transfer completion when polling the stream completion. It is required when using the non-blocking version of the API.</p></li>
+<li><p class="first">The .priv_data is used to specify a string (as a name for tagging purpose) associated with the transfer. This will help identify specific transfer completion when polling the stream completion. It is required when using the non-blocking version of the API.</p>
+</li>
 </ul>
 </div></blockquote>
 </li>
@@ -598,11 +600,11 @@ Required only for non-blocking stream operation.</p></td>
 <p><strong>IMPORTANT</strong>: In case of using blocking version of the API, the user should be careful as blocking API blocks the host execution. Hence it may ends up application to hang, for example a blocking read operation from a kernel before a blocking write to the same kernel (in the situation when the kernel output stream depends on the kernel input stream) in the same thread. The general recommendation is to use blocking streams APIs from differnt threads to avoid application hang situation.</p>
 <p><strong>IMPORTANT</strong>: The buffer used for kernel to host data transfer has to be page aligned (In the above code example, the buffer <code class="docutils literal notranslate"><span class="pre">host_read_ptr</span></code> has to be page aligned).</p>
 <ul>
-<li><p>Poll all the streams for completion. For the non-blocking transfer, a polling API is provided to ensure the read/write transfers are completed. For the blocking version of the API, polling is not required.</p>
+<li><p class="first">Poll all the streams for completion. For the non-blocking transfer, a polling API is provided to ensure the read/write transfers are completed. For the blocking version of the API, polling is not required.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>The number of poll requests should be used through cl_streams_poll_req_completions.</p></li>
-<li><p>The <code class="docutils literal notranslate"><span class="pre">clPollStreams</span></code> is a blocking API. It returns the execution to the host code as soon as it receives the notification that all stream requests have been completed, or until you specify the timeout.</p></li>
+<li>The number of poll requests should be used through cl_streams_poll_req_completions.</li>
+<li>The <code class="docutils literal notranslate"><span class="pre">clPollStreams</span></code> is a blocking API. It returns the execution to the host code as soon as it receives the notification that all stream requests have been completed, or until you specify the timeout.</li>
 </ul>
 </div></blockquote>
 </li>
@@ -616,11 +618,11 @@ Required only for non-blocking stream operation.</p></td>
 </pre></div>
 </div>
 <ul>
-<li><p>Read and use the stream data in host.</p>
+<li><p class="first">Read and use the stream data in host.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>After the successful poll request is completed, the host can read the data from the host pointer.</p></li>
-<li><p>Also, the host can check the size of the data transferred to the host. For this purpose, the host needs to find the correct poll request by matching <code class="docutils literal notranslate"><span class="pre">priv_data</span></code> and then fetching nbytes (the number of bytes transferred) from the <code class="docutils literal notranslate"><span class="pre">cl_streams_poll_req_completions</span></code> structure.</p></li>
+<li>After the successful poll request is completed, the host can read the data from the host pointer.</li>
+<li>Also, the host can check the size of the data transferred to the host. For this purpose, the host needs to find the correct poll request by matching <code class="docutils literal notranslate"><span class="pre">priv_data</span></code> and then fetching nbytes (the number of bytes transferred) from the <code class="docutils literal notranslate"><span class="pre">cl_streams_poll_req_completions</span></code> structure.</li>
 </ul>
 </div></blockquote>
 </li>
@@ -659,7 +661,7 @@ Required only for non-blocking stream operation.</p></td>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

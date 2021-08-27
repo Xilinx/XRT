@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -407,11 +405,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -430,6 +428,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -439,9 +441,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/p2p.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/p2p.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -509,19 +509,19 @@
 <h1>PCIe Peer-to-Peer (P2P)<a class="headerlink" href="#pcie-peer-to-peer-p2p" title="Permalink to this headline">¶</a></h1>
 <p>PCIe peer-to-peer communication (P2P) is a PCIe feature which enables two PCIe devices to directly transfer data between each other without using host RAM as a temporary storage. The latest version of Alveo PCIe platforms support P2P feature via PCIe Resizeable BAR Capability.</p>
 <ol class="arabic simple">
-<li><p>Data can be directly transferred between the DDR/HBM of one Alveo PCIe device and DDR/HBM of a second Alveo PCIe device.</p></li>
-<li><p>A thirdparty peer device like NVMe can directly read/write data from/to DDR/HBM of Alveo PCIe device.</p></li>
+<li>Data can be directly transferred between the DDR/HBM of one Alveo PCIe device and DDR/HBM of a second Alveo PCIe device.</li>
+<li>A thirdparty peer device like NVMe can directly read/write data from/to DDR/HBM of Alveo PCIe device.</li>
 </ol>
-<div class="align-center figure align-default" id="id3">
-<img alt="_images/PCIe-P2P.svg" src="_images/PCIe-P2P.svg" /><p class="caption"><span class="caption-text">PCIe peer-to-peer topology and data transfer</span><a class="headerlink" href="#id3" title="Permalink to this image">¶</a></p>
+<div class="align-center figure" id="id3">
+<img alt="_images/PCIe-P2P.svg" src="_images/PCIe-P2P.svg" /><p class="caption"><span class="caption-text">PCIe peer-to-peer topology and data transfer</span></p>
 </div>
 <p>To use P2P, the DDR/HBM on a Alveo PCIe platform need to be mapped to host IO memory space. The total size of DDR/HBM on most Alveo PCIe platforms is 64 GB all of which needs to mapped to the host IO memory space. Partial mapping a smaller range of device DDR is not supported in this release of XRT. Considering not all host systems (CPU/BIOS/chipset) support 64 GB IO memory space, P2P feature is off by default after a cold reboot or power cycle. The feature needs to be explicitly enabled after a cold boot.</p>
 <p>Note that in addition to BIOS, host CPU should be capable of supporting a very large physical address space. Most desktop class processors do not support very large address space required for supporting 64 GB BAR together with host RAM and address space of all peripherals.</p>
 <div class="section" id="bios-setup">
 <h2>BIOS Setup<a class="headerlink" href="#bios-setup" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>Before turning on P2P, please make sure 64-bit IO is enabled and the maximium host supported IO memory space is greater than total size of DDRs on Alveo PCIe platform in host BIOS setup.</p></li>
-<li><p>Enable large BAR support in BIOS. This is variously called as <em>Above 4G decoding</em>, <em>PCI 64-bit resource handing above 4G</em> or <em>Memory mapped I/O above 4GB</em> and may be found under PCIe configuration or Boot configuration.</p></li>
+<li>Before turning on P2P, please make sure 64-bit IO is enabled and the maximium host supported IO memory space is greater than total size of DDRs on Alveo PCIe platform in host BIOS setup.</li>
+<li>Enable large BAR support in BIOS. This is variously called as <em>Above 4G decoding</em>, <em>PCI 64-bit resource handing above 4G</em> or <em>Memory mapped I/O above 4GB</em> and may be found under PCIe configuration or Boot configuration.</li>
 </ol>
 <div class="section" id="note">
 <h3>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h3>
@@ -555,26 +555,26 @@ GEN 3x16        2               true            false
 </pre></div>
 </div>
 <p>There are three possible values for <code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> field above.</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 17%" />
-<col style="width: 83%" />
+<col width="17%" />
+<col width="83%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Value</p></th>
-<th class="head"><p>Remarks</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Value</th>
+<th class="head">Remarks</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">True</span></code></p></td>
-<td><p>P2P is enabled</p></td>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">True</span></code></td>
+<td>P2P is enabled</td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
-<td><p>P2P is disabled</p></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">False</span></code></td>
+<td>P2P is disabled</td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></p></td>
-<td><p>P2P is enabled in device but system could not allocate IO
-memory, warm reboot is needed</p></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></td>
+<td>P2P is enabled in device but system could not allocate IO
+memory, warm reboot is needed</td>
 </tr>
 </tbody>
 </table>
@@ -659,26 +659,30 @@ GEN 3x16        2               true            false
 <p>Consider the example situation as below:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>P2P data transfer from Card1 to Card2</p></li>
-<li><p>Source buffer (<cite>buf_src</cite>) is OpenCL buffer resident of Card1’s DDR</p></li>
-<li><p>Destination buffer (<cite>buf_dst</cite>) is OpenCL buffer resident of Card2’s DDR</p></li>
+<li>P2P data transfer from Card1 to Card2</li>
+<li>Source buffer (<cite>buf_src</cite>) is OpenCL buffer resident of Card1’s DDR</li>
+<li>Destination buffer (<cite>buf_dst</cite>) is OpenCL buffer resident of Card2’s DDR</li>
 </ul>
 </div></blockquote>
 <p>Typical coding style:</p>
 <blockquote>
 <div><ol class="arabic">
-<li><p>In the OpenCL host code, create separate <cite>cl_context</cite> for each <cite>cl_device_id</cite></p></li>
-<li><p>Define <cite>buf_src</cite> as regular buffer</p></li>
-<li><p>Define <cite>buf_dst</cite> as P2P buffer</p></li>
-<li><p>Import the P2P buffer or <cite>buf_dst</cite> to the context of <cite>buf_src</cite>. Use the following APIs</p>
+<li><p class="first">In the OpenCL host code, create separate <cite>cl_context</cite> for each <cite>cl_device_id</cite></p>
+</li>
+<li><p class="first">Define <cite>buf_src</cite> as regular buffer</p>
+</li>
+<li><p class="first">Define <cite>buf_dst</cite> as P2P buffer</p>
+</li>
+<li><p class="first">Import the P2P buffer or <cite>buf_dst</cite> to the context of <cite>buf_src</cite>. Use the following APIs</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><cite>xclGetMemObjectFd</cite></p></li>
-<li><p><cite>xclGetMemObjectFromFd</cite></p></li>
+<li><cite>xclGetMemObjectFd</cite></li>
+<li><cite>xclGetMemObjectFromFd</cite></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>Perform the copy operation from <cite>buf_src</cite> to <cite>imported_dst_buf</cite></p></li>
+<li><p class="first">Perform the copy operation from <cite>buf_src</cite> to <cite>imported_dst_buf</cite></p>
+</li>
 </ol>
 </div></blockquote>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Source Buffer (regular) in source context</span>
@@ -713,43 +717,43 @@ GEN 3x16        2               true            false
 <h3>Profile Report<a class="headerlink" href="#profile-report" title="Permalink to this headline">¶</a></h3>
 <p>In the Profile Summary report file the P2P transfer is shown under <strong>Data Transfer: DMA Bypass</strong></p>
 <p><strong>Data Transfer: DMA Bypass</strong></p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 8%" />
-<col style="width: 18%" />
-<col style="width: 12%" />
-<col style="width: 13%" />
-<col style="width: 12%" />
-<col style="width: 11%" />
-<col style="width: 11%" />
-<col style="width: 14%" />
+<col width="8%" />
+<col width="18%" />
+<col width="12%" />
+<col width="13%" />
+<col width="12%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Device</p></th>
-<th class="head"><p>Transfer Type</p></th>
-<th class="head"><p>Number of
-Transfer</p></th>
-<th class="head"><p>Transfer
-Rate(MB/s)</p></th>
-<th class="head"><p>Total Data
-Transfer</p></th>
-<th class="head"><p>Total
-Time (ms)</p></th>
-<th class="head"><p>Average
-Size (Kb)</p></th>
-<th class="head"><p>Average
-Latency(ns)</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>…</p></td>
-<td><p>IN</p></td>
-<td><p>4096</p></td>
-<td><p>N/A</p></td>
-<td><p>0.262</p></td>
-<td><p>N/A</p></td>
-<td><p>0.064</p></td>
-<td><p>N/A</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>IN</td>
+<td>4096</td>
+<td>N/A</td>
+<td>0.262</td>
+<td>N/A</td>
+<td>0.064</td>
+<td>N/A</td>
 </tr>
 </tbody>
 </table>
@@ -764,10 +768,10 @@ Latency(ns)</p></th>
 <p>Typical coding style</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><p>Create P2P buffer</p></li>
-<li><p>Map P2P buffer to the host space</p></li>
-<li><p>Access the SSD location through Linux File System, the file needs to be opened with <cite>O_DIRECT</cite>.</p></li>
-<li><p>Read/Write through Linux <cite>pread</cite>/<cite>pwrite</cite> function</p></li>
+<li>Create P2P buffer</li>
+<li>Map P2P buffer to the host space</li>
+<li>Access the SSD location through Linux File System, the file needs to be opened with <cite>O_DIRECT</cite>.</li>
+<li>Read/Write through Linux <cite>pread</cite>/<cite>pwrite</cite> function</li>
 </ol>
 </div></blockquote>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// Creating P2P buffer</span>
@@ -798,85 +802,85 @@ Latency(ns)</p></th>
 <h3>Profile Report<a class="headerlink" href="#id2" title="Permalink to this headline">¶</a></h3>
 <p>Sample Profile report from FPGA to NVMe Device transfer via P2P</p>
 <p><strong>Data Transfer: DMA Bypass</strong></p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 7%" />
-<col style="width: 18%" />
-<col style="width: 11%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 11%" />
-<col style="width: 11%" />
-<col style="width: 14%" />
+<col width="7%" />
+<col width="18%" />
+<col width="11%" />
+<col width="14%" />
+<col width="14%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Device</p></th>
-<th class="head"><p>Transfer Type</p></th>
-<th class="head"><p>Number of
-Transfer</p></th>
-<th class="head"><p>Transfer
-Rate(MB/s)</p></th>
-<th class="head"><p>Total Data
-Transfer</p></th>
-<th class="head"><p>Total
-Time (ms)</p></th>
-<th class="head"><p>Average
-Size (Kb)</p></th>
-<th class="head"><p>Average
-Latency(ns)</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>…</p></td>
-<td><p>OUT</p></td>
-<td><p>8388608</p></td>
-<td><p>N/A</p></td>
-<td><p>1073.740</p></td>
-<td><p>N/A</p></td>
-<td><p>0.128</p></td>
-<td><p>297.141</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>OUT</td>
+<td>8388608</td>
+<td>N/A</td>
+<td>1073.740</td>
+<td>N/A</td>
+<td>0.128</td>
+<td>297.141</td>
 </tr>
 </tbody>
 </table>
 <p>Sample Profile report from NVMe Device to FPGA transfer via P2P</p>
 <p><strong>Data Transfer: DMA Bypass</strong></p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 7%" />
-<col style="width: 18%" />
-<col style="width: 11%" />
-<col style="width: 14%" />
-<col style="width: 14%" />
-<col style="width: 11%" />
-<col style="width: 11%" />
-<col style="width: 14%" />
+<col width="7%" />
+<col width="18%" />
+<col width="11%" />
+<col width="14%" />
+<col width="14%" />
+<col width="11%" />
+<col width="11%" />
+<col width="14%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Device</p></th>
-<th class="head"><p>Transfer Type</p></th>
-<th class="head"><p>Number of
-Transfer</p></th>
-<th class="head"><p>Transfer
-Rate(MB/s)</p></th>
-<th class="head"><p>Total Data
-Transfer</p></th>
-<th class="head"><p>Total
-Time (ms)</p></th>
-<th class="head"><p>Average
-Size (Kb)</p></th>
-<th class="head"><p>Average
-Latency(ns)</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Device</th>
+<th class="head">Transfer Type</th>
+<th class="head">Number of
+Transfer</th>
+<th class="head">Transfer
+Rate(MB/s)</th>
+<th class="head">Total Data
+Transfer</th>
+<th class="head">Total
+Time (ms)</th>
+<th class="head">Average
+Size (Kb)</th>
+<th class="head">Average
+Latency(ns)</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>…</p></td>
-<td><p>IN</p></td>
-<td><p>4194304</p></td>
-<td><p>N/A</p></td>
-<td><p>1073.740</p></td>
-<td><p>N/A</p></td>
-<td><p>0.256</p></td>
-<td><p>237.344</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>…</td>
+<td>IN</td>
+<td>4194304</td>
+<td>N/A</td>
+<td>1073.740</td>
+<td>N/A</td>
+<td>0.256</td>
+<td>237.344</td>
 </tr>
 </tbody>
 </table>
@@ -913,7 +917,7 @@ Latency(ns)</p></th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>
