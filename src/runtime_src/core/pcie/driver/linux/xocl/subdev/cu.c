@@ -30,24 +30,26 @@ struct xocl_cu {
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
-#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-#endif
-	/* Place holder for now. */
-	return 0;
+
+	return sprintf(buf, "%d\n", xcu->debug);
 }
 
 static ssize_t debug_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
-#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-#endif
-	/* Place holder for now. */
+	u32 debug;
+
+	if (kstrtou32(buf, 10, &debug) == -EINVAL)
+		return -EINVAL;
+
+	xcu->debug = debug;
+
 	return count;
 }
 
@@ -169,6 +171,34 @@ stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(stat);
 
+static ssize_t
+is_ucu_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	int is_ucu;
+
+	is_ucu = test_bit(0, cu->base.is_ucu);
+	return sprintf(buf, "%d\n", is_ucu);
+}
+static DEVICE_ATTR_RO(is_ucu);
+
+static ssize_t
+crc_buf_show(struct file *filp, struct kobject *kobj,
+	     struct bin_attribute *attr, char *buf,
+	     loff_t offset, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct xocl_cu *cu = (struct xocl_cu *)dev_get_drvdata(dev);
+	struct xrt_cu *xcu;
+
+	if (!cu)
+		return 0;
+
+	xcu = &cu->base;
+	return xrt_cu_circ_consume_all(xcu, buf, count);
+}
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
@@ -179,17 +209,35 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_base_paddr.attr,
 	&dev_attr_size.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_is_ucu.attr,
+	NULL,
+};
+
+static struct bin_attribute crc_buf_attr = {
+	.attr = {
+		.name = "crc_buf",
+		.mode = 0444
+	},
+	.read = crc_buf_show,
+	.write = NULL,
+	.size = 0,
+};
+
+static struct bin_attribute *cu_bin_attrs[] = {
+	&crc_buf_attr,
 	NULL,
 };
 
 static const struct attribute_group cu_attrgroup = {
 	.attrs = cu_attrs,
+	.bin_attrs = cu_bin_attrs,
 };
 
 irqreturn_t cu_isr(int irq, void *arg)
 {
 	struct xocl_cu *xcu = arg;
 
+	xrt_cu_circ_produce(&xcu->base, CU_LOG_STAGE_ISR, 0);
 	xrt_cu_clear_intr(&xcu->base);
 
 	up(&xcu->base.sem_cu);
@@ -256,6 +304,19 @@ static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
 	struct xrt_cu_info *info = &xrt_cu->info;
 	unsigned long flags;
 
+	if (!test_bit(0, xrt_cu->is_ucu)) {
+		if (enable) {
+			xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+			xocl_intc_cu_config(xdev, info->intr_id, true);
+		} else {
+			xocl_intc_cu_config(xdev, info->intr_id, false);
+			xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+		}
+
+		return 0;
+	}
+
+	/* User manage interrupt */
 	spin_lock_irqsave(&xcu->lock, flags);
 	if (enable) {
 		if (__test_and_clear_bit(IRQ_DISABLED, xcu->flag))

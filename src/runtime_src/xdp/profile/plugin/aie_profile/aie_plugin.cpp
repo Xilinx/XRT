@@ -34,14 +34,15 @@
 #define NUM_MEMORY_COUNTERS 2
 #define BASE_MEMORY_COUNTER 128
 
-#define GROUP_DMA_MASK                   0xf000
+#define GROUP_DMA_MASK                   0x0000f000
 #define GROUP_LOCK_MASK                  0x55555555
-#define GROUP_CONFLICT_MASK              0xff
-#define GROUP_ERROR_MASK                 0x3fff
+#define GROUP_CONFLICT_MASK              0x000000ff
+#define GROUP_ERROR_MASK                 0x00003fff
 #define GROUP_STREAM_SWITCH_IDLE_MASK    0x11111111
 #define GROUP_STREAM_SWITCH_RUNNING_MASK 0x22222222
 #define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
 #define GROUP_STREAM_SWITCH_TLAST_MASK   0x88888888
+#define GROUP_CORE_PROGRAM_FLOW_MASK     0x00001FE0
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -89,11 +90,11 @@ namespace xdp {
     // **** Core Module Counters ****
     mCoreStartEvents = {
       {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                                 XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+                                 XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
       {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
                                  XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
-      {"execution",             {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
-                                 XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}},
+      {"execution",             {XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_INSTR_LOAD_CORE,
+                                 XAIE_EVENT_INSTR_STORE_CORE,          XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
       {"floating_point",        {XAIE_EVENT_FP_OVERFLOW_CORE,          XAIE_EVENT_FP_UNDERFLOW_CORE,
                                  XAIE_EVENT_FP_INVALID_CORE,           XAIE_EVENT_FP_DIV_BY_ZERO_CORE}},
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
@@ -109,11 +110,11 @@ namespace xdp {
     };
     mCoreEndEvents = {
       {"heat_map",              {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_GROUP_CORE_STALL_CORE,
-                                 XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE}},
+                                 XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
       {"stalls",                {XAIE_EVENT_MEMORY_STALL_CORE,         XAIE_EVENT_STREAM_STALL_CORE,
                                  XAIE_EVENT_LOCK_STALL_CORE,           XAIE_EVENT_CASCADE_STALL_CORE}},
-      {"execution",             {XAIE_EVENT_INSTR_CALL_CORE,           XAIE_EVENT_INSTR_VECTOR_CORE,
-                                 XAIE_EVENT_INSTR_LOAD_CORE,           XAIE_EVENT_INSTR_STORE_CORE}},
+      {"execution",             {XAIE_EVENT_INSTR_VECTOR_CORE,         XAIE_EVENT_INSTR_LOAD_CORE,
+                                 XAIE_EVENT_INSTR_STORE_CORE,          XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE}},
       {"floating_point",        {XAIE_EVENT_FP_OVERFLOW_CORE,          XAIE_EVENT_FP_UNDERFLOW_CORE,
                                  XAIE_EVENT_FP_INVALID_CORE,           XAIE_EVENT_FP_DIV_BY_ZERO_CORE}},
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
@@ -149,11 +150,11 @@ namespace xdp {
     // String event values for guidance and output
     mCoreEventStrings = {
       {"heat_map",              {"ACTIVE_CORE",               "GROUP_CORE_STALL_CORE",
-                                 "MEMORY_STALL_CORE",         "STREAM_STALL_CORE"}},
+                                 "INSTR_VECTOR_CORE",         "GROUP_CORE_PROGRAM_FLOW"}},
       {"stalls",                {"MEMORY_STALL_CORE",         "STREAM_STALL_CORE",
                                  "LOCK_STALL_CORE",           "CASCADE_STALL_CORE"}},
-      {"execution",             {"INSTR_CALL_CORE",           "INSTR_VECTOR_CORE",
-                                 "INSTR_LOAD_CORE",           "INSTR_STORE_CORE"}},
+      {"execution",             {"INSTR_VECTOR_CORE",         "INSTR_LOAD_CORE",
+                                 "INSTR_STORE_CORE",          "GROUP_CORE_PROGRAM_FLOW"}},
       {"floating_point",        {"FP_OVERFLOW_CORE",          "FP_UNDERFLOW_CORE",
                                  "FP_INVALID_CORE",           "FP_DIV_BY_ZERO_CORE"}},
       {"stream_put_get",        {"INSTR_CASCADE_GET_CORE",    "INSTR_CASCADE_PUT_CORE",
@@ -479,6 +480,8 @@ namespace xdp {
               XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_STALLED_MASK);
             else if (metricSet == "stream_switch_tlast")
               XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_TLAST_MASK);
+          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
+            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_PROGRAM_FLOW_MASK);
           }
           //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
           //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);

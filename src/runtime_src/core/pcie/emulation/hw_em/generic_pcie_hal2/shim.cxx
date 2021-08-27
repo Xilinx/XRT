@@ -79,6 +79,8 @@ namespace xclhwemhal2 {
     };
 
   namespace pt = boost::property_tree;
+  namespace fs = boost::filesystem;
+
   std::map<unsigned int, HwEmShim*> devices;
   std::map<std::string, std::string> HwEmShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
   std::map<int, std::tuple<std::string,int,void*, unsigned int> > HwEmShim::mFdToFileNameMap;
@@ -990,46 +992,49 @@ namespace xclhwemhal2 {
         }
 
         if (args.m_emuData) {
+
+          extractEmuData(sim_path, binaryCounter, args);
+          
           //Assuming that we will have only one AIE Kernel, need to
           //update this logic when we have suport for multiple AIE Kernels
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
-            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+          if (fs::exists(sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libsdf/cfg/aie.sim.config.txt";
           }
-          else if (boost::filesystem::exists(binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
-            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+          else if (fs::exists(sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt")) {
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/libadf/cfg/aie.sim.config.txt";
           } else {
-            launcherArgs += " -emuData " + binaryDirectory + "/emulation_data/cfg/aie.sim.config.txt";
-            launcherArgs += " -aie-sim-config " + binaryDirectory + "/emulation_data/cfg/aie.sim.config.txt";
+            launcherArgs += " -emuData " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
+            launcherArgs += " -aie-sim-config " + sim_path + "/emulation_data/cfg/aie.sim.config.txt";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/BOOT_bh.bin")) {
-            launcherArgs += " -boot-bh " + binaryDirectory + "/emulation_data/BOOT_bh.bin";
+          if (fs::exists(sim_path + "/emulation_data/BOOT_bh.bin")) {
+            launcherArgs += " -boot-bh " + sim_path + "/emulation_data/BOOT_bh.bin";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_ospi.bin")) {
-            launcherArgs += " -ospi-image " + binaryDirectory + "/emulation_data/qemu_ospi.bin";
+          if (fs::exists(sim_path + "/emulation_data/qemu_ospi.bin")) {
+            launcherArgs += " -ospi-image " + sim_path + "/emulation_data/qemu_ospi.bin";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_qspi_low.bin")) {
-            launcherArgs += " -qspi-low-image " + binaryDirectory + "/emulation_data/qemu_qspi_low.bin";
+          if (fs::exists(sim_path + "/emulation_data/qemu_qspi_low.bin")) {
+            launcherArgs += " -qspi-low-image " + sim_path + "/emulation_data/qemu_qspi_low.bin";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_qspi_high.bin")) {
-            launcherArgs += " -qspi-high-image " + binaryDirectory + "/emulation_data/qemu_qspi_high.bin";
+          if (fs::exists(sim_path + "/emulation_data/qemu_qspi_high.bin")) {
+            launcherArgs += " -qspi-high-image " + sim_path + "/emulation_data/qemu_qspi_high.bin";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/qemu_args.txt")) {
-            launcherArgs += " -qemu-args-file " + binaryDirectory + "/emulation_data/qemu_args.txt";
+          if (fs::exists(sim_path + "/emulation_data/qemu_args.txt")) {
+            launcherArgs += " -qemu-args-file " + sim_path + "/emulation_data/qemu_args.txt";
           }
 
-          if (boost::filesystem::exists(binaryDirectory + "/emulation_data/pmc_args.txt")) {
-            launcherArgs += " -pmc-args-file " + binaryDirectory + "/emulation_data/pmc_args.txt";
+          if (fs::exists(sim_path + "/emulation_data/pmc_args.txt")) {
+            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmc_args.txt";
           }
-          else if (boost::filesystem::exists(binaryDirectory + "/emulation_data/pmu_args.txt")) {
-            launcherArgs += " -pmc-args-file " + binaryDirectory + "/emulation_data/pmu_args.txt";
+          else if (fs::exists(sim_path + "/emulation_data/pmu_args.txt")) {
+            launcherArgs += " -pmc-args-file " + sim_path + "/emulation_data/pmu_args.txt";
           }
           else {
             std::cout << "ERROR: [HW-EMU] Unable to find either PMU/PMC args which are required to launch the emulation." << std::endl;

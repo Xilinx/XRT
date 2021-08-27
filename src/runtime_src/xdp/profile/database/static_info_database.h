@@ -248,7 +248,7 @@ class aie_cfg_tile
     void setDataflowEnabled(bool b) { dataflow = b; }
     bool dataflowEnabled() { return dataflow; }
 
-    bool dataTransferEnabled() { return (aimIds.empty() ? false : true); }
+    bool dataTransferEnabled() { return (aimIdsWithTrace.empty() ? false : true); }
 
     void setFaEnabled(bool b) { hasfa = b; }
     bool faEnabled() { return hasfa; }
