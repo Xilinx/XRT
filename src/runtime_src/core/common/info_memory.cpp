@@ -136,7 +136,7 @@ struct memory_info_collector
   update_mig_cache(ptree_type& pt)
   {
     try {
-      xrt_core::device_update<xq::mig_cache_update>(device, std::string("1"));
+      xrt_core::device_query<xq::mig_cache_update>(device);
     }
     catch (const xq::exception& ex) {
       pt.put("error_msg", ex.what());
