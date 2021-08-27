@@ -85,7 +85,6 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
  * response through CQ.
  */
 #define XGQ_ALLOC_MAGIC			0x5847513F	/* XGQ? */
-#define XGQ_ATTACH_MAGIC		0x58475121	/* XGQ! */
 #define XGQ_MAJOR			1
 #define XGQ_MINOR			0
 #define XGQ_MIN_NUM_SLOTS		2
@@ -289,14 +288,25 @@ static inline int xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	return 0;
 }
 
+// Fast forward to where we left, should only be called during attach, ring must be empty now
+static inline int xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
+{
+	xgq_ring_read_produced(xgq->io_hdl, ring);
+	xgq_ring_read_consumed(xgq->io_hdl, ring);
+	if (!xgq_ring_empty(ring))
+		return -EINVAL;
+	return 0;
+}
+
 static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr,
 			     uint64_t sq_produced, uint64_t cq_produced)
 {
 	struct xgq_header hdr = {};
 	uint32_t nslots;
+	int rc;
 
 	xgq_copy_from_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(uint32_t));
-	// Wait for the magic number to show up to confirm the header is fully initialized
+	// Magic number must show up to confirm the header is fully initialized
 	if (hdr.xh_magic != XGQ_ALLOC_MAGIC)
 		return -EAGAIN;
 
@@ -319,9 +329,12 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 		      ring_addr + hdr.xh_cq_offset,
 		      hdr.xh_slot_num, sizeof(struct xrt_com_queue_entry));
 
-	// Change the magic number to indicate that the attach is done
-	hdr.xh_magic = XGQ_ATTACH_MAGIC;
-	xgq_copy_to_ring(xgq->io_hdl, &hdr, ring_addr, sizeof(uint32_t));
+	rc = xgq_fast_forward(xgq, &xgq->xq_sq);
+	if (rc)
+		return rc;
+	rc = xgq_fast_forward(xgq, &xgq->xq_cq);
+	if (rc)
+		return rc;
 	return 0;
 }
 
