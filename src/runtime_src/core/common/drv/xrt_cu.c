@@ -14,6 +14,62 @@
 #include "kds_client.h"
 #include "xrt_cu.h"
 
+inline void xrt_cu_circ_produce(struct xrt_cu *xcu, u32 stage, uintptr_t cmd)
+{
+	unsigned long head = xcu->crc_buf.head;
+	unsigned long tail = xcu->crc_buf.tail;
+	struct xrt_cu_log *item;
+
+	if (!xcu->debug)
+		return;
+
+	/* Will overwrite oldest data if buffer is full */
+	item = (struct xrt_cu_log *)&xcu->crc_buf.buf[head];
+	item->stage = stage;
+	item->cmd_id = cmd;
+	item->ts = ktime_to_ns(ktime_get());
+
+	if (CIRC_SPACE(head, tail, CIRC_BUF_SIZE) < sizeof(struct xrt_cu_log)) {
+		tail += sizeof(struct xrt_cu_log);
+		if (tail >= CIRC_BUF_SIZE)
+			tail = 0;
+	}
+
+	head += sizeof(struct xrt_cu_log);
+	if (head >= CIRC_BUF_SIZE)
+		head = 0;
+
+	xcu->crc_buf.head = head;
+	xcu->crc_buf.tail = tail;
+}
+
+ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size)
+{
+	unsigned long head = xcu->crc_buf.head;
+	unsigned long tail = xcu->crc_buf.tail;
+	size_t cnt = CIRC_CNT(head, tail, CIRC_BUF_SIZE);
+	/* return min(count to the end of buffer, CIRC_CNT()) */
+	size_t cnt_to_end = CIRC_CNT_TO_END(head, tail, CIRC_BUF_SIZE);
+	size_t nread = 0;
+
+	if (size < cnt)
+		nread = size;
+	else
+		nread = cnt;
+
+	if (nread <= cnt_to_end) {
+		memcpy(buf, xcu->crc_buf.buf + tail, nread);
+		xcu->crc_buf.tail += nread;
+	} else {
+		/* Needs two times of copy */
+		memcpy(buf, xcu->crc_buf.buf + tail, cnt_to_end);
+		memcpy(buf + cnt_to_end, xcu->crc_buf.buf, nread - cnt_to_end);
+		xcu->crc_buf.tail = nread - cnt_to_end;
+	}
+
+	return nread;
+}
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 static void cu_timer(unsigned long data)
 {
@@ -99,6 +155,7 @@ static inline void process_cq(struct xrt_cu *xcu)
 	while (xcu->num_cq) {
 		xcmd = list_first_entry(&xcu->cq, struct kds_command, list);
 		set_xcmd_timestamp(xcmd, xcmd->status);
+		xrt_cu_circ_produce(xcu, CU_LOG_STAGE_CQ, (uintptr_t)xcmd);
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 		list_del(&xcmd->list);
 		xcmd->cb.free(xcmd);
@@ -155,6 +212,7 @@ static inline void __process_sq(struct xrt_cu *xcu)
 			/* Done command has priority */
 			xcmd->status = KDS_COMPLETED;
 			--xcu->done_cnt;
+			xrt_cu_circ_produce(xcu, CU_LOG_STAGE_SQ, (uintptr_t)xcmd);
 		} else if (unlikely(ev_client)) {
 			/* Client event happens rarely */
 			if (xcmd->client != ev_client)
@@ -241,6 +299,7 @@ static inline int process_rq(struct xrt_cu *xcu)
 	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
 	xrt_cu_start(xcu);
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
+	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
 
 	dst_q = &xcu->sq;
 	dst_len = &xcu->num_sq;
@@ -786,6 +845,10 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	INIT_LIST_HEAD(&xcu->hpq);
 	spin_lock_init(&xcu->hpq_lock);
 	init_completion(&xcu->comp);
+
+	xcu->crc_buf.head = 0;
+	xcu->crc_buf.tail = 0;
+	xcu->crc_buf.buf = xcu->log_buf;
 
 	memset(&xcu->cu_stat, 0, sizeof(struct per_custat));
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
