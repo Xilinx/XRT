@@ -361,12 +361,11 @@ namespace xcldev {
         }
         if (size != 0) {
           if (it->m_type > bankEnumStringMap.size()) {
-            std::cout << "Error: Invalid Bank type received, bank_type = " << it->m_type << std::endl;
+            std::cout << boost::format("Error: Invalid Bank type (%d) received\n") % it->m_type;
             return -1;
           }
           std::string bank_name = bankEnumStringMap[it->m_type];
-          std::cout << "INFO: Reading " << std::dec << size << " bytes from bank " << bank_name << " address 0x"  << std::hex << startAddr
-                                    << std::dec << std::endl;
+          std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x\n") % size % bankEnumStringMap[it->m_type] % startAddr;
           unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
           if( readBank(outFile, startAddr, readsize) == -1) {
             return -1;
