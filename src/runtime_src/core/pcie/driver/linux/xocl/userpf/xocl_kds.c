@@ -1222,3 +1222,13 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 out:
 	return ret;
 }
+
+void xocl_kds_cus_enable(struct xocl_dev *xdev)
+{
+	kds_cus_irq_enable(&XDEV(xdev)->kds, true);
+}
+
+void xocl_kds_cus_disable(struct xocl_dev *xdev)
+{
+	kds_cus_irq_enable(&XDEV(xdev)->kds, false);
+}

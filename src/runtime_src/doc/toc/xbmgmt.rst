@@ -4,8 +4,8 @@
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-xbmgmt
-------
+xbmgmt (Legacy)
+---------------
 
 Xilinx® Board Management (xbmgmt) utility is a standalone command line tool that is included
 with the XRT installation package. The ``xbmgmt`` command supports both Alveo Data Center 

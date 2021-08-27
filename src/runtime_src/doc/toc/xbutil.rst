@@ -4,8 +4,8 @@
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-xbutil
-------
+xbutil (Legacy)
+---------------
 
 The Xilinx® Board Utility (xbutil) is a standalone command line utility that is included with the
 XRT installation package. The ``xbutil`` command supports both Alveo Data Center accelerator cards 

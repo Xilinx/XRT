@@ -149,6 +149,7 @@ int kds_fini_ert(struct kds_sched *kds);
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client);
 void kds_reset(struct kds_sched *kds);
 int kds_cfg_update(struct kds_sched *kds);
+void kds_cus_irq_enable(struct kds_sched *kds, bool enable);
 int is_bad_state(struct kds_sched *kds);
 u32 kds_live_clients(struct kds_sched *kds, pid_t **plist);
 u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist);

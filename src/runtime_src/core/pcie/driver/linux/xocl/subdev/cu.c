@@ -169,6 +169,18 @@ stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 }
 static DEVICE_ATTR_RO(stat);
 
+static ssize_t
+is_ucu_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	int is_ucu;
+
+	is_ucu = test_bit(0, cu->base.is_ucu);
+	return sprintf(buf, "%d\n", is_ucu);
+}
+static DEVICE_ATTR_RO(is_ucu);
+
 static struct attribute *cu_attrs[] = {
 	&dev_attr_debug.attr,
 	&dev_attr_cu_stat.attr,
@@ -179,6 +191,7 @@ static struct attribute *cu_attrs[] = {
 	&dev_attr_base_paddr.attr,
 	&dev_attr_size.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_is_ucu.attr,
 	NULL,
 };
 
@@ -256,6 +269,19 @@ static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
 	struct xrt_cu_info *info = &xrt_cu->info;
 	unsigned long flags;
 
+	if (!test_bit(0, xrt_cu->is_ucu)) {
+		if (enable) {
+			xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
+			xocl_intc_cu_config(xdev, info->intr_id, true);
+		} else {
+			xocl_intc_cu_config(xdev, info->intr_id, false);
+			xocl_intc_cu_request(xdev, info->intr_id, NULL, NULL);
+		}
+
+		return 0;
+	}
+
+	/* User manage interrupt */
 	spin_lock_irqsave(&xcu->lock, flags);
 	if (enable) {
 		if (__test_and_clear_bit(IRQ_DISABLED, xcu->flag))
