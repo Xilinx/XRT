@@ -86,7 +86,7 @@ namespace XBUtilities {
   void 
      produce_reports( xrt_core::device_collection devices, 
                       const ReportCollection & reportsToProcess, 
-                      Report::SchemaVersion schema, 
+                      xrt::info::SchemaVersion schema, 
                       std::vector<std::string> & elementFilter,
                       std::ostream & consoleStream,
                       std::ostream & schemaStream);

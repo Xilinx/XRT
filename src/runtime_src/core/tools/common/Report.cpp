@@ -24,10 +24,10 @@
 
 // Initialize our static mapping.
 const Report::SchemaDescriptionVector Report::m_schemaVersionVector = {
-  { SchemaVersion::unknown,       false, "",              "Unknown entry"},
-  { SchemaVersion::json_20202,    true,  "JSON",          "Latest JSON schema"}, // Note: to be updated to the latest schema version every release
-  { SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
-  { SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
+  { xrt::info::SchemaVersion::unknown,       false, "",              "Unknown entry"},
+  { xrt::info::SchemaVersion::json_latest,    true,  "JSON",          "Latest JSON schema"},
+  { xrt::info::SchemaVersion::json_internal, false, "JSON-internal", "Internal JSON property tree"},
+  { xrt::info::SchemaVersion::json_20202,    true,  "JSON-2020.2",   "JSON 2020.2 schema"}
 };
 
 
@@ -45,7 +45,7 @@ Report::getSchemaDescription(const std::string & _schemaVersionName)
 }
 
 const Report::SchemaDescription & 
-Report::getSchemaDescription(SchemaVersion _schemaVersion)
+Report::getSchemaDescription(xrt::info::SchemaVersion _schemaVersion)
 {
   // Look for a match
   for (const auto & entry : m_schemaVersionVector) {
@@ -54,7 +54,7 @@ Report::getSchemaDescription(SchemaVersion _schemaVersion)
   }
 
   // Return back the unknown entry
-  return getSchemaDescription(SchemaVersion::unknown);
+  return getSchemaDescription(xrt::info::SchemaVersion::unknown);
 }
 
 
@@ -71,18 +71,22 @@ Report::Report(const std::string & _reportName,
 
 void 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
-                            SchemaVersion schemaVersion,
+                            xrt::info::SchemaVersion schemaVersion,
                             const std::vector<std::string> & elementFilter,
                             std::ostream & consoleStream,
                             boost::property_tree::ptree & pt) const
 {
   try {
     switch (schemaVersion) {
-      case SchemaVersion::json_internal:
+      case xrt::info::SchemaVersion::json_internal:
         getPropertyTreeInternal(pDevice, pt);
         break;
 
-      case SchemaVersion::json_20202:
+      case xrt::info::SchemaVersion::json_20202:
+        getPropertyTree20202(pDevice, pt);
+        break;
+      
+      case xrt::info::SchemaVersion::json_latest: // Note: to be updated to the latest schema version every release
         getPropertyTree20202(pDevice, pt);
         break;
 

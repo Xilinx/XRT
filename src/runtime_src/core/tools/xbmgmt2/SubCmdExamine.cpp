@@ -139,7 +139,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // -- Process the options --------------------------------------------
   ReportCollection reportsToProcess;            // Reports of interest
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  xrt::info::SchemaVersion schemaVersion = xrt::info::SchemaVersion::unknown;    // Output schema version
 
   try {
     // Collect the reports to be processed
@@ -154,7 +154,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     // Output Format
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown) 
+    if (schemaVersion == xrt::info::SchemaVersion::unknown) 
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file

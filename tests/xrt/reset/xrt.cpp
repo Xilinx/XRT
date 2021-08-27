@@ -50,7 +50,7 @@ SigBusHandler(int sig)
   std::lock_guard<std::mutex> lk(mutex);
   std::cout  << "-> sig bus handler\n";
 
-  if (!device.get_info<xrt::info::device::offline>())
+  if (!device.get_info<xrt::info::device::offline, xrt::info::SchemaVersion::json_latest>())
     throw std::runtime_error("Device is unexpectedly online");
 
   // Close device gracefully before existing on device reset
@@ -69,7 +69,7 @@ SigIntHandler(int sig)
   std::lock_guard<std::mutex> lk(mutex);
   std::cout  << "-> sig int handler\n";
 
-  if (device.get_info<xrt::info::device::offline>())
+  if (device.get_info<xrt::info::device::offline, xrt::info::SchemaVersion::json_latest>())
     throw std::runtime_error("Device is unexpectedly offline");
 
   // Nothing to close device will auto close

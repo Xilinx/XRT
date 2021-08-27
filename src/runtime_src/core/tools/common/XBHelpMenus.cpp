@@ -627,7 +627,7 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 void 
 XBUtilities::produce_reports( xrt_core::device_collection devices, 
                               const ReportCollection & reportsToProcess, 
-                              Report::SchemaVersion schemaVersion, 
+                              xrt::info::SchemaVersion schemaVersion, 
                               std::vector<std::string> & elementFilter,
                               std::ostream & consoleStream,
                               std::ostream & schemaStream)
@@ -638,7 +638,7 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
     return;
   }
 
-  if (schemaVersion == Report::SchemaVersion::unknown) {
+  if (schemaVersion == xrt::info::SchemaVersion::unknown) {
     consoleStream << "Info: No action taken, 'UNKNOWN' schema value specified.\n";
     return;
   }
@@ -765,7 +765,7 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
 
   // -- Write the formatted output 
   switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
+    case xrt::info::SchemaVersion::json_20202:
       boost::property_tree::json_parser::write_json(schemaStream, ptRoot, true /*Pretty Print*/);
       schemaStream << std::endl;  
       break;

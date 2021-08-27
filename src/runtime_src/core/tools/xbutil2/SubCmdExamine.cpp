@@ -172,8 +172,8 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     sFormat = "json";
 
   // DRC: Examine the output format
-  Report::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-  if (schemaVersion == Report::SchemaVersion::unknown) {
+  xrt::info::SchemaVersion schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
+  if (schemaVersion == xrt::info::SchemaVersion::unknown) {
     std::cerr << boost::format("ERROR: Unsupported --format option value '%s'") % sFormat << std::endl
               << boost::format("       Supported values can be found in --format's help section below.") << std::endl;
     printHelp(commonOptions, hiddenOptions);

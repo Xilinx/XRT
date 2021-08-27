@@ -109,37 +109,37 @@ PYBIND11_MODULE(pyxrt, m) {
                              /* Convert the value to string since we can have only one return type for get_info() */
                              switch (key) {
                              case xrt::info::device::bdf:
-                                 return d.get_info<xrt::info::device::bdf>();
+                                 return d.get_info<xrt::info::device::bdf, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::interface_uuid:
-                                 return d.get_info<xrt::info::device::interface_uuid>().to_string();
+                                 return d.get_info<xrt::info::device::interface_uuid, xrt::info::SchemaVersion::json_latest>().to_string();
                              case xrt::info::device::kdma:
-                                 return std::to_string(d.get_info<xrt::info::device::kdma>());
+                                 return std::to_string(d.get_info<xrt::info::device::kdma, xrt::info::SchemaVersion::json_latest>());
                              case xrt::info::device::max_clock_frequency_mhz:
-                                 return std::to_string(d.get_info<xrt::info::device::max_clock_frequency_mhz>());
+                                 return std::to_string(d.get_info<xrt::info::device::max_clock_frequency_mhz, xrt::info::SchemaVersion::json_latest>());
                              case xrt::info::device::m2m:
-                                 return std::to_string(d.get_info<xrt::info::device::m2m>());
+                                 return std::to_string(d.get_info<xrt::info::device::m2m, xrt::info::SchemaVersion::json_latest>());
                              case xrt::info::device::name:
-                                 return d.get_info<xrt::info::device::name>();
+                                 return d.get_info<xrt::info::device::name, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::nodma:
-                                 return std::to_string(d.get_info<xrt::info::device::nodma>());
+                                 return std::to_string(d.get_info<xrt::info::device::nodma, xrt::info::SchemaVersion::json_latest>());
                              case xrt::info::device::offline:
-                                 return std::to_string(d.get_info<xrt::info::device::offline>());
+                                 return std::to_string(d.get_info<xrt::info::device::offline, xrt::info::SchemaVersion::json_latest>());
                              case xrt::info::device::electrical:
-                                 return d.get_info<xrt::info::device::electrical>();
+                                 return d.get_info<xrt::info::device::electrical, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::thermal:
-                                 return d.get_info<xrt::info::device::thermal>();
+                                 return d.get_info<xrt::info::device::thermal, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::mechanical:
-                                 return d.get_info<xrt::info::device::mechanical>();
+                                 return d.get_info<xrt::info::device::mechanical, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::memory:
-                                 return d.get_info<xrt::info::device::memory>();
+                                 return d.get_info<xrt::info::device::memory, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::platform:
-                                 return d.get_info<xrt::info::device::platform>();
+                                 return d.get_info<xrt::info::device::platform, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::pcie_info:
-                                 return d.get_info<xrt::info::device::pcie_info>();
+                                 return d.get_info<xrt::info::device::pcie_info, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::host:
-                                 return d.get_info<xrt::info::device::host>();
+                                 return d.get_info<xrt::info::device::host, xrt::info::SchemaVersion::json_latest>();
                              case xrt::info::device::dynamic_regions:
-                                 return d.get_info<xrt::info::device::dynamic_regions>();
+                                 return d.get_info<xrt::info::device::dynamic_regions, xrt::info::SchemaVersion::json_latest>();
                              default:
                                  return std::string("NA");
                              }

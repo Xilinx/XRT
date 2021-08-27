@@ -30,15 +30,10 @@ class Report {
   // 
   // Remember to update the initialization of Report::m_schemaVersionMapping 
   // if new enumeration values are added
-  enum class SchemaVersion  {
-    unknown,
-    json_internal,
-    json_20202,
-  };
  
   // Helper mapping between string and enum
   struct SchemaDescription {
-    SchemaVersion schemaVersion;
+    xrt::info::SchemaVersion schemaVersion;
     bool isVisable;
     std::string optionName;
     std::string shortDescription;
@@ -48,7 +43,7 @@ class Report {
   static const SchemaDescriptionVector m_schemaVersionVector;
 
   static const Report::SchemaDescription & getSchemaDescription(const std::string & _schemaVersionName);
-  static const Report::SchemaDescription & getSchemaDescription(SchemaVersion _schemaVersion);
+  static const Report::SchemaDescription & getSchemaDescription(xrt::info::SchemaVersion _schemaVersion);
   static const SchemaDescriptionVector & getSchemaDescriptionVector() { return m_schemaVersionVector; };
 
   // Supporting APIs
@@ -57,7 +52,7 @@ class Report {
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
 
-  void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  void getFormattedReport(const xrt_core::device *_pDevice, xrt::info::SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Child methods that need to be implemented
  protected:

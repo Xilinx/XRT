@@ -1344,7 +1344,7 @@ print_status(test_status status, std::ostream & _ostream)
 static void
 get_platform_info(const std::shared_ptr<xrt_core::device>& device,
                   boost::property_tree::ptree& ptTree,
-                  Report::SchemaVersion /*schemaVersion*/,
+                  xrt::info::SchemaVersion /*schemaVersion*/,
                   std::ostream & oStream)
 {
   auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(device);
@@ -1377,7 +1377,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
 
 static test_status
 run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
-                       Report::SchemaVersion schemaVersion,
+                       xrt::info::SchemaVersion schemaVersion,
                        std::vector<TestCollection *> testObjectsToRun,
                        boost::property_tree::ptree& ptDevCollectionTestSuite)
 {
@@ -1432,7 +1432,7 @@ run_test_suite_device( const std::shared_ptr<xrt_core::device>& device,
 
 static bool
 run_tests_on_devices( xrt_core::device_collection &deviceCollection,
-                      Report::SchemaVersion schemaVersion,
+                      xrt::info::SchemaVersion schemaVersion,
                       std::vector<TestCollection *> testObjectsToRun,
                       std::ostream & output)
 {
@@ -1452,7 +1452,7 @@ run_tests_on_devices( xrt_core::device_collection &deviceCollection,
 
   // -- Write the formatted output
   switch (schemaVersion) {
-    case Report::SchemaVersion::json_20202:
+    case xrt::info::SchemaVersion::json_20202:
       boost::property_tree::json_parser::write_json(output, ptDevCollectionTestSuite, true /*Pretty Print*/);
       output << std::endl;
       break;
@@ -1553,11 +1553,11 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   }
 
   // -- Process the options --------------------------------------------
-  Report::SchemaVersion schemaVersion = Report::SchemaVersion::unknown;    // Output schema version
+  xrt::info::SchemaVersion schemaVersion = xrt::info::SchemaVersion::unknown;    // Output schema version
   try {
     // Output Format
     schemaVersion = Report::getSchemaDescription(sFormat).schemaVersion;
-    if (schemaVersion == Report::SchemaVersion::unknown)
+    if (schemaVersion == xrt::info::SchemaVersion::unknown)
       throw xrt_core::error((boost::format("Unknown output format: '%s'") % sFormat).str());
 
     // Output file

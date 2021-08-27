@@ -248,7 +248,7 @@ populate_cus_new(const xrt_core::device *device)
   boost::property_tree::ptree pt_dynamic_regions;
   xrt::device dev(device->get_device_id());
   std::stringstream ss;
-  ss << dev.get_info<xrt::info::device::dynamic_regions>();
+  ss << dev.get_info<xrt::info::device::dynamic_regions, xrt::info::SchemaVersion::json_20202>();
   boost::property_tree::read_json(ss, pt_dynamic_regions);
   pt_dynamic_regions.add_child("compute_units", pt);
   return pt_dynamic_regions;
