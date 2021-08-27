@@ -22,7 +22,7 @@ namespace xrt_core { namespace pskernel {
 
 // Function to match function name
 // and extract formal parameters
-std::vector<kernel_argument>
+std::vector<xrt_core::pskernel::kernel_argument>
 extract_args (Dwarf_Die *die)
 {
   Dwarf_Die child;
@@ -31,7 +31,7 @@ extract_args (Dwarf_Die *die)
   Dwarf_Die *type;
   Dwarf_Word var_size;
   const char *var_name;
-  std::vector<kernel_argument> return_args;
+  std::vector<xrt_core::pskernel::kernel_argument> return_args;
 
   // Mapping for FFI types
   static const std::map<std::pair<Dwarf_Word, Dwarf_Word>, ffi_type*> typeTable = {
@@ -56,7 +56,7 @@ extract_args (Dwarf_Die *die)
 	{
 	case DW_TAG_formal_parameter:
 	  // Extract parameter name and type
-	  kernel_argument arg;
+	  xrt_core::pskernel::kernel_argument arg;
 	  var_name = dwarf_diename(&child);
 	  arg.name = var_name;
 	  type = dwarf_formref_die(dwarf_attr(&child, DW_AT_type, &attr_mem),&type_mem);
@@ -139,11 +139,11 @@ extract_args (Dwarf_Die *die)
 }
 
 // Function to parse object from file on disk
-std::vector<kernel_argument> pskernel_parse(const char *so_file, const char *func_name) {
+std::vector<xrt_core::pskernel::kernel_argument> pskernel_parse(const char *so_file, const char *func_name) {
 
   int fd = open(so_file, O_RDONLY);
   Dwarf *dw = dwarf_begin(fd, DWARF_C_READ);
-  std::vector<kernel_argument> args;
+  std::vector<xrt_core::pskernel::kernel_argument> args;
 
   if (dw != NULL) {
     Dwarf_Off offset;
@@ -186,11 +186,11 @@ std::vector<kernel_argument> pskernel_parse(const char *so_file, const char *fun
 }
 
 // Function to parse from object in memory
-std::vector<kernel_argument> pskernel_parse(char *so_file, size_t size, const char *func_name) {
+std::vector<xrt_core::pskernel::kernel_argument> pskernel_parse(char *so_file, size_t size, const char *func_name) {
 
   Elf *ehandle = elf_memory(const_cast<char *>(so_file), size);
   Dwarf *dw = dwarf_begin_elf(ehandle, DWARF_C_READ, nullptr);
-  std::vector<kernel_argument> args;
+  std::vector<xrt_core::pskernel::kernel_argument> args;
   
   if (dw != NULL) {
     Dwarf_Off offset;
