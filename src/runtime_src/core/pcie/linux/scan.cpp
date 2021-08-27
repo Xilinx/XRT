@@ -1151,16 +1151,16 @@ get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
 
 /*
  * This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids sysfs
- * node for the Linux power driver. Hence, to get the active kids under a abridge we need this
+ * node for the Linux power driver. Hence, to get the active kids under a bridge we need this
  * alternative solution.
  */
 int
-get_runtime_active_kids(std::string pci_bridge_path)
+get_runtime_active_kids(std::string &pci_bridge_path)
 {
   int curr_act_dev = 0;
   std::vector<bfs::path> vec{bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator()};
 
-  // Under the bridge check how many xilinx devices are present. 
+  // Check number of Xilinx devices under this bridge. 
   for (auto& path : vec) {
     if (bfs::is_directory(path)) {
       path += "/vendor";
