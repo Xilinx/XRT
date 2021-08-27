@@ -137,6 +137,7 @@ struct xocl_ert_user {
 	struct ert_queue	*queue;
 	/* ert validate result cache*/
 	struct ert_validate_cmd ert_valid;
+	struct ert_access_valid_cmd ert_access_valid;
 };
 
 static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user);
@@ -316,6 +317,23 @@ static ssize_t stat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(stat);
 
+static ssize_t data_integrity_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct xocl_ert_user *ert_user = platform_get_drvdata(to_platform_device(dev));
+	uint32_t ret = 1;
+
+	ret &= ert_user->ert_access_valid.h2h_access;
+	ret &= ert_user->ert_access_valid.d2h_access;
+	ret &= ert_user->ert_access_valid.h2d_access;
+	ret &= ert_user->ert_access_valid.d2d_access;
+	ret &= ert_user->ert_access_valid.d2cu_access;
+
+	return sprintf(buf, "%d\n", ret);
+}
+
+static DEVICE_ATTR_RO(data_integrity);
+
 static struct attribute *ert_user_attrs[] = {
 	&dev_attr_clock_timestamp.attr,
 	&dev_attr_ert_dmsg.attr,
@@ -328,6 +346,7 @@ static struct attribute *ert_user_attrs[] = {
 	&dev_attr_cu_read_cnt.attr,
 	&dev_attr_cu_write_cnt.attr,
 	&dev_attr_stat.attr,
+	&dev_attr_data_integrity.attr,
 	NULL,
 };
 
@@ -445,6 +464,12 @@ static void ert_user_cmd_notify(void *core)
 	up(&ert_user->sem);
 }
 
+static void
+ert_user_free_payload(void *payload)
+{
+	kfree(payload);
+}
+
 static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user)
 {
 	struct xrt_ert_command *ecmd = kzalloc(sizeof(struct xrt_ert_command), GFP_KERNEL);
@@ -476,6 +501,45 @@ static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user)
 	if (first_command)
 		up(&ert_user->sem);
 }
+
+static void ert_submit_data_cmd(struct xocl_ert_user *ert_user)
+{
+	unsigned long flags = 0;
+	int i = 1;
+
+	for (; i < ert_user->num_slots; ++i) {
+		struct ert_validate_cmd *validate_cmd = kzalloc(ert_user->slot_size, GFP_KERNEL);
+		struct xrt_ert_command *ecmd = NULL;
+
+		if (!validate_cmd)
+			return;
+
+		ecmd = kzalloc(sizeof(struct xrt_ert_command)+ert_user->slot_size, GFP_KERNEL);
+
+		if (!ecmd) {
+			kfree(validate_cmd);
+			return;
+		}
+
+		validate_cmd->opcode = ERT_ACCESS_TEST;
+		validate_cmd->state = ERT_CMD_STATE_NEW;
+
+		ecmd->payload = (void *)validate_cmd;
+		ecmd->payload_size = sizeof(struct ert_access_valid_cmd);
+		ecmd->cb.complete = ert_user_cmd_complete;
+		ecmd->cb.notify = ert_user_cmd_notify;
+		ecmd->cb.free_payload = ert_user_free_payload;
+		ecmd->return_size = ert_user->slot_size;
+
+		spin_lock_irqsave(&ert_user->pq_lock, flags);
+		list_add_tail(&ecmd->list, &ert_user->pq.head);
+		++ert_user->pq.num;
+		spin_unlock_irqrestore(&ert_user->pq_lock, flags);
+	}
+
+	up(&ert_user->sem);
+}
+
 
 static int ert_user_enable(struct platform_device *pdev, bool enable)
 {
@@ -536,13 +600,16 @@ cmd_opcode(struct xrt_ert_command *ecmd)
 
 static void ert_free_cmd(struct xrt_ert_command *ecmd)
 {
+	if (ecmd->cb.free_payload)
+		ecmd->cb.free_payload(ecmd->payload);
+
 	kfree(ecmd);
 }
 
 static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint32_t return_max_size)
 {
 	uint32_t return_size = 0, cu_idx = 0;
-	struct xrt_ert_command *ecmd = kzalloc(sizeof(struct xrt_ert_command), GFP_KERNEL);
+	struct xrt_ert_command *ecmd = kzalloc(sizeof(struct xrt_ert_command)+return_max_size, GFP_KERNEL);
 	struct ert_packet *epkt = NULL;
 
 	if (!ecmd)
@@ -552,6 +619,10 @@ static struct xrt_ert_command *ert_user_alloc_cmd(struct kds_command *xcmd, uint
 
 	switch (cmd_opcode(ecmd)) {
 	case ERT_CU_STAT:
+		return_size = return_max_size;
+		break;
+	case ERT_ACCESS_TEST_C:
+	case ERT_ACCESS_TEST:
 		return_size = return_max_size;
 		break;
 	case ERT_SK_START:
@@ -612,6 +683,7 @@ static inline bool ert_special_cmd(struct xrt_ert_command *ecmd)
 	case ERT_CU_STAT:
 	case ERT_CLK_CALIB:
 	case ERT_MB_VALIDATE:
+	case ERT_ACCESS_TEST_C:
 		ret = true;
 		break;
 	default:
@@ -756,7 +828,9 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 static inline void
 ert_post_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 {
-	if (likely(!ert_special_cmd(ecmd)))
+	struct ert_access_valid_cmd *cmd = NULL;
+	uint32_t offset = 0;
+	if (likely(!ert_special_cmd(ecmd)) && cmd_opcode(ecmd) != ERT_ACCESS_TEST)
 		return;
 
 	ERTUSER_DBG(ert_user, "%s %d", __func__, cmd_opcode(ecmd));
@@ -766,17 +840,50 @@ ert_post_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 		break;
 	case ERT_MB_VALIDATE:
 	case ERT_CLK_CALIB:
-		memcpy(&ert_user->ert_valid, ecmd->payload+1, ecmd->return_size);
+		memcpy(&ert_user->ert_valid, ecmd->response, ecmd->return_size);
+		break;
+	case ERT_ACCESS_TEST:
+	case ERT_ACCESS_TEST_C:
+		cmd = (struct ert_access_valid_cmd *)ecmd->response;
+		for (offset = sizeof(struct ert_access_valid_cmd); offset < ert_user->slot_size; offset++) {
+			u32 val = ecmd->response[offset/sizeof(u32)];
+			if (val != DEVICE_RW_PATTERN) {
+				cmd->d2h_access = 0;
+				ERTUSER_ERR(ert_user, "Device -> Host data integrity failed  offset 0x%x val %x\n", offset, val);
+				break;
+			}
+		}
+		ert_user->ert_access_valid.h2h_access &= cmd->h2h_access;
+		ert_user->ert_access_valid.h2d_access &= cmd->h2d_access;
+		ert_user->ert_access_valid.d2d_access &= cmd->d2d_access;
+		ert_user->ert_access_valid.d2h_access &= cmd->d2h_access;
+		ert_user->ert_access_valid.d2cu_access &= cmd->d2cu_access;
+		ERTUSER_DBG(ert_user, "h2h(%d), h2d(%d), d2d(%d), d2h(%d), d2cu(%d), opcode %d\n"
+  			, ert_user->ert_access_valid.h2h_access
+  			, ert_user->ert_access_valid.h2d_access
+  			, ert_user->ert_access_valid.d2d_access
+  			, ert_user->ert_access_valid.d2h_access
+  			, ert_user->ert_access_valid.d2cu_access
+  			, cmd_opcode(ecmd));
 		break;
 	case ERT_CU_STAT:
 	case ERT_SK_START:
-		memcpy(ecmd->xcmd->u_execbuf, ecmd->payload+1, ecmd->return_size);
+		memcpy(ecmd->xcmd->u_execbuf, ecmd->response, ecmd->return_size);
 		break;
 	default:
 		break;
 	}
 }
 
+static void
+ert_init_access_test(struct xocl_ert_user *ert_user)
+{
+	ert_user->ert_access_valid.h2h_access = 1;
+	ert_user->ert_access_valid.d2h_access = 1;
+	ert_user->ert_access_valid.h2d_access = 1;
+	ert_user->ert_access_valid.d2d_access = 1;
+	ert_user->ert_access_valid.d2cu_access = 1;
+}
 
 static inline bool
 ert_pre_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
@@ -806,9 +913,16 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	case ERT_SK_CONFIG:
 	case ERT_CU_STAT:
 	case ERT_MB_VALIDATE:
+	case ERT_ACCESS_TEST:
 		BUG_ON(!ert_user->is_configured);
 		bad_cmd = false;
 		break;
+	case ERT_ACCESS_TEST_C:
+		BUG_ON(!ert_user->is_configured);
+		ert_init_access_test(ert_user);
+		ert_submit_data_cmd(ert_user);
+		bad_cmd = false;
+		break;			
 	case ERT_CONFIGURE:
 		if (ert_cfg_cmd(ert_user, ecmd))
 			bad_cmd = true;
@@ -1016,6 +1130,7 @@ static void ert_user_submit(struct kds_ert *kds_ert, struct kds_command *xcmd)
 	case ERT_EXEC_WRITE:
 	case ERT_START_KEY_VAL:	
 	case ERT_START_CU:
+	case ERT_ACCESS_TEST:
 	case ERT_SK_START:
 		list_add_tail(&ecmd->list, &ert_user->pq.head);
 		++ert_user->pq.num;
@@ -1024,6 +1139,7 @@ static void ert_user_submit(struct kds_ert *kds_ert, struct kds_command *xcmd)
 	case ERT_SK_CONFIG:
 	case ERT_CU_STAT:
 	case ERT_MB_VALIDATE:
+	case ERT_ACCESS_TEST_C:
 	case ERT_CONFIGURE:
 	default:
 		list_add_tail(&ecmd->list, &ert_user->pq_ctrl.head);

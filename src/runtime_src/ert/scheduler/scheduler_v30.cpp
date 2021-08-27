@@ -250,11 +250,26 @@ struct mb_validation
   value_type cu_read_single = 0;
 
   value_type cu_write_single = 0;
+};
 
+struct mb_access_test
+{
+  value_type place_holder = 0;
+
+  value_type h2h_access = 0;
+
+  value_type h2d_access = 0;
+
+  value_type d2h_access = 0;
+
+  value_type d2d_access = 0;
+
+  value_type d2cu_access = 0;
 };
 
 static mb_validation mb_bist;
 
+static mb_access_test mb_access;
 // Fixed sized map from slot_idx -> slot info
 static slot_info command_slots[max_slots];
 
@@ -376,7 +391,12 @@ cu_idx_to_ctrl(size_type cu_idx)
 {
   return CU_HANDSHAKE(cu_addr_map[cu_idx]);
 }
-  
+
+inline value_type
+h2h_access_addr(addr_type slot_addr)
+{
+  return slot_addr + sizeof(value_type);
+}
 /**
  * idx_in_mask() - Check if idx in in specified 32 bit mask
  *
@@ -779,6 +799,58 @@ check_cu(size_type cu_idx)
   cu_slot_usage[cu_idx] = no_index; // reset slot index
   return true;
 }
+static bool
+data_integrity(value_type slot_idx)
+{
+  bool ret = true;
+  auto& slot = command_slots[slot_idx];
+  void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+
+  slot.header_value = (slot.header_value & ~0xF) | 0x4;
+
+  mb_access.h2h_access = read_reg(h2h_access_addr(slot.slot_addr));
+
+  for (size_type offset=sizeof(struct mb_access_test); offset<slot_size; offset+=4) {
+    volatile value_type pattern = read_reg(slot.slot_addr+offset);
+    if (pattern != HOST_RW_PATTERN) {
+      mb_access.h2d_access = 0;
+      ret = false;
+      CTRL_DEBUGF("h2d_access failed, pattern = 0x%x slot.slot_addr 0x%x\r\n",pattern,slot.slot_addr+offset);
+      break;
+    }
+
+    write_reg(slot.slot_addr+offset, DEVICE_RW_PATTERN);
+    pattern = read_reg(slot.slot_addr+offset);
+
+    if (pattern != DEVICE_RW_PATTERN) {
+      mb_access.d2d_access = 0;
+      ret = false;
+      CTRL_DEBUGF("d2d_access failed, pattern = 0x%x slot.slot_addr 0x%x\r\n",pattern,slot.slot_addr+offset);
+      break;
+    }
+  }
+
+  for (size_type i=0; i<num_cus; ++i) {
+    addr_type addr = CU_ADDR(cu_addr_map[i]);
+    value_type val = read_reg(addr);
+    if (val != 0x4) {
+      mb_access.d2cu_access = 0;
+      ret = false;
+      CTRL_DEBUGF("cu(%d) addr(0x%x) handshake(0x%x) encodedaddr(0x%x)\r\n", i, CU_ADDR(addr), CU_HANDSHAKE(addr), addr);
+    }
+  }
+  memcpy(addr_ptr, &mb_access, sizeof(struct mb_access_test));
+  notify_host(slot_idx);
+  return ret;
+}
+
+static inline bool
+is_special_command(value_type opcode, size_type slot_idx)
+{
+  if (opcode==ERT_ACCESS_TEST)
+    return data_integrity(slot_idx);
+  return false;
+}
 
 static inline void
 command_queue_fetch(size_type slot_idx)
@@ -794,6 +866,9 @@ command_queue_fetch(size_type slot_idx)
       notify_host(slot_idx);
       return;
     }
+
+    if (is_special_command(opcode(val), slot_idx))
+      return;
 
     slot_cache[slot_idx] = val;
     addr_type addr = cu_section_addr(slot_addr);
@@ -1096,16 +1171,24 @@ process_special_command(value_type opcode, size_type slot_idx)
 {
   if (opcode==ERT_CONFIGURE) // CONFIGURE_MB
     return configure_mb(slot_idx);
-  if (opcode==ERT_CU_STAT)
+  else if (opcode==ERT_CU_STAT)
     return cu_stat(slot_idx);
-  if (opcode==ERT_EXIT)
+  else if (opcode==ERT_EXIT)
     return exit_mb(slot_idx);
-  if (opcode==ERT_ABORT)
+  else if (opcode==ERT_ABORT)
     return abort_mb(slot_idx);
-  if (opcode==ERT_CLK_CALIB)
+  else if (opcode==ERT_CLK_CALIB)
     return clock_calib_mb(slot_idx);
-  if (opcode==ERT_MB_VALIDATE)
+  else if (opcode==ERT_MB_VALIDATE)
     return validate_mb(slot_idx);
+  else if (opcode==ERT_ACCESS_TEST_C) {
+    mb_access.h2h_access  = 0;
+    mb_access.h2d_access  = 1;
+    mb_access.d2d_access  = 1;
+    mb_access.d2h_access  = 1;
+    mb_access.d2cu_access = 1;
+    return data_integrity(slot_idx);
+  }
   return false;
 }
 

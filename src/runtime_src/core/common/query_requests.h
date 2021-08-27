@@ -234,6 +234,7 @@ enum class key_type
   ert_cq_read,
   ert_cu_write,
   ert_cu_read,
+  ert_data_integrity,
 
   noop
 };
@@ -2501,6 +2502,16 @@ struct ert_cu_write : request
   virtual boost::any
   get(const device*) const = 0;
 };
+
+struct ert_data_integrity : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::ert_data_integrity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 
 struct noop : request
 {

@@ -74,6 +74,10 @@
 #define to_abort_pkg(pkg) \
     ((struct ert_abort_cmd *)(pkg))
 
+
+#define HOST_RW_PATTERN     0xF0F0F0F0
+#define DEVICE_RW_PATTERN   0x0F0F0F0E
+
 /**
  * struct ert_packet: ERT generic packet format
  *
@@ -387,6 +391,28 @@ struct ert_validate_cmd {
 };
 
 /**
+ * struct ert_validate_cmd: ERT BIST command format.
+ *
+ */
+struct ert_access_valid_cmd {
+  union {
+    struct {
+      uint32_t state:4;          /* [3-0]   */
+      uint32_t custom:8;         /* [11-4]  */
+      uint32_t count:11;         /* [22-12] */
+      uint32_t opcode:5;         /* [27-23] */
+      uint32_t type:4;           /* [31-27] */
+    };
+    uint32_t header;
+  };
+  uint32_t h2h_access;
+  uint32_t h2d_access;
+  uint32_t d2h_access;
+  uint32_t d2d_access;
+  uint32_t d2cu_access;
+};
+
+/**
  * ERT command state
  *
  * @ERT_CMD_STATE_NEW:         Set by host before submitting a command to
@@ -452,6 +478,8 @@ enum ert_cmd_opcode {
   ERT_CLK_CALIB     = 13,
   ERT_MB_VALIDATE   = 14,
   ERT_START_KEY_VAL = 15,
+  ERT_ACCESS_TEST_C = 16,
+  ERT_ACCESS_TEST   = 17,
 };
 
 /**
@@ -760,7 +788,6 @@ ert_valid_opcode(struct ert_packet *pkt)
   struct ert_start_copybo_cmd *sccmd;
   struct ert_configure_cmd *ccmd;
   struct ert_configure_sk_cmd *cscmd;
-  struct ert_validate_cmd *vcmd;
   bool valid;
 
   switch (pkt->opcode) {
@@ -809,9 +836,7 @@ ert_valid_opcode(struct ert_packet *pkt)
     break;
   case ERT_CLK_CALIB:
   case ERT_MB_VALIDATE:
-    vcmd = to_validate_pkg(pkt);
-    valid = (vcmd->count == 5);
-    break;
+  case ERT_ACCESS_TEST_C:  
   case ERT_CU_STAT: /* TODO: Rules to validate? */
   case ERT_EXIT:
   case ERT_ABORT:

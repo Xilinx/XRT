@@ -188,7 +188,7 @@ command_queue_get_return(struct command_queue *cmd_queue, struct xrt_ert_command
 	slot_addr = ecmd->handle * slot_size;
 	CMDQUEUE_DBG(cmd_queue, "%s %d slot_addr %x\n", __func__, ecmd->return_size, slot_addr);
 
-	xocl_memcpy_fromio(ecmd->payload+1, cmd_queue->cq_base + slot_addr, ecmd->return_size);
+	xocl_memcpy_fromio(ecmd->response, cmd_queue->cq_base + slot_addr, ecmd->return_size);
 }
 
 /**
@@ -207,6 +207,7 @@ is_special_cmd(struct xrt_ert_command *ecmd)
 	case ERT_CU_STAT:
 	case ERT_CLK_CALIB:
 	case ERT_MB_VALIDATE:
+	case ERT_ACCESS_TEST_C:
 		ret = true;
 		break;
 	default:
@@ -378,6 +379,23 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 			// write remaining packet (past header and cuidx)
 			xocl_memcpy_toio(cmd_queue->cq_base + slot_addr + 8,
 					 ecmd->payload+2, (ecmd->payload_size-2)*sizeof(u32));
+		} else if (cmd_opcode(epkt) == ERT_ACCESS_TEST || cmd_opcode(epkt) == ERT_ACCESS_TEST_C) {
+			int offset = 0;
+			u32 val, h2h_pass = 1;
+			for (offset = sizeof(struct ert_access_valid_cmd); offset < cmd_queue->slot_size; offset+=4) {
+				iowrite32(HOST_RW_PATTERN, cmd_queue->cq_base + slot_addr + offset);
+
+				val = ioread32(cmd_queue->cq_base + slot_addr + offset);
+
+				if (val !=HOST_RW_PATTERN) {
+					h2h_pass = 0;
+					CMDQUEUE_ERR(cmd_queue, "Host <-> Host data integrity failed\n");
+					break;
+				}
+
+			}
+			iowrite32(h2h_pass, cmd_queue->cq_base + slot_addr + offsetof(struct ert_access_valid_cmd, h2h_access));
+			CMDQUEUE_DBG(cmd_queue, "Host <-> Host %d slot_addr 0x%x\n", h2h_pass, slot_addr);
 		} else {
 			CMDQUEUE_DBG(cmd_queue, "%s cmd_opcode(epkt)  %d\n", __func__, cmd_opcode(epkt));
 			xocl_memcpy_toio(cmd_queue->cq_base + slot_addr + 4,
