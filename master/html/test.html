@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -388,11 +386,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul class="current">
@@ -417,6 +415,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -426,9 +428,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/test.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/test.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -497,10 +497,10 @@
 <p>Switching XRT development work from P4 to Git can be done without much
 downtime provided you use a few scripts we have created:</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
-built with <code class="docutils literal notranslate"><span class="pre">build.sh</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">board.sh</span></code> harvests sprite <code class="docutils literal notranslate"><span class="pre">UNIT_HW</span></code> test cases and runs board tests.</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">build.sh</span></code> build script that builds XRT for both Debug and Release profiles.</li>
+<li><code class="docutils literal notranslate"><span class="pre">run.sh</span></code> loader script that sets up environment assuming XRT was
+built with <code class="docutils literal notranslate"><span class="pre">build.sh</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">board.sh</span></code> harvests sprite <code class="docutils literal notranslate"><span class="pre">UNIT_HW</span></code> test cases and runs board tests.</li>
 </ul>
 <div class="section" id="building-xrt">
 <h2>Building XRT<a class="headerlink" href="#building-xrt" title="Permalink to this headline">¶</a></h2>
@@ -565,16 +565,16 @@ running <code class="docutils literal notranslate"><span class="pre">XRT/src/run
 here:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest.so</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest_main.so</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest.so</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib64/libgtest_main.so</span></code></li>
 </ul>
 </div></blockquote>
 <p>In recent versions of Ubuntu, the GTest <code class="docutils literal notranslate"><span class="pre">libgtest-dev</span></code> package
 provides the compiled libraries in</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest.a</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libgtest_main.a</span></code></li>
 </ul>
 </div></blockquote>
 <p>However, the GTest package on Ubuntu up to 18.04 provides source only!
@@ -592,8 +592,8 @@ ls *gtest*
 <p>This will add GTest static library symbolic links here:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest.a</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest_main.a</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest.a</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">/usr/lib/libgtest_main.a</span></code></li>
 </ul>
 </div></blockquote>
 <p>CMake will handle linking, finding etc. for you.</p>
@@ -644,7 +644,7 @@ endif()
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

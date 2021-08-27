@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -400,11 +398,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -423,6 +421,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -432,9 +434,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xma_19.2.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xma_19.2.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -503,22 +503,24 @@
 <div class="section" id="summary-of-changes">
 <h2>Summary of changes<a class="headerlink" href="#summary-of-changes" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><dl class="simple">
-<dt><a class="reference internal" href="#plugin-code-migration">Plugin Code Migration</a></dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="#plugin-structure-change">Plugin Structure Change</a></p></li>
-<li><p><a class="reference internal" href="#buffer-creation-xma-plg-buffer-alloc">Buffer Creation: xma_plg_buffer_alloc</a></p></li>
-<li><p><a class="reference internal" href="#buffer-write-xma-plg-buffer-write">Buffer Write: xma_plg_buffer_write</a></p></li>
-<li><p><a class="reference internal" href="#buffer-read-xma-plg-buffer-read">Buffer Read: xma_plg_buffer_read</a></p></li>
-<li><p><a class="reference internal" href="#scalar-register-write-xma-plg-register-prep-write">Scalar/Register Write: xma_plg_register_prep_write</a></p></li>
-<li><p><a class="reference internal" href="#kernel-scheduling-xma-plg-schedule-work-item">Kernel Scheduling: xma_plg_schedule_work_item</a></p></li>
+<li><dl class="first docutils">
+<dt><a class="reference internal" href="#plugin-code-migration">Plugin Code Migration</a></dt>
+<dd><ul class="first last">
+<li><a class="reference internal" href="#plugin-structure-change">Plugin Structure Change</a></li>
+<li><a class="reference internal" href="#buffer-creation-xma-plg-buffer-alloc">Buffer Creation: xma_plg_buffer_alloc</a></li>
+<li><a class="reference internal" href="#buffer-write-xma-plg-buffer-write">Buffer Write: xma_plg_buffer_write</a></li>
+<li><a class="reference internal" href="#buffer-read-xma-plg-buffer-read">Buffer Read: xma_plg_buffer_read</a></li>
+<li><a class="reference internal" href="#scalar-register-write-xma-plg-register-prep-write">Scalar/Register Write: xma_plg_register_prep_write</a></li>
+<li><a class="reference internal" href="#kernel-scheduling-xma-plg-schedule-work-item">Kernel Scheduling: xma_plg_schedule_work_item</a></li>
 </ul>
 </dd>
 </dl>
 </li>
-<li><dl class="simple">
-<dt><a class="reference internal" href="#application-code-migration">Application Code Migration</a></dt><dd><ul class="simple">
-<li><p><a class="reference internal" href="#xma-initialize-function-xma-initlialize">XMA Initialize Function: xma_initlialize</a></p></li>
-<li><p><a class="reference internal" href="#expanded-plugin-properties">Expanded Plugin Properties</a></p></li>
+<li><dl class="first docutils">
+<dt><a class="reference internal" href="#application-code-migration">Application Code Migration</a></dt>
+<dd><ul class="first last">
+<li><a class="reference internal" href="#xma-initialize-function-xma-initlialize">XMA Initialize Function: xma_initlialize</a></li>
+<li><a class="reference internal" href="#expanded-plugin-properties">Expanded Plugin Properties</a></li>
 </ul>
 </dd>
 </dl>
@@ -532,9 +534,9 @@
 <p>The following changes have been incorporated in the main plugin structures: <code class="docutils literal notranslate"><span class="pre">XmaEncoderPlugin</span></code>, <code class="docutils literal notranslate"><span class="pre">XmaDecoderPlugin</span></code>, etc.</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><p>The <code class="docutils literal notranslate"><span class="pre">.alloc_chan</span></code> plugin function has been deprecated. The resource management should be done in the application level.</p></li>
-<li><p>The field <code class="docutils literal notranslate"><span class="pre">.kernel_data_size</span></code> is removed.</p></li>
-<li><p>The new field <code class="docutils literal notranslate"><span class="pre">.xma_version</span></code> is added.</p></li>
+<li>The <code class="docutils literal notranslate"><span class="pre">.alloc_chan</span></code> plugin function has been deprecated. The resource management should be done in the application level.</li>
+<li>The field <code class="docutils literal notranslate"><span class="pre">.kernel_data_size</span></code> is removed.</li>
+<li>The new field <code class="docutils literal notranslate"><span class="pre">.xma_version</span></code> is added.</li>
 </ol>
 </div></blockquote>
 </div>
@@ -544,13 +546,14 @@
 <p>In current XMA, the buffer creation process is simplified</p>
 <blockquote>
 <div><ul>
-<li><p>A new type <code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span></code> is introduced</p></li>
-<li><p>Function <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code> is changed</p>
+<li><p class="first">A new type <code class="docutils literal notranslate"><span class="pre">XmaBufferObj</span></code> is introduced</p>
+</li>
+<li><p class="first">Function <code class="docutils literal notranslate"><span class="pre">xma_plg_buffer_alloc</span></code> is changed</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Works on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> directly</p></li>
-<li><p>Supports Device Only Buffer</p></li>
-<li><p>Now there is no need to pass physical address using <code class="docutils literal notranslate"><span class="pre">xma_plg_get_paddr</span></code></p></li>
+<li>Works on <code class="docutils literal notranslate"><span class="pre">XMASession</span></code> directly</li>
+<li>Supports Device Only Buffer</li>
+<li>Now there is no need to pass physical address using <code class="docutils literal notranslate"><span class="pre">xma_plg_get_paddr</span></code></li>
 </ul>
 </div></blockquote>
 </li>
@@ -592,48 +595,47 @@
 <p>Now in current XMA, more fields have been added.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Device index (Should be passed from the application level)</p></li>
-<li><p>Compute Unit index (Should be determined at the application level)</p></li>
-<li><p>Channel id (Each channel should be passed with unique id from the application level)</p></li>
-<li><p>DDR bank index (Set -1 if auto-detection is desired)</p></li>
-<li><p>Plugin lib path</p></li>
+<li>Device index (Should be passed from the application level)</li>
+<li>Compute Unit index (Should be determined at the application level)</li>
+<li>Channel id (Each channel should be passed with unique id from the application level)</li>
+<li>DDR bank index (Set -1 if auto-detection is desired)</li>
+<li>Plugin lib path</li>
 </ul>
 </div></blockquote>
 </div>
 <div class="section" id="list-of-details-changes">
 <h3>List of details changes<a class="headerlink" href="#list-of-details-changes" title="Permalink to this headline">¶</a></h3>
 <ol class="arabic simple">
-<li><p>YAML configuration file is not used by XMA</p></li>
-<li><p>Resource management is not handled by XMA</p>
-<ol class="loweralpha simple">
-<li><p>So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)</p></li>
-<li><p>channel_id is input to XMA in session_create API as part of the properties argument</p></li>
-<li><p>See XRM for resource management details</p></li>
+<li>YAML configuration file is not used by XMA</li>
+<li>Resource management is not handled by XMA<ol class="loweralpha">
+<li>So channel_id for multi-channel kernels must be handled in host video application (like ffmpeg)</li>
+<li>channel_id is input to XMA in session_create API as part of the properties argument</li>
+<li>See XRM for resource management details</li>
 </ol>
 </li>
-<li><p>MPSoC PL &amp; soft kernels are supported in XMA</p></li>
-<li><p>Direct register read &amp; write is not available</p></li>
-<li><p>DataFlow kernels are supported</p></li>
-<li><p>ZeroCopy support has changed. See below for details</p></li>
-<li><p>BufferObject added. See below for details</p></li>
-<li><p>XmaFrame &amp; XmaDataBuffer can use device buffers instead of host only memory</p></li>
-<li><p>Support for device_only buffers</p></li>
-<li><p>Session creation &amp; destroy APIs are thread safe now</p></li>
-<li><p>Multi-process support is from XRT</p></li>
-<li><p>schedule_work_item  API changed to return CUCmdObj</p></li>
-<li><p>New API xma_plg_schedule_cu_cmd &amp; xma_plg_cu_cmd_status can be used instead of schedule_work_item</p></li>
-<li><p>In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session</p></li>
-<li><p>Supports up to 128 CUs per device</p></li>
-<li><p>CU register map size &lt; 4KB</p></li>
-<li><p>By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session</p></li>
-<li><p>For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info</p></li>
-<li><p>XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()</p></li>
-<li><p>XMA version check API added to plugin struct. See below for details</p></li>
-<li><p>New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details</p></li>
-<li><p>get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file</p></li>
-<li><p>CU command load of all session is automatically sent to log file at end of the application</p></li>
-<li><p>This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)</p></li>
-<li><p>QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details</p></li>
+<li>MPSoC PL &amp; soft kernels are supported in XMA</li>
+<li>Direct register read &amp; write is not available</li>
+<li>DataFlow kernels are supported</li>
+<li>ZeroCopy support has changed. See below for details</li>
+<li>BufferObject added. See below for details</li>
+<li>XmaFrame &amp; XmaDataBuffer can use device buffers instead of host only memory</li>
+<li>Support for device_only buffers</li>
+<li>Session creation &amp; destroy APIs are thread safe now</li>
+<li>Multi-process support is from XRT</li>
+<li>schedule_work_item  API changed to return CUCmdObj</li>
+<li>New API xma_plg_schedule_cu_cmd &amp; xma_plg_cu_cmd_status can be used instead of schedule_work_item</li>
+<li>In a session if using xma_plg_cu_cmd_status then do NOT use xma_plg_is_work_item_done in same session</li>
+<li>Supports up to 128 CUs per device</li>
+<li>CU register map size &lt; 4KB</li>
+<li>By default XMA will automatically select default ddr bank for new device buffers (as per selected CU). Session_create may provide user selected default ddr bank input when XMA will use user select default ddr bank for plugin with that session</li>
+<li>For using ddr bank other than default session ddr_bank use APIs xma_plg_buffer_alloc_arg_num(). See below for info</li>
+<li>XMA now support multiple ddr bank per plugin. See below for info on xma_plg_buffer_alloc_arg_num()</li>
+<li>XMA version check API added to plugin struct. See below for details</li>
+<li>New session type XMA_ADMIN for non-video applications to control multiple CUs in single session. See below for details</li>
+<li>get_session_cmd_load(): Get CU command load of various sessions relative to each other. Printed to log file</li>
+<li>CU command load of all session is automatically sent to log file at end of the application</li>
+<li>This gives info on which sessions (or CUs) are more busy compared to other sessions (or CUs)</li>
+<li>QDMA platform: Host to kernel streams will be supported by XMA in future. See below for more details</li>
 </ol>
 </div>
 </div>
@@ -668,7 +670,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

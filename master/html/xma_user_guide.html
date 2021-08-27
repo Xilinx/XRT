@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -389,11 +387,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -412,6 +410,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -421,9 +423,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xma_user_guide.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xma_user_guide.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -518,9 +518,9 @@ API.</p>
 <h2>XMA Application Interface Overview<a class="headerlink" href="#xma-application-interface-overview" title="Permalink to this headline">¶</a></h2>
 <p>The API for the libxmaapi can be categorized into three areas:</p>
 <ol class="arabic simple">
-<li><p>Initialization</p></li>
-<li><p>Video frame processing</p></li>
-<li><p>Termination</p></li>
+<li>Initialization</li>
+<li>Video frame processing</li>
+<li>Termination</li>
 </ol>
 <p>From an interface perspective, the high-level or upper edge interface and the
 low-level or plugin interface are organized as follows:</p>
@@ -549,46 +549,46 @@ XMA plugin implements at least five required callback functions: initialize,
 send frame or send data, receive frame or receive data, close and xma_version.</p>
 <p>BufferObject:</p>
 <ol class="arabic simple">
-<li><p>uint8_t* data : Pointer to host buffer space of allocated buffer</p></li>
-<li><p>uint64_t size: Size of allocated buffer</p></li>
-<li><p>uint64_t paddr:
+<li>uint8_t* data : Pointer to host buffer space of allocated buffer</li>
+<li>uint64_t size: Size of allocated buffer</li>
+<li>uint64_t paddr:
 a. FPGA DDR Addr of allocated buffer.
-b. Use it to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd or xma_plg_schedule_work_item API</p></li>
-<li><p>int32_t  bank_index: DDR bank index</p></li>
-<li><p>int32_t  dev_index: FPGA device index on which the buffer is allocated</p></li>
-<li><p>bool     device_only_buffer: If it is device only buffer.</p></li>
-<li><p>For device only buffers, BufferObject → data == NULL as no host buffer space is allocated</p></li>
-<li><p>ref_cnt &amp; user_ptr: For plugin/user to use</p></li>
+b. Use it to pass DDR addr to CUs as part of regmap with xma_plg_schedule_cu_cmd or xma_plg_schedule_work_item API</li>
+<li>int32_t  bank_index: DDR bank index</li>
+<li>int32_t  dev_index: FPGA device index on which the buffer is allocated</li>
+<li>bool     device_only_buffer: If it is device only buffer.</li>
+<li>For device only buffers, BufferObject → data == NULL as no host buffer space is allocated</li>
+<li>ref_cnt &amp; user_ptr: For plugin/user to use</li>
 </ol>
 <p>XmaFrame &amp; XmaDataBuffer with device buffers:</p>
 <ol class="arabic simple">
-<li><p>xma_frame_from_device_buffers()</p></li>
-<li><p>xma_data_from_device_buffer()</p></li>
+<li>xma_frame_from_device_buffers()</li>
+<li>xma_data_from_device_buffer()</li>
 </ol>
 <p>ZeroCopy use cases:</p>
 <ol class="arabic simple">
-<li><p>Use XRM for system resource reservation such that zero-copy is possible</p></li>
-<li><p>XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s</p></li>
-<li><p>Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</p></li>
+<li>Use XRM for system resource reservation such that zero-copy is possible</li>
+<li>XmaFrame with device only buffer can be output of plugins supporting zero-copy and feeding zero-copy enabled plugin/s</li>
+<li>Plugins may use dev_index, bank_index &amp; device_only info from BufferObject to enable or disable zero-copy</li>
 </ol>
 <p>ZeroCopy trancode pipeline:</p>
 <ol class="arabic simple">
-<li><p>Decoder-&gt;Scaler-&gt;Encoder</p></li>
-<li><p>FFMPEG completes xma_init &amp; create session for all plugins</p></li>
-<li><p>Pass zerocopy settings for plugins to use</p></li>
-<li><p>FFMPEG –&gt; send_data with host buffer –&gt; decoder plugin</p></li>
-<li><p>Decoder plugin uses device buffers for input &amp; output of kernel. Decoder has pool of device buffers to use. Decoder plugin does buffer write to DMA data to FPGA</p></li>
-<li><p>FFMPEG –&gt; receive frame with DUMMY frame –&gt; decoder plugin</p></li>
-<li><p>Decoder plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()</p></li>
-<li><p>FFMPEG –&gt; send frame to scaler - same as received from decoder with device buffer</p></li>
-<li><p>Scaler plugin uses device buffer from input frame as it’s input &amp; uses an output buffer from it’s pool of buffers</p></li>
-<li><p>FFMPEG –&gt; receive frame with DUMMY frame –&gt; scaler plugin</p></li>
-<li><p>Scaler plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()</p></li>
-<li><p>FFMPEG –&gt; send frame to encoder - same as received from scaler with device buffer</p></li>
-<li><p>Encoder plugin uses device buffer from input frame as it’s input &amp; uses an output buffer from it’s pool of buffers</p></li>
-<li><p>FFMPEG –&gt; receive frame with DUMMY DataBuffer –&gt; encoder plugin</p></li>
-<li><p>Encoder plugin adds output device buffer to the DataBuffer: xma_plg_add_buffer_to_data_buffer(). Encoder plugin does buffer read to DMA output data from FPGA to host</p></li>
-<li><p>Thus DMA to/from host is only at start and end of pipline. At other times data remain on device only and no DMA is required</p></li>
+<li>Decoder-&gt;Scaler-&gt;Encoder</li>
+<li>FFMPEG completes xma_init &amp; create session for all plugins</li>
+<li>Pass zerocopy settings for plugins to use</li>
+<li>FFMPEG –&gt; send_data with host buffer –&gt; decoder plugin</li>
+<li>Decoder plugin uses device buffers for input &amp; output of kernel. Decoder has pool of device buffers to use. Decoder plugin does buffer write to DMA data to FPGA</li>
+<li>FFMPEG –&gt; receive frame with DUMMY frame –&gt; decoder plugin</li>
+<li>Decoder plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()</li>
+<li>FFMPEG –&gt; send frame to scaler - same as received from decoder with device buffer</li>
+<li>Scaler plugin uses device buffer from input frame as it’s input &amp; uses an output buffer from it’s pool of buffers</li>
+<li>FFMPEG –&gt; receive frame with DUMMY frame –&gt; scaler plugin</li>
+<li>Scaler plugin adds output device buffer to the frame: xma_plg_add_buffer_to_frame()</li>
+<li>FFMPEG –&gt; send frame to encoder - same as received from scaler with device buffer</li>
+<li>Encoder plugin uses device buffer from input frame as it’s input &amp; uses an output buffer from it’s pool of buffers</li>
+<li>FFMPEG –&gt; receive frame with DUMMY DataBuffer –&gt; encoder plugin</li>
+<li>Encoder plugin adds output device buffer to the DataBuffer: xma_plg_add_buffer_to_data_buffer(). Encoder plugin does buffer read to DMA output data from FPGA to host</li>
+<li>Thus DMA to/from host is only at start and end of pipline. At other times data remain on device only and no DMA is required</li>
 </ol>
 <p>By way of example, the following represents the interface of the XMA Encoder
 class:</p>
@@ -647,11 +647,11 @@ diagram only calls out the initialization and processing stages:</p>
 <img alt="_images/XMA-Sequence-Diagram.png" class="align-center" src="_images/XMA-Sequence-Diagram.png" />
 <p>As shown in the diagram above, the system is comprised of five blocks:</p>
 <ul class="simple">
-<li><p>The FFmpeg Command Line application that is used to create a processing graph</p></li>
-<li><p>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</p></li>
-<li><p>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</p></li>
-<li><p>The XMA Lower Edge plugin responsible for interfacing with the Vitis Video Kernel</p></li>
-<li><p>The XMA Video Kernel responsible for accelerating the encoding function</p></li>
+<li>The FFmpeg Command Line application that is used to create a processing graph</li>
+<li>The FFmpeg encoder plugin that interfaces with the XMA Upper Edge Interface to manage a video session</li>
+<li>The XMA Upper Edge library interface responsible for initialization, resource allocation, and dispatching of the XMA plugin</li>
+<li>The XMA Lower Edge plugin responsible for interfacing with the Vitis Video Kernel</li>
+<li>The XMA Video Kernel responsible for accelerating the encoding function</li>
 </ul>
 <p>While this sequence diagram only shows five components, more complex systems
 can be developed that include multiple accelerators with the associated XMA
@@ -707,10 +707,10 @@ code examples to help illustrate usage of the XMA.</p>
 <h2>Execution model<a class="headerlink" href="#execution-model" title="Permalink to this headline">¶</a></h2>
 <p>The APIs are:</p>
 <ol class="arabic simple">
-<li><p>xma_plg_schedule_cu_cmd</p></li>
-<li><p>xma_plg_schedule_work_item</p></li>
-<li><p>xma_plg_is_work_item_done</p></li>
-<li><p>xma_plg_cu_cmd_status</p></li>
+<li>xma_plg_schedule_cu_cmd</li>
+<li>xma_plg_schedule_work_item</li>
+<li>xma_plg_is_work_item_done</li>
+<li>xma_plg_cu_cmd_status</li>
 </ol>
 <p>Lets consider the various purposes where the above APIs would be useful.</p>
 <p><strong>xma_plg_schedule_cu_cmd / xma_plg_schedule_work_item</strong>
@@ -749,7 +749,7 @@ should be used to start the kernel with supplied kernel arguments</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

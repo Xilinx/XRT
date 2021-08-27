@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -390,11 +388,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -413,6 +411,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -422,9 +424,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xrt_ini.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xrt_ini.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -498,9 +498,9 @@
 <p>There are three group of keys as below</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><strong>Runtime</strong>: The keys in this group impact general XRT flow</p></li>
-<li><p><strong>Debug</strong>: The keys in this group are used to generate and configure the debug related files such as profile report and timeline trace</p></li>
-<li><p><strong>Emulation</strong>: The keys in this group are related to the Emulation flow only</p></li>
+<li><strong>Runtime</strong>: The keys in this group impact general XRT flow</li>
+<li><strong>Debug</strong>: The keys in this group are used to generate and configure the debug related files such as profile report and timeline trace</li>
+<li><strong>Emulation</strong>: The keys in this group are related to the Emulation flow only</li>
 </ul>
 </div></blockquote>
 <p>The following is a simple example that turns on profile timeline trace and sends the runtime log messages to the console.</p>
@@ -517,14 +517,14 @@
 <p>C APIs</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xrtIniStringSet</span></code>: Set a key and correspondong string value pair</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">xrtIniUintSet</span></code> : Set a key and corresponding integer value pair</p></li>
+<li><code class="docutils literal notranslate"><span class="pre">xrtIniStringSet</span></code>: Set a key and correspondong string value pair</li>
+<li><code class="docutils literal notranslate"><span class="pre">xrtIniUintSet</span></code> : Set a key and corresponding integer value pair</li>
 </ul>
 </div></blockquote>
 <p>C++ API</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">xrt::ini::set</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">xrt::ini::set</span></code></li>
 </ul>
 </div></blockquote>
 <p>Example</p>
@@ -535,65 +535,65 @@
 <p>The following table lists all supported groups, keys, valid key values, and short descriptions on the function of the keys.</p>
 <div class="section" id="runtime-group">
 <h3>Runtime Group<a class="headerlink" href="#runtime-group" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 22%" />
-<col style="width: 32%" />
-<col style="width: 46%" />
+<col width="22%" />
+<col width="32%" />
+<col width="46%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Valid Values</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>api_checks</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Enable or disable OpenCL API checks:</p>
+<tbody valign="top">
+<tr class="row-even"><td>api_checks</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable OpenCL API checks:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>true: enable</p></li>
-<li><p>false: disable</p></li>
+<li>true: enable</li>
+<li>false: disable</li>
 </ul>
 </div></blockquote>
-<p>Default: true</p>
+<p class="last">Default: true</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>runtime_log</p></td>
-<td><p>[null|console|syslog|filename]</p></td>
-<td><p>Specify where the runtime logs are printed:</p>
+<tr class="row-odd"><td>runtime_log</td>
+<td>[null|console|syslog|filename]</td>
+<td><p class="first">Specify where the runtime logs are printed:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>null: Do not print any logs.</p></li>
-<li><p>console: Print logs to stdout</p></li>
-<li><p>syslog: Print logs to Linux syslog</p></li>
-<li><p>filename: Print logs to the
+<li>null: Do not print any logs.</li>
+<li>console: Print logs to stdout</li>
+<li>syslog: Print logs to Linux syslog</li>
+<li>filename: Print logs to the
 specified file.
-Example, runtime_log=my_run.log</p></li>
+Example, runtime_log=my_run.log</li>
 </ul>
 </div></blockquote>
-<p>Default: console</p>
+<p class="last">Default: console</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>cpu_affinity</p></td>
-<td><p>[{N,N,…}]</p></td>
-<td><p>Pin all runtime threads to specified CPUs.</p>
-<p>Example: cpu_affinity = {4,5,6}</p>
+<tr class="row-even"><td>cpu_affinity</td>
+<td>[{N,N,…}]</td>
+<td><p class="first">Pin all runtime threads to specified CPUs.</p>
+<p class="last">Example: cpu_affinity = {4,5,6}</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>verbosity</p></td>
-<td><p>[0|1|2|3|4|5|6|7]</p></td>
-<td><p>verbosity level of log messages. Higher
+<tr class="row-odd"><td>verbosity</td>
+<td>[0|1|2|3|4|5|6|7]</td>
+<td><p class="first">verbosity level of log messages. Higher
 number implies more verbosity</p>
-<p>Default: 4</p>
+<p class="last">Default: 4</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>exclusive_cu_context</p></td>
-<td><p>[false|true]</p></td>
-<td><p>When setting true OpenCL process holds
+<tr class="row-even"><td>exclusive_cu_context</td>
+<td>[false|true]</td>
+<td><p class="first">When setting true OpenCL process holds
 exclusive access of the Compute Units</p>
-<p>Default: false</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
 </tbody>
@@ -601,128 +601,127 @@ exclusive access of the Compute Units</p>
 </div>
 <div class="section" id="debug-group">
 <h3>Debug Group<a class="headerlink" href="#debug-group" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 21%" />
-<col style="width: 28%" />
-<col style="width: 51%" />
+<col width="21%" />
+<col width="28%" />
+<col width="51%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Valid Values</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>profile</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Enable or disable OpenCL host code profile. Set true
+<tbody valign="top">
+<tr class="row-even"><td>profile</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable OpenCL host code profile. Set true
 to generate profile_summary report</p>
-<p>Default: false</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>timeline_trace</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Enable or disable profile timeline trace. Set true to
+<tr class="row-odd"><td>timeline_trace</td>
+<td>[true|false]</td>
+<td><p class="first">Enable or disable profile timeline trace. Set true to
 generate timeline_trace report</p>
-<p>Default: false</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>data_transfer_trace</p></td>
-<td><p>[coarse|fine|off]</p></td>
-<td><p>Enable device-level AXI transfers trace:</p>
+<tr class="row-even"><td>data_transfer_trace</td>
+<td>[coarse|fine|off]</td>
+<td><p class="first">Enable device-level AXI transfers trace:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>coarse: Shows CU transfer activity</p></li>
-<li><p>fine: Shows all AXI level burst data transfer</p></li>
-<li><p>off: Does not show device-level AXI transfer</p></li>
+<li>coarse: Shows CU transfer activity</li>
+<li>fine: Shows all AXI level burst data transfer</li>
+<li>off: Does not show device-level AXI transfer</li>
 </ul>
 </div></blockquote>
-<p>Default: off</p>
+<p class="last">Default: off</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>stall_trace</p></td>
-<td><p>[dataflow|memory|pipe|all|off]</p></td>
-<td><p>Specifies type of stalls to be captured in timeline
+<tr class="row-odd"><td>stall_trace</td>
+<td>[dataflow|memory|pipe|all|off]</td>
+<td><p class="first">Specifies type of stalls to be captured in timeline
 trace report:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>dataflow: Stall related to intra-kernel streams</p></li>
-<li><p>memory: Stall related to memory transfer</p></li>
-<li><p>pipe: Inter-kernel pipes, applicable to OpenCL
-kernel</p></li>
-<li><p>all: All type of stalls</p></li>
-<li><p>off: Does not show stalls</p></li>
+<li>dataflow: Stall related to intra-kernel streams</li>
+<li>memory: Stall related to memory transfer</li>
+<li>pipe: Inter-kernel pipes, applicable to OpenCL
+kernel</li>
+<li>all: All type of stalls</li>
+<li>off: Does not show stalls</li>
 </ul>
 </div></blockquote>
-<p>Default: off</p>
+<p class="last">Default: off</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>app_debug</p></td>
-<td><p>[true|false]</p></td>
-<td><p>If true, enable xprint and xstatus command during
+<tr class="row-even"><td>app_debug</td>
+<td>[true|false]</td>
+<td><p class="first">If true, enable xprint and xstatus command during
 debugging with xgdb</p>
-<p>Default: false</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>trace_buffer_size</p></td>
-<td><p>[N {K|M|G}]</p></td>
-<td><p>Specifies the size of DDR/HBM memory for storing trace
+<tr class="row-odd"><td>trace_buffer_size</td>
+<td>[N {K|M|G}]</td>
+<td><p class="first">Specifies the size of DDR/HBM memory for storing trace
 data:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>N: Integer</p></li>
-<li><p>K|M|G: Units Kilobyte or Megabyte or Gigabyte</p></li>
+<li>N: Integer</li>
+<li>K|M|G: Units Kilobyte or Megabyte or Gigabyte</li>
 </ul>
 </div></blockquote>
 <p>Note:</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>This option only applicable in hardware flow</p></li>
-<li><p>If no unit is given byte is assumed</p></li>
+<li>This option only applicable in hardware flow</li>
+<li>If no unit is given byte is assumed</li>
 </ul>
 </div></blockquote>
 <p>Example: trace_buffer_size=100M</p>
-<p>Default: 1M</p>
+<p class="last">Default: 1M</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>lop_trace</p></td>
-<td><p>[false|true]</p></td>
-<td><p>Enables or disables low overhead profiling.</p>
+<tr class="row-even"><td>lop_trace</td>
+<td>[false|true]</td>
+<td><p class="first">Enables or disables low overhead profiling.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>false: Disable low overhead profiling</p></li>
-<li><p>true : Enable low overhead profiling</p></li>
+<li>false: Disable low overhead profiling</li>
+<li>true : Enable low overhead profiling</li>
 </ul>
 </div></blockquote>
-<p>Default: false</p>
+<p class="last">Default: false</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>continuous_trace</p></td>
-<td><p>[false|true]</p></td>
-<td><p>Enables the continuous offload of the device data
+<tr class="row-odd"><td>continuous_trace</td>
+<td>[false|true]</td>
+<td><p class="first">Enables the continuous offload of the device data
 while the application is running. In the event of a
 crash/hang a trace file will be available to help
 debugging.</p>
-<blockquote>
+<blockquote class="last">
 <div><blockquote>
 <div><ul class="simple">
-<li><p>false: Disable continous trance</p></li>
-<li><p>true : Enable continuous trace</p></li>
+<li>false: Disable continous trance</li>
+<li>true : Enable continuous trace</li>
 </ul>
 </div></blockquote>
 <p>Default: false</p>
 </div></blockquote>
 </td>
 </tr>
-<tr class="row-even"><td><p>continuous_trace_inte-
-rval_ms</p></td>
-<td><p>[N]</p></td>
-<td><p>Specifies the interval in millisecond to offload
+<tr class="row-even"><td>continuous_trace_inte-
+rval_ms</td>
+<td>[N]</td>
+<td><p class="first">Specifies the interval in millisecond to offload
 the device data in continous trace mode (see above)</p>
-<blockquote>
-<div><p>Default: 10</p>
-</div></blockquote>
+<blockquote class="last">
+<div>Default: 10</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -730,107 +729,105 @@ the device data in continous trace mode (see above)</p>
 </div>
 <div class="section" id="emulation-group">
 <h3>Emulation Group<a class="headerlink" href="#emulation-group" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 25%" />
-<col style="width: 26%" />
-<col style="width: 48%" />
+<col width="25%" />
+<col width="26%" />
+<col width="48%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Valid Values</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Valid Values</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>aliveness_message_interval</p></td>
-<td><p>[N]</p></td>
-<td><p>Specify the interval in seconds that aliveness
+<tbody valign="top">
+<tr class="row-even"><td>aliveness_message_interval</td>
+<td>[N]</td>
+<td><p class="first">Specify the interval in seconds that aliveness
 messages need to be printed.</p>
-<p>Default:300</p>
+<p class="last">Default:300</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>print_infos_in_console</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Controls the printing of emulation info messages
+<tr class="row-odd"><td>print_infos_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation info messages
 to users console.</p>
 <blockquote>
 <div><p>Emulation info messages are always logged into a
 file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>true = print in users console</p></li>
-<li><p>false = do not print in user console</p></li>
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
 </ul>
 </div></blockquote>
 </div></blockquote>
-<p>Default: true</p>
+<p class="last">Default: true</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>print_warning_in_console</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Controls the printing of emulation warning messages
+<tr class="row-even"><td>print_warning_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation warning messages
 to users console.</p>
 <blockquote>
 <div><p>Emulation warning messages are always logged into
 a file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>true = print in users console</p></li>
-<li><p>false = do not print in user console</p></li>
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
 </ul>
 </div></blockquote>
 </div></blockquote>
-<p>Default: true</p>
+<p class="last">Default: true</p>
 </td>
 </tr>
-<tr class="row-odd"><td><p>print_errors_in_console</p></td>
-<td><p>[true|false]</p></td>
-<td><p>Controls the printing of emulation error messages
+<tr class="row-odd"><td>print_errors_in_console</td>
+<td>[true|false]</td>
+<td><p class="first">Controls the printing of emulation error messages
 to users console.</p>
 <blockquote>
 <div><p>Emulation error messages are always logged into a
 file called emulation_debug.log</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>true = print in users console</p></li>
-<li><p>false = do not print in user console</p></li>
+<li>true = print in users console</li>
+<li>false = do not print in user console</li>
 </ul>
 </div></blockquote>
 </div></blockquote>
-<p>Default: true</p>
+<p class="last">Default: true</p>
 </td>
 </tr>
-<tr class="row-even"><td><p>debug_mode</p></td>
-<td><p>[off|batch|gui|gdb]</p></td>
-<td><p>Specify how the waveform is saved and displayed</p>
+<tr class="row-even"><td>debug_mode</td>
+<td>[off|batch|gui|gdb]</td>
+<td><p class="first">Specify how the waveform is saved and displayed</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>off: Do not launch simulator waveform GUI, and
-do not save wdb file</p></li>
-<li><p>batch: Do not launch simulator waveform GUI,
-but save wdb file</p></li>
-<li><p>gui: Launch simulator waveform GUI, and save
-wdb file</p></li>
-<li><p>gdb: Launch gdb mode</p></li>
+<li>off: Do not launch simulator waveform GUI, and
+do not save wdb file</li>
+<li>batch: Do not launch simulator waveform GUI,
+but save wdb file</li>
+<li>gui: Launch simulator waveform GUI, and save
+wdb file</li>
+<li>gdb: Launch gdb mode</li>
 </ul>
 </div></blockquote>
 <p>Default: off</p>
-<blockquote>
-<div><p>Note: The kernel needs to be compiled with debug
+<blockquote class="last">
+<div>Note: The kernel needs to be compiled with debug
 enabled for the waveform to be saved and
-displayed in the simulator GUI.</p>
-</div></blockquote>
+displayed in the simulator GUI.</div></blockquote>
 </td>
 </tr>
-<tr class="row-odd"><td><p>timeout_scale</p></td>
-<td><p>[na|ms|sec|min]</p></td>
-<td><p>Specify the time scaling unit of timeout specified
+<tr class="row-odd"><td>timeout_scale</td>
+<td>[na|ms|sec|min]</td>
+<td><p class="first">Specify the time scaling unit of timeout specified
 clPollStreams command, otherwise Emulation does not
 support timeout specified in clPollStreams command</p>
-<blockquote>
-<div><p>Default:na (not applicable)</p>
-</div></blockquote>
+<blockquote class="last">
+<div>Default:na (not applicable)</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -868,7 +865,7 @@ support timeout specified in clPollStreams command</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

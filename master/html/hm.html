@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -392,11 +390,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -415,6 +413,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -424,9 +426,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/hm.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/hm.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -511,14 +511,17 @@
 <p><strong>Steps required to enable Hugepages (Linux)</strong></p>
 <blockquote>
 <div><ol class="arabic">
-<li><p>Modify grub setup by changing the following line of the file <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code></p>
+<li><p class="first">Modify grub setup by changing the following line of the file <code class="docutils literal notranslate"><span class="pre">/etc/default/grub</span></code></p>
 <blockquote>
 <div><p><cite>GRUB_CMDLINE_LINUX_DEFAULT=”splash quiet noresume hugepagesz=1G hugepages=4”</cite></p>
 </div></blockquote>
 </li>
-<li><p>shell&gt;update-grub</p></li>
-<li><p>Reboot the server</p></li>
-<li><p>Verify the HugePage setting</p></li>
+<li><p class="first">shell&gt;update-grub</p>
+</li>
+<li><p class="first">Reboot the server</p>
+</li>
+<li><p class="first">Verify the HugePage setting</p>
+</li>
 </ol>
 </div></blockquote>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;hugeadm --pool-list
@@ -529,31 +532,31 @@
 </pre></div>
 </div>
 <p>The following table can be used to determine the number of Hugepages required based on the host memory requirement</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 46%" />
-<col style="width: 54%" />
+<col width="46%" />
+<col width="54%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Host Mem Requirement</p></th>
-<th class="head"><p>Huge Page Setting</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Host Mem Requirement</th>
+<th class="head">Huge Page Setting</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>M &lt;= 1GB</p></td>
-<td><p>Not Required</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>M &lt;= 1GB</td>
+<td>Not Required</td>
 </tr>
-<tr class="row-odd"><td><p>M&gt;1GB and M&lt;=2GB</p></td>
-<td><p>No of 1G HugePages = 2</p></td>
+<tr class="row-odd"><td>M&gt;1GB and M&lt;=2GB</td>
+<td>No of 1G HugePages = 2</td>
 </tr>
-<tr class="row-even"><td><p>M&gt;2GB and M&lt;=4GB</p></td>
-<td><p>No of 1G HugePages = 4</p></td>
+<tr class="row-even"><td>M&gt;2GB and M&lt;=4GB</td>
+<td>No of 1G HugePages = 4</td>
 </tr>
-<tr class="row-odd"><td><p>M&gt;4GB and M&lt;=8GB</p></td>
-<td><p>No of 1G HugePages = 8</p></td>
+<tr class="row-odd"><td>M&gt;4GB and M&lt;=8GB</td>
+<td>No of 1G HugePages = 8</td>
 </tr>
-<tr class="row-even"><td><p>M&gt;8GB and M&lt;=16GB</p></td>
-<td><p>No of 1G HugePages = 16</p></td>
+<tr class="row-even"><td>M&gt;8GB and M&lt;=16GB</td>
+<td>No of 1G HugePages = 16</td>
 </tr>
 </tbody>
 </table>
@@ -572,8 +575,8 @@ xbutil host_mem -d <span class="m">2</span> --enable --size 16G
 <p>For the platform supporting the host memory access feature, we can observe the following two data from the <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> output</p>
 <blockquote>
 <div><ul class="simple">
-<li><p><strong>Max HOST_MEM</strong>: The maximum host memory supported by the platform.</p></li>
-<li><p><strong>HOST_MEM size</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">host_mem</span></code>)</p></li>
+<li><strong>Max HOST_MEM</strong>: The maximum host memory supported by the platform.</li>
+<li><strong>HOST_MEM size</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">host_mem</span></code>)</li>
 </ul>
 </div></blockquote>
 <p>Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 4GB host memory.</p>
@@ -641,8 +644,8 @@ DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
 <p>Also ensure to follow coding guideline as stated below</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.</p></li>
-<li><p>Regular data transfer APIs (OpenCL: <code class="docutils literal notranslate"><span class="pre">clEnqueueMigramemObjects</span></code>/<code class="docutils literal notranslate"><span class="pre">clEnqueueWriteBuffer</span></code>, XRT Native API: <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync()</span></code>) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.</p></li>
+<li>Let XRT allocate the buffer as shown in the above code examples. Do not create a buffer from an already created user-space memory. The host code should map the buffer object to the user-space for read/write operation.</li>
+<li>Regular data transfer APIs (OpenCL: <code class="docutils literal notranslate"><span class="pre">clEnqueueMigramemObjects</span></code>/<code class="docutils literal notranslate"><span class="pre">clEnqueueWriteBuffer</span></code>, XRT Native API: <code class="docutils literal notranslate"><span class="pre">xrt::bo::sync()</span></code>) should be used. Though these API will not do any DMA operation, they are used for Cache Invalidate/Flush as the application works on the Cache memory.</li>
 </ul>
 </div></blockquote>
 </div>
@@ -677,7 +680,7 @@ DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

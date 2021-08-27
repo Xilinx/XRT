@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -390,11 +388,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -413,6 +411,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -422,9 +424,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xrt_kernel_executions.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xrt_kernel_executions.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -495,8 +495,8 @@
 <p>At the low level, the kernels are controlled by the XRT through the control and status register that lies on the AXI4-Lite Slave interface. The XRT managed kernel’s control and status register is mapped at the address 0x0 of the AXI4-Lite Slave interface.</p>
 <p>The two primary supported excution models are:</p>
 <ol class="arabic simple">
-<li><p>Sequential execution model</p></li>
-<li><p>Pipelined execution model</p></li>
+<li>Sequential execution model</li>
+<li>Pipelined execution model</li>
 </ol>
 <p>Below we will discuss each kernel execution model in detail.</p>
 <div class="section" id="sequential-execution-model">
@@ -506,34 +506,34 @@
 <p><strong>Mode of operation</strong></p>
 <img alt="_images/ap_ctrl_hs_2.PNG" class="align-center" src="_images/ap_ctrl_hs_2.PNG" />
 <ol class="arabic simple">
-<li><p>The XRT driver writes a 1 in ap_start to start the kernel</p></li>
-<li><p>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</p></li>
-<li><p>Repeat 1-2 for next kernel execution</p></li>
+<li>The XRT driver writes a 1 in ap_start to start the kernel</li>
+<li>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</li>
+<li>Repeat 1-2 for next kernel execution</li>
 </ol>
 <p>Assume there are three concurrent kernel execution requests from the host. The kernel executions will happen sequentially as below, serving one request at a time</p>
 <p>START1=&gt;DONE1=&gt;START2=&gt;DONE2=&gt;START3=&gt;DONE3</p>
 <p><strong>Control Signal Topology</strong></p>
 <p>The signals ap_start and ap_done must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 6%" />
-<col style="width: 21%" />
-<col style="width: 72%" />
+<col width="6%" />
+<col width="21%" />
+<col width="72%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Bit</p></th>
-<th class="head"><p>Signal name</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Bit</th>
+<th class="head">Signal name</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>ap_start</p></td>
-<td><p>Asserted by the XRT when kernel can process the new data</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>ap_start</td>
+<td>Asserted by the XRT when kernel can process the new data</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>ap_done</p></td>
-<td><p>Asserted by the kernel when it is finished producing the output data</p></td>
+<tr class="row-odd"><td>1</td>
+<td>ap_done</td>
+<td>Asserted by the kernel when it is finished producing the output data</td>
 </tr>
 </tbody>
 </table>
@@ -546,49 +546,49 @@
 <img alt="_images/ap_ctrl_chain_2.PNG" class="align-center" src="_images/ap_ctrl_chain_2.PNG" />
 <p><strong>Input synchronization</strong></p>
 <ol class="arabic simple">
-<li><p>The XRT driver writes a 1 in ap_start to start the kernel</p></li>
-<li><p>The XRT driver waits for ap_ready to be asserted by the kernel (guaranteeing the kernel is ready to accept new data for next execution, even if it is still working on the previous execution request).</p></li>
-<li><p>The XRT driver writes 1 in ap_start to start the kernel operation again</p></li>
+<li>The XRT driver writes a 1 in ap_start to start the kernel</li>
+<li>The XRT driver waits for ap_ready to be asserted by the kernel (guaranteeing the kernel is ready to accept new data for next execution, even if it is still working on the previous execution request).</li>
+<li>The XRT driver writes 1 in ap_start to start the kernel operation again</li>
 </ol>
 <p>Assume there are five concurrent kernel execution requests from the host and the kernel can work on three execution requests in a pipelined fashion. The kernel executions will happen sequentially as below, serving maximum three requests at a time.</p>
 <p>START1=&gt;START2=&gt;START3=&gt;DONE1=&gt;START4=&gt;DONE2=&gt;START5=&gt;DONE3=&gt;DONE4=&gt;DONE5</p>
 <p><strong>Note:</strong> As noted in the above sequence, the pipelined execution model only applicable when the kernel produces the outputs for the pending requests in-order. Kernel servicing the requests out-of-order cannot be supported by through this execution model.</p>
 <p><strong>Output synchronization</strong></p>
 <ol class="arabic simple">
-<li><p>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</p></li>
-<li><p>The XRT driver writes a 1 in ap_continue to keep kernel running</p></li>
+<li>The XRT driver waits for ap_done to be asserted by the kernel (guaranteeing the output data is fully produced by the kernel).</li>
+<li>The XRT driver writes a 1 in ap_continue to keep kernel running</li>
 </ol>
 <p>The input and output synchronization occurs asynchronously, as a result, multiple executions are performed by the kernel in an overlapping or pipelined fashion.</p>
 <p><strong>Control Signal Topology</strong></p>
 <p>The signals ap_start, ap_ready, ap_done, ap_continue must be connected to the AXI_LITE control and status register (at the address 0x0 of the AXI4-Lite Slave interface) section to specific bits.</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 6%" />
-<col style="width: 21%" />
-<col style="width: 72%" />
+<col width="6%" />
+<col width="21%" />
+<col width="72%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Bit</p></th>
-<th class="head"><p>Signal name</p></th>
-<th class="head"><p>Description</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Bit</th>
+<th class="head">Signal name</th>
+<th class="head">Description</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>ap_start</p></td>
-<td><p>Asserted by the XRT when kernel can process the new data</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>ap_start</td>
+<td>Asserted by the XRT when kernel can process the new data</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>ap_done</p></td>
-<td><p>Asserted by the kernel when it is finished producing the output data</p></td>
+<tr class="row-odd"><td>1</td>
+<td>ap_done</td>
+<td>Asserted by the kernel when it is finished producing the output data</td>
 </tr>
-<tr class="row-even"><td><p>3</p></td>
-<td><p>ap_ready</p></td>
-<td><p>Asserted by the kernel when it is ready to accept the new data</p></td>
+<tr class="row-even"><td>3</td>
+<td>ap_ready</td>
+<td>Asserted by the kernel when it is ready to accept the new data</td>
 </tr>
-<tr class="row-odd"><td><p>4</p></td>
-<td><p>ap_continue</p></td>
-<td><p>Asserted by the XRT to allow kernel keep running</p></td>
+<tr class="row-odd"><td>4</td>
+<td>ap_continue</td>
+<td>Asserted by the XRT to allow kernel keep running</td>
 </tr>
 </tbody>
 </table>
@@ -635,7 +635,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

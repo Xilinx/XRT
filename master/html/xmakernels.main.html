@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -389,11 +387,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -412,6 +410,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -421,9 +423,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xmakernels.main.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xmakernels.main.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -491,35 +491,34 @@
 <h1>XMA Upper Edge API Library<a class="headerlink" href="#xma-upper-edge-api-library" title="Permalink to this headline">¶</a></h1>
 <p><strong>XMA Application Interface</strong></p>
 <p>The interface used by stand-alone XMA applications or plugins</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_initialize">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_initialize</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaXclbinParameter</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">devXclbins</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">num_parms</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_initialize">
+int32_t <code class="descname">xma_initialize</code><span class="sig-paren">(</span>XmaXclbinParameter *<em>&nbsp;devXclbins</em>, int32_t<em>&nbsp;num_parms</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_initialize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialie XMA Library and devices</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span> <span class="pre">*</span> <span class="pre">devXclbins</span></code></dt><dd><p>array of device index and full path of xclbin to program the device with.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">num_parms</span></code></dt><dd><p>Number of elements in above array input</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaXclbinParameter</span> <span class="pre">*</span> <span class="pre">devXclbins</span></code></dt>
+<dd>array of device index and full path of xclbin to program the device with.</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">num_parms</span></code></dt>
+<dd>Number of elements in above array input</dd>
 </dl>
 <p><strong>Description</strong></p>
 <blockquote>
-<div><p>This is the entry point routine for utilzing the XMA library and must be
+<div>This is the entry point routine for utilzing the XMA library and must be
 the first call within any application before calling any other XMA APIs.
-Each device specified will be  programmed with provided xclbin(s).</p>
-</div></blockquote>
+Each device specified will be  programmed with provided xclbin(s).</div></blockquote>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS or XMa_ERROR</p>
 <p><strong>XMA upper edge APIs can be divided based on the following five types of kernel</strong></p>
 <blockquote>
 <div><ol class="arabic simple">
-<li><p>Encoder</p></li>
-<li><p>Decoder</p></li>
-<li><p>Scaler</p></li>
-<li><p>Filter</p></li>
-<li><p>Kernel (generic type)</p></li>
+<li>Encoder</li>
+<li>Decoder</li>
+<li>Scaler</li>
+<li>Filter</li>
+<li>Kernel (generic type)</li>
 </ol>
 </div></blockquote>
 <div class="section" id="encoder">
@@ -535,10 +534,10 @@ developers view.</p>
 <p>The external interface to the Xilinx video encoder is comprised of the
 following functions:</p>
 <ol class="arabic simple">
-<li><p><a class="reference internal" href="#c.xma_enc_session_create" title="xma_enc_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_create()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_destroy" title="xma_enc_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_destroy()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_send_frame" title="xma_enc_session_send_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_send_frame()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_enc_session_recv_data" title="xma_enc_session_recv_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_recv_data()</span></code></a></p></li>
+<li><a class="reference internal" href="#c.xma_enc_session_create" title="xma_enc_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_create()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_enc_session_destroy" title="xma_enc_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_destroy()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_enc_session_send_frame" title="xma_enc_session_send_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_send_frame()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_enc_session_recv_data" title="xma_enc_session_recv_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_enc_session_recv_data()</span></code></a></li>
 </ol>
 <p>A media framework (such as FFmpeg) is responsible for creating an encoder
 session.  The encoder session contains state information used by the
@@ -551,32 +550,32 @@ resources have been configured.  Ideally, the  <a class="reference internal" hre
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">XmaEncoderType</span></span></dt>
+<dl class="type">
+<dt id="c.XmaEncoderType">
+enum <code class="descname">XmaEncoderType</code><a class="headerlink" href="#c.XmaEncoderType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Value specifies the precise type of encoder kernel requested</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_COPY_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_ENCODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_COPY_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_ENCODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaEncoderProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaEncoderProperties">
+struct <code class="descname">XmaEncoderProperties</code><a class="headerlink" href="#c.XmaEncoderProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properities used to specify which encoder is requested and how the encoder should be initalized by the plugin driver</p>
 </dd></dl>
 
@@ -586,56 +585,56 @@ in order to guarantee it is only called once.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_enc_session_create">
-<span class="n"><span class="pre">XmaEncoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_enc_session_create</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaEncoderProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">enc_props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_enc_session_create">
+XmaEncoderSession* <code class="descname">xma_enc_session_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaEncoderProperties" title="XmaEncoderProperties">XmaEncoderProperties</a> *<em>&nbsp;enc_props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_create" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates an encoder session and must be called prior to encoding a frame. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span> <span class="pre">*</span> <span class="pre">enc_props</span></code></dt><dd><p>Pointer to a XmaEncoderProperties structure that
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderProperties</span> <span class="pre">*</span> <span class="pre">enc_props</span></code></dt>
+<dd>Pointer to a XmaEncoderProperties structure that
 contains the key configuration properties needed for
-finding available hardware resource.</p>
-</dd>
+finding available hardware resource.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Not NULL on success</p>
 <p>NULL on failure</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_enc_session_destroy">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_enc_session_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaEncoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_enc_session_destroy">
+int32_t <code class="descname">xma_enc_session_destroy</code><span class="sig-paren">(</span>XmaEncoderSession *<em>&nbsp;session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_destroy" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function destroys an encoder session that was previously created with the xm_enc_session_create function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaEncoderSession created with
-xma_enc_session_create</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to XmaEncoderSession created with
+xma_enc_session_create</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_enc_session_send_frame">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_enc_session_send_frame</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaEncoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_send_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_enc_session_send_frame">
+int32_t <code class="descname">xma_enc_session_send_frame</code><span class="sig-paren">(</span>XmaEncoderSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_send_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;send_frame fucntion assigned to this session which handles sending data to the hardware decoder.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame to be encoded.  If the encoder
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xm_enc_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
+<dd>Pointer to a frame to be encoded.  If the encoder
 has buffered input, the input will need to be flushed.  To do so,
 an XmaFrame with a null pointer to the first data buffer will need
-to be sent until XMA_EOS is received (XmaFrame.data[0].buffer = NULL).</p>
-</dd>
+to be sent until XMA_EOS is received (XmaFrame.data[0].buffer = NULL).</dd>
 </dl>
 <p><strong>Description</strong></p>
 <p>Plugin and media framework (like FFMPEG) may handle events like
@@ -648,20 +647,20 @@ been received to begin producing output</p>
 <p>XMA_SEND_MORE_DATA if additional frames are needed before
 output can be received</p>
 <p>XMA_ERROR on error</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_enc_session_recv_data">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_enc_session_recv_data</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaEncoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaDataBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data_size</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_recv_data" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_enc_session_recv_data">
+int32_t <code class="descname">xma_enc_session_recv_data</code><span class="sig-paren">(</span>XmaEncoderSession *<em>&nbsp;session</em>, XmaDataBuffer *<em>&nbsp;data</em>, int32_t *<em>&nbsp;data_size</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_enc_session_recv_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;recv_data assigned to this session which handles obtaining output data from the hardware encoder. This function returns a data buffer along with the length of the buffer if one is available. This function is called after calling the function xm_enc_session_send_frame. If a data buffer is not ready to be returned, this function returns -1 and sets the length of the data buffer to 0. In addition, the data buffer pointer is set to NULL. If a data buffer is ready, the data_size will be set with a non-zero value and a pointer to the data buffer will be set to a non-NULL value.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt><dd><p>Pointer to a data buffer containing encoded data</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_size</span></code></dt><dd><p>Pointer to hold the size of the data buffer returned</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaEncoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xm_enc_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dd>Pointer to a data buffer containing encoded data</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_size</span></code></dt>
+<dd>Pointer to hold the size of the data buffer returned</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
@@ -681,11 +680,11 @@ developers view.</p>
 <p>The external interface to the Xilinx video decoder is comprised of the
 following functions:</p>
 <ol class="arabic simple">
-<li><p><a class="reference internal" href="#c.xma_dec_session_create" title="xma_dec_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_create()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_dec_session_destroy" title="xma_dec_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_destroy()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_dec_session_send_data" title="xma_dec_session_send_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_send_data()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_dec_session_get_properties" title="xma_dec_session_get_properties"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_get_properties()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_dec_session_recv_frame" title="xma_dec_session_recv_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_recv_frame()</span></code></a></p></li>
+<li><a class="reference internal" href="#c.xma_dec_session_create" title="xma_dec_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_create()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_dec_session_destroy" title="xma_dec_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_destroy()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_dec_session_send_data" title="xma_dec_session_send_data"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_send_data()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_dec_session_get_properties" title="xma_dec_session_get_properties"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_get_properties()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_dec_session_recv_frame" title="xma_dec_session_recv_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_dec_session_recv_frame()</span></code></a></li>
 </ol>
 <p>A media framework (such as FFmpeg) is responsible for creating a decoder
 session.  The decoder session contains state information used by the
@@ -698,30 +697,30 @@ resources have been configured.  Ideally, the <a class="reference internal" href
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">XmaDecoderType</span></span></dt>
+<dl class="type">
+<dt id="c.XmaDecoderType">
+enum <code class="descname">XmaDecoderType</code><a class="headerlink" href="#c.XmaDecoderType" title="Permalink to this definition">¶</a></dt>
 <dd><p>A decoder from this list forms part of a request for a specific decoder when creating a decoder session via xma_dec_session_create.</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_DECODER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_H264_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_HEVC_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_VP9_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_AV1_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_JPG_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_MULTI_DECODER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaDecoderProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaDecoderProperties">
+struct <code class="descname">XmaDecoderProperties</code><a class="headerlink" href="#c.XmaDecoderProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properities used to specify which decoder is requested and how the decoder should be initalized by the plugin driver</p>
 </dd></dl>
 
@@ -731,86 +730,86 @@ in order to guarantee it is only called once.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_dec_session_create">
-<span class="n"><span class="pre">XmaDecoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_dec_session_create</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaDecoderProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">dec_props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_dec_session_create">
+XmaDecoderSession* <code class="descname">xma_dec_session_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaDecoderProperties" title="XmaDecoderProperties">XmaDecoderProperties</a> *<em>&nbsp;dec_props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_create" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates a decoder session and must be called prior to decoding data. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderProperties</span> <span class="pre">*</span> <span class="pre">dec_props</span></code></dt><dd><p>Pointer to a XmaDecoderProperties structure that
-contains the key configuration properties, device &amp; cu index, etc</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderProperties</span> <span class="pre">*</span> <span class="pre">dec_props</span></code></dt>
+<dd>Pointer to a XmaDecoderProperties structure that
+contains the key configuration properties, device &amp; cu index, etc</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Not NULL on success</p>
 <p>NULL on failure</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_dec_session_destroy">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_dec_session_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaDecoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_dec_session_destroy">
+int32_t <code class="descname">xma_dec_session_destroy</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_destroy" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function destroys a decoder session that was previously created with the xma_dec_session_create function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaDecoderSession created with
-xma_dec_session_create</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to XmaDecoderSession created with
+xma_dec_session_create</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_dec_session_send_data">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_dec_session_send_data</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaDecoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaDataBuffer</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">data_used</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_send_data" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_dec_session_send_data">
+int32_t <code class="descname">xma_dec_session_send_data</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;session</em>, XmaDataBuffer *<em>&nbsp;data</em>, int32_t *<em>&nbsp;data_used</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_send_data" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;send_data fucntion assigned to this session which handles sending data to the hardware decoder. Plugin and media framework (like FFMPEG) may handle events like errors, no empty lookup buffer, no output data, end of input stream, etc using XMA_FLUSH_AGAIN, XMA_TRY_AGAIN, XMA_SEND_MORE_DATA, XMA_EOS, XMA_ERROR, etc return codes</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt><dd><p>Pointer to a data buffer to be decoded</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_used</span></code></dt><dd><p>Pointer to an integer to receive the amount of data used</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_dec_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDataBuffer</span> <span class="pre">*</span> <span class="pre">data</span></code></dt>
+<dd>Pointer to a data buffer to be decoded</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">data_used</span></code></dt>
+<dd>Pointer to an integer to receive the amount of data used</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_dec_session_get_properties">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_dec_session_get_properties</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaDecoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">dec_session</span></span>, <span class="n"><span class="pre">XmaFrameProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">fprops</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_get_properties" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_dec_session_get_properties">
+int32_t <code class="descname">xma_dec_session_get_properties</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;dec_session</em>, XmaFrameProperties *<em>&nbsp;fprops</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_get_properties" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;get_properties assigned to this session which returns properties of the hardware decoder.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">dec_session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrameProperties</span> <span class="pre">*</span> <span class="pre">fprops</span></code></dt><dd><p>Pointer to a frame properties structure to be filled in</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">dec_session</span></code></dt>
+<dd>Pointer to session created by xma_dec_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrameProperties</span> <span class="pre">*</span> <span class="pre">fprops</span></code></dt>
+<dd>Pointer to a frame properties structure to be filled in</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_dec_session_recv_frame">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_dec_session_recv_frame</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaDecoderSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_recv_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_dec_session_recv_frame">
+int32_t <code class="descname">xma_dec_session_recv_frame</code><span class="sig-paren">(</span>XmaDecoderSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_dec_session_recv_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;recv_frame assigned to this session which handles obtaining output frame from the hardware decoder. This function returns a frame if one is available. This function is called after calling the function xma_dec_session_send_data. If a frame is not ready to be returned, plugin function should return -1. In addition, the frame pointer should be set to NULL. If a frame is ready, a pointer to the frame will be set to a non-NULL value.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_dec_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame containing decoded data</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaDecoderSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_dec_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
+<dd>Pointer to a frame containing decoded data</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
@@ -829,10 +828,10 @@ developers view.</p>
 <p>The external interface to the Xilinx video scaler is comprised of the
 following functions:</p>
 <ol class="arabic simple">
-<li><p><a class="reference internal" href="#c.xma_scaler_session_create" title="xma_scaler_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_create()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_scaler_session_destroy" title="xma_scaler_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_destroy()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_scaler_session_send_frame" title="xma_scaler_session_send_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_send_frame()</span></code></a></p></li>
-<li><p><a class="reference internal" href="#c.xma_scaler_session_recv_frame_list" title="xma_scaler_session_recv_frame_list"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_recv_frame_list()</span></code></a></p></li>
+<li><a class="reference internal" href="#c.xma_scaler_session_create" title="xma_scaler_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_create()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_scaler_session_destroy" title="xma_scaler_session_destroy"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_destroy()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_scaler_session_send_frame" title="xma_scaler_session_send_frame"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_send_frame()</span></code></a></li>
+<li><a class="reference internal" href="#c.xma_scaler_session_recv_frame_list" title="xma_scaler_session_recv_frame_list"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_recv_frame_list()</span></code></a></li>
 </ol>
 <p>A media framework (such as FFmpeg) is responsible for creating a scaler
 session.  The scaler session contains state information used by the
@@ -845,24 +844,24 @@ resources have been configured.  Ideally, the <strong>ref</strong> <a class="ref
 function should be called from the <code class="xref c c-func docutils literal notranslate"><span class="pre">main()</span></code> function of the media framework
 in order to guarantee it is only called once.</p>
 </div></blockquote>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">XmaScalerType</span></span></dt>
+<dl class="type">
+<dt id="c.XmaScalerType">
+enum <code class="descname">XmaScalerType</code><a class="headerlink" href="#c.XmaScalerType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specific type of scaler to request</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_BICUBIC_SCALER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_BILINEAR_SCALER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_POLYPHASE_SCALER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_BICUBIC_SCALER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_BILINEAR_SCALER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_POLYPHASE_SCALER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaScalerInOutProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaScalerInOutProperties">
+struct <code class="descname">XmaScalerInOutProperties</code><a class="headerlink" href="#c.XmaScalerInOutProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properties which shall be used to specify configuration of kernel input or output as applicable</p>
 </dd></dl>
 
@@ -872,9 +871,9 @@ in order to guarantee it is only called once.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaScalerFilterProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaScalerFilterProperties">
+struct <code class="descname">XmaScalerFilterProperties</code><a class="headerlink" href="#c.XmaScalerFilterProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Filter coefficients to be used by kernel</p>
 </dd></dl>
 
@@ -884,9 +883,9 @@ in order to guarantee it is only called once.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaScalerProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaScalerProperties">
+struct <code class="descname">XmaScalerProperties</code><a class="headerlink" href="#c.XmaScalerProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properties structure used to request filter type and vendor as well as the manner in which it should be inialized by the plugin</p>
 </dd></dl>
 
@@ -896,81 +895,80 @@ in order to guarantee it is only called once.</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_scaler_default_filter_coeff_set">
-<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_scaler_default_filter_coeff_set</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaScalerFilterProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_default_filter_coeff_set" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_scaler_default_filter_coeff_set">
+void <code class="descname">xma_scaler_default_filter_coeff_set</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaScalerFilterProperties" title="XmaScalerFilterProperties">XmaScalerFilterProperties</a> *<em>&nbsp;props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_default_filter_coeff_set" title="Permalink to this definition">¶</a></dt>
 <dd><p>This helper function sets the default horizontal and vertical filter coefficients for a polyphase filter bank.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerFilterProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt><dd><p>Pointer to a XmaScalerFilterProperties structure that
-will contain the filter coefficients.</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerFilterProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt>
+<dd>Pointer to a XmaScalerFilterProperties structure that
+will contain the filter coefficients.</dd>
 </dl>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_scaler_session_create">
-<span class="n"><span class="pre">XmaScalerSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_scaler_session_create</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaScalerProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_scaler_session_create">
+XmaScalerSession* <code class="descname">xma_scaler_session_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaScalerProperties" title="XmaScalerProperties">XmaScalerProperties</a> *<em>&nbsp;props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_create" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates a scaler session and must be called prior to scaling a frame. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
 <p><strong>Description</strong></p>
 <blockquote>
-<div><p><strong>props</strong> Pointer to a XmaScalerProperties structure that
+<div><strong>props</strong> Pointer to a XmaScalerProperties structure that
 contains the key configuration properties needed for
-finding available hardware resource.</p>
-</div></blockquote>
+finding available hardware resource.</div></blockquote>
 <p><strong>Return</strong></p>
 <p>Not NULL on success</p>
 <p>NULL on failure</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_scaler_session_destroy">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_scaler_session_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaScalerSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_scaler_session_destroy">
+int32_t <code class="descname">xma_scaler_session_destroy</code><span class="sig-paren">(</span>XmaScalerSession *<em>&nbsp;session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_destroy" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function destroys an scaler session that was previously created with the <a class="reference internal" href="#c.xma_scaler_session_create" title="xma_scaler_session_create"><code class="xref c c-func docutils literal notranslate"><span class="pre">xma_scaler_session_create()</span></code></a> function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaScalerSession created with
-xma_scaler_session_create</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to XmaScalerSession created with
+xma_scaler_session_create</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_scaler_session_send_frame">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_scaler_session_send_frame</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaScalerSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_send_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_scaler_session_send_frame">
+int32_t <code class="descname">xma_scaler_session_send_frame</code><span class="sig-paren">(</span>XmaScalerSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_send_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;send_frame fucntion assigned to this session which handles sending data to the hardware scaler.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_scaler_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame to be scaled.  If the scaler is
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_scaler_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
+<dd>Pointer to a frame to be scaled.  If the scaler is
 buffering input, then an XmaFrame with a NULL data buffer
 pointer to the first data buffer must be sent to flush the filter and
 to indicate that no more data will be sent:
 XmaFrame.data[0].buffer = NULL
 The application must then check for XMA_FLUSH_AGAIN for each such call
 when flushing the last few frames.  When XMA_EOS is returned, no new
-data may be collected from the scaler.</p>
-</dd>
+data may be collected from the scaler.</dd>
 </dl>
 <p><strong>Description</strong></p>
-<dl class="simple">
-<dt>This function sends a frame to the hardware scaler.  If a frame</dt><dd><p>buffer is not available, the plugin function should block.</p>
-</dd>
+<dl class="docutils">
+<dt>This function sends a frame to the hardware scaler.  If a frame</dt>
+<dd>buffer is not available, the plugin function should block.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success and the scaler is ready to
@@ -979,18 +977,18 @@ produce output</p>
 <p>XMA_FLUSH_AGAIN when flushing scaler with a null frame</p>
 <p>XMA_EOS when the scaler has been flushed of all residual frames</p>
 <p>XMA_ERROR on error</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_scaler_session_recv_frame_list">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_scaler_session_recv_frame_list</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaScalerSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame_list</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_recv_frame_list" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_scaler_session_recv_frame_list">
+int32_t <code class="descname">xma_scaler_session_recv_frame_list</code><span class="sig-paren">(</span>XmaScalerSession *<em>&nbsp;session</em>, XmaFrame **<em>&nbsp;frame_list</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_scaler_session_recv_frame_list" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;recv_frame_list assigned to this session which handles obtaining list of output frames from the hardware encoder. This function is called after calling the function xma_scaler_session_send_frame. If a data buffer is not ready to be returned, the plugin function should blocks.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_scaler_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">**</span> <span class="pre">frame_list</span></code></dt><dd><p>Pointer to a list of XmaFrame structures</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaScalerSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_scaler_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">**</span> <span class="pre">frame_list</span></code></dt>
+<dd>Pointer to a list of XmaFrame structures</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
@@ -998,20 +996,20 @@ produce output</p>
 </div>
 <div class="section" id="filter">
 <h2>Filter<a class="headerlink" href="#filter" title="Permalink to this headline">¶</a></h2>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">XmaFilterType</span></span></dt>
+<dl class="type">
+<dt id="c.XmaFilterType">
+enum <code class="descname">XmaFilterType</code><a class="headerlink" href="#c.XmaFilterType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Identifier specifying precise type of video filter during session creation</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_2D_FILTER_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_2D_FILTER_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaFilterPortProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaFilterPortProperties">
+struct <code class="descname">XmaFilterPortProperties</code><a class="headerlink" href="#c.XmaFilterPortProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properties necessary for specifying how an input or output port should be configured by the plugin.</p>
 </dd></dl>
 
@@ -1021,9 +1019,9 @@ produce output</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaFilterProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaFilterProperties">
+struct <code class="descname">XmaFilterProperties</code><a class="headerlink" href="#c.XmaFilterProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Properties necessary for specifying which filter kernel to select and how it should be configured by the plugin.</p>
 </dd></dl>
 
@@ -1033,59 +1031,59 @@ produce output</p>
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_filter_session_create">
-<span class="n"><span class="pre">XmaFilterSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_filter_session_create</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaFilterProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_filter_session_create">
+XmaFilterSession* <code class="descname">xma_filter_session_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaFilterProperties" title="XmaFilterProperties">XmaFilterProperties</a> *<em>&nbsp;props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_create" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates a filter session and must be called prior to filtering a frame. A session reserves hardware resources for the duration of a video stream. The number of sessions allowed depends on a number of factors that include: resolution, frame rate, bit depth, and the capabilities of the hardware accelerator.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt><dd><p>Pointer to a XmaFilterProperties structure that
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt>
+<dd>Pointer to a XmaFilterProperties structure that
 contains the key configuration properties needed for
-finding available hardware resource.</p>
-</dd>
+finding available hardware resource.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Not NULL on success</p>
 <p>NULL on failure</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_filter_session_destroy">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_filter_session_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaFilterSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_filter_session_destroy">
+int32_t <code class="descname">xma_filter_session_destroy</code><span class="sig-paren">(</span>XmaFilterSession *<em>&nbsp;session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_destroy" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function destroys an filter session that was previously created with the <strong>ref</strong> xma_filter_session_create function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaFilterSession created with xma_filter_session_create</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to XmaFilterSession created with xma_filter_session_create</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_filter_session_send_frame">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_filter_session_send_frame</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaFilterSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_send_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_filter_session_send_frame">
+int32_t <code class="descname">xma_filter_session_send_frame</code><span class="sig-paren">(</span>XmaFilterSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_send_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;send_frame fucntion assigned to this session which handles sending frames to the hardware decoder.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_filter_session_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p>Pointer to a frame to be filtered. If the filter is
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_filter_session_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
+<dd>Pointer to a frame to be filtered. If the filter is
 buffering input, then an XmaFrame with a NULL data buffer
 pointer to the first data buffer must be sent to flush the filter and
 to indicate that no more data will be sent:
 XmaFrame.data[0].buffer = NULL
 The application must then check for XMA_FLUSH_AGAIN for each such call
 when flushing the last few frames.  When XMA_EOS is returned, no new
-data may be collected from the filter.</p>
-</dd>
+data may be collected from the filter.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success and the filter is ready to
@@ -1094,18 +1092,18 @@ produce output</p>
 <p>XMA_FLUSH_AGAIN when flushing filter with a null frame</p>
 <p>XMA_EOS when the filter has been flushed of all residual frames</p>
 <p>XMA_ERROR on error</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_filter_session_recv_frame">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_filter_session_recv_frame</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaFilterSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaFrame</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">frame</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_recv_frame" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_filter_session_recv_frame">
+int32_t <code class="descname">xma_filter_session_recv_frame</code><span class="sig-paren">(</span>XmaFilterSession *<em>&nbsp;session</em>, XmaFrame *<em>&nbsp;frame</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_filter_session_recv_frame" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;recv_frame assigned to this session which handles obtaining output frame with filtered data from the hardware filter. This function is called after calling the function xma_filter_session_send_frame. If a data buffer is not ready to be returned, the plugin function should block.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xma_filter_session_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFilterSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xma_filter_session_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaFrame</span> <span class="pre">*</span> <span class="pre">frame</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
@@ -1123,10 +1121,10 @@ readily classified as typical video frame data.</p>
 <p>In most cases specific to video accelerators, the class of session
 typically fits into one of the followeing categories:</p>
 <ol class="arabic simple">
-<li><p>encoder</p></li>
-<li><p>decoder</p></li>
-<li><p>filter (with 1 input and 1 output)</p></li>
-<li><p>ABR scaler (with 1 input and multiple output)</p></li>
+<li>encoder</li>
+<li>decoder</li>
+<li>filter (with 1 input and 1 output)</li>
+<li>ABR scaler (with 1 input and multiple output)</li>
 </ol>
 <p>Each of the classes above expect frame data as input/output or both.  As a
 result, these APIs provide a convenient way to send and/or receive frame
@@ -1136,20 +1134,20 @@ better fit.  In this case, data is transferred between the host application
 and the plugin via private_session_data. private_session_data is managed by host application. As a result, it is up to
 the host application and plugin to decide the meaning/structure of the private_session_data.</p>
 </div></blockquote>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">enum</span> <span class="pre">XmaKernelType</span></span></dt>
+<dl class="type">
+<dt id="c.XmaKernelType">
+enum <code class="descname">XmaKernelType</code><a class="headerlink" href="#c.XmaKernelType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Description of kernel represented by XmaKernel</p>
 </dd></dl>
 
 <p><strong>Constants</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XMA_KERNEL_TYPE</span></code></dt><dd><p><em>undescribed</em></p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XMA_KERNEL_TYPE</span></code></dt>
+<dd><em>undescribed</em></dd>
 </dl>
-<dl class="c type">
-<dt class="sig sig-object c">
-<span class="sig-name descname"><span class="pre">struct</span> <span class="pre">XmaKernelProperties</span></span></dt>
+<dl class="type">
+<dt id="c.XmaKernelProperties">
+struct <code class="descname">XmaKernelProperties</code><a class="headerlink" href="#c.XmaKernelProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>XmaKernels represent unspecified or custom kernels that may not necessarily fit an existing video kernel type. As such, they may take custom parameters as properties. You should consult the documentation for the kernel plugin to get a list of XmaParameter parameters needed to specify how the kernel should be initalized.</p>
 </dd></dl>
 
@@ -1159,73 +1157,73 @@ the host application and plugin to decide the meaning/structure of the private_s
 </pre></div>
 </div>
 <p><strong>Members</strong></p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_kernel_session_create">
-<span class="n"><span class="pre">XmaKernelSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="sig-name descname"><span class="n"><span class="pre">xma_kernel_session_create</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaKernelProperties</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">props</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_create" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_kernel_session_create">
+XmaKernelSession* <code class="descname">xma_kernel_session_create</code><span class="sig-paren">(</span><a class="reference internal" href="#c.XmaKernelProperties" title="XmaKernelProperties">XmaKernelProperties</a> *<em>&nbsp;props</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_create" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates a kernel session and must be called prior to invoking other kernel session functions. A session reserves hardware resources until session destroy function is called.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt><dd><p>Pointer to a XmaKernelProperties structure that
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelProperties</span> <span class="pre">*</span> <span class="pre">props</span></code></dt>
+<dd>Pointer to a XmaKernelProperties structure that
 contains the key configuration properties needed for
-finding available hardware resource.</p>
-</dd>
+finding available hardware resource.</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>Not NULL on success</p>
 <p>NULL on failure</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_kernel_session_destroy">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_kernel_session_destroy</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaKernelSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_destroy" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_kernel_session_destroy">
+int32_t <code class="descname">xma_kernel_session_destroy</code><span class="sig-paren">(</span>XmaKernelSession *<em>&nbsp;session</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_destroy" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function destroys a kernel session that was previously created with the xma_kernel_session_create function.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to XmaKernelSession created with
-xma_kernel_session_create</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to XmaKernelSession created with
+xma_kernel_session_create</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success</p>
 <p>XMA_ERROR on failure.</p>
 <p><strong>Note</strong></p>
 <p>session create &amp; destroy are thread safe APIs</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_kernel_session_write">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_kernel_session_write</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaKernelSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaParameter</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">param</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="n"><span class="pre">param_cnt</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_write" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_kernel_session_write">
+int32_t <code class="descname">xma_kernel_session_write</code><span class="sig-paren">(</span>XmaKernelSession *<em>&nbsp;session</em>, XmaParameter *<em>&nbsp;param</em>, int32_t<em>&nbsp;param_cnt</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_write" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;write fucntion assigned to this session which handles sending data to the hardware kernel. The meaning of the data is managed by the caller and low-level XMA plugin. This means that the data provided could contain information about how kernel registers are programmed, how device DDR memory is set, or some combination of both.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaParameter</span> <span class="pre">*</span> <span class="pre">param</span></code></dt><dd><p>Pointer to an XmaParameter list</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">param_cnt</span></code></dt><dd><p>Number of parameters provided in the list</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xm_enc_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaParameter</span> <span class="pre">*</span> <span class="pre">param</span></code></dt>
+<dd>Pointer to an XmaParameter list</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">param_cnt</span></code></dt>
+<dd>Number of parameters provided in the list</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
 <p>XMA_ERROR on error.</p>
-<dl class="c function">
-<dt class="sig sig-object c" id="c.xma_kernel_session_read">
-<span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">xma_kernel_session_read</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">XmaKernelSession</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">session</span></span>, <span class="n"><span class="pre">XmaParameter</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">param</span></span>, <span class="n"><span class="pre">int32_t</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">param_cnt</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_read" title="Permalink to this definition">¶</a><br /></dt>
+<dl class="function">
+<dt id="c.xma_kernel_session_read">
+int32_t <code class="descname">xma_kernel_session_read</code><span class="sig-paren">(</span>XmaKernelSession *<em>&nbsp;session</em>, XmaParameter *<em>&nbsp;param</em>, int32_t *<em>&nbsp;param_cnt</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xma_kernel_session_read" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function invokes plugin-&gt;read assigned to this session which handles obtaining output data from the hardware kernel. The meaning of the data is managed by the caller and low-level XMA plugin.</p>
 </dd></dl>
 
 <p><strong>Parameters</strong></p>
-<dl class="simple">
-<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt><dd><p>Pointer to session created by xm_enc_sesssion_create</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">XmaParameter</span> <span class="pre">*</span> <span class="pre">param</span></code></dt><dd><p>Pointer to an XmaParameter</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">param_cnt</span></code></dt><dd><p>Pointer number of parameters in the list</p>
-</dd>
+<dl class="docutils">
+<dt><code class="docutils literal notranslate"><span class="pre">XmaKernelSession</span> <span class="pre">*</span> <span class="pre">session</span></code></dt>
+<dd>Pointer to session created by xm_enc_sesssion_create</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">XmaParameter</span> <span class="pre">*</span> <span class="pre">param</span></code></dt>
+<dd>Pointer to an XmaParameter</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">int32_t</span> <span class="pre">*</span> <span class="pre">param_cnt</span></code></dt>
+<dd>Pointer number of parameters in the list</dd>
 </dl>
 <p><strong>Return</strong></p>
 <p>XMA_SUCCESS on success.</p>
@@ -1262,7 +1260,7 @@ xma_kernel_session_create</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

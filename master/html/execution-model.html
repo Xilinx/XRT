@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -394,11 +392,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -417,6 +415,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -426,9 +428,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/execution-model.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/execution-model.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -531,15 +531,15 @@
 <h2>Execution Flow<a class="headerlink" href="#execution-flow" title="Permalink to this headline">¶</a></h2>
 <p>A typical user execution flow would like the following:</p>
 <ol class="arabic simple">
-<li><p>Load xclbin using DOWNLOAD ioctl</p></li>
-<li><p>Discover compute unit register map from xclbin</p></li>
-<li><p>Allocate data buffers to feed to the compute units using CREATE_BO/MAP_BO ioctl calls</p></li>
-<li><p>Migrate input data buffers from host to device using SYNC_BO ioctl</p></li>
-<li><p>Allocate an execution command buffer using CREATE_BO/MAP_BO ioctl call and fill the command buffer using data in 2 above and following the format defined in ert.h</p></li>
-<li><p>Submit the execution command buffer using EXECBUF ioctl</p></li>
-<li><p>Wait for completion using POSIX poll</p></li>
-<li><p>Migrate output data buffers from device to host using SYNC_BO ioctl</p></li>
-<li><p>Release data buffers and command buffer</p></li>
+<li>Load xclbin using DOWNLOAD ioctl</li>
+<li>Discover compute unit register map from xclbin</li>
+<li>Allocate data buffers to feed to the compute units using CREATE_BO/MAP_BO ioctl calls</li>
+<li>Migrate input data buffers from host to device using SYNC_BO ioctl</li>
+<li>Allocate an execution command buffer using CREATE_BO/MAP_BO ioctl call and fill the command buffer using data in 2 above and following the format defined in ert.h</li>
+<li>Submit the execution command buffer using EXECBUF ioctl</li>
+<li>Wait for completion using POSIX poll</li>
+<li>Migrate output data buffers from device to host using SYNC_BO ioctl</li>
+<li>Release data buffers and command buffer</li>
 </ol>
 </div>
 </div>
@@ -573,7 +573,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

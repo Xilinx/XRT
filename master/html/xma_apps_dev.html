@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -389,11 +387,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -412,6 +410,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -421,9 +423,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/xma_apps_dev.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/xma_apps_dev.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -493,10 +493,10 @@
 be used to control video accelerators.  The XMA API operations
 fall into four categories:</p>
 <ol class="arabic simple">
-<li><p>Initialization</p></li>
-<li><p>Create session</p></li>
-<li><p>Runtime frame/data processing</p></li>
-<li><p>Cleanup</p></li>
+<li>Initialization</li>
+<li>Create session</li>
+<li>Runtime frame/data processing</li>
+<li>Cleanup</li>
 </ol>
 <div class="section" id="initialization">
 <h2>Initialization<a class="headerlink" href="#initialization" title="Permalink to this headline">¶</a></h2>
@@ -509,16 +509,16 @@ passing in device and xclbin info.</p>
 <p>Each kernel class (i.e. encoder, filter, decoder, scaler, filter, kernel)
 requires different properties to be specified before a session can be created.</p>
 <ol class="arabic simple">
-<li><p>xmadec</p></li>
-<li><p>xmaenc</p></li>
-<li><p>xmafilter</p></li>
-<li><p>xmascaler</p></li>
-<li><p>xmakernel</p></li>
+<li>xmadec</li>
+<li>xmaenc</li>
+<li>xmafilter</li>
+<li>xmascaler</li>
+<li>xmakernel</li>
 </ol>
 <p>The general initialization sequence that is common to all kernel classes is as follows:</p>
 <ol class="arabic simple">
-<li><p>define key type-specific properties of the kernel to be initialized</p></li>
-<li><p>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</p></li>
+<li>define key type-specific properties of the kernel to be initialized</li>
+<li>call the_session_create() routine corresponding to the kernel (e.g. xma_enc_session_create())</li>
 </ol>
 </div>
 <div class="section" id="runtime-frame-and-data-processing">
@@ -549,11 +549,11 @@ each session.  Doing so will free the session to be used by another thread or
 process and ensure that the kernel plugin has the opportunity to perform
 proper cleanup/closing procedures.</p>
 <ol class="arabic simple">
-<li><p>xma_enc_session_destroy()</p></li>
-<li><p>xma_dec_session_destroy()</p></li>
-<li><p>xma_scaler_session_destroy()</p></li>
-<li><p>xma_filter_session_destroy()</p></li>
-<li><p>xma_kernel_session_destroy()</p></li>
+<li>xma_enc_session_destroy()</li>
+<li>xma_dec_session_destroy()</li>
+<li>xma_scaler_session_destroy()</li>
+<li>xma_filter_session_destroy()</li>
+<li>xma_kernel_session_destroy()</li>
 </ol>
 </div>
 <div class="section" id="standalone-example">
@@ -591,7 +591,7 @@ proper cleanup/closing procedures.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

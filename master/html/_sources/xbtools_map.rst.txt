@@ -4,8 +4,8 @@
    comment:: SPDX-License-Identifier: Apache-2.0
    comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 
-Legacy to new map
-*****************
+Utility Migration Guide 
+***********************
 
 This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil``/``xbmgmt`` commands. It lists out the new ``xbutil``/``xbmgmt`` calls that replace the existing calls. A few points: 
 

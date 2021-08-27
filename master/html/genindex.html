@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE HTML>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -40,10 +41,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +56,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -380,11 +379,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -402,6 +401,10 @@
 <p class="caption"><span class="caption-text">Security</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
@@ -473,12 +476,459 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#X"><strong>X</strong></a>
+ <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
+ | <a href="#D"><strong>D</strong></a>
+ | <a href="#E"><strong>E</strong></a>
+ | <a href="#G"><strong>G</strong></a>
+ | <a href="#K"><strong>K</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#S"><strong>S</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#W"><strong>W</strong></a>
+ | <a href="#X"><strong>X</strong></a>
  
 </div>
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.add_callback">add_callback() (pyxrt.run method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.address">address() (pyxrt.bo method)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.argument_info">argument_info (C type)</a>, <a href="zocl_ioctl.main.html#c.argument_info">[1]</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo">bo (class in pyxrt)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.flags">bo.flags (class in pyxrt)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.device">device (class in pyxrt)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_alloc_cma_info">drm_xocl_alloc_cma_info (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_axlf">drm_xocl_axlf (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_copy_bo">drm_xocl_copy_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_create_bo">drm_xocl_create_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_ctx">drm_xocl_ctx (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_execbuf">drm_xocl_execbuf (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_execbuf_cb">drm_xocl_execbuf_cb (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_info_bo">drm_xocl_info_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_kds">drm_xocl_kds (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_kinfo_bo">drm_xocl_kinfo_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_map_bo">drm_xocl_map_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_map_kern_mem">drm_xocl_map_kern_mem (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_bo">drm_xocl_pread_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pread_unmgd">drm_xocl_pread_unmgd (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pwrite_bo">drm_xocl_pwrite_bo (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_pwrite_unmgd">drm_xocl_pwrite_unmgd (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_reclock_info">drm_xocl_reclock_info (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo">drm_xocl_sync_bo (C type)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_sync_bo_cb">drm_xocl_sync_bo_cb (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_usage_stat">drm_xocl_usage_stat (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_user_intr">drm_xocl_user_intr (C type)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.drm_xocl_userptr_bo">drm_xocl_userptr_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_aie_cmd">drm_zocl_aie_cmd (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_axlf">drm_zocl_axlf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_create_bo">drm_zocl_create_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_execbuf">drm_zocl_execbuf (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_host_bo">drm_zocl_host_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_bo">drm_zocl_info_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_info_cu">drm_zocl_info_cu (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_kds">drm_zocl_kds (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_map_bo">drm_zocl_map_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pread_bo">drm_zocl_pread_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_pwrite_bo">drm_zocl_pwrite_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_create">drm_zocl_sk_create (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_getcmd">drm_zocl_sk_getcmd (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sk_report">drm_zocl_sk_report (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_sync_bo">drm_zocl_sync_bo (C type)</a>
+</li>
+      <li><a href="zocl_ioctl.main.html#c.drm_zocl_userptr_bo">drm_zocl_userptr_bo (C type)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ert.main.html#c.ert_abort_cmd">ert_abort_cmd (C type)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.ert_cmd_state">ert_cmd_state (class in pyxrt)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_configure_cmd">ert_configure_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_configure_sk_cmd">ert_configure_sk_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_BASE_ADDRESS_ADDR">ERT_CQ_BASE_ADDRESS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_NUMBER_OF_SLOTS_ADDR">ERT_CQ_NUMBER_OF_SLOTS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_SLOT_SIZE_ADDR">ERT_CQ_SLOT_SIZE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CQ_STATUS_ENABLE_ADDR">ERT_CQ_STATUS_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_BASE_ADDRESS_ADDR">ERT_CU_BASE_ADDRESS_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_DMA_ENABLE_ADDR">ERT_CU_DMA_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_ISR_HANDLER_ENABLE_ADDR">ERT_CU_ISR_HANDLER_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CU_OFFSET_ADDR">ERT_CU_OFFSET_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_CUISR_LUT_ADDR">ERT_CUISR_LUT_ADDR (C function)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="ert.main.html#c.ERT_EXIT_CMD">ERT_EXIT_CMD (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_HLS_MODULE_IDLE">ERT_HLS_MODULE_IDLE (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_HOST_INTERRUPT_ENABLE_ADDR">ERT_HOST_INTERRUPT_ENABLE_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_init_kernel_cmd">ert_init_kernel_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_INTC_ADDR">ERT_INTC_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_INTC_IPR_ADDR">ERT_INTC_IPR_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_NUMBER_OF_CU_ADDR">ERT_NUMBER_OF_CU_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_packet">ert_packet (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_start_kernel_cmd">ert_start_kernel_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_STATUS_REGISTER_ADDR">ERT_STATUS_REGISTER_ADDR (C function)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_unconfigure_sk_cmd">ert_unconfigure_sk_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ert_validate_cmd">ert_validate_cmd (C type)</a>
+</li>
+      <li><a href="ert.main.html#c.ERT_WORD_SIZE">ERT_WORD_SIZE (C function)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_base_address">get_base_address() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_index">get_index() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.device.get_info">get_info() (pyxrt.device method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_ips">get_ips() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_kernels">get_kernels() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_mems">get_mems() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel.get_name">get_name() (pyxrt.xclbin.xclbinkernel method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel.get_num_args">get_num_args() (pyxrt.xclbin.xclbinkernel method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_size_kb">get_size_kb() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_tag">get_tag() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem.get_used">get_used() (pyxrt.xclbin.xclbinmem method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_uuid">get_uuid() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.device.get_xclbin_uuid">get_xclbin_uuid() (pyxrt.device method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.get_xsa_name">get_xsa_name() (pyxrt.xclbin method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.kernel.group_id">group_id() (pyxrt.kernel method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="K">K</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.kernel">kernel (class in pyxrt)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.kernel.cu_access_mode">kernel.cu_access_mode (class in pyxrt)</a>
+</li>
+      <li><a href="xocl_ioctl.main.html#c.kernel_info">kernel_info (C type)</a>, <a href="zocl_ioctl.main.html#c.kernel_info">[1]</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.device.load_xclbin">load_xclbin() (pyxrt.device method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.map">map() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.flags.name">name (pyxrt.bo.flags attribute)</a>
+
+      <ul>
+        <li><a href="pyxrt.html#pyxrt.ert_cmd_state.name">(pyxrt.ert_cmd_state attribute)</a>
+</li>
+        <li><a href="pyxrt.html#pyxrt.kernel.cu_access_mode.name">(pyxrt.kernel.cu_access_mode attribute)</a>
+</li>
+        <li><a href="pyxrt.html#pyxrt.xclBOSyncDirection.name">(pyxrt.xclBOSyncDirection attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="P">P</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#module-pyxrt">pyxrt (module)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.read">read() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run">run (class in pyxrt)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="S">S</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.set_arg">set_arg() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.bo.size">size() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.start">start() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.run.state">state() (pyxrt.run method)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.bo.sync">sync() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.uuid.to_string">to_string() (pyxrt.uuid method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.uuid">uuid (class in pyxrt)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.run.wait">wait() (pyxrt.run method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="pyxrt.html#pyxrt.bo.write">write() (pyxrt.bo method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="X">X</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="mailbox.proto.html#c.xcl_board_info">xcl_board_info (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_dna">xcl_dna (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_firewall">xcl_firewall (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_group_kind">xcl_group_kind (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_bitstream_kaddr">xcl_mailbox_bitstream_kaddr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_clock_freqscaling">xcl_mailbox_clock_freqscaling (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn">xcl_mailbox_conn (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_conn_resp">xcl_mailbox_conn_resp (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_p2p_bar_addr">xcl_mailbox_p2p_bar_addr (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_peer_state">xcl_mailbox_peer_state (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req">xcl_mailbox_req (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_req_bitstream_lock">xcl_mailbox_req_bitstream_lock (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_request">xcl_mailbox_request (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mailbox_subdev_peer">xcl_mailbox_subdev_peer (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_mig_ecc">xcl_mig_ecc (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_pr_region">xcl_pr_region (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_sensor">xcl_sensor (C type)</a>
+</li>
+      <li><a href="mailbox.proto.html#c.xcl_sw_chan">xcl_sw_chan (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclAllocBO">xclAllocBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclAllocUserPtrBO">xclAllocUserPtrBO (C function)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin">xclbin (class in pyxrt)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinkernel">xclbin.xclbinkernel (class in pyxrt)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclbin.xclbinmem">xclbin.xclbinmem (class in pyxrt)</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xclBOSyncDirection">xclBOSyncDirection (class in pyxrt)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclClose">xclClose (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCloseContext">xclCloseContext (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclCopyBO">xclCopyBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclDeviceHandle">xclDeviceHandle (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExecBuf">xclExecBuf (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExecWait">xclExecWait (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclExportBO">xclExportBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclFreeBO">xclFreeBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetBOProperties">xclGetBOProperties (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetDeviceInfo2">xclGetDeviceInfo2 (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetErrorStatus">xclGetErrorStatus (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetSectionInfo">xclGetSectionInfo (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclGetUsageInfo">xclGetUsageInfo (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclImportBO">xclImportBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclIPName2Index">xclIPName2Index (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclLoadXclBin">xclLoadXclBin (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclLogMsg">xclLogMsg (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclMapBO">xclMapBO (C function)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_bitstream_axlf">xclmgmt_ioc_bitstream_axlf (C type)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_freqscaling">xclmgmt_ioc_freqscaling (C type)</a>
+</li>
+      <li><a href="mgmt-ioctl.main.html#c.xclmgmt_ioc_info">xclmgmt_ioc_info (C type)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclOpen">xclOpen (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclOpenContext">xclOpenContext (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclProbe">xclProbe (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReadBO">xclReadBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclReClock2">xclReClock2 (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclSyncBO">xclSyncBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmapBO">xclUnmapBO (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmgdPread">xclUnmgdPread (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclUnmgdPwrite">xclUnmgdPwrite (C function)</a>
+</li>
+      <li><a href="xrt.main.html#c.xclWriteBO">xclWriteBO (C function)</a>
+</li>
       <li><a href="xmakernels.main.html#c.xma_dec_session_create">xma_dec_session_create (C function)</a>
 </li>
       <li><a href="xmakernels.main.html#c.xma_dec_session_destroy">xma_dec_session_destroy (C function)</a>
@@ -547,31 +997,53 @@
 </li>
       <li><a href="xmakernels.main.html#c.xma_scaler_session_send_frame">xma_scaler_session_send_frame (C function)</a>
 </li>
+      <li><a href="xmakernels.main.html#c.XmaDecoderProperties">XmaDecoderProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaDecoderType">XmaDecoderType (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaEncoderProperties">XmaEncoderProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaEncoderType">XmaEncoderType (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaFilterPortProperties">XmaFilterPortProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaFilterProperties">XmaFilterProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaFilterType">XmaFilterType (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaKernelProperties">XmaKernelProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaKernelType">XmaKernelType (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaScalerFilterProperties">XmaScalerFilterProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaScalerInOutProperties">XmaScalerInOutProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaScalerProperties">XmaScalerProperties (C type)</a>
+</li>
+      <li><a href="xmakernels.main.html#c.XmaScalerType">XmaScalerType (C type)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2boE">xrt::bo (C++ class)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo7addressEv">xrt::bo::address (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle21xclBufferExportHandle">xrt::bo::bo (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_t12memory_group">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandle6size_tN2bo5flagsE12memory_group">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_t12memory_group">[3]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boE15xclDeviceHandlePv6size_tN2bo5flagsE12memory_group">[4]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo">[5]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERK2bo6size_t6size_t">[6]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boERR2bo">[7]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo2boEv">[8]</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo9cacheableE">xrt::bo::cacheable (C++ enumerator)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo">xrt::bo::copy (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4copyERK2bo6size_t6size_t6size_t">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo11device_onlyE">xrt::bo::device_only (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo13export_bufferEv">xrt::bo::export_buffer (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flagsE">xrt::bo::flags (C++ enum)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9cacheableE">xrt::bo::flags::cacheable (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags11device_onlyE">xrt::bo::flags::device_only (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags9host_onlyE">xrt::bo::flags::host_only (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags6normalE">xrt::bo::flags::normal (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags3p2pE">xrt::bo::flags::p2p (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo5flags3svmE">xrt::bo::flags::svm (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo9host_onlyE">xrt::bo::host_only (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4I0EN3xrt2bo3mapE7MapTypev">xrt::bo::map (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo3mapEv">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo6normalE">xrt::bo::normal (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bocvbEv">xrt::bo::operator bool (C++ function)</a>
 </li>
@@ -579,9 +1051,13 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2boeqERK2bo">xrt::bo::operator== (C++ function)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo3p2pE">xrt::bo::p2p (C++ enumerator)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv">xrt::bo::read (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4readEPv6size_t6size_t">[1]</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt2bo4sizeEv">xrt::bo::size (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo3svmE">xrt::bo::svm (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection">xrt::bo::sync (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt2bo4syncE18xclBOSyncDirection6size_t6size_t">[1]</a>
 </li>
@@ -599,35 +1075,47 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinEPK4axlf">xrt::device::load_xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKN3xrt6xclbinE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6device11load_xclbinERKNSt6stringE">[2]</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERR6device">xrt::device::operator= (C++ function)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERK6device">xrt::device::operator= (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6deviceaSERR6device">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6deviceD0Ev">xrt::device::~device (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4infoE">xrt::info (C++ type)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info3bdfE">xrt::info::bdf (C++ enumerator)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6deviceE">xrt::info::device (C++ enum)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3bdfE">xrt::info::device::bdf (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info15dynamic_regionsE">xrt::info::dynamic_regions (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4fansE">xrt::info::device::fans (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info10electricalE">xrt::info::electrical (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device14interface_uuidE">xrt::info::device::interface_uuid (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info4hostE">xrt::info::host (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4kdmaE">xrt::info::device::kdma (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info14interface_uuidE">xrt::info::interface_uuid (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device3m2mE">xrt::info::device::m2m (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info4kdmaE">xrt::info::kdma (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device23max_clock_frequency_mhzE">xrt::info::device::max_clock_frequency_mhz (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info3m2mE">xrt::info::m2m (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device4nameE">xrt::info::device::name (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info23max_clock_frequency_mhzE">xrt::info::max_clock_frequency_mhz (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device5nodmaE">xrt::info::device::nodma (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info10mechanicalE">xrt::info::mechanical (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device7offlineE">xrt::info::device::offline (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6memoryE">xrt::info::memory (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device17power_consumptionE">xrt::info::device::power_consumption (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info4nameE">xrt::info::name (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device11power_railsE">xrt::info::device::power_rails (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info5nodmaE">xrt::info::nodma (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info6device8thermalsE">xrt::info::device::thermals (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info7offlineE">xrt::info::offline (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info9pcie_infoE">xrt::info::pcie_info (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info8platformE">xrt::info::platform (C++ enumerator)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt4info7thermalE">xrt::info::thermal (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3iniE">xrt::ini (C++ type)</a>
 </li>
@@ -641,8 +1129,6 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt7disableEv">xrt::ip::interrupt::disable (C++ function)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt6enableEv">xrt::ip::interrupt::enable (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt2ip9interrupt4waitEv">xrt::ip::interrupt::wait (C++ function)</a>
@@ -668,6 +1154,8 @@
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6kernel14write_registerE8uint32_t8uint32_t">xrt::kernel::write_register (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3runE">xrt::run (C++ class)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt3run5abortEv">xrt::run::abort (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt3run12add_callbackE13ert_cmd_stateNSt8functionIFvPKv13ert_cmd_statePvEEEPv">xrt::run::add_callback (C++ function)</a>
 </li>
@@ -711,6 +1199,8 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbinE">xrt::xclbin (C++ class)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3areE">xrt::xclbin::are (C++ enumerator)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3argE">xrt::xclbin::arg (C++ class)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg13get_host_typeEv">xrt::xclbin::arg::get_host_type (C++ function)</a>
@@ -725,6 +1215,14 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3arg8get_sizeEv">xrt::xclbin::arg::get_size (C++ function)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4bramE">xrt::xclbin::bram (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4ddr3E">xrt::xclbin::ddr3 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4ddr4E">xrt::xclbin::ddr4 (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4dramE">xrt::xclbin::dram (C++ enumerator)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_axlfEv">xrt::xclbin::get_axlf (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin6get_ipERKNSt6stringE">xrt::xclbin::get_ip (C++ function)</a>
@@ -735,9 +1233,15 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin11get_kernelsEv">xrt::xclbin::get_kernels (C++ function)</a>
 </li>
+      <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_memsEv">xrt::xclbin::get_mems (C++ function)</a>
+</li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin8get_uuidEv">xrt::xclbin::get_uuid (C++ function)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin12get_xsa_nameEv">xrt::xclbin::get_xsa_name (C++ function)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3hbmE">xrt::xclbin::hbm (C++ enumerator)</a>
+</li>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4hostE">xrt::xclbin::host (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin2ipE">xrt::xclbin::ip (C++ class)</a>
 </li>
@@ -779,31 +1283,133 @@
 </li>
       <li><a href="xrt_native.main.html#_CPPv4NK3xrt6xclbin3mem8get_usedEv">xrt::xclbin::mem::get_used (C++ function)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_typeE">xrt::xclbin::mem::memory_type (C++ enum)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin11memory_typeE">xrt::xclbin::memory_type (C++ enum)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3areE">xrt::xclbin::mem::memory_type::are (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin19preallocated_globalE">xrt::xclbin::preallocated_global (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4bramE">xrt::xclbin::mem::memory_type::bram (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin9streamingE">xrt::xclbin::streaming (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr3E">xrt::xclbin::mem::memory_type::ddr3 (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin20streaming_connectionE">xrt::xclbin::streaming_connection (C++ enumerator)</a>
 </li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4ddr4E">xrt::xclbin::mem::memory_type::ddr4 (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4dramE">xrt::xclbin::mem::memory_type::dram (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type3hbmE">xrt::xclbin::mem::memory_type::hbm (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4hostE">xrt::xclbin::mem::memory_type::host (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type19preallocated_globalE">xrt::xclbin::mem::memory_type::preallocated_global (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type9streamingE">xrt::xclbin::mem::memory_type::streaming (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type20streaming_connectionE">xrt::xclbin::mem::memory_type::streaming_connection (C++ enumerator)</a>
-</li>
-      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin3mem11memory_type4uramE">xrt::xclbin::mem::memory_type::uram (C++ enumerator)</a>
+      <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin4uramE">xrt::xclbin::uram (C++ enumerator)</a>
 </li>
       <li><a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEPK4axlf">xrt::xclbin::xclbin (C++ function)</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6stringE">[1]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinERKNSt6vectorIcEE">[2]</a>, <a href="xrt_native.main.html#_CPPv4N3xrt6xclbin6xclbinEv">[3]</a>
+</li>
+      <li><a href="pyxrt.html#pyxrt.xrt_info_device">xrt_info_device (class in pyxrt)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOAddress">xrtBOAddress (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOAlloc">xrtBOAlloc (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOAllocUserPtr">xrtBOAllocUserPtr (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOCopy">xrtBOCopy (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOExport">xrtBOExport (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOFree">xrtBOFree (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOImport">xrtBOImport (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOMap">xrtBOMap (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBORead">xrtBORead (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOSize">xrtBOSize (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOSubAlloc">xrtBOSubAlloc (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOSync">xrtBOSync (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBOWrite">xrtBOWrite (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBufferFlags">xrtBufferFlags (C type)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtBufferHandle">xrtBufferHandle (C type)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceClose">xrtDeviceClose (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceGetXclbinUUID">xrtDeviceGetXclbinUUID (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceHandle">xrtDeviceHandle (C type)</a>, <a href="xrt_native.main.html#c.xrtDeviceHandle">[1]</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceLoadXclbin">xrtDeviceLoadXclbin (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceLoadXclbinFile">xrtDeviceLoadXclbinFile (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceLoadXclbinHandle">xrtDeviceLoadXclbinHandle (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceLoadXclbinUUID">xrtDeviceLoadXclbinUUID (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceOpen">xrtDeviceOpen (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceOpenByBDF">xrtDeviceOpenByBDF (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtDeviceOpenFromXcl">xrtDeviceOpenFromXcl (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtIniStringSet">xrtIniStringSet (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtIniUintSet">xrtIniUintSet (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelArgGroupId">xrtKernelArgGroupId (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelArgOffset">xrtKernelArgOffset (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelClose">xrtKernelClose (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelHandle">xrtKernelHandle (C type)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelReadRegister">xrtKernelReadRegister (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelRun">xrtKernelRun (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtKernelWriteRegister">xrtKernelWriteRegister (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtMemoryGroup">xrtMemoryGroup (C type)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtPLKernelOpen">xrtPLKernelOpen (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtPLKernelOpenExclusive">xrtPLKernelOpenExclusive (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunClose">xrtRunClose (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunHandle">xrtRunHandle (C type)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunOpen">xrtRunOpen (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunSetArg">xrtRunSetArg (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunSetCallback">xrtRunSetCallback (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunStart">xrtRunStart (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunState">xrtRunState (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunUpdateArg">xrtRunUpdateArg (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunWait">xrtRunWait (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtRunWaitFor">xrtRunWaitFor (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinAllocAxlf">xrtXclbinAllocAxlf (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinAllocFilename">xrtXclbinAllocFilename (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinAllocRawData">xrtXclbinAllocRawData (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinFreeHandle">xrtXclbinFreeHandle (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinGetData">xrtXclbinGetData (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinGetNumKernelComputeUnits">xrtXclbinGetNumKernelComputeUnits (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinGetNumKernels">xrtXclbinGetNumKernels (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinGetUUID">xrtXclbinGetUUID (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinGetXSAName">xrtXclbinGetXSAName (C function)</a>
+</li>
+      <li><a href="xrt_native.main.html#c.xrtXclbinHandle">xrtXclbinHandle (C type)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -829,7 +1435,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

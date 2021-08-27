@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,8 +55,6 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -387,11 +385,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -410,6 +408,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -419,9 +421,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/system_requirements.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/system_requirements.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -490,11 +490,11 @@
 <div class="section" id="host-platform-for-pcie-accelerator-cards">
 <h2>Host Platform for PCIe Accelerator Cards<a class="headerlink" href="#host-platform-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
 <ol class="arabic simple">
-<li><p>x86_64</p></li>
-<li><p>AARCH64</p></li>
-<li><p>PPC64LE</p></li>
+<li>x86_64</li>
+<li>AARCH64</li>
+<li>PPC64LE</li>
 </ol>
-<p>Supported Xilinx® Accelerator Cards are listed in <span class="xref std std-ref">platforms.rst</span>.</p>
+<p>Supported Xilinx® Accelerator Cards are listed in <a class="reference internal" href="platforms.html"><span class="doc">XRT and Vitis™ Platform Overview</span></a> .</p>
 </div>
 <div class="section" id="xrt-software-stack-for-pcie-accelerator-cards">
 <h2>XRT Software Stack for PCIe Accelerator Cards<a class="headerlink" href="#xrt-software-stack-for-pcie-accelerator-cards" title="Permalink to this headline">¶</a></h2>
@@ -502,8 +502,8 @@
 <p>The XRT software stack is tested on RHEL/CentOS and Ubuntu.
 For the detailed list of supported OS, please refer to the specific release versions of <a class="reference external" href="https://www.xilinx.com/search/site-keyword-search.html#q=ug1451">UG1451 XRT Release Notes</a>.</p>
 <p>XRT is needed on both application development and deployment environments.</p>
-<p>To install XRT on the host, please refer to page <span class="xref std std-ref">install.rst</span> for dependencies installation steps and XRT installation steps.</p>
-<p>To build a custom XRT package, please refer to page <span class="xref std std-ref">build.rst</span> for dependencies installation steps and building steps.</p>
+<p>To install XRT on the host, please refer to page <a class="reference internal" href="install.html"><span class="doc">XRT Installation</span></a>. for dependencies installation steps and XRT installation steps.</p>
+<p>To build a custom XRT package, please refer to page <a class="reference internal" href="build.html"><span class="doc">Building the XRT Software Stack</span></a>. for dependencies installation steps and building steps.</p>
 </div>
 <div class="section" id="xrt-software-stack-for-embedded-platforms">
 <h2>XRT Software Stack for Embedded Platforms<a class="headerlink" href="#xrt-software-stack-for-embedded-platforms" title="Permalink to this headline">¶</a></h2>
@@ -512,7 +512,7 @@ For the detailed list of supported OS, please refer to the specific release vers
 <p>If embedded processor native compile is to be used, XRT, xrt-dev and GCC needs to be installed on the target embedded system rootfs.</p>
 <p>If application is developed on a server with cross compiling technique, XRT needs to be installed into sysroot. The application can be cross compiled against the sysroot.
 XRT for server is not required on the cross compile server.</p>
-<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <span class="xref std std-ref">yocto.rst</span>.</p>
+<p>The embedded platform for deployment should have XRT and ZOCL installed. For details about building embedded platforms please refer to <a class="reference internal" href="yocto.html"><span class="doc">XRT Setup for Embedded Flow</span></a>.</p>
 </div>
 </div>
 
@@ -545,7 +545,7 @@ XRT for server is not required on the cross compile server.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

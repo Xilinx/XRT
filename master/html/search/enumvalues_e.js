@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['thermals_260',['thermals',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa21e4ef75cfe1464c2e48ed75dace82af',1,'xrt::info']]]
+  ['uram_271',['uram',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525fa2d7c24ccabd5da82aa90c666185c369d',1,'xrt::xclbin::mem']]]
 ];

@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,12 +55,10 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRT/Board Debug FAQ" href="debug-faq.html" />
+    <link rel="next" title="XRT Python Bindings" href="pyxrt.html" />
     <link rel="prev" title="Accessing vsec within VM" href="vsec.html" /> 
 	</head>
 	<body>
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul>
@@ -426,6 +424,10 @@
 </ul>
 </li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -435,9 +437,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/security.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/security.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -503,8 +503,8 @@
             
   <span class="target" id="security-rst"></span><div class="section" id="security-of-alveo-platform">
 <h1>Security of Alveo Platform<a class="headerlink" href="#security-of-alveo-platform" title="Permalink to this headline">¶</a></h1>
-<div class="align-center figure align-default" id="id1">
-<img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /><p class="caption"><span class="caption-text">Alveo shell mgmt and user components, data and control paths</span><a class="headerlink" href="#id1" title="Permalink to this image">¶</a></p>
+<div class="align-center figure" id="id1">
+<img alt="_images/XSA-shell.svg" src="_images/XSA-shell.svg" /><p class="caption"><span class="caption-text">Alveo shell mgmt and user components, data and control paths</span></p>
 </div>
 <p>Security is built into Alveo platform hardware and software architecture. The platform
 is made up of two physical partitions: an immutable Shell and user compiled User partition.
@@ -513,13 +513,13 @@ in classic FPGA terminology) in the well defined User partition while the static
 provides key infrastructure services. Alveo shells assume PCIe host (with access to PF0) is
 part of <em>Root-of-Trust</em>. The following features reinforce security of the platform:</p>
 <ol class="arabic simple">
-<li><p>Two physical function shell design</p></li>
-<li><p>Clearly classified trusted vs untrusted shell peripherals</p></li>
-<li><p>Signing of xclbins</p></li>
-<li><p>AXI Firewall</p></li>
-<li><p>Well-defined compute kernel execution model</p></li>
-<li><p>No direct access to PCIe TLP from User partition</p></li>
-<li><p>Treating User partition as untrused partition</p></li>
+<li>Two physical function shell design</li>
+<li>Clearly classified trusted vs untrusted shell peripherals</li>
+<li>Signing of xclbins</li>
+<li>AXI Firewall</li>
+<li>Well-defined compute kernel execution model</li>
+<li>No direct access to PCIe TLP from User partition</li>
+<li>Treating User partition as untrused partition</li>
 </ol>
 <div class="section" id="shell">
 <h2>Shell<a class="headerlink" href="#shell" title="Permalink to this headline">¶</a></h2>
@@ -554,8 +554,8 @@ memory from kernels in the User partition. With this feature kernels can initiat
 transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
 PCIe from non-compliant transfers.</p>
 <div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Features <span class="xref std std-ref">sb.rst</span> and <span class="xref std std-ref">p2p.rst</span> are not available in all shells.</p>
+<p class="first admonition-title">Note</p>
+<p class="last">Features <span class="xref std std-ref">sb.rst</span> and <span class="xref std std-ref">p2p.rst</span> are not available in all shells.</p>
 </div>
 <p>For more information on firewall protection see <a class="reference internal" href="#firewall">Firewall</a> section below.</p>
 <p>For shell update see <a class="reference internal" href="#shell-update">Shell Update</a> section below.</p>
@@ -564,51 +564,51 @@ PCIe from non-compliant transfers.</p>
 <h3>PCIe Topology<a class="headerlink" href="#pcie-topology" title="Permalink to this headline">¶</a></h3>
 <p>As mentioned before Alveo platforms have two physical function architecture where each function has its
 own BARs. The table below gives overview of the topology and functionality.</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 3%" />
-<col style="width: 4%" />
-<col style="width: 9%" />
-<col style="width: 84%" />
+<col width="3%" />
+<col width="4%" />
+<col width="9%" />
+<col width="84%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>PF</p></th>
-<th class="head"><p>BAR</p></th>
-<th class="head"><p>Driver</p></th>
-<th class="head"><p>Purpose</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">PF</th>
+<th class="head">BAR</th>
+<th class="head">Driver</th>
+<th class="head">Purpose</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>0</p></td>
-<td><p>xclmgmt</p></td>
-<td><p>Memory mapped access to privileged IPs in the shell as shown
-in the Figure above.</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>0</td>
+<td>xclmgmt</td>
+<td>Memory mapped access to privileged IPs in the shell as shown
+in the Figure above.</td>
 </tr>
-<tr class="row-odd"><td><p>0</p></td>
-<td><p>2</p></td>
-<td><p>xclmgmt</p></td>
-<td><p>Setup MSI-X vector table</p></td>
+<tr class="row-odd"><td>0</td>
+<td>2</td>
+<td>xclmgmt</td>
+<td>Setup MSI-X vector table</td>
 </tr>
-<tr class="row-even"><td><p>1</p></td>
-<td><p>0</p></td>
-<td><p>xocl</p></td>
-<td><p>Access to register maps of user compiled compute units in the
-DFX region</p></td>
+<tr class="row-even"><td>1</td>
+<td>0</td>
+<td>xocl</td>
+<td>Access to register maps of user compiled compute units in the
+DFX region</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>2</p></td>
-<td><p>xocl</p></td>
-<td><p>Memory mapped access to XDMA/QDMA PCIe DMA engine programming
-registers</p></td>
+<tr class="row-odd"><td>1</td>
+<td>2</td>
+<td>xocl</td>
+<td>Memory mapped access to XDMA/QDMA PCIe DMA engine programming
+registers</td>
 </tr>
-<tr class="row-even"><td><p>1</p></td>
-<td><p>4</p></td>
-<td><p>xocl</p></td>
-<td><p>CPU direct and P2P access to device attached DDR/HBM/PL-RAM
+<tr class="row-even"><td>1</td>
+<td>4</td>
+<td>xocl</td>
+<td>CPU direct and P2P access to device attached DDR/HBM/PL-RAM
 memory.
 By default its size is limited to 256MB but can be expanded
-using XRT xbutil tool as described in <span class="xref std std-ref">p2p.rst</span></p></td>
+using XRT xbutil tool as described in <span class="xref std std-ref">p2p.rst</span></td>
 </tr>
 </tbody>
 </table>
@@ -678,27 +678,27 @@ Shell are going through fixed pins exposed by Shell.</p>
 XRT <strong>xclbinutil</strong> utility. The signing adds a PKCS7 signature at the end of xclbin. The signing
 certificate is then registered with appropriate key-ring. XRT supports one of three levels of
 security which can be configured with XRT <strong>xbmgmt</strong> utility running with root privileges.</p>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 19%" />
-<col style="width: 81%" />
+<col width="19%" />
+<col width="81%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Security level</p></th>
-<th class="head"><p>Xclbin signature verification behavior of xclmgmt driver</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Security level</th>
+<th class="head">Xclbin signature verification behavior of xclmgmt driver</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-even"><td><p>0</p></td>
-<td><p>No verification</p></td>
+<tbody valign="top">
+<tr class="row-even"><td>0</td>
+<td>No verification</td>
 </tr>
-<tr class="row-odd"><td><p>1</p></td>
-<td><p>Signature verification enforced using signing certificate in
-<em>.xilinx_fpga_xclbin_keys</em> key-ring</p></td>
+<tr class="row-odd"><td>1</td>
+<td>Signature verification enforced using signing certificate in
+<em>.xilinx_fpga_xclbin_keys</em> key-ring</td>
 </tr>
-<tr class="row-even"><td><p>2</p></td>
-<td><p>Linux is running in UEFI secure mode and signature verification
-is enforced using signing certificate in <em>system</em> key-ring</p></td>
+<tr class="row-even"><td>2</td>
+<td>Linux is running in UEFI secure mode and signature verification
+is enforced using signing certificate in <em>system</em> key-ring</td>
 </tr>
 </tbody>
 </table>
@@ -769,54 +769,54 @@ deployment model for FaaS operators.</p>
 </div>
 <div class="section" id="summary">
 <h3>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h3>
-<table class="docutils align-default">
+<table border="1" class="docutils">
 <colgroup>
-<col style="width: 31%" />
-<col style="width: 22%" />
-<col style="width: 22%" />
-<col style="width: 25%" />
+<col width="31%" />
+<col width="22%" />
+<col width="22%" />
+<col width="25%" />
 </colgroup>
-<thead>
-<tr class="row-odd"><th class="head" colspan="2" rowspan="2"><p>Behavior</p></th>
-<th class="head" colspan="2"><p>Deployment Model</p></th>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head" colspan="2" rowspan="2">Behavior</th>
+<th class="head" colspan="2">Deployment Model</th>
 </tr>
-<tr class="row-even"><th class="head"><p>Bare Metal</p></th>
-<th class="head"><p>Pass-through</p></th>
+<tr class="row-even"><th class="head">Bare Metal</th>
+<th class="head">Pass-through</th>
 </tr>
 </thead>
-<tbody>
-<tr class="row-odd"><td rowspan="2"><p>System admin
-trusts drivers</p></td>
-<td><p>xocl</p></td>
-<td><p>Yes</p></td>
-<td><p>No</p></td>
+<tbody valign="top">
+<tr class="row-odd"><td rowspan="2">System admin
+trusts drivers</td>
+<td>xocl</td>
+<td>Yes</td>
+<td>No</td>
 </tr>
-<tr class="row-even"><td><p>xclmgmt</p></td>
-<td><p>Yes</p></td>
-<td><p>Yes</p></td>
+<tr class="row-even"><td>xclmgmt</td>
+<td>Yes</td>
+<td>Yes</td>
 </tr>
-<tr class="row-odd"><td rowspan="2"><p>End user has
-root access</p></td>
-<td><p>xocl</p></td>
-<td><p>No</p></td>
-<td><p>Maybe</p></td>
+<tr class="row-odd"><td rowspan="2">End user has
+root access</td>
+<td>xocl</td>
+<td>No</td>
+<td>Maybe</td>
 </tr>
-<tr class="row-even"><td><p>xclmgmt</p></td>
-<td><p>No</p></td>
-<td><p>No</p></td>
+<tr class="row-even"><td>xclmgmt</td>
+<td>No</td>
+<td>No</td>
 </tr>
-<tr class="row-odd"><td colspan="2"><p>End user can crash device</p></td>
-<td><p>Yes</p></td>
-<td><p>Yes</p></td>
+<tr class="row-odd"><td colspan="2">End user can crash device</td>
+<td>Yes</td>
+<td>Yes</td>
 </tr>
-<tr class="row-even"><td colspan="2"><p>End user can crash PCIe bus</p></td>
-<td><p>No</p></td>
-<td><p>No</p></td>
+<tr class="row-even"><td colspan="2">End user can crash PCIe bus</td>
+<td>No</td>
+<td>No</td>
 </tr>
-<tr class="row-odd"><td colspan="2"><p>End user with root access
-can crash PCIe bus</p></td>
-<td><p>Yes</p></td>
-<td><p>No</p></td>
+<tr class="row-odd"><td colspan="2">End user with root access
+can crash PCIe bus</td>
+<td>Yes</td>
+<td>No</td>
 </tr>
 </tbody>
 </table>
@@ -914,7 +914,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="debug-faq.html" class="btn btn-neutral float-right" title="XRT/Board Debug FAQ" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="pyxrt.html" class="btn btn-neutral float-right" title="XRT Python Bindings" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="vsec.html" class="btn btn-neutral float-left" title="Accessing vsec within VM" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -927,7 +927,7 @@ API and a <em>wait for exec completion</em> API. These operations are exposed as
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>

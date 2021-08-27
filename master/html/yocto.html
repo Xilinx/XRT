@@ -40,10 +40,10 @@
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-        <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
-        <script src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -55,13 +55,11 @@
   <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
   <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Mailbox Subdevice Driver" href="mailbox.main.html" />
-    <link rel="prev" title="Legacy to new map" href="xbtools_map.html" /> 
+    <link rel="prev" title="Utility Migration Guide" href="xbtools_map.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -382,11 +380,11 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil2.html">xbutil (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt2.html">xbmgmt (Next Generation)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Legacy to new map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
 <ul class="current">
@@ -420,6 +418,10 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
 </ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Debug and Faqs</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
@@ -429,9 +431,7 @@
 			<p class="caption"><span class="caption-text">This Page</span></p>
 				<ul class="current">
 				  <li class="toctree-l1"><a href="_sources/yocto.rst.txt"
-						rel="nofollow">Show Source</a></li>
-					<li class="toctree-l1"><a href="https://github.com/Xilinx/XRT/blob/master/src/runtime_src/doc/toc/yocto.rst"
-						   rel="nofollow">View on GitHub</a></li>						
+						rel="nofollow">Show Source</a></li>						
 				</ul>
           
         </div>
@@ -546,13 +546,13 @@ If not, user can download this script without cloning the whole XRT repository.<
 </div>
 <p><cite>sysroot_overlay.sh</cite> arguments description:</p>
 <ul class="simple">
-<li><p><cite>-s / –sysroot</cite> is the sysroot to be overlaid.</p></li>
-<li><p><cite>-r / –rpms-file</cite> is the rpms file that contains the RPM file paths to be overlaid.</p></li>
+<li><cite>-s / –sysroot</cite> is the sysroot to be overlaid.</li>
+<li><cite>-r / –rpms-file</cite> is the rpms file that contains the RPM file paths to be overlaid.</li>
 </ul>
 <p>This command depends on the following tools in the system. If the tools are not available, please install them.</p>
 <ul class="simple">
-<li><p>rpm2cpio</p></li>
-<li><p>cpio</p></li>
+<li>rpm2cpio</li>
+<li>cpio</li>
 </ul>
 </div>
 </div>
@@ -569,8 +569,8 @@ Please read the Software Platform section of Xilinx® Document <a class="referen
 <h3>Prerequisite<a class="headerlink" href="#prerequisite" title="Permalink to this headline">¶</a></h3>
 <p>Before start to build Linux image, make sure your have:</p>
 <ol class="arabic simple">
-<li><p>PetaLinux tool installed and setup;</p></li>
-<li><p>Vivado exported expandable XSA for your platform;</p></li>
+<li>PetaLinux tool installed and setup;</li>
+<li>Vivado exported expandable XSA for your platform;</li>
 </ol>
 <p>The PetaLinux tool can be downloaded from <a class="reference external" href="https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-design-tools.html">Xilinx Download Center</a>.</p>
 </div>
@@ -608,26 +608,27 @@ $ petalinux-build
 <p>You can find all output files from images/linux directory in your PetaLinux project.
 These files can be used when creating an embedded platform.</p>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></p></li>
+<li><code class="docutils literal notranslate"><span class="pre">image.ub</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">bl31.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">fsbl.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">pmufw.elf</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">u-boot.elf</span></code></li>
 </ul>
 <div class="section" id="use-an-asynchronous-version-of-xrt-for-petalinux-project">
 <h4>Use an Asynchronous Version of XRT for PetaLinux Project<a class="headerlink" href="#use-an-asynchronous-version-of-xrt-for-petalinux-project" title="Permalink to this headline">¶</a></h4>
 <p>The PetaLinux built-in XRT version is verified by Xilinx. If in any case user would like to use a different version of XRT in PetaLinux project, here’s the procedure.</p>
 <p>Please note the intermediate versions of XRT are not tested by Xilinx.</p>
 <ol class="arabic">
-<li><p>Create the following files in <cite>project-spec/meta-user</cite> directory.</p>
+<li><p class="first">Create the following files in <cite>project-spec/meta-user</cite> directory.</p>
 <blockquote>
 <div><ul class="simple">
-<li><p>recipes-xrt/xrt/xrt_git.bbappend</p></li>
-<li><p>recipes-xrt/zocl/zocl_git.bbappend</p></li>
+<li>recipes-xrt/xrt/xrt_git.bbappend</li>
+<li>recipes-xrt/zocl/zocl_git.bbappend</li>
 </ul>
 </div></blockquote>
 </li>
-<li><p>Add the following contents to the above two files.</p></li>
+<li><p class="first">Add the following contents to the above two files.</p>
+</li>
 </ol>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">BRANCH</span> <span class="o">=</span> <span class="s2">&quot;master&quot;</span>
 <span class="n">SRCREV</span> <span class="o">=</span> <span class="s2">&quot;&lt;commit ID&gt;&quot;</span>
@@ -635,7 +636,7 @@ These files can be used when creating an embedded platform.</p>
 </div>
 <p>The <cite>BRANCH</cite> parameter should match XRT branch name and <cite>SRCREV</cite> should match the commit ID of XRT git history in <a class="reference external" href="https://github.com/Xilinx/XRT/commits/master">XRT github repo</a>.</p>
 <ol class="arabic simple" start="3">
-<li><p>Build PetaLinux with <cite>petalinux-build</cite> command.</p></li>
+<li>Build PetaLinux with <cite>petalinux-build</cite> command.</li>
 </ol>
 </div>
 </div>
@@ -676,7 +677,7 @@ $ petalinux-build
         <a href="mailbox.main.html" class="btn btn-neutral float-right" title="Mailbox Subdevice Driver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xbtools_map.html" class="btn btn-neutral float-left" title="Legacy to new map" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xbtools_map.html" class="btn btn-neutral float-left" title="Utility Migration Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -686,7 +687,7 @@ $ petalinux-build
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on July 01, 2021.
+        Last updated on August 27, 2021.
       </span>
 
     </p>
