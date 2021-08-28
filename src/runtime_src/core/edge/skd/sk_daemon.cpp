@@ -147,9 +147,10 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 {
   void *sk_handle;
   void *kernel;
+  kernel_t old_kernel;
   struct sk_operations ops;
   uint32_t *args_from_host;
-  int32_t kernel_return;
+  int32_t kernel_return = 0;
   unsigned int boh;
   int ret;
   
@@ -175,6 +176,13 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
   // Parse PS kernel for arguments and map buffers
   std::vector<xrt_core::pskernel::kernel_argument> args = xrt_core::pskernel::pskernel_parse(path,name);
+  syslog(LOG_INFO,"PS kernel arguments parsed.  Num Arguments = %d\n",args.size());
+  
+  old_kernel = (kernel_t)dlsym(sk_handle, name);
+  if (!old_kernel) {
+    syslog(LOG_ERR, "Cannot find kernel %s\n", name);
+    return;
+  }
 
   kernel = dlsym(sk_handle, name);
   if (!kernel) {
@@ -205,21 +213,23 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   void *values[args.size()];
   ffi_arg rc;
   void* ffi_arg_values[args.size()];
-
+  
   // Buffer Objects
-  std::vector<unsigned int> boHandles;
-  std::vector<std::pair<void*,int> > bos;
+  unsigned int boHandles[args.size()];
+  void* bos[args.size()];
+  uint64_t boSize[args.size()];
+  std::vector<int> bo_list;
   
   for(int i=0;i<args.size();i++) {
     ffi_args[i] = &args[i].ffitype;
   }
   
-  if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_sint32,ffi_args) != FFI_OK) {
+  if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_uint32,ffi_args) != FFI_OK) {
     syslog(LOG_ERR, "Cannot prep FFI arguments!");
     return;
+  } else {
+    syslog(LOG_INFO, "FFI prep done!\n");
   }
-
-
   
   while (1) {
     ret = waitNextCmd(cu_idx);
@@ -230,24 +240,30 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       break;
     }
 
+    syslog(LOG_INFO, "Got new kernel command!\n");
+    
     /* Reg file indicates the kernel should not be running. */
     if (!(args_from_host[0] & 0x1))
       continue; //AP_START bit is not set; New Cmd is not available
 
     // Original PS Kernel implementation
-    if(args.size()==2 && &args[0].ffitype==&ffi_type_pointer && &args[1].ffitype==&ffi_type_pointer && args[1].name.compare("ops")==0) {
-      ffi_arg_values[0] = &args_from_host[1];
-      ffi_arg_values[1] = &ops;
+    if(args.size()==2 && args[1].name.compare("ops")==0) {
     } else {
       // FFI PS Kernel implementation
       // Map buffers used by kernel
       for(int i=0;i<args.size();i++) {
 	if(args[i].type == xrt_core::pskernel::kernel_argument::argtype::global) {
-	  boHandles.emplace_back(getHostBO((unsigned long)&args_from_host[args[i].offset],args_from_host[args[i].offset+2]));
-	  std::pair<void*,int> bo = std::make_pair(mapBO(boHandles.back(),true),args_from_host[args[i].offset+2]);
-	  bos.emplace_back(bo);
-
-	  ffi_arg_values[i] = bos.back().first;
+	  syslog(LOG_INFO, "Arg Offset = %d",args[i].offset);
+	  uint64_t *buf_addr_ptr = (uint64_t*)(&args_from_host[args[i].offset]);
+	  uint64_t buf_addr = reinterpret_cast<uint64_t>(*buf_addr_ptr);
+	  uint64_t *buf_size_ptr = (uint64_t*)(&args_from_host[args[i].offset+2]);
+	  uint64_t buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
+	  boSize[i] = buf_size;
+	  
+	  boHandles[i] = xclGetHostBO(devHdl,buf_addr,buf_size);
+	  bos[i] = xclMapBO(devHdl,boHandles[i],true);
+	  ffi_arg_values[i] = &bos[i];
+	  bo_list.emplace_back(i);
 	} else {
 	  ffi_arg_values[i] = &args_from_host[args[i].offset];
 	}
@@ -255,18 +271,20 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     
     }
 
-    ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
+    if(args.size()==2 && args[1].name.compare("ops")==0) {
+      kernel_return = old_kernel(&args_from_host[1],&ops);
+    } else {
+      ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
+    }
     args_from_host[1] = (uint32_t)kernel_return;
 
     // Unmap Buffers
-    if(args.size()==2 && &args[0].ffitype==&ffi_type_pointer && &args[1].ffitype==&ffi_type_pointer && args[1].name.compare("ops")==0) {
+    if(args.size()==2 && args[1].name.compare("ops")==0) {
       // Nothing to be done here for original PS kernel implementation
     } else {
-      for(auto bo : bos) {
-	munmap(bo.first,bo.second);
-      }
-      for(auto boHandle : boHandles) {
-	freeBO(boHandle);
+      for(auto i:bo_list) {
+	munmap(bos[i],boSize[i]);
+	xclFreeBO(devHdl,boHandles[i]);
       }
     }
   }
