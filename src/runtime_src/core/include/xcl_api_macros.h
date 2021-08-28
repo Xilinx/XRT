@@ -583,6 +583,24 @@ mtx.unlock();
   xclCopyBO_SET_PROTO_RESPONSE(); \
   FREE_BUFFERS();
 
+//----------xclCopyBOFromFd-------------------
+#define xclCopyBOFromFd_SET_PROTOMESSAGE(filename,dest_boHandle,size,src_offset,dst_offset) \
+  c_msg.set_dst_handle(dest_boHandle); \
+  c_msg.set_src_filename(filename); \
+  c_msg.set_size(size); \
+  c_msg.set_src_offset(src_offset); \
+  c_msg.set_dst_offset(dst_offset);
+
+#define xclCopyBOFromFd_SET_PROTO_RESPONSE() \
+  ack = r_msg.ack();
+
+#define xclCopyBOFromFd_RPC_CALL(func_name,filename,dest_boHandle,size,src_offset,dst_offset) \
+  RPC_PROLOGUE(func_name); \
+  xclCopyBOFromFd_SET_PROTOMESSAGE(filename, dest_boHandle, size, src_offset, dst_offset); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclCopyBOFromFd_SET_PROTO_RESPONSE(); \
+  FREE_BUFFERS();
+
 //----------xclImportBO-------------------
 #define xclImportBO_SET_PROTOMESSAGE(filename,offset,size) \
     c_msg.set_dst_filename(filename); \

@@ -295,6 +295,19 @@ message xclCopyBO_response {
   optional bool ack = 1;
 }
 
+// xclCopyBOFromFd
+message xclCopyBOFromFd_call {
+  optional uint64 dst_handle = 1;
+  optional string src_filename = 2;
+  optional uint64 size = 3;
+  optional uint64 src_offset = 4;
+  optional uint64 dst_offset = 5;
+}
+
+message xclCopyBOFromFd_response {
+  optional bool ack = 1;
+}
+
 //QDMA SUPPORT
 // xclCreateQueue
 message xclCreateQueue_call {

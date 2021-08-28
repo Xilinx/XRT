@@ -1434,6 +1434,16 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     if (!ack)
       return -1;
   }
+  else if (sBO->fd >= 0) {
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(sBO->fd);
+    if (fItr != mFdToFileNameMap.end()) {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBOFromFd_RPC_CALL(xclCopyBOFromFd, sFileName, dBO->base, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;
+  }
   else {
     std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
     return -1;
