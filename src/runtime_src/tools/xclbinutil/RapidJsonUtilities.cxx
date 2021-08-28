@@ -123,7 +123,7 @@ void recursive_transformation(const std::string& scope,
 
       if (attribute.IsObject()) {
         for (auto itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) {
-          recursive_transformation(scope + "[]" + itr2->name.GetString(), itr2, keyTypeCollection);
+          recursive_transformation(scope + "[]::" + itr2->name.GetString(), itr2, keyTypeCollection);
         }
       }
     }
@@ -442,7 +442,7 @@ void recursive_collect_array( const std::string& scope,
       return;
 
     for (auto itr = propertiesItr->value.MemberBegin(); itr != propertiesItr->value.MemberEnd(); ++itr) 
-      recursive_collect_properties(scope + "[]" + itr->name.GetString(), itr, keyTypeCollection);
+      recursive_collect_properties(scope + "[]::" + itr->name.GetString(), itr, keyTypeCollection);
 
     return; 
   }

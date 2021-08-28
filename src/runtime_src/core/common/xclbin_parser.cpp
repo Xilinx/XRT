@@ -346,7 +346,7 @@ get_max_cu_size(const char* xml_data, size_t xml_size)
         auto argnm = xml_arg.second.get<std::string>("<xmlattr>.name");
         auto fmt = boost::format
           ("Invalid kernel offset in xclbin for kernel (%s) argument (%s).\n"
-           "The offset (0x%x) and size (0x%x) exceeds kernel address range (0x%d)")
+           "The offset (0x%x) and size (0x%x) exceeds kernel address range (0x%x)")
           % knm % argnm % ofs % sz % address_range;
         throw xrt_core::error(fmt.str());
       }

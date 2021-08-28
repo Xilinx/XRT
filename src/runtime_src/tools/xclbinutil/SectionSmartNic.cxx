@@ -190,11 +190,11 @@ readAndTransposeByteFiles_recursive(const std::string& scope,
       for (auto itr2 = attribute.MemberBegin(); itr2 != attribute.MemberEnd(); ++itr2) {
 
         // Look "forward" to see if this dictionary contains the node of interest
-        std::string currentScope = scope + "[]" + itr2->name.GetString();
+        std::string currentScope = scope + "[]::" + itr2->name.GetString();
         if (get_expected_type(currentScope, keyTypeCollection) == XUtil::DType::byte_file) 
           renameCollection.push_back(std::string(itr2->name.GetString()));
 
-        readAndTransposeByteFiles_recursive(scope + "[]" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
+        readAndTransposeByteFiles_recursive(scope + "[]::" + itr2->name.GetString(), itr2, keyTypeCollection, allocator, relativeFromDir);
       }
 
       // Now that we are out of that "nasty" Iterator loop, rename the updated keys.

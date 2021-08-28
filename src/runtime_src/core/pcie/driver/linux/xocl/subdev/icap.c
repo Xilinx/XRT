@@ -2592,10 +2592,13 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
 	/*
 	 * don't check uuid if the xclbin is a lite one
-	 * the lite xclbin will have neither BITSTREAM nor SOFT_KERNEL 
+	 * the lite xclbin will not have BITSTREAM
+	 * we need the SOFT_KERNEL section since the OBJ and METADATA are
+	 * coupled together.
+	 * The OBJ (soft kernel) is not needed, we can use xclbinutil to
+	 * add a temp small OBJ to reduce the lite xclbin size
 	 */
-	if (header && (xrt_xclbin_get_section_hdr(xclbin, BITSTREAM) ||
-		xrt_xclbin_get_section_hdr(xclbin, SOFT_KERNEL))) {
+	if (header && xrt_xclbin_get_section_hdr(xclbin, BITSTREAM)) {
 		ICAP_INFO(icap, "check interface uuid");
 		if (!XDEV(xdev)->fdt_blob) {
 			ICAP_ERR(icap, "did not find platform dtb");

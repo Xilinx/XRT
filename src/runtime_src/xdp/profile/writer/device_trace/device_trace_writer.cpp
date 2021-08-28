@@ -92,8 +92,14 @@ namespace xdp {
     // Create structure for all CUs in the xclbin
     for (auto iter : xclbin->cus) {
       ComputeUnitInstance* cu = iter.second ;
-      fout << "Group_Start,Compute Unit " << cu->getName() 
-           << ",Activity in accelerator "<< cu->getKernelName() 
+      fout << "Group_Start,Compute Unit " << cu->getName();
+
+      if(-1 == cu->getAccelMon() && !(cu->dataTransferEnabled())
+                                 && !(cu->streamEnabled())) {
+        fout << " - No Trace";
+      }
+
+      fout << ",Activity in accelerator "<< cu->getKernelName() 
            << ":" << cu->getName() << std::endl ;
 
       writeCUExecutionStructure(xclbin, cu, rowCount) ;
@@ -111,6 +117,10 @@ namespace xdp {
                                                     ComputeUnitInstance* cu,
                                                     uint32_t& rowCount)
   {
+    if(-1 == cu->getAccelMon()) { 
+      // No trace enabled AMs are present
+      return;
+    } 
     fout << "Dynamic_Row_Summary," << ++rowCount
          << ",Executions,Execution in accelerator " 
          << cu->getName() << std::endl;

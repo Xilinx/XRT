@@ -219,5 +219,7 @@ int xocl_cu_map_addr(struct xocl_dev *xdev, u32 cu_idx,
 		     struct drm_file *filp, unsigned long size, u32 *addrp);
 u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds kds_cfg);
+void xocl_kds_cus_enable(struct xocl_dev *xdev);
+void xocl_kds_cus_disable(struct xocl_dev *xdev);
 
 #endif

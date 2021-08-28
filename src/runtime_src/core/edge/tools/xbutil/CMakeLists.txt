@@ -49,4 +49,4 @@ else()
     )
 endif()
 
-install (TARGETS xbutil RUNTIME DESTINATION ${XRT_INSTALL_DIR}/bin)
+install (TARGETS xbutil RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
