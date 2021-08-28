@@ -21,6 +21,7 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 #include <linux/hashtable.h>
 #endif
+#include "xocl_errors.h"
 #include "version.h"
 #include "common.h"
 
@@ -354,10 +355,18 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 
 static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 {
+	struct xclErrorLast err_last;
+
 	BUG_ON(!xdev);
 
 	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
 		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+		err_last.pid = 0;
+		err_last.ts = 0; //TODO timestamp
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INUSE, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return true;
 	}
 	return false;
@@ -377,9 +386,17 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	void *ulp_blob;
 	void *kernels;
 	int rc;
+	struct xclErrorLast err_last;
 
+
+	err_last.pid = 0;
+	err_last.ts = 0; //TODO timestamp
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INCOMPATIBLE, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return -EINVAL;
 	}
 
@@ -387,10 +404,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EFAULT;
 	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
 		userpf_err(xdev, "invalid xclbin magic string\n");
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INVALID, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return -EINVAL;
 	}
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
 		userpf_err(xdev, "invalid xclbin uuid\n");
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INVALID, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
+		xocl_insert_error_record(&xdev->core, &err_last);
 		return -EINVAL;
 	}
 
@@ -614,6 +639,10 @@ done:
 		err = size;
 	if (err) {
 		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_FAIL, 
+			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
+			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
+		xocl_insert_error_record(&xdev->core, &err_last);
 	}
 	else
 		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
