@@ -458,6 +458,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xmc_reg_base>                       ("xmc", "reg_base");
   emplace_sysfs_getput<query::xmc_scaling_enabled>             ("xmc", "scaling_enabled");
   emplace_sysfs_getput<query::xmc_scaling_override>            ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_getput<query::xmc_scaling_temp_override>       ("xmc", "scaling_threshold_temp_override");
   emplace_sysfs_put<query::xmc_scaling_reset>                  ("xmc", "scaling_reset");
   emplace_sysfs_get<query::m2m>                                ("m2m", "");
   emplace_sysfs_get<query::nodma>                              ("", "nodma");
