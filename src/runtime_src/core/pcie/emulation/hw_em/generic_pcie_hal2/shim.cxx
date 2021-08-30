@@ -2926,7 +2926,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   } 
   else if (sBO->fd >= 0) {
-    //when src is only p2p buffer
+    //As per the hemants comments, when src buffer is p2p buffer, we better copy from device to host and copy from host to another device.
     unsigned char temp_buffer[size];
     // copy data from source buffer to temp buffer
     if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
