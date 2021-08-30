@@ -737,7 +737,12 @@ get_aie_sim_options()
   return value;
 }
 
-
+inline bool
+get_flag_sw_emu_kernel_debug()
+{
+  static bool value = detail::get_bool_value("Emulation.kernel-dbg", false);
+  return value;
+}
 
 }} // config,xrt_core
 
