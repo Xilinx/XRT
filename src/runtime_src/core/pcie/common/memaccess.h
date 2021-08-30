@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author: Sonal Santan
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -101,7 +101,22 @@ namespace xcldev {
       uint64_t m_base_address;
       uint64_t m_size;
       int m_index;
-      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex) : m_base_address(aAddr), m_size(aSize), m_index(aIndex) {}
+      uint8_t m_type;
+      mem_bank_t (uint64_t aAddr, uint64_t aSize, int aIndex, uint8_t aType) : m_base_address(aAddr), m_size(aSize), m_index(aIndex), m_type(aType) {}
+    };
+
+    std::map <int, std::string> bankEnumStringMap = {
+      { MEM_DDR3, "DDR3" },
+      { MEM_DDR4, "DDR4" },
+      { MEM_DRAM, "DRAM" },
+      { MEM_STREAMING, "MEM_STREAMING" },
+      { MEM_PREALLOCATED_GLOB, "MEM_PREALLOCATED_GLOB" },
+      { MEM_ARE, "MEM_ARE" },
+      { MEM_HBM, "HBM" },
+      { MEM_BRAM, "BRAM" },
+      { MEM_URAM, "URAM" },
+      { MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION" },
+      { MEM_HOST, "MEM_HOST" },
     };
 
     /*
@@ -148,7 +163,7 @@ namespace xcldev {
         mem_topology *map = (mem_topology *)buffer;
         for( int i = 0; i < map->m_count; i++ ) {
             if( map->m_mem_data[i].m_used && map->m_mem_data[i].m_type != MEM_STREAMING ) {
-                aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i );
+                aBanks.emplace_back( map->m_mem_data[i].m_base_address, map->m_mem_data[i].m_size*1024, i, map->m_mem_data[i].m_type );
             }
         }
         std::sort (aBanks.begin(), aBanks.end(),
@@ -331,14 +346,6 @@ namespace xcldev {
         return -1;
       }
 
-      if (bankcnt > 1) {
-        std::cout << "INFO: Reading " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << " straddles " << bankcnt << " banks" << std::dec << std::endl;
-      }
-      else {
-        std::cout << "INFO: Reading from single bank, " << std::dec << size << " bytes from DDR/HBM/PLRAM address 0x"  << std::hex << startAddr
-                                    << std::dec << std::endl;
-      }
       std::ofstream outFile(aFilename, std::ofstream::out | std::ofstream::binary);
 
       size_t count = size;
@@ -353,6 +360,12 @@ namespace xcldev {
           available_bank_size = it->m_size - (startAddr - it->m_base_address);
         }
         if (size != 0) {
+          if (it->m_type > bankEnumStringMap.size()) {
+            std::cout << boost::format("Error: Invalid Bank type (%d) received\n") % it->m_type;
+            return -1;
+          }
+          std::string bank_name = bankEnumStringMap[it->m_type];
+          std::cout << boost::format("INFO: Reading %llu bytes from bank %s address 0x%x\n") % size % bankEnumStringMap[it->m_type] % startAddr;
           unsigned long long readsize = (size > available_bank_size) ? (unsigned long long) available_bank_size : size;
           if( readBank(outFile, startAddr, readsize) == -1) {
             return -1;
