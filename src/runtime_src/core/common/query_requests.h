@@ -98,6 +98,7 @@ enum class key_type
   xmc_reg_base,
   xmc_scaling_enabled,
   xmc_scaling_override,
+  xmc_scaling_temp_override,
   xmc_scaling_reset,
   xmc_qspi_status,
 
@@ -1000,6 +1001,20 @@ struct xmc_scaling_override: request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
   static const key_type key = key_type::xmc_scaling_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_temp_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_temp_override;
 
   virtual boost::any
   get(const device*) const = 0;
