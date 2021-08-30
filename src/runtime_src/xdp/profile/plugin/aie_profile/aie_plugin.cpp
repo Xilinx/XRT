@@ -349,18 +349,37 @@ namespace xdp {
       }
 
       // Compile list of tiles based on how its specified in setting
-      std::vector<xrt_core::edge::aie::tile_type> tiles;
+      std::vector<tile_type> tiles;
 
       if (vec.size() == 1) {
         // Capture all tiles across all graphs
         auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-        
+
         for (auto& graph : graphs) {
-          // TODO: include DMA-only tiles if and when required
-          //auto currTiles = xrt_core::edge::aie::get_event_tiles(device.get(), 
-          //    graph, static_cast<xrt_core::edge::aie::module_type>(module));
-          auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
-          std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
+          /*
+           * Core module profiling uses all unique core tiles in aie control
+           * Memory module profiling uses all unique core + dma tiles in aie control
+           */
+          auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
+              xrt_core::edge::aie::module_type::core);
+          if (!isCore) {
+            auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
+              xrt_core::edge::aie::module_type::dma);
+            std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(coreTiles));
+          }
+          std::sort(coreTiles.begin(), coreTiles.end(),
+            [](tile_type t1, tile_type t2) {
+                if (t1.row == t2.row)
+                  return t1.col > t2.col;
+                else
+                  return t1.row > t2.row;
+            }
+          );
+          std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(tiles),
+            [](tile_type t1, tile_type t2) {
+                return ((t1.col == t2.col) && (t1.row == t2.row));
+            }
+          );
         }
       }
       else if (vec.size() == 2) {
