@@ -355,18 +355,10 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 
 static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 {
-	struct xclErrorLast err_last;
-
 	BUG_ON(!xdev);
 
 	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
 		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
-		err_last.pid = 0;
-		err_last.ts = 0; //TODO timestamp
-		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INUSE, 
-			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
-			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
-		xocl_insert_error_record(&xdev->core, &err_last);
 		return true;
 	}
 	return false;
