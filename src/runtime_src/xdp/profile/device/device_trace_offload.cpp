@@ -280,9 +280,10 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   if (!host_buf)
     return;
 
-  process_queue_lock.lock();
   auto tmp = std::make_unique<char[]>(nBytes);
   std::memcpy(tmp.get(), host_buf, nBytes);
+  // Push new data into queue for processing
+  process_queue_lock.lock();
   m_data_queue.push(std::move(tmp));
   m_size_queue.push(nBytes);
   process_queue_lock.unlock();
