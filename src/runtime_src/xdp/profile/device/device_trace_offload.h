@@ -22,7 +22,10 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <queue>
 #include <functional>
+#include <memory>
+#include <cstring>
 
 #include "xdp/config.h"
 #include "core/include/xclperf.h"
@@ -105,6 +108,7 @@ private:
     std::mutex status_lock;
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
+    std::thread process_thread;
     bool continuous = false ;
 
     uint64_t sleep_interval_ms;
@@ -121,6 +125,9 @@ private:
     bool m_trbuf_full = false;
     bool trbuf_offload_done = false;
     uint64_t m_trbuf_addr = 0;
+    std::queue<std::unique_ptr<char[]>> m_data_queue;
+    std::queue<uint64_t> m_size_queue;
+    std::mutex process_queue_lock;
 
 protected:
     bool m_initialized = false;
@@ -139,6 +146,7 @@ private:
     void train_clock_continuous();
     void offload_device_continuous();
     void offload_finished();
+    void process_trace_continuous();
 
     // Clock Training Params
     bool m_force_clk_train = true;

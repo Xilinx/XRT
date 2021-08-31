@@ -48,6 +48,9 @@ DeviceTraceOffload::~DeviceTraceOffload()
   if (offload_thread.joinable()) {
     offload_thread.join();
   }
+  if (process_thread.joinable()) {
+    process_thread.join();
+  }
 }
 
 void DeviceTraceOffload::offload_device_continuous()
@@ -79,6 +82,45 @@ void DeviceTraceOffload::train_clock_continuous()
   offload_finished();
 }
 
+void DeviceTraceOffload::process_trace_continuous()
+{
+  bool q_read = false;
+  std::unique_ptr<char[]> buf;
+  uint64_t size = 0;
+  while (true) {
+    {
+      process_queue_lock.lock();
+      if (!m_data_queue.empty()) {
+        buf = std::move(m_data_queue.front());
+        size = m_size_queue.front();
+        m_data_queue.pop();
+        m_size_queue.pop();
+        q_read = true;
+      }
+      process_queue_lock.unlock();
+    }
+
+    // Processing takes a lot more time compared to everything else
+    if (q_read) {
+      dev_intf->parseTraceData(buf.get(), size, m_trace_vector);
+      buf.reset();
+      deviceTraceLogger->processTraceData(m_trace_vector);
+      m_trace_vector.clear();
+      q_read=false;
+    } else if (!should_continue()) {
+      break;
+    }
+
+    {
+      process_queue_lock.lock();
+      bool q_empty = m_data_queue.empty();
+      process_queue_lock.unlock();
+    }
+    if (q_empty)
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
+  }
+}
+
 bool DeviceTraceOffload::should_continue()
 {
   std::lock_guard<std::mutex> lock(status_lock);
@@ -93,10 +135,13 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
   std::lock_guard<std::mutex> lock(status_lock);
   status = OffloadThreadStatus::RUNNING;
 
-  if (type == OffloadThreadType::TRACE)
+  if (type == OffloadThreadType::TRACE) {
     offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
-  else if (type == OffloadThreadType::CLOCK_TRAIN)
+    process_thread = std::thread(&DeviceTraceOffload::process_trace_continuous, this);
+  }
+  else if (type == OffloadThreadType::CLOCK_TRAIN) {
     offload_thread = std::thread(&DeviceTraceOffload::train_clock_continuous, this);
+  }
 }
 
 void DeviceTraceOffload::stop_offload()
@@ -237,15 +282,18 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   if (!host_buf)
     return;
 
+  process_queue_lock.lock();
+  auto tmp = std::make_unique<char[]>(nBytes);
+  std::memcpy(tmp.get(), host_buf, nBytes);
+  m_data_queue.push(std::move(tmp));
+  m_size_queue.push(nBytes);
+  process_queue_lock.unlock();
+
   // Print warning if processing large amount of trace
   if (nBytes > TS2MM_WARN_BIG_BUF_SIZE && !m_trace_warn_big_done) {
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BIG_BUF);
     m_trace_warn_big_done = true;
   }
-
-  dev_intf->parseTraceData(host_buf, nBytes, m_trace_vector);
-  deviceTraceLogger->processTraceData(m_trace_vector);
-  m_trace_vector.clear();
 
   if (m_trbuf_sz == m_trbuf_alloc_sz && m_use_circ_buf == false)
     m_trbuf_full = true;
