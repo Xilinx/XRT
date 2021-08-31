@@ -111,11 +111,9 @@ void DeviceTraceOffload::process_trace_continuous()
       break;
     }
 
-    {
-      process_queue_lock.lock();
-      bool q_empty = m_data_queue.empty();
-      process_queue_lock.unlock();
-    }
+    process_queue_lock.lock();
+    bool q_empty = m_data_queue.empty();
+    process_queue_lock.unlock();
     if (q_empty)
       std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
