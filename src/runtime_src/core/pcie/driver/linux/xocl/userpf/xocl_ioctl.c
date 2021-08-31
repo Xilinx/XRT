@@ -385,7 +385,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	err_last.ts = 0; //TODO timestamp
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
-		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_INCOMPATIBLE, 
+		err_last.err_code = XRT_ERROR_CODE_BUILD(XRT_ERROR_NUM_XCLBIN_FAIL, 
 			XRT_ERROR_DRIVER_XOCL, XRT_ERROR_SEVERITY_CRITICAL, 
 			XRT_ERROR_MODULE_XCLBIN, XRT_ERROR_CLASS_SYSTEM);
 		xocl_insert_error_record(&xdev->core, &err_last);
