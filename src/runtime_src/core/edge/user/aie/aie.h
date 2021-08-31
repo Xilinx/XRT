@@ -52,7 +52,10 @@ namespace zynqaie {
 struct BD {
     uint16_t bd_num;
     int      buf_fd;
-#ifndef __AIESIM__
+#ifdef __AIESIM__
+    char     *vaddr;
+    size_t   size;
+#else
     XAie_MemInst memInst;
 #endif
 };
