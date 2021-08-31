@@ -934,6 +934,8 @@ namespace xclhwemhal2 {
     if(mHostMemAccessThreadStarted == false) {
   	  mHostMemAccessThread = std::thread(xclhwemhal2::hostMemAccessThread,this);
     }
+    
+    //xclPfBarAddrmap_RPC_CALL(xclPfBarAddrmap,true,pf_bar_info);
 
     if (deviceDirectory.empty() == false)
       setenv("EMULATION_RUN_DIR", deviceDirectory.c_str(), true);
@@ -1238,7 +1240,16 @@ namespace xclhwemhal2 {
 
            const char *curr = (const char *)hostBuf;
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,0,0);
+           uint64_t pf_id = 0;
+           uint64_t bar_id = 0;
+           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                   pf_id = pf_bar_info[i]->pf_id;
+                   bar_id = pf_bar_info[i]->bar_id;
+                   break;
+               }
+           }
+           xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,pf_id,bar_id);
            PRINTENDFUNC;
            return totalSize;
          }
@@ -1247,7 +1258,16 @@ namespace xclhwemhal2 {
            const char *curr = (const char *)hostBuf;
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,0,0);
+           uint64_t pf_id = 0;
+           uint64_t bar_id = 0;
+           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                   pf_id = pf_bar_info[i]->pf_id;
+                   bar_id = pf_bar_info[i]->bar_id;
+                   break;
+               }
+           }
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,pf_id,bar_id);
            PRINTENDFUNC;
            return size;
          }
@@ -1315,7 +1335,16 @@ namespace xclhwemhal2 {
              logMessage(dMsg,1);
            }
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,0,0);
+           uint64_t pf_id = 0;
+           uint64_t bar_id = 0;
+           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                   pf_id = pf_bar_info[i]->pf_id;
+                   bar_id = pf_bar_info[i]->bar_id;
+                   break;
+               }
+           }
+           xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,pf_id,bar_id);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
              std::string dMsg ="INFO: [HW-EMU 04-1] Kernel " + kernelName +" is Started";
@@ -1390,7 +1419,16 @@ namespace xclhwemhal2 {
 
           //const char *curr = (const char *)hostBuf;
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,0,0);
+          uint64_t pf_id = 0;
+          uint64_t bar_id = 0;
+          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                  pf_id = pf_bar_info[i]->pf_id;
+                  bar_id = pf_bar_info[i]->bar_id;
+                  break;
+              }
+          }
+          xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return totalSize;
         }
@@ -1398,7 +1436,16 @@ namespace xclhwemhal2 {
         {
           xclGetDebugMessages();
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
+          uint64_t pf_id = 0;
+          uint64_t bar_id = 0;
+          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                  pf_id = pf_bar_info[i]->pf_id;
+                  bar_id = pf_bar_info[i]->bar_id;
+                  break;
+              }
+          }
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return -1;
         }
@@ -1411,7 +1458,16 @@ namespace xclhwemhal2 {
         {
           xclGetDebugMessages();
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
-          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,0,0);
+          uint64_t pf_id = 0;
+          uint64_t bar_id = 0;
+          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+                  pf_id = pf_bar_info[i]->pf_id;
+                  bar_id = pf_bar_info[i]->bar_id;
+                  break;
+              }
+          }
+          xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return size;
         }

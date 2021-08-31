@@ -547,3 +547,16 @@ message xclLoadXclbinContent_call {
 message xclLoadXclbinContent_response {
      required bool ack = 1;
 }
+
+message xclPfBarAddrmap_call {
+  optional bool req = 1;
+}
+
+message xclPfBarAddrmap_response {
+    message PfBarmaps {
+        required uint64 pf_id = 1;
+        required uint64 bar_id = 2;
+        required uint64 remap_addr = 3;
+    }
+    repeated PfBarmaps pfbar_map = 1; 
+}

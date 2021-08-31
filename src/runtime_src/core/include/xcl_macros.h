@@ -80,5 +80,6 @@
 #define xclGraphResume_n 49
 
 #define xclCopyBOFromFd_n 50
+#define xclPfBarAddrmap_n 51
 
 #endif

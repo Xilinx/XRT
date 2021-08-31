@@ -100,6 +100,13 @@ using addr_type = uint64_t;
    unsigned int size;
  } KernelArg;
 
+ typedef struct PF_BAR_st {
+    uint32_t pf_id;
+    uint32_t bar_id;
+    uint64_t remap_addr;
+    uint64_t size;
+ } PF_BAR_st_type;
+
   class HwEmShim {
 
     public:
@@ -396,6 +403,8 @@ using addr_type = uint64_t;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
       unsigned int host_sptag_idx;
       bool mSimDontRun;
+
+      std::vector<PF_BAR_st_type*> pf_bar_info;
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

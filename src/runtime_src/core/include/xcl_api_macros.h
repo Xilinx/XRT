@@ -1022,3 +1022,27 @@ mtx.unlock();
     xclLoadXclbinContent_SET_PROTO_RESPONSE(); \
     FREE_BUFFERS(); \
     xclLoadXclbinContent_RETURN();
+
+#define xclPfBarAddrmap_SET_PROTOMESSAGE(func_name,req_val) \
+    c_msg.set_req(req_val); \
+
+#define xclPfBarAddrmap_RPC_CALL(func_name,req_val,pfbarmap_vec) \
+  RPC_PROLOGUE(func_name); \
+  xclPfBarAddrmap_SET_PROTOMESSAGE(func_name,req_val); \
+  SERIALIZE_AND_SEND_MSG(func_name) \
+  xclPfBarAddrmap_SET_PROTO_RESPONSE(pfbarmap_vec); \
+  FREE_BUFFERS();
+
+#define xclPfBarAddrmap_SET_PROTO_RESPONSE(pfbarmap_vec) \
+  if(r_msg.pfbar_map_size() != 0)\
+  {\
+    for(int i = 0; i < r_msg.pfbar_map_size() ; i++) \
+    { \
+      PF_BAR_st_type *ptr = new PF_BAR_st_type; \
+      ptr->pf_id = r_msg.pfbar_map(i).pf_id(); \
+      ptr->bar_id = r_msg.pfbar_map(i).bar_id(); \
+      ptr->remap_addr = r_msg.pfbar_map(i).remap_addr(); \
+      ptr->size = r_msg.pfbar_map(i).size(); \
+      pfbarmap_vec.push_back(ptr); \
+    } \
+  }
