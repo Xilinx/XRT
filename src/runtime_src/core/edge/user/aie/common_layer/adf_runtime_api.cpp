@@ -595,7 +595,11 @@ err_code gmio_api::configure()
     return err_code::ok;
 }
 
+#ifndef __AIESIM__
+err_code gmio_api::enqueueBD(XAie_MemInst *memInst, uint64_t offset, size_t size)
+#else
 err_code gmio_api::enqueueBD(uint64_t address, size_t size)
+#endif
 {
     if (!isConfigured)
         return errorMsg(err_code::internal_error, "ERROR: adf::gmio_api::enqueueBD: GMIO is not configured.");
@@ -621,7 +625,11 @@ err_code gmio_api::enqueueBD(uint64_t address, size_t size)
     size_t bdNumber = frontAndPop(availableBDs);
 
     //set up BD
+#ifndef __AIESIM__
+    driverStatus |= XAie_DmaSetAddrOffsetLen(&shimDmaInst, memInst, offset, (u32)size);
+#else
     driverStatus |= XAie_DmaSetAddrLen(&shimDmaInst, (u64)address, (u32)size);
+#endif
 
     driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
 
@@ -634,9 +642,15 @@ err_code gmio_api::enqueueBD(uint64_t address, size_t size)
     driverStatus |= XAie_DmaChannelPushBdToQueue(config_manager::s_pDevInst, gmioTileLoc, convertLogicalToPhysicalDMAChNum(pGMIOConfig->channelNum), (pGMIOConfig->type == gmio_config::gm2aie ? DMA_MM2S : DMA_S2MM), bdNumber);
     enqueuedBDs.push(bdNumber);
 
+#ifndef __AIESIM__
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id "
+        << pGMIOConfig->id << ") enqueue BD num " << bdNumber << " to shim DMA channel " << pGMIOConfig->channelNum
+        << ", DDR offset " << std::hex << offset << ", transaction size " << std::dec << size).str());
+#else
     debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "gmio_api::enqueueBD: (id "
         << pGMIOConfig->id << ") enqueue BD num " << bdNumber << " to shim DMA channel " << pGMIOConfig->channelNum
         << ", DDR address " << std::hex << address << ", transaction size " << std::dec << size).str());
+#endif
 
     // Update status after using AIE driver
     if (driverStatus != AieRC::XAIE_OK)
