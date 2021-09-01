@@ -62,19 +62,6 @@ string2action(std::string str)
     throw xrt_core::generic_error(EINVAL, "Invalid p2p action '" + str + "'");
 }
 
-std::string
-print_success_msg(action_type action)
-{
-  if(action == action_type::enable)
-    return "Please WARM reboot the machine to enable P2P now.";
-  if(action == action_type::disable)
-    return "Please WARM reboot the machine to disable P2P now.";
-  if(action == action_type::validate)
-    return "P2P validated successfully.";
-  
-  throw xrt_core::error(std::errc::operation_canceled);
-}
-
 static auto
 p2p_config(xrt_core::device* device)
 {
@@ -297,7 +284,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   // Honor help option first
   if (std::find(_options.begin(), _options.end(), "--help") != _options.end()) {
     printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
+    return;
   }
 
   // Parse sub-command ...
@@ -316,7 +303,7 @@ OO_P2P::execute(const SubCmdOptions& _options) const
 
   if (m_help) {
     printHelp();
-    throw xrt_core::error(std::errc::operation_canceled);
+    return;
   }
 
   // Validate the correct action value is used
@@ -369,6 +356,18 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     std::cerr << "ERROR: " << ex.what() << std::endl;
     throw xrt_core::error(std::errc::operation_canceled); 
   }
-  std::cout << print_success_msg(action) << std::endl;
 
+  // Print success message for the user
+  switch (action) {
+    case action_type::enable:
+      std::cout <<  "Please WARM reboot the machine to enable P2P now.\n";
+      break;
+    
+    case action_type::disable:
+      std::cout << "Please WARM reboot the machine to disable P2P now.\n";
+      break;
+
+    case action_type::validate:
+      std::cout << "P2P validated successfully.\n";
+  }
 }
