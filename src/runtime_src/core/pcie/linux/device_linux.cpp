@@ -28,6 +28,7 @@
 #include <functional>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/filesystem.hpp>
 
 namespace {
 
@@ -35,6 +36,29 @@ namespace query = xrt_core::query;
 using pdev = std::shared_ptr<pcidev::pci_device>;
 using key_type = query::key_type;
 const static int LEGACY_COUNT = 4;
+
+static int
+get_render_value(const std::string dir)
+{
+  static const std::string render_name = "renderD"; 
+  int instance_num = INVALID_ID;
+  std::string sub;
+
+  boost::filesystem::path render_dirs(dir);
+  if (!boost::filesystem::is_directory(render_dirs))
+    return instance_num;
+ 
+  boost::filesystem::recursive_directory_iterator end_iter;
+    for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {   
+        sub = iter->path().filename().string().substr(render_name.size());
+        instance_num = std::stoi(sub);
+        break;
+      }
+    }
+    return instance_num;
+}
+
 
 inline pdev
 get_pcidev(const xrt_core::device* device)
@@ -98,6 +122,29 @@ struct kds_cu_stat
     return cuStats;
   }
 };
+
+struct instance 
+{
+  using result_type = query::instance::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    static const std::string  dev_root = "/sys/bus/pci/devices/";
+    std::string errmsg;
+    auto pdev = get_pcidev(device);
+
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev %  pdev->func);
+    if(device->is_userpf())
+      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+    else
+      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
+  
+    return pdev->instance;
+  }
+
+};
+
 
 struct kds_scu_stat
 {
@@ -577,6 +624,7 @@ initialize_query_table()
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
+  emplace_func0_request<query::instance,                     instance>();
 }
 
 struct X { X() { initialize_query_table(); }};
