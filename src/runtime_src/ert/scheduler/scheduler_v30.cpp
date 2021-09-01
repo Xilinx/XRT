@@ -787,6 +787,16 @@ command_queue_fetch(size_type slot_idx)
   value_type slot_addr = slot.slot_addr;
   auto val = read_reg(slot_addr);
  
+  /* TODO: Workaround for the BRAM read/write collision HW issue,
+   * which will lead to ERT got incorrect command header.
+   *
+   * If command slot header is not zero, read command header again.
+   * The second read will return the correct value.
+   */
+  if (val != 0)
+      val = read_reg(slot_addr);
+  /* TODO: Work around ends */
+
   if (val & AP_START) {
     DMSGF("slot idx 0x%x header 0x%x\r\n", slot_idx, val);
     write_reg(slot_addr,0x0);// clear command queue
