@@ -97,6 +97,11 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_bo *bo;
 	uint32_t cu_idx = args->cu_idx;
 
+	if (cu_idx >= MAX_SOFT_KERNEL) {
+		DRM_ERROR("Fail to create soft kernel: CU index %d > %d.\n",
+			  cu_idx,MAX_SOFT_KERNEL);
+		return -EINVAL;
+	}
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Fail to create soft kernel: BO %d does not exist.\n",
@@ -107,13 +112,6 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	mutex_lock(&sk->sk_lock);
 
-	if (cu_idx >= 128) {
-		DRM_ERROR("Fail to create soft kernel: CU index %d > 128.\n",
-		    cu_idx);
-		mutex_unlock(&sk->sk_lock);
-		ZOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(gem_obj);
-		return -EINVAL;
-	}
 	if (sk->sk_cu[cu_idx]) {
 		DRM_ERROR("Fail to create soft kernel: CU %d created.\n",
 		    cu_idx);
