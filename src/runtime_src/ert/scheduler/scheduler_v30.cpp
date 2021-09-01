@@ -265,6 +265,10 @@ struct mb_access_test
   value_type d2d_access = 0;
 
   value_type d2cu_access = 0;
+
+  value_type wr_count = 0;
+
+  value_type wr_test = 0;
 };
 
 static mb_validation mb_bist;
@@ -395,7 +399,19 @@ cu_idx_to_ctrl(size_type cu_idx)
 inline value_type
 h2h_access_addr(addr_type slot_addr)
 {
-  return slot_addr + sizeof(value_type);
+  return slot_addr + 0x4;
+}
+
+inline value_type
+wr_count_addr(addr_type slot_addr)
+{
+  return slot_addr + 0x18;
+}
+
+inline value_type
+wr_test_addr(addr_type slot_addr)
+{
+  return slot_addr + 0x1C;
 }
 /**
  * idx_in_mask() - Check if idx in in specified 32 bit mask
@@ -799,17 +815,26 @@ check_cu(size_type cu_idx)
   cu_slot_usage[cu_idx] = no_index; // reset slot index
   return true;
 }
+
 static bool
 data_integrity(value_type slot_idx)
 {
   bool ret = true;
   auto& slot = command_slots[slot_idx];
   void *addr_ptr = (void *)(uintptr_t)(slot.slot_addr);
+  value_type cnt = 0;
 
   slot.header_value = (slot.header_value & ~0xF) | 0x4;
 
-  mb_access.h2h_access = read_reg(h2h_access_addr(slot.slot_addr));
+  while ((cnt = read_reg(wr_count_addr(slot.slot_addr)))) {
+    value_type pattern = read_reg(wr_test_addr(slot.slot_addr));
+    if (pattern != 0x0 && pattern != 0xFFFFFFFF) {
+      CTRL_DEBUGF("read undefined value = 0x%x\r\n",pattern);
+      mb_access.wr_test = 0;
+    }
+  }
 
+  mb_access.h2h_access = read_reg(h2h_access_addr(slot.slot_addr));
   for (size_type offset=sizeof(struct mb_access_test); offset<slot_size; offset+=4) {
     volatile value_type pattern = read_reg(slot.slot_addr+offset);
     if (pattern != HOST_RW_PATTERN) {
@@ -1187,6 +1212,7 @@ process_special_command(value_type opcode, size_type slot_idx)
     mb_access.d2d_access  = 1;
     mb_access.d2h_access  = 1;
     mb_access.d2cu_access = 1;
+    mb_access.wr_test     = 1;
     return data_integrity(slot_idx);
   }
   return false;

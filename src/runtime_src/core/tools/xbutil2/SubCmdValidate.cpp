@@ -785,7 +785,7 @@ ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle hand
   logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
   logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
   logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
-  logger(_ptTest, "Details",  boost::str(boost::format("Data Integrity Test:   %s") % (data_integrity ? "PASS" : "FAIL")));
+  logger(_ptTest, "Details",  boost::str(boost::format("Data Integrity Test:   %s") % xrt_core::query::ert_data_integrity::to_string(data_integrity)));
 
   const uint32_t go_sleep = 1, wake_up = 0;
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);

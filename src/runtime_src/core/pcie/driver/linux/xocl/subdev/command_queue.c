@@ -182,13 +182,13 @@ command_queue_get_return(struct command_queue *cmd_queue, struct xrt_ert_command
 	u32 slot_addr;
 	int slot_size = cmd_queue->slot_size;
 
-	if (!ecmd->return_size)
+	if (!ecmd->response_size)
 		return;
 
 	slot_addr = ecmd->handle * slot_size;
-	CMDQUEUE_DBG(cmd_queue, "%s %d slot_addr %x\n", __func__, ecmd->return_size, slot_addr);
+	CMDQUEUE_DBG(cmd_queue, "%s %d slot_addr %x\n", __func__, ecmd->response_size, slot_addr);
 
-	xocl_memcpy_fromio(ecmd->response, cmd_queue->cq_base + slot_addr, ecmd->return_size);
+	xocl_memcpy_fromio(ecmd->response, cmd_queue->cq_base + slot_addr, ecmd->response_size);
 }
 
 /**
@@ -349,6 +349,7 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 	u32 slot_addr;
 	u32 mask_idx, cq_int_addr, mask;
 	struct ert_packet *epkt = NULL;
+	u32 cnt = 10000000;
 
 	if (command_queue_acquire(ecmd, queue_handle) == no_index)
 		return -EBUSY;
@@ -379,7 +380,8 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 			// write remaining packet (past header and cuidx)
 			xocl_memcpy_toio(cmd_queue->cq_base + slot_addr + 8,
 					 ecmd->payload+2, (ecmd->payload_size-2)*sizeof(u32));
-		} else if (cmd_opcode(epkt) == ERT_ACCESS_TEST || cmd_opcode(epkt) == ERT_ACCESS_TEST_C) {
+		} else if (cmd_opcode(epkt) == ERT_ACCESS_TEST
+			|| cmd_opcode(epkt) == ERT_ACCESS_TEST_C) {
 			int offset = 0;
 			u32 val, h2h_pass = 1;
 			for (offset = sizeof(struct ert_access_valid_cmd); offset < cmd_queue->slot_size; offset+=4) {
@@ -396,6 +398,7 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 			}
 			iowrite32(h2h_pass, cmd_queue->cq_base + slot_addr + offsetof(struct ert_access_valid_cmd, h2h_access));
 			CMDQUEUE_DBG(cmd_queue, "Host <-> Host %d slot_addr 0x%x\n", h2h_pass, slot_addr);
+			iowrite32(cnt, cmd_queue->cq_base + slot_addr + offsetof(struct ert_access_valid_cmd, wr_count));
 		} else {
 			CMDQUEUE_DBG(cmd_queue, "%s cmd_opcode(epkt)  %d\n", __func__, cmd_opcode(epkt));
 			xocl_memcpy_toio(cmd_queue->cq_base + slot_addr + 4,
@@ -404,6 +407,23 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 
 		iowrite32(epkt->header, cmd_queue->cq_base + slot_addr);
 
+
+		/* Host writes the patterns to a specific offset and device reads 
+		 * Should not have pattern other than 0xFFFFFFFF or 0x0
+		 */
+		if (cmd_opcode(epkt) == ERT_ACCESS_TEST
+		 || cmd_opcode(epkt) == ERT_ACCESS_TEST_C) {
+			while (--cnt) {
+				u32 pattern = 0xFFFFFFFF;
+				if (cnt % 2)
+					pattern = 0xFFFFFFFF;
+				else
+					pattern = 0x0;
+				
+				iowrite32(pattern, cmd_queue->cq_base + slot_addr + offsetof(struct ert_access_valid_cmd, wr_test));
+			}
+			iowrite32(cnt, cmd_queue->cq_base + slot_addr + offsetof(struct ert_access_valid_cmd, wr_count));
+		}
 		/*
 		 * Always try to trigger interrupt to embedded scheduler.
 		 * The reason is, the ert configure cmd is also sent to MB/PS through cq,

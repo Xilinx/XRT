@@ -2503,15 +2503,21 @@ struct ert_cu_write : request
   get(const device*) const = 0;
 };
 
+
 struct ert_data_integrity : request
 {
-  using result_type = uint64_t;
+  using result_type = bool;
   static const key_type key = key_type::ert_data_integrity;
 
   virtual boost::any
   get(const device*) const = 0;
-};
 
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "Pass" : "Fail";
+  }
+};
 
 struct noop : request
 {

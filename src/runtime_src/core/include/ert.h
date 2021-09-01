@@ -76,7 +76,7 @@
 
 
 #define HOST_RW_PATTERN     0xF0F0F0F0
-#define DEVICE_RW_PATTERN   0x0F0F0F0E
+#define DEVICE_RW_PATTERN   0x0F0F0F0F
 
 /**
  * struct ert_packet: ERT generic packet format
@@ -410,6 +410,8 @@ struct ert_access_valid_cmd {
   uint32_t d2h_access;
   uint32_t d2d_access;
   uint32_t d2cu_access;
+  uint32_t wr_count;
+  uint32_t wr_test;
 };
 
 /**
