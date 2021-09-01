@@ -252,7 +252,7 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 
 boost::any
 device::
-get_info(info::device param) const
+get_info(info::device param, info::InfoSchemaVersion version) const
 {
   switch (param) {
   case info::device::bdf :                    // std::string

@@ -84,31 +84,31 @@ int run(int argc, char** argv)
   if (uuid != xclbin.get_uuid())
     throw std::runtime_error("Unexpected uuid error");
 
-  std::cout << "device name:           " << device.get_info<xrt::info::device::name>() << "\n";
-  std::cout << "device bdf:            " << device.get_info<xrt::info::device::bdf>() << "\n";
-  std::cout << "device kdma:           " << device.get_info<xrt::info::device::kdma>() << "\n";
-  std::cout << "device max freq:       " << device.get_info<xrt::info::device::max_clock_frequency_mhz>() << "\n";
-  std::cout << "device m2m:            " << std::boolalpha << device.get_info<xrt::info::device::m2m>() << std::dec << "\n";
-  std::cout << "device nodma:          " << std::boolalpha << device.get_info<xrt::info::device::nodma>() << std::dec << "\n";
-  std::cout << "device interface uuid: " << device.get_info<xrt::info::device::interface_uuid>().to_string() << "\n";
+  std::cout << "device name:           " << device.get_info<xrt::info::device::name, xrt::info::InfoSchemaVersion::json_20202>() << "\n";
+  std::cout << "device bdf:            " << device.get_info<xrt::info::device::bdf, xrt::info::InfoSchemaVersion::json_20202>() << "\n";
+  std::cout << "device kdma:           " << device.get_info<xrt::info::device::kdma, xrt::info::InfoSchemaVersion::json_20202>() << "\n";
+  std::cout << "device max freq:       " << device.get_info<xrt::info::device::max_clock_frequency_mhz, xrt::info::InfoSchemaVersion::json_20202>() << "\n";
+  std::cout << "device m2m:            " << std::boolalpha << device.get_info<xrt::info::device::m2m, xrt::info::InfoSchemaVersion::json_20202>() << std::dec << "\n";
+  std::cout << "device nodma:          " << std::boolalpha << device.get_info<xrt::info::device::nodma, xrt::info::InfoSchemaVersion::json_20202>() << std::dec << "\n";
+  std::cout << "device interface uuid: " << device.get_info<xrt::info::device::interface_uuid, xrt::info::InfoSchemaVersion::json_20202>().to_string() << "\n";
 
   if (json_queries) {
     std::cout << "device electrical json info ====================================\n";
-    std::cout << device.get_info<xrt::info::device::electrical>();
+    std::cout << device.get_info<xrt::info::device::electrical, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device thermal json info =======================================\n";
-    std::cout << device.get_info<xrt::info::device::thermal>();
+    std::cout << device.get_info<xrt::info::device::thermal, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device mechanical json info ====================================\n";
-    std::cout << device.get_info<xrt::info::device::mechanical>();
+    std::cout << device.get_info<xrt::info::device::mechanical, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device memory json info ========================================\n";
-    std::cout << device.get_info<xrt::info::device::memory>();
+    std::cout << device.get_info<xrt::info::device::memory, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device platform json info ======================================\n";
-    std::cout << device.get_info<xrt::info::device::platform>();
+    std::cout << device.get_info<xrt::info::device::platform, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device pcie json info ==========================================\n";
-    std::cout << device.get_info<xrt::info::device::pcie_info>();
+    std::cout << device.get_info<xrt::info::device::pcie_info, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device dynamic regions json info ===============================\n";
-    std::cout << device.get_info<xrt::info::device::dynamic_regions>();
+    std::cout << device.get_info<xrt::info::device::dynamic_regions, xrt::info::InfoSchemaVersion::json_20202>();
     std::cout << "device host json info ==========================================\n";
-    std::cout << device.get_info<xrt::info::device::host>();
+    std::cout << device.get_info<xrt::info::device::host, xrt::info::InfoSchemaVersion::json_20202>();
   }
 
   return 0;
