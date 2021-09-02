@@ -53,26 +53,26 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
 }
 
 static bool
-isSupported(const std::shared_ptr<xrt_core::device>& dev)
+is_supported(const std::shared_ptr<xrt_core::device>& dev)
 {
-    std::string errmsg;
-    bool is_mfg = false, is_recovery = false;
+  std::string errmsg;
+  bool is_mfg = false;
+  bool is_recovery = false;
 
-    try {
-      is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
-    } catch(...) {}
+  try {
+    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
+  } catch(const xrt_core::query::exception&) {}
 
-    try {
-      is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(dev);
-    }
-    catch(...) {}
+  try {
+    is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(dev);
+  } catch(const xrt_core::query::exception&) {}
 
-    if (is_mfg || is_recovery) {
-        std::cerr << "This operation is not supported with manufacturing image" << std::endl;
-        return false;
-    }
+  if (is_mfg || is_recovery) {
+    std::cerr << "This operation is not supported with manufacturing image. mfg:recovery=" << is_mfg << ":" << is_recovery << std::endl;
+    return false;
+  }
 
-    return true;
+  return true;
 }
 
 /*
@@ -92,7 +92,7 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   child.put("mailbox_channel_switch", xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
   child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
 
-  if (isSupported(_dev)) {
+  if (is_supported(_dev)) {
     try {
       child.put("security_level", xrt_core::device_query<xrt_core::query::sec_level>(_dev));
       child.put("scaling_support", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_dev));
@@ -106,7 +106,7 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
       child.put("scaling_threshold_temp_override_en", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_override_en>(_dev));
       child.put("scaling_threshold_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_override>(_dev));
       child.put("data_retention", xrt_core::device_query<xrt_core::query::data_retention>(_dev));
-    } catch(...) {}
+    } catch(const xrt_core::query::exception&) {}
   }
 
   ptRoot.put_child("Device", child);
