@@ -55,7 +55,6 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
 static bool
 is_supported(const std::shared_ptr<xrt_core::device>& dev)
 {
-  std::string errmsg;
   bool is_mfg = false;
   bool is_recovery = false;
 
