@@ -405,6 +405,9 @@ using addr_type = uint64_t;
       bool mSimDontRun;
 
       std::vector<PF_BAR_st_type*> pf_bar_info;
+      
+      void get_pf_bar_values(uint64_t offset,uint64_t &pf_id,uint64_t &bar_id);
+
   };
 
   extern std::map<unsigned int, HwEmShim*> devices;

@@ -1242,13 +1242,7 @@ namespace xclhwemhal2 {
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
            uint64_t pf_id = 0;
            uint64_t bar_id = 0;
-           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                   pf_id = pf_bar_info[i]->pf_id;
-                   bar_id = pf_bar_info[i]->bar_id;
-                   break;
-               }
-           }
+           get_pf_bar_values(offset,pf_id,bar_id);
            xclWriteAddrSpaceDeviceRam_RPC_CALL(xclWriteAddrSpaceDeviceRam ,space,offset,curr,size,pf_id,bar_id);
            PRINTENDFUNC;
            return totalSize;
@@ -1260,13 +1254,7 @@ namespace xclhwemhal2 {
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
            uint64_t pf_id = 0;
            uint64_t bar_id = 0;
-           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                   pf_id = pf_bar_info[i]->pf_id;
-                   bar_id = pf_bar_info[i]->bar_id;
-                   break;
-               }
-           }
+           get_pf_bar_values(offset,pf_id,bar_id);
            xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl ,space,offset,curr,size,offsetArgInfo,pf_id,bar_id);
            PRINTENDFUNC;
            return size;
@@ -1337,13 +1325,7 @@ namespace xclhwemhal2 {
            //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
            uint64_t pf_id = 0;
            uint64_t bar_id = 0;
-           for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-               if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                   pf_id = pf_bar_info[i]->pf_id;
-                   bar_id = pf_bar_info[i]->bar_id;
-                   break;
-               }
-           }
+           get_pf_bar_values(offset,pf_id,bar_id);
            xclWriteAddrKernelCtrl_RPC_CALL(xclWriteAddrKernelCtrl,space,offset,hostBuf,size,offsetArgInfo,pf_id,bar_id);
            if(hostBuf32[0] & CONTROL_AP_START)
            {
@@ -1421,13 +1403,7 @@ namespace xclhwemhal2 {
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
           uint64_t pf_id = 0;
           uint64_t bar_id = 0;
-          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                  pf_id = pf_bar_info[i]->pf_id;
-                  bar_id = pf_bar_info[i]->bar_id;
-                  break;
-              }
-          }
+          get_pf_bar_values(offset,pf_id,bar_id);
           xclReadAddrSpaceDeviceRam_RPC_CALL(xclReadAddrSpaceDeviceRam,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return totalSize;
@@ -1438,13 +1414,7 @@ namespace xclhwemhal2 {
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
           uint64_t pf_id = 0;
           uint64_t bar_id = 0;
-          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                  pf_id = pf_bar_info[i]->pf_id;
-                  bar_id = pf_bar_info[i]->bar_id;
-                  break;
-              }
-          }
+          get_pf_bar_values(offset,pf_id,bar_id);
           xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return -1;
@@ -1460,13 +1430,7 @@ namespace xclhwemhal2 {
           //Note: Adding PF and BAR ID valuesas 0, Once original values are avaiaable they get replaced
           uint64_t pf_id = 0;
           uint64_t bar_id = 0;
-          for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
-              if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
-                  pf_id = pf_bar_info[i]->pf_id;
-                  bar_id = pf_bar_info[i]->bar_id;
-                  break;
-              }
-          }
+          get_pf_bar_values(offset,pf_id,bar_id);
           xclReadAddrKernelCtrl_RPC_CALL(xclReadAddrKernelCtrl,space,offset,hostBuf,size,pf_id,bar_id);
           PRINTENDFUNC;
           return size;
@@ -2100,6 +2064,14 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mDataSpace = NULL;
     }
     closemMessengerThread();
+
+    if(pf_bar_info.size()) {
+        for (uint32_t i =0; i<pf_bar_info.size(); i++){
+            PF_BAR_st_type* ptr = pf_bar_info[i];
+            delete ptr;
+        }
+        pf_bar_info.clear();
+    }
   }
 
   void HwEmShim::initMemoryManager(std::list<xclemulation::DDRBank>& DDRBankList)
@@ -3861,6 +3833,17 @@ int HwEmShim::xclIPName2Index(const char *name)
 
 volatile bool HwEmShim::get_mHostMemAccessThreadStarted() { return mHostMemAccessThreadStarted; }
 volatile void HwEmShim::set_mHostMemAccessThreadStarted(bool val) { mHostMemAccessThreadStarted = val; }
+
+void HwEmShim::get_pf_bar_values(uint64_t offset,uint64_t &pf_id,uint64_t &bar_id) {
+    for(uint32_t i = 0 ;i < pf_bar_info.size(); i++) {
+        if(offset >= pf_bar_info[i]->remap_addr &&  ( offset <= pf_bar_info[i]->remap_addr + pf_bar_info[i]->size ) ) {
+            pf_id = pf_bar_info[i]->pf_id;
+            bar_id = pf_bar_info[i]->bar_id;
+            break;
+        }
+    }
+}
+
 /********************************************** QDMA APIs IMPLEMENTATION END**********************************************/
 /**********************************************HAL2 API's END HERE **********************************************/
 
