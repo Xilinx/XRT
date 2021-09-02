@@ -97,6 +97,11 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_bo *bo;
 	uint32_t cu_idx = args->cu_idx;
 
+	if (cu_idx >= MAX_SOFT_KERNEL) {
+		DRM_ERROR("Fail to create soft kernel: CU index %d > %d.\n",
+			  cu_idx,MAX_SOFT_KERNEL);
+		return -EINVAL;
+	}
 	gem_obj = zocl_gem_object_lookup(dev, filp, args->handle);
 	if (!gem_obj) {
 		DRM_ERROR("Fail to create soft kernel: BO %d does not exist.\n",
@@ -152,14 +157,14 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 
 	mutex_lock(&sk->sk_lock);
 
-	if (args->cu_idx > sk->sk_ncus) {
+	if (cu_idx > sk->sk_ncus) {
 		DRM_ERROR("Fail to get cu state: CU %d does not exist.\n",
 		    cu_idx);
 		mutex_unlock(&sk->sk_lock);
 		return -ENXIO;
 	}
 
-	scu = sk->sk_cu[args->cu_idx];
+	scu = sk->sk_cu[cu_idx];
 	if (!scu) {
 		DRM_ERROR("CU %d does not exist.\n", cu_idx);
 		mutex_unlock(&sk->sk_lock);
@@ -182,7 +187,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 			ret = -EINTR;
 		mutex_lock(&sk->sk_lock);
 		/* if scu does not equal, it means been killed. */
-		if (scu != sk->sk_cu[args->cu_idx]) {
+		if (scu != sk->sk_cu[cu_idx]) {
 			mutex_unlock(&sk->sk_lock);
 			return ret;
 		}

@@ -719,7 +719,7 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
     return false;
   }
 
-  auto ecmd = reinterpret_cast<ert_validate_cmd*>(boptr);
+  auto ecmd = reinterpret_cast<ert_packet*>(boptr);
 
   std::memset(ecmd, 0, bo_size);
   ecmd->opcode = opcode;
@@ -768,6 +768,10 @@ clock_calibration(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle
 static bool
 ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle handle, boost::property_tree::ptree& _ptTest)
 {
+
+  if(!bist_alloc_execbuf_and_wait(handle, ERT_ACCESS_TEST_C, _ptTest))
+    return false;
+
   if(!bist_alloc_execbuf_and_wait(handle, ERT_MB_VALIDATE, _ptTest))
     return false;
 
@@ -775,11 +779,13 @@ ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle hand
   auto cq_read_cnt = xrt_core::device_query<xrt_core::query::ert_cq_read>(_dev);
   auto cu_write_cnt = xrt_core::device_query<xrt_core::query::ert_cu_write>(_dev);
   auto cu_read_cnt = xrt_core::device_query<xrt_core::query::ert_cu_read>(_dev);
+  auto data_integrity = xrt_core::device_query<xrt_core::query::ert_data_integrity>(_dev);
 
   logger(_ptTest, "Details",  boost::str(boost::format("CQ read %4d bytes: %4d cycles") % 4 % cq_read_cnt));
   logger(_ptTest, "Details",  boost::str(boost::format("CQ write%4d bytes: %4d cycles") % 4 % cq_write_cnt));
   logger(_ptTest, "Details",  boost::str(boost::format("CU read %4d bytes: %4d cycles") % 4 % cu_read_cnt));
   logger(_ptTest, "Details",  boost::str(boost::format("CU write%4d bytes: %4d cycles") % 4 % cu_write_cnt));
+  logger(_ptTest, "Details",  boost::str(boost::format("Data Integrity Test:   %s") % xrt_core::query::ert_data_integrity::to_string(data_integrity)));
 
   const uint32_t go_sleep = 1, wake_up = 0;
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);

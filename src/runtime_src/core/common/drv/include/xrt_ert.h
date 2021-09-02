@@ -22,6 +22,7 @@ struct xrt_ert_command;
 struct ert_cmd_ops {
 	void (*complete)(struct xrt_ert_command *ecmd, void *core);
 	void (*notify)(void *core);
+	void (*free_payload)(void *payload);
 };
 
 struct xrt_ert_command {
@@ -37,7 +38,9 @@ struct xrt_ert_command {
 	uint32_t			payload_size;
 	uint32_t			cu_idx;
 	struct xrt_com_queue_entry	complete_entry;
-	uint32_t			return_size;
+	uint32_t			response_size;
+
+	uint32_t			response[0];
 };
 
 struct ert_queue {

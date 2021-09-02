@@ -56,6 +56,7 @@ enum class key_type
   pcie_express_lane_width_max,
   pcie_bdf,
 
+  instance,
   edge_vendor,
 
   dma_threads_raw,
@@ -242,6 +243,7 @@ enum class key_type
   ert_cq_read,
   ert_cu_write,
   ert_cu_read,
+  ert_data_integrity,
 
   noop
 };
@@ -861,6 +863,24 @@ struct xmc_version : request
     return value;
   }
 };
+
+
+struct instance : request
+{
+  using result_type = int64_t;
+  static const key_type key = key_type::instance;
+  static const char* name() { return "instance"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string 
+  to_string(const result_type& value)
+  {
+    return std::to_string(value);
+  }
+};
+
 
 struct xmc_board_name : request
 {
@@ -2571,6 +2591,22 @@ struct ert_cu_write : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+
+struct ert_data_integrity : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::ert_data_integrity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "Pass" : "Fail";
+  }
 };
 
 struct noop : request
