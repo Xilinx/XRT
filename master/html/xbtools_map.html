@@ -499,10 +499,10 @@
 <h2>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h2>
 <table border="1" class="docutils">
 <colgroup>
-<col width="19%" />
-<col width="19%" />
-<col width="30%" />
-<col width="32%" />
+<col width="18%" />
+<col width="20%" />
+<col width="29%" />
+<col width="33%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Subcommand
@@ -522,7 +522,9 @@ New</th>
 <td>&#160;</td>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">version</span></code></td>
-<td colspan="3">To be implemented in the next release</td>
+<td><code class="docutils literal notranslate"><span class="pre">--version</span></code></td>
+<td>&#160;</td>
+<td>&#160;</td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">reset</span></code></td>
@@ -579,23 +581,52 @@ New</th>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--format</span> <span class="pre">&lt;type&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">top</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">top</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">host_mem</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+</tr>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--enable</span></code>
+<code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">enable</span></code>
+<code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">disable</span></code></td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">p2p</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
 <tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
-<td><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
-<td><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--enable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">enable</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">host_mem</span></code></td>
-<td colspan="3">To be implemented in next release</td>
+<tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">disable</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">validate</span></code></td>
 </tr>
 </tbody>
 </table>
@@ -605,9 +636,9 @@ New</th>
 <table border="1" class="docutils">
 <colgroup>
 <col width="15%" />
-<col width="13%" />
-<col width="32%" />
-<col width="40%" />
+<col width="15%" />
+<col width="31%" />
+<col width="39%" />
 </colgroup>
 <thead valign="bottom">
 <tr class="row-odd"><th class="head">Subcommand
@@ -627,7 +658,9 @@ New</th>
 <td>&#160;</td>
 </tr>
 <tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">version</span></code></td>
-<td colspan="3">To be implemented in the next release</td>
+<td><code class="docutils literal notranslate"><span class="pre">--version</span></code></td>
+<td>&#160;</td>
+<td>&#160;</td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">flash</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">program</span></code></td>
@@ -736,7 +769,7 @@ New</th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 27, 2021.
+        Last updated on September 02, 2021.
       </span>
 
     </p>

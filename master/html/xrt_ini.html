@@ -349,12 +349,7 @@
 <li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration File xrt.ini</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#runtime-group">Runtime Group</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#debug-group">Debug Group</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#emulation-group">Emulation Group</a></li>
-</ul>
-</li>
+<li class="toctree-l2"><a class="reference internal" href="#runtime-initialization-file-format">Runtime Initialization File Format</a></li>
 </ul>
 </li>
 </ul>
@@ -491,7 +486,18 @@
   <span class="target" id="xrt-ini-rst"></span><div class="section" id="configuration-file-xrt-ini">
 <h1>Configuration File xrt.ini<a class="headerlink" href="#configuration-file-xrt-ini" title="Permalink to this headline">¶</a></h1>
 <p>XRT uses various parameters to control execution flow, debug, profiling, and message logging during host application and kernel execution in software emulation, hardware emulation, and system run on the acceleration board. These control parameters are optionally specified in a runtime initialization file <strong>xrt.ini</strong></p>
-<p>XRT looks for xrt.ini in host executable path and current directory in that order. It stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used as described in the table below.</p>
+<p>XRT looks for xrt.ini file in the following order:</p>
+<blockquote>
+<div><ul class="simple">
+<li>The host executable path.</li>
+<li>Current directory (from where application is executed) path.</li>
+</ul>
+</div></blockquote>
+<p>XRT stops search when an xrt.ini is found. If xrt.ini is not found, XRT built-in defaults are used.</p>
+<p>If desired, the environment variable as shown below can be used to specify a custom xrt.ini path</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="na">export XRT_INI_PATH</span><span class="o">=</span><span class="s">/path/to/xrt.ini</span>
+</pre></div>
+</div>
 <div class="section" id="runtime-initialization-file-format">
 <h2>Runtime Initialization File Format<a class="headerlink" href="#runtime-initialization-file-format" title="Permalink to this headline">¶</a></h2>
 <p>The runtime initialization file is a text file with groups of keys and their values. Any line beginning with a semicolon (<strong>;</strong>) or a hash (<strong>#</strong>) is a comment. The group names, keys, and key values are all case in-sensitive.</p>
@@ -513,15 +519,7 @@
 <span class="na">timeline_trace</span> <span class="o">=</span> <span class="s">true</span>
 </pre></div>
 </div>
-<p><strong>API Support</strong>: From 2020.2 release the runtime configuration options can also be provided through C or C++ APIs.</p>
-<p>C APIs</p>
-<blockquote>
-<div><ul class="simple">
-<li><code class="docutils literal notranslate"><span class="pre">xrtIniStringSet</span></code>: Set a key and correspondong string value pair</li>
-<li><code class="docutils literal notranslate"><span class="pre">xrtIniUintSet</span></code> : Set a key and corresponding integer value pair</li>
-</ul>
-</div></blockquote>
-<p>C++ API</p>
+<p><strong>API Support</strong>: From 2020.2 release the runtime configuration options can also be provided through Native XRT APIs.</p>
 <blockquote>
 <div><ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">xrt::ini::set</span></code></li>
@@ -532,307 +530,7 @@
 <span class="na">xrt::ini::set(&quot;Runtime.verbosity&quot;, 5);</span>
 </pre></div>
 </div>
-<p>The following table lists all supported groups, keys, valid key values, and short descriptions on the function of the keys.</p>
-<div class="section" id="runtime-group">
-<h3>Runtime Group<a class="headerlink" href="#runtime-group" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="22%" />
-<col width="32%" />
-<col width="46%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Key</th>
-<th class="head">Valid Values</th>
-<th class="head">Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>api_checks</td>
-<td>[true|false]</td>
-<td><p class="first">Enable or disable OpenCL API checks:</p>
-<blockquote>
-<div><ul class="simple">
-<li>true: enable</li>
-<li>false: disable</li>
-</ul>
-</div></blockquote>
-<p class="last">Default: true</p>
-</td>
-</tr>
-<tr class="row-odd"><td>runtime_log</td>
-<td>[null|console|syslog|filename]</td>
-<td><p class="first">Specify where the runtime logs are printed:</p>
-<blockquote>
-<div><ul class="simple">
-<li>null: Do not print any logs.</li>
-<li>console: Print logs to stdout</li>
-<li>syslog: Print logs to Linux syslog</li>
-<li>filename: Print logs to the
-specified file.
-Example, runtime_log=my_run.log</li>
-</ul>
-</div></blockquote>
-<p class="last">Default: console</p>
-</td>
-</tr>
-<tr class="row-even"><td>cpu_affinity</td>
-<td>[{N,N,…}]</td>
-<td><p class="first">Pin all runtime threads to specified CPUs.</p>
-<p class="last">Example: cpu_affinity = {4,5,6}</p>
-</td>
-</tr>
-<tr class="row-odd"><td>verbosity</td>
-<td>[0|1|2|3|4|5|6|7]</td>
-<td><p class="first">verbosity level of log messages. Higher
-number implies more verbosity</p>
-<p class="last">Default: 4</p>
-</td>
-</tr>
-<tr class="row-even"><td>exclusive_cu_context</td>
-<td>[false|true]</td>
-<td><p class="first">When setting true OpenCL process holds
-exclusive access of the Compute Units</p>
-<p class="last">Default: false</p>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section" id="debug-group">
-<h3>Debug Group<a class="headerlink" href="#debug-group" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="21%" />
-<col width="28%" />
-<col width="51%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Key</th>
-<th class="head">Valid Values</th>
-<th class="head">Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>profile</td>
-<td>[true|false]</td>
-<td><p class="first">Enable or disable OpenCL host code profile. Set true
-to generate profile_summary report</p>
-<p class="last">Default: false</p>
-</td>
-</tr>
-<tr class="row-odd"><td>timeline_trace</td>
-<td>[true|false]</td>
-<td><p class="first">Enable or disable profile timeline trace. Set true to
-generate timeline_trace report</p>
-<p class="last">Default: false</p>
-</td>
-</tr>
-<tr class="row-even"><td>data_transfer_trace</td>
-<td>[coarse|fine|off]</td>
-<td><p class="first">Enable device-level AXI transfers trace:</p>
-<blockquote>
-<div><ul class="simple">
-<li>coarse: Shows CU transfer activity</li>
-<li>fine: Shows all AXI level burst data transfer</li>
-<li>off: Does not show device-level AXI transfer</li>
-</ul>
-</div></blockquote>
-<p class="last">Default: off</p>
-</td>
-</tr>
-<tr class="row-odd"><td>stall_trace</td>
-<td>[dataflow|memory|pipe|all|off]</td>
-<td><p class="first">Specifies type of stalls to be captured in timeline
-trace report:</p>
-<blockquote>
-<div><ul class="simple">
-<li>dataflow: Stall related to intra-kernel streams</li>
-<li>memory: Stall related to memory transfer</li>
-<li>pipe: Inter-kernel pipes, applicable to OpenCL
-kernel</li>
-<li>all: All type of stalls</li>
-<li>off: Does not show stalls</li>
-</ul>
-</div></blockquote>
-<p class="last">Default: off</p>
-</td>
-</tr>
-<tr class="row-even"><td>app_debug</td>
-<td>[true|false]</td>
-<td><p class="first">If true, enable xprint and xstatus command during
-debugging with xgdb</p>
-<p class="last">Default: false</p>
-</td>
-</tr>
-<tr class="row-odd"><td>trace_buffer_size</td>
-<td>[N {K|M|G}]</td>
-<td><p class="first">Specifies the size of DDR/HBM memory for storing trace
-data:</p>
-<blockquote>
-<div><ul class="simple">
-<li>N: Integer</li>
-<li>K|M|G: Units Kilobyte or Megabyte or Gigabyte</li>
-</ul>
-</div></blockquote>
-<p>Note:</p>
-<blockquote>
-<div><ul class="simple">
-<li>This option only applicable in hardware flow</li>
-<li>If no unit is given byte is assumed</li>
-</ul>
-</div></blockquote>
-<p>Example: trace_buffer_size=100M</p>
-<p class="last">Default: 1M</p>
-</td>
-</tr>
-<tr class="row-even"><td>lop_trace</td>
-<td>[false|true]</td>
-<td><p class="first">Enables or disables low overhead profiling.</p>
-<blockquote>
-<div><ul class="simple">
-<li>false: Disable low overhead profiling</li>
-<li>true : Enable low overhead profiling</li>
-</ul>
-</div></blockquote>
-<p class="last">Default: false</p>
-</td>
-</tr>
-<tr class="row-odd"><td>continuous_trace</td>
-<td>[false|true]</td>
-<td><p class="first">Enables the continuous offload of the device data
-while the application is running. In the event of a
-crash/hang a trace file will be available to help
-debugging.</p>
-<blockquote class="last">
-<div><blockquote>
-<div><ul class="simple">
-<li>false: Disable continous trance</li>
-<li>true : Enable continuous trace</li>
-</ul>
-</div></blockquote>
-<p>Default: false</p>
-</div></blockquote>
-</td>
-</tr>
-<tr class="row-even"><td>continuous_trace_inte-
-rval_ms</td>
-<td>[N]</td>
-<td><p class="first">Specifies the interval in millisecond to offload
-the device data in continous trace mode (see above)</p>
-<blockquote class="last">
-<div>Default: 10</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="section" id="emulation-group">
-<h3>Emulation Group<a class="headerlink" href="#emulation-group" title="Permalink to this headline">¶</a></h3>
-<table border="1" class="docutils">
-<colgroup>
-<col width="25%" />
-<col width="26%" />
-<col width="48%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">Key</th>
-<th class="head">Valid Values</th>
-<th class="head">Description</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>aliveness_message_interval</td>
-<td>[N]</td>
-<td><p class="first">Specify the interval in seconds that aliveness
-messages need to be printed.</p>
-<p class="last">Default:300</p>
-</td>
-</tr>
-<tr class="row-odd"><td>print_infos_in_console</td>
-<td>[true|false]</td>
-<td><p class="first">Controls the printing of emulation info messages
-to users console.</p>
-<blockquote>
-<div><p>Emulation info messages are always logged into a
-file called emulation_debug.log</p>
-<blockquote>
-<div><ul class="simple">
-<li>true = print in users console</li>
-<li>false = do not print in user console</li>
-</ul>
-</div></blockquote>
-</div></blockquote>
-<p class="last">Default: true</p>
-</td>
-</tr>
-<tr class="row-even"><td>print_warning_in_console</td>
-<td>[true|false]</td>
-<td><p class="first">Controls the printing of emulation warning messages
-to users console.</p>
-<blockquote>
-<div><p>Emulation warning messages are always logged into
-a file called emulation_debug.log</p>
-<blockquote>
-<div><ul class="simple">
-<li>true = print in users console</li>
-<li>false = do not print in user console</li>
-</ul>
-</div></blockquote>
-</div></blockquote>
-<p class="last">Default: true</p>
-</td>
-</tr>
-<tr class="row-odd"><td>print_errors_in_console</td>
-<td>[true|false]</td>
-<td><p class="first">Controls the printing of emulation error messages
-to users console.</p>
-<blockquote>
-<div><p>Emulation error messages are always logged into a
-file called emulation_debug.log</p>
-<blockquote>
-<div><ul class="simple">
-<li>true = print in users console</li>
-<li>false = do not print in user console</li>
-</ul>
-</div></blockquote>
-</div></blockquote>
-<p class="last">Default: true</p>
-</td>
-</tr>
-<tr class="row-even"><td>debug_mode</td>
-<td>[off|batch|gui|gdb]</td>
-<td><p class="first">Specify how the waveform is saved and displayed</p>
-<blockquote>
-<div><ul class="simple">
-<li>off: Do not launch simulator waveform GUI, and
-do not save wdb file</li>
-<li>batch: Do not launch simulator waveform GUI,
-but save wdb file</li>
-<li>gui: Launch simulator waveform GUI, and save
-wdb file</li>
-<li>gdb: Launch gdb mode</li>
-</ul>
-</div></blockquote>
-<p>Default: off</p>
-<blockquote class="last">
-<div>Note: The kernel needs to be compiled with debug
-enabled for the waveform to be saved and
-displayed in the simulator GUI.</div></blockquote>
-</td>
-</tr>
-<tr class="row-odd"><td>timeout_scale</td>
-<td>[na|ms|sec|min]</td>
-<td><p class="first">Specify the time scaling unit of timeout specified
-clPollStreams command, otherwise Emulation does not
-support timeout specified in clPollStreams command</p>
-<blockquote class="last">
-<div>Default:na (not applicable)</div></blockquote>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
+<p>For a complete list of currently supported xrt.ini keys, default value, and valid key values please refer <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/xrtini.html?#tpi1504034339424__section_tnh_pks_rx">Vitis Application Acceleration Development Flow Documentation</a></p>
 </div>
 </div>
 
@@ -865,7 +563,7 @@ support timeout specified in clPollStreams command</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on August 27, 2021.
+        Last updated on September 02, 2021.
       </span>
 
     </p>
