@@ -1160,21 +1160,22 @@ get_runtime_active_kids(std::string &pci_bridge_path)
   int curr_act_dev = 0;
   std::vector<bfs::path> vec{bfs::directory_iterator(pci_bridge_path), bfs::directory_iterator()};
 
-  // Check number of Xilinx devices under this bridge. 
+  // Check number of Xilinx devices under this bridge.
   for (auto& path : vec) {
-    if (bfs::is_directory(path)) {
-      path += "/vendor";
-      if(!bfs::exists(path))
-        continue;
+    if (!bfs::is_directory(path))
+	    continue;
 
-      unsigned int vendor_id;
-      bfs::ifstream file(path);
-      file >> std::hex >> vendor_id;
-      if (vendor_id != XILINX_ID)
-        continue;
+    path += "/vendor";
+    if(!bfs::exists(path))
+	    continue;
 
-      curr_act_dev++;
-    }
+    unsigned int vendor_id;
+    bfs::ifstream file(path);
+    file >> std::hex >> vendor_id;
+    if (vendor_id != XILINX_ID)
+	    continue;
+
+    curr_act_dev++;
   }
 
   return curr_act_dev;
