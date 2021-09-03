@@ -1150,9 +1150,9 @@ get_uuids(std::shared_ptr<char>& dtbbuf, std::vector<std::string>& uuids)
 }
 
 /*
- * This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids sysfs
- * node for the Linux power driver. Hence, to get the active kids under a bridge we need this
- * alternative solution.
+ * This is for the RHEL 8.x kernel. From the RHEL 8.x kernel removed the runtime_active_kids 
+ * sysfs node for the Linux power driver. Hence, to get the active kids under a bridge we 
+ * need this alternative solution.
  */
 int
 get_runtime_active_kids(std::string &pci_bridge_path)
