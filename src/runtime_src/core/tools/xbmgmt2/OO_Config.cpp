@@ -159,7 +159,7 @@ show_device_conf(xrt_core::device* device)
   }
 
   try {
-    auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_override>(device);
+    auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold power override" % scaling_override;
   }
   catch (...) {
@@ -219,7 +219,7 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
     xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(device, value);
     break;
   case config_type::threshold_power_override:
-    xrt_core::device_update<xrt_core::query::xmc_scaling_override>(device, value);
+    xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(device, value);
     break;
   case config_type::threshold_temp_override:
     xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);

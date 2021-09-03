@@ -67,7 +67,7 @@ is_supported(const std::shared_ptr<xrt_core::device>& dev)
   } catch(const xrt_core::query::exception&) {}
 
   if (is_mfg || is_recovery) {
-    std::cerr << "This operation is not supported with manufacturing image. mfg:recovery=" << is_mfg << ":" << is_recovery << std::endl;
+    std::cerr << boost::format("This operation is not supported with %s image.\n") % (is_mfg ? "manufacturing" : "recovery");
     return false;
   }
 
@@ -93,18 +93,9 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
 
   if (is_supported(_dev)) {
     try {
-      child.put("security_level", xrt_core::device_query<xrt_core::query::sec_level>(_dev));
-      child.put("scaling_support", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_dev));
       child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
-      child.put("scaling_critical_power_threshold", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_pow_threshold>(_dev));
-      child.put("scaling_critical_temp_threshold", xrt_core::device_query<xrt_core::query::xmc_scaling_critical_temp_threshold>(_dev));
-      child.put("scaling_threshold_power_limit", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_limit>(_dev));
-      child.put("scaling_threshold_temp_limit", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_limit>(_dev));
-      child.put("scaling_threshold_power_override_en", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_override_en>(_dev));
-      child.put("scaling_threshold_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_power_override>(_dev));
-      child.put("scaling_threshold_temp_override_en", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_override_en>(_dev));
-      child.put("scaling_threshold_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_threshold_temp_override>(_dev));
-      child.put("data_retention", xrt_core::device_query<xrt_core::query::data_retention>(_dev));
+      child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
+      child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
     } catch(const xrt_core::query::exception&) {}
   }
 
