@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2021 Xilinx, Inc. All rights reserved.
  *
  *  Utility Functions for AXI firewall IP.
  *  Author: Lizhi.Hou@Xilinx.com
@@ -27,11 +27,11 @@
 #define	SOFT_CTRL				0x4
 #define	UNBLOCK_CTRL				0x8
 #define IP_VERSION				0x10
-#define MAX_CONTINUOUS_RTRANSFERS_WAITS 	0x30
+#define MAX_CONTINUOUS_RTRANSFERS_WAITS	0x30
 #define MAX_WRITE_TO_BVALID_WAITS		0x34
-#define MAX_ARREADY_WAITS 			0x38
-#define MAX_AWREADY_WAITS 			0x3C
-#define MAX_WREADY_WAITS 			0x40
+#define MAX_ARREADY_WAITS			0x38
+#define MAX_AWREADY_WAITS			0x3C
+#define MAX_WREADY_WAITS			0x40
 
 /* version 1.1 only registers */
 #define SI_FAULT_STATUS				0x100
@@ -168,6 +168,8 @@ struct firewall {
 	u64			cache_expire_secs;
 	struct xcl_firewall	cache;
 	ktime_t			cache_expires;
+	char		err_detected_level_name[50];
+	char		level_name[MAX_LEVEL][50];
 };
 
 static int clear_firewall(struct platform_device *pdev);
@@ -250,6 +252,9 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 		case XOCL_AF_PROP_DETECTED_TIME:
 			*(u64 *)val = fw->err_detected_time;
 			break;
+		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
+			strcpy((char *)val, fw->err_detected_level_name);
+			break;
 		default:
 			xocl_err(&pdev->dev, "Invalid prop %d", prop);
 			ret = -EINVAL;
@@ -276,6 +281,9 @@ static int get_prop(struct platform_device *pdev, u32 prop, void *val)
 		case XOCL_AF_PROP_DETECTED_TIME:
 			*(u64 *)val = fw->cache.err_detected_time;
 			break;
+		case XOCL_AF_PROP_DETECTED_LEVEL_NAME:
+			strcpy((char *)val, fw->cache.err_detected_level_name);
+			break;
 		default:
 			xocl_err(&pdev->dev, "Invalid prop %d", prop);
 			ret = -EINVAL;
@@ -292,10 +300,19 @@ static ssize_t show_firewall(struct device *dev, struct device_attribute *da,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct firewall *fw;
 	u64 t;
+	char name[50];
 	int ret;
 
 	fw = platform_get_drvdata(pdev);
 	BUG_ON(!fw);
+
+	if (attr->index == XOCL_AF_PROP_DETECTED_LEVEL_NAME) {
+		ret = get_prop(pdev, attr->index, &name);
+		if (ret)
+			return 0;
+
+		return sprintf(buf, "%s\n", name);
+	}
 
 	ret = get_prop(pdev, attr->index, &t);
 	if (ret)
@@ -314,6 +331,8 @@ static SENSOR_DEVICE_ATTR(detected_level, 0444, show_firewall, NULL,
 	XOCL_AF_PROP_DETECTED_LEVEL);
 static SENSOR_DEVICE_ATTR(detected_time, 0444, show_firewall, NULL,
 	XOCL_AF_PROP_DETECTED_TIME);
+static SENSOR_DEVICE_ATTR(detected_level_name, 0444, show_firewall, NULL,
+	XOCL_AF_PROP_DETECTED_LEVEL_NAME);
 
 static ssize_t clear_store(struct device *dev, struct device_attribute *da,
 	const char *buf, size_t count)
@@ -364,6 +383,7 @@ static ssize_t detected_trip_show(struct device *dev,
 		}
 	}
 
+	count += sprintf(buf + count, "level_name:%s\n", fw->err_detected_level_name);
 	count += sprintf(buf + count, "araddr:0x%llx\n", fw->err_detected_araddr);
 	count += sprintf(buf + count, "awaddr:0x%llx\n", fw->err_detected_awaddr);
 	count += sprintf(buf + count, "aruser:0x%x\n", fw->err_detected_aruser);
@@ -379,6 +399,7 @@ static struct attribute *firewall_attributes[] = {
 	&sensor_dev_attr_detected_status.dev_attr.attr,
 	&sensor_dev_attr_detected_level.dev_attr.attr,
 	&sensor_dev_attr_detected_time.dev_attr.attr,
+	&sensor_dev_attr_detected_level_name.dev_attr.attr,
 	&dev_attr_clear.attr,
 	&dev_attr_inject.attr,
 	&dev_attr_detected_trip.attr,
@@ -424,6 +445,7 @@ static u32 check_firewall(struct platform_device *pdev, int *level)
 			if (!fw->curr_status) {
 				fw->err_detected_status = val;
 				fw->err_detected_level = i;
+				strcpy(fw->err_detected_level_name, fw->level_name[i]);
 				XOCL_GETTIME(&time);
 				fw->err_detected_time = (u64)time.tv_sec;
 				fw->err_detected_araddr = READ_ARADDR(fw, i);
@@ -539,6 +561,7 @@ static void af_get_data(struct platform_device *pdev, void *buf)
 		get_prop(pdev, XOCL_AF_PROP_DETECTED_STATUS, &af_status->err_detected_status);
 		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL, &af_status->err_detected_level);
 		get_prop(pdev, XOCL_AF_PROP_DETECTED_TIME, &af_status->err_detected_time);
+		get_prop(pdev, XOCL_AF_PROP_DETECTED_LEVEL_NAME, &af_status->err_detected_level_name);
 	}
 }
 
@@ -633,6 +656,29 @@ static int firewall_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void
+get_fw_ep_name(struct platform_device *pdev, char *res_name, char *result)
+{
+	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)))
+		strncpy(result, "CTRL_MGMT", strlen("CTRL_MGMT"));
+	else if (!strncmp(res_name, NODE_AF_CTRL_USER, strlen(NODE_AF_CTRL_USER)))
+		strncpy(result, "CTRL_USER", strlen("CTRL_USER"));
+	else if (!strncmp(res_name, NODE_AF_CTRL_DEBUG, strlen(NODE_AF_CTRL_DEBUG)))
+		strncpy(result, "CTRL_DEBUG", strlen("CTRL_DEBUG"));
+	else if (!strncmp(res_name, NODE_AF_BLP_CTRL_MGMT, strlen(NODE_AF_BLP_CTRL_MGMT)))
+		strncpy(result, "BLP_CTRL_MGMT", strlen("BLP_CTRL_MGMT"));
+	else if (!strncmp(res_name, NODE_AF_BLP_CTRL_USER, strlen(NODE_AF_BLP_CTRL_USER)))
+		strncpy(result, "BLP_CTRL_USER", strlen("BLP_CTRL_USER"));
+	else if (!strncmp(res_name, NODE_AF_DATA_H2C, strlen(NODE_AF_DATA_H2C)))
+		strncpy(result, "DATA_H2C", strlen("DATA_H2C"));
+	else if (!strncmp(res_name, NODE_AF_DATA_C2H, strlen(NODE_AF_DATA_C2H)))
+		strncpy(result, "DATA_C2H", strlen("DATA_C2H"));
+	else if (!strncmp(res_name, NODE_AF_DATA_P2P, strlen(NODE_AF_DATA_P2P)))
+		strncpy(result, "DATA_P2P", strlen("DATA_P2P"));
+	else if (!strncmp(res_name, NODE_AF_DATA_M2M, strlen(NODE_AF_DATA_M2M)))
+		strncpy(result, "DATA_M2M", strlen("DATA_M2M"));
+}
+
 static int firewall_probe(struct platform_device *pdev)
 {
 	struct firewall	*fw;
@@ -653,6 +699,7 @@ static int firewall_probe(struct platform_device *pdev)
 			fw->max_level = i;
 			break;
 		}
+		get_fw_ep_name(pdev, res->name, fw->level_name[i]);
 		fw->af[i].base_addr =
 			ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!fw->af[i].base_addr) {

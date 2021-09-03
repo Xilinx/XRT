@@ -915,6 +915,7 @@ enum {
 	XOCL_AF_PROP_DETECTED_STATUS,
 	XOCL_AF_PROP_DETECTED_LEVEL,
 	XOCL_AF_PROP_DETECTED_TIME,
+	XOCL_AF_PROP_DETECTED_LEVEL_NAME,
 };
 struct xocl_firewall_funcs {
 	struct xocl_subdev_funcs common_funcs;

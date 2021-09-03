@@ -577,6 +577,7 @@ initialize_query_table()
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
+  emplace_sysfs_get<query::firewall_detect_level_name>        ("firewall", "detected_level_name");
   emplace_sysfs_get<query::firewall_status>                   ("firewall", "detected_status");
   emplace_sysfs_get<query::firewall_time_sec>                 ("firewall", "detected_time");
 
