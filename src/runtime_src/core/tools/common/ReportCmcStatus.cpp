@@ -53,7 +53,7 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     pt.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_pDevice));
     pt.put("scaling_temp_override_en", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
     pt.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
-  } catch(const xrt_core::query::no_such_key&) {}
+  } catch(...) {}
   // There can only be 1 root node
   _pt.add_child("cmc", pt);
 }
@@ -78,19 +78,21 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     if (err_code)
       _output << boost::format("  %-22s : %s sec\n\n") % "err time" % cmc.get<std::string>("heartbeat_err_time");
   } catch(...) {}
-  _output << boost::format("  %-22s :\n") % "Runtime clock scaling feature";
-  _output << boost::format("  \t%-22s : %s\n") % "Supported" % cmc.get<std::string>("scaling_support");
-  _output << boost::format("  \t%-22s : %s\n") % "Enabled" % cmc.get<std::string>("scaling_enabled");
-  _output << boost::format("  \t%-22s:\n") % "Critical threshold (clock shutdown) limits";
-  _output << boost::format("  \t\t%-22s : %s\n") % "Power" % cmc.get<std::string>("scaling_critical_power_threshold");
-  _output << boost::format("  \t\t%-22s : %s\n") % "Temperature" % cmc.get<std::string>("scaling_critical_temp_threshold");
-  _output << boost::format("  \t%-22s:\n") % "Throttling threshold limits";
-  _output << boost::format("  \t\t%-22s : %s\n") % "Power" % cmc.get<std::string>("scaling_threshold_power_limit");
-  _output << boost::format("  \t\t%-22s : %s\n") % "Temperature" % cmc.get<std::string>("scaling_threshold_temp_limit");
-  _output << boost::format("  \t%-22s:\n") % "Power threshold override";
-  _output << boost::format("  \t\t%-22s : %s\n") % "Override" % cmc.get<std::string>("scaling_power_override_en");
-  _output << boost::format("  \t\t%-22s : %s\n") % "Override limit" % cmc.get<std::string>("scaling_power_override");
-  _output << boost::format("  \t%-22s:\n") % "Temperature threshold override";
-  _output << boost::format("  \t\t%-22s : %s\n") % "Override" % cmc.get<std::string>("scaling_temp_override_en");
-  _output << boost::format("  \t\t%-22s : %s\n") % "Override limit" % cmc.get<std::string>("scaling_temp_override");
+  try {
+    _output << boost::format("  %-22s :\n") % "Runtime clock scaling feature";
+    _output << boost::format("  \t%-22s : %s\n") % "Supported" % cmc.get<std::string>("scaling_support");
+    _output << boost::format("  \t%-22s : %s\n") % "Enabled" % cmc.get<std::string>("scaling_enabled");
+    _output << boost::format("  \t%-22s:\n") % "Critical threshold (clock shutdown) limits";
+    _output << boost::format("  \t\t%-22s : %s\n") % "Power" % cmc.get<std::string>("scaling_critical_power_threshold");
+    _output << boost::format("  \t\t%-22s : %s\n") % "Temperature" % cmc.get<std::string>("scaling_critical_temp_threshold");
+    _output << boost::format("  \t%-22s:\n") % "Throttling threshold limits";
+    _output << boost::format("  \t\t%-22s : %s\n") % "Power" % cmc.get<std::string>("scaling_threshold_power_limit");
+    _output << boost::format("  \t\t%-22s : %s\n") % "Temperature" % cmc.get<std::string>("scaling_threshold_temp_limit");
+    _output << boost::format("  \t%-22s:\n") % "Power threshold override";
+    _output << boost::format("  \t\t%-22s : %s\n") % "Override" % cmc.get<std::string>("scaling_power_override_en");
+    _output << boost::format("  \t\t%-22s : %s\n") % "Override limit" % cmc.get<std::string>("scaling_power_override");
+    _output << boost::format("  \t%-22s:\n") % "Temperature threshold override";
+    _output << boost::format("  \t\t%-22s : %s\n") % "Override" % cmc.get<std::string>("scaling_temp_override_en");
+    _output << boost::format("  \t\t%-22s : %s\n") % "Override limit" % cmc.get<std::string>("scaling_temp_override");
+  } catch(...) {}
 }
