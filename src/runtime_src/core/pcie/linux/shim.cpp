@@ -998,7 +998,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
     info->mNumClocks = numClocks(info->mName);
 
-    mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
+    info->mNumCDMA = xrt_core::device_query<xrt_core::query::kds_numcdmas>(mCoreDevice);
 
     //get sensors
     unsigned int m12VPex, m12VAux, mPexCurr, mAuxCurr, mDimmTemp_0, mDimmTemp_1, mDimmTemp_2,
