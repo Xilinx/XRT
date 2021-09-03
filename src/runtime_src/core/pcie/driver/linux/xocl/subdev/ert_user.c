@@ -810,7 +810,7 @@ ert_post_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 {
 	struct ert_access_valid_cmd *cmd = NULL;
 	uint32_t offset = 0;
-	if (likely(!ert_special_cmd(ecmd)) && cmd_opcode(ecmd) != ERT_ACCESS_TEST)
+	if (likely(!ert_special_cmd(ecmd)) && (cmd_opcode(ecmd) != ERT_ACCESS_TEST || cmd_opcode(ecmd) != ERT_SK_START))
 		return;
 
 	ERTUSER_DBG(ert_user, "%s %d", __func__, cmd_opcode(ecmd));
