@@ -656,8 +656,7 @@ static int firewall_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void
-get_fw_ep_name(struct platform_device *pdev, char *res_name, char *result)
+static void get_fw_ep_name(char *res_name, char *result)
 {
 	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)))
 		strncpy(result, "CTRL_MGMT", strlen("CTRL_MGMT"));
@@ -699,7 +698,7 @@ static int firewall_probe(struct platform_device *pdev)
 			fw->max_level = i;
 			break;
 		}
-		get_fw_ep_name(pdev, res->name, fw->level_name[i]);
+		get_fw_ep_name(res->name, fw->level_name[i]);
 		fw->af[i].base_addr =
 			ioremap_nocache(res->start, res->end - res->start + 1);
 		if (!fw->af[i].base_addr) {
