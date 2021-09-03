@@ -295,8 +295,7 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const s
 }
 
 static void
-report_status(std::shared_ptr<xrt_core::device> & workingDevice, const std::string& vbnv,
-              boost::property_tree::ptree& pt_device) 
+report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device) 
 {
   std::cout << "----------------------------------------------------\n";
   pretty_print_platform_info(pt_device, vbnv);
@@ -520,7 +519,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
   pt_dev.put("platform.status.sc", same_sc);
 
   //report status of the device
-  report_status(workingDevice, dsa.name, pt_dev);
+  report_status(dsa.name, pt_dev);
 
   // Continue to flash whatever we have collected in boardsToUpdate.
   bool needreboot = false;
