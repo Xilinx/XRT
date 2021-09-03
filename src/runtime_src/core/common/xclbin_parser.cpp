@@ -680,9 +680,17 @@ get_kernel_freq(const axlf* top)
       if (xml_clock.first != "clock")
         continue;
       auto port = xml_clock.second.get<std::string>("<xmlattr>.port","");
-      auto freq = convert(xml_clock.second.get<std::string>("<xmlattr>.frequency","100"));
-      if(port == "KERNEL_CLK")
-        kernel_clk_freq = freq;
+      auto freq = xml_clock.second.get<std::string>("<xmlattr>.frequency","100");
+      //clock is always represented in units in XML
+      auto units = "MHz";
+      size_t found = freq.find(units);
+
+      //remove the units from the string
+      if (found != std::string::npos)
+        freq = freq.substr(0,found);
+
+      if(!freq.empty() && port == "KERNEL_CLK")
+        kernel_clk_freq = convert(freq);
     }
   }
 

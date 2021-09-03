@@ -79,4 +79,6 @@
 #define xclGraphTimedEnd_n 48
 #define xclGraphResume_n 49
 
+#define xclCopyBOFromFd_n 50
+
 #endif

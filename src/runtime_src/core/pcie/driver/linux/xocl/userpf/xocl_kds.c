@@ -633,6 +633,9 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	case ERT_MB_VALIDATE:
 		xcmd->opcode = OP_VALIDATE;
 		break;
+	case ERT_ACCESS_TEST_C:
+		xcmd->opcode = OP_VALIDATE;
+		break;	
 	case ERT_CU_STAT:
 		xcmd->opcode = OP_GET_STAT;
 		xcmd->priv = &XDEV(xdev)->kds;

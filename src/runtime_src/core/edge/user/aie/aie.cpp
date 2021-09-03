@@ -213,11 +213,10 @@ submit_sync_bo(xrt::bo& bo, std::shared_ptr<adf::gmio_api>& gmio_api, adf::gmio_
 
   if (size & XAIEDMA_SHIM_TXFER_LEN32_MASK != 0)
     throw xrt_core::error(-EINVAL, "Sync AIE Bo fails: size is not 32 bits aligned.");
-    
   BD bd;
   prepare_bd(bd, bo);
 #ifndef __AIESIM__
-  gmio_api->enqueueBD((uint64_t)bd.vaddr + offset, size);
+  gmio_api->enqueueBD(&bd.memInst, offset, size);
 #else
   gmio_api->enqueueBD((uint64_t)bo.address() + offset, size);
 #endif
@@ -234,14 +233,10 @@ prepare_bd(BD& bd, xrt::bo& bo)
     throw xrt_core::error(-errno, "Sync AIE Bo: fail to export BO.");
   bd.buf_fd = buf_fd;
 
-  auto ret = ioctl(fd, AIE_ATTACH_DMABUF_IOCTL, buf_fd);
-  if (ret)
-    throw xrt_core::error(-errno, "Sync AIE Bo: fail to attach DMA buf.");
-
   auto bosize = bo.size();
-  bd.size = bosize;
 
-  bd.vaddr = reinterpret_cast<char *>(mmap(NULL, bosize, PROT_READ | PROT_WRITE, MAP_SHARED, buf_fd, 0));
+  XAie_MemCacheProp prop = XAIE_MEM_NONCACHEABLE;
+  XAie_MemAttach(devInst, &bd.memInst, 0, 0, bosize, prop, buf_fd);
 #endif
 }
 
@@ -250,11 +245,7 @@ Aie::
 clear_bd(BD& bd)
 {
 #ifndef __AIESIM__
-  munmap(bd.vaddr, bd.size);
-  bd.vaddr = nullptr;
-  auto ret = ioctl(fd, AIE_DETACH_DMABUF_IOCTL, bd.buf_fd);
-  if (ret)
-    throw xrt_core::error(-errno, "Sync AIE Bo: fail to detach DMA buf.");
+  XAie_MemDetach(&bd.memInst);
   close(bd.buf_fd);
 #endif
 }

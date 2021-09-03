@@ -29,6 +29,9 @@ namespace xdp {
   public:
     UserEventsPlugin() ;
     ~UserEventsPlugin() ;
+
+    // Called when the database is destroyed before the plugin
+    virtual void writeAll(bool openNewFiles = true) ;
   } ;
 } // end namespace xdp
 

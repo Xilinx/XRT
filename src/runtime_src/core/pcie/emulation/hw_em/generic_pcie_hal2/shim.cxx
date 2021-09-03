@@ -684,6 +684,10 @@ namespace xclhwemhal2 {
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
 
+            uint64_t range = convert(xml_remap.second.get<std::string>("<xmlattr>.range"));
+            std::string kernelInstanceStr = kernelName + ":" + instanceName;
+            mCURangeMap[kernelInstanceStr] = range;
+
             std::string vbnv  = mDeviceInfo.mName;
             //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
             if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
@@ -2155,6 +2159,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     binaryCounter = 0;
     host_sptag_idx = -1;
     sock = nullptr;
+    mCURangeMap.clear();
 
     deviceName = "device"+std::to_string(deviceIndex);
     deviceDirectory = xclemulation::getRunDirectory() +"/" + std::to_string(getpid())+"/hw_em/"+deviceName;
@@ -2919,6 +2924,20 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     }
     if (!ack)
       return -1;
+  } 
+  else if (sBO->fd >= 0) {
+    //As per the hemants comments, when src buffer is p2p buffer, we better copy from device to host and copy from host to another device.
+    unsigned char temp_buffer[size];
+    // copy data from source buffer to temp buffer
+    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
+      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
+      return -1;
+    }
+    // copy data from temp buffer to destination buffer
+    if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset, dBO->topology) != size) {
+      std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;
+      return -1;
+    }
   }
   else{
      std::cerr << "ERROR: Copy buffer from source to destination failed" << std::endl;
@@ -3723,7 +3742,19 @@ int HwEmShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *da
     logMessage(strMsg);
     return -EINVAL;
   }
-  if (offset >= mCuMapSize || (offset & (sizeof(uint32_t) - 1)) != 0) {
+
+  uint64_t cuAddRange = 64 * 1024;
+  for (auto cuInfo : mCURangeMap) {
+    std::string instName = cuInfo.first;
+    int cuIdx = static_cast<int>(cu_index);
+    int tmpCuIdx = xclIPName2Index(instName.c_str());
+
+    if (tmpCuIdx == cuIdx) {
+      cuAddRange = cuInfo.second;
+    }
+  }
+
+  if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
     std::string strMsg = "ERROR: [HW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
     logMessage(strMsg);
     return -EINVAL;

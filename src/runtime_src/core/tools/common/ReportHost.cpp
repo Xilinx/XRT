@@ -26,6 +26,7 @@
 #include <boost/algorithm/string.hpp>
 
 #define BYTES_TO_MEGABYTES 0x100000ll
+namespace xq = xrt_core::query;
 
 void
 ReportHost::getPropertyTreeInternal( const xrt_core::device * _pDevice,
@@ -114,7 +115,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   for(auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
     std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-    _output << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
+    _output << boost::format("  [%s] : %s %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % dev.get<std::string>("instance") % note;
   }
   _output << std::endl;
 }

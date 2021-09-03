@@ -476,9 +476,20 @@ namespace xclcpuemhal2 {
             childArgv[5] = portStream.str().c_str() ;
           }
         }
-        int r = execl(modelDirectory.c_str(), childArgv[0], childArgv[1],
+
+
+        int r = 0;
+
+        if (xclemulation::is_sw_emulation() && xrt_core::config::get_flag_sw_emu_kernel_debug()){// Launch sw_emu device Process in GDB -> Emulation.kernel-dbg =true
+	   std::cout << "INFO : "<< "SW_EMU Kernel debug enabled in GDB." << std::endl;
+	   std::string commandStr = "/usr/bin/gdb -args " + modelDirectory + "; csh";
+           r = execl("/usr/bin/xterm", "/usr/bin/xterm", "-hold", "-T", "SW_EMU Kernel Debug", "-geometry", "120x80", "-fa", "Monospace", "-fs", "14", "-e", "csh", "-c", commandStr.c_str(), (void*)NULL);
+        }
+        else{
+	   r = execl(modelDirectory.c_str(), childArgv[0], childArgv[1],
             childArgv[2], childArgv[3], childArgv[4], childArgv[5],
             NULL) ;
+        }
 
         //fclose (stdout);
         if(r == -1){std::cerr << "FATAL ERROR : child process did not launch" << std::endl; exit(1);}
@@ -1430,6 +1441,16 @@ int CpuemShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, s
     if (fItr != mFdToFileNameMap.end()) {
       const std::string& sFileName = std::get<0>((*fItr).second);
       xclCopyBO_RPC_CALL(xclCopyBO, sBO->base, sFileName, size, src_offset, dst_offset);
+    }
+    if (!ack)
+      return -1;
+  }
+  else if (sBO->fd >= 0) {
+    int ack = false;
+    auto fItr = mFdToFileNameMap.find(sBO->fd);
+    if (fItr != mFdToFileNameMap.end()) {
+      const std::string& sFileName = std::get<0>((*fItr).second);
+      xclCopyBOFromFd_RPC_CALL(xclCopyBOFromFd, sFileName, dBO->base, size, src_offset, dst_offset);
     }
     if (!ack)
       return -1;

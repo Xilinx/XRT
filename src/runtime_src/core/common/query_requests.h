@@ -56,6 +56,7 @@ enum class key_type
   pcie_express_lane_width_max,
   pcie_bdf,
 
+  instance,
   edge_vendor,
 
   dma_threads_raw,
@@ -98,6 +99,7 @@ enum class key_type
   xmc_reg_base,
   xmc_scaling_enabled,
   xmc_scaling_override,
+  xmc_scaling_temp_override,
   xmc_scaling_reset,
   xmc_qspi_status,
 
@@ -232,6 +234,7 @@ enum class key_type
   ert_cq_read,
   ert_cu_write,
   ert_cu_read,
+  ert_data_integrity,
 
   noop
 };
@@ -852,6 +855,24 @@ struct xmc_version : request
   }
 };
 
+
+struct instance : request
+{
+  using result_type = int64_t;
+  static const key_type key = key_type::instance;
+  static const char* name() { return "instance"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string 
+  to_string(const result_type& value)
+  {
+    return std::to_string(value);
+  }
+};
+
+
 struct xmc_board_name : request
 {
   using result_type = std::string;
@@ -1000,6 +1021,20 @@ struct xmc_scaling_override: request
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
   static const key_type key = key_type::xmc_scaling_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_temp_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_temp_override;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2466,6 +2501,22 @@ struct ert_cu_write : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+
+struct ert_data_integrity : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::ert_data_integrity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "Pass" : "Fail";
+  }
 };
 
 struct noop : request

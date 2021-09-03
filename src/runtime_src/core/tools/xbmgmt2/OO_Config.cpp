@@ -46,6 +46,7 @@ enum class config_type {
     security = 0,
     clk_scaling,
     threshold_power_override,
+    threshold_temp_override,
     reset,
 };
 
@@ -166,6 +167,14 @@ show_device_conf(xrt_core::device* device)
   }
 
   try {
+    auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
+    std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold temp override" % scaling_override;
+  }
+  catch (...) {
+    //safe to ignore. These sysfs nodes are not present for u30
+  }
+
+  try {
     auto value = xrt_core::device_query<xrt_core::query::data_retention>(device);
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
     std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
@@ -212,6 +221,9 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
   case config_type::threshold_power_override:
     xrt_core::device_update<xrt_core::query::xmc_scaling_override>(device, value);
     break;
+  case config_type::threshold_temp_override:
+    xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(device, value);
+    break;
   case config_type::reset:
     xrt_core::device_update<xrt_core::query::xmc_scaling_reset>(device, value);
     break;
@@ -244,6 +256,7 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     , m_security("")
     , m_clk_scale("")
     , m_power_override("")
+    , m_temp_override("")
     , m_cs_reset("")
     , m_show(false)
     , m_ddr(false)
@@ -264,6 +277,7 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     ("security", boost::program_options::value<decltype(m_security)>(&m_security), "<add description>")
     ("runtime_clk_scale", boost::program_options::value<decltype(m_clk_scale)>(&m_clk_scale), "<add description>")
     ("cs_threshold_power_override", boost::program_options::value<decltype(m_power_override)>(&m_power_override), "<add description>")
+    ("cs_threshold_temp_override", boost::program_options::value<decltype(m_temp_override)>(&m_temp_override), "<add description>")
     ("cs_reset", boost::program_options::value<decltype(m_cs_reset)>(&m_cs_reset), "<add description>")
     ("showx", boost::program_options::bool_switch(&m_show), "<add description>")
     ("hbm", boost::program_options::bool_switch(&m_hbm), "<add description>")
@@ -389,6 +403,11 @@ OO_Config::execute(const SubCmdOptions& _options) const
     if (!m_power_override.empty())
       for (const auto& dev : deviceCollection)
         update_device_conf(dev.get(), m_power_override, config_type::threshold_power_override);
+
+    //update threshold temp override
+    if (!m_temp_override.empty())
+      for (const auto& dev : deviceCollection)
+        update_device_conf(dev.get(), m_temp_override, config_type::threshold_temp_override);
 
     //cs_reset
     if (!m_cs_reset.empty())
