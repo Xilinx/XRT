@@ -52,6 +52,7 @@ static const ReportCollection fullReportCollection = {
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportMechanical>(),
     std::make_shared<ReportFirewall>(),
+    std::make_shared<ReportMailbox>(),
     std::make_shared<ReportCmcStatus>()
   #endif
 };

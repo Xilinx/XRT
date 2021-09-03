@@ -41,7 +41,9 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     pt.put("heartbeat_err_code", xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice));
     pt.put("heartbeat_stall", xrt_core::device_query<xrt_core::query::heartbeat_stall>(_pDevice));
     pt.put("status", xrt_core::utils::parse_cmc_status(static_cast<unsigned int>(xrt_core::device_query<xrt_core::query::heartbeat_err_code>(_pDevice))));
-  } catch(...) {}
+  }
+  catch(const xrt_core::query::no_such_key&) {}
+  catch(const xrt_core::query::sysfs_error&) {}
   try {
     pt.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_pDevice));
     pt.put("scaling_support", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_pDevice));
@@ -53,7 +55,9 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     pt.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_pDevice));
     pt.put("scaling_temp_override_en", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
     pt.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
-  } catch(...) {}
+  }
+  catch(const xrt_core::query::no_such_key&) {}
+  catch(const xrt_core::query::sysfs_error&) {}
   // There can only be 1 root node
   _pt.add_child("cmc", pt);
 }
