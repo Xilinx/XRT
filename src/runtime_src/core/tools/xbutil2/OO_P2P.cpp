@@ -307,8 +307,9 @@ OO_P2P::execute(const SubCmdOptions& _options) const
   }
 
   // Validate the correct action value is used
+  action_type action;
   try {
-     string2action(m_action);
+    action = string2action(m_action);
   } catch (const xrt_core::generic_error &e) {
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -349,6 +350,24 @@ OO_P2P::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  for (auto& device : deviceCollection)
-    p2p(device.get(), string2action(m_action), false);
+  try {
+    p2p(deviceCollection[0].get(), action, XBU::getForce());
+  } catch (const xrt_core::system_error& ex) {
+    std::cerr << "ERROR: " << ex.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled); 
+  }
+
+  // Print success message for the user
+  switch (action) {
+    case action_type::enable:
+      std::cout <<  "Please WARM reboot the machine to enable P2P now.\n";
+      break;
+    
+    case action_type::disable:
+      std::cout << "Please WARM reboot the machine to disable P2P now.\n";
+      break;
+
+    case action_type::validate:
+      std::cout << "P2P validated successfully.\n";
+  }
 }
