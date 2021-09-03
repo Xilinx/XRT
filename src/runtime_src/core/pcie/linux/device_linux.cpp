@@ -593,7 +593,6 @@ initialize_query_table()
   emplace_sysfs_get<query::power_microwatts>                  ("xmc", "xmc_power");
   emplace_sysfs_get<query::power_warning>                     ("xmc", "xmc_power_warn");
   emplace_sysfs_get<query::host_mem_size>                     ("address_translator", "host_mem_size");
-  emplace_sysfs_get<query::kds_numcdmas>                      ("mb_scheduler", "kds_numcdmas");
 
   //emplace_sysfs_get<query::mig_ecc_enabled>                ("mig", "ecc_enabled");
   emplace_sysfs_get<query::mig_ecc_status>                   ("mig", "ecc_status");
@@ -629,6 +628,7 @@ initialize_query_table()
   emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
+  emplace_sysfs_get<query::kds_numcdmas>                     ("", "kds_numcdmas");
   emplace_func0_request<query::kds_cu_stat,                  kds_cu_stat>();
   emplace_func0_request<query::kds_scu_stat,                 kds_scu_stat>();
   emplace_sysfs_get<query::ps_kernel>                        ("icap", "ps_kernel");
