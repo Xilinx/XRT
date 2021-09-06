@@ -97,9 +97,16 @@ enum class key_type
   expected_sc_version,
   xmc_status,
   xmc_reg_base,
+  xmc_scaling_support,
   xmc_scaling_enabled,
-  xmc_scaling_override,
+  xmc_scaling_power_override,
   xmc_scaling_temp_override,
+  xmc_scaling_critical_pow_threshold,
+  xmc_scaling_critical_temp_threshold,
+  xmc_scaling_threshold_power_limit,
+  xmc_scaling_threshold_temp_limit,
+  xmc_scaling_power_override_enable,
+  xmc_scaling_temp_override_enable,
   xmc_scaling_reset,
   xmc_qspi_status,
 
@@ -1003,6 +1010,69 @@ struct xmc_reg_base : request
   get(const device*) const = 0;
 };
 
+struct xmc_scaling_support : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_support;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_critical_temp_threshold : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_critical_temp_threshold;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_critical_pow_threshold : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_critical_pow_threshold;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_threshold_power_limit : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_threshold_power_limit;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_threshold_temp_limit : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_threshold_temp_limit;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_power_override_enable : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_power_override_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_temp_override_enable : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_temp_override_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct xmc_scaling_enabled : request
 {
   using result_type = bool;       // get value type
@@ -1016,11 +1086,11 @@ struct xmc_scaling_enabled : request
   put(const device*, const boost::any&) const = 0;
 };
 
-struct xmc_scaling_override: request
+struct xmc_scaling_power_override: request
 {
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::xmc_scaling_override;
+  static const key_type key = key_type::xmc_scaling_power_override;
 
   virtual boost::any
   get(const device*) const = 0;
