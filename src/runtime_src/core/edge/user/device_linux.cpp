@@ -315,6 +315,28 @@ struct kds_cu_info
   }
 };
 
+struct instance
+{
+  using result_type = query::instance::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+
+    std::string drv_exists;
+    //check whether driver directory exists or not
+    edev->sysfs_get("driver", errmsg, drv_exists);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    //edge always has only one device. Return 0 if driver node is present
+    return 0;
+  }
+};
+
+
 struct aie_reg_read
 {
   using result_type = query::aie_reg_read::result_type;
@@ -328,7 +350,7 @@ struct aie_reg_read
     const auto row = boost::any_cast<query::aie_reg_read::row_type>(r) + 1;
     const auto col = boost::any_cast<query::aie_reg_read::col_type>(c);
     const auto v = boost::any_cast<query::aie_reg_read::reg_type>(reg);
- 
+
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
   const static std::string AIE_TAG = "aie_metadata";
@@ -567,6 +589,7 @@ initialize_query_table()
 
   emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
   emplace_func0_request<query::kds_cu_stat,             kds_cu_stat>();
+  emplace_func0_request<query::instance,                instance>();
 }
 
 struct X { X() { initialize_query_table(); } };
