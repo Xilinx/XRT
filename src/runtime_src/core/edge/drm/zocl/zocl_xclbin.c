@@ -1292,7 +1292,7 @@ zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid)
 {
 	xuid_t *zx_uuid = zdev->zdev_xclbin->zx_uuid;
 
-	if (zx_uuid) {
+	if (!uuid_is_null(zx_uuid) && zx_uuid) {
 		vfree(zx_uuid);
 		zx_uuid = NULL;
 	}
