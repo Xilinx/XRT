@@ -652,7 +652,7 @@ static void ert_timer(struct timer_list *t)
 	mod_timer(&ert_user->timer, jiffies + ERT_TIMER);
 }
 
-static inline bool ert_special_cmd(struct xrt_ert_command *ecmd)
+static inline bool ert_ctrl_slot_cmd(struct xrt_ert_command *ecmd)
 {
 	bool ret;
 
@@ -805,12 +805,30 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	return 0;
 }
 
+static inline bool
+ert_special_cmd(struct xrt_ert_command *ecmd)
+{
+	bool ret = ert_ctrl_slot_cmd(ecmd);
+
+	switch (cmd_opcode(ecmd)) {
+	case ERT_ACCESS_TEST:
+	case ERT_SK_START:
+		ret = true;
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static inline void
 ert_post_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 {
 	struct ert_access_valid_cmd *cmd = NULL;
 	uint32_t offset = 0;
-	if (likely(!ert_special_cmd(ecmd)) && (cmd_opcode(ecmd) != ERT_ACCESS_TEST || cmd_opcode(ecmd) != ERT_SK_START))
+
+	if (likely(!ert_special_cmd(ecmd)))
 		return;
 
 	ERTUSER_DBG(ert_user, "%s %d", __func__, cmd_opcode(ecmd));
@@ -930,7 +948,7 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 		ecmd = list_first_entry(&ert_user->cq.head, struct xrt_ert_command, list);
 		list_del(&ecmd->list);
 		xcmd = ecmd->xcmd;
-		if (ert_special_cmd(ecmd))
+		if (ert_ctrl_slot_cmd(ecmd))
 			ert_user->ctrl_busy = false;
 
 		ert_post_process(ert_user, ecmd);
@@ -1013,7 +1031,7 @@ int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq, st
 		}
 
 		/* Command is good, try to submit it */
-		if (ert_special_cmd(ecmd)) {
+		if (ert_ctrl_slot_cmd(ecmd)) {
 			if (ert_user->ctrl_busy) {
 				ERTUSER_DBG(ert_user, "ctrl slot is busy\n");
 				return 0;
