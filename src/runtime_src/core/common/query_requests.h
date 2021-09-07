@@ -197,6 +197,7 @@ enum class key_type
   heartbeat_stall,
 
   firewall_detect_level,
+  firewall_detect_level_name,
   firewall_status,
   firewall_time_sec,
   power_microwatts,
@@ -2160,6 +2161,17 @@ struct firewall_detect_level : request
   {
     return std::to_string(value);
   }
+};
+
+struct firewall_detect_level_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::firewall_detect_level_name;
+  static const char* name() { return "level_name"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
 };
 
 struct firewall_status : request
