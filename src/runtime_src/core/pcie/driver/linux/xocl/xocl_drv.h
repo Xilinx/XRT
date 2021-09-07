@@ -2121,7 +2121,7 @@ struct xocl_xgq_funcs {
 	XGQ_OPS(xdev)->xgq_load_xclbin(XGQ_DEV(xdev), xclbin) : -ENODEV)
 #define	xocl_xgq_check_firewall(xdev)		\
 	(XGQ_CB(xdev) ?					\
-	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : -ENODEV)
+	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1

@@ -343,7 +343,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	cmdp = &(cmd->xgq_sq.xgq_sq_head);
 	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
 	cmdp->state = 1;
-	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, ~0 - 1, GFP_KERNEL);
+	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
 	cmdp->count = sizeof(struct xgq_vmr_pkt);
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
@@ -429,8 +429,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	int ret = 0;
 
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);	
-	if (!cmd)
-		return -ENOMEM;
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return 0;
+	}
 	memset(cmd, 0, sizeof(*cmd));
 
 	pkt = &(cmd->xgq_sq.xgq_sq_pkt);
@@ -442,7 +444,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	cmdp = &(cmd->xgq_sq.xgq_sq_head);
 	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
 	cmdp->state = 1;
-	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, ~0 - 1, GFP_KERNEL);
+	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
 	cmdp->count = sizeof(struct xgq_vmr_pkt);
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
@@ -454,6 +456,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	ret = submit_cmd(xgq, cmd);
 	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
+		/* return 0, because it is not a firewall trip */
+		ret = 0;
 		goto done;
 	}
 
