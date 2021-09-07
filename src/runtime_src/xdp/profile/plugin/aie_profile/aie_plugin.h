@@ -32,6 +32,7 @@
 
 extern "C" {
 #include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
 }
 
 namespace xdp {

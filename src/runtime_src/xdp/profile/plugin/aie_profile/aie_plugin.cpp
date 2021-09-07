@@ -505,6 +505,22 @@ namespace xdp {
           //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
           //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
 
+          // Enable floating point exception events
+          if (startEvents.at(i) == XAIE_EVENT_FP_OVERFLOW_CORE) {
+            uint32_t reg = 0;
+            auto addr_tile = _XAie_GetTileAddr(aieDevInst, row + 1, col);
+            // Update MD0
+            auto addr_md0 = addr_tile + XAIEGBL_CORE_COREMD0;
+            XAie_Read32(aieDevInst, addr_md0, &reg);
+            reg = (reg & 0xFFFF) | (XAIEGBL_CORE_COREMD0_FLOMULMSK_MASK | XAIEGBL_CORE_COREMD0_FLOADDMSK_MASK) ;
+            XAie_Write32(aieDevInst, addr_md0, reg);
+            // Update MD1
+            auto addr_md1 = addr_tile + XAIEGBL_CORE_COREMD1;
+            XAie_Read32(aieDevInst, addr_md1, &reg);
+            reg = (reg & 0xFFFF) | (XAIEGBL_CORE_COREMD1_FLOFLOTOFIXMSK_MASK | XAIEGBL_CORE_COREMD1_FLOFIXTOFLOMSK_MASK) ;
+            XAie_Write32(aieDevInst, addr_md1, reg);
+          }
+
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
