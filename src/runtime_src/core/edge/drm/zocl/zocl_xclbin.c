@@ -760,7 +760,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
+					write_unlock(&zdev->attr_rwlock);
 					zocl_create_aie(zdev, axlf, aie_res);
+					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(zdev, axlf, xclbin);
 				}
 			} else {
@@ -970,7 +972,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
+	write_unlock(&zdev->attr_rwlock);
 	zocl_create_aie(zdev, axlf, aie_res);
+	write_lock(&zdev->attr_rwlock);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
