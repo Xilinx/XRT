@@ -1023,7 +1023,7 @@ zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
 
 	// check whether uuid is null or not
 	if (uuid_is_null(id)) {
-		DRM_WARN("NULL uuid to hold.");
+		DRM_WARN("NULL uuid to hold\n");
 		return -EINVAL;
 	}
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
@@ -1320,6 +1320,7 @@ void
 zocl_xclbin_fini(struct drm_zocl_dev *zdev)
 {
 	if (uuid_is_null(zdev->zdev_xclbin->zx_uuid)) {
+		DRM_WARN("no active uuid\n");
 		return;
 	}
 	vfree(zdev->zdev_xclbin->zx_uuid);
