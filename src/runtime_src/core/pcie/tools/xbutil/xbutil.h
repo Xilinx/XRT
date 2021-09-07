@@ -465,62 +465,6 @@ public:
        return std::string();
     }
 
-    int parseComputeUnits(const std::vector<ip_data> &computeUnits) const
-    {
-        if (!std::getenv("XCL_SKIP_CU_READ"))
-          schedulerUpdateStat();
-
-        std::vector<std::string> custat;
-        std::string errmsg;
-
-        pcidev::get_dev(m_idx)->sysfs_get("mb_scheduler", "kds_custat", errmsg, custat);
-
-        for (unsigned int i = 0; i < computeUnits.size(); ++i) {
-            const auto& ip = computeUnits[i];
-            if (ip.m_type != IP_KERNEL)
-                continue;
-            uint32_t status = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::stat);
-            uint32_t usage = parseComputeUnitStat(custat,ip.m_base_address, cu_stat::usage);
-            boost::property_tree::ptree ptCu;
-            ptCu.put( "name",         ip.m_name );
-            ptCu.put( "base_address", ip.m_base_address );
-            ptCu.put( "usage",        usage );
-            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.compute_unit." + std::to_string(i)), ptCu );
-        }
-
-        //Soft kernel info below
-        std::vector<ps_kernel_data> psKernels;
-        if (getPSKernels(psKernels) < 0) {
-            std::cout << "WARNING: 'ps_kernel' invalid. Has the PS kernel been loaded? See 'xbutil program'.\n";
-            return 0;
-        }
-
-        int psk_inst = 0;
-        uint32_t num_scu = 0;
-        for (unsigned int i = computeUnits.size(); i < parseComputeUnitNum(custat); i++) {
-            uint32_t status = parseComputeUnitStat(custat, i, cu_stat::stat);
-            uint32_t usage = parseComputeUnitStat(custat, i, cu_stat::usage);
-            std::string name = psKernels.at(psk_inst).pkd_sym_name;
-            name += ":scu_" + std::to_string(num_scu);
-
-            boost::property_tree::ptree ptCu;
-            ptCu.put( "name",         name );
-            ptCu.put( "base_address", 0 );
-            ptCu.put( "usage",        usage );
-            ptCu.put( "status",       xrt_core::utils::parse_cu_status( status ) );
-            sensor_tree::add_child( std::string("board.ps_compute_unit." + std::to_string(i)), ptCu );
-
-            num_scu++;
-            if (num_scu == psKernels.at(psk_inst).pkd_num_instances) {
-                num_scu = 0;
-                psk_inst++;
-            }
-        }
-
-        return 0;
-    }
-
     /* new KDS which supported CU subdevice */
     int parseCUSubdevStat() const
     {
@@ -1256,18 +1200,7 @@ public:
 		sensor_tree::put("board.qspi_wp_status.recovery", "N/A");
 	}
 
-
-        uint32_t kds_mode;
-        pcidev::get_dev(m_idx)->sysfs_get<uint32_t>("", "kds_mode", errmsg, kds_mode, 0);
-        if (!kds_mode) {
-            // compute unit
-            std::vector<ip_data> computeUnits;
-            if( getComputeUnits( computeUnits ) < 0 ) {
-                std::cout << "WARNING: 'ip_layout' invalid. Has the bitstream been loaded? See 'xbutil program'.\n";
-            }
-            parseComputeUnits( computeUnits );
-        } else
-            parseCUSubdevStat();
+        parseCUSubdevStat();
 
         /**
          * \note Adding device information for debug and profile
