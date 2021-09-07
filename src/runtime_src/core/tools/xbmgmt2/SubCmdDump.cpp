@@ -41,7 +41,7 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
 {
   // Sample output:
   //   Output file: foo.bin
-  //   Flash Size: 0x222 (Mbits)  
+  //   Flash Size: 0x222 (Mbits)
   //   <Progress Bar>
 
   Flasher flasher(_dev->get_device_id());
@@ -50,6 +50,28 @@ flash_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string outp
     return;
   }
   flasher.readBack(output);
+}
+
+static bool
+is_supported(const std::shared_ptr<xrt_core::device>& dev)
+{
+  bool is_mfg = false;
+  bool is_recovery = false;
+
+  try {
+    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
+  } catch(const xrt_core::query::exception&) {}
+
+  try {
+    is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(dev);
+  } catch(const xrt_core::query::exception&) {}
+
+  if (is_mfg || is_recovery) {
+    std::cerr << boost::format("This operation is not supported with %s image.\n") % (is_mfg ? "manufacturing" : "recovery");
+    return false;
+  }
+
+  return true;
 }
 
 /*
@@ -68,6 +90,15 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   child.put("mailbox_channel_disable", xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
   child.put("mailbox_channel_switch", xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
   child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
+
+  if (is_supported(_dev)) {
+    try {
+      child.put("scaling_enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_dev));
+      child.put("scaling_power_override", xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(_dev));
+      child.put("scaling_temp_override", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_dev));
+    } catch(const xrt_core::query::exception&) {}
+  }
+
   ptRoot.put_child("Device", child);
 
   boost::property_tree::ini_parser::write_ini(output, ptRoot);
@@ -75,7 +106,7 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
 }
 
 SubCmdDump::SubCmdDump(bool _isHidden, bool _isDepricated, bool _isPreliminary)
-    : SubCmd("dump", 
+    : SubCmd("dump",
              "Dump out the contents of the specified option")
 {
   const std::string longDescription = "Dump out the contents of the specified option.";
@@ -149,7 +180,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   // Collect all of the devices of interest
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
-  for (const auto & deviceName : devices) 
+  for (const auto & deviceName : devices)
     deviceNames.insert(boost::algorithm::to_lower_copy(deviceName));
 
   try {
@@ -172,7 +203,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
   // -- process "output" option -----------------------------------------------
   // Output file
   XBU::verbose("Option: output: " + output);
-  
+
   if (output.empty()) {
     std::cerr << "ERROR: Please specify an output file using --output option" << "\n\n";
     printHelp(commonOptions, hiddenOptions);
@@ -182,7 +213,7 @@ SubCmdDump::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("Output file already exists: '%s'") % output << "\n\n";
     throw xrt_core::error(std::errc::operation_canceled);
   }
-    
+
   //decide the contents of the dump file
   if(flash) {
     flash_dump(workingDevice, output);

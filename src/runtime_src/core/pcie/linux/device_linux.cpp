@@ -503,8 +503,15 @@ initialize_query_table()
   emplace_sysfs_get<query::expected_sc_version>                ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                         ("xmc", "status");
   emplace_sysfs_get<query::xmc_reg_base>                       ("xmc", "reg_base");
+  emplace_sysfs_get<query::xmc_scaling_support>                ("xmc", "scaling_support");
   emplace_sysfs_getput<query::xmc_scaling_enabled>             ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>            ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_get<query::xmc_scaling_critical_pow_threshold> ("xmc", "scaling_critical_power_threshold");
+  emplace_sysfs_get<query::xmc_scaling_critical_temp_threshold> ("xmc", "scaling_critical_temp_threshold");
+  emplace_sysfs_get<query::xmc_scaling_threshold_power_limit>  ("xmc", "scaling_threshold_power_limit");
+  emplace_sysfs_get<query::xmc_scaling_threshold_temp_limit>   ("xmc", "scaling_threshold_temp_limit");
+  emplace_sysfs_get<query::xmc_scaling_power_override_enable>  ("xmc", "scaling_threshold_power_override_en");
+  emplace_sysfs_get<query::xmc_scaling_temp_override_enable>   ("xmc", "scaling_threshold_temp_override_en");
+  emplace_sysfs_getput<query::xmc_scaling_power_override>      ("xmc", "scaling_threshold_power_override");
   emplace_sysfs_getput<query::xmc_scaling_temp_override>       ("xmc", "scaling_threshold_temp_override");
   emplace_sysfs_put<query::xmc_scaling_reset>                  ("xmc", "scaling_reset");
   emplace_sysfs_get<query::m2m>                                ("m2m", "");
@@ -577,6 +584,7 @@ initialize_query_table()
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
+  emplace_sysfs_get<query::firewall_detect_level_name>        ("firewall", "detected_level_name");
   emplace_sysfs_get<query::firewall_status>                   ("firewall", "detected_status");
   emplace_sysfs_get<query::firewall_time_sec>                 ("firewall", "detected_time");
 

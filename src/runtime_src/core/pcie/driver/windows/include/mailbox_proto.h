@@ -240,6 +240,7 @@ struct xcl_firewall {
 	uint64_t err_detected_status;
 	uint64_t err_detected_level;
 	uint64_t err_detected_time;
+	char err_detected_level_name[50];
 };
 
 /**
