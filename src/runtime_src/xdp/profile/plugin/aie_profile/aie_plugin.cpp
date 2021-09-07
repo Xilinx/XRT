@@ -512,12 +512,12 @@ namespace xdp {
             // Update MD0
             auto addr_md0 = addr_tile + XAIEGBL_CORE_COREMD0;
             XAie_Read32(aieDevInst, addr_md0, &reg);
-            reg = (reg & 0xFFFF) | (XAIEGBL_CORE_COREMD0_FLOMULMSK_MASK | XAIEGBL_CORE_COREMD0_FLOADDMSK_MASK) ;
+            reg |= (XAIEGBL_CORE_COREMD0_FLOMULMSK_MASK | XAIEGBL_CORE_COREMD0_FLOADDMSK_MASK) ;
             XAie_Write32(aieDevInst, addr_md0, reg);
             // Update MD1
             auto addr_md1 = addr_tile + XAIEGBL_CORE_COREMD1;
             XAie_Read32(aieDevInst, addr_md1, &reg);
-            reg = (reg & 0xFFFF) | (XAIEGBL_CORE_COREMD1_FLOFLOTOFIXMSK_MASK | XAIEGBL_CORE_COREMD1_FLOFIXTOFLOMSK_MASK) ;
+            reg |= (XAIEGBL_CORE_COREMD1_FLOFLOTOFIXMSK_MASK | XAIEGBL_CORE_COREMD1_FLOFIXTOFLOMSK_MASK | XAIEGBL_CORE_COREMD1_FLONONLINMSK_MASK) ;
             XAie_Write32(aieDevInst, addr_md1, reg);
           }
 
