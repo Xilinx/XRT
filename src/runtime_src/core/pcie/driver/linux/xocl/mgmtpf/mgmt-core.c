@@ -907,19 +907,11 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 		 * Note:
 		 * 1. it is up to the admin to put authentificated xclbins at
 		 *    predefined location
-		 * 2. the fetched xclbin buf need to be freed here after use
 		 */
 		if (fetch)
-			xclbin = xclmgmt_xclbin_fetch(lro, xclbin);
-
-		if (xclbin) {
+			ret = xclmgmt_xclbin_fetch_and_download(lro, xclbin);
+		else
 			ret = xocl_xclbin_download(lro, xclbin);
-
-			if (fetch)
-				vfree(xclbin);
-		} else {
-			ret = -EINVAL;
-		}
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));

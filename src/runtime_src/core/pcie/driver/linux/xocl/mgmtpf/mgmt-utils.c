@@ -19,6 +19,7 @@
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
+#include "../xocl_xclbin.h"
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
@@ -884,13 +885,12 @@ static const void* xclmgmt_get_interface_uuid(struct xclmgmt_dev *lro) {
  *  eg
  *  6250ec80-3f38-4be0-ac90-68bfd3c140a8_937ed70867cf3350bc06304053f4293c.xclbin
  */
-struct axlf* xclmgmt_xclbin_fetch(struct xclmgmt_dev *lro, const struct axlf *xclbin)
+int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin)
 {
 	const char *interface_uuid;
 	char fw_name[256];
 	const struct firmware *fw;
 	const char* xclbin_location = "xilinx/xclbins";
-	struct axlf* xclbin_ret = NULL;
 	int err;
 
 	interface_uuid = xclmgmt_get_interface_uuid(lro);
@@ -921,11 +921,8 @@ struct axlf* xclmgmt_xclbin_fetch(struct xclmgmt_dev *lro, const struct axlf *xc
 	if (err)
 		goto done;
 
-	xclbin_ret = vmalloc(fw->size);
-	if (!xclbin_ret)
-		goto done;
-
-	memcpy(xclbin_ret, fw->data, fw->size);
+	err = xocl_xclbin_download(lro, fw->data);
+	release_firmware(fw);
 done:
-	return xclbin_ret;
+	return err;
 }
