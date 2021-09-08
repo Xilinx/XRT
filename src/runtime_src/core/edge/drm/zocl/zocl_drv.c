@@ -906,6 +906,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 			zdev->fpga_mgr = NULL;
 		DRM_INFO("FPGA programming device %s founded.\n",
 		    zdev->zdev_data_info->fpga_driver_name);
+		of_node_put(fnode);
 	}
 
 	if (ZOCL_PLATFORM_ARM64) {
