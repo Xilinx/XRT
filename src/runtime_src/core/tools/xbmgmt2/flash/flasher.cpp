@@ -121,6 +121,7 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         try {
             uint32_t enable = 1;
             xrt_core::device_update<xrt_core::query::ic_enable>(m_device.get(), enable);
+            std::cout << "Successfully enabled icap controller ip for wbstar flow" << std::endl;
         } catch (...) {}
 
 	break;

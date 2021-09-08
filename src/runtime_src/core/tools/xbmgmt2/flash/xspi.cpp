@@ -2173,6 +2173,7 @@ static int programXSpiDrv(xrt_core::device *dev, std::FILE *mFlashDev, std::istr
     // provide flash controller information to icap controller for webstar flow. Required only for U.2
     try {
         xrt_core::device_update<xrt_core::query::ic_load_flash_address>(dev, startAddr);
+        std::cout << "Successfully programmed flash address into icap controller ip" << std::endl;
     } catch (...) {}
 
     return 0;
