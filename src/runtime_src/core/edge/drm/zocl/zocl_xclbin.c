@@ -1323,10 +1323,6 @@ zocl_xclbin_init(struct drm_zocl_dev *zdev)
 void
 zocl_xclbin_fini(struct drm_zocl_dev *zdev)
 {
-	if (uuid_is_null(zdev->zdev_xclbin->zx_uuid)) {
-		DRM_WARN("no active uuid\n");
-		return;
-	}
 	vfree(zdev->zdev_xclbin->zx_uuid);
 	zdev->zdev_xclbin->zx_uuid = NULL;
 	vfree(zdev->zdev_xclbin);
