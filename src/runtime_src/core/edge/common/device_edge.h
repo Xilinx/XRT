@@ -40,16 +40,6 @@ public:
   xclDeviceHandle
   get_device_handle() const;
 
-  /**
-   * is_userpf_device() - there is no mgmt in edge
-   */
-  bool
-  is_userpf() const
-  {
-    return true;
-  }
-
-
 private:
   xclDeviceHandle m_handle = XRT_NULL_HANDLE;
   bool m_userpf;
