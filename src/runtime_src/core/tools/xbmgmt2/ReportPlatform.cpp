@@ -326,7 +326,7 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << fmtBasic % "Platform UUID" % logic_uuid;
     _output << fmtBasic % "Interface UUID" % interface_uuid;
   } else {
-    _output << fmtBasic % "Platform ID" % string_or_NA(_pt.get<std::string>("platform.current_shell.id"));
+    _output << fmtBasic % "Platform ID" % string_or_NA(_pt.get<std::string>("platform.current_shell.id", ""));
   }
   _output << std::endl;
 
