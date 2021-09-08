@@ -41,8 +41,6 @@
  * To determin the interrupt source, read ISR and check which bit is set.
  */
 
-extern int kds_mode;
-
 #define INTR_NUM  4
 #define INTR_SRCS 32
 #define MAX_TRY 2
@@ -634,9 +632,6 @@ static int intc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, intc);
 	intc->pdev = pdev;
 
-	if (!kds_mode)
-		goto out;
-
 	/* Use ERT to host interrupt by default */
 	intc->mode = ERT_INTR;
 
@@ -654,7 +649,6 @@ static int intc_probe(struct platform_device *pdev)
 	if (sysfs_create_group(&pdev->dev.kobj, &intc_attrgroup))
 		INTC_ERR(intc, "Not able to create INTC sysfs group");
 
-out:
 	return 0;
 
 err:
@@ -670,9 +664,6 @@ static int intc_remove(struct platform_device *pdev)
 	void *hdl;
 	int i;
 
-	if (!kds_mode)
-		goto out;
-
 	for (i = 0; i < INTR_NUM; i++) {
 		/* disable interrupt */
 		xocl_user_interrupt_config(xdev, intc->ert[i].intr, false);
@@ -680,7 +671,6 @@ static int intc_remove(struct platform_device *pdev)
 	}
 
 	(void) sysfs_remove_group(&pdev->dev.kobj, &intc_attrgroup);
-out:
 	xocl_drvinst_release(intc, &hdl);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);

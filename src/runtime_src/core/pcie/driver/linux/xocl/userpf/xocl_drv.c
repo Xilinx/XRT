@@ -49,8 +49,6 @@
 #define MAX_DYN_SUBDEV		1024
 #define XDEV_DEFAULT_EXPIRE_SECS	1
 
-extern int kds_mode;
-
 static const struct pci_device_id pciidlist[] = {
 	XOCL_USER_XDMA_PCI_IDS,
 	{ 0, }
@@ -205,9 +203,6 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 	mutex_unlock(&xdev->core.errors_lock);
 
 	if (prepare) {
-		if (kds_mode)
-			xocl_kds_reset(xdev, xclbin_id);
-
 		/* clean up mem topology */
 		if (xdev->core.drm) {
 			xocl_drm_fini(xdev->core.drm);
@@ -242,12 +237,7 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 			return;
 		}
 
-		if (kds_mode)
-			xocl_kds_reset(xdev, xclbin_id);
-		else {
-			XDEV(xdev)->kds.ini_disable = false;
-			xocl_exec_reset(xdev, xclbin_id);
-		}
+		xocl_kds_reset(xdev, xclbin_id);
 		XOCL_PUT_XCLBIN_ID(xdev);
 		if (!xdev->core.drm) {
 			xdev->core.drm = xocl_drm_init(xdev);
@@ -683,12 +673,8 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	/* Re-clock changes PR region, make sure next ERT configure cmd will
 	 * go through
 	 */
-	if (err == 0) {
-		if (kds_mode)
-			(void) xocl_kds_reconfig(xdev);
-		else
-			(void) xocl_exec_reconfig(xdev);
-	}
+	if (err == 0)
+		(void) xocl_kds_reconfig(xdev);
 
 	kfree(req);
 	return err;

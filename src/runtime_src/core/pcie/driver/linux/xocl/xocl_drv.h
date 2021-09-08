@@ -817,64 +817,6 @@ struct xocl_dma_funcs {
 	(DMA_CB(xdev, user_intr_unreg) ? DMA_OPS(xdev)->user_intr_unreg(DMA_DEV(xdev),	\
 	irq) : -ENODEV)
 
-/* mb_scheduler callbacks */
-struct xocl_mb_scheduler_funcs {
-	struct xocl_subdev_funcs common_funcs;
-	int (*create_client)(struct platform_device *pdev, void **priv);
-	void (*destroy_client)(struct platform_device *pdev, void **priv);
-	uint (*poll_client)(struct platform_device *pdev, struct file *filp,
-		poll_table *wait, void *priv);
-	int (*client_ioctl)(struct platform_device *pdev, int op,
-		void *data, void *drm_filp);
-	int (*stop)(struct platform_device *pdev);
-	int (*reset)(struct platform_device *pdev, const xuid_t *xclbin_id);
-	int (*reconfig)(struct platform_device *pdev);
-	int (*cu_map_addr)(struct platform_device *pdev, u32 cu_index,
-		void *drm_filp, u32 *addrp);
-};
-#define	MB_SCHEDULER_DEV(xdev)	\
-	(SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER) ? \
-	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER)->pldev : NULL)
-#define	MB_SCHEDULER_OPS(xdev)	\
-	(SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER) ? \
-	(struct xocl_mb_scheduler_funcs *)SUBDEV(xdev,		\
-		XOCL_SUBDEV_MB_SCHEDULER)->ops : NULL)
-#define SCHE_CB(xdev, cb)	\
-	(MB_SCHEDULER_DEV(xdev) && MB_SCHEDULER_OPS(xdev))
-#define	xocl_exec_create_client(xdev, priv)		\
-	(SCHE_CB(xdev, create_client) ?			\
-	MB_SCHEDULER_OPS(xdev)->create_client(MB_SCHEDULER_DEV(xdev), priv) : \
-	-ENODEV)
-#define	xocl_exec_destroy_client(xdev, priv)		\
-	(SCHE_CB(xdev, destroy_client) ?			\
-	MB_SCHEDULER_OPS(xdev)->destroy_client(MB_SCHEDULER_DEV(xdev), priv) : \
-	NULL)
-#define	xocl_exec_poll_client(xdev, filp, wait, priv)		\
-	(SCHE_CB(xdev, poll_client) ?				\
-	MB_SCHEDULER_OPS(xdev)->poll_client(MB_SCHEDULER_DEV(xdev), filp, \
-	wait, priv) : 0)
-#define	xocl_exec_client_ioctl(xdev, op, data, drm_filp)		\
-	(SCHE_CB(xdev, client_ioctl) ?				\
-	MB_SCHEDULER_OPS(xdev)->client_ioctl(MB_SCHEDULER_DEV(xdev),	\
-	op, data, drm_filp) : -ENODEV)
-#define	xocl_exec_stop(xdev)		\
-	(SCHE_CB(xdev, stop) ?				\
-	 MB_SCHEDULER_OPS(xdev)->stop(MB_SCHEDULER_DEV(xdev)) : \
-	-ENODEV)
-#define	xocl_exec_reset(xdev, xclbin_id)		\
-	(SCHE_CB(xdev, reset) ?				\
-	 MB_SCHEDULER_OPS(xdev)->reset(MB_SCHEDULER_DEV(xdev), xclbin_id) : \
-	-ENODEV)
-#define	xocl_exec_reconfig(xdev)		\
-	(SCHE_CB(xdev, reconfig) ?				\
-	 MB_SCHEDULER_OPS(xdev)->reconfig(MB_SCHEDULER_DEV(xdev)) : \
-	-ENODEV)
-#define	xocl_exec_cu_map_addr(xdev, cu, filep, addrp)		\
-	(SCHE_CB(xdev, cu_map_addr) ?				\
-	MB_SCHEDULER_OPS(xdev)->cu_map_addr(			\
-	MB_SCHEDULER_DEV(xdev), cu, filep, addrp) :		\
-	-ENODEV)
-
 /* sysmon callbacks */
 enum {
 	XOCL_SYSMON_PROP_TEMP,

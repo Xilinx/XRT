@@ -24,8 +24,6 @@
 #include "version.h"
 #include "common.h"
 
-extern int kds_mode;
-
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -58,12 +56,8 @@ int xocl_execbuf_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;
 
-	if (kds_mode == 1)
-		ret = xocl_client_ioctl(drm_p->xdev,
-					DRM_XOCL_EXECBUF, data, filp);
-	else
-		ret = xocl_exec_client_ioctl(drm_p->xdev,
-					     DRM_XOCL_EXECBUF, data, filp);
+	ret = xocl_client_ioctl(drm_p->xdev,
+				DRM_XOCL_EXECBUF, data, filp);
 
 	return ret;
 }
@@ -75,12 +69,8 @@ int xocl_execbuf_callback_ioctl(struct drm_device *dev,
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;
 
-	if (kds_mode == 1)
-		ret = xocl_client_ioctl(drm_p->xdev,
-					DRM_XOCL_EXECBUF_CB, data, filp);
-	else
-		ret = xocl_exec_client_ioctl(drm_p->xdev,
-					     DRM_XOCL_EXECBUF_CB, data, filp);
+	ret = xocl_client_ioctl(drm_p->xdev,
+				DRM_XOCL_EXECBUF_CB, data, filp);
 
 	return ret;
 }
@@ -96,12 +86,8 @@ int xocl_ctx_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	int ret = 0;
 
-	if (kds_mode == 1)
-		ret = xocl_client_ioctl(drm_p->xdev,
-					DRM_XOCL_CTX, data, filp);
-	else
-		ret = xocl_exec_client_ioctl(drm_p->xdev,
-					     DRM_XOCL_CTX, data, filp);
+	ret = xocl_client_ioctl(drm_p->xdev,
+				DRM_XOCL_CTX, data, filp);
 
 	return ret;
 }
@@ -255,13 +241,7 @@ u32 get_live_clients(struct xocl_dev *xdev, pid_t **plist)
 {
 	u32 c;
 
-	if (kds_mode) {
-		c = xocl_kds_live_clients(xdev, plist);
-	} else {
-		mutex_lock(&xdev->dev_lock);
-		c = live_clients(xdev, plist);
-		mutex_unlock(&xdev->dev_lock);
-	}
+	c = xocl_kds_live_clients(xdev, plist);
 
 	return c;
 }
@@ -394,16 +374,9 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		return -EINVAL;
 	}
 
-	if (kds_mode) {
-		if (is_bad_state(&XDEV(xdev)->kds)) {
-			err = -EDEADLK;
-			goto done;
-		}
-	} else {
-		if (list_is_singular(&xdev->ctx_list) && atomic_read(&xdev->outstanding_execs)) {
-			err = -EDEADLK;
-			goto done;
-		}
+	if (is_bad_state(&XDEV(xdev)->kds)) {
+		err = -EDEADLK;
+		goto done;
 	}
 
 	//
@@ -418,35 +391,16 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	}
 
 	/*
-	 * Support for multiple processes
-	 * 1. We lock &xdev->dev_lock so no new contexts can be opened and no
-	 *    live contexts can be closed
-	 * 2. If more than one live context exists, we cannot swap xclbin
-	 * 3. If no live contexts exists, there may still be sumbitted exec
-	 *    BOs from a previous context (which was subsequently closed, but
-	 *    the BOs were stuck). If exec BO count > 0, we cannot swap xclbin
-	 *
-	 * Note that icap subdevice also maintains xclbin ref count, which is
-	 * used to lock down xclbin on mgmt pf side.
+	 * 1. We locked &xdev->dev_lock so no new contexts can be opened
+	 *    and no contexts can be closed
+	 * 2. A opened context would lock bitstream and hold it. Directly
+	 *    ask icap if bitstream is locked
+	 * 3. If all contexts are closed, new kds would make sure all
+	 *    relative exec BO are released
 	 */
-	if (!kds_mode) {
-		if (xocl_xclbin_in_use(xdev)) {
-			err = -EBUSY;
-			goto done;
-		}
-	} else {
-		/*
-		 * 1. We locked &xdev->dev_lock so no new contexts can be opened
-		 *    and no contexts can be closed
-		 * 2. A opened context would lock bitstream and hold it. Directly
-		 *    ask icap if bitstream is locked
-		 * 3. If all contexts are closed, new kds would make sure all
-		 *    relative exec BO are released
-		 */
-		if (xocl_icap_bitstream_is_locked(xdev)) {
-			err = -EBUSY;
-			goto done;
-		}
+	if (xocl_icap_bitstream_is_locked(xdev)) {
+		err = -EBUSY;
+		goto done;
 	}
 
 	/* Really need to download, sanity check xclbin, first. */
@@ -579,10 +533,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		 * We have to clear uuid cached in scheduler here if
 		 * download xclbin failed
 		 */
-		if (kds_mode)
-			(void) xocl_kds_reset(xdev, &uuid_null);
-		else
-			(void) xocl_exec_reset(xdev, &uuid_null);
+		(void) xocl_kds_reset(xdev, &uuid_null);
 		/*
 		 * Don't just bail out here, always recreate drm mem
 		 * since we have cleaned it up before download.
@@ -602,7 +553,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		xocl_p2p_refresh_rbar(xdev);
 
 	/* The finial step is to update KDS configuration */
-	if (!err && kds_mode) {
+	if (!err) {
 		err = xocl_kds_update(xdev, axlf_ptr->kds_cfg);
 		if (err) {
 			xocl_icap_clean_bitstream(xdev);
