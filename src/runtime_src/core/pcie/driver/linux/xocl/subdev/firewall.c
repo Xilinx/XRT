@@ -659,23 +659,23 @@ static int firewall_remove(struct platform_device *pdev)
 static void get_fw_ep_name(char *res_name, char *result)
 {
 	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)))
-		strncpy(result, "CTRL_MGMT", strlen("CTRL_MGMT"));
+		strcpy(result, "CTRL_MGMT");
 	else if (!strncmp(res_name, NODE_AF_CTRL_USER, strlen(NODE_AF_CTRL_USER)))
-		strncpy(result, "CTRL_USER", strlen("CTRL_USER"));
+		strcpy(result, "CTRL_USER");
 	else if (!strncmp(res_name, NODE_AF_CTRL_DEBUG, strlen(NODE_AF_CTRL_DEBUG)))
-		strncpy(result, "CTRL_DEBUG", strlen("CTRL_DEBUG"));
+		strcpy(result, "CTRL_DEBUG");
 	else if (!strncmp(res_name, NODE_AF_BLP_CTRL_MGMT, strlen(NODE_AF_BLP_CTRL_MGMT)))
-		strncpy(result, "BLP_CTRL_MGMT", strlen("BLP_CTRL_MGMT"));
+		strcpy(result, "BLP_CTRL_MGMT");
 	else if (!strncmp(res_name, NODE_AF_BLP_CTRL_USER, strlen(NODE_AF_BLP_CTRL_USER)))
-		strncpy(result, "BLP_CTRL_USER", strlen("BLP_CTRL_USER"));
+		strcpy(result, "BLP_CTRL_USER");
 	else if (!strncmp(res_name, NODE_AF_DATA_H2C, strlen(NODE_AF_DATA_H2C)))
-		strncpy(result, "DATA_H2C", strlen("DATA_H2C"));
+		strcpy(result, "DATA_H2C");
 	else if (!strncmp(res_name, NODE_AF_DATA_C2H, strlen(NODE_AF_DATA_C2H)))
-		strncpy(result, "DATA_C2H", strlen("DATA_C2H"));
+		strcpy(result, "DATA_C2H");
 	else if (!strncmp(res_name, NODE_AF_DATA_P2P, strlen(NODE_AF_DATA_P2P)))
-		strncpy(result, "DATA_P2P", strlen("DATA_P2P"));
+		strcpy(result, "DATA_P2P");
 	else if (!strncmp(res_name, NODE_AF_DATA_M2M, strlen(NODE_AF_DATA_M2M)))
-		strncpy(result, "DATA_M2M", strlen("DATA_M2M"));
+		strcpy(result, "DATA_M2M");
 }
 
 static int firewall_probe(struct platform_device *pdev)
