@@ -37,7 +37,7 @@ ReportElectrical::getPropertyTree20202( const xrt_core::device * _pDevice,
   xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_electrical;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::electrical>();
+  ss << device.get_info<xrt::info::device::electrical>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, pt_electrical);
 
   // There can only be 1 root node

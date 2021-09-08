@@ -37,7 +37,7 @@ ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   xrt::device device(_pDevice->get_device_id());
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::thermal>();
+  ss << device.get_info<xrt::info::device::thermal>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, _pt);
 }
 
