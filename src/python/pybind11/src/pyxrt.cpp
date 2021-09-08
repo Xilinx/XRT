@@ -78,6 +78,9 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("pcie_info", xrt::info::device::pcie_info)
         .value("host", xrt::info::device::host)
         .value("dynamic_regions", xrt::info::device::dynamic_regions);
+
+    py::enum_<xrt::info::InfoSchemaVersion>(m, "xrt_info_schema", "Schema version for device information")
+        .value("json_20202", xrt::info::InfoSchemaVersion::json_20202)
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
