@@ -76,6 +76,9 @@ static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "Accelerator Deadlock Detector (accel_deadlock_detector)"
 };
 
+static size_t cuNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
+static size_t portNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
+
 class DebugIpStatusCollector
 {
 
@@ -86,9 +89,6 @@ class DebugIpStatusCollector
 
   uint64_t debugIpNum[DEBUG_IP_TYPE_MAX];
   bool     debugIpOpt[DEBUG_IP_TYPE_MAX];
-
-  size_t   cuNameMaxStrLen[DEBUG_IP_TYPE_MAX];
-  size_t   portNameMaxStrLen[DEBUG_IP_TYPE_MAX];
 
   std::vector<std::string> cuNames[DEBUG_IP_TYPE_MAX];
   std::vector<std::string> portNames[DEBUG_IP_TYPE_MAX];
@@ -107,10 +107,10 @@ public :
   inline std::string getInfoMessage() { return infoMessage ; }
 
   void collect();
-  void collect(const std::vector<std::string> & _elementsFilter);
+//  void collect(const std::vector<std::string> & _elementsFilter);
 
-  void printOverview(std::ostream& _output);
-  void printAllResults(std::ostream& _output);
+//  void printOverview(std::ostream& _output);
+//  void printAllResults(std::ostream& _output);
 
   void populateOverview(boost::property_tree::ptree &_pt);
   void populateAllResults(boost::property_tree::ptree &_pt);
@@ -129,7 +129,7 @@ private :
   void readLAPChecker(debug_ip_data*);
   void readSPChecker(debug_ip_data*);
   void readAccelDeadlockDetector(debug_ip_data*);
-
+#if 0
   void printAIMResults(std::ostream&);
   void printAMResults(std::ostream&);
   void printASMResults(std::ostream&);
@@ -139,7 +139,7 @@ private :
   void printSPCResults(std::ostream&);
   void printILAResults(std::ostream&);
   void printAccelDeadlockResults(std::ostream&);
-
+#endif
   void populateAIMResults(boost::property_tree::ptree &_pt);
   void populateAMResults(boost::property_tree::ptree &_pt);
   void populateASMResults(boost::property_tree::ptree &_pt);
@@ -150,7 +150,19 @@ private :
   void populateILAResults(boost::property_tree::ptree &_pt);
   void populateAccelDeadlockResults(boost::property_tree::ptree &_pt);
 
-  void processElementFilter(const std::vector<std::string> & _elementsFilter);
+//  void printAIMResults(std::ostream&, boost::property_tree::ptree &);
+#if 0
+  void printAMResults(std::ostream&, boost::property_tree::ptree &);
+  void printASMResults(std::ostream&, boost::property_tree::ptree &);
+  void printFIFOResults(std::ostream&, boost::property_tree::ptree &);
+  void printTS2MMResults(std::ostream&, boost::property_tree::ptree &);
+  void printLAPCResults(std::ostream&, boost::property_tree::ptree &);
+  void printSPCResults(std::ostream&, boost::property_tree::ptree &);
+  void printILAResults(std::ostream&, boost::property_tree::ptree &);
+  void printAccelDeadlockResults(std::ostream&, boost::property_tree::ptree &);
+#endif
+
+  //void processElementFilter(const std::vector<std::string> & _elementsFilter);
 };
 
 
@@ -162,8 +174,8 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     , infoMessage("")
     , debugIpNum{0}
     , debugIpOpt{false}
-    , cuNameMaxStrLen{0}
-    , portNameMaxStrLen{0}
+//    , cuNameMaxStrLen{0}
+//    , portNameMaxStrLen{0}
     , aimResults{0}
     , asmResults{0}
     , amResults{0}
@@ -242,7 +254,7 @@ DebugIpStatusCollector::getDebugIpLayout()
   return dbgIpLayout;
 }
 
-
+#if 0
 void 
 DebugIpStatusCollector::printOverview(std::ostream& _output)
 {
@@ -292,6 +304,7 @@ DebugIpStatusCollector::printOverview(std::ostream& _output)
 
   _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl << sstr.str() << std::endl;
 }
+#endif
 
 void 
 DebugIpStatusCollector::collect()
@@ -299,6 +312,7 @@ DebugIpStatusCollector::collect()
   getDebugIpData();
 }
 
+#if 0
 void 
 DebugIpStatusCollector::collect(const std::vector<std::string> & _elementsFilter)
 {
@@ -336,7 +350,9 @@ DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _e
     }
   }
 }
+#endif
 
+#if 0
 void 
 DebugIpStatusCollector::printAllResults(std::ostream& _output)
 {
@@ -350,6 +366,7 @@ DebugIpStatusCollector::printAllResults(std::ostream& _output)
   printILAResults(_output);
   printAccelDeadlockResults(_output);
 }
+#endif
 
 void 
 DebugIpStatusCollector::getDebugIpData()
@@ -623,6 +640,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.LastReadData[index]  |= currData[8];
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printAIMResults(std::ostream& _output)
 {  
@@ -651,6 +669,7 @@ DebugIpStatusCollector::printAIMResults(std::ostream& _output)
             << std::endl;
   }
 }
+#endif
 
 
 void 
@@ -825,6 +844,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   }
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printAMResults(std::ostream& _output)
 {
@@ -851,6 +871,7 @@ DebugIpStatusCollector::printAMResults(std::ostream& _output)
             << std::endl;
   }
 }
+#endif
 
 void 
 DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
@@ -961,6 +982,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   asmResults.StrStarveCycles[index] = currData[4] ;
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printASMResults(std::ostream& _output)
 {
@@ -1011,6 +1033,7 @@ DebugIpStatusCollector::printTS2MMResults(std::ostream& _output)
           << "Found : " << debugIpNum[TRACE_S2MM] << std::endl;
   return;
 }
+#endif
 
 
 void 
@@ -1116,6 +1139,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
 { 
@@ -1178,6 +1202,7 @@ DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
     }
   }
 }
+#endif
 
 void 
 DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
@@ -1272,6 +1297,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   spcResults.SnapshotPC[index] = snapshot_pc;
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printSPCResults(std::ostream& _output)
 {
@@ -1340,6 +1366,7 @@ DebugIpStatusCollector::printILAResults(std::ostream& _output)
           << "Found : " << debugIpNum[ILA] << std::endl;
   return;
 }
+#endif
 
 void 
 DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
@@ -1392,6 +1419,7 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
                   &(accelDeadlockResults.DeadlockStatus), sizeof(uint32_t));
 }
 
+#if 0
 void 
 DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
 {
@@ -1406,6 +1434,7 @@ DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
   _output << "\nAccelerator Deadlock Detector IP status : " << statusStr << " deadlock detected.\n" << std::endl;
   return;
 }
+#endif
 
 void 
 DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
@@ -1535,6 +1564,45 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
   _pt.add_child("axi_interface_monitor_counters", aim_pt); 
 }
 
+#if 0
+void 
+DebugIpStatusCollector::printAIMResults(std::ostream& _output, boost::property_tree::ptree &_pt)
+{  
+
+  const boost::property_tree::ptree& aim_pt = _pt.get_child("axi_interface_monitor_counters");
+  _output << "\nAXI Interface Monitor Counters\n";
+
+  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
+                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
+
+  try {
+    for(auto& ip : aim_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                    % entry.get<std::string>("region_or_cu") % entry.get<std::string>("type_or_port")
+                    % entry.get<double>("write_kBytes")      % entry.get("write_trans")
+                    % entry.get<double>("read_kBytes")       % entry.get("read_tranx")
+                    % entry.get("outstanding_count")
+                    % entry.get("last_write_addr")           % entry.get("last_write_data")
+                    % entry.get("last_read_addr")           % entry.get("last_read_data")
+              << std::endl;
+     }
+  }
+  catch( std::exception const& e) {
+    _output << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+
+    return;
+}
+#endif
 void 
 DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
 {
@@ -1720,19 +1788,82 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 
 
 void 
-ReportDebugIpStatus::writeReport( const xrt_core::device* _pDevice,
-                                  const boost::property_tree::ptree& /*_pt*/, 
+ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
+                                  const boost::property_tree::ptree& _pt, 
                                   const std::vector<std::string>& _elementsFilter,
                                   std::ostream & _output) const
 {
-  auto handle = _pDevice->get_device_handle();
 
+  const boost::property_tree::ptree& ptDebugIpStatus = _pt.get_child("debug_ip_status");
   _output << "Debug IP Status" << std::endl ;
 
-  DebugIpStatusCollector collector(handle, false, _output);
-  collector.printOverview(_output);
-  collector.collect(_elementsFilter);
-  collector.printAllResults(_output);
+  // Overview
+  uint64_t numDebugIPs = ptDebugIpStatus.get<uint64_t>("total_num_debug_ips");
+
+  _output << "  Number of IPs found :: " << numDebugIPs << std::endl; // Total count with the IPs actually shown
+
+  const boost::property_tree::ptree& ptDebugIPs = ptDebugIpStatus.get_child("debug_ips");
+  _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl ;
+
+  try {
+//    int i = 0;
+    for(auto& ip : ptDebugIPs) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << entry.get<std::string>("name") << " : " << std::to_string(entry.get<uint64_t>("count")) << std::endl;
+     }
+  }
+  catch( std::exception const& e) {
+    _output << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+
+  // Results
+
+  const boost::property_tree::ptree& aim_pt = ptDebugIpStatus.get_child("axi_interface_monitor_counters");
+  _output << "\nAXI Interface Monitor Counters\n";
+
+  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
+//  size_t s = 25;
+//  auto col1 = std::max(s, strlen("Region or CU")) + 4;
+//  auto col2 = std::max(s, strlen("Type or Port"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
+                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  %-16x  %-16x  %-16x %-16x");
+
+  try {
+    for(auto& ip : aim_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+#if 0
+      _output << entry.get<std::string>("region_or_cu") << " " << entry.get<std::string>("type_or_port")
+              << " " << entry.get<std::string>("write_kBytes") << " " << entry.get<uint64_t>("write_trans")
+              << " " << entry.get<std::string>("read_kBytes")  << " " << entry.get<uint64_t>("read_tranx")
+              << " " << entry.get<uint64_t>("outstanding_count")
+              << " " << entry.get<std::string>("last_write_data")
+              << " " << entry.get<std::string>("last_read_data")
+              << std::endl;
+#endif
+      _output << valueFormat
+                    % entry.get<std::string>("region_or_cu") % entry.get<std::string>("type_or_port")
+                    % entry.get<std::string>("write_kBytes")      % entry.get<uint64_t>("write_trans")
+                    % entry.get<std::string>("read_kBytes")       % entry.get<uint64_t>("read_tranx")
+                    % entry.get<uint64_t>("outstanding_count")
+                    % entry.get<std::string>("last_write_addr")           % entry.get<std::string>("last_write_data")
+                    % entry.get<std::string>("last_read_addr")            % entry.get<std::string>("last_read_data")
+              << std::endl;
+     }
+  }
+  catch( std::exception const& e) {
+    _output << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+
+    return;
+  
 
   return;
 }
