@@ -623,6 +623,7 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_data_integrity>               ("ert_user", "data_integrity");
   emplace_sysfs_getput<query::config_mailbox_channel_disable> ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch> ("", "config_mailbox_channel_switch");
+  emplace_sysfs_getput<query::config_xclbin_change>          ("", "config_xclbin_change");
   emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");

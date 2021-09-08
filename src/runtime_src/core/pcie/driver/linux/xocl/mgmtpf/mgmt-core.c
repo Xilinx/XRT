@@ -888,6 +888,7 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN: {
 		uint64_t xclbin_len = 0;
 		struct axlf *xclbin = (struct axlf *)req->data;
+		bool fetch = (atomic_read(&lro->config_xclbin_change) == 1);
 
 		if (payload_len < sizeof(*xclbin)) {
 			mgmt_err(lro, "peer request dropped, wrong size\n");
@@ -898,7 +899,28 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			mgmt_err(lro, "peer request dropped, wrong size\n");
 			break;
 		}
-		ret = xocl_xclbin_download(lro, xclbin);
+
+		/*
+		 * User may transfer a fake xclbin which doesn't have bitstream
+		 * In this case, 'config_xclbin_change' has to be set, and we
+		 * will go to fetch the real xclbin.
+		 * Note:
+		 * 1. it is up to the admin to put authentificated xclbins at
+		 *    predefined location
+		 * 2. the fetched xclbin buf need to be freed here after use
+		 */
+		if (fetch)
+			xclbin = xclmgmt_xclbin_fetch(lro, xclbin);
+
+		if (xclbin) {
+			ret = xocl_xclbin_download(lro, xclbin);
+
+			if (fetch)
+				vfree(xclbin);
+		} else {
+			ret = -EINVAL;
+		}
+
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
 		break;
