@@ -427,7 +427,7 @@ struct shim : public DeviceType
     if(ret == -ENOMEM)
       throw system_error(ret, "Not enough host mem. Please check grub settings.");
     if(ret == -EINVAL)
-      throw system_error(ret, "Invalid host mem size.");
+      throw system_error(ret, "Invalid host mem size. Please specify a memory size between 4M and 1G.");
     if(ret == -ENXIO)
       throw system_error(ret, "Huge page is not supported on this platform");
     if(ret == -ENODEV)
