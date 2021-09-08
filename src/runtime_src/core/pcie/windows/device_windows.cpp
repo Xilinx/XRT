@@ -884,6 +884,64 @@ struct recovery
   }
 };
 
+struct ic_enable
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  user_get(const xrt_core::device* device, key_type key)
+  {
+    return 0;
+  }
+
+  static result_type
+  mgmt_get(const xrt_core::device* device, key_type key)
+  {
+    return 0;
+  }
+
+  static void
+  user_put(const xrt_core::device* device, value_type)
+  {
+    // we can throw an exception
+  }
+
+  static void
+  mgmt_put(const xrt_core::device* device, value_type val)
+  {
+    // we can throw an exception
+  }
+
+};
+
+struct ic_load_flash_address
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  user_get(const xrt_core::device* device, key_type key)
+  {
+    return 0;
+  }
+
+  static result_type
+  mgmt_get(const xrt_core::device* device, key_type key)
+  {
+    return 0;
+  }
+
+  static void
+  user_put(const xrt_core::device* device, value_type)
+  {
+    // we can throw an exception
+  }
+
+  static void
+  mgmt_put(const xrt_core::device* device, value_type val)
+  {
+    // we can throw an exception
+  }
+
+};
+
 struct uuid
 {
   using result_type = boost::any;
@@ -1439,6 +1497,8 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
+  emplace_function0_getter<query::ic_enable                  ic_enable>();
+  emplace_function0_getter<query::ic_load_flash_address      ic_load_flash_address>();
 }
 
 struct X { X() { initialize_query_table(); }};
