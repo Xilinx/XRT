@@ -273,7 +273,7 @@ zocl_open_ucu(struct drm_zocl_dev *zdev, struct kds_client *client,
 	      struct drm_zocl_ctx *args)
 {
 	struct kds_sched  *kds;
-	int cu_idx = args->cu_index;
+	u32 cu_idx = args->cu_index;
 
 	kds = &zdev->kds;
 	return kds_open_ucu(kds, client, cu_idx);
