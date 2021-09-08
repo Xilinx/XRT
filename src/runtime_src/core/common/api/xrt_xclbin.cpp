@@ -46,7 +46,7 @@
 #endif
 
 namespace {
-constexpr size_t max_sections = 11;
+constexpr size_t max_sections = 12;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -58,7 +58,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   DEBUG_IP_LAYOUT,
   SYSTEM_METADATA,
   CLOCK_FREQ_TOPOLOGY,
-  BUILD_METADATA
+  BUILD_METADATA,
+  SOFT_KERNEL
 };
 
 XRT_CORE_UNUSED
@@ -560,9 +561,18 @@ class xclbin_full : public xclbin_impl
       if (!hdr)
         continue;
 
-      auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-      std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-      m_axlf_sections.emplace(kind , std::move(data));
+      if(kind == SOFT_KERNEL) {
+	while(hdr != nullptr) {
+	  auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+	  std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+	  m_axlf_sections.emplace(kind , std::move(data));
+	  hdr = ::xclbin::get_axlf_section_next(m_top, hdr, kind);
+	}
+      } else {
+	auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+	std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+	m_axlf_sections.emplace(kind , std::move(data));
+      }
     }
   }
   

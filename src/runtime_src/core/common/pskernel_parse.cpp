@@ -47,7 +47,7 @@ extract_args (Dwarf_Die *die)
     std::make_pair(std::make_pair(DW_ATE_float, 8), &ffi_type_double)
   };
   
-  int offset = 1;
+  int offset = 4;
   int index = 0;
 
   if (dwarf_child (die, &child) == 0)
@@ -114,13 +114,13 @@ extract_args (Dwarf_Die *die)
 	    arg.ffitype = *enc_ffi_type;
 	    arg.offset = offset;
 	    arg.type = xrt_core::pskernel::kernel_argument::argtype::scalar;
-	    offset = offset + ((bits<4) ? 1 : bits/4);
+	    offset = offset + bits;
 	    arg.index = index;
 	    index++;
 	  } else if (dwarf_tag(type) == DW_TAG_pointer_type) {
 	    arg.size = 16;
 	    arg.offset = offset;
-	    offset = offset + 4;  // Next offset increase by 3 words to account for 64-bit address and 64-bit size
+	    offset = offset + 16;  // Next offset increase by 3 words to account for 64-bit address and 64-bit size
 	    arg.index = index;
 	    arg.type = xrt_core::pskernel::kernel_argument::argtype::global;
 	    ffi_type *enc_ffi_type = &ffi_type_pointer;

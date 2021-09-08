@@ -169,6 +169,11 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
   /* Open and load the soft kernel. */
   sk_handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL);
+  char *errstr = dlerror();
+  if(errstr != NULL) {
+    syslog(LOG_ERR, "Dynamic Link error: %s\n", errstr);
+    return;
+  }
   if (!sk_handle) {
     syslog(LOG_ERR, "Cannot open %s\n", path);
     return;
@@ -253,10 +258,9 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       // Map buffers used by kernel
       for(int i=0;i<args.size();i++) {
 	if(args[i].type == xrt_core::pskernel::kernel_argument::argtype::global) {
-	  syslog(LOG_INFO, "Arg Offset = %d",args[i].offset);
-	  uint64_t *buf_addr_ptr = (uint64_t*)(&args_from_host[args[i].offset]);
+	  uint64_t *buf_addr_ptr = (uint64_t*)(&args_from_host[args[i].offset/4]);
 	  uint64_t buf_addr = reinterpret_cast<uint64_t>(*buf_addr_ptr);
-	  uint64_t *buf_size_ptr = (uint64_t*)(&args_from_host[args[i].offset+2]);
+	  uint64_t *buf_size_ptr = (uint64_t*)(&args_from_host[args[i].offset/4+2]);
 	  uint64_t buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
 	  boSize[i] = buf_size;
 	  
@@ -265,7 +269,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 	  ffi_arg_values[i] = &bos[i];
 	  bo_list.emplace_back(i);
 	} else {
-	  ffi_arg_values[i] = &args_from_host[args[i].offset];
+	  ffi_arg_values[i] = &args_from_host[args[i].offset/4];
 	}
       }
     

@@ -400,7 +400,7 @@ public:
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<psip_context>(new psip_context(device, xclbin_id, range, ip, ipidx+max_cus, cuidx+max_cus, am));
+      ipctx = std::shared_ptr<psip_context>(new psip_context(device, xclbin_id, range, ip, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
 
@@ -504,7 +504,7 @@ private:
     , xid(xclbin_id)
     , args(dev, xclbin_id, ipindex)
     , cuidx(cuindex)
-    , address(ip->m_base_address)
+    , address(0)
     , size(range)
     , access(am)
   {
@@ -919,8 +919,9 @@ private:
         throw std::runtime_error("xclBufferHandle not supported as kernel argument");
 
       auto bo = va_arg(*args, xrtBufferHandle); // NOLINT
-      auto addr = xrt_core::bo::address(bo);
-      setter->set_arg_value(arg, arg_range<uint8_t>{&addr, sizeof(addr)});
+      //      auto addr = xrt_core::bo::address(bo);
+      //      setter->set_arg_value(arg, arg_range<uint8_t>{&addr, sizeof(addr)});
+      setter->set_arg_value(arg, bo);
     }
   };
 
@@ -987,12 +988,14 @@ public:
       else if (arg.hosttype == "int64_t")
         content = std::make_unique<scalar_type<int64_t,int64_t>>(arg.size);
       else
-        // throw xrt_core::error(-EINVAL, "Unknown scalar argument type '" + arg.hosttype + "'");
+	// throw xrt_core::error(-EINVAL, "Unknown scalar argument type '" + arg.hosttype + "'");
         // arg.hosttype is free formed, default to size_t until clarified
         content = std::make_unique<scalar_type<size_t,size_t>>(arg.size);
       break;
     }
     case xarg::argtype::global :
+      content = std::make_unique<global_type>(arg.size);
+      break;
     default:
       throw std::runtime_error("Unexpected error");
     }
@@ -1155,7 +1158,7 @@ public:
     int cuidx_start = 0;
     
     // Extract soft kernel section for arguments
-    auto sk_sections = device->core_device->get_axlf_sections(SOFT_KERNEL,xclbin_id);
+    auto sk_sections = device->core_device->get_axlf_sections_or_error(SOFT_KERNEL,xclbin_id);
     if (sk_sections.empty())
       throw std::runtime_error("No soft kernel metadata available to construct kernel, make sure xclbin is loaded");
 
@@ -1172,6 +1175,7 @@ public:
 	sko.size = soft->m_image_size;
 	sko.sk_buf = const_cast<char*>(sk.first+soft->m_image_offset);  // NOLINT
 	sk_found = true;
+	XRT_DEBUGF("pskernel_impl::sk_found!  sko_ninst = %d, sko.symbol_name = %s\n" , sko.ninst, sko.symbol_name);
 	break;
       } else {
 	cuidx_start += soft->m_num_instances;
@@ -1186,6 +1190,7 @@ public:
       // Use all instances of PS kernels
       for(int i=0;i<(int)sko.ninst;i++) {
 	int cuidx = cuidx_start + i;
+	XRT_DEBUGF("PS kernel cuidx = %d\n",cuidx);
 	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, 0, 0, cuidx, cuidx, am));
 	cumask.set(cuidx);
 	num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
@@ -1193,12 +1198,15 @@ public:
     } else {
       // Use CUs from list
       std::vector<std::string> kernel_cus;
-      auto culist = nm.substr(nm.find(":"));
+      auto culist = nm.substr(nm.find(":")+1);
       // Check for braces
       if(culist.find("{") != std::string::npos) {
-	culist.erase(culist.back());
-	culist.erase(culist.front());
+	culist.erase(culist.find("{"),1);
       }
+      if(culist.find("}") != std::string::npos) {
+	culist.erase(culist.find("}"),1);
+      }
+      XRT_DEBUGF("CU list: %s\n",culist.c_str());
       std::stringstream ss(culist);
       while(ss.good()) {
 	std::string substr;
@@ -1206,6 +1214,7 @@ public:
 	kernel_cus.emplace_back(substr);
       }
       for (auto cu : kernel_cus) {
+	XRT_DEBUGF("Picking CUs %s\n",cu.c_str());
 	auto cuidx = cuidx_start + std::stoi(cu);
 	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, 0, 0, cuidx, cuidx, am));
 	cumask.set(cuidx);
@@ -1219,6 +1228,7 @@ public:
     // get kernel arguments
     // compute regmap size, convert to typed argument
     for (auto& arg : xrt_core::pskernel::pskernel_parse(sko.sk_buf, sko.size, name.c_str())) {
+      XRT_DEBUGF("arg index = %d, arg offset = %d, arg size = %d\n",arg.index, arg.offset, arg.size);
       regmap_size = std::max(regmap_size, (arg.offset + arg.size) / sizeof(uint32_t));
       args.emplace_back(std::move(arg));
     }
@@ -1417,7 +1427,7 @@ class psrun_impl
     set_arg_value(const argument& arg, const xrt::bo& bo) override
     {
       uint64_t value[2] = {bo.address(), bo.size()};
-      hs_arg_setter::set_arg_value(arg, arg_range<uint8_t>{value, sizeof(value)});
+      hs_arg_setter::set_arg_value(arg, arg_range<uint8_t>{&value, sizeof(value)});
     }
   };
 
