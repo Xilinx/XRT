@@ -260,15 +260,16 @@ public:
    * get_info() - Retrieve device parameter information
    *
    * This function is templated on the enumeration value as defined in
-   * the enumeration xrt::info::device and xrt::info::InfoSchemaVersion.
+   * the enumeration xrt::info::device and takes in 
+   * xrt::info::InfoSchemaVersion as a parameter.
    *
    * The return type of the parameter is based on the instantiated
    * param_traits for the given param enumeration supplied as template
    * argument, see namespace xrt::info
    */
-  template <info::device param, info::InfoSchemaVersion version>
+  template <info::device param>
   typename info::param_traits<info::device, param>::return_type
-  get_info() const
+  get_info(info::InfoSchemaVersion version) const
   {
     return boost::any_cast<
       typename info::param_traits<info::device, param>::return_type  

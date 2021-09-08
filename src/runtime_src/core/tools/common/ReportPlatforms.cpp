@@ -39,7 +39,7 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   xrt::device device(dev->get_device_id());
   boost::property_tree::ptree pt_platform;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::platform, xrt::info::InfoSchemaVersion::json_20202>();
+  ss << device.get_info<xrt::info::device::platform>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, pt_platform);
  
   // There can only be 1 root node
