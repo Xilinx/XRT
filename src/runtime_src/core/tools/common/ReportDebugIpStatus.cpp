@@ -1445,6 +1445,7 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
 
   boost::property_tree::ptree accel_deadlock_pt;
 
+#if 0
   // Atmost 1 Accelerator Deadlock Detector Ip per design
   boost::property_tree::ptree entry;
   std::string statusStr;
@@ -1456,12 +1457,13 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
   entry.put("status", statusStr);
 
   accel_deadlock_pt.push_back(std::make_pair("", entry));
+#endif
+
+  accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
 
   _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
   return;
 }
-
-
 
 void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
@@ -2158,6 +2160,26 @@ reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   return;
 }
 
+void
+reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accel_deadlock_detector_status");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for Accelerator Deadlock Detector enabled but currently loaded xclbin does not have any Accelerator Deadlock Detector. So, Accelerator Deadlock Detector status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& accel_deadlock_pt = child.get();
+  _output << "\nAccelerator Deadlock Detector IP status :" 
+          << ((0 == accel_deadlock_pt.get<uint64_t>("is_deadlocked")) ? " No " : " ")
+          << "deadlock detected." << std::endl;
+
+  return;
+}
+
 void 
 processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
 {
@@ -2256,9 +2278,7 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt, filter); }
-#if 0
   if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt, filter); }
-#endif
 
 #if 0
   reportAIM(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
