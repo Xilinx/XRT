@@ -1757,6 +1757,7 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt)
     return;
   }
   const boost::property_tree::ptree& aim_pt = child.get();
+
   _output << "\nAXI Interface Monitor Counters\n";
 
   auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
@@ -1788,10 +1789,15 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt)
   _output << std::endl;
 }
 
-#if 0
 void
-reportAM(std::ostream& _output, const boost::property_tree::ptree& _am_pt)
+reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accelerator_monitor_counters");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& am_pt = child.get();
+
   _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
 
   auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
@@ -1802,7 +1808,7 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _am_pt)
 
   boost::format valueFormat("  %-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
   try {
-    for(auto& ip : _am_pt) {
+    for(auto& ip : am_pt) {
       const boost::property_tree::ptree& entry = ip.second;
       _output << valueFormat
                    % entry.get<std::string>("compute_unit")
@@ -1827,8 +1833,14 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _am_pt)
 }
 
 void
-reportASM(std::ostream& _output, const boost::property_tree::ptree& _asm_pt)
+reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_stream_monitor_counters");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& asm_pt = child.get();
+
   _output << "\nAXI Stream Monitor Counters\n";
 
   auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
@@ -1840,7 +1852,7 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _asm_pt)
 
   boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
   try {
-    for(auto& ip : _asm_pt) {
+    for(auto& ip : asm_pt) {
       const boost::property_tree::ptree& entry = ip.second;
       _output << valueFormat
                    % entry.get<std::string>("stream_master") % entry.get<std::string>("stream_slave")
@@ -1861,7 +1873,6 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _asm_pt)
   }
   _output << std::endl;
 }
-#endif
 
 void
 reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
@@ -1878,19 +1889,30 @@ reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
   return;
 }
 
-#if 0
 void
-reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _ts2mm_pt)
+reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace Stream to Memory");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& ts2mm_pt = child.get();
+
   _output << "\nTrace Stream to Memory" << std::endl
-          << _ts2mm_pt.get<std::string>("description") << std::endl
-          << "Found : " << _ts2mm_pt.get<uint64_t>("count") << std::endl;
+          << ts2mm_pt.get<std::string>("description") << std::endl
+          << "Found : " << ts2mm_pt.get<uint64_t>("count") << std::endl;
   return;
 }
 
 void
-reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
+reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("light_weight_axi_protocol_checkers");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& lapc_pt = child.get();
+
   _output << "\nLight Weight AXI Protocol Checkers codes \n";
 
   auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
@@ -1900,7 +1922,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
   bool invalid_codes = false;
 
   try {
-    for(auto& ip : _lapc_pt) {
+    for(auto& ip : lapc_pt) {
       const boost::property_tree::ptree& entry = ip.second;
       unsigned int snapshotStatus[4];
       unsigned int cumulativeStatus[4];
@@ -1963,7 +1985,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
       boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
 
 
-      for(auto& ip : _lapc_pt) {
+      for(auto& ip : lapc_pt) {
         const boost::property_tree::ptree& entry = ip.second;
         unsigned int snapshotStatus[4];
         unsigned int cumulativeStatus[4];
@@ -2009,7 +2031,6 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
   }
   _output << std::endl;
 }
-#endif
 
 };
 
@@ -2061,15 +2082,13 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   reportOverview(_output, dbgIpStatus_pt);
 
   // Results -  TO DO filtering
-  reportAIM(_output, dbgIpStatus_pt);
-  reportFIFO(_output, dbgIpStatus_pt);
-#if 0
-  reportAM( _output, dbgIpStatus_pt);
-  reportASM(_output, dbgIpStatus_pt);
-  reportFIFO(_output, dbgIpStatus_pt);
+  reportAIM(  _output, dbgIpStatus_pt);
+  reportAM(   _output, dbgIpStatus_pt);
+  reportASM(  _output, dbgIpStatus_pt);
+  reportFIFO( _output, dbgIpStatus_pt);
   reportTS2MM(_output, dbgIpStatus_pt);
-  reportLAPC(_output, dbgIpStatus_pt);
-#endif
+  reportLAPC( _output, dbgIpStatus_pt);
+
 #if 0
   reportAIM(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
   reportAM( _output, dbgIpStatus_pt.get_child("accelerator_monitor_counters"));
