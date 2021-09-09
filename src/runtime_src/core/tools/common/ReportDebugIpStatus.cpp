@@ -1702,15 +1702,17 @@ DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
     boost::property_tree::ptree entry;
 
     entry.put("name", std::string(cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] + "/" + portNames[AXI_STREAM_PROTOCOL_CHECKER][i]));
-
-    // To Do : Handle violations
+    entry.put("cu_name", cuNames[AXI_STREAM_PROTOCOL_CHECKER][i]);
+    entry.put("axi_port", portNames[AXI_STREAM_PROTOCOL_CHECKER][i]);
+    entry.put("pc_asserted", spcResults.PCAsserted[i]);
+    entry.put("current_pc", spcResults.CurrentPC[i]);
+    entry.put("snapshot_pc", spcResults.SnapshotPC[i]);
 
     spc_pt.push_back(std::make_pair("", entry));
   }
 
   _pt.add_child("axi_streaming_protocol_checkers", spc_pt);
 }
-
 
 void 
 DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
@@ -2062,6 +2064,80 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   _output << std::endl;
 }
 
+void
+reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_streaming_protocol_checkers");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for SPC enabled but currently loaded xclbin does not have any SPC. So, SPC status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& spc_pt = child.get();
+
+  // Now print out all of the values (and their interpretations)
+  _output << "\nAXI Streaming Protocol Checkers codes\n";
+
+  bool invalid_codes = false ;
+  bool violations_found = false ;
+
+  try {
+    for(auto& ip : spc_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << "CU Name: " << entry.get<std::string>("cu_name")
+              << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl;
+
+      if(!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(entry.get<unsigned int>("pc_asserted"),
+                       entry.get<unsigned int>("current_pc"), entry.get<unsigned int>("snapshot_pc"))) {
+        invalid_codes = true;
+        _output << "  Invalid codes read, skip decoding" << std::endl;
+      } else {
+        violations_found = true;
+        _output << "  First violation: " << std::endl
+                << "    " 
+                << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("snapshot_pc"))
+                << std::endl;
+        std::string tStr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("current_pc"));
+        _output << "  Other violations: " << std::endl
+                << "    " << (("" == tStr) ? "None" : tStr)
+                << std::endl;
+      }
+
+    }
+    if (!violations_found && !invalid_codes) {
+      _output << "No AXI violations found " << std::endl;
+    }
+
+    if (violations_found && /*aVerbose &&*/ !invalid_codes) {
+      auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
+      auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
+
+      boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
+      _output << std::endl
+              << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
+              << std::endl;
+
+      boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
+      for(auto& ip : spc_pt) {
+        const boost::property_tree::ptree& entry = ip.second;
+        _output << valueFormat
+                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                     % entry.get<unsigned int>("pc_asserted") 
+                     % entry.get<unsigned int>("snapshot_pc") 
+                     % entry.get<unsigned int>("current_pc")
+                << std::endl;
+      }
+    }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
 void 
 processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
 {
@@ -2158,8 +2234,8 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   if(true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) { reportFIFO( _output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt, filter); }
-#if 0
   if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt, filter); }
+#if 0
   if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt, filter); }
 #endif
