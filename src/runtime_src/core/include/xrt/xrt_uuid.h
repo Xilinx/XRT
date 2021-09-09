@@ -71,12 +71,17 @@ public:
    * uuid() - Construct uuid from a string representaition
    *
    * @param uuid_str
-   *  A string formatted as a uuid string 
+   *  A string formatted as a uuid string
    *
    * A uuid string is 36 bytes with '-' at 8, 13, 18, and 23
    */
   explicit uuid(const std::string& uuid_str)
   {
+    if(uuid_str.empty())
+    {
+      uuid_clear(m_uuid);
+      return;
+    }
     uuid_parse(uuid_str.c_str(), m_uuid);
   }
 
