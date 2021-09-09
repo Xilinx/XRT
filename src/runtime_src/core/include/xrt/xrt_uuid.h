@@ -77,8 +77,7 @@ public:
    */
   explicit uuid(const std::string& uuid_str)
   {
-    if(uuid_str.empty())
-    {
+    if (uuid_str.empty()) {
       uuid_clear(m_uuid);
       return;
     }
