@@ -2032,6 +2032,35 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt)
   _output << std::endl;
 }
 
+void 
+processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
+{
+  // reset debugIpOpt to all "false" and then process given element filter
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, false);
+
+  for(auto& itr : _elementsFilter) {
+    if(itr == "aim") {
+      debugIpOpt[AXI_MM_MONITOR] = true;
+    } else if(itr == "am") {
+      debugIpOpt[ACCEL_MONITOR] = true;
+    } else if(itr == "asm") {
+      debugIpOpt[AXI_STREAM_MONITOR] = true;
+    } else if(itr == "lapc") {
+      debugIpOpt[LAPC] = true;
+    } else if(itr == "spc") {
+      debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER] = true;
+    } else if(itr == "fifo") {
+      debugIpOpt[AXI_MONITOR_FIFO_FULL] = true;
+    } else if(itr == "ts2mm") {
+      debugIpOpt[TRACE_S2MM] = true;
+    } else if(itr == "ila") {
+      debugIpOpt[ILA] = true;
+    } else if(itr == "accel_deadlock_detector") {
+      debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
+    }
+  }
+}
+
 };
 
 // ----- ReportDebugIpStatus C L A S S   M E T H O D S -------------------------------------------
@@ -2081,13 +2110,27 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   //Print Overview
   reportOverview(_output, dbgIpStatus_pt);
 
-  // Results -  TO DO filtering
-  reportAIM(  _output, dbgIpStatus_pt);
-  reportAM(   _output, dbgIpStatus_pt);
-  reportASM(  _output, dbgIpStatus_pt);
-  reportFIFO( _output, dbgIpStatus_pt);
-  reportTS2MM(_output, dbgIpStatus_pt);
-  reportLAPC( _output, dbgIpStatus_pt);
+  // Process Element Filter
+  bool debugIpOpt[DEBUG_IP_TYPE_MAX];
+  // By default, enable status collection for all Debug IP types
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
+
+  if(_elementsFilter.size()) {
+    processElementFilter(debugIpOpt, _elementsFilter);
+  }
+
+  // Results
+  if(true == debugIpOpt[AXI_MM_MONITOR])     { reportAIM(  _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[ACCEL_MONITOR])      { reportAM(   _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[AXI_STREAM_MONITOR]) { reportASM(  _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) { reportFIFO( _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt); }
+#if 0
+  if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt); }
+#endif
 
 #if 0
   reportAIM(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
