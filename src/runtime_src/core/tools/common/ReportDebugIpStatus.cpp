@@ -1850,7 +1850,7 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt)
   _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
           << std::endl;
 
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu  %-16llu");
   try {
     for(auto& ip : asm_pt) {
       const boost::property_tree::ptree& entry = ip.second;
@@ -1884,8 +1884,8 @@ reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
   const boost::property_tree::ptree& fifo_pt = child.get();
 
   _output << "\nTrace FIFO" << std::endl
-          << fifo_pt.get<std::string>("description") << std::endl
-          << "Found : " << fifo_pt.get<uint64_t>("count") << std::endl;
+          << "  " << fifo_pt.get<std::string>("description") << std::endl
+          << "  Found : " << fifo_pt.get<uint64_t>("count") << std::endl;
   return;
 }
 
@@ -1899,8 +1899,8 @@ reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt)
   const boost::property_tree::ptree& ts2mm_pt = child.get();
 
   _output << "\nTrace Stream to Memory" << std::endl
-          << ts2mm_pt.get<std::string>("description") << std::endl
-          << "Found : " << ts2mm_pt.get<uint64_t>("count") << std::endl;
+          << "  " << ts2mm_pt.get<std::string>("description") << std::endl
+          << "  Found : " << ts2mm_pt.get<uint64_t>("count") << std::endl;
   return;
 }
 
