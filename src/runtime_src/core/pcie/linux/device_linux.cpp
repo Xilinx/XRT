@@ -478,6 +478,8 @@ initialize_query_table()
   emplace_sysfs_get<query::rom_uuid>                           ("rom", "uuid");
   emplace_sysfs_get<query::rom_time_since_epoch>               ("rom", "timestamp");
   emplace_sysfs_get<query::xclbin_uuid>                        ("", "xclbinuuid");
+  emplace_sysfs_getput<query::ic_enable>                       ("icap_controller", "enable");
+  emplace_sysfs_getput<query::ic_load_flash_address>           ("icap_controller", "load_flash_addr");
   emplace_sysfs_get<query::memstat>                            ("", "memstat");
   emplace_sysfs_get<query::memstat_raw>                        ("", "memstat_raw");
   emplace_sysfs_get<query::mem_topology_raw>                   ("icap", "mem_topology");

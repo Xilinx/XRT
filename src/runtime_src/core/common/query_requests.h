@@ -85,6 +85,9 @@ enum class key_type
   ps_kernel,
   xocl_errors,
   xclbin_full,
+  ic_enable,
+  ic_load_flash_address,
+
 
   xmc_version,
   xmc_board_name,
@@ -731,6 +734,32 @@ struct xclbin_full : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct ic_enable : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct ic_load_flash_address : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_load_flash_address;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct aie_metadata : request
