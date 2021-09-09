@@ -232,14 +232,14 @@ static inline int xgq_can_consume(struct xgq *xgq)
 	return !xgq_ring_empty(ring);
 }
 
-// Fast forward to where we left, should only be called during attach, ring must be empty now
-static inline int xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
+/*
+ * Fast forward to where we left, should only be called during attach.
+ * The ring may not be empty if peer alloc'ed ring, then pushed cmds to it before we attach.
+ */
+static inline void xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
 {
 	xgq_ring_read_produced(xgq->xq_io_hdl, ring);
 	xgq_ring_read_consumed(xgq->xq_io_hdl, ring);
-	if (!xgq_ring_empty(ring))
-		return -EINVAL;
-	return 0;
 }
 
 static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
@@ -317,8 +317,8 @@ xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr, 
 
 static inline int
 xgq_group_alloc(struct xgq *a_xgq, size_t n_qs, uint64_t flags, uint64_t io_hdl,
-		uint64_t ring_addr, size_t *ring_len, uint32_t *a_slot_size,
-		uint64_t *a_sq_produced, uint64_t *a_cq_produced)
+		uint64_t ring_addr, size_t *ring_len, const uint32_t *a_slot_size,
+		const uint64_t *a_sq_produced, const uint64_t *a_cq_produced)
 {
 	size_t i;
 	size_t total_len = 0;
@@ -355,7 +355,6 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 {
 	struct xgq_header hdr = {};
 	uint32_t nslots;
-	int rc;
 
 	xgq_copy_from_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(uint32_t));
 	// Magic number must show up to confirm the header is fully initialized
@@ -381,12 +380,8 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 		      ring_addr + hdr.xh_cq_offset,
 		      hdr.xh_slot_num, sizeof(struct xrt_com_queue_entry));
 
-	rc = xgq_fast_forward(xgq, &xgq->xq_sq);
-	if (rc)
-		return rc;
-	rc = xgq_fast_forward(xgq, &xgq->xq_cq);
-	if (rc)
-		return rc;
+	xgq_fast_forward(xgq, &xgq->xq_sq);
+	xgq_fast_forward(xgq, &xgq->xq_cq);
 	return 0;
 }
 
