@@ -21,6 +21,8 @@
 #include "xclbin.h"
 #include <string>
 #include <vector>
+#include <stdexcept>
+#include <limits>
 
 namespace xrt_core { namespace xclbin {
 
