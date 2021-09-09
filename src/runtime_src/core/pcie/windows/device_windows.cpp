@@ -884,23 +884,6 @@ struct recovery
   }
 };
 
-struct icap_controller
-{
-  using result_type = boost::any;
-
-  static result_type
-  user(const xrt_core::device*, key_type key)
-  {
-    throw userpf_not_supported_error(key);
-  }
-
-  static result_type
-  mgmt(const xrt_core::device*, key_type key)
-  {
-    throw mgmtpf_not_supported_error(key);
-  }
-};
-
 struct uuid
 {
   using result_type = boost::any;
@@ -1456,8 +1439,6 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
-  emplace_function0_getter<query::ic_enable,                 icap_controller>();
-  emplace_function0_getter<query::ic_load_flash_address,     icap_controller>();
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -736,7 +736,7 @@ struct xclbin_full : request
   get(const device*) const = 0;
 };
 
-struct ic_enable: request
+struct ic_enable : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
@@ -749,7 +749,7 @@ struct ic_enable: request
   put(const device*, const boost::any&) const = 0;
 };
 
-struct ic_load_flash_address: request
+struct ic_load_flash_address : request
 {
   using result_type = uint32_t;
   using value_type = uint32_t;
