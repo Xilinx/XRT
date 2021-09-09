@@ -1025,7 +1025,7 @@ zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
-	if (!xclbin_id){
+	if (!xclbin_id) {
 		DRM_ERROR("No active xclbin. Cannot hold ");
 		return -EINVAL;
 	}
@@ -1066,7 +1066,7 @@ zocl_xclbin_release(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
-	if (!xclbin_uuid){
+	if (!xclbin_uuid) {
 		DRM_ERROR("No active xclbin. Cannot release");
 		return -EINVAL;
 	}
