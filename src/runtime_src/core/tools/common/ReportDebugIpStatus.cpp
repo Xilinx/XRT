@@ -2138,6 +2138,26 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   _output << std::endl;
 }
 
+void
+reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Integrated Logic Analyzer");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for ILA enabled but currently loaded xclbin does not have any ILA. So, ILA status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& ila_pt = child.get();
+
+  _output << "\nIntegrated Logic Analyzer" << std::endl
+          << "  " << ila_pt.get<std::string>("description") << std::endl
+          << "  Found : " << ila_pt.get<uint64_t>("count") << std::endl;
+  return;
+}
+
 void 
 processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
 {
@@ -2235,8 +2255,8 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt, filter); }
   if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt, filter); }
-#if 0
   if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt, filter); }
+#if 0
   if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt, filter); }
 #endif
 
