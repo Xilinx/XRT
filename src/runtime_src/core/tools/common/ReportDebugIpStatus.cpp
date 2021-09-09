@@ -1750,8 +1750,13 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
 }
 
 void
-reportAIM(std::ostream& _output, const boost::property_tree::ptree& _aim_pt)
+reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_interface_monitor_counters");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& aim_pt = child.get();
   _output << "\nAXI Interface Monitor Counters\n";
 
   auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
@@ -1765,7 +1770,7 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _aim_pt)
   boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  %-16x  %-16x  %-16x %-16x");
 
   try {
-    for(auto& ip : _aim_pt) {
+    for(auto& ip : aim_pt) {
       const boost::property_tree::ptree& entry = ip.second;
       _output << valueFormat
                    % entry.get<std::string>("region_or_cu")     % entry.get<std::string>("type_or_port")
@@ -1783,6 +1788,7 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _aim_pt)
   _output << std::endl;
 }
 
+#if 0
 void
 reportAM(std::ostream& _output, const boost::property_tree::ptree& _am_pt)
 {
@@ -1855,16 +1861,24 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _asm_pt)
   }
   _output << std::endl;
 }
+#endif
 
 void
-reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _fifo_pt)
+reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
 {
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace FIFO");
+  if(boost::none == child) {
+    return;
+  }
+  const boost::property_tree::ptree& fifo_pt = child.get();
+
   _output << "\nTrace FIFO" << std::endl
-          << _fifo_pt.get<std::string>("description") << std::endl
-          << "Found : " << _fifo_pt.get<uint64_t>("count") << std::endl;
+          << fifo_pt.get<std::string>("description") << std::endl
+          << "Found : " << fifo_pt.get<uint64_t>("count") << std::endl;
   return;
 }
 
+#if 0
 void
 reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _ts2mm_pt)
 {
@@ -1995,6 +2009,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
   }
   _output << std::endl;
 }
+#endif
 
 };
 
@@ -2046,12 +2061,23 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   reportOverview(_output, dbgIpStatus_pt);
 
   // Results -  TO DO filtering
+  reportAIM(_output, dbgIpStatus_pt);
+  reportFIFO(_output, dbgIpStatus_pt);
+#if 0
+  reportAM( _output, dbgIpStatus_pt);
+  reportASM(_output, dbgIpStatus_pt);
+  reportFIFO(_output, dbgIpStatus_pt);
+  reportTS2MM(_output, dbgIpStatus_pt);
+  reportLAPC(_output, dbgIpStatus_pt);
+#endif
+#if 0
   reportAIM(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
   reportAM( _output, dbgIpStatus_pt.get_child("accelerator_monitor_counters"));
   reportASM(_output, dbgIpStatus_pt.get_child("axi_stream_monitor_counters"));
   reportFIFO(_output, dbgIpStatus_pt.get_child("Trace FIFO"));
   reportTS2MM(_output, dbgIpStatus_pt.get_child("Trace Stream to Memory"));
   reportLAPC(_output, dbgIpStatus_pt.get_child("light_weight_axi_protocol_checkers"));
+#endif
 #if 0
   reportSPC(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
   reportILA(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
