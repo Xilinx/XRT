@@ -49,6 +49,8 @@
 #define MAX_DYN_SUBDEV		1024
 #define XDEV_DEFAULT_EXPIRE_SECS	1
 
+#define MAX_SB_APERTURES		256
+
 extern int kds_mode;
 
 static const struct pci_device_id pciidlist[] = {
@@ -1273,7 +1275,7 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 {
 	int ret = 0;
 	size_t page_sz = cma_info->total_size/cma_info->entry_num;
-	uint32_t i, j, num = 256;
+	uint32_t i, j, num = MAX_SB_APERTURES;
 	uint64_t *user_addr = NULL, *phys_addrs = NULL, cma_mem_size = 0;
 	uint64_t rounddown_num = rounddown_pow_of_two(cma_info->entry_num);
 
@@ -1452,7 +1454,7 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	int ret = 0;
 	uint64_t page_sz;
 	int64_t i = 0;
-	uint64_t page_num = 256;
+	uint64_t page_num = MAX_SB_APERTURES;
 	uint64_t *phys_addrs = NULL, cma_mem_size = 0;
 
 	page_sz = size/page_num;
@@ -1527,7 +1529,7 @@ void xocl_cma_bank_free(struct xocl_dev	*xdev)
 int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
 {
 	int err = 0;
-	int num = 256;
+	int num = MAX_SB_APERTURES;
 
 	xocl_cleanup_mem(xdev->core.drm);
 	xocl_icap_clean_bitstream(xdev);
