@@ -299,8 +299,8 @@ void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 int zocl_exec_valid_cu(struct sched_exec_core *exec, unsigned int cuid);
 u32 sched_is_busy(struct drm_zocl_dev *zdev);
 u32 sched_live_clients(struct drm_zocl_dev *zdev, pid_t **plist);
-int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx);
-int sched_detach_cu(struct drm_zocl_dev *zdev, int cu_idx);
+int sched_attach_cu(struct drm_zocl_dev *zdev, u32 cu_idx);
+int sched_detach_cu(struct drm_zocl_dev *zdev, u32 cu_idx);
 int zocl_execbuf_exec(struct drm_device *dev, void *data,
 		      struct drm_file *filp);
 #endif

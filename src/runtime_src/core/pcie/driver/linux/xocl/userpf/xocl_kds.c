@@ -277,17 +277,22 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	      struct drm_xocl_ctx *args)
 {
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	int cu_idx = args->cu_index;
+	u32 cu_idx = args->cu_index;
+	int ret;
 
 	if (!kds->cu_intr_cap) {
 		userpf_err(xdev, "Shell not support CU to host interrupt");
 		return -EOPNOTSUPP;
 	}
 
+	ret = kds_open_ucu(kds, client, cu_idx);
+	if (ret < 0)
+		return ret;
+
 	userpf_info(xdev, "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
-	return kds_open_ucu(kds, client, cu_idx);
+	return 0;
 }
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
