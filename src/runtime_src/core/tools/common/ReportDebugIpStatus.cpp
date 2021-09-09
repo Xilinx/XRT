@@ -1750,10 +1750,15 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
 }
 
 void
-reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_interface_monitor_counters");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for AIM enabled but currently loaded xclbin does not have any AIM. So, AIM status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& aim_pt = child.get();
@@ -1790,10 +1795,15 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 }
 
 void
-reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accelerator_monitor_counters");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for AM enabled but currently loaded xclbin does not have any AM. So, AM status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& am_pt = child.get();
@@ -1833,10 +1843,15 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 }
 
 void
-reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_stream_monitor_counters");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for ASM enabled but currently loaded xclbin does not have any ASM. So, ASM status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& asm_pt = child.get();
@@ -1875,10 +1890,15 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 }
 
 void
-reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace FIFO");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for Trace FIFO enabled but currently loaded xclbin does not have any Trace FIFO. So, Trace FIFO status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& fifo_pt = child.get();
@@ -1890,10 +1910,15 @@ reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt)
 }
 
 void
-reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace Stream to Memory");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for TraceS2MM enabled but currently loaded xclbin does not have any TraceS2MM. So, TraceS2MM status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& ts2mm_pt = child.get();
@@ -1905,10 +1930,15 @@ reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt)
 }
 
 void
-reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt)
+reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
 {
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("light_weight_axi_protocol_checkers");
   if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for LAPC enabled but currently loaded xclbin does not have any LAPC. So, LAPC status report will NOT be generated." 
+              << std::endl;
+    }
     return;
   }
   const boost::property_tree::ptree& lapc_pt = child.get();
@@ -2115,21 +2145,23 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   // By default, enable status collection for all Debug IP types
   std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
 
+  bool filter = false;
   if(_elementsFilter.size()) {
+    filter = true;
     processElementFilter(debugIpOpt, _elementsFilter);
   }
 
   // Results
-  if(true == debugIpOpt[AXI_MM_MONITOR])     { reportAIM(  _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[ACCEL_MONITOR])      { reportAM(   _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[AXI_STREAM_MONITOR]) { reportASM(  _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) { reportFIFO( _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[AXI_MM_MONITOR])     { reportAIM(  _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[ACCEL_MONITOR])      { reportAM(   _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[AXI_STREAM_MONITOR]) { reportASM(  _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) { reportFIFO( _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt, filter); }
 #if 0
-  if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt); }
-  if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt); }
+  if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt, filter); }
+  if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt, filter); }
 #endif
 
 #if 0
