@@ -1002,7 +1002,8 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	ecmd->num_cus	= num_cu;
 	ecmd->cu_shift	= 16;
-	ecmd->ert	= cfg->ert;
+	//ecmd->ert	= cfg->ert;
+	ecmd->ert	= 0;
 	ecmd->polling	= cfg->polling;
 	ecmd->cu_dma	= cfg->cu_dma;
 	ecmd->cu_isr	= cfg->cu_isr;

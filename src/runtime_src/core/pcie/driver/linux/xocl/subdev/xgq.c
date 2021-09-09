@@ -12,6 +12,7 @@
 #include "xrt_drv.h"
 #include "xgq_cmd.h"
 #include "../xocl_xgq_plat.h"
+#include <linux/time.h>
 
 /*
  * XGQ Host management driver design.
@@ -29,6 +30,18 @@
 	xocl_dbg(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
 
 #define	XGQ_DEV_NAME "ospi_xgq" SUBDEV_SUFFIX
+
+#define XOCL_XGQ_RING_LEN 0x1000 //4k, must be the same size on device
+#define XOCL_XGQ_RESERVE_LEN 0x100 //256, reserved for device status
+#define XOCL_XGQ_DATA_OFFSET (XOCL_XGQ_RING_LEN + XOCL_XGQ_RESERVE_LEN)
+#define XOCL_XGQ_DEV_STAT_OFFSET (XOCL_XGQ_RING_LEN)
+
+static DEFINE_IDA(xocl_xgq_cid_ida);
+
+/* cmd timeout in seconds */
+#define XOCL_XGQ_FLASH_TIME 	msecs_to_jiffies(10 * 60 * 1000) 
+#define XOCL_XGQ_DOWNLOAD_TIME 	msecs_to_jiffies(30 * 1000) 
+#define XOCL_XGQ_CONFIG_TIME 	msecs_to_jiffies(10 * 1000) 
 
 /*
  * Note:
@@ -84,10 +97,9 @@ struct xocl_xgq_cmd {
 	struct completion	xgq_cmd_complete;
 	xocl_xgq_complete_cb    xgq_cmd_cb;
 	void			*xgq_cmd_arg;
-	u16			xgq_rcode;
+	u16			xgq_cmd_rcode;
+	struct timer_list	xgq_cmd_timer;
 };
-
-#define XOCL_XGQ_RING_LEN 0x1000 //4k, must be the same size on device
 
 struct xocl_xgq;
 
@@ -103,7 +115,6 @@ struct xocl_xgq {
 	struct xgq	 	xgq_queue;
 	u64			xgq_io_hdl;
 	void __iomem		*xgq_ring_base;
-	size_t			xgq_ring_len;
 	u32			xgq_slot_size;
 	void __iomem		*xgq_sq_base;
 	void __iomem		*xgq_cq_base;
@@ -116,8 +127,6 @@ struct xocl_xgq {
 	struct xgq_worker	xgq_worker;
 	bool			xgq_ospi_inuse;
 };
-
-static DEFINE_IDA(xocl_xgq_cid_ida);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -291,7 +300,7 @@ static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
 	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
 
 	/* Note: we only care rcode for now */
-	xgq_cmd->xgq_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
 
 	complete(&xgq_cmd->xgq_cmd_complete);
 }
@@ -299,25 +308,25 @@ static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
 /*
  * Write buffer into shared memory and 
  * return translate host based address to device based address.
+ * The 0 ~ XOCL_XGQ_RING_LEN is reserved for ring buffer.
+ * The XOCL_XGQ_DATA_OFFSET ~ end is for transferring shared data.
  */
 static u64 memcpy_to_devices(struct xocl_xgq *xgq, const void *xclbin_data,
 	size_t xclbin_len)
 {
-	void __iomem *dst = xgq->xgq_ring_base + xgq->xgq_ring_len;
+	void __iomem *dst = xgq->xgq_ring_base + XOCL_XGQ_DATA_OFFSET;
 
 	memcpy_toio(dst, xclbin_data, xclbin_len);
 
 	/* This is the offset that device start reading data */
-	return xgq->xgq_ring_len;
+	return XOCL_XGQ_DATA_OFFSET;
 }
 
 /*
  * Utilized shared memory between host and device to transfer data.
- * The 0 ~ ring_len is reserved for ring buffer.
- * The ring_len ~ end is for transferring shared data.
  */
 static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
-	u64 xclbin_len, xrt_xgq_pkt_type_t pkt_type)
+	u64 xclbin_len, xrt_xgq_pkt_type_t pkt_type, u32 timer)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
 	struct xrt_sub_queue_entry *cmdp = NULL;
@@ -352,6 +361,10 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
 
+	/* init timer */
+	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
+	mod_timer(&cmd->xgq_cmd_timer, jiffies + timer);
+
 	if (submit_cmd(xgq, cmd)) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
 		goto done;
@@ -360,15 +373,16 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
 
-	XGQ_DBG(xgq, "rcode %d", cmd->xgq_rcode);
+	XGQ_DBG(xgq, "rcode %d", cmd->xgq_cmd_rcode);
 
-	if (cmd->xgq_rcode)
-		ret = cmd->xgq_rcode;
+	if (cmd->xgq_cmd_rcode)
+		ret = cmd->xgq_cmd_rcode;
 	else
 		ret = xclbin_len;
 done:
 	if (cmd) {
 		ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
+		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
 
@@ -393,7 +407,7 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	mutex_unlock(&xgq->xgq_lock);
 	
 	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len,
-		XRT_XGQ_PKT_TYPE_XCLBIN);
+		XRT_XGQ_PKT_TYPE_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
 	mutex_lock(&xgq->xgq_lock);
 	xgq->xgq_ospi_inuse = false;
@@ -409,7 +423,7 @@ static void xgq_af_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
 	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
 
 	/* Note: we only care rcode for now */
-	xgq_cmd->xgq_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
 
 	/* the func suppose to finish quick and call complete itself */
 	if (xgq_cmd->xgq_af_handle && xgq_cmd->xgq_af_handle->func)
@@ -453,6 +467,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
 
+	/* init timer */
+	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
+	mod_timer(&cmd->xgq_cmd_timer, jiffies + XOCL_XGQ_CONFIG_TIME);
+
 	ret = submit_cmd(xgq, cmd);
 	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
@@ -464,12 +482,13 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
 
-	XGQ_DBG(xgq, "rcode %d", cmd->xgq_rcode);
+	XGQ_DBG(xgq, "rcode %d", cmd->xgq_cmd_rcode);
 
-	ret = cmd->xgq_rcode;
+	ret = cmd->xgq_cmd_rcode;
 done:
 	if (cmd) {
 		ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
+		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
 
@@ -551,7 +570,7 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 	}
 	
 	ret = xgq_transfer_data(xgq, kdata, data_len,
-		XRT_XGQ_PKT_TYPE_PDI);
+		XRT_XGQ_PKT_TYPE_PDI, XOCL_XGQ_FLASH_TIME);
 
 done:
 	mutex_lock(&xgq->xgq_lock);
@@ -608,7 +627,6 @@ static int xgq_remove(struct platform_device *pdev)
 
 	fini_worker(&xgq->xgq_worker);
 
-
 	if (xgq->xgq_ring_base)
 		iounmap(xgq->xgq_ring_base);
 
@@ -628,6 +646,15 @@ static int xgq_remove(struct platform_device *pdev)
 
 	XGQ_INFO(xgq, "successfully removed xgq subdev");
 	return 0;
+}
+
+static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
+{
+	int rval;
+
+	rval = ioread32(xgq->xgq_ring_base + XOCL_XGQ_DEV_STAT_OFFSET);
+	
+	return rval > 0;
 }
 
 static int xgq_probe(struct platform_device *pdev)
@@ -668,18 +695,25 @@ static int xgq_probe(struct platform_device *pdev)
 		goto attach_failed;
 	}
 
-	flags &= ~XGQ_SERVER;
+	/* check device is ready */
+	if (xgq_device_is_ready(xgq)) {
+		ret = -ENODEV;
+		XGQ_ERR(xgq, "device is not ready, please reset device.");
+		goto attach_failed;
+	}
+
 	/* server to reset SQ tail pointer status */
-	iowrite32(0x0, xgq->xgq_sq_base);
+	//iowrite32(0x0, xgq->xgq_sq_base);
+	
+	flags &= ~XGQ_SERVER;
 	ret = xgq_attach(&xgq->xgq_queue, flags, (u64)xgq->xgq_ring_base,
 		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);
 	if (ret != 0) {
-		XGQ_ERR(xgq, "xgq_attache failed: %d", ret);
+		XGQ_ERR(xgq, "xgq_attache failed: %d, please reset device", ret);
 		ret = -ENODEV;
 		goto attach_failed;
 	}
 
-	xgq->xgq_ring_len = XOCL_XGQ_RING_LEN;
 	XGQ_DBG(xgq, "sq_slot_size 0x%lx\n", xgq->xgq_queue.xq_sq.xr_slot_sz);
 	XGQ_DBG(xgq, "cq_slot_size 0x%lx\n", xgq->xgq_queue.xq_cq.xr_slot_sz);
 	XGQ_DBG(xgq, "sq_num_slots %d\n", xgq->xgq_queue.xq_sq.xr_slot_num);
