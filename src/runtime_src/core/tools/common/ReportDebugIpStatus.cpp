@@ -1564,45 +1564,6 @@ DebugIpStatusCollector::populateAIMResults(boost::property_tree::ptree &_pt)
   _pt.add_child("axi_interface_monitor_counters", aim_pt); 
 }
 
-#if 0
-void 
-DebugIpStatusCollector::printAIMResults(std::ostream& _output, boost::property_tree::ptree &_pt)
-{  
-
-  const boost::property_tree::ptree& aim_pt = _pt.get_child("axi_interface_monitor_counters");
-  _output << "\nAXI Interface Monitor Counters\n";
-
-  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
-
-  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
-  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
-                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
-          << std::endl;
-
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
-
-  try {
-    for(auto& ip : aim_pt) {
-      const boost::property_tree::ptree& entry = ip.second;
-      _output << valueFormat
-                    % entry.get<std::string>("region_or_cu") % entry.get<std::string>("type_or_port")
-                    % entry.get<double>("write_kBytes")      % entry.get("write_trans")
-                    % entry.get<double>("read_kBytes")       % entry.get("read_tranx")
-                    % entry.get("outstanding_count")
-                    % entry.get("last_write_addr")           % entry.get("last_write_data")
-                    % entry.get("last_read_addr")           % entry.get("last_read_data")
-              << std::endl;
-     }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
-  }
-  _output << std::endl;
-
-    return;
-}
-#endif
 void 
 DebugIpStatusCollector::populateAMResults(boost::property_tree::ptree &_pt)
 {
@@ -1701,8 +1662,25 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     boost::property_tree::ptree entry;
 
     entry.put("name", std::string(cuNames[LAPC][i] + "/" + portNames[LAPC][i]));
+    entry.put("cu_name", cuNames[LAPC][i]);
+    entry.put("axi_port", portNames[LAPC][i]);
+    entry.put("overall_status", lapcResults.OverallStatus[i]);
 
-    // To Do : Handle violations
+    boost::property_tree::ptree snapshot_pt;
+    for(size_t j = 0; j < 4; j++) {
+      boost::property_tree::ptree e_pt;
+      e_pt.put_value(lapcResults.SnapshotStatus[i][j]);
+      snapshot_pt.push_back(std::make_pair("", e_pt));
+    }
+    entry.add_child("snapshot_status", snapshot_pt); 
+
+    boost::property_tree::ptree cumulative_pt;
+    for(size_t j = 0; j < 4; j++) {
+      boost::property_tree::ptree e_pt;
+      e_pt.put_value(lapcResults.CumulativeStatus[i][j]);
+      cumulative_pt.push_back(std::make_pair("", e_pt));
+    }
+    entry.add_child("cumulative_status", cumulative_pt); 
 
     lapc_pt.push_back(std::make_pair("", entry));
   }
@@ -1749,6 +1727,274 @@ DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
 
 }
 
+// ----- Supporting Functions -------------------------------------------
+
+void
+reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
+{
+  _output << "Debug IP Status" << std::endl ;
+  _output << "  Number of IPs found :: " << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
+
+  try {
+    const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
+    _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl ;
+    for(auto& ip : dbgIps_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << "    " << entry.get<std::string>("name") << " : " << std::to_string(entry.get<uint64_t>("count")) << std::endl;
+     }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportAIM(std::ostream& _output, const boost::property_tree::ptree& _aim_pt)
+{
+  _output << "\nAXI Interface Monitor Counters\n";
+
+  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
+                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  %-16x  %-16x  %-16x %-16x");
+
+  try {
+    for(auto& ip : _aim_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("region_or_cu")     % entry.get<std::string>("type_or_port")
+                   % entry.get<std::string>("write_kBytes")     % entry.get<uint64_t>("write_trans")
+                   % entry.get<std::string>("read_kBytes")      % entry.get<uint64_t>("read_tranx")
+                   % entry.get<uint64_t>("outstanding_count")
+                   % entry.get<std::string>("last_write_addr")  % entry.get<std::string>("last_write_data")
+                   % entry.get<std::string>("last_read_addr")   % entry.get<std::string>("last_read_data")
+              << std::endl;
+     }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportAM(std::ostream& _output, const boost::property_tree::ptree& _am_pt)
+{
+  _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
+
+  auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+  try {
+    for(auto& ip : _am_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("compute_unit")
+                   % entry.get<uint64_t>("ends") % entry.get<uint64_t>("starts") % entry.get<uint64_t>("max_parallel_itr")
+                   % entry.get<std::string>("execution")
+                   % entry.get<std::string>("memory_stall") % entry.get<std::string>("pipe_stall") % entry.get<std::string>("stream_stall")
+                   % entry.get<std::string>("min_exec") % entry.get<std::string>("max_exec") 
+              << std::endl;
+#if 0
+                  % cuNames[ACCEL_MONITOR][i] 
+                  % amResults.CuExecCount[i] % amResults.CuStartCount[i] % amResults.CuMaxParallelIter[i] 
+                  % amResults.CuExecCycles[i] 
+                  % amResults.CuStallExtCycles[i] % amResults.CuStallIntCycles[i] % amResults.CuStallStrCycles[i]
+                  % amResults.CuMinExecCycles[i]  % amResults.CuMaxExecCycles[i]
+#endif
+    }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportASM(std::ostream& _output, const boost::property_tree::ptree& _asm_pt)
+{
+  _output << "\nAXI Stream Monitor Counters\n";
+
+  auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
+  try {
+    for(auto& ip : _asm_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("stream_master") % entry.get<std::string>("stream_slave")
+                   % entry.get<uint64_t>("num_trans")
+                   % entry.get<std::string>("data_kBytes")
+                   % entry.get<uint64_t>("busy_cycles") % entry.get<uint64_t>("stall_cycles") % entry.get<uint64_t>("starve_cycles")
+              << std::endl;
+#if 0
+                  % cuNames[AXI_STREAM_MONITOR][i] % portNames[AXI_STREAM_MONITOR][i]
+                  % asmResults.StrNumTranx[i]
+                  % (static_cast<double>(asmResults.StrDataBytes[i]) / 1000.0)
+                  % asmResults.StrBusyCycles[i] % asmResults.StrStallCycles[i] % asmResults.StrStarveCycles[i]
+#endif
+    }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _fifo_pt)
+{
+  _output << "\nTrace FIFO" << std::endl
+          << _fifo_pt.get<std::string>("description") << std::endl
+          << "Found : " << _fifo_pt.get<uint64_t>("count") << std::endl;
+  return;
+}
+
+void
+reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _ts2mm_pt)
+{
+  _output << "\nTrace Stream to Memory" << std::endl
+          << _ts2mm_pt.get<std::string>("description") << std::endl
+          << "Found : " << _ts2mm_pt.get<uint64_t>("count") << std::endl;
+  return;
+}
+
+void
+reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _lapc_pt)
+{
+  _output << "\nLight Weight AXI Protocol Checkers codes \n";
+
+  auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
+  auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
+
+  bool violations_found = false;
+  bool invalid_codes = false;
+
+  try {
+    for(auto& ip : _lapc_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      unsigned int snapshotStatus[4];
+      unsigned int cumulativeStatus[4];
+
+      const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
+      size_t idx = 0;
+      for(auto& e : snapshot_pt) {
+        snapshotStatus[idx] = e.second.get_value<unsigned int>();
+        ++idx;
+      }
+
+      const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
+      idx = 0;
+      for(auto& e : cumulative_pt) {
+        cumulativeStatus[idx] = e.second.get_value<unsigned int>();
+        ++idx;
+      }
+
+      if (!xclAXICheckerCodes::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
+                snapshotStatus, cumulativeStatus)) {
+
+        invalid_codes = true;
+        _output << "CU Name: " << entry.get<std::string>("cu_name") 
+                << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl
+                << "  Invalid codes read, skip decoding" << std::endl;
+
+      } else if(entry.get<unsigned int>("overall_status")) {
+
+        violations_found = true;
+        _output << "CU Name: " << entry.get<std::string>("cu_name") 
+                << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl
+                << "  First violation: " << std::endl
+                << "    " << xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus)
+                << std::endl;
+        // Snapshot reflects first violation, Cumulative has all violations
+        unsigned int transformedStatus[4];
+        std::transform(cumulativeStatus, cumulativeStatus+4 /*past the last element*/,
+                       snapshotStatus,
+                       transformedStatus,
+                       std::bit_xor<unsigned int>());
+        std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
+        _output << "  Other violations: " << std::endl
+                << "    "
+                << (("" == tStr) ? "None" : tStr)
+                << std::endl;
+      }
+    }
+    if(!violations_found && !invalid_codes) {
+      _output << "No AXI violations found" << std::endl;
+    }
+
+    if (violations_found && !invalid_codes) {
+      boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+
+      _output << header % "CU Name" % "AXI Portname" % "Overall Status" 
+                        % "Snapshot[0]" % "Snapshot[1]" % "Snapshot[2]" % "Snapshot[3]"
+                        % "Cumulative[0]" % "Cumulative[1]" % "Cumulative[2]" % "Cumulative[3]"
+            << std::endl;
+
+      boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+
+
+      for(auto& ip : _lapc_pt) {
+        const boost::property_tree::ptree& entry = ip.second;
+        unsigned int snapshotStatus[4];
+        unsigned int cumulativeStatus[4];
+  
+        const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
+        size_t idx = 0;
+        for(auto& e : snapshot_pt) {
+          snapshotStatus[idx] = e.second.get_value<unsigned int>(); 
+          ++idx;  
+        }
+
+        const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
+        idx = 0;
+        for(auto& e : cumulative_pt) {
+          cumulativeStatus[idx] = e.second.get_value<unsigned int>(); 
+          ++idx;  
+        }
+
+        _output << valueFormat
+                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                     % entry.get<unsigned int>("overall_status")
+                     % snapshotStatus[0]   % snapshotStatus[1]   % snapshotStatus[2]   % snapshotStatus[3]
+                     % cumulativeStatus[0] % cumulativeStatus[1] % cumulativeStatus[2] % cumulativeStatus[3]
+                << std::endl;
+#if 0
+                    % cuNames[LAPC][i] % portNames[LAPC][i]
+                    % lapcResults.OverallStatus[i]
+                    % lapcResults.SnapshotStatus[i][0] 
+                    % lapcResults.SnapshotStatus[i][1] 
+                    % lapcResults.SnapshotStatus[i][2] 
+                    % lapcResults.SnapshotStatus[i][3]
+                    % lapcResults.CumulativeStatus[i][0] 
+                    % lapcResults.CumulativeStatus[i][1] 
+                    % lapcResults.CumulativeStatus[i][2] 
+                    % lapcResults.CumulativeStatus[i][3] 
+              << std::endl;
+#endif
+      }
+    }
+  }
+  catch( std::exception const& e) {
+    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
 
 };
 
@@ -1794,76 +2040,24 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
                                   std::ostream & _output) const
 {
 
-  const boost::property_tree::ptree& ptDebugIpStatus = _pt.get_child("debug_ip_status");
-  _output << "Debug IP Status" << std::endl ;
+  const boost::property_tree::ptree& dbgIpStatus_pt = _pt.get_child("debug_ip_status");
 
-  // Overview
-  uint64_t numDebugIPs = ptDebugIpStatus.get<uint64_t>("total_num_debug_ips");
+  //Print Overview
+  reportOverview(_output, dbgIpStatus_pt);
 
-  _output << "  Number of IPs found :: " << numDebugIPs << std::endl; // Total count with the IPs actually shown
-
-  const boost::property_tree::ptree& ptDebugIPs = ptDebugIpStatus.get_child("debug_ips");
-  _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl ;
-
-  try {
-//    int i = 0;
-    for(auto& ip : ptDebugIPs) {
-      const boost::property_tree::ptree& entry = ip.second;
-      _output << entry.get<std::string>("name") << " : " << std::to_string(entry.get<uint64_t>("count")) << std::endl;
-     }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
-  }
-  _output << std::endl;
-
-  // Results
-
-  const boost::property_tree::ptree& aim_pt = ptDebugIpStatus.get_child("axi_interface_monitor_counters");
-  _output << "\nAXI Interface Monitor Counters\n";
-
-  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
-//  size_t s = 25;
-//  auto col1 = std::max(s, strlen("Region or CU")) + 4;
-//  auto col2 = std::max(s, strlen("Type or Port"));
-
-  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
-  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
-                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
-          << std::endl;
-
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  %-16x  %-16x  %-16x %-16x");
-
-  try {
-    for(auto& ip : aim_pt) {
-      const boost::property_tree::ptree& entry = ip.second;
+  // Results -  TO DO filtering
+  reportAIM(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
+  reportAM( _output, dbgIpStatus_pt.get_child("accelerator_monitor_counters"));
+  reportASM(_output, dbgIpStatus_pt.get_child("axi_stream_monitor_counters"));
+  reportFIFO(_output, dbgIpStatus_pt.get_child("Trace FIFO"));
+  reportTS2MM(_output, dbgIpStatus_pt.get_child("Trace Stream to Memory"));
+  reportLAPC(_output, dbgIpStatus_pt.get_child("light_weight_axi_protocol_checkers"));
 #if 0
-      _output << entry.get<std::string>("region_or_cu") << " " << entry.get<std::string>("type_or_port")
-              << " " << entry.get<std::string>("write_kBytes") << " " << entry.get<uint64_t>("write_trans")
-              << " " << entry.get<std::string>("read_kBytes")  << " " << entry.get<uint64_t>("read_tranx")
-              << " " << entry.get<uint64_t>("outstanding_count")
-              << " " << entry.get<std::string>("last_write_data")
-              << " " << entry.get<std::string>("last_read_data")
-              << std::endl;
-#endif
-      _output << valueFormat
-                    % entry.get<std::string>("region_or_cu") % entry.get<std::string>("type_or_port")
-                    % entry.get<std::string>("write_kBytes")      % entry.get<uint64_t>("write_trans")
-                    % entry.get<std::string>("read_kBytes")       % entry.get<uint64_t>("read_tranx")
-                    % entry.get<uint64_t>("outstanding_count")
-                    % entry.get<std::string>("last_write_addr")           % entry.get<std::string>("last_write_data")
-                    % entry.get<std::string>("last_read_addr")            % entry.get<std::string>("last_read_data")
-              << std::endl;
-     }
-  }
-  catch( std::exception const& e) {
-    _output << "ERROR: " <<  e.what() << std::endl;
-  }
-  _output << std::endl;
+  reportSPC(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
+  reportILA(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
+  reportAccelDeadlock(_output, dbgIpStatus_pt.get_child("axi_interface_monitor_counters"));
 
-    return;
-  
+#endif
 
   return;
 }
