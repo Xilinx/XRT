@@ -1058,14 +1058,13 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Cfg command state %d", ecmd->state);
+	if (ecmd->state != ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Cfg command state %d. ERT will be disabled",
+			   ecmd->state);
 		ret = 0;
 		kds->ert_disable = true;
 		goto out;
 	}
-
-	WARN_ON(ecmd->state != ERT_CMD_STATE_COMPLETED);
 
 	/* If xrt.ini is not disabled, let it determines ERT enable/disable */
 	if (!kds->ini_disable)
