@@ -237,6 +237,7 @@ enum class key_type
 
   config_mailbox_channel_disable,
   config_mailbox_channel_switch,
+  config_xclbin_change,
   cache_xclbin,
 
   clock_timestamp,
@@ -2541,6 +2542,20 @@ struct config_mailbox_channel_switch : request
   using value_type = std::string;   // put value type
 
   static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_xclbin_change : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_xclbin_change;
 
   virtual boost::any
   get(const device*) const = 0;

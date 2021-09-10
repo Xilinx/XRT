@@ -77,8 +77,9 @@ is_supported(const std::shared_ptr<xrt_core::device>& dev)
 /*
  * so far, we only support the following configs, eg
  * [Device]
- * mailbox_channel_disable = 0x100
+ * mailbox_channel_disable = 0x20
  * mailbox_channel_switch = 0
+ * xclbin_change = 1
  * cache_xclbin = 0
  */
 static void
@@ -89,6 +90,7 @@ config_dump(const std::shared_ptr<xrt_core::device>& _dev, const std::string out
   boost::property_tree::ptree child;
   child.put("mailbox_channel_disable", xrt_core::device_query<xrt_core::query::config_mailbox_channel_disable>(_dev));
   child.put("mailbox_channel_switch", xrt_core::device_query<xrt_core::query::config_mailbox_channel_switch>(_dev));
+  child.put("xclbin_change", xrt_core::device_query<xrt_core::query::config_xclbin_change>(_dev));
   child.put("cache_xclbin", xrt_core::device_query<xrt_core::query::cache_xclbin>(_dev));
 
   if (is_supported(_dev)) {
