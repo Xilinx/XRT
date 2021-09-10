@@ -1195,6 +1195,9 @@ int shim::cmaEnable(bool enable, uint64_t size)
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
 
+        if (size < page_sz)
+            return -EINVAL;
+
         cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
 
         for (uint32_t i = 0; i < page_num; ++i) {
