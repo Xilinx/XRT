@@ -19,6 +19,8 @@ SET(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
 SET(CPACK_DEB_COMPONENT_INSTALL ON)
 SET(CPACK_RPM_COMPONENT_INSTALL ON)
 
+SET(XRT_PACKAGE_EPOCH 1)
+
 if (DEFINED CROSS_COMPILE)
   set(CPACK_REL_VER ${LINUX_VERSION})
 else()
@@ -44,6 +46,10 @@ if (${LINUX_FLAVOR} MATCHES "^(Ubuntu|Debian)")
   # Modify the package name for the xrt runtime and development component
   # Syntax is set(CPACK_<GENERATOR>_<COMPONENT>_PACKAGE_NAME "<name">)
   SET(CPACK_DEBIAN_XRT_PACKAGE_NAME "xrt")
+
+  # Xilinx version schema differs from canonical upstreamed
+  # versions. Here we set epoch to differentiate.
+  SET(CPACK_DEBIAN_PACKAGE_EPOCH ${XRT_PACKAGE_EPOCH})
 
   SET(CPACK_DEBIAN_XRT_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/postinst;${CMAKE_CURRENT_BINARY_DIR}/prerm")
   SET(CPACK_DEBIAN_AWS_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/aws/postinst;${CMAKE_CURRENT_BINARY_DIR}/aws/prerm")
@@ -104,6 +110,9 @@ elseif (${LINUX_FLAVOR} MATCHES "^(RedHat|CentOS|Amazon|Fedora|SUSE)")
   # Modify the package name for the xrt runtime and development component
   # Syntax is set(CPACK_<GENERATOR>_<COMPONENT>_PACKAGE_NAME "<name">)
   set(CPACK_RPM_XRT_PACKAGE_NAME "xrt")
+
+  # For consistentcy with Debian we use EPOCH for RPMs also
+  set(CPACK_RPM_PACKAGE_EPOCH ${XRT_PACKAGE_EPOCH})
 
   SET(CPACK_RPM_XRT_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/postinst")
   SET(CPACK_RPM_XRT_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/prerm")
