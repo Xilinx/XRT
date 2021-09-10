@@ -43,6 +43,7 @@
 #define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
 #define GROUP_STREAM_SWITCH_TLAST_MASK   0x88888888
 #define GROUP_CORE_PROGRAM_FLOW_MASK     0x00001FE0
+#define GROUP_CORE_STALL_MASK            0x0000019F
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -428,7 +429,6 @@ namespace xdp {
 
       uint8_t resetEvent = 0;
       int counterId = 0;
-      auto moduleType = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
       
       int NUM_COUNTERS = isCore ? NUM_CORE_COUNTERS : NUM_MEMORY_COUNTERS;
       int numTileCounters[NUM_COUNTERS+1] = {0};
@@ -441,38 +441,25 @@ namespace xdp {
         int numCounters = 0;
         auto col = tile.col;
         auto row = tile.row;
+        auto mod = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
+        auto loc = XAie_TileLoc(col, row + 1);
         // NOTE: resource manager requires absolute row number
         auto& core   = aieDevice->tile(col, row + 1).core();
         auto& memory = aieDevice->tile(col, row + 1).mem();
 
         for (int i=0; i < numFreeCounters; ++i) {
           // Request counter from resource manager
-          // NOTE: Let's use the extended class XAieStallCycles. 
-          //       It uses a mask of 0x19f (not active or disable events)
-          if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
-            auto perfCounter = core.stallCycles();
-            auto ret = perfCounter->reserve();
-            if (ret != XAIE_OK) break;
-            ret = perfCounter->start();
-            if (ret != XAIE_OK) break;
-            mPerfCounters.push_back(perfCounter);
-          }
-          else {
-            auto perfCounter = isCore ? core.perfCounter() : memory.perfCounter();
-            auto ret1 = perfCounter->initialize(moduleType, startEvents.at(i),
-                                                moduleType, endEvents.at(i));
-            if (ret1 != XAIE_OK) break;
-            auto ret = perfCounter->reserve();
-            if (ret != XAIE_OK) break;
-            ret = perfCounter->start();
-            if (ret != XAIE_OK) break;
-            mPerfCounters.push_back(perfCounter);
-          }
-	        
+          auto perfCounter = isCore ? core.perfCounter() : memory.perfCounter();
+          auto ret = perfCounter->initialize(mod, startEvents.at(i), mod, endEvents.at(i));
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
+          mPerfCounters.push_back(perfCounter);
+
           // Convert enums to physical event IDs for reporting purposes
           int counterNum = i;
-          auto mod = isCore ? XAIE_CORE_MOD : XAIE_MEM_MOD;
-          auto loc = XAie_TileLoc(col, row + 1);
           uint8_t phyStartEvent = 0;
           uint8_t phyEndEvent = 0;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
@@ -501,6 +488,8 @@ namespace xdp {
               XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_TLAST_MASK);
           } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_PROGRAM_FLOW_MASK);
+          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
+            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_STALL_MASK);
           }
           //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
           //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
