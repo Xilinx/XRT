@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -48,7 +48,7 @@ get_command_state(xrt_core::command* cmd)
   return static_cast<ert_cmd_state>(epacket->state);
 }
 
-inline bool 
+inline bool
 completed(xrt_core::command* cmd)
 {
   return (get_command_state(cmd) >= ERT_CMD_STATE_COMPLETED);
@@ -68,7 +68,7 @@ notify_host(xrt_core::command* cmd)
   notify_host(cmd, get_command_state(cmd));
 }
 
-  
+
 // class kds_device - kds book keeping data for command scheduling
 //
 // @device: The core device used for shim level calls
@@ -94,7 +94,7 @@ class kds_device
   bool stop = false;
 
   // thread can be constructed only after data members are initialized
-  std::thread monitor_thread;  
+  std::thread monitor_thread;
 
   // monitor_loop() - Manage running commands and notify on completion
   //
@@ -177,7 +177,7 @@ class kds_device
       s_exception = std::current_exception();
     }
   }
-  
+
 
 public:
   // Constructor starts monitor thread
@@ -208,8 +208,12 @@ public:
   // local call count is different from the global count, then this
   // function resets the thread local call count and return without
   // calling shim exec_wait.
-  void
-  exec_wait()
+  //
+  // The specified timeout has effect only when underlying xclExecWait
+  // times out. The timeout can be masked if device is busy and many
+  // commands complete with the specified timeout.
+  std::cv_status
+  exec_wait(size_t timeout_ms=0)
   {
     static thread_local uint64_t thread_exec_wait_call_count = 0;
     std::lock_guard<std::mutex> lk(exec_wait_mutex);
@@ -219,29 +223,48 @@ public:
       // covered this thread's commands, synchronize thread
       // local call count and return to caller.
       thread_exec_wait_call_count = exec_wait_call_count;
-      return;
+      return std::cv_status::no_timeout;
     }
 
-    while (device->exec_wait(1000)==0) {}
+    auto status = std::cv_status::no_timeout;
+    if (timeout_ms) {
+      // device exec_wait is a system poll which returns
+      // 0 when specified timeout is exceeded without any
+      // file descriptors to read
+      if (device->exec_wait(static_cast<int>(timeout_ms)) == 0)
+        status = std::cv_status::timeout;
+    }
+    else {
+      // wait for ever for some command to complete
+      while (device->exec_wait(1000) == 0) {}
+    }
 
     // synchronize this thread with total call count
     thread_exec_wait_call_count = ++exec_wait_call_count;
+
+    return status;
   }
 
-  // exec_wait() - Wait for specific command completion
+  // exec_wait() - Wait for specific command completion with optional timeout
   //
+  // Wait for command completion
   // This function is safe to call for managed and unmanaged commands.
-  void
-  exec_wait(const xrt_core::command* cmd)
+  std::cv_status
+  exec_wait(const xrt_core::command* cmd, size_t timeout_ms=0)
   {
     auto pkt = cmd->get_ert_packet();
-    while (pkt->state < ERT_CMD_STATE_COMPLETED)
-      exec_wait();
+    while (pkt->state < ERT_CMD_STATE_COMPLETED) {
+      // return immediately on timeout
+      if (exec_wait(timeout_ms) == std::cv_status::timeout)
+        return std::cv_status::timeout;
+    }
 
     // notify_host is not strictly necessary for unmanaged
     // command execution but provides a central place to update
     // and mark commands as done so they can be re-executed.
     notify_host(const_cast<xrt_core::command*>(cmd), static_cast<ert_cmd_state>(pkt->state));
+
+    return std::cv_status::no_timeout;
   }
 
   // exec_buf() - Submit a command for execution
@@ -338,6 +361,14 @@ unmanaged_wait(const xrt_core::command* cmd)
 {
   auto kdev = get_kds_device(cmd);
   kdev->exec_wait(cmd);
+}
+
+// Wait for command completion for unmanaged command execution with timeout
+std::cv_status
+unmanaged_wait(const xrt_core::command* cmd, const std::chrono::milliseconds& timeout_ms)
+{
+  auto kdev = get_kds_device(cmd);
+  return kdev->exec_wait(cmd, timeout_ms.count());
 }
 
 // Start unmanaged command execution.  The command must be explicitly

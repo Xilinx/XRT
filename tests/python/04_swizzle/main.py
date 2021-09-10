@@ -62,7 +62,7 @@ def runKernel(opt):
         run.set_arg(0, subobj)
         run.start()
         state = run.state()
-        state = run.wait(5)
+        state = run.wait()
 
     obj.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, size, 0)
 

@@ -46,7 +46,7 @@ def runKernel(opt):
     print("Start the kernel, simple")
     run = simple(boHandle1, boHandle2, 0x10)
     print("Now wait for the kernel simple to finish")
-    state = run.wait(5)
+    state = run.wait()
 
     print("Get the output data from the device and validate it")
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, DATA_SIZE, 0)

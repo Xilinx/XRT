@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,8 +18,9 @@
 #define xrt_core_exec_h_
 
 #include "core/common/config.h"
-#include <vector>
+#include <condition_variable>
 #include <memory>
+#include <vector>
 
 namespace xrt_core {
 
@@ -42,6 +43,13 @@ unmanaged_start(command* cmd)
 
 void
 unmanaged_wait(const command* cmd);
+
+inline std::cv_status
+unmanaged_wait(const command* cmd, const std::chrono::milliseconds&)
+{
+  unmanaged_wait(cmd);
+  return std::cv_status::no_timeout;
+}
 
 void
 start();
@@ -67,6 +75,9 @@ unmanaged_start(command* cmd);
 
 void
 unmanaged_wait(const command* cmd);
+
+std::cv_status
+unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms);
 
 void
 start();
@@ -100,10 +111,19 @@ unmanaged_start(command* cmd);
 // Wait for a command to complete execution.  This function must be
 // called in poll mode (unmanaged) scheduling, and is safe to call in
 // push mode.  The function provides a thread safe interface to
-// exec_waq and by passes execution monitor used in managed execution
+// exec_wait and by passes execution monitor used in managed execution
 XRT_CORE_COMMON_EXPORT
 void
 unmanaged_wait(const command* cmd);
+
+// Wait for a command to complete execution with a timeout.  This
+// function must be called in poll mode (unmanaged) scheduling, and is
+// safe to call in push mode.  The function provides a thread safe
+// interface to exec_wait and by passes execution monitor used in
+// managed execution
+XRT_CORE_COMMON_EXPORT
+std::cv_status
+unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms);
 
 void
 start();
