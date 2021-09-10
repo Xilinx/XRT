@@ -1400,7 +1400,6 @@ static void xocl_pack_subdev(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev)
 
 	BUG_ON(!subdev || !subdev->res || !subdev->res_name || !subdev->bar_idx);
 
-		xocl_xdev_info(xdev_hdl, "####res num %d", subdev->info.num_res);
 	res = kzalloc(sizeof (struct resource)
 		* subdev->info.num_res, GFP_KERNEL);
 	res_name = kzalloc(XOCL_SUBDEV_RES_NAME_LEN
