@@ -53,6 +53,8 @@ namespace xdp {
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
 
+    std::string getMetricSet(bool isCore, const std::string& metricsStr);
+    std::vector<tile_type> getTilesForProfiling(bool isCore, const std::string& metricsStr, void* handle);
     // Find minimum number of counters that are available across all tiles
     uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
                             const std::vector<tile_type>& tiles,
