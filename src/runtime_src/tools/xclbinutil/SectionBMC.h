@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,12 +46,12 @@ public:
   virtual bool subSectionExists(const std::string &_sSubSectionName) const;
 
  protected:
-  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
 
  protected:
    enum SubSection getSubSectionEnum(const std::string _sSubSectionName) const;
-   void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, std::ostringstream &_buffer) const;
-   void createDefaultFWImage(std::fstream & _istream, std::ostringstream &_buffer) const;
+   void copyBufferUpdateMetadata(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, std::ostringstream &_buffer) const;
+   void createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const;
    virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
    void writeFWImage(std::ostream& _oStream) const;
    void writeMetadata(std::ostream& _oStream) const;
