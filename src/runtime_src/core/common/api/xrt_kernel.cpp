@@ -832,10 +832,11 @@ public:
       std::unique_lock<std::mutex> lk(m_mutex);
       while (!m_done)
         if (m_exec_done.wait_for(lk, timeout_ms) == std::cv_status::timeout)
-          break;
+          return ERT_CMD_STATE_TIMEOUT;
     }
     else {
-      xrt_core::exec::unmanaged_wait(this);
+      if (xrt_core::exec::unmanaged_wait(this, timeout_ms) == std::cv_status::timeout)
+        return ERT_CMD_STATE_TIMEOUT;
     }
 
     return get_state();
@@ -2001,7 +2002,7 @@ public:
   }
 
   ert_cmd_state
-  abort()
+  abort() const
   {
     // don't bother if command is done by the time abort is called
     if (cmd->is_done()) {

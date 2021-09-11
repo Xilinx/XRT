@@ -88,8 +88,8 @@ def runKernel(opt):
             start = current_micro_time()
             rhandle1 = khandle1(output_bo1, input_bo1, beats, reps)
             rhandle2 = khandle2(output_bo2, input_bo2, beats, reps)
-            rhandle1.wait(5)
-            rhandle2.wait(5)
+            rhandle1.wait()
+            rhandle2.wait()
             end = current_micro_time()
 
             usduration = end - start
