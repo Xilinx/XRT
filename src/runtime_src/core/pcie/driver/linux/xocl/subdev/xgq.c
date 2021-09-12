@@ -31,7 +31,7 @@
  *         | generate cmd                                |
  *         | xgq_produce to get SQ slot                  |
  *         | write cmd into SQ slot                      |
- *	   | xgq_notify_peer_produced -----------------> |
+ *         | xgq_notify_peer_produced -----------------> |
  *         |                         xgq_consume SQ slot |
  *         |                       read cmd from SQ slot |
  *         |                        [cmd operations ...] |
