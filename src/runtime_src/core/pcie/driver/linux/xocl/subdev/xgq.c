@@ -347,6 +347,7 @@ static void xgq_cmd_timeout(struct timer_list *t)
 	struct xocl_xgq_cmd *xgq_cmd;
 	struct list_head *pos, *next;
 
+	mutex_lock(&xgq->xgq_lock);
 	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
 		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
 
@@ -355,13 +356,12 @@ static void xgq_cmd_timeout(struct timer_list *t)
 			
 			xgq_cmd->xgq_cmd_rcode = -ETIMEDOUT;
 			complete(&xgq_cmd->xgq_cmd_complete);
+			mutex_unlock(&xgq->xgq_lock);
 			return;
 		}
 	}
 
-	/*
-	 * remove from submit_cmd list, complete cmd, mark device should be reset
-	 */
+	mutex_unlock(&xgq->xgq_lock);
 	return;
 }
 
@@ -392,7 +392,7 @@ static inline int get_xgq_cid(struct xocl_xgq *xgq)
 } 
 
 /*
- * Utilized shared memory between host and device to transfer data.
+ * Utilize shared memory between host and device to transfer data.
  */
 static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	u64 xclbin_len, xrt_xgq_pkt_type_t pkt_type, u32 timer)
@@ -523,8 +523,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	pkt = &(cmd->xgq_sq.xgq_sq_pkt);
 	pkt->head.version = 0;
 	pkt->head.type = XRT_XGQ_PKT_TYPE_AF;
+	/* sudo address, for collect verbose data back
 	pkt->payload_af.buffer_addr = 0xff;
 	pkt->payload_af.buffer_size = 0xbb;
+	*/
 
 	cmdp = &(cmd->xgq_sq.xgq_sq_head);
 	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
