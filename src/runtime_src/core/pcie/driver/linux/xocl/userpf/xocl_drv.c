@@ -841,6 +841,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		ret = -ENOMEM;
 		goto failed;
 	}
+
 	mb_req->req = XCL_MAILBOX_REQ_PEER_DATA;
 
 	subdev_peer.size = resp_len;

@@ -15,8 +15,38 @@
 
 /*
  * XGQ Host management driver design.
- * Thread1: submit command into submition queue directly.
- * Thread2: check completion queue and call complete to notify Thread1
+ * XGQ resources:
+ *	XGQ submission queue (SQ)
+ *	XGQ completion queue (CQ)
+ * 	XGQ ring buffer
+ *
+ * XGQ server and client:
+ *      XGQ server calls xgq_alloc to allocate SLOTs based on
+ *	given slot_size and ring buffer size.
+ *	XGQ client calls xgq_attch to get the same configuration
+ *	that server has already been allocated.
+ *
+ * A typical operation:
+ *      client                                         server
+ *         | generate cmd                                |
+ *         | xgq_produce to get SQ slot                  |
+ *         | write cmd into SQ slot                      |
+ *	   | xgq_notify_peer_produced -----------------> |
+ *         |                         xgq_consume SQ slot |
+ *         |                       read cmd from SQ slot |
+ *         |                        [cmd operations ...] |
+ *         |                         xgq_produce CQ slot |
+ *         |                      write cmd into CQ slot |
+ *         | <----------------- xgq_notify_peer_produced |
+ *         | xgq_consume CQ slot                         |
+ *         | read cmd from CQ slot                       |
+ *         | return results                              |
+ *
+ * The XGQ Host Mgmt driver is a client.
+ * The server is running on ARM R5 embedded FreeRTOS.
+ * 
+ * Note: to minimized error-prone, current version only supports
+ *	 synchronized operation, client always wait till server respond.
  */
 
 #define	XGQ_ERR(xgq, fmt, arg...)	\

@@ -714,7 +714,6 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
             const axlf_section_header* flashSection = xclbin::get_axlf_section(ap, ASK_FLASH);
             const axlf_section_header* pdiSection = xclbin::get_axlf_section(ap, PDI);
             if (flashSection) {
-		std::cout << "if ask " << std::endl;
                 //So far, there is only one type in FLASH section.
                 //Just blindly load that section. Add more checks later.
 
