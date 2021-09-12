@@ -588,6 +588,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	size_t resplen = sizeof(struct xcl_mailbox_conn_resp);
 	void *kaddr = NULL;
 	int ret;
+
 	if (!resp)
 		goto done;
 
@@ -865,9 +866,8 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		subdev_peer.offset = offset;
 		ret = xocl_peer_request(xdev, mb_req, reqlen,
 			resp, &resp_len, NULL, NULL, 0, 0);
-		if (ret) {
+		if (ret)
 			goto failed;
-		}
 
 		if (!offset)
 			checksum = resp->checksum;

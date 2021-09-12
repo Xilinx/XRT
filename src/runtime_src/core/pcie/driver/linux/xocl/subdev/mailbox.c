@@ -1995,6 +1995,7 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 	reqmsg->mbm_req_id = (uintptr_t)reqmsg->mbm_data;
 	reqmsg->mbm_flags |= XCL_MB_REQ_FLAG_REQUEST;
 	reqmsg->mbm_timeout_in_sec = tx_ttl;
+
 	respmsg = alloc_msg(resp, *resplen);
 	if (!respmsg)
 		goto fail;
@@ -2119,7 +2120,6 @@ int mailbox_post_response(struct platform_device *pdev,
 	else /* Kick TX channel to try to send out msg. */
 		complete(&mbx->mbx_tx.mbc_worker);
 
-printk("DZ__ rv %d\n", rv);
 	return rv;
 }
 

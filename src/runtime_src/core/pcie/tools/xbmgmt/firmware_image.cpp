@@ -742,7 +742,6 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 in.seekg(flashSection->m_sectionOffset + flashMeta.m_image_offset);
                 in.read(mBuf, bufsize);
             } else if (pdiSection) {
-		std::cout << "else pdi " << std::endl;
                 if (type != MCS_FIRMWARE_PRIMARY)
                 {
                     this->setstate(failbit);
@@ -766,7 +765,6 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                 in.seekg(pdiSection->m_sectionOffset);
                 in.read(mBuf, bufsize);
             } else {
-		std::cout << "else " << std::endl;
                 // Obtain MCS section header.
                 const axlf_section_header* mcsSection = xclbin::get_axlf_section(ap, MCS);
                 if (mcsSection == nullptr)
