@@ -21,6 +21,13 @@
 #include "core/common/device.h"
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/thread.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/signal_set.hpp>
 
 #define fmtCommon(x) boost::format("    %-22s: " x "\n")
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
@@ -41,6 +48,8 @@ enum graph_state {
   SUSPEND = 3,
   END = 4
 };
+
+std::vector<std::string> aieCoreList;
 
 inline std::string
 graph_status_to_string(int status) {
@@ -502,13 +511,106 @@ ReportAie::getPropertyTree20202(const xrt_core::device * _pDevice,
   _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
 }
 
-void 
+void
+AieTopThreadFunction(const boost::property_tree::ptree& _pt)
+{
+  std::ostream &_output = std::cout;
+  while(true)
+  {
+    try
+    {
+#if defined _WIN32
+      system("cls");
+#elif defined (__LINUX__) || defined(__gnu_linux__) || defined(__linux__)
+      system("clear");
+#endif
+      // validate and print aie metadata by checking schema_version node
+      if(!_pt.get_child_optional("aie_metadata.schema_version"))
+        return;
+
+      _output << "Aie\n";
+      _output << boost::format("  %-10s\n") % _pt.get<std::string>("aie_metadata.description");
+
+      for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
+        const boost::property_tree::ptree& graph = gr.second;
+
+        _output << boost::format("  Graph [  #]  %-30s%-30s\n") % "Name" % "Status";
+	_output << boost::format("        [ %2d]  %-30s%-30s\n") % graph.get<std::string>("id")
+		% graph.get<std::string>("name") % graph.get<std::string>("status");
+        _output << std::endl;
+        _output << boost::format("  %s\n") % "Cores";
+        _output << boost::format("  Core  [  #]  %-30s%-20s%-20s%-20s%-20s\n") % "[C:R]"
+	           % "Status" % "Program Counter" % "Link Register" % "Stack Pointer";
+
+	int count = 0;
+        for (auto& tile : graph.get_child("tile")) {
+          _output << boost::format("        [ %2d]  %-30s%-20s%-20s%-20s%-20s\n") % count++ 
+		% (tile.second.get<std::string>("column") + ":" + tile.second.get<std::string>("row"))
+		% tile.second.get<std::string>("core.status")
+		% tile.second.get<std::string>("core.program_counter")
+		% tile.second.get<std::string>("core.link_register")
+		% tile.second.get<std::string>("core.stack_pointer");
+        }
+      }
+
+      // Sleep and check for interrupt.
+      boost::this_thread::sleep(boost::posix_time::seconds(1));
+    }
+
+    catch(boost::thread_interrupted&)
+    {
+      std::cout << "Thread is stopped" << std::endl;
+      return;
+    }
+  }
+}
+
+void
+sig_handler(const boost::system::error_code& error, int signal_number)
+{
+  std::cout << "Top command exiting... "  << std::endl;
+}
+
+void
+AieTopFunc(const boost::property_tree::ptree& _pt)
+{
+  boost::asio::io_service io_service;
+
+  // Create a threadmain function for printing the status
+  boost::thread t_thread(AieTopThreadFunction, _pt);
+
+  // Construct a signal set registered for process termination.
+  boost::asio::signal_set signals(io_service, SIGINT );
+
+  // Start an asynchronous wait for one of the signals to occur.
+  signals.async_wait(sig_handler);
+  io_service.run();
+
+  // Join - wait when thread actually exits
+  t_thread.interrupt();
+  t_thread.join();
+}
+
+void
 ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
-                       const boost::property_tree::ptree& _pt, 
-                       const std::vector<std::string>& /*_elementsFilter*/, 
+                       const boost::property_tree::ptree& _pt,
+                       const std::vector<std::string>& _elementsFilter,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+
+  if(_elementsFilter.size()) {
+    for(auto& itr : _elementsFilter) {
+      if(itr == "cores") {
+        auto core_list = std::next(&itr, 1);
+        boost::split(aieCoreList, *core_list, boost::is_any_of(","));
+      }
+      if(itr == "top") {
+        AieTopFunc(_pt);
+	return;
+      }
+    }
+  }
 
   // validate and print aie metadata by checking schema_version node
   if(!_pt.get_child_optional("aie_metadata.schema_version"))
@@ -537,7 +639,12 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << std::endl;
       count = 0;
       for (auto& tile : graph.get_child("tile")) {
-        _output << boost::format("Core [%2d]\n") % count++;
+	int curr_core = count++;
+	if(_elementsFilter.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
+		     boost::lexical_cast<std::string>(curr_core)) == aieCoreList.end()))
+	  continue;
+
+        _output << boost::format("Core [%2d]\n") % curr_core;
         _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
         _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
 

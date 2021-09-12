@@ -21,6 +21,9 @@
 #include "core/common/device.h"
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/lexical_cast.hpp>
 
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
 #define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
@@ -29,6 +32,7 @@
 
 
 namespace qr = xrt_core::query;
+std::vector<std::string> aieTileList;
 
 static void
 addnodelist(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
@@ -256,12 +260,21 @@ ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice,
 void 
 ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt, 
-                            const std::vector<std::string>& /*_elementsFilter*/,
+                            const std::vector<std::string>& _elementsFilter,
                             std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
 
   _output << "AIE\n";
+
+  if(_elementsFilter.size()) {
+    for(auto& itr : _elementsFilter) {
+      if(itr == "tiles") {
+        auto tile_list = std::next(&itr, 1);
+        boost::split(aieTileList, *tile_list, boost::is_any_of(","));
+      }
+    }
+  }
 
   try {
     int count = 0;
@@ -275,7 +288,12 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << "  Shim Status" << std::endl;
 
     for (auto &tile : ptShimTiles) {
-      _output << boost::format("Tile[%2d]\n") % count++;
+      int curr_tile = count++;
+      if(_elementsFilter.size() && (std::find(aieTileList.begin(), aieTileList.end(),
+				boost::lexical_cast<std::string>(curr_tile)) == aieTileList.end()))
+        continue;
+
+      _output << boost::format("Tile[%2d]\n") % curr_tile;
       _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
       if(tile.second.find("dma") != tile.second.not_found()) {

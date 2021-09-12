@@ -82,7 +82,7 @@ target_link_libraries(${XBUTIL2_NAME}
   )
 
 if (NOT WIN32)
-  target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread uuid dl)
+  target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread boost_thread uuid dl)
 endif()
 
 # Install our built executable
