@@ -9,7 +9,6 @@
 
 #include "xrt_xclbin.h"
 #include "../xocl_drv.h"
-#include "xrt_drv.h"
 #include "xgq_cmd.h"
 #include "../xocl_xgq_plat.h"
 #include <linux/time.h>
@@ -99,6 +98,7 @@ struct xocl_xgq_cmd {
 	void			*xgq_cmd_arg;
 	u16			xgq_cmd_rcode;
 	struct timer_list	xgq_cmd_timer;
+	struct xocl_xgq		*xgq;
 };
 
 struct xocl_xgq;
@@ -126,6 +126,7 @@ struct xocl_xgq {
 	struct completion 	xgq_irq_complete;
 	struct xgq_worker	xgq_worker;
 	bool			xgq_ospi_inuse;
+	int 			xgq_cmd_id;
 };
 
 /*
@@ -147,9 +148,13 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
 
 			if (xgq_cmd->xgq_cmd_cb)
 				xgq_cmd->xgq_cmd_cb(xgq_cmd->xgq_cmd_arg, ccmd);
+			return;
 		}
 
 	}
+
+	XGQ_WARN(xgq, "unknown cid %d received", ccmd->cid);
+	return;
 }
 
 /*
@@ -184,10 +189,6 @@ static int complete_worker(void *data)
 			struct xrt_com_queue_entry ccmd;
 
 			usleep_range(1000, 2000);
-			if (kthread_should_stop()) {
-				xw->stop = true;
-				break;
-			}
 
 			mutex_lock(&xgq->xgq_lock);
 
@@ -306,6 +307,35 @@ static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
 }
 
 /*
+ * When cmd is timing out, we abort this cmd and mark the device
+ * should be reset.
+ */
+static void xgq_cmd_timeout(struct timer_list *t)
+{
+	struct xocl_xgq_cmd *timeout_cmd = from_timer(timeout_cmd, t, xgq_cmd_timer);
+	struct xocl_xgq *xgq = timeout_cmd->xgq;
+	struct xocl_xgq_cmd *xgq_cmd;
+	struct list_head *pos, *next;
+
+	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
+		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
+
+		if (xgq_cmd == timeout_cmd) {
+			list_del(pos);
+			
+			xgq_cmd->xgq_cmd_rcode = -ETIMEDOUT;
+			complete(&xgq_cmd->xgq_cmd_complete);
+			return;
+		}
+	}
+
+	/*
+	 * remove from submit_cmd list, complete cmd, mark device should be reset
+	 */
+	return;
+}
+
+/*
  * Write buffer into shared memory and 
  * return translate host based address to device based address.
  * The 0 ~ XOCL_XGQ_RING_LEN is reserved for ring buffer.
@@ -321,6 +351,15 @@ static u64 memcpy_to_devices(struct xocl_xgq *xgq, const void *xclbin_data,
 	/* This is the offset that device start reading data */
 	return XOCL_XGQ_DATA_OFFSET;
 }
+
+static inline int get_xgq_cid(struct xocl_xgq *xgq)
+{
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_cmd_id++;
+	mutex_unlock(&xgq->xgq_lock);
+	
+	return xgq->xgq_cmd_id;	
+} 
 
 /*
  * Utilized shared memory between host and device to transfer data.
@@ -352,11 +391,13 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	cmdp = &(cmd->xgq_sq.xgq_sq_head);
 	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
 	cmdp->state = 1;
-	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
+	//cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
+	cmdp->cid = get_xgq_cid(xgq);
 	cmdp->count = sizeof(struct xgq_vmr_pkt);
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
 
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
@@ -381,7 +422,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		ret = xclbin_len;
 done:
 	if (cmd) {
-		ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
+		//ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
 		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
@@ -458,11 +499,12 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	cmdp = &(cmd->xgq_sq.xgq_sq_head);
 	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
 	cmdp->state = 1;
-	cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
+	cmdp->cid = get_xgq_cid(xgq);
 	cmdp->count = sizeof(struct xgq_vmr_pkt);
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
 
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
@@ -471,6 +513,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
 	mod_timer(&cmd->xgq_cmd_timer, jiffies + XOCL_XGQ_CONFIG_TIME);
 
+	XGQ_DBG(xgq, "cid: %d", cmdp->cid);
 	ret = submit_cmd(xgq, cmd);
 	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
@@ -482,12 +525,11 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
 
-	XGQ_DBG(xgq, "rcode %d", cmd->xgq_cmd_rcode);
+	XGQ_DBG(xgq, "rcode: %d", cmd->xgq_cmd_rcode);
 
 	ret = cmd->xgq_cmd_rcode;
 done:
 	if (cmd) {
-		ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
 		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
@@ -669,6 +711,7 @@ static int xgq_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, xgq);
 	xgq->xgq_pdev = pdev;
+	xgq->xgq_cmd_id = 0;
 
 	mutex_init(&xgq->xgq_lock);
 

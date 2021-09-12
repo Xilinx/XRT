@@ -549,6 +549,7 @@ static int health_check_cb(void *data)
 
 reset:
 	if (latched || tripped) {
+printk("l %d t %d\n", latched, tripped);
 		if (!lro->reset_requested) {
 			mgmt_err(lro, "Card is in a Bad state, notify userpf");
 			mbreq.req = XCL_MAILBOX_REQ_FIREWALL;

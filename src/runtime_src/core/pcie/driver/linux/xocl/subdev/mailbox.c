@@ -2119,6 +2119,7 @@ int mailbox_post_response(struct platform_device *pdev,
 	else /* Kick TX channel to try to send out msg. */
 		complete(&mbx->mbx_tx.mbc_worker);
 
+printk("DZ__ rv %d\n", rv);
 	return rv;
 }
 

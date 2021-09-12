@@ -556,12 +556,10 @@ static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 		return ret;
 	}
 
-	/*
 	if (!is_valid_firmware(pdev, buf, size)) {
 		vfree(buf);
 		return -EINVAL;
 	}
-	*/
 
 	*fw = buf;
 	*len = size;
