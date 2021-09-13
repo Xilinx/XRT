@@ -14,19 +14,9 @@
  * under the License.
  */
 
-
-#include <iostream>
-#include <fstream>
-#include <algorithm>
-#include <climits>
-#include <iomanip>
-#include <memory>
-#include <regex>
-#include <sstream>
-#include <stdint.h>
-#include <cstring>
-#include <vector>
-#include <locale>
+#include "firmware_image.h"
+#include "core/common/utils.h"
+#include "core/include/xclbin.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -34,10 +24,15 @@
 #include "boost/filesystem.hpp"
 #include <boost/tokenizer.hpp>
 
-#include "xclbin.h"
-#include "core/common/utils.h"
-#include "firmware_image.h"
-
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <climits>
+#include <iomanip>
+#include <memory>
+#include <cstdint>
+#include <cstring>
+#include <vector>
 
 #ifdef _WIN32
 # pragma warning( disable : 4189 )
@@ -425,21 +420,27 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
     std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
-    std::vector<boost::filesystem::path> fw_dirs(FIRMWARE_DIRS);
-    for (auto& root : fw_dirs) {
+    for (auto root : std::initializer_list<const char*>(FIRMWARE_DIRS)) {
+      try {
         if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
             continue;
+      }
+      catch (const std::exception&) {
+        // directory cannot be checked, maybe relative and
+        // insufficient CWD permissions
+        continue; 
+      }
 
-        boost::filesystem::recursive_directory_iterator end_iter;
-        // for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
-        for(boost::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
-            if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
-                DSAInfo dsa(iter->path().string());
-                installedDSA.push_back(dsa);
-            }
+      boost::filesystem::recursive_directory_iterator end_iter;
+      // for (auto const & iter : boost::filesystem::recursive_directory_iterator(root)) {
+      for(boost::filesystem::recursive_directory_iterator iter(root); iter != end_iter; ++iter) {
+        if ((iter->path().extension() == ".xsabin" || iter->path().extension() == ".dsabin")) {
+          DSAInfo dsa(iter->path().string());
+          installedDSA.push_back(dsa);
         }
+      }
     }
-
+    
     return installedDSA;
 }
 

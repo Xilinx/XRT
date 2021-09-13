@@ -727,7 +727,7 @@ alloc_nodma(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags, xrtMemoryGroup grp)
   }
   catch (const std::exception& ex) {
     auto fmt = boost::format("Failed to allocate host memory buffer (%s), make sure host bank is enabled "
-                             "(see xbutil host_mem --enable ...)") % ex.what();
+                             "(see xbutil configure --host-mem)") % ex.what();
     send_exception_message(fmt.str());
     throw;
   }

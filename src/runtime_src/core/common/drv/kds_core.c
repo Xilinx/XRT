@@ -384,7 +384,7 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	int cu_idx = info->cu_idx;
+	u32 cu_idx = info->cu_idx;
 	u32 prop;
 	bool shared;
 	int ret = 0;
@@ -437,7 +437,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	int cu_idx = info->cu_idx;
+	u32 cu_idx = info->cu_idx;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
@@ -602,13 +602,17 @@ static const struct file_operations ucu_fops = {
 	.llseek		= noop_llseek,
 };
 
-int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx)
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 {
 	int fd;
 	struct kds_cu_mgmt *cu_mgmt;
 	struct xrt_cu *xcu;
 
 	cu_mgmt = &kds->cu_mgmt;
+	if (cu_idx >= cu_mgmt->num_cus) {
+		kds_err(client, "CU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
 
 	if (!test_bit(cu_idx, client->cu_bitmap)) {
 		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
@@ -748,8 +752,10 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 		return ret;
 
 	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
-	if (!ret)
+	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
+		wait_for_completion(&kds->comp);
+	}
 
 	return 0;
 }

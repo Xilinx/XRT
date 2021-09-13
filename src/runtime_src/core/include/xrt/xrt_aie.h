@@ -151,7 +151,7 @@ extern "C" {
 #endif
 
 /**
- * xrtAIEOpen() - Open a device with AIE and obtain its handle
+ * xrtAIEDeviceOpen() - Open a device with AIE and obtain its handle
  *
  * @param index
  *   Device index
@@ -179,7 +179,7 @@ xrtDeviceHandle
 xrtAIEDeviceOpen(unsigned int index);
 
 /**
- * xrtAIEOpenExclusive() - Open a device with AIE and obtain its handle
+ * xrtAIEDeviceOpenExclusive() - Open a device with AIE and obtain its handle
  *
  * @index:          Device index
  * Return:          0 on success, or appropriate error number.
@@ -190,7 +190,7 @@ xrtDeviceHandle
 xrtAIEDeviceOpenExclusive(unsigned int index);
 
 /**
- * xrtAIEOpenShared() - Open a device with AIE and obtain its handle
+ * xrtAIEDeviceOpenShared() - Open a device with AIE and obtain its handle
  *
  * @index:          Device index
  * Return:          0 on success, or appropriate error number.

@@ -60,7 +60,11 @@ namespace xclemulation {
 	    for (auto it:mChildMemories)
 	    {
 		    size_t sizeToBeAllocated = (it->freeSize() <= remainingSize) ? it->freeSize() : remainingSize;
-		    uint64_t result_final = it->alloc(sizeToBeAllocated);
+		    //alloc proc is updating the size to 4096 when size passed is 0. And it is resulting the wrong
+		    // calculation for the remaining size. So hence assigned to different variable and 
+		    // passed to alloc proc - Fix for CR-1102735
+		    size_t tmp_sizeToBeAllocated = sizeToBeAllocated;
+		    uint64_t result_final = it->alloc(tmp_sizeToBeAllocated);
 
 		    if(result_final != mNull)
 			    chunks[result_final] = sizeToBeAllocated;

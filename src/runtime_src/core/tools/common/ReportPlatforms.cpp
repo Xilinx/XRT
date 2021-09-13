@@ -60,7 +60,7 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree& pt_platform = kp.second;
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
     _output << boost::format("  %-23s: %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
-    _output << boost::format("  %-23s: %s \n") % "Platform UUID" % pt_static_region.get<std::string>("interface_uuid");
+    _output << boost::format("  %-23s: %s \n") % "Platform UUID" % pt_static_region.get<std::string>("logic_uuid");
     _output << boost::format("  %-23s: %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
     _output << boost::format("  %-23s: %s \n") % "JTAG ID Code" % pt_static_region.get<std::string>("jtag_idcode");
     

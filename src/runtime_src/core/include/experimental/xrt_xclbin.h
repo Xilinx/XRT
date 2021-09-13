@@ -609,6 +609,32 @@ public:
   const axlf*
   get_axlf() const;
 
+  /**
+   * get_axlf_section() - Retrieve specified xclbin section
+   *
+   * @param section
+   *  The section to retrieve
+   * @return
+   *  The specified section if available cast to specified type.
+   *  Note, that this is an unsafe cast, behavior is undefined if the
+   *  specified SectionType is invalid.
+   *
+   * The SectionType template parameter is an axlf type from xclbin.h
+   * and it much match the type of the section data retrieved.
+   *
+   * Throws if requested section does not exist in the xclbin.
+   */
+  template <typename SectionType>
+  SectionType
+  get_axlf_section(axlf_section_kind section) const
+  {
+    return reinterpret_cast<SectionType>(get_axlf_section(section).first);
+  }
+
+private:
+  XCL_DRIVER_DLLESPEC
+  std::pair<const char*, size_t>
+  get_axlf_section(axlf_section_kind section) const;
 };
 } // namespace xrt
 

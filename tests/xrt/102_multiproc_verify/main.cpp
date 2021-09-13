@@ -159,7 +159,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, size_t n_runs, bool verbos
   while (count && (time_ns() - start) * 10e-9 < 30) {
     int run_idx = 0;
     for (auto& run : runs) {
-      auto state = run.wait(1000);
+      auto state = run.wait();
       switch (state) {
       case ERT_CMD_STATE_COMPLETED:
       case ERT_CMD_STATE_ERROR:

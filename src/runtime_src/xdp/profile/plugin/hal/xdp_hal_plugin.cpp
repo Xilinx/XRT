@@ -70,31 +70,31 @@ namespace xdp {
   }
 
   static void alloc_bo_start(void* payload) {  
-    log_function_start(payload, "AllocBO") ;
+    log_function_start(payload, "xclAllocBO") ;
   }
 
   static void alloc_bo_end(void* payload) {
-    log_function_end(payload, "AllocBO") ;
+    log_function_end(payload, "xclAllocBO") ;
   }
 
   static void alloc_userptr_bo_start(void* payload) {  
-    log_function_start(payload, "AllocUserPtrBO") ;
+    log_function_start(payload, "xclAllocUserPtrBO") ;
   }
 
   static void alloc_userptr_bo_end(void* payload) {
-    log_function_end(payload, "AllocUserPtrBO") ;
+    log_function_end(payload, "xclAllocUserPtrBO") ;
   }
 
   static void free_bo_start(void* payload) {
-    log_function_start(payload, "FreeBO") ;
+    log_function_start(payload, "xclFreeBO") ;
   }
 
   static void free_bo_end(void* payload) {
-    log_function_end(payload, "FreeBO") ;
+    log_function_end(payload, "xclFreeBO") ;
   }
 
   static void write_bo_start(void* payload) {
-    log_function_start(payload, "WriteBO") ;
+    log_function_start(payload, "xclWriteBO") ;
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
@@ -116,7 +116,7 @@ namespace xdp {
   }
 
   static void write_bo_end(void* payload) {
-    log_function_end(payload, "WriteBO") ;
+    log_function_end(payload, "xclWriteBO") ;
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
@@ -130,7 +130,7 @@ namespace xdp {
   }
 
   static void read_bo_start(void* payload) {
-    log_function_start(payload, "ReadBO") ;
+    log_function_start(payload, "xclReadBO") ;
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
@@ -152,7 +152,7 @@ namespace xdp {
   }
 
   static void read_bo_end(void* payload) {
-    log_function_end(payload, "ReadBO") ;
+    log_function_end(payload, "xclReadBO") ;
 
     BOTransferCBPayload* pLoad = reinterpret_cast<BOTransferCBPayload*>(payload);
 
@@ -166,15 +166,15 @@ namespace xdp {
   }
 
   static void map_bo_start(void* payload) {
-    log_function_start(payload, "MapBO") ;
+    log_function_start(payload, "xclMapBO") ;
   }
 
   static void map_bo_end(void* payload) {
-    log_function_end(payload, "MapBO") ;
+    log_function_end(payload, "xclMapBO") ;
   }
 
   static void sync_bo_start(void* payload) {
-    log_function_start(payload, "SyncBO") ;
+    log_function_start(payload, "xclSyncBO") ;
 
     SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
 
@@ -197,7 +197,7 @@ namespace xdp {
   }
 
   static void sync_bo_end(void* payload) {
-    log_function_end(payload, "SyncBO") ;
+    log_function_end(payload, "xclSyncBO") ;
 
     SyncBOCBPayload* pLoad = reinterpret_cast<SyncBOCBPayload*>(payload);
 
@@ -212,41 +212,41 @@ namespace xdp {
   }
 
   static void copy_bo_start(void* payload) {
-    log_function_start(payload, "CopyBO") ;
+    log_function_start(payload, "xclCopyBO") ;
   }
 
   static void copy_bo_end(void* payload) {
-    log_function_end(payload, "CopyBO") ;
+    log_function_end(payload, "xclCopyBO") ;
   }
 
   static void get_bo_prop_start(void* payload) {
-    log_function_start(payload, "GetBOProp") ;
+    log_function_start(payload, "xclGetBOProperties") ;
   }
 
   static void get_bo_prop_end(void* payload) {
-    log_function_end(payload, "GetBOProp") ;
+    log_function_end(payload, "xclGetBOProperties") ;
   }
 
   static void exec_buf_start(void* payload) {
-    log_function_start(payload, "ExecBuf") ;
+    log_function_start(payload, "xclExecBuf") ;
   }
 
   static void exec_buf_end(void* payload) {
-    log_function_end(payload, "ExecBuf") ;
+    log_function_end(payload, "xclExecBuf") ;
   }
 
   static void exec_wait_start(void* payload) {
-    log_function_start(payload, "ExecWait") ;
+    log_function_start(payload, "xclExecWait") ;
   }
 
   static void exec_wait_end(void* payload) {
-    log_function_end(payload, "ExecWait") ;
+    log_function_end(payload, "xclExecWait") ;
   }
 
   static void unmgd_read_start(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
-    log_function_start(&(pLoad->basePayload), "UnmgdRead") ;
+    log_function_start(&(pLoad->basePayload), "xclUnmgdPread") ;
     
 #ifdef HAL_SUMMARY
     // Also log the amount of data transferred
@@ -261,13 +261,13 @@ namespace xdp {
   static void unmgd_read_end(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload) ;
-    log_function_end(&(pLoad->basePayload), "UnmgdRead") ;
+    log_function_end(&(pLoad->basePayload), "xclUnmgdPread") ;
   }
 
   static void unmgd_write_start(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload);
-    log_function_start(&(pLoad->basePayload), "UnmgdWrite") ;
+    log_function_start(&(pLoad->basePayload), "xclUnmgdPwrite") ;
 
 #ifdef HAL_SUMMARY
     // Also log the amount of data transferred
@@ -282,7 +282,7 @@ namespace xdp {
   static void unmgd_write_end(void* payload) {
     UnmgdPreadPwriteCBPayload* pLoad = 
       reinterpret_cast<UnmgdPreadPwriteCBPayload*>(payload) ;
-    log_function_end(&(pLoad->basePayload), "UnmgdWrite") ;
+    log_function_end(&(pLoad->basePayload), "xclUnmgdPwrite") ;
   }
 
   static void read_start(void* payload) {
@@ -321,59 +321,59 @@ namespace xdp {
   }
 
   static void probe_start(void* payload) {
-    log_function_start(payload, "Probe") ;
+    log_function_start(payload, "xclProbe") ;
   }
 
   static void probe_end(void* payload) {
-    log_function_end(payload, "Probe") ;
+    log_function_end(payload, "xclProbe") ;
   }
 
   static void lock_device_start(void* payload) {
-    log_function_start(payload, "LockDevice") ;
+    log_function_start(payload, "xclLockDevice") ;
   }
 
   static void lock_device_end(void* payload) {
-    log_function_end(payload, "LockDevice") ;
+    log_function_end(payload, "xclLockDevice") ;
   }
 
   static void unlock_device_start(void* payload) {
-    log_function_start(payload, "UnLockDevice") ;
+    log_function_start(payload, "xclUnlockDevice") ;
   }
 
   static void unlock_device_end(void* payload) {
-    log_function_end(payload, "UnLockDevice") ;
+    log_function_end(payload, "xclUnlockDevice") ;
   }
 
   static void open_start(void* payload) {
-    log_function_start(payload, "Open") ;
+    log_function_start(payload, "xclOpen") ;
   }
 
   static void open_end(void* payload) {
-    log_function_end(payload, "Open") ;
+    log_function_end(payload, "xclOpen") ;
   }
 
   static void close_start(void* payload) {
-    log_function_start(payload, "Close") ;
+    log_function_start(payload, "xclClose") ;
   }
 
   static void close_end(void* payload) {
-    log_function_end(payload, "Close") ;
+    log_function_end(payload, "xclClose") ;
   }
 
   static void open_context_start(void* payload) {
-    log_function_start(payload, "OpenContext") ;
+    log_function_start(payload, "xclOpenContext") ;
   }
 
   static void open_context_end(void* payload) {
-    log_function_end(payload, "OpenContext") ;
+    log_function_end(payload, "xclOpenContext") ;
   }
 
   static void close_context_start(void* payload) {
-    log_function_start(payload, "CloseContext") ;
+    log_function_start(payload, "xclCloseContext") ;
   }
 
   static void close_context_end(void* payload) {
-    log_function_end(payload, "CloseContext") ;
+    log_function_end(payload, "xclCloseContext") ;
   }
 
   static void load_xclbin_start(void* payload) {

@@ -2,7 +2,7 @@
 /*
  * MPSoC based OpenCL accelerators Generic Compute Units.
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Min Ma      <min.ma@xilinx.com>
@@ -169,13 +169,20 @@ int zocl_open_gcu(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 {
 	struct generic_cu_info *info;
 	char *name;
+	u32 cu_idx = ctx->cu_index;
 	int ret;
 
+	if (cu_idx > MAX_CU_NUM) {
+		DRM_WARN("%s: Invalid CU index 0x%x\n",
+			 __func__, cu_idx);
+		return -EINVAL;
+	}
+
 	/* Check if the CU is exclusively reserved */
-	ret = test_bit(ctx->cu_index, client->excus);
+	ret = test_bit(cu_idx, client->excus);
 	if (!ret) {
 		DRM_WARN("%s: CU[%d] is not exclusive\n",
-			 __func__, ctx->cu_index);
+			 __func__, cu_idx);
 		return -EINVAL;
 	}
 
@@ -187,15 +194,15 @@ int zocl_open_gcu(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	if (!name)
 		return -ENOMEM;
 
-	ret = sched_detach_cu(zdev, ctx->cu_index);
+	ret = sched_detach_cu(zdev, cu_idx);
 	if (ret)
 		return ret;
 
-	sprintf(name, "zocl_generic_cu[%d]", ctx->cu_index);
+	sprintf(name, "zocl_generic_cu[%d]", cu_idx);
 	info->name = name;
-	info->cu_idx = ctx->cu_index;
+	info->cu_idx = cu_idx;
 	/* TODO: We have better not use exec here. Refine this in new KDS */
-	info->irq    = zdev->exec->zcu[ctx->cu_index].irq;
+	info->irq    = zdev->exec->zcu[cu_idx].irq;
 
 	return _open_generic_cu(zdev, info);
 }
