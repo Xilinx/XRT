@@ -221,8 +221,11 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 .. code-block:: shell
 
-    # Enable Host-memory of Size 1G
+    # Enable Host-Memory of Size 1 GB
     sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 1G 
+    
+    # Enable Host-Memory of size 256 MB
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 256M
     
     # Disable previously enabled Host-Memory
     sudo xbutil configure --device 0000:b3:00.1 --host-mem disable
