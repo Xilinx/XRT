@@ -179,15 +179,15 @@ namespace xdp {
   void AieTracePlugin::releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters)
   {
     for (int i=0; i < numCoreCounters; i++) {
-      coreCounters.back()->stop();
-      coreCounters.back()->release();
-      coreCounters.pop_back();
-      coreCounterTiles.pop_back();
+      mCoreCounters.back()->stop();
+      mCoreCounters.back()->release();
+      mCoreCounters.pop_back();
+      mCoreCounterTiles.pop_back();
     }
     for (int i=0; i < numMemoryCounters; i++) {
-      memoryCounters.back()->stop();
-      memoryCounters.back()->release();
-      memoryCounters.pop_back();
+      mMemoryCounters.back()->stop();
+      mMemoryCounters.back()->release();
+      mMemoryCounters.pop_back();
     }
   }
 
@@ -298,6 +298,70 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
+  std::string AieTracePlugin::getMetricSet()
+  {
+    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
+    if (metricsStr.empty()) {
+      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
+      return {};
+    }
+
+    std::vector<std::string> vec;
+    boost::split(vec, metricsStr, boost::is_any_of(":"));
+
+    for (int i=0; i < vec.size(); ++i) {
+      boost::replace_all(vec.at(i), "{", "");
+      boost::replace_all(vec.at(i), "}", "");
+    }
+
+    // Determine specification type based on vector size:
+    //   * Size = 1: All tiles
+    //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
+    //   * Size = 2: Single tile or kernel name (supported in future release)
+    //     * aie_trace_metrics = {<column>,<row>}:<functions|functions_partial_stalls|functions_all_stalls|all>
+    //     * aie_trace_metrics= <kernel name>:<functions|functions_partial_stalls|functions_all_stalls|all>
+    //   * Size = 3: Range of tiles (supported in future release)
+    //     * aie_trace_metrics= {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<functions|functions_partial_stalls|functions_all_stalls|all>
+    metricSet = vec.at( vec.size()-1 );
+
+    if (metricSets.find(metricSet) == metricSets.end()) {
+      std::string defaultSet = "functions";
+      std::stringstream msg;
+      msg << "Unable to find AIE trace metric set " << metricSet 
+          << ". Using default of " << defaultSet << ".";
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      metricSet = defaultSet;
+    }
+
+    return metricSet;
+  }
+
+  std::vector<tile_type> AieTracePlugin::getTilesForTracing(void* handle)
+  {
+    std::vector<tile_type> tiles;
+    // Create superset of all tiles across all graphs
+    // NOTE: future releases will support the specification of tile subsets
+    auto device = xrt_core::get_userpf_device(handle);
+    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+    for (auto& graph : graphs) {
+      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
+      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
+
+      // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
+
+      // Core Tiles
+      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
+      //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
+
+      // DMA-Only Tiles
+      // NOTE: These tiles are only needed when aie_trace_metrics = all
+      //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
+      //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
+    }
+    return tiles;
+  }
+
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
@@ -319,69 +383,19 @@ namespace xdp {
     xaiefal::XAieDev* aieDevice =
       static_cast<xaiefal::XAieDev*>(db->getStaticInfo().getAieDevice(allocateAieDevice, deallocateAieDevice, handle)) ;
     if (!aieDevInst || !aieDevice) {
-      xrt_core::message::send(severity_level::warning, "XRT", 
+      xrt_core::message::send(severity_level::warning, "XRT",
           "Unable to get AIE device. AIE event trace will not be available.");
       return false;
-    }
-
-    // Get AIE tiles and metric set
-    std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
-    if (metricsStr.empty()) {
-      std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
-      xrt_core::message::send(severity_level::warning, "XRT", msg);
-      return false;
-    }
-
-    std::vector<std::string> vec;
-    boost::split(vec, metricsStr, boost::is_any_of(":"));
-
-    for (int i=0; i < vec.size(); ++i) {
-      boost::replace_all(vec.at(i), "{", "");
-      boost::replace_all(vec.at(i), "}", "");
     }
 
     // If requested, turn on debug fal messages
     if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
       xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
-    // Determine specification type based on vector size:
-    //   * Size = 1: All tiles
-    //     * aie_trace_metrics = <functions|functions_partial_stalls|functions_all_stalls|all>
-    //   * Size = 2: Single tile or kernel name (supported in future release)
-    //     * aie_trace_metrics = {<column>,<row>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    //     * aie_trace_metrics= <kernel name>:<functions|functions_partial_stalls|functions_all_stalls|all>
-    //   * Size = 3: Range of tiles (supported in future release)
-    //     * aie_trace_metrics= {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<functions|functions_partial_stalls|functions_all_stalls|all>
-    metricSet = vec.at( vec.size()-1 );
-
-    if (metricSets.find(metricSet) == metricSets.end()) {
-      std::string defaultSet = "functions";
-      std::stringstream msg;
-      msg << "Unable to find AIE trace metric set " << metricSet 
-          << ". Using default of " << defaultSet << ".";
-      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-      metricSet = defaultSet;
-    }
-
-    // Create superset of all tiles across all graphs
-    // NOTE: future releases will support the specification of tile subsets
-    auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-    std::vector<tile_type> tiles;
-    for (auto& graph : graphs) {
-      auto currTiles = xrt_core::edge::aie::get_tiles(device.get(), graph);
-      std::copy(currTiles.begin(), currTiles.end(), back_inserter(tiles));
-
-      // TODO: Differentiate between core and DMA-only tiles when 'all' is supported
-
-      // Core Tiles
-      //auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::core);
-      //std::unique_copy(coreTiles.begin(), coreTiles.end(), std::back_inserter(tiles), tileCompare);
-
-      // DMA-Only Tiles
-      // NOTE: These tiles are only needed when aie_trace_metrics = all
-      //auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph, module_type::dma);
-      //std::unique_copy(dmaTiles.begin(), dmaTiles.end(), std::back_inserter(tiles), tileCompare);
-    }
+    auto metricSet = getMetricSet();
+    if (metricSet.empty())
+      return false;
+    auto tiles = getTilesForTracing(handle);
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -394,7 +408,6 @@ namespace xdp {
       // NOTE: resource manager requires absolute row number
       auto& core   = aieDevice->tile(col, row + 1).core();
       auto& memory = aieDevice->tile(col, row + 1).mem();
-
       auto loc = XAie_TileLoc(col, row + 1);
 
       // AIE config object for this tile
@@ -444,8 +457,8 @@ namespace xdp {
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
 
-        coreCounterTiles.push_back(tile);
-        coreCounters.push_back(perfCounter);
+        mCoreCounterTiles.push_back(tile);
+        mCoreCounters.push_back(perfCounter);
         numCoreCounters++;
 
         // Update config file
@@ -485,7 +498,7 @@ namespace xdp {
         ret = perfCounter->start();
         if (ret != XAIE_OK) break;
 
-        memoryCounters.push_back(perfCounter);
+        mMemoryCounters.push_back(perfCounter);
         numMemoryCounters++;
 
         // Update config file
@@ -982,9 +995,9 @@ namespace xdp {
     uint32_t prevRow = 0;
 
     // Reconfigure profile counters
-    for (int i=0; i < coreCounters.size(); ++i) {
+    for (int i=0; i < mCoreCounters.size(); ++i) {
       // 1. For every tile, stop trace & change trace start/stop and timer
-      auto& tile = coreCounterTiles.at(i);
+      auto& tile = mCoreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
       if ((col != prevCol) || (row != prevRow)) {
@@ -1006,7 +1019,7 @@ namespace xdp {
       msg << "AIE Trace Flush: Modifying start/stop events for counter " << i;
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
       
-      auto& counter = coreCounters.at(i);
+      auto& counter = mCoreCounters.at(i);
       counter->stop();
       counter->changeStartEvent(XAIE_CORE_MOD, coreTraceStartEvent);
       counter->changeStopEvent(XAIE_CORE_MOD,  coreTraceEndEvent);
@@ -1016,8 +1029,8 @@ namespace xdp {
     // 3. For every tile, restart trace and reset timer
     prevCol = 0;
     prevRow = 0;
-    for (int i=0; i < coreCounters.size(); ++i) {
-      auto& tile = coreCounterTiles.at(i);
+    for (int i=0; i < mCoreCounters.size(); ++i) {
+      auto& tile = mCoreCounterTiles.at(i);
       auto  col  = tile.col;
       auto  row  = tile.row;
       if ((col != prevCol) || (row != prevRow)) {
