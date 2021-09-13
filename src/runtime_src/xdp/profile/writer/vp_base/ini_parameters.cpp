@@ -32,12 +32,12 @@ namespace xdp {
                  "Hardware counters added to OpenCL summary file");
     addParameter("timeline_trace", xrt_core::config::get_timeline_trace(),
                  "Timeline trace (deprecated)");
+    addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
+                 "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
                  "Generation of hardware SHIM function trace");
     addParameter("xrt_profile", xrt_core::config::get_xrt_profile(),
                  "Equivalent to xrt_trace (deprecated)");
-    addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
-                 "Generation of Native XRT API function trace");
     addParameter("data_transfer_trace",
                  xrt_core::config::get_data_transfer_trace(),
                  "Collection of data from PL monitors and added to summary and trace");
