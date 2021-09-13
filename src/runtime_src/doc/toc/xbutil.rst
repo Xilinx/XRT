@@ -198,7 +198,15 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 .. code-block:: shell 
 
-    xbutil configure [--device| -d] <user bdf> 
+    xbutil configure [--device| -d] <user bdf> [--host-mem|--p2p] <action> [--size <size>]
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device to examine 
+    
+    - <user bdf> :  The Bus:Device.Function of the device of interest
+   
 
 xbutil reset
 ~~~~~~~~~~~~
