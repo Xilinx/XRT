@@ -846,7 +846,7 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 	struct xocl_dev *xdev = (struct xocl_dev *)drm_p->xdev;
 
 	if (!xdev->cma_bank) {
-		xocl_info(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
+		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
 		return 0;
 	}
 
