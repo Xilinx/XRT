@@ -19,13 +19,11 @@
 #include "ReportAie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include <thread>
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/lexical_cast.hpp>
-#include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/signal_set.hpp>
 
@@ -50,6 +48,7 @@ enum graph_state {
 };
 
 std::vector<std::string> aieCoreList;
+bool is_quit = false;
 
 inline std::string
 graph_status_to_string(int status) {
@@ -515,7 +514,8 @@ void
 AieTopThreadFunction(const boost::property_tree::ptree& _pt)
 {
   std::ostream &_output = std::cout;
-  while(true)
+
+  while(!is_quit)
   {
     try
     {
@@ -554,13 +554,12 @@ AieTopThreadFunction(const boost::property_tree::ptree& _pt)
       }
 
       // Sleep and check for interrupt.
-      boost::this_thread::sleep(boost::posix_time::seconds(1));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    catch(boost::thread_interrupted&)
+    catch(std::exception const& e)
     {
-      std::cout << "Thread is stopped" << std::endl;
-      return;
+      _output <<  e.what() << std::endl;
     }
   }
 }
@@ -568,6 +567,7 @@ AieTopThreadFunction(const boost::property_tree::ptree& _pt)
 void
 sig_handler(const boost::system::error_code& error, int signal_number)
 {
+  is_quit = true;
   std::cout << "Top command exiting... "  << std::endl;
 }
 
@@ -576,8 +576,9 @@ AieTopFunc(const boost::property_tree::ptree& _pt)
 {
   boost::asio::io_service io_service;
 
+  is_quit = false;
   // Create a threadmain function for printing the status
-  boost::thread t_thread(AieTopThreadFunction, _pt);
+  std::thread t_thread(AieTopThreadFunction, _pt);
 
   // Construct a signal set registered for process termination.
   boost::asio::signal_set signals(io_service, SIGINT );
@@ -587,7 +588,6 @@ AieTopFunc(const boost::property_tree::ptree& _pt)
   io_service.run();
 
   // Join - wait when thread actually exits
-  t_thread.interrupt();
   t_thread.join();
 }
 
@@ -641,7 +641,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       for (auto& tile : graph.get_child("tile")) {
 	int curr_core = count++;
 	if(_elementsFilter.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
-		     boost::lexical_cast<std::string>(curr_core)) == aieCoreList.end()))
+		     std::to_string(curr_core)) == aieCoreList.end()))
 	  continue;
 
         _output << boost::format("Core [%2d]\n") % curr_core;

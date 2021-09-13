@@ -23,7 +23,6 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/lexical_cast.hpp>
 
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
 #define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
@@ -290,7 +289,7 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
     for (auto &tile : ptShimTiles) {
       int curr_tile = count++;
       if(_elementsFilter.size() && (std::find(aieTileList.begin(), aieTileList.end(),
-				boost::lexical_cast<std::string>(curr_tile)) == aieTileList.end()))
+				std::to_string(curr_tile)) == aieTileList.end()))
         continue;
 
       _output << boost::format("Tile[%2d]\n") % curr_tile;
