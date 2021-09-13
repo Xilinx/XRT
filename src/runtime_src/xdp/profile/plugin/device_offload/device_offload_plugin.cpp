@@ -212,15 +212,20 @@ namespace xdp {
                              trace_buffer_offload_interval_ms, // offload_sleep_ms
                              trace_buffer_size);           // trbuf_size
 
-    bool init_successful = offloader->read_trace_init(m_enable_circular_buffer) ;
+    // If trace is enabled, set up trace.  Otherwise just keep the offloader
+    //  for reading the counters.
+    if (xrt_core::config::get_data_transfer_trace() != "off") {
+      bool init_successful =
+        offloader->read_trace_init(m_enable_circular_buffer) ;
 
-    if (!init_successful) {
-      if (devInterface->hasTs2mm()) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
+      if (!init_successful) {
+        if (devInterface->hasTs2mm()) {
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_ALLOC_FAIL) ;
+        }
+        delete offloader ;
+        delete logger ;
+        return ;
       }
-      delete offloader ;
-      delete logger ;
-      return ;
     }
 
     offloaders[deviceId] = std::make_tuple(offloader, logger, devInterface) ;
