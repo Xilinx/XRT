@@ -206,7 +206,34 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 - The ``--device`` (or ``-d``) specifies the target device to examine 
     
     - <user bdf> :  The Bus:Device.Function of the device of interest
-   
+- The ``--host-mem`` or ``--p2p`` select specific configuration 
+    
+    - ``enable``: Enable the host-memory or p2p
+    - ``disable``: Disable the host-memory or p2p
+- The ``--size`` is used in conjuction with ``xbutil configure --host-mem enable`` to specify the host-memory size to be enabled
+    
+    - ``<size>``: Size and unit specified as a combined string 
+    
+ 
+
+**Example commands**
+
+
+.. code-block:: shell
+
+    # Enable Host-memory of Size 1G
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 1G 
+    
+    # Disable previously enabled Host-Memory
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem disable
+    
+    # Enable P2P
+    sudo xbutil configure --device 0000:b3:00.1 --p2p enable
+ 
+    # Disable P2P
+    sudo xbutil configure --device 0000:b3:00.1 --p2p disable
+ 
+
 
 xbutil reset
 ~~~~~~~~~~~~
