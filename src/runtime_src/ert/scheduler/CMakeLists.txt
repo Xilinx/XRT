@@ -6,7 +6,7 @@
 if (${ERT_BUILD_ALL} STREQUAL "yes")
 
 function(GetBSP BSP)
- set(URL https://raw.githubusercontent.com/Xilinx/XRT/master/src/runtime_src/ert/scheduler/${BSP})
+ set(URL https://github.com/Xilinx/ERT-BSP/raw/main/BSPs/${BSP})
  FILE(DOWNLOAD ${URL} ${CMAKE_CURRENT_BINARY_DIR}/${BSP} STATUS dlstatus)
  if(NOT dlstatus EQUAL 0)
   message(FATAL_ERROR "ERROR: Failed to retrieve files from: ${URL}\n"
