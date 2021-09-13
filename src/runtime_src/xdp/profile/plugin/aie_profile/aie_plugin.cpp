@@ -43,7 +43,7 @@
 #define GROUP_STREAM_SWITCH_STALLED_MASK 0x44444444
 #define GROUP_STREAM_SWITCH_TLAST_MASK   0x88888888
 #define GROUP_CORE_PROGRAM_FLOW_MASK     0x00001FE0
-#define GROUP_CORE_STALL_MASK            0x0000019F
+#define GROUP_CORE_STALL_MASK            0x0000000F
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
