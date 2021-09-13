@@ -189,6 +189,17 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
  
  
+xbutil configure
+~~~~~~~~~~~~~~~~
+Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo). 
+
+
+**The supported options**
+
+.. code-block:: shell 
+
+    xbutil configure [--device| -d] <user bdf> 
+
 xbutil reset
 ~~~~~~~~~~~~
 This ``xbutil reset`` command can be used to reset device. 
