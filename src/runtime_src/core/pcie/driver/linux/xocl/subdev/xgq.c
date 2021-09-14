@@ -359,7 +359,7 @@ static void xgq_cmd_timeout(struct timer_list *t)
 			list_del(pos);
 			
 			xgq_cmd->xgq_cmd_rcode = 0;
-			xgq_cmd->xgq_cmd_rcode = -ETIME;
+			//xgq_cmd->xgq_cmd_rcode = -ETIME;
 			complete(&xgq_cmd->xgq_cmd_complete);
 			mutex_unlock(&xgq->xgq_lock);
 
