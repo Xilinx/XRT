@@ -10,4 +10,4 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
 endif()
 
-install (PROGRAMS "./common/deviceall" DESTINATION ${XRT_INSTALL_BIN_DIR})
+install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
