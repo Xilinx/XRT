@@ -1037,35 +1037,6 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
 
 
 void 
-DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
-{
-  if(0 == accelDeadlockResults.Num) {
-    return;
-  }
-
-  boost::property_tree::ptree accel_deadlock_pt;
-
-#if 0
-  // Atmost 1 Accelerator Deadlock Detector Ip per design
-  boost::property_tree::ptree entry;
-  std::string statusStr;
-  if(0 == accelDeadlockResults.DeadlockStatus) {
-    statusStr = "no_";
-  }
-  statusStr += "deadlock_detected";
-
-  entry.put("status", statusStr);
-
-  accel_deadlock_pt.push_back(std::make_pair("", entry));
-#endif
-
-  accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
-
-  _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
-  return;
-}
-
-void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
   debug_ip_layout* dbgIpLayout = getDebugIpLayout();
@@ -1329,6 +1300,22 @@ DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
 
   _pt.add_child("Integrated Logic Analyzer", ila_pt);
 
+}
+
+void 
+DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == accelDeadlockResults.Num) {
+    return;
+  }
+
+  // Only 1 Accelerator Deadlock Detector Ip per design
+  boost::property_tree::ptree accel_deadlock_pt;
+
+  accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
+
+  _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
+  return;
 }
 
 // ----- Supporting Functions -------------------------------------------
