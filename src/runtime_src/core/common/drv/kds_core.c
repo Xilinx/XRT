@@ -1198,6 +1198,12 @@ int kds_cfg_update(struct kds_sched *kds)
 				continue;
 
 			xcu = cu_mgmt->xcus[i];
+			/* Do not start polling/interrupt thread
+			 * for ap_ctrl_none kernels
+			 */
+			if (xrt_cu_get_protocol(xcu) == CTRL_NONE)
+				continue;
+
 			ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
 			if (!ret)
 				cu_mgmt->cu_intr[i] = kds->cu_intr;
