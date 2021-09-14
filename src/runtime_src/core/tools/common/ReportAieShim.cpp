@@ -266,12 +266,11 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "AIE\n";
 
-  if(_elementsFilter.size()) {
-    for(auto& itr : _elementsFilter) {
-      if(itr == "tiles") {
-        auto tile_list = std::next(&itr, 1);
+  for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
+    if(*it == "tiles") {
+      auto tile_list = std::next(it);
+      if (tile_list != _elementsFilter.end())
         boost::split(aieTileList, *tile_list, boost::is_any_of(","));
-      }
     }
   }
 
