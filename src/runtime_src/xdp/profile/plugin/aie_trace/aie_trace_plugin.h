@@ -65,7 +65,7 @@ namespace xdp {
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
       // Utility functions
-      std::string getMetricSet();
+      std::string getMetricSet(void* handle);
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:

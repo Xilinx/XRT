@@ -298,8 +298,21 @@ namespace xdp {
     xrt_core::message::send(severity_level::info, "XRT", msg.str());
   }
 
-  std::string AieTracePlugin::getMetricSet()
+  std::string AieTracePlugin::getMetricSet(void* handle)
   {
+    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
+    runtimeMetrics = (compilerOptions.event_trace == "runtime");
+
+    if (!runtimeMetrics) {
+      std::stringstream msg;
+      msg << "Found compiler trace option of " << compilerOptions.event_trace
+          << ". No runtime AIE metrics will be changed.";
+      xrt_core::message::send(severity_level::info, "XRT", msg.str());
+      return {};
+    }
+
     std::string metricsStr = xrt_core::config::get_aie_trace_metrics();
     if (metricsStr.empty()) {
       std::string msg("The setting aie_trace_metrics was not specified in xrt.ini. AIE event trace will not be available.");
@@ -334,6 +347,10 @@ namespace xdp {
       metricSet = defaultSet;
     }
 
+    // If requested, turn on debug fal messages
+    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
+      xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
+
     return metricSet;
   }
 
@@ -365,19 +382,6 @@ namespace xdp {
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
-    // Catch when compile-time trace is specified (e.g., --event-trace=functions)
-    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-    auto compilerOptions = xrt_core::edge::aie::get_aiecompiler_options(device.get());
-    runtimeMetrics = (compilerOptions.event_trace == "runtime");
-
-    if (!runtimeMetrics) {
-      std::stringstream msg;
-      msg << "Found compiler trace option of " << compilerOptions.event_trace
-          << ". No runtime AIE metrics will be changed.";
-      xrt_core::message::send(severity_level::info, "XRT", msg.str());
-      return true;
-    }
-
     XAie_DevInst* aieDevInst =
       static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle)) ;
     xaiefal::XAieDev* aieDevice =
@@ -388,11 +392,7 @@ namespace xdp {
       return false;
     }
 
-    // If requested, turn on debug fal messages
-    if (xrt_core::config::get_verbosity() >= static_cast<uint32_t>(severity_level::debug))
-      xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
-
-    auto metricSet = getMetricSet();
+    auto metricSet = getMetricSet(handle);
     if (metricSet.empty())
       return false;
     auto tiles = getTilesForTracing(handle);
@@ -415,13 +415,9 @@ namespace xdp {
 
       // Get vector of pre-defined metrics for this set
       // NOTE: these are local copies as we are adding tile/counter-specific events
-      EventVector coreEvents;
-      EventVector memoryCrossEvents;
+      EventVector coreEvents = coreEventSets[metricSet];
+      EventVector memoryCrossEvents = memoryEventSets[metricSet];
       EventVector memoryEvents;
-      std::copy(coreEventSets[metricSet].begin(), coreEventSets[metricSet].end(), 
-                back_inserter(coreEvents));
-      std::copy(memoryEventSets[metricSet].begin(), memoryEventSets[metricSet].end(), 
-                back_inserter(memoryCrossEvents));
 
       // Check Resource Availability
       // For now only counters are checked
