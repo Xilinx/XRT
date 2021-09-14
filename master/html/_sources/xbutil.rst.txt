@@ -11,7 +11,7 @@ xbutil
 This document describes the latest ``xbutil`` commands. These latest commands are default from 21.1 release.   
 
 
-P.S: The older version of the commands can only be executed by adding ``--legacy`` switch.
+P.S: The older version of the commands can only be executed by adding ``--legacy`` switch . The documentation link of legacy version: `Vitis Application Acceleration Development Flow Documentation <https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html>`_
 
 
 **Global options**: These are the global options can be used with any command. 
@@ -189,6 +189,55 @@ The command ``xbutil examine``  can be used to find the details of the specific 
 
  
  
+xbutil configure
+~~~~~~~~~~~~~~~~
+Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo). 
+
+
+**The supported options**
+
+.. code-block:: shell 
+
+    xbutil configure [--device| -d] <user bdf> [--host-mem|--p2p] <action> [--size <size>]
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device to examine 
+    
+    - <user bdf> :  The Bus:Device.Function of the device of interest
+- The ``--host-mem`` or ``--p2p`` select specific configuration 
+    
+    - ``enable``: Enable the host-memory or p2p
+    - ``disable``: Disable the host-memory or p2p
+- The ``--size`` is used in conjuction with ``xbutil configure --host-mem enable`` to specify the host-memory size to be enabled
+    
+    - ``<size>``: Size and unit specified as a combined string 
+    
+ 
+
+**Example commands**
+
+
+.. code-block:: shell
+
+    # Enable Host-Memory of Size 1 GB
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 1G 
+    
+    # Enable Host-Memory of size 256 MB
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem enable --size 256M
+    
+    # Disable previously enabled Host-Memory
+    sudo xbutil configure --device 0000:b3:00.1 --host-mem disable
+    
+    # Enable P2P
+    sudo xbutil configure --device 0000:b3:00.1 --p2p enable
+ 
+    # Disable P2P
+    sudo xbutil configure --device 0000:b3:00.1 --p2p disable
+ 
+
+
 xbutil reset
 ~~~~~~~~~~~~
 This ``xbutil reset`` command can be used to reset device. 

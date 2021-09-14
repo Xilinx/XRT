@@ -551,7 +551,7 @@
 <dd><p>Abstraction of an acceleration device</p>
 <dl class="method">
 <dt id="pyxrt.device.get_info">
-<code class="descname">get_info</code><span class="sig-paren">(</span><em>self: pyxrt.device</em>, <em>arg0: pyxrt.xrt_info_device</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.device.get_info" title="Permalink to this definition">¶</a></dt>
+<code class="descname">get_info</code><span class="sig-paren">(</span><em>self: pyxrt.device</em>, <em>arg0: pyxrt.xrt_info_device</em>, <em>arg1: pyxrt.xrt_info_schema</em><span class="sig-paren">)</span> &#x2192; str<a class="headerlink" href="#pyxrt.device.get_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Obtain the device properties and sensor information</p>
 </dd></dl>
 
@@ -668,8 +668,16 @@
 
 <dl class="method">
 <dt id="pyxrt.run.wait">
-<code class="descname">wait</code><span class="sig-paren">(</span><em>self: pyxrt.run</em>, <em>arg0: int</em><span class="sig-paren">)</span> &#x2192; pyxrt.ert_cmd_state<a class="headerlink" href="#pyxrt.run.wait" title="Permalink to this definition">¶</a></dt>
-<dd><p>Wait for the specified milliseconds for the run to complete</p>
+<code class="descname">wait</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#pyxrt.run.wait" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overloaded function.</p>
+<ol class="arabic simple">
+<li>wait(self: pyxrt.run) -&gt; pyxrt.ert_cmd_state</li>
+</ol>
+<p>Wait for the run to complete</p>
+<ol class="arabic simple" start="2">
+<li>wait(self: pyxrt.run, arg0: int) -&gt; pyxrt.ert_cmd_state</li>
+</ol>
+<p>Wait for the specified milliseconds for the run to complete</p>
 </dd></dl>
 
 </dd></dl>
@@ -818,6 +826,20 @@
 </div></blockquote>
 </dd></dl>
 
+<dl class="class">
+<dt id="pyxrt.xrt_info_schema">
+<em class="property">class </em><code class="descclassname">pyxrt.</code><code class="descname">xrt_info_schema</code><a class="headerlink" href="#pyxrt.xrt_info_schema" title="Permalink to this definition">¶</a></dt>
+<dd><p>Schema version for device information</p>
+<p>Members:</p>
+<blockquote>
+<div>json_20202</div></blockquote>
+<dl class="attribute">
+<dt id="pyxrt.xrt_info_schema.name">
+<code class="descname">name</code><a class="headerlink" href="#pyxrt.xrt_info_schema.name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </div>
 
 
@@ -849,7 +871,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 02, 2021.
+        Last updated on September 14, 2021.
       </span>
 
     </p>

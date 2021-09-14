@@ -98,9 +98,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a838317b90946f015082b6fed28b01e3e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2c82949cbd19a0152b4a1e6e8e0f3357"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1device.html">device</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1device.html#a2c82949cbd19a0152b4a1e6e8e0f3357">operator=</a> (<a class="el" href="classxrt_1_1device.html">device</a> &amp;&amp;rhs)=default</td></tr>
 <tr class="separator:a2c82949cbd19a0152b4a1e6e8e0f3357"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0db28f39fce7a94f84c31da71b6939fc"><td class="memTemplParams" colspan="2">template&lt;info::device param&gt; </td></tr>
-<tr class="memitem:a0db28f39fce7a94f84c31da71b6939fc"><td class="memTemplItemLeft" align="right" valign="top">info::param_traits&lt; <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">info::device</a>, param &gt;::return_type&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1device.html#a0db28f39fce7a94f84c31da71b6939fc">get_info</a> () const</td></tr>
-<tr class="separator:a0db28f39fce7a94f84c31da71b6939fc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a483a7043274305c132d50d9bb4511254"><td class="memTemplParams" colspan="2">template&lt;info::device param&gt; </td></tr>
+<tr class="memitem:a483a7043274305c132d50d9bb4511254"><td class="memTemplItemLeft" align="right" valign="top">info::param_traits&lt; <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">info::device</a>, param &gt;::return_type&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1device.html#a483a7043274305c132d50d9bb4511254">get_info</a> (<a class="el" href="namespacexrt_1_1info.html#af137cdb12886f4b7d9211141cc66bef3">info::InfoSchemaVersion</a> version) const</td></tr>
+<tr class="separator:a483a7043274305c132d50d9bb4511254"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3da36f551e9df2e03022ff783c751365"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1uuid.html">uuid</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1device.html#a3da36f551e9df2e03022ff783c751365">load_xclbin</a> (const axlf *<a class="el" href="classxrt_1_1xclbin.html">xclbin</a>)</td></tr>
 <tr class="separator:a3da36f551e9df2e03022ff783c751365"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a87f89d9b835a93363bd62921ff620a3e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1uuid.html">uuid</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1device.html#a87f89d9b835a93363bd62921ff620a3e">load_xclbin</a> (const std::string &amp;xclbin_fnm)</td></tr>
@@ -327,8 +327,8 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a0db28f39fce7a94f84c31da71b6939fc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0db28f39fce7a94f84c31da71b6939fc">&#9670;&nbsp;</a></span>get_info()</h2>
+<a id="a483a7043274305c132d50d9bb4511254"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a483a7043274305c132d50d9bb4511254">&#9670;&nbsp;</a></span>get_info()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -341,7 +341,8 @@ template&lt;info::device param&gt; </div>
         <tr>
           <td class="memname">info::param_traits&lt;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">info::device</a>, param&gt;::return_type xrt::device::get_info </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype"><a class="el" href="namespacexrt_1_1info.html#af137cdb12886f4b7d9211141cc66bef3">info::InfoSchemaVersion</a>&#160;</td>
+          <td class="paramname"><em>version</em></td><td>)</td>
           <td> const</td>
         </tr>
       </table>
@@ -351,8 +352,8 @@ template&lt;info::device param&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1device.html#a0db28f39fce7a94f84c31da71b6939fc">get_info()</a> - Retrieve device parameter information</p>
-<p>This function is templated on the enumeration value as defined in the enumeration <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a" title="Device information parameters.">xrt::info::device</a>.</p>
+<p><a class="el" href="classxrt_1_1device.html#a483a7043274305c132d50d9bb4511254">get_info()</a> - Retrieve device parameter information</p>
+<p>This function is templated on the enumeration value as defined in the enumeration <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a" title="Device information parameters.">xrt::info::device</a> and takes in <a class="el" href="namespacexrt_1_1info.html#af137cdb12886f4b7d9211141cc66bef3" title="Json schemaVersion parameters.">xrt::info::InfoSchemaVersion</a> as a parameter.</p>
 <p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="el" href="namespacexrt_1_1info.html">xrt::info</a> </p>
 
 </div>
