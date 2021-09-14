@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['kdma_252',['kdma',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a5263ee73e272dfe715a2183814b60a',1,'xrt::info']]]
+  ['json_5f20202_257',['json_20202',['../namespacexrt_1_1info.html#af137cdb12886f4b7d9211141cc66bef3ab2d3436a7e8f6dd4f0ffc3952cc318cc',1,'xrt::info']]]
 ];

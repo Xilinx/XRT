@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['name_257',['name',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297',1,'xrt::info']]],
-  ['nodma_258',['nodma',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde',1,'xrt::info']]],
-  ['none_259',['none',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6a334c4a4c42fdb79d7ebc3e73b517e6f8',1,'xrt::kernel']]],
-  ['normal_260',['normal',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddafea087517c26fadd409bd4b9dc642555',1,'xrt::bo']]]
+  ['m2m_259',['m2m',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e',1,'xrt::info']]],
+  ['max_5fclock_5ffrequency_5fmhz_260',['max_clock_frequency_mhz',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd6586634142c1d1c7e85e35d96d329f',1,'xrt::info']]],
+  ['mechanical_261',['mechanical',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be',1,'xrt::info']]],
+  ['memory_262',['memory',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291',1,'xrt::info']]]
 ];

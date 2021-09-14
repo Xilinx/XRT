@@ -386,6 +386,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-program">xbutil program</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-validate">xbutil validate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-examine">xbutil examine</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#xbutil-configure">xbutil configure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil-reset">xbutil reset</a></li>
 </ul>
 </li>
@@ -489,7 +490,7 @@
   <span class="target" id="xbutil-rst"></span><div class="section" id="xbutil">
 <h1>xbutil<a class="headerlink" href="#xbutil" title="Permalink to this headline">¶</a></h1>
 <p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbutil</span></code> commands. These latest commands are default from 21.1 release.</p>
-<p>P.S: The older version of the commands can only be executed by adding <code class="docutils literal notranslate"><span class="pre">--legacy</span></code> switch.</p>
+<p>P.S: The older version of the commands can only be executed by adding <code class="docutils literal notranslate"><span class="pre">--legacy</span></code> switch . The documentation link of legacy version: <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html">Vitis Application Acceleration Development Flow Documentation</a></p>
 <p><strong>Global options</strong>: These are the global options can be used with any command.</p>
 <blockquote>
 <div><ul class="simple">
@@ -660,6 +661,56 @@ xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical
 </pre></div>
 </div>
 </div>
+<div class="section" id="xbutil-configure">
+<h2>xbutil configure<a class="headerlink" href="#xbutil-configure" title="Permalink to this headline">¶</a></h2>
+<p>Command <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span></code> is used to configure specific settings based on the need of user application (requires sudo).</p>
+<p><strong>The supported options</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbutil configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;user bdf&gt; <span class="o">[</span>--host-mem<span class="p">|</span>--p2p<span class="o">]</span> &lt;action&gt; <span class="o">[</span>--size &lt;size&gt;<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device to examine</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;user bdf&gt; :  The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--host-mem</span></code> or <code class="docutils literal notranslate"><span class="pre">--p2p</span></code> select specific configuration</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">enable</span></code>: Enable the host-memory or p2p</li>
+<li><code class="docutils literal notranslate"><span class="pre">disable</span></code>: Disable the host-memory or p2p</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--size</span></code> is used in conjuction with <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span> <span class="pre">enable</span></code> to specify the host-memory size to be enabled</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">&lt;size&gt;</span></code>: Size and unit specified as a combined string</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># Enable Host-Memory of Size 1 GB</span>
+sudo xbutil configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 1G
+
+<span class="c1"># Enable Host-Memory of size 256 MB</span>
+sudo xbutil configure --device <span class="m">0000</span>:b3:00.1 --host-mem <span class="nb">enable</span> --size 256M
+
+<span class="c1"># Disable previously enabled Host-Memory</span>
+sudo xbutil configure --device <span class="m">0000</span>:b3:00.1 --host-mem disable
+
+<span class="c1"># Enable P2P</span>
+sudo xbutil configure --device <span class="m">0000</span>:b3:00.1 --p2p <span class="nb">enable</span>
+
+<span class="c1"># Disable P2P</span>
+sudo xbutil configure --device <span class="m">0000</span>:b3:00.1 --p2p disable
+</pre></div>
+</div>
+</div>
 <div class="section" id="xbutil-reset">
 <h2>xbutil reset<a class="headerlink" href="#xbutil-reset" title="Permalink to this headline">¶</a></h2>
 <p>This <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">reset</span></code> command can be used to reset device.</p>
@@ -720,7 +771,7 @@ xbutil examine --device <span class="m">0000</span>:b3:00.1  --report electrical
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 02, 2021.
+        Last updated on September 14, 2021.
       </span>
 
     </p>

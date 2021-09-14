@@ -636,10 +636,10 @@
 </dd></dl>
 
 <dl class="function">
-<dt id="_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv">
-<span id="_CPPv3I_N4info6deviceEENK3xrt6device8get_infoEv"></span><span id="_CPPv2I_N4info6deviceEENK3xrt6device8get_infoEv"></span><span class="target" id="classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"></span>template&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a> <code class="descname">param</code>&gt;<br /><a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::param_traits&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a>, <a class="reference internal" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="xrt::device::get_info::param">param</a>&gt;::return_type <code class="descname">get_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"><span class="std std-ref">get_info()</span></a> - Retrieve device parameter information</p>
-<p>This function is templated on the enumeration value as defined in the enumeration <a class="reference internal" href="#namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829a"><span class="std std-ref">xrt::info::device</span></a>.</p>
+<dt id="_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEN4info17InfoSchemaVersionE">
+<span id="_CPPv3I_N4info6deviceEENK3xrt6device8get_infoEN4info17InfoSchemaVersionE"></span><span id="_CPPv2I_N4info6deviceEENK3xrt6device8get_infoEN4info17InfoSchemaVersionE"></span><span class="target" id="classxrt_1_1device_1a483a7043274305c132d50d9bb4511254"></span>template&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a> <code class="descname">param</code>&gt;<br /><a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::param_traits&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a>, <a class="reference internal" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEN4info17InfoSchemaVersionE" title="xrt::device::get_info::param">param</a>&gt;::return_type <code class="descname">get_info</code><span class="sig-paren">(</span><a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info17InfoSchemaVersionE" title="xrt::info::InfoSchemaVersion">InfoSchemaVersion</a> <em>version</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEN4info17InfoSchemaVersionE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1device_1a483a7043274305c132d50d9bb4511254"><span class="std std-ref">get_info()</span></a> - Retrieve device parameter information</p>
+<p>This function is templated on the enumeration value as defined in the enumeration <a class="reference internal" href="#namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829a"><span class="std std-ref">xrt::info::device</span></a> and takes in <a class="reference internal" href="#namespacexrt_1_1info_1af137cdb12886f4b7d9211141cc66bef3"><span class="std std-ref">xrt::info::InfoSchemaVersion</span></a> as a parameter.</p>
 <p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="reference internal" href="#namespacexrt_1_1info"><span class="std std-ref">xrt::info</span></a> </p>
 </dd></dl>
 
@@ -896,6 +896,24 @@
 <dd>The axlf data of the xclbin object</dd>
 </dl>
 </p>
+</dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind">
+<span id="_CPPv3I0ENK3xrt6xclbin16get_axlf_sectionE17axlf_section_kind"></span><span id="_CPPv2I0ENK3xrt6xclbin16get_axlf_sectionE17axlf_section_kind"></span><span class="target" id="classxrt_1_1xclbin_1ada97b6d5c2c2bfbdd32fd634e412b835"></span>template&lt;typename <code class="descname">SectionType</code>&gt;<br /><a class="reference internal" href="#_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind" title="xrt::xclbin::get_axlf_section::SectionType">SectionType</a> <code class="descname">get_axlf_section</code><span class="sig-paren">(</span>axlf_section_kind <em>section</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ada97b6d5c2c2bfbdd32fd634e412b835"><span class="std std-ref">get_axlf_section()</span></a> - Retrieve specified xclbin section</p>
+<p><p>The SectionType template parameter is an axlf type from xclbin.h and it much match the type of the section data retrieved.</p>
+<dl class="docutils">
+<dt><strong>Return</strong></dt>
+<dd>The specified section if available cast to specified type. Note, that this is an unsafe cast, behavior is undefined if the specified SectionType is invalid.</dd>
+<dt><strong>Parameters</strong></dt>
+<dd><ul class="breatheparameterlist first last simple">
+<li><code class="docutils literal notranslate"><span class="pre">section</span></code>: The section to retrieve </li>
+</ul>
+</dd>
+</dl>
+</p>
+<p>Throws if requested section does not exist in the xclbin. </p>
 </dd></dl>
 
 </div>
@@ -1873,7 +1891,7 @@
 <p><p>The default timeout of 0ms indicates blocking until run completes.</p>
 <dl class="docutils">
 <dt><strong>Return</strong></dt>
-<dd>Command state upon return of wait</dd>
+<dd>Command state upon return of wait, or ERT_CMD_STATE_TIMEOUT if timeout exceeded.</dd>
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
 <li><code class="docutils literal notranslate"><span class="pre">timeout</span></code>: <p> Timeout for wait (default block till run completes) </p>
@@ -1882,7 +1900,9 @@
 </dd>
 </dl>
 </p>
-<p>The current thread will block until the run completes or timeout expires. Completion does not guarantee success, the run status should be checked by using <code class="docutils literal notranslate"><span class="pre">state</span></code>. </p>
+<p>The current thread will block until the run completes or timeout expires. Completion does not guarantee success, the run status should be checked by using <code class="docutils literal notranslate"><span class="pre">state</span></code>.</p>
+<p>If specified time out is exceeded, the function returns with ERT_CMD_STATE_TIMEOUT, it is the callers responsibility to abort the run if it continues to time out.</p>
+<p>The current implementation of this API can mask out the timeout of this run so that the call either never returns or doesn’t return until the run completes by itself. This can happen if other runs are continuosly completing within the specified timeout for this run. If the device is otherwise idle, or if the time between run completion exceeds the specified timeout, then this function will identify the timeout. </p>
 </dd></dl>
 
 <dl class="function">
@@ -1892,7 +1912,7 @@
 <p><p>The default timeout of 0ms indicates blocking until run completes.</p>
 <dl class="docutils">
 <dt><strong>Return</strong></dt>
-<dd>Command state upon return of wait</dd>
+<dd>Command state upon return of wait, or ERT_CMD_STATE_TIMEOUT if timeout exceeded.</dd>
 <dt><strong>Parameters</strong></dt>
 <dd><ul class="breatheparameterlist first last simple">
 <li><code class="docutils literal notranslate"><span class="pre">timeout_ms</span></code>: Timeout in milliseconds </li>
@@ -1900,7 +1920,9 @@
 </dd>
 </dl>
 </p>
-<p>The current thread will block until the run completes or timeout expires. Completion does not guarantee success, the run status should be checked by using <code class="docutils literal notranslate"><span class="pre">state</span></code>. </p>
+<p>The current thread will block until the run completes or timeout expires. Completion does not guarantee success, the run status should be checked by using <code class="docutils literal notranslate"><span class="pre">state</span></code>.</p>
+<p>If specified time out is exceeded, the function returns with ERT_CMD_STATE_TIMEOUT, it is the callers responsibility to abort the run if it continues to time out.</p>
+<p>The current implementation of this API can mask out the timeout of this run so that the call either never returns or doesn’t return until the run completes by itself. This can happen if other runs are continuosly completing within the specified timeout for this run. If the device is otherwise idle, or if the time between run completion exceeds the specified timeout, then this function will identify the timeout. </p>
 </dd></dl>
 
 <dl class="function">
@@ -2215,7 +2237,7 @@
 <dt id="_CPPv4N3xrt4info6deviceE">
 <span id="_CPPv3N3xrt4info6deviceE"></span><span id="_CPPv2N3xrt4info6deviceE"></span><span class="target" id="namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829a"></span><em class="property">enum </em><code class="descname">device</code><a class="headerlink" href="#_CPPv4N3xrt4info6deviceE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Device information parameters. </p>
-<p>Use with <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"><span class="std std-ref"><span class="pre">xrt::device::get_info()</span></span></a></code> to retrieve properties of the device. The type of the device properties is compile time defined with param traits. </p>
+<p>Use with <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1device_1a483a7043274305c132d50d9bb4511254"><span class="std std-ref"><span class="pre">xrt::device::get_info()</span></span></a></code> to retrieve properties of the device. The type of the device properties is compile time defined with param traits. </p>
 <p><em>Values:</em></p>
 <dl class="enumerator">
 <dt id="_CPPv4N3xrt4info3bdfE">
@@ -2311,6 +2333,20 @@
 <dt id="_CPPv4N3xrt4info15dynamic_regionsE">
 <span id="_CPPv3N3xrt4info15dynamic_regionsE"></span><span id="_CPPv2N3xrt4info15dynamic_regionsE"></span><span class="target" id="namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d"></span><code class="descname">dynamic_regions</code><a class="headerlink" href="#_CPPv4N3xrt4info15dynamic_regionsE" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p>Information about xclbin on the device (std::string) </p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="enum">
+<dt id="_CPPv4N3xrt4info17InfoSchemaVersionE">
+<span id="_CPPv3N3xrt4info17InfoSchemaVersionE"></span><span id="_CPPv2N3xrt4info17InfoSchemaVersionE"></span><span class="target" id="namespacexrt_1_1info_1af137cdb12886f4b7d9211141cc66bef3"></span><em class="property">enum </em><code class="descname">InfoSchemaVersion</code><a class="headerlink" href="#_CPPv4N3xrt4info17InfoSchemaVersionE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Json schemaVersion parameters. </p>
+<p>Use with <code class="docutils literal notranslate"><a class="reference internal" href="#classxrt_1_1device_1a483a7043274305c132d50d9bb4511254"><span class="std std-ref"><span class="pre">xrt::device::get_info()</span></span></a></code> to retrieve a perticular version of schema of the properties. </p>
+<p><em>Values:</em></p>
+<dl class="enumerator">
+<dt id="_CPPv4N3xrt4info10json_20202E">
+<span id="_CPPv3N3xrt4info10json_20202E"></span><span id="_CPPv2N3xrt4info10json_20202E"></span><span class="target" id="namespacexrt_1_1info_1af137cdb12886f4b7d9211141cc66bef3ab2d3436a7e8f6dd4f0ffc3952cc318cc"></span><code class="descname">json_20202</code><a class="headerlink" href="#_CPPv4N3xrt4info10json_20202E" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Json 2020.2 schema </p>
 </dd></dl>
 
 </dd></dl>
@@ -3485,7 +3521,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xrtRunClose</code><span class="si
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 02, 2021.
+        Last updated on September 14, 2021.
       </span>
 
     </p>
