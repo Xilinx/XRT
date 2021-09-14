@@ -91,7 +91,7 @@ if [ "$help_arg" = "true" ]; then
     echo "             optionally filter the cards of interest, and execute the given"
     echo "             command options for either the 'xbutil' or 'xbmgmt' applications."
     echo 
-    echo "USAGE: deviceall [--help] [--device-filter arg] <xbutil | xbmgmt> <application arguments>"
+    echo "USAGE: xball [--help] [--device-filter arg] <xbutil | xbmgmt> <application arguments>"
     echo 
     echo "OPTIONS:"
     echo "  --help          - Help to use this script."
@@ -117,9 +117,9 @@ fi
 # Source the environment
 echo "Discovering installed devices...."
 # Files
-temp_python_status=$(mktemp -u --suffix=.deviceall.python.status)
-temp_json_file=$(mktemp -u --suffix=.deviceall.json)
-temp_log_file=$(mktemp -u --suffix=.deviceall.log)
+temp_python_status=$(mktemp -u --suffix=.xball.python.status)
+temp_json_file=$(mktemp -u --suffix=.xball.json)
+temp_log_file=$(mktemp -u --suffix=.xball.log)
 "${XRT_BIN_DIR}/${xrt_app}" examine --format json --output "${temp_json_file}" --force 2>&1 > "${temp_log_file}"
 
 
