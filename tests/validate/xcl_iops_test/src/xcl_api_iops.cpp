@@ -316,7 +316,7 @@ int _main(int argc, char* argv[])
         }
     }
 
-    if (test_path.empty()) {
+    if (test_path.empty() && xclbin_fn.empty()) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
