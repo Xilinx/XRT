@@ -126,7 +126,7 @@ struct xocl_xgq_cmd {
 	struct completion	xgq_cmd_complete;
 	xocl_xgq_complete_cb    xgq_cmd_cb;
 	void			*xgq_cmd_arg;
-	u16			xgq_cmd_rcode;
+	int			xgq_cmd_rcode;
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq		*xgq;
 };
@@ -172,7 +172,7 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
 		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
 
 		if (xgq_cmd->xgq_sq.xgq_sq_head.cid == ccmd->cid) {
-			XGQ_DBG(xgq, "xgq cmd %d completed", ccmd->cid);
+			XGQ_INFO(xgq, "xgq cmd %d completed", ccmd->cid);
 
 			list_del(pos);
 
@@ -196,6 +196,10 @@ void read_completion(struct xrt_com_queue_entry *ccmd, u64 addr)
 
 	for (i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
 		ccmd->data[i] = xgq_reg_read32(0, addr + i * 4);
+
+	printk("DZ__ v %x %x %x %x, cid %d, rcode %d\n",
+			ccmd->data[0], ccmd->data[1], ccmd->data[2], ccmd->data[3],
+			ccmd->cid, ccmd->rcode);
 
 	// Write 0 to first word to make sure the cmd state is not NEW
 	xgq_reg_write32(0, addr, 0x0);
@@ -354,9 +358,13 @@ static void xgq_cmd_timeout(struct timer_list *t)
 		if (xgq_cmd == timeout_cmd) {
 			list_del(pos);
 			
-			xgq_cmd->xgq_cmd_rcode = -ETIMEDOUT;
+			xgq_cmd->xgq_cmd_rcode = 0;
+			xgq_cmd->xgq_cmd_rcode = -ETIME;
 			complete(&xgq_cmd->xgq_cmd_complete);
 			mutex_unlock(&xgq->xgq_lock);
+
+			XGQ_ERR(xgq, "cmd id: %d timeout, reset device",
+				xgq_cmd->xgq_sq.xgq_sq_head.cid);
 			return;
 		}
 	}
@@ -444,7 +452,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
 
-	XGQ_DBG(xgq, "rcode %d", cmd->xgq_cmd_rcode);
+	XGQ_INFO(xgq, "rcode %d", cmd->xgq_cmd_rcode);
 
 	if (cmd->xgq_cmd_rcode)
 		ret = cmd->xgq_cmd_rcode;
@@ -545,7 +553,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
 	mod_timer(&cmd->xgq_cmd_timer, jiffies + XOCL_XGQ_CONFIG_TIME);
 
-	XGQ_DBG(xgq, "cid: %d", cmdp->cid);
+	XGQ_INFO(xgq, "submit cid: %d", cmdp->cid);
 	ret = submit_cmd(xgq, cmd);
 	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
@@ -554,10 +562,12 @@ static int xgq_check_firewall(struct platform_device *pdev)
 		goto done;
 	}
 
+	XGQ_INFO(xgq, "before wait cid: %d", cmdp->cid);
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	XGQ_INFO(xgq, "after wait cid: %d", cmdp->cid);
 
-	XGQ_DBG(xgq, "rcode: %d", cmd->xgq_cmd_rcode);
+	XGQ_INFO(xgq, "rcode: %d", cmd->xgq_cmd_rcode);
 
 	ret = cmd->xgq_cmd_rcode;
 done:

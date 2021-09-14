@@ -218,14 +218,18 @@ void xocl_reset_notify(struct pci_dev *pdev, bool prepare)
 		xocl_fini_sysfs(xdev);
 		xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 		xocl_subdev_offline_all(xdev);
-		if (!xrt_reset_syncup)
+		if (!xrt_reset_syncup) {
 			xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
+			xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_XGQ);
+		}
 	} else {
 		(void) xocl_config_pci(xdev);
 		xocl_clear_pci_errors(xdev);
 
-		if (!xrt_reset_syncup)
+		if (!xrt_reset_syncup) {
 			xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_MAILBOX);
+			xocl_subdev_offline_by_id(xdev, XOCL_SUBDEV_XGQ);
+		}
 
 		ret = xocl_subdev_online_all(xdev);
 		if (ret)
