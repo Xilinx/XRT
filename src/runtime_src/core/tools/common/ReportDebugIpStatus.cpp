@@ -158,9 +158,9 @@ private :
 
 
 DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
-					       bool jsonFormat,
+					       bool /*jsonFormat*/,
 					       const xrt_core::device* d,
-					       std::ostream& _output)
+					       std::ostream& /*_output*/)
     : handle(h)
     , device(d)
     , infoMessage("")
