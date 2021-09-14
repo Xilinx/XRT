@@ -2,8 +2,11 @@
 # Each line is a file pattern followed by one or more owners.
 # Order is important. The last matching pattern has the most precedence.
 
+src/runtime_src/core/tools/* @rozumx @ashivangi
+src/runtime_src/core/include/* @stsoe
+src/runtime_src/core/include/xclbin.h @rozumx
+src/runtime_src/core/incldue/ert.h @maxzhen @mamin506 @stsoe
 src/runtime_src/core/common/* @stsoe @rozumx
-src/runtime_src/core/common/tools/* @rozumx @ashivangi
 src/runtime_src/core/common/api/* @stsoe
 src/runtime_src/core/common/drv/* @mamin506
 src/runtime_src/core/pcie/emulation/* @chvamshi-xilinx
