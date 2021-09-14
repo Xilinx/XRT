@@ -38,7 +38,7 @@ ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev,
   xrt::device device(dev->get_device_id());
   boost::property_tree::ptree pt_pcie_info;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::pcie_info>();
+  ss << device.get_info<xrt::info::device::pcie_info>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, pt_pcie_info);
   
   // There can only be 1 root node

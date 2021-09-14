@@ -85,6 +85,9 @@ enum class key_type
   ps_kernel,
   xocl_errors,
   xclbin_full,
+  ic_enable,
+  ic_load_flash_address,
+
 
   xmc_version,
   xmc_board_name,
@@ -197,6 +200,7 @@ enum class key_type
   heartbeat_stall,
 
   firewall_detect_level,
+  firewall_detect_level_name,
   firewall_status,
   firewall_time_sec,
   power_microwatts,
@@ -233,6 +237,7 @@ enum class key_type
 
   config_mailbox_channel_disable,
   config_mailbox_channel_switch,
+  config_xclbin_change,
   cache_xclbin,
 
   clock_timestamp,
@@ -730,6 +735,32 @@ struct xclbin_full : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct ic_enable : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct ic_load_flash_address : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_load_flash_address;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
 };
 
 struct aie_metadata : request
@@ -2162,6 +2193,17 @@ struct firewall_detect_level : request
   }
 };
 
+struct firewall_detect_level_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::firewall_detect_level_name;
+  static const char* name() { return "level_name"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+};
+
 struct firewall_status : request
 {
   using result_type = uint64_t;
@@ -2500,6 +2542,20 @@ struct config_mailbox_channel_switch : request
   using value_type = std::string;   // put value type
 
   static const key_type key = key_type::config_mailbox_channel_switch;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct config_xclbin_change : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_xclbin_change;
 
   virtual boost::any
   get(const device*) const = 0;

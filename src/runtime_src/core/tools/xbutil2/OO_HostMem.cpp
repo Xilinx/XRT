@@ -103,7 +103,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
       size = XBUtilities::string_to_bytes(m_size);
   } 
   catch(const xrt_core::error&) {
-    std::cerr << "Value supplied to --size option is invalid" << std::endl;
+    std::cerr << "Value supplied to --size option is invalid. Please specify a memory size between 4M and 1G." << std::endl;
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

@@ -760,7 +760,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
+					write_unlock(&zdev->attr_rwlock);
 					zocl_create_aie(zdev, axlf, aie_res);
+					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(zdev, axlf, xclbin);
 				}
 			} else {
@@ -970,7 +972,9 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_init_mem(zdev, zdev->topology);
 
 	/* Createing AIE Partition */
+	write_unlock(&zdev->attr_rwlock);
 	zocl_create_aie(zdev, axlf, aie_res);
+	write_lock(&zdev->attr_rwlock);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
@@ -1021,7 +1025,16 @@ zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
-	WARN_ON(uuid_is_null(id));
+	if (!xclbin_id) {
+		DRM_ERROR("No active xclbin. Cannot hold ");
+		return -EINVAL;
+	}
+
+	// check whether uuid is null or not
+	if (uuid_is_null(id)) {
+		DRM_WARN("NULL uuid to hold\n");
+		return -EINVAL;
+	}
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 
 	if (!uuid_equal(id, xclbin_id)) {
@@ -1052,6 +1065,11 @@ static int
 zocl_xclbin_release(struct drm_zocl_dev *zdev, const xuid_t *id)
 {
 	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
+
+	if (!xclbin_uuid) {
+		DRM_ERROR("No active xclbin. Cannot release");
+		return -EINVAL;
+	}
 
 	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
 

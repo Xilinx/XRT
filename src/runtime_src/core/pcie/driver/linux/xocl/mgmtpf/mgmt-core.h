@@ -161,6 +161,9 @@ struct xclmgmt_dev {
 	/* preloaded xclbin */
 	char* preload_xclbin;
 	atomic_t cache_xclbin;
+
+	/* need to change fake xclbin to real xclbin */
+	atomic_t config_xclbin_change;
 };
 
 extern int health_check;
@@ -197,6 +200,7 @@ int xclmgmt_program_shell(struct xclmgmt_dev *lro);
 void xclmgmt_ocl_reset(struct xclmgmt_dev *lro);
 void xclmgmt_ert_reset(struct xclmgmt_dev *lro);
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro);
+int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin);
 
 /* bifurcation-reset.c */
 long xclmgmt_hot_reset_bifurcation(struct xclmgmt_dev *lro,

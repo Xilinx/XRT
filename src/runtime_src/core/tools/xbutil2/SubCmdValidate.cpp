@@ -1369,7 +1369,7 @@ get_platform_info(const std::shared_ptr<xrt_core::device>& device,
     const boost::property_tree::ptree& pt_platform = kp.second;
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
     ptTree.put("platform", pt_static_region.get<std::string>("vbnv", "N/A"));
-    ptTree.put("platform_id", pt_static_region.get<std::string>("interface_uuid", "N/A"));
+    ptTree.put("platform_id", pt_static_region.get<std::string>("logic_uuid", "N/A"));
     ptTree.put("sc_version", pt_platform.get<std::string>("controller.satellite_controller.version", "N/A"));
 
   }

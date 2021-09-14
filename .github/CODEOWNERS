@@ -1,0 +1,13 @@
+# This file defines code ownership in XRT.
+# Each line is a file pattern followed by one or more owners.
+# Order is important. The last matching pattern has the most precedence.
+
+src/runtime_src/core/common/* @stsoe @rozumx
+src/runtime_src/core/common/tools/* @rozumx @ashivangi
+src/runtime_src/core/common/api/* @stsoe
+src/runtime_src/core/pcie/emulation/* @chvamshi-xilinx
+src/runtime_src/core/pcie/driver/linux/* @maxzhen
+src/runtime_src/core/pcie/driver/windows/* @arpitxilinx
+src/runtime_src/core/pcie/linux/plugin/xdp/* @jvillarre
+src/runtime_src/xocl/* @stsoe
+src/runtime_src/xdp/* @jvillarre

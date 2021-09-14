@@ -79,11 +79,15 @@ schedulerUpdateStat(xrt_core::device *device)
 {
   try {
     // lock xclbin
-    auto uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device));
+    std::string xclbin_uuid = xrt_core::device_query<xrt_core::query::xclbin_uuid>(device);
+    // dont open a context if xclbin_uuid is empty
+    if(xclbin_uuid.empty())
+	    return;
+    auto uuid = xrt::uuid(xclbin_uuid);
     device->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
     auto at_exit = [] (auto device, auto uuid) { device->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
     xrt_core::scope_guard<std::function<void()>> g(std::bind(at_exit, device, uuid));
-    
+
     device->update_scheduler_status();
   }
   catch (const std::exception&) {
@@ -248,7 +252,7 @@ populate_cus_new(const xrt_core::device *device)
   boost::property_tree::ptree pt_dynamic_regions;
   xrt::device dev(device->get_device_id());
   std::stringstream ss;
-  ss << dev.get_info<xrt::info::device::dynamic_regions>();
+  ss << dev.get_info<xrt::info::device::dynamic_regions>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, pt_dynamic_regions);
   pt_dynamic_regions.add_child("compute_units", pt);
   return pt_dynamic_regions;

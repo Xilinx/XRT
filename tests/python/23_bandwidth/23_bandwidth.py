@@ -26,7 +26,7 @@ DATASIZE = int(1024*1024*16)    #16 MB
 
 def getThreshold(devhdl):
     threshold = 40000
-    name = devhdl.get_info(pyxrt.xrt_info_device.name);
+    name = devhdl.get_info(pyxrt.xrt_info_device.name, pyxrt.xrt_info_schema.json_20202)
 
     if "qdma" in name or "qep" in name:
         threshold = 30000
@@ -40,7 +40,7 @@ def getThreshold(devhdl):
 
 def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     bo = pyxrt.bo(devhdl, DATASIZE, pyxrt.bo.normal, krnlhdl.group_id(argno))
-    buf = bo.map();
+    buf = bo.map()
 
     for i in range(DATASIZE):
         buf[i] = i%256 if isInput else 0
@@ -88,8 +88,8 @@ def runKernel(opt):
             start = current_micro_time()
             rhandle1 = khandle1(output_bo1, input_bo1, beats, reps)
             rhandle2 = khandle2(output_bo2, input_bo2, beats, reps)
-            rhandle1.wait(5)
-            rhandle2.wait(5)
+            rhandle1.wait()
+            rhandle2.wait()
             end = current_micro_time()
 
             usduration = end - start
@@ -97,11 +97,11 @@ def runKernel(opt):
             output_bo1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
             output_bo2.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, limit, 0)
 
-            failed = (input_buf1[:limit] != output_buf1[:limit]);
+            failed = (input_buf1[:limit] != output_buf1[:limit])
             if (failed):
                 break
 
-            failed = (input_buf2[:limit] != output_buf2[:limit]);
+            failed = (input_buf2[:limit] != output_buf2[:limit])
             if (failed):
                 break
             # print("Reps = %d, Beats = %d, Duration = %lf us" %(reps, beats, usduration)) # for debug

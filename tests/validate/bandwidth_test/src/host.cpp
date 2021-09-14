@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
         } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
             dev_id = argv[i + 1];
         } else if ((strcmp(argv[i], "-l") == 0) || (strcmp(argv[i], "--loop_iter_cnt") == 0)) {
-            iter_cnt = atoi(argv[i + 1]);
+            iter_cnt = argv[i + 1];
         } else if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--supported") == 0)) {
             flag_s = true;
         } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {

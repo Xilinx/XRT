@@ -39,11 +39,11 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   xrt::device device(dev->get_device_id());
   boost::property_tree::ptree pt_platform;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::platform>();
+  ss << device.get_info<xrt::info::device::platform>(xrt::info::InfoSchemaVersion::json_20202);
   boost::property_tree::read_json(ss, pt_platform);
  
   // There can only be 1 root node
-  pt.add_child("platforms", pt_platform);
+  pt = pt_platform;
 }
 
 void 
@@ -60,7 +60,7 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
     const boost::property_tree::ptree& pt_platform = kp.second;
     const boost::property_tree::ptree& pt_static_region = pt_platform.get_child("static_region", empty_ptree);
     _output << boost::format("  %-23s: %s \n") % "XSA Name" % pt_static_region.get<std::string>("vbnv");
-    _output << boost::format("  %-23s: %s \n") % "Platform UUID" % pt_static_region.get<std::string>("interface_uuid");
+    _output << boost::format("  %-23s: %s \n") % "Platform UUID" % pt_static_region.get<std::string>("logic_uuid");
     _output << boost::format("  %-23s: %s \n") % "FPGA Name" % pt_static_region.get<std::string>("fpga_name");
     _output << boost::format("  %-23s: %s \n") % "JTAG ID Code" % pt_static_region.get<std::string>("jtag_idcode");
     

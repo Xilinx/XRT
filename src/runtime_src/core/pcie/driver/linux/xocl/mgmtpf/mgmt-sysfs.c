@@ -493,6 +493,34 @@ static DEVICE_ATTR(cache_xclbin, 0644,
 	cache_xclbin_show,
 	cache_xclbin_store);
 
+static ssize_t config_xclbin_change_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", atomic_read(&lro->config_xclbin_change));
+}
+
+static ssize_t config_xclbin_change_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xclmgmt_dev *lro = dev_get_drvdata(dev);
+	u32 val;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	if (val)
+		atomic_set(&lro->config_xclbin_change, 1);
+	else
+		atomic_set(&lro->config_xclbin_change, 0);
+
+	return count;
+}
+static DEVICE_ATTR(config_xclbin_change, 0644,
+	config_xclbin_change_show,
+	config_xclbin_change_store);
+
 static struct attribute *mgmt_attrs[] = {
 	&dev_attr_instance.attr,
 	&dev_attr_error.attr,
@@ -522,6 +550,7 @@ static struct attribute *mgmt_attrs[] = {
 	&dev_attr_mgmt_reset.attr,
 	&dev_attr_sbr_toggle.attr,
 	&dev_attr_cache_xclbin.attr,
+	&dev_attr_config_xclbin_change.attr,
 	NULL,
 };
 

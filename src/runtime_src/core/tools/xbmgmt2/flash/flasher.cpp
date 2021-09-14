@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * This is a wrapper class that does the prep work required to program a flash
  * device. Flasher will create a specific flash object determined by the program
@@ -116,7 +116,15 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         {
             retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
         }
-        break;
+
+        // program icap controller for webstar flow. Required only for U.2
+        try {
+            uint32_t enable = 1;
+            xrt_core::device_update<xrt_core::query::ic_enable>(m_device.get(), enable);
+            std::cout << "Successfully enabled icap controller ip for wbstar flow" << std::endl;
+        } catch (...) {}
+
+	break;
     }
     case BPI:
     {

@@ -33,22 +33,22 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
 
   static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
 
-  std::vector<std::string> interface_uuids;
+  std::vector<std::string> logic_uuids;
   try {
-    interface_uuids = xrt_core::device_query<xq::interface_uuids>(device);
-    interface_uuids.erase
-      (std::remove_if(interface_uuids.begin(), interface_uuids.end(),
+    logic_uuids = xrt_core::device_query<xq::logic_uuids>(device);
+    logic_uuids.erase
+      (std::remove_if(logic_uuids.begin(), logic_uuids.end(),
                       [](const std::string& s) {
                         return s.empty();
-                      }), interface_uuids.end());
+                      }), logic_uuids.end());
   }
   catch (const xq::exception&) {
   }
   
-  if (!interface_uuids.empty())
-    static_region.add("interface_uuid", xq::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
+  if (!logic_uuids.empty())
+    static_region.add("logic_uuid", xq::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
   else 
-    static_region.add("interface_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
+    static_region.add("logic_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
 
   try {
     static_region.add("jtag_idcode", xq::idcode::to_string(xrt_core::device_query<xq::idcode>(device)));
@@ -226,6 +226,7 @@ void
 add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 {
   ptree_type pt_platform;
+  ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
   add_board_info(device, pt_platform);
@@ -234,7 +235,8 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_clock_info(device, pt_platform);
   add_mac_info(device, pt_platform);
 
-  pt_platform_array.push_back(std::make_pair("", pt_platform));
+  pt_platforms.push_back(std::make_pair("", pt_platform));
+  pt_platform_array.add_child("platforms", pt_platforms);
 }
 
 } //unnamed namespace

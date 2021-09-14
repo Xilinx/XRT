@@ -54,8 +54,8 @@ def runKernel(opt):
     run2 = hello(boHandle2)
 
     print("Now wait for the kernels to finish using xrtRunWait()")
-    state1 = run1.wait(5)
-    state2 = run2.wait(5)
+    state1 = run1.wait()
+    state2 = run2.wait()
 
     print("Get the output data produced by the 2 kernel runs from the device")
     boHandle1.sync(pyxrt.xclBOSyncDirection.XCL_BO_SYNC_BO_FROM_DEVICE, opt.DATA_SIZE, 0)

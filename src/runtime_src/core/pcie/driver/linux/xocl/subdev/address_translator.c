@@ -109,7 +109,7 @@ static uint64_t addr_translator_get_range(struct platform_device *pdev)
 
 static uint64_t addr_translator_get_base_addr(struct platform_device *pdev)
 {
-	struct addr_translator *addr_translator = platform_get_drvdata(pdev);	
+	struct addr_translator *addr_translator = platform_get_drvdata(pdev);
 	struct trans_regs *regs = (struct trans_regs *)addr_translator->base;
 	xdev_handle_t xdev = ADDR_TRANSLATOR_DEV2XDEV(pdev);
 	u64 hi = 0, lo = 0;
@@ -131,9 +131,10 @@ static int addr_translator_set_page_table(struct platform_device *pdev, uint64_t
 	mutex_lock(&addr_translator->lock);
 
 	if (num > addr_translator->num_max) {
-		ret = -EINVAL;
-		goto done;
+		xocl_warn(&pdev->dev, "try to set page table with entry %d, cap %d ", num, addr_translator->num_max);
+		num = addr_translator->num_max;
 	}
+
 	if (!is_power_of_2(num)) {
 		ret = -EINVAL;
 		goto done;

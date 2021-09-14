@@ -52,6 +52,7 @@ struct xocl_cma_memory {
 struct xocl_cma_bank {
 	uint64_t		entry_sz;
 	uint64_t		entry_num;
+	uint64_t 		*phys_addrs;
 	struct xocl_cma_memory	cma_mem[1];
 };
 

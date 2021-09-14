@@ -478,6 +478,8 @@ initialize_query_table()
   emplace_sysfs_get<query::rom_uuid>                           ("rom", "uuid");
   emplace_sysfs_get<query::rom_time_since_epoch>               ("rom", "timestamp");
   emplace_sysfs_get<query::xclbin_uuid>                        ("", "xclbinuuid");
+  emplace_sysfs_getput<query::ic_enable>                       ("icap_controller", "enable");
+  emplace_sysfs_getput<query::ic_load_flash_address>           ("icap_controller", "load_flash_addr");
   emplace_sysfs_get<query::memstat>                            ("", "memstat");
   emplace_sysfs_get<query::memstat_raw>                        ("", "memstat_raw");
   emplace_sysfs_get<query::mem_topology_raw>                   ("icap", "mem_topology");
@@ -584,6 +586,7 @@ initialize_query_table()
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
+  emplace_sysfs_get<query::firewall_detect_level_name>        ("firewall", "detected_level_name");
   emplace_sysfs_get<query::firewall_status>                   ("firewall", "detected_status");
   emplace_sysfs_get<query::firewall_time_sec>                 ("firewall", "detected_time");
 
@@ -622,6 +625,7 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_data_integrity>               ("ert_user", "data_integrity");
   emplace_sysfs_getput<query::config_mailbox_channel_disable> ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch> ("", "config_mailbox_channel_switch");
+  emplace_sysfs_getput<query::config_xclbin_change>          ("", "config_xclbin_change");
   emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");

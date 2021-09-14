@@ -163,7 +163,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
 int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info);
-int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx);
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx);
 int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 		    int idx, unsigned long size, u32 *addrp);
 int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd);
