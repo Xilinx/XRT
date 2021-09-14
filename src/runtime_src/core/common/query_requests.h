@@ -76,6 +76,7 @@ enum class key_type
   temp_by_mem_topology,
   mem_topology_raw,
   ip_layout_raw,
+  debug_ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
@@ -797,6 +798,15 @@ struct ip_layout_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::ip_layout_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct debug_ip_layout_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::debug_ip_layout_raw;
 
   virtual boost::any
   get(const device*) const = 0;

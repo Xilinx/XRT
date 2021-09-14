@@ -486,6 +486,7 @@ initialize_query_table()
   emplace_sysfs_get<query::dma_stream>                         ("dma", "");
   emplace_sysfs_get<query::group_topology>                     ("icap", "group_topology");
   emplace_sysfs_get<query::ip_layout_raw>                      ("icap", "ip_layout");
+  emplace_sysfs_get<query::debug_ip_layout_raw>                ("icap", "debug_ip_layout");
   emplace_sysfs_get<query::clock_freq_topology_raw>            ("icap", "clock_freq_topology");
   emplace_sysfs_get<query::clock_freqs_mhz>                    ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                             ("icap", "idcode");
