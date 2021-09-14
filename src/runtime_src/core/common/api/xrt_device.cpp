@@ -250,10 +250,9 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
     });
 }
 
-//version plumbing will be added when we introduce new versions of json schema
 boost::any
 device::
-get_info(info::device param, info::InfoSchemaVersion /*version*/) const
+get_info(info::device param) const
 {
   switch (param) {
   case info::device::bdf :                    // std::string
