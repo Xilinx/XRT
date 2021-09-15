@@ -22,6 +22,8 @@
 #include "core/common/api/error_int.h"
 #include "core/include/experimental/xrt_error.h"
 #include "core/include/xrt_error_code.h"
+#include "core/common/query_requests.h"
+
 #include <boost/algorithm/string.hpp>
 
 const static long unsigned NanoSecondsPerSecond = 1000000000;
@@ -29,8 +31,42 @@ const static long unsigned NanoSecondsPerSecond = 1000000000;
 boost::property_tree::ptree
 populate_async_error(const xrt_core::device * device)
 {
-  boost::property_tree::ptree pt;
   boost::property_tree::ptree error_array;
+
+  //Code for new format; Binary array of error structs in sysfs
+  try {
+    auto buf = xrt_core::device_query<xrt_core::query::xocl_errors>(device);
+    if (buf.empty())
+      return error_array;
+    auto all_errors = xrt_core::query::xocl_errors::to_errors(buf);
+    for (auto error: all_errors) {
+      auto error_code = error.err_code;
+      auto timestamp = error.ts;
+      auto pid = error.pid;
+      if (error_code && timestamp) {
+        boost::property_tree::ptree _pt;
+        boost::property_tree::ptree node;
+        xrt_core::error_int::get_error_code_to_json(error_code, _pt);
+        node.put("time.epoch", timestamp);
+        node.put("time.timestamp", xrt_core::timestamp(timestamp/NanoSecondsPerSecond));
+        node.put("pid", pid);
+        node.put("class", _pt.get<std::string>("class.string"));
+        node.put("module", _pt.get<std::string>("module.string"));
+        node.put("severity", _pt.get<std::string>("severity.string"));
+        node.put("driver", _pt.get<std::string>("driver.string"));
+        node.put("error_code.error_id", _pt.get<int>("number.code"));
+        node.put("error_code.error_msg", _pt.get<std::string>("number.string"));
+        error_array.push_back(std::make_pair("", node));
+      }
+    }
+
+    return error_array;
+  } catch (const xrt_core::query::no_such_key&) {
+    // Ignoring for now. Check below for edge if not available
+    // query table of zocl doesn't have xocl_errors key
+  }
+
+  //Below code will be removed after zocl changes for new format
   xrt::device xdevice(device->get_device_handle());
   try {
     for (xrtErrorClass ecl = XRT_ERROR_CLASS_FIRST_ENTRY; ecl < XRT_ERROR_CLASS_LAST_ENTRY ; ecl = xrtErrorClass(ecl+1)) {
@@ -56,8 +92,6 @@ populate_async_error(const xrt_core::device * device)
   catch (const std::exception&) {
     // ignore, likely that async error not supported
   }
-
-  pt.add_child("errors", error_array);
 
   return error_array;
 }
