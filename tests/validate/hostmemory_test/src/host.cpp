@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
     std::string iter_cnt = "10000";
-    std::string b_file = "/slavebridge.xclbin";
+    std::string b_file = "/hostmemory.xclbin";
     bool flag_s = false;
 
     for (int i = 1; i < argc; i++) {
@@ -84,7 +84,6 @@ int main(int argc, char** argv) {
         std::cout << msg;
     }
 
-    std::string b_file = "/hostmemory.xclbin";
     std::string binaryFile = test_path + b_file;
     std::ifstream infile(binaryFile);
     if (!infile.good()) {
