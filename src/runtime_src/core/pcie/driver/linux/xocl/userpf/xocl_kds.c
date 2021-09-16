@@ -164,14 +164,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	}
 
 	if (ecmd->opcode == ERT_SK_START) {
-		xcmd->opcode = OP_START_SK;
-		ecmd->type = ERT_SCU;
+		start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	} else {
 		xcmd->opcode = OP_CONFIG_SK;
 		ecmd->type = ERT_CTRL;
+		xcmd->execbuf = (u32 *)ecmd;
 	}
-
-	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -277,22 +275,17 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	      struct drm_xocl_ctx *args)
 {
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	u32 cu_idx = args->cu_index;
-	int ret;
+	int cu_idx = args->cu_index;
 
 	if (!kds->cu_intr_cap) {
 		userpf_err(xdev, "Shell not support CU to host interrupt");
 		return -EOPNOTSUPP;
 	}
 
-	ret = kds_open_ucu(kds, client, cu_idx);
-	if (ret < 0)
-		return ret;
-
 	userpf_info(xdev, "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
-	return 0;
+	return kds_open_ucu(kds, client, cu_idx);
 }
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
@@ -360,7 +353,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
 	off_idx = 4 + num_cu;
 	for (i = 0; i < num_scu; i++)
-		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+		kds->scu_mgmt.cu_stats->usage[i] = ecmd->data[off_idx + i];
 
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
@@ -1058,13 +1051,14 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	if (ecmd->state != ERT_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Cfg command state %d. ERT will be disabled",
-			   ecmd->state);
+	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Cfg command state %d", ecmd->state);
 		ret = 0;
 		kds->ert_disable = true;
 		goto out;
 	}
+
+	WARN_ON(ecmd->state != ERT_CMD_STATE_COMPLETED);
 
 	/* If xrt.ini is not disabled, let it determines ERT enable/disable */
 	if (!kds->ini_disable)
