@@ -270,7 +270,7 @@ device::
 get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id) const
 {
 
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
+  if (xclbin_id && (xclbin_id != m_xclbin.get_uuid()))
     throw error(EINVAL, "xclbin id mismatch");
 
   if (!m_xclbin)

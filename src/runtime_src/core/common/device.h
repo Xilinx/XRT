@@ -275,10 +275,10 @@ public:
    * Same behavior as other get_axlf_sections()
    */
   XRT_CORE_COMMON_EXPORT
-  std::vector<std::pair<const char*, size_t> >
+  std::vector<std::pair<const char*, size_t>>
   get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
 
-  std::vector<std::pair<const char*, size_t> >
+  std::vector<std::pair<const char*, size_t>>
   get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
 
   /**

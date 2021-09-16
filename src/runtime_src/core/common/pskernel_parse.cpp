@@ -28,7 +28,7 @@ extract_args (Dwarf_Die *die)
   Dwarf_Die child;
   Dwarf_Attribute attr_mem;
   Dwarf_Die type_mem;
-  Dwarf_Die *type;
+  Dwarf_Die *type = NULL;
   Dwarf_Word var_size;
   const char *var_name;
   std::vector<xrt_core::pskernel::kernel_argument> return_args;
@@ -52,8 +52,7 @@ extract_args (Dwarf_Die *die)
 
   if (dwarf_child (die, &child) == 0)
     do
-      switch (dwarf_tag (&child))
-	{
+      switch (dwarf_tag (&child)){
 	case DW_TAG_formal_parameter:
 	  // Extract parameter name and type
 	  xrt_core::pskernel::kernel_argument arg;
@@ -132,8 +131,7 @@ extract_args (Dwarf_Die *die)
 
 	  return_args.emplace_back(arg);
 	  break;
-	}
-    while (dwarf_siblingof (&child, &child) == 0);
+	} while (dwarf_siblingof (&child, &child) == 0);
 
   return return_args;
 }
@@ -153,31 +151,30 @@ std::vector<xrt_core::pskernel::kernel_argument> pskernel_parse(const char *so_f
     uint8_t addresssize;
     uint8_t offsetsize;
     
-    while (dwarf_nextcu (dw, old_offset, &offset, &hsize, &abbrev, &addresssize, &offsetsize) == 0)
-      {
-	Dwarf_Die cudie_mem;
-	Dwarf_Die *cudie = dwarf_offdie (dw, old_offset + hsize, &cudie_mem);
-	Dwarf_Die child;
-	Dwarf_Die *func_die;
-	
-	if (dwarf_child (cudie, &child) == 0)
-	  do {
-	    if(dwarf_tag(&child) == DW_TAG_subprogram) {
-	      const char *name = dwarf_diename (&child);
-	      if( fnmatch(func_name,name,0)==0 ) {
-		func_die = &child;
-		args = extract_args (func_die);
-	      }
+    while (dwarf_nextcu (dw, old_offset, &offset, &hsize, &abbrev, &addresssize, &offsetsize) == 0) {
+      Dwarf_Die cudie_mem;
+      Dwarf_Die *cudie = dwarf_offdie (dw, old_offset + hsize, &cudie_mem);
+      Dwarf_Die child;
+      Dwarf_Die *func_die;
+      
+      if (dwarf_child (cudie, &child) == 0)
+	do {
+	  if(dwarf_tag(&child) == DW_TAG_subprogram) {
+	    const char *name = dwarf_diename (&child);
+	    if (fnmatch(func_name,name,0) == 0) {
+	      func_die = &child;
+	      args = extract_args (func_die);
 	    }
-	  } while (dwarf_siblingof (&child, &child) == 0);
-	
-	old_offset = offset;
-      }
+	  }
+	} while (dwarf_siblingof (&child, &child) == 0);
+      
+      old_offset = offset;
+    }
     
     dwarf_end(dw);
   }
 
-  if(args.size()>0)
+  if(!args.empty())
     return args;
   else {
     throw std::runtime_error("No PS kernel arguments found!");
@@ -200,12 +197,11 @@ std::vector<xrt_core::pskernel::kernel_argument> pskernel_parse(char *so_file, s
     uint8_t addresssize;
     uint8_t offsetsize;
     
-    while (dwarf_nextcu (dw, old_offset, &offset, &hsize, &abbrev, &addresssize, &offsetsize) == 0)
-      {
+    while (dwarf_nextcu (dw, old_offset, &offset, &hsize, &abbrev, &addresssize, &offsetsize) == 0) {
 	Dwarf_Die cudie_mem;
 	Dwarf_Die *cudie = dwarf_offdie (dw, old_offset + hsize, &cudie_mem);
 	Dwarf_Die child;
-	Dwarf_Die *func_die;
+	Dwarf_Die *func_die = NULL;
 	
 	if (dwarf_child (cudie, &child) == 0)
 	  do {
@@ -224,7 +220,7 @@ std::vector<xrt_core::pskernel::kernel_argument> pskernel_parse(char *so_file, s
     dwarf_end(dw);
   }
 
-  if(args.size()>0)
+  if(!args.empty())
     return args;
   else {
     throw std::runtime_error("No PS kernel arguments found!");

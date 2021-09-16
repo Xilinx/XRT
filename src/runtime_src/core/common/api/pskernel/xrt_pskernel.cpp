@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2021, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -390,8 +390,8 @@ public:
   // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<psip_context>
-  open(xrt_core::device* device, const xrt::uuid& xclbin_id, size_t range,
-       const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
+  open(xrt_core::device* device, const xrt::uuid& xclbin_id,
+       unsigned int ipidx, unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
     static std::map<xrt_core::device*, std::array<std::weak_ptr<psip_context>, max_cus>> dev2ips;
@@ -400,10 +400,10 @@ public:
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<psip_context>(new psip_context(device, xclbin_id, range, ip, ipidx, cuidx, am));
+      ipctx = std::shared_ptr<psip_context>(new psip_context(device, xclbin_id, ipidx, cuidx, am));
       ips[cuidx] = ipctx;
     }
-
+    
     if (ipctx->access != am)
       throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(cuidx) + ")");
 
@@ -437,7 +437,7 @@ public:
   {
     if (access != access_mode::none)
       throw std::runtime_error("Cannot change current access mode");
-    device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
+    device->open_context(xid.get(), cuidx+max_cus, std::underlying_type<access_mode>::type(am));
     access = am;
   }
 
@@ -451,18 +451,6 @@ public:
   void
   close()
   {}
-
-  size_t
-  get_size() const
-  {
-    return size;
-  }
-
-  uint64_t
-  get_address() const
-  {
-    return address;
-  }
 
   unsigned int
   get_cuidx() const
@@ -488,7 +476,10 @@ public:
 
   ~psip_context()
   {
-    device->close_context(xid.get(), cuidx);
+    if(cuidx==virtual_cu_idx) 
+      device->close_context(xid.get(), cuidx);
+    else
+      device->close_context(xid.get(), cuidx+max_cus);
   }
 
   psip_context(const psip_context&) = delete;
@@ -498,18 +489,16 @@ public:
 
 private:
   // regular CU
-  psip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, size_t range,
-             const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
+  psip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id,
+             unsigned int ipindex, unsigned int cuindex, access_mode am)
     : device(dev)
     , xid(xclbin_id)
     , args(dev, xclbin_id, ipindex)
     , cuidx(cuindex)
-    , address(0)
-    , size(range)
     , access(am)
   {
     if (access != access_mode::none)
-      device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
+      device->open_context(xid.get(), cuidx+max_cus, std::underlying_type<access_mode>::type(am));
   }
 
   // virtual CU
@@ -517,8 +506,6 @@ private:
     : device(dev)
     , xid(std::move(xclbin_id))
     , cuidx(virtual_cu_idx)
-    , address(0)
-    , size(0)
     , access(access_mode::shared)
   {
     device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(access));
@@ -528,8 +515,6 @@ private:
   xrt::uuid xid;            // xclbin uuid
   connectivity args;        // argument memory connections
   unsigned int cuidx;       // cu index for execution
-  uint64_t address;         // base address for programming
-  size_t size;              // address space size
   access_mode access;       // compute unit access mode
 };
 
@@ -1115,9 +1100,6 @@ class pskernel_impl
     if (!force && mode != psip_context::access_mode::exclusive && !xrt_core::config::get_rw_shared())
       throw std::runtime_error("Cannot read or write kernel with shared access");
 
-    if ((offset + sizeof(uint32_t)) > ipctx->get_size())
-        throw std::out_of_range("Cannot read or write outside kernel register space");
-
     return ipctx->get_cuidx();
   }
 
@@ -1175,9 +1157,10 @@ public:
 	sko.size = soft->m_image_size;
 	sko.sk_buf = const_cast<char*>(sk.first+soft->m_image_offset);  // NOLINT
 	sk_found = true;
-	XRT_DEBUGF("pskernel_impl::sk_found!  sko_ninst = %d, sko.symbol_name = %s\n" , sko.ninst, sko.symbol_name);
+	XRT_DEBUGF("pskernel_impl::sk_found!  sko_ninst = %d, sko.symbol_name = %s\n" , sko.ninst, sko.symbol_name.c_str());
 	break;
-      } else {
+      }
+      else {
 	cuidx_start += soft->m_num_instances;
       }
       
@@ -1186,16 +1169,18 @@ public:
       throw std::runtime_error("No soft kernel matching '" + name + "'");
 
     // Generate CU masks
+    // Check for <kernel name>:{n,n+1,...}
     if(nm.find(":") == std::string::npos ) {
       // Use all instances of PS kernels
-      for(int i=0;i<(int)sko.ninst;i++) {
+      for(int i=0;i<static_cast<int>(sko.ninst);i++) {
 	int cuidx = cuidx_start + i;
 	XRT_DEBUGF("PS kernel cuidx = %d\n",cuidx);
-	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, 0, 0, cuidx, cuidx, am));
+	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, cuidx, cuidx, am));
 	cumask.set(cuidx);
 	num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
       }
-    } else {
+    }
+    else {
       // Use CUs from list
       std::vector<std::string> kernel_cus;
       auto culist = nm.substr(nm.find(":")+1);
@@ -1216,7 +1201,7 @@ public:
       for (auto cu : kernel_cus) {
 	XRT_DEBUGF("Picking CUs %s\n",cu.c_str());
 	auto cuidx = cuidx_start + std::stoi(cu);
-	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, 0, 0, cuidx, cuidx, am));
+	ipctxs.emplace_back(psip_context::open(device->get_core_device(), xclbin_id, cuidx, cuidx, am));
 	cumask.set(cuidx);
 	num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
       }

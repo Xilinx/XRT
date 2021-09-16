@@ -1580,6 +1580,64 @@ static int icap_create_subdev_cu(struct platform_device *pdev)
 	return err;
 }
 
+// Create subdev for PS kernels
+static int icap_create_subdev_scu(struct platform_device *pdev)
+{
+	struct icap *icap = platform_get_drvdata(pdev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ps_kernel_node *ps_kernel = icap->ps_kernel;
+	struct ps_kernel_data *scu_data;
+	struct xrt_cu_info info;
+	int err = 0, i, j;
+	int inst = 0;
+
+	/* Let SCU controller know the dynamic resources */
+	for (i = 0; i < ps_kernel->pkn_count; ++i) {
+		scu_data = &ps_kernel->pkn_data[i];
+
+		for (j=0; j < scu_data->pkd_num_instances; ++j) {
+			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
+			struct kernel_info *krnl_info;
+			
+			memset(&info, 0, sizeof(info));
+			strncpy(info.kname, scu_data->pkd_sym_name, sizeof(info.kname));
+			info.kname[sizeof(info.kname)-1] = '\0';
+			info.inst_idx = inst++;
+			sprintf(info.iname, "%d",info.inst_idx);
+			info.iname[sizeof(info.iname)-1] = '\0';
+			
+			krnl_info = xocl_query_kernel(xdev, info.kname);
+			if (!krnl_info) {
+				ICAP_WARN(icap, "%s has no metadata. try use default", info.kname);
+				/* Workaround for U30, maybe we can remove this in the future */
+				/*continue;*/
+			}
+			
+			/* PS kernel do not have base address */
+			info.addr = 0;
+			/* Workaround for U30, maybe we can remove this in the future */
+			info.size = (krnl_info) ? krnl_info->range : 0x1000;
+			if (krnl_info && (krnl_info->features & KRNL_SW_RESET))
+				info.sw_reset = true;
+			info.num_res = subdev_info.num_res;
+			info.intr_enable = 0;
+			info.protocol = CTRL_HS;
+			info.intr_id = 0;
+			
+			subdev_info.res[0].start = 0;
+			subdev_info.res[0].end = info.size - 1;
+			subdev_info.priv_data = &info;
+			subdev_info.data_len = sizeof(info);
+			subdev_info.override_idx = info.inst_idx;
+			err = xocl_subdev_create(xdev, &subdev_info);
+			if (err)
+				ICAP_ERR(icap, "Create SCU %s instance %d failed. Skip", scu_data->pkd_sym_name, info.inst_idx);
+		}
+	}
+
+	return err;
+}
+
 /*
  * TODO: clear the comments, it seems that different subdev has different
  *    flow during creation. Using specific function to create specific subdev
@@ -2440,6 +2498,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	icap_create_subdev_ip_layout(pdev);
 	icap_create_subdev_cu(pdev);
+	icap_create_subdev_scu(pdev);
 	icap_create_subdev_debugip(pdev);
 
 	icap_cache_max_host_mem_aperture(icap);

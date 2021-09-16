@@ -528,7 +528,6 @@ class xclbin_full : public xclbin_impl
   std::vector<char> m_axlf;  // complete copy of xclbin raw data
   const axlf* m_top = nullptr;
   uuid m_uuid;
-  //  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
   std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
 
   void
@@ -568,7 +567,8 @@ class xclbin_full : public xclbin_impl
 	  m_axlf_sections.emplace(kind , std::move(data));
 	  hdr = ::xclbin::get_axlf_section_next(m_top, hdr, kind);
 	}
-      } else {
+      }
+      else {
 	auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
 	std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
 	m_axlf_sections.emplace(kind , std::move(data));
@@ -626,14 +626,15 @@ public:
 
     int count = std::distance(result.first, result.second);
 
-    if(count>0) {
+    if (count > 0) {
       std::vector< std::pair<const char*, size_t> > return_sections;
 
       for (auto itr = result.first; itr != result.second; itr++)
 	return_sections.emplace_back(std::make_pair((*itr).second.data(), (*itr).second.size()));
 
       return return_sections;
-    } else {
+    }
+    else {
       return {};
     }
   }

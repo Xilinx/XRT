@@ -232,8 +232,6 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_uint32,ffi_args) != FFI_OK) {
     syslog(LOG_ERR, "Cannot prep FFI arguments!");
     return;
-  } else {
-    syslog(LOG_INFO, "FFI prep done!\n");
   }
   
   while (1) {
@@ -251,7 +249,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     if (!(args_from_host[0] & 0x1))
       continue; //AP_START bit is not set; New Cmd is not available
 
-    // Original PS Kernel implementation
+    // New PS Kernel implementation
+    // Check for call signature of only 2 arguments and 2nd argument has name os ops
     if(args.size()==2 && args[1].name.compare("ops")==0) {
     } else {
       // FFI PS Kernel implementation
@@ -275,6 +274,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     
     }
 
+    // Original PS Kernel implementation
+    // Check for call signature of only 2 arguments and 2nd argument has name os ops
     if(args.size()==2 && args[1].name.compare("ops")==0) {
       kernel_return = old_kernel(&args_from_host[1],&ops);
     } else {

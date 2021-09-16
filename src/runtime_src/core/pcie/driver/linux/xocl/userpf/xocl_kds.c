@@ -164,14 +164,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	}
 
 	if (ecmd->opcode == ERT_SK_START) {
-		xcmd->opcode = OP_START_SK;
-		ecmd->type = ERT_SCU;
+		start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	} else {
 		xcmd->opcode = OP_CONFIG_SK;
 		ecmd->type = ERT_CTRL;
+		xcmd->execbuf = (u32 *)ecmd;
 	}
-
-	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -355,7 +353,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
 	off_idx = 4 + num_cu;
 	for (i = 0; i < num_scu; i++)
-		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+		kds->scu_mgmt.cu_stats->usage[i] = ecmd->data[off_idx + i];
 
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
