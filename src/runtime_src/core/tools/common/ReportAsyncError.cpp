@@ -39,7 +39,7 @@ populate_async_error(const xrt_core::device * device)
     if (buf.empty())
       return error_array;
     auto all_errors = xrt_core::query::xocl_errors::to_errors(buf);
-    for (auto error: all_errors) {
+    for (const auto& error: all_errors) {
       auto error_code = error.err_code;
       auto timestamp = error.ts;
       auto pid = error.pid;
