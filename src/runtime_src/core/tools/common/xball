@@ -91,7 +91,7 @@ if [ "$help_arg" = "true" ]; then
     echo "             optionally filter the cards of interest, and execute the given"
     echo "             command options for either the 'xbutil' or 'xbmgmt' applications."
     echo 
-    echo "USAGE: xball [--help] [--device-filter arg] <xbutil | xbmgmt> <application arguments>"
+    echo "USAGE: xball [--help] [--device-filter arg] <xbutil | xbmgmt> <utility arguments>"
     echo 
     echo "OPTIONS:"
     echo "  --help          - Help to use this script."
@@ -100,8 +100,8 @@ if [ "$help_arg" = "true" ]; then
     echo "                      'u30'          - Only u30 devices"
     echo "                      '^xilinx_u250' - Shell names starting with xilnx_u250"
     echo 
-    echo "Additionally, the 'application arguments' are the arguments that will be sent to"
-    echo "the given XRT application (e.g., xbutil or xbmgmt)"
+    echo "Additionally, the 'utility arguments' are the arguments that will be sent to"
+    echo "the given XRT utility (e.g., xbutil or xbmgmt)"
     echo
     exit
 fi
