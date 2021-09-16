@@ -260,6 +260,28 @@ public:
   }
 
   /**
+   * get_axlf_sections() - Get sections from currently loaded axlf
+   *
+   * xclbin_id:  Check that xclbin_id matches currently cached
+   * Return:     Vectors of Pair of section data and size in bytes
+   *
+   * This function provides access to meta data sections that are
+   * from currently loaded xclbin.  The returned sections are from when the
+   * xclbin was loaded by this process.  The function cannot be used
+   * unless this process loaded the xclbin.
+   *
+   * The function returns {nullptr, 0} if section is not cached.
+   *
+   * Same behavior as other get_axlf_sections()
+   */
+  XRT_CORE_COMMON_EXPORT
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
+
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
+
+  /**
    * get_memidx_encoding() - An encoding compressing mem topology indices
    *
    * Returned container is indexed by mem_topology index and maps to
