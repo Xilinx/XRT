@@ -84,6 +84,13 @@ Once the networking connection is setup, the following configurations are also r
 
         # Start MPD in VM
         VM>$ sudo systemctl start mpd
+        
+        #Enable these services If you want them to be in active even after reboot
+        Host>$ sudo systemctl enable msd
+
+        VM>$ sudo systemctl enable mpd
+
+
 
 The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:
 
