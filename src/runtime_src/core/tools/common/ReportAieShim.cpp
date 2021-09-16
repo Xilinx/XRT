@@ -31,7 +31,6 @@
 
 
 namespace qr = xrt_core::query;
-std::vector<std::string> aieTileList;
 
 static void
 addnodelist(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
@@ -263,6 +262,7 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
                             std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+  std::vector<std::string> aieTileList;
 
   _output << "AIE\n";
 
@@ -287,8 +287,8 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
 
     for (auto &tile : ptShimTiles) {
       int curr_tile = count++;
-      if(_elementsFilter.size() && (std::find(aieTileList.begin(), aieTileList.end(),
-				std::to_string(curr_tile)) == aieTileList.end()))
+      if(std::find(aieTileList.begin(), aieTileList.end(),
+				std::to_string(curr_tile)) == aieTileList.end())
         continue;
 
       _output << boost::format("Tile[%2d]\n") % curr_tile;
