@@ -90,8 +90,6 @@ Once the networking connection is setup, the following configurations are also r
 
         VM>$ sudo systemctl enable mpd
 
-
-
 The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:
 
 .. image:: sw-mailbox-msd-mpd-download.svg
