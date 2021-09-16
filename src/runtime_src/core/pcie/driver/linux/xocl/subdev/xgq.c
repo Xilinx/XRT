@@ -65,7 +65,7 @@
 #define XOCL_XGQ_DATA_OFFSET (XOCL_XGQ_RING_LEN + XOCL_XGQ_RESERVE_LEN)
 #define XOCL_XGQ_DEV_STAT_OFFSET (XOCL_XGQ_RING_LEN)
 
-static DEFINE_IDA(xocl_xgq_cid_ida);
+static DEFINE_IDR(xocl_xgq_cid_idr);
 
 /* cmd timeout in seconds */
 #define XOCL_XGQ_FLASH_TIME 	msecs_to_jiffies(10 * 60 * 1000) 
@@ -392,12 +392,21 @@ static u64 memcpy_to_devices(struct xocl_xgq *xgq, const void *xclbin_data,
 
 static inline int get_xgq_cid(struct xocl_xgq *xgq)
 {
+	int id;
+
 	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_cmd_id++;
+	id = idr_alloc_cyclic(&xocl_xgq_cid_idr, xgq, 0, 0, GFP_KERNEL);
 	mutex_unlock(&xgq->xgq_lock);
-	
-	return xgq->xgq_cmd_id;	
-} 
+
+	return id;
+}
+
+static inline void remove_xgq_cid(struct xocl_xgq *xgq, int id)
+{
+	mutex_lock(&xgq->xgq_lock);
+	idr_remove(&xocl_xgq_cid_idr, id);
+	mutex_unlock(&xgq->xgq_lock);
+}
 
 /*
  * Utilize shared memory between host and device to transfer data.
@@ -409,6 +418,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	struct xrt_sub_queue_entry *cmdp = NULL;
 	struct xgq_vmr_pkt *pkt;
 	ssize_t ret = 0;
+	int id;
 
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd)
@@ -426,16 +436,20 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	pkt->payload_xclbin.address = memcpy_to_devices(xgq, u_xclbin, xclbin_len);
 	pkt->payload_xclbin.size = xclbin_len;
 
-	cmdp = &(cmd->xgq_sq.xgq_sq_head);
-	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
-	cmdp->state = 1;
-	//cmdp->cid = ida_simple_get(&xocl_xgq_cid_ida, 0, 0, GFP_KERNEL);
-	cmdp->cid = get_xgq_cid(xgq);
-	cmdp->count = sizeof(struct xgq_vmr_pkt);
-
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq = xgq;
+
+	cmdp = &(cmd->xgq_sq.xgq_sq_head);
+	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
+	cmdp->state = 1;
+	cmdp->count = sizeof(struct xgq_vmr_pkt);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	cmdp->cid = id;
 
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
@@ -460,7 +474,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		ret = xclbin_len;
 done:
 	if (cmd) {
-		//ida_simple_remove(&xocl_xgq_cid_ida, cmdp->cid);
+		remove_xgq_cid(xgq, id);
 		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
@@ -520,6 +534,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	struct xrt_sub_queue_entry *cmdp = NULL;
 	struct xgq_vmr_pkt *pkt;
 	int ret = 0;
+	int id;
 
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);	
 	if (!cmd) {
@@ -531,20 +546,21 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	pkt = &(cmd->xgq_sq.xgq_sq_pkt);
 	pkt->head.version = 0;
 	pkt->head.type = XRT_XGQ_PKT_TYPE_AF;
-	/* sudo address, for collect verbose data back
-	pkt->payload_af.buffer_addr = 0xff;
-	pkt->payload_af.buffer_size = 0xbb;
-	*/
-
-	cmdp = &(cmd->xgq_sq.xgq_sq_head);
-	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
-	cmdp->state = 1;
-	cmdp->cid = get_xgq_cid(xgq);
-	cmdp->count = sizeof(struct xgq_vmr_pkt);
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq = xgq;
+
+	cmdp = &(cmd->xgq_sq.xgq_sq_head);
+	cmdp->opcode = XRT_CMD_OP_CONFIGURE;
+	cmdp->state = 1;
+	cmdp->count = sizeof(struct xgq_vmr_pkt);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	cmdp->cid = id;
 
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
@@ -572,6 +588,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	ret = cmd->xgq_cmd_rcode;
 done:
 	if (cmd) {
+		remove_xgq_cid(xgq, id);
 		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
