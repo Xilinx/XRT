@@ -13,7 +13,7 @@ This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil
  2) The help menus (``--help``) of these new utilities have also been improved and are highly descriptive with regards to both the commands and options. Please refer to them as needed.
  3) The new command opions have both short and long format, for example ``-d`` or ``--device``. In the table below, only the longer option format is used.
 
-You may refer the documentation of the new tools in the following links :doc:`xbutil2` and :doc:`xbmgmt2` . 
+You may refer the documentation of the new tools in the following links :doc:`xbutil` and :doc:`xbmgmt` . 
 
 xbutil
 ~~~~~~
@@ -111,7 +111,7 @@ xbutil
 |            |             |                   |                      |
 +------------+-------------+-------------------+----------------------+
 |            |             |                   |                      |
-| mem        |             | ``--read``        |   Not Supported      |
+| ``memi``   |             | ``--read``        |   Not Supported      |
 |            |             | ``--write``       |                      |  
 +------------+-------------+-------------------+----------------------+
 
