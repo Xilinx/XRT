@@ -19,10 +19,10 @@
 #include "ReportAieShim.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
-#include <boost/optional/optional.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
 #define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
@@ -266,7 +266,10 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
 
   _output << "AIE\n";
 
+  // Loop through all the parameters given under _elementsFilter i.e. -e option
   for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
+    // Only show certain selected tiles from aieshim that are passed under tiles
+    // Ex. -r aieshim -e tiles 0,3,5
     if(*it == "tiles") {
       auto tile_list = std::next(it);
       if (tile_list != _elementsFilter.end())

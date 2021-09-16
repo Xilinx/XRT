@@ -19,10 +19,10 @@
 #include "ReportAie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
-#include <boost/optional/optional.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
+#include <boost/optional/optional.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 #define fmtCommon(x) boost::format("    %-22s: " x "\n")
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
@@ -514,12 +514,18 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
   std::vector<std::string> aieCoreList;
   bool is_less = false;
 
+  // Loop through all the parameters given under _elementsFilter i.e. -e option
   for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
+    // Only show certain selected cores from aie that are passed under cores
+    // Ex. -r aie -e cores 0,3,5
     if(*it == "cores") {
       auto core_list = std::next(it);
       if (core_list != _elementsFilter.end())
         boost::split(aieCoreList, *core_list, boost::is_any_of(","));
     }
+    // Show less information (core Status, Program Counter, Link Register, Stack
+    // Pointer) for each cores.
+    // Ex. -r aie -e less
     if(*it == "less") {
       is_less = true;
     }
@@ -552,10 +558,10 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << std::endl;
       count = 0;
       for (auto& tile : graph.get_child("tile")) {
-	int curr_core = count++;
-	if(aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
+        int curr_core = count++;
+        if(aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
 		     std::to_string(curr_core)) == aieCoreList.end()))
-	  continue;
+          continue;
 
         _output << boost::format("Core [%2d]\n") % curr_core;
         _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
