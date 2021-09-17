@@ -61,18 +61,12 @@ Current P2P Configuration
 
 ::
 
- # xbutil query
- XSA                             FPGA                        IDCode
- xilinx_vcu1525_dynamic_6_0      xcvu9p-fsgd2104-2L-e        0x14b31093
- Vendor          Device          SubDevice       SubVendor
- 0x10ee          0x6a9f          0x4360          0x10ee
- DDR size        DDR count       Clock0          Clock1
- 34359738368     2               300             500
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            false
+ # xbutil examine --device 0000:03:00.1
 
+  . . . 
+  P2P Status             : disabled
 
-There are three possible values for ``P2P Enabled`` field above.
+There are three possible values for ``P2P Status`` field above.
 
 ============  =========================================================
 Value         Remarks
