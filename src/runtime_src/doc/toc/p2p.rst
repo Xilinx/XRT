@@ -80,12 +80,14 @@ Value         Remarks
 Enable P2P
 ..........
 
-When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through ``xbutil examine`` that would show P2P status is ``no iomem``
+The command for enabling p2p is as below
 
-Command for enabling p2p
+:: 
 
  # sudo xbutil configure --device 0000:b3:00.1 --p2p enable
 
+
+When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through ``xbutil examine`` that would show P2P status is ``no iomem``
 
 
 Disable P2P
@@ -98,7 +100,7 @@ The commands for disabling p2p is as below
  # sudo xbutil configure --device 0000:b3:00.1 --p2p disable
 
 
-Disabling and re-enabling P2P works without warm reboot. 
+Disabling and re-enabling P2P work without a warm reboot in-between. 
 
 
 
