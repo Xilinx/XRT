@@ -1651,9 +1651,7 @@ cu_mask_to_cu_idx(struct kds_command *xcmd, uint8_t *cus)
 	/* i for iterate masks, j for iterate bits */
 	int i, j;
 
-	kds_info(xcmd->client,"num_mask = %d",xcmd->num_mask); // TEMP
 	for (i = 0; i < xcmd->num_mask; ++i) {
-	  kds_info(xcmd->client,"cu_mask[%d] = %x",i,xcmd->cu_mask[i]); // TEMP
 		if (xcmd->cu_mask[i] == 0)
 			continue;
 

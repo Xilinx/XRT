@@ -2465,6 +2465,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
+	int count = 0;
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
@@ -2498,7 +2499,12 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	icap_create_subdev_ip_layout(pdev);
 	icap_create_subdev_cu(pdev);
-	icap_create_subdev_scu(pdev);
+
+	// Create scu subdev if SOFT_KERNEL section is found
+	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);
+	if (count > 0)
+		icap_create_subdev_scu(pdev);
+
 	icap_create_subdev_debugip(pdev);
 
 	icap_cache_max_host_mem_aperture(icap);

@@ -250,8 +250,8 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       continue; //AP_START bit is not set; New Cmd is not available
 
     // New PS Kernel implementation
-    // Check for call signature of only 2 arguments and 2nd argument has name os ops
-    if(args.size()==2 && args[1].name.compare("ops")==0) {
+    // Check for call signature of only 2 arguments and 2nd argument has name of ops
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
     } else {
       // FFI PS Kernel implementation
       // Map buffers used by kernel
@@ -276,7 +276,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
     // Original PS Kernel implementation
     // Check for call signature of only 2 arguments and 2nd argument has name os ops
-    if(args.size()==2 && args[1].name.compare("ops")==0) {
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
       kernel_return = old_kernel(&args_from_host[1],&ops);
     } else {
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
@@ -284,7 +284,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
     args_from_host[1] = (uint32_t)kernel_return;
 
     // Unmap Buffers
-    if(args.size()==2 && args[1].name.compare("ops")==0) {
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
       // Nothing to be done here for original PS kernel implementation
     } else {
       for(auto i:bo_list) {
