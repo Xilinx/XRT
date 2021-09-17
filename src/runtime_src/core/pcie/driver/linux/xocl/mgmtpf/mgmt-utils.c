@@ -894,8 +894,10 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	int err;
 
 	interface_uuid = xclmgmt_get_interface_uuid(lro);
-	if (!interface_uuid)
+	if (!interface_uuid) {
+		err = -EINVAL;
 		goto done;
+	}
 	memset(fw_name, 0, sizeof (fw_name));
 
 	snprintf(fw_name, sizeof(fw_name), "%s/"
