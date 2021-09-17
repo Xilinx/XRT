@@ -987,14 +987,6 @@ int
 xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Name, uint32_t value)
 {
   try {
-
-#ifndef __AIESIM__
-#ifndef __HWEM__
-    xdp::aie::finish_flush_device(handle) ;
-    xdp::aie::ctr::end_poll(handle);
-#endif
-#endif
-
     return api::xclStartProfiling(handle, option, port1Name, port2Name, value);
   }
   catch (const xrt_core::error& ex) {
@@ -1011,14 +1003,6 @@ uint64_t
 xclReadProfiling(xclDeviceHandle handle, int phdl)
 {
   try {
-
-#ifndef __AIESIM__
-#ifndef __HWEM__
-    xdp::aie::finish_flush_device(handle) ;
-    xdp::aie::ctr::end_poll(handle);
-#endif
-#endif
-
     return api::xclReadProfiling(handle, phdl);
   }
   catch (const xrt_core::error& ex) {
@@ -1035,14 +1019,6 @@ int
 xclStopProfiling(xclDeviceHandle handle, int phdl)
 {
   try {
-
-#ifndef __AIESIM__
-#ifndef __HWEM__
-    xdp::aie::finish_flush_device(handle) ;
-    xdp::aie::ctr::end_poll(handle);
-#endif
-#endif
-
     api::xclStopProfiling(handle, phdl);
     return 0;
   }
