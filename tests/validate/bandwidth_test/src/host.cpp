@@ -66,7 +66,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    int NUM_KERNEL;
+    int NUM_KERNEL = 0, NUM_KERNEL_DDR = 0;
+    bool chk_hbm_mem = false;
     std::string filename = "/platform.json";
     std::string platform_json = test_path + filename;
 
@@ -77,6 +78,17 @@ int main(int argc, char** argv) {
 
         temp = loadPtreeRoot.get_child("total_ddr_banks");
         NUM_KERNEL = temp.get_value<int>();
+        NUM_KERNEL_DDR = NUM_KERNEL;
+        boost::property_tree::ptree ptMemArray;
+        ptMemArray = loadPtreeRoot.get_child("meminfo");
+        for (auto memEntry : ptMemArray) {
+            boost::property_tree::ptree ptMemEntry = memEntry.second;
+            const std::string& sValue = ptMemEntry.get<std::string>("type");
+            if (sValue == "HBM") {
+                chk_hbm_mem = true;
+            }
+        }
+        if (chk_hbm_mem) NUM_KERNEL_DDR = NUM_KERNEL - 1;
     } catch (const std::exception& e) {
         std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
         msg += e.what();
@@ -138,8 +150,6 @@ int main(int argc, char** argv) {
             std::string cu_id = std::to_string(i + 1);
             std::string krnl_name_full = krnl_name + ":{" + "bandwidth_" + cu_id + "}";
 
-            printf("Creating a kernel [%s] for CU(%d)\n", krnl_name_full.c_str(), i + 1);
-
             // Here Kernel object is created by specifying kernel name along with
             // compute unit.
             // For such case, this kernel object can only access the specific
@@ -151,101 +161,184 @@ int main(int argc, char** argv) {
 
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
+    if (NUM_KERNEL_DDR) {
+        for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+            unsigned int DATA_SIZE = i;
 
-    for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
-        unsigned int DATA_SIZE = i;
+            if (xcl::is_emulation()) {
+                reps = 2;
+                if (DATA_SIZE > 8 * 1024) break;
+            }
 
-        if (xcl::is_emulation()) {
-            reps = 2;
-            if (DATA_SIZE > 8 * 1024) break;
+            unsigned int vector_size_bytes = DATA_SIZE;
+            std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(DATA_SIZE);
+            std::vector<unsigned char, aligned_allocator<unsigned char> > output_host[NUM_KERNEL_DDR];
+
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                output_host[i].resize(DATA_SIZE);
+            }
+            for (uint32_t j = 0; j < DATA_SIZE; j++) {
+                input_host[j] = j % 256;
+            }
+
+            // Initializing output vectors to zero
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                std::fill(output_host[i].begin(), output_host[i].end(), 0);
+            }
+
+            std::vector<cl::Buffer> input_buffer(NUM_KERNEL_DDR);
+            std::vector<cl::Buffer> output_buffer(NUM_KERNEL_DDR);
+
+            // These commands will allocate memory on the FPGA. The cl::Buffer objects
+            // can
+            // be used to reference the memory locations on the device.
+            // Creating Buffers
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                OCL_CHECK(err,
+                          input_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
+                OCL_CHECK(err,
+                          output_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
+            }
+
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
+                OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
+                OCL_CHECK(err, err = krnls[i].setArg(2, DATA_SIZE));
+                OCL_CHECK(err, err = krnls[i].setArg(3, reps));
+            }
+
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                OCL_CHECK(err, err = q.enqueueWriteBuffer(input_buffer[i], CL_TRUE, 0, vector_size_bytes,
+                                                          input_host.data(), nullptr, nullptr));
+                OCL_CHECK(err, err = q.finish());
+            }
+
+            std::chrono::high_resolution_clock::time_point timeStart;
+            std::chrono::high_resolution_clock::time_point timeEnd;
+
+            timeStart = std::chrono::high_resolution_clock::now();
+
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
+            }
+            q.finish();
+            timeEnd = std::chrono::high_resolution_clock::now();
+
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                OCL_CHECK(err, err = q.enqueueReadBuffer(output_buffer[i], CL_TRUE, 0, vector_size_bytes,
+                                                         output_host[i].data(), nullptr, nullptr));
+                OCL_CHECK(err, err = q.finish());
+            }
+
+            // check
+            for (int i = 0; i < NUM_KERNEL_DDR; i++) {
+                for (uint32_t j = 0; j < DATA_SIZE; j++) {
+                    if (output_host[i][j] != input_host[j]) {
+                        std::cout << "ERROR : kernel failed to copy entry " << j << " input " << input_host[j]
+                                  << " output " << output_host[i][j] << std::endl;
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+
+            double usduration;
+            double dnsduration;
+            double dsduration;
+            double bpersec;
+            double mbpersec;
+
+            usduration =
+                (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
+
+            dnsduration = (double)usduration;
+            dsduration = dnsduration / ((double)1000000000);
+            bpersec = (DATA_SIZE * NUM_KERNEL_DDR) / dsduration;
+            mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+
+            if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
 
-        unsigned int vector_size_bytes = DATA_SIZE;
-        std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(DATA_SIZE);
-        std::vector<unsigned char, aligned_allocator<unsigned char> > output_host[NUM_KERNEL];
+        std::cout << "Overall DDRs (total " << NUM_KERNEL_DDR << ") Throughput: " << max_throughput << "MB/s\n";
+    }
+    if (chk_hbm_mem) {
+        for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
+            unsigned int DATA_SIZE = i;
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            output_host[i].resize(DATA_SIZE);
-        }
-        for (uint32_t j = 0; j < DATA_SIZE; j++) {
-            input_host[j] = j % 256;
-        }
+            if (xcl::is_emulation()) {
+                reps = 2;
+                if (DATA_SIZE > 8 * 1024) break;
+            }
 
-        // Initializing output vectors to zero
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            std::fill(output_host[i].begin(), output_host[i].end(), 0);
-        }
+            unsigned int vector_size_bytes = DATA_SIZE;
+            std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(DATA_SIZE);
+            std::vector<unsigned char, aligned_allocator<unsigned char> > output_host(DATA_SIZE);
 
-        std::vector<cl::Buffer> input_buffer(NUM_KERNEL);
-        std::vector<cl::Buffer> output_buffer(NUM_KERNEL);
+            for (uint32_t j = 0; j < DATA_SIZE; j++) {
+                input_host[j] = j % 256;
+            }
 
-        // These commands will allocate memory on the FPGA. The cl::Buffer objects
-        // can
-        // be used to reference the memory locations on the device.
-        // Creating Buffers
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            OCL_CHECK(err, input_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
-            OCL_CHECK(err, output_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
-        }
+            // Initializing output vectors to zero
+            std::fill(output_host.begin(), output_host.end(), 0);
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
-            OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
-            OCL_CHECK(err, err = krnls[i].setArg(2, DATA_SIZE));
-            OCL_CHECK(err, err = krnls[i].setArg(3, reps));
-        }
+            cl::Buffer input_buffer, output_buffer;
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            OCL_CHECK(err, err = q.enqueueWriteBuffer(input_buffer[i], CL_TRUE, 0, vector_size_bytes, input_host.data(),
+            // These commands will allocate memory on the FPGA. The cl::Buffer objects
+            // can
+            // be used to reference the memory locations on the device.
+            // Creating Buffers
+            OCL_CHECK(err, input_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
+            OCL_CHECK(err, output_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
+
+            OCL_CHECK(err, err = krnls[NUM_KERNEL - 1].setArg(0, input_buffer));
+            OCL_CHECK(err, err = krnls[NUM_KERNEL - 1].setArg(1, output_buffer));
+            OCL_CHECK(err, err = krnls[NUM_KERNEL - 1].setArg(2, DATA_SIZE));
+            OCL_CHECK(err, err = krnls[NUM_KERNEL - 1].setArg(3, reps));
+
+            OCL_CHECK(err, err = q.enqueueWriteBuffer(input_buffer, CL_TRUE, 0, vector_size_bytes, input_host.data(),
                                                       nullptr, nullptr));
             OCL_CHECK(err, err = q.finish());
-        }
 
-        std::chrono::high_resolution_clock::time_point timeStart;
-        std::chrono::high_resolution_clock::time_point timeEnd;
+            std::chrono::high_resolution_clock::time_point timeStart;
+            std::chrono::high_resolution_clock::time_point timeEnd;
 
-        timeStart = std::chrono::high_resolution_clock::now();
+            timeStart = std::chrono::high_resolution_clock::now();
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
-        }
-        q.finish();
-        timeEnd = std::chrono::high_resolution_clock::now();
+            OCL_CHECK(err, err = q.enqueueTask(krnls[NUM_KERNEL - 1]));
+            q.finish();
+            timeEnd = std::chrono::high_resolution_clock::now();
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            OCL_CHECK(err, err = q.enqueueReadBuffer(output_buffer[i], CL_TRUE, 0, vector_size_bytes,
-                                                     output_host[i].data(), nullptr, nullptr));
+            OCL_CHECK(err, err = q.enqueueReadBuffer(output_buffer, CL_TRUE, 0, vector_size_bytes, output_host.data(),
+                                                     nullptr, nullptr));
             OCL_CHECK(err, err = q.finish());
-        }
 
-        // check
-        for (int i = 0; i < NUM_KERNEL; i++) {
+            // check
             for (uint32_t j = 0; j < DATA_SIZE; j++) {
-                if (output_host[i][j] != input_host[j]) {
-                    printf("ERROR : kernel failed to copy entry %i input %i output %i\n", j, input_host[j],
-                           output_host[i][j]);
+                if (output_host[j] != input_host[j]) {
+                    std::cout << "ERROR : kernel failed to copy entry " << j << " input " << input_host[j] << " output "
+                              << output_host[j] << std::endl;
                     return EXIT_FAILURE;
                 }
             }
+
+            double usduration;
+            double dnsduration;
+            double dsduration;
+            double bpersec;
+            double mbpersec;
+
+            usduration =
+                (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
+
+            dnsduration = (double)usduration;
+            dsduration = dnsduration / ((double)1000000000);
+            bpersec = DATA_SIZE / dsduration;
+            mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+
+            if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
 
-        double usduration;
-        double dnsduration;
-        double dsduration;
-        double bpersec;
-        double mbpersec;
-
-        usduration = (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
-
-        dnsduration = (double)usduration;
-        dsduration = dnsduration / ((double)1000000000);
-        bpersec = (DATA_SIZE * NUM_KERNEL) / dsduration;
-        mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
-
-        if (mbpersec > max_throughput) max_throughput = mbpersec;
+        std::cout << "HBM Single Channel Throughput: " << max_throughput << "MB/s\n";
     }
-
-    std::cout << "Maximum throughput: " << max_throughput << "MB/s\n";
 
     std::cout << "TEST PASSED\n";
 

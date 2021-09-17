@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     std::string dev_id = "0";
     std::string test_path;
     std::string iter_cnt = "10000";
-    std::string b_file = "/slavebridge.xclbin";
+    std::string b_file = "/hostmemory.xclbin";
     bool flag_s = false;
 
     for (int i = 1; i < argc; i++) {
@@ -93,7 +93,7 @@ int main(int argc, char** argv) {
 
     cl_int err;
     cl::Context context;
-    std::string krnl_name = "slavebridge";
+    std::string krnl_name = "hostmemory";
     std::vector<cl::Kernel> krnls(NUM_KERNEL);
     cl::CommandQueue q;
 
@@ -124,15 +124,6 @@ int main(int argc, char** argv) {
         device = xcl::find_device_bdf(devices, dev_id);
     }
 
-    auto device_name = device.getInfo<CL_DEVICE_NAME>();
-    if (xcl::is_hw_emulation()) {
-        if (device_name.find("202010") != std::string::npos) {
-            std::cout << "[INFO]: The example is not supported for " << device_name
-                      << " for hw_emu. Please try other flows." << '\n';
-            return EXIT_SUCCESS;
-        }
-    }
-
     // Creating Context and Command Queue for selected Device
     OCL_CHECK(err, context = cl::Context(device, nullptr, nullptr, nullptr, &err));
     OCL_CHECK(err, q = cl::CommandQueue(context, device,
@@ -145,9 +136,7 @@ int main(int argc, char** argv) {
         std::cout << "Device program successful!\n";
         for (int i = 0; i < NUM_KERNEL; i++) {
             std::string cu_id = std::to_string(i + 1);
-            std::string krnl_name_full = krnl_name + ":{" + "slavebridge_" + cu_id + "}";
-
-            printf("Creating a kernel [%s] for CU(%d)\n", krnl_name_full.c_str(), i + 1);
+            std::string krnl_name_full = krnl_name + ":{" + "hostmemory_" + cu_id + "}";
 
             // Here Kernel object is created by specifying kernel name along with
             // compute unit.
@@ -242,8 +231,8 @@ int main(int argc, char** argv) {
         for (int i = 0; i < NUM_KERNEL; i++) {
             for (uint32_t j = 0; j < DATA_SIZE; j++) {
                 if (map_output_buffer[i][j] != map_input_buffer[i][j]) {
-                    printf("ERROR : kernel failed to copy entry %i input %i output %i\n", j, map_input_buffer[i][j],
-                           map_output_buffer[i][j]);
+                    std::cout << "ERROR : kernel failed to copy entry " << j << " input " << map_input_buffer[i][j]
+                              << " output " << map_output_buffer[i][j] << std::endl;
                     return EXIT_FAILURE;
                 }
             }
@@ -264,7 +253,7 @@ int main(int argc, char** argv) {
 
         if (mbpersec > max_throughput) max_throughput = mbpersec;
     }
-    std::cout << "Maximum throughput: " << max_throughput << "MB/s\n";
+    std::cout << "Throughput: " << max_throughput << "MB/s\n";
 
     std::cout << "TEST PASSED\n";
 
