@@ -744,14 +744,13 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
-	int bad_state;
 	int ret = 0;
 
 	ret = kds_add_command(kds, xcmd);
 	if (ret)
 		return ret;
 
-	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
+	ret = wait_for_completion_interruptible_timeout(&kds->comp, msecs_to_jiffies(3000));
 	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
 		wait_for_completion(&kds->comp);
