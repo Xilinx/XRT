@@ -72,8 +72,8 @@ static ssize_t xdma_migrate_bo(struct platform_device *pdev,
 	xdma = platform_get_drvdata(pdev);
 	xocl_dbg(&pdev->dev, "TID %d, Channel:%d, Offset: 0x%llx, Dir: %d",
 		pid, channel, paddr, dir);
-	ret = xdma_xfer_submit(xdma->dma_handle, channel, dir,
-		paddr, sgt, false, 10000, NULL);
+	ret = xdma_xfer_fastpath(xdma->dma_handle, channel, dir,
+		paddr, sgt, false, 10000);
 	if (ret >= 0) {
 		xdma->channel_usage[dir][channel] += ret;
 		return ret;

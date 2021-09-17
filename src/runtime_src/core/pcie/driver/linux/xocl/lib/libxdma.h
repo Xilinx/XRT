@@ -208,6 +208,21 @@
 /* obtain the 32 least significant (low) bits of a 32-bit or 64-bit address */
 #define PCI_DMA_L(addr) (addr & 0xffffffffUL)
 
+/* fast path defines */
+#define F_DESC_BLOCK_SHIFT	5
+#define F_DESC_BLOCK_NUM	128
+#define F_DESC_ADJACENT		BIT(F_DESC_BLOCK_SHIFT)
+#define F_DESC_MAGIC		0xad4bUL
+#define F_DESC_MAGIC_SHIFT	16
+#define F_DESC_ADJACENT_SHIFT	8
+#define F_DESC_STOPPED		BIT(0)
+#define F_DESC_COMPLETED	BIT(1)
+#define F_DESC_BLEN_BITS	28
+#define F_DESC_BLEN_MAX		(BIT(F_DESC_BLEN_BITS) - PAGE_SIZE)
+#define F_DESC_NUM	(F_DESC_BLOCK_NUM * F_DESC_ADJACENT)
+#define F_DESC_CONTROL(adjacent, flag)				\
+	((F_DESC_MAGIC << 16) | (((adjacent) - 1) << F_DESC_ADJACENT_SHIFT) | (flag))
+
 #ifndef VM_RESERVED
 	#define VMEM_FLAGS (VM_IO | VM_DONTEXPAND | VM_DONTDUMP)
 #else
@@ -529,6 +544,12 @@ struct xdma_engine {
 	/* cpu attached to intr_work */
 	unsigned int intr_work_cpu;
 
+	/* fast path */
+	struct xdma_desc *f_descs;
+	dma_addr_t f_desc_dma_addr;
+	u32 f_submitted_desc_cnt;
+	struct completion f_req_compl;
+	bool f_fastpath;
 };
 
 struct xdma_user_irq {

@@ -2003,6 +2003,12 @@ static irqreturn_t xdma_channel_irq(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
+	if (engine->f_fastpath) {
+		engine->f_fastpath = false;
+		complete(&engine->f_req_compl);
+		return IRQ_HANDLED;
+	}
+
 	irq_regs = (struct interrupt_regs *)(xdev->bar[xdev->config_bar_idx] +
 					     XDMA_OFS_INT_CTRL);
 	/* Disable the interrupt for this engine */
@@ -2724,6 +2730,17 @@ static void engine_alignments(struct xdma_engine *engine)
 	}
 }
 
+static void engine_fastpath_cleanup(struct xdma_engine *engine)
+{
+	struct xdma_dev *xdev = engine->xdev;
+
+	if (!engine->f_descs || !engine->f_desc_dma_addr)
+		return;
+
+	dma_free_coherent(&xdev->pdev->dev, F_DESC_NUM * sizeof(struct xdma_desc),
+			  engine->f_descs, engine->f_desc_dma_addr);
+}
+
 static void engine_free_resource(struct xdma_engine *engine)
 {
 	struct xdma_dev *xdev = engine->xdev;
@@ -2808,6 +2825,9 @@ static int engine_destroy(struct xdma_dev *xdev, struct xdma_engine *engine)
 
 	/* Release memory use for descriptor writebacks */
 	engine_free_resource(engine);
+
+	/* release fast path resources */
+	engine_fastpath_cleanup(engine);
 
 	memset(engine, 0, sizeof(struct xdma_engine));
 	/* Decrement the number of engines available */
@@ -2951,6 +2971,37 @@ fail_wb:
 	return rv;
 }
 
+static int engine_fastpath_init(struct xdma_engine *engine)
+{
+	struct xdma_dev *xdev = engine->xdev;
+	struct xdma_desc *desc;
+	dma_addr_t dma_addr;
+	int i, j;
+
+	engine->f_descs = dma_alloc_coherent(&xdev->pdev->dev, F_DESC_NUM * sizeof(*desc),
+					     &engine->f_desc_dma_addr, GFP_KERNEL);
+	if (!engine->f_descs)
+		return -ENOMEM;
+
+	desc = engine->f_descs;
+	dma_addr = engine->f_desc_dma_addr;
+	for (i = 0; i < F_DESC_BLOCK_NUM; i++) {
+		for (j = 0; j < F_DESC_ADJACENT - 1; j++) {
+			desc->control = cpu_to_le32(F_DESC_CONTROL(1, 0));
+			desc++;
+		}
+		dma_addr += sizeof(*desc) * F_DESC_ADJACENT;
+		desc->control = cpu_to_le32(F_DESC_CONTROL(F_DESC_ADJACENT, 0));
+		desc->next_lo = cpu_to_le32(PCI_DMA_L(dma_addr));
+		desc->next_hi = cpu_to_le32(PCI_DMA_H(dma_addr));
+		desc++;
+	}
+
+	init_completion(&engine->f_req_compl);
+
+	return 0;
+}
+
 static int engine_alloc_resource(struct xdma_engine *engine)
 {
 	struct xdma_dev *xdev = engine->xdev;
@@ -3078,11 +3129,22 @@ static int engine_init(struct xdma_engine *engine, struct xdma_dev *xdev,
 	if (rv)
 		return rv;
 
+	rv = engine_fastpath_init(engine);
+	if (rv)
+		goto fastpath_init_fail;
+
 	rv = engine_init_regs(engine);
 	if (rv)
-		return rv;
+		goto init_regs_failed;
 
 	return 0;
+
+init_regs_failed:
+	engine_fastpath_cleanup(engine);
+fastpath_init_fail:
+	engine_free_resource(engine);
+
+	return rv;
 }
 
 
@@ -3116,6 +3178,171 @@ static void xdma_request_cb_dump(struct xdma_request_cb *req)
 }
 #endif
 
+static inline void fastpath_desc_set(struct xdma_engine *engine, struct xdma_desc *desc,
+				     dma_addr_t addr, u64 endpoint_addr, u32 len)
+{
+	desc->bytes = cpu_to_le32(len);
+	if (engine->dir == DMA_TO_DEVICE) {
+		desc->src_addr_lo = cpu_to_le32(PCI_DMA_L(addr));
+		desc->src_addr_hi = cpu_to_le32(PCI_DMA_H(addr));
+		desc->dst_addr_lo = cpu_to_le32(PCI_DMA_L(endpoint_addr));
+		desc->dst_addr_hi = cpu_to_le32(PCI_DMA_H(endpoint_addr));
+	} else {
+		desc->src_addr_lo = cpu_to_le32(PCI_DMA_L(endpoint_addr));
+		desc->src_addr_hi = cpu_to_le32(PCI_DMA_H(endpoint_addr));
+		desc->dst_addr_lo = cpu_to_le32(PCI_DMA_L(addr));
+		desc->dst_addr_hi = cpu_to_le32(PCI_DMA_H(addr));
+	}
+}
+
+static inline void fastpath_desc_set_last(struct xdma_engine *engine, u32 desc_num)
+{
+	struct xdma_desc *block_desc = NULL, *last_desc;
+	u32 adjacent;
+
+	adjacent = desc_num & (F_DESC_ADJACENT - 1);
+	if (desc_num > F_DESC_ADJACENT && adjacent > 0)
+		block_desc = engine->f_descs + (desc_num & (~(F_DESC_ADJACENT - 1))) - 1;
+
+	last_desc = engine->f_descs + desc_num - 1;
+	if (block_desc)
+		block_desc->control = cpu_to_le32(F_DESC_CONTROL(adjacent, 0));
+	last_desc->control |= cpu_to_le32(F_DESC_STOPPED | F_DESC_COMPLETED);
+}
+
+static inline void fastpath_desc_clear_last(struct xdma_engine *engine, u32 desc_num)
+{
+	struct xdma_desc *block_desc = NULL, *last_desc;
+	u32 adjacent;
+
+	adjacent = desc_num & (F_DESC_ADJACENT - 1);
+	if (desc_num > F_DESC_ADJACENT && adjacent > 0)
+		block_desc = engine->f_descs + (desc_num & (~(F_DESC_ADJACENT - 1))) - 1;
+
+	last_desc = engine->f_descs + desc_num - 1;
+	if (block_desc)
+		block_desc->control = cpu_to_le32(F_DESC_CONTROL(F_DESC_ADJACENT, 0));
+	last_desc->control &= cpu_to_le32(~(F_DESC_STOPPED | F_DESC_COMPLETED));
+}
+
+static ssize_t fastpath_start(struct xdma_engine *engine, u64 endpoint_addr,
+			      struct scatterlist **sg, u32 *sg_off, u32 *last_adj)
+{
+	dma_addr_t addr;
+	int i, ret = 0;
+	u32 len, rest, adj;
+	ssize_t total = 0;
+
+	for (i = 0; i < F_DESC_NUM && *sg; i++) {
+		addr = sg_dma_address(*sg) + *sg_off;
+		rest = sg_dma_len(*sg) - *sg_off;
+		if (XDMA_DESC_BLEN_MAX < rest) {
+			len = XDMA_DESC_BLEN_MAX;
+			*sg_off += XDMA_DESC_BLEN_MAX;
+		} else {
+			len = rest;
+			*sg_off = 0;
+			*sg = sg_next(*sg);
+		}
+
+		fastpath_desc_set(engine, engine->f_descs + i, addr, endpoint_addr, len);
+		endpoint_addr += len;
+		total += len;
+	}
+	fastpath_desc_set_last(engine, i);
+	engine->f_submitted_desc_cnt = i;
+
+	enable_interrupts(engine);
+	if (i >= F_DESC_ADJACENT)
+		adj = F_DESC_ADJACENT;
+	else
+		adj = i;
+	if (adj != *last_adj) {
+		write_register(adj - 1, &engine->sgdma_regs->first_desc_adjacent,
+			       (unsigned long)(&engine->sgdma_regs->first_desc_adjacent) -
+			       (unsigned long)(&engine->sgdma_regs));
+		mmiowb();
+		*last_adj = adj;
+	}
+	ret = engine_start_mode_config(engine);
+
+	return ret ? -EIO : total;
+}
+
+ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
+			   struct sg_table *sgt, bool dma_mapped, int timeout_ms)
+{
+	struct xdma_dev *xdev = (struct xdma_dev *)dev_hndl;
+	struct scatterlist *sg = sgt->sgl;
+	struct xdma_engine *engine;
+	u32 val, sg_off = 0, last_adj = ~0;
+	u64 done_bytes = 0;
+	ssize_t ret = 0;
+	int nents;
+
+	if (poll_mode) {
+		return xdma_xfer_submit(dev_hndl, channel, write, ep_addr, sgt, dma_mapped,
+					timeout_ms, NULL);
+	}
+
+	if (write == 1)
+		engine = &xdev->engine_h2c[channel];
+	else
+		engine = &xdev->engine_c2h[channel];
+
+	if (!dma_mapped) {
+		nents = pci_map_sg(xdev->pdev, sg, sgt->orig_nents, engine->dir);
+		if (!nents) {
+			xocl_pr_info("map sgl failed, sgt 0x%p.\n", sgt);
+			return -EIO;
+		}
+		sgt->nents = nents;
+	}
+
+	if (!sgt->nents) {
+		pr_err("empty sg table");
+		return -EINVAL;
+	}
+
+	write_register(PCI_DMA_H(engine->f_desc_dma_addr), &engine->sgdma_regs->first_desc_hi,
+		       (unsigned long)(&engine->sgdma_regs->first_desc_hi) -
+		       (unsigned long)(&engine->sgdma_regs));
+	write_register(PCI_DMA_L(engine->f_desc_dma_addr), &engine->sgdma_regs->first_desc_lo,
+		       (unsigned long)(&engine->sgdma_regs->first_desc_lo) -
+		       (unsigned long)(&engine->sgdma_regs));
+	sg = sgt->sgl;
+	while (sg && ret >= 0) {
+		engine->f_fastpath = true;
+		ret = fastpath_start(engine, ep_addr + done_bytes,&sg, &sg_off, &last_adj);
+		if (ret < 0) {
+			engine->f_fastpath = false;
+			break;
+		}
+		done_bytes += ret;
+		if (!wait_for_completion_timeout(&engine->f_req_compl,
+						 msecs_to_jiffies(10000))) {
+			pr_err("Wait for request timed out");
+			engine_reg_dump(engine);
+			ret = -EIO;
+		} else {
+			val = read_register(&engine->regs->completed_desc_count);
+			if (val != engine->f_submitted_desc_cnt) {
+				pr_err("Invalid completed count %d, expected %d",
+					    val, engine->f_submitted_desc_cnt);
+				ret = -EINVAL;
+			}
+		}
+		fastpath_desc_clear_last(engine, engine->f_submitted_desc_cnt);
+		val = read_register(&engine->regs->status_rc);
+		write_register(XDMA_CTRL_RUN_STOP, &engine->regs->control_w1c,
+			       (unsigned long)(&engine->regs->control_w1c) -
+			       (unsigned long)(&engine->regs));
+	}
+	if (ret < 0)
+		return ret;
+
+	return (ssize_t)done_bytes;
+}
 
 ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			 struct sg_table *sgt, bool dma_mapped, int timeout_ms,
@@ -3135,7 +3362,6 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 	if (debug_check_dev_hndl(__func__, xdev->pdev, dev_hndl) < 0)
 		return -EINVAL;
-
 
 	if (write == 1) {
 		if (channel >= xdev->h2c_channel_max) {
