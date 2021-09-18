@@ -2382,7 +2382,7 @@ static ssize_t mbx_send_body(struct file *filp, struct kobject *kobj,
 	MBX_INFO(mbx, "test send body: %ld", mbx->mbx_send_body_len + count);
 	if (off == 0) {
 		if (mbx->mbx_send_body)
-			vfree(mbx_send_body);
+			vfree(mbx->mbx_send_body);
 		mbx->mbx_send_body = vmalloc(count);
 		if (!mbx->mbx_send_body)
 			return -ENOMEM;
