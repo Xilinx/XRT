@@ -20,3 +20,5 @@ src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
 src/runtime_src/xocl/ @stsoe
 src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
+src/tests/xrt/ @stsoe
+src/tests/unit_test/ @stsoe
