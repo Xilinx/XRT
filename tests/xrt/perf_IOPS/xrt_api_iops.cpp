@@ -12,6 +12,10 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_kernel.h"
 
+#ifdef _WIN32
+# pragma warning( disable : 4244 )
+#endif
+
 void usage()
 {
   std::cout  << "Usage: test -k <xclbin>\n";

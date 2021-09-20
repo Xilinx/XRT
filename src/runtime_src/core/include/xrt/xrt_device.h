@@ -105,23 +105,6 @@ enum class device : unsigned int {
   dynamic_regions
 };
 
-/*!
- * @enum InfoSchemaVersion 
- *
- * @brief
- * Json schemaVersion parameters
- *
- * @details
- * Use with `xrt::device::get_info()` to retrieve a perticular version 
- * of schema of the properties.
- *
- * @var json_20202 
- *  Json 2020.2 schema
- */
-enum class InfoSchemaVersion  {
-  json_20202
-};
-
 /// @cond 
 /*
  * Return type for xrt::device::get_info()
@@ -260,8 +243,7 @@ public:
    * get_info() - Retrieve device parameter information
    *
    * This function is templated on the enumeration value as defined in
-   * the enumeration xrt::info::device and takes in 
-   * xrt::info::InfoSchemaVersion as a parameter.
+   * the enumeration xrt::info::device.
    *
    * The return type of the parameter is based on the instantiated
    * param_traits for the given param enumeration supplied as template
@@ -269,11 +251,11 @@ public:
    */
   template <info::device param>
   typename info::param_traits<info::device, param>::return_type
-  get_info(info::InfoSchemaVersion version) const
+  get_info() const
   {
     return boost::any_cast<
       typename info::param_traits<info::device, param>::return_type  
-    >(get_info(param, version));
+    >(get_info(param));
   }
 
   /**
@@ -386,7 +368,7 @@ private:
 
   XCL_DRIVER_DLLESPEC
   boost::any
-  get_info(info::device param, info::InfoSchemaVersion version) const;
+  get_info(info::device param) const;
 
 private:
   std::shared_ptr<xrt_core::device> handle;

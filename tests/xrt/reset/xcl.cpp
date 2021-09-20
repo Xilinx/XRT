@@ -54,7 +54,7 @@ SigBusHandler(int sig)
 
   // Create xrt::device from already opened xclDeviceHandle
   xrt::device d(dhdl);
-  if (!d.get_info<xrt::info::device::offline, xrt::info::InfoSchemaVersion::json_20202>())
+  if (!d.get_info<xrt::info::device::offline>())
     throw std::runtime_error("Device is unexpectedly online");
 
   // Close device gracefully before existing on device reset
@@ -75,7 +75,7 @@ SigIntHandler(int sig)
 
   // Create xrt::device from already opened xclDeviceHandle
   xrt::device d(dhdl);
-  if (d.get_info<xrt::info::device::offline, xrt::info::InfoSchemaVersion::json_20202>())
+  if (d.get_info<xrt::info::device::offline>())
     throw std::runtime_error("Device is unexpectedly offline");
 
   // Close device gracefully before existing on ctrl-c
@@ -125,6 +125,8 @@ run(int argc, char* argv[])
   std::unique_lock<std::mutex> lk(mutex);
   while (!reset)
     cond.wait(lk);
+
+  return 0;
 }
 
 int main(int argc, char* argv[])

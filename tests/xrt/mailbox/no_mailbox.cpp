@@ -81,6 +81,10 @@ kernels without the specified features.
 #include "experimental/xrt_ini.h"
 #include "experimental/xrt_mailbox.h"
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 using value_type = std::uint32_t;
 
 static size_t data_size = 8 * 1024 * 1024;
@@ -118,7 +122,7 @@ adjust_for_emulation()
 {
   if (!is_hw_emulation() && !is_sw_emulation())
     return;
-  
+
   data_size = 4096;
   data_size_bytes = data_size * sizeof(int);
 }
