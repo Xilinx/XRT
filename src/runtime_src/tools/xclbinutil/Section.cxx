@@ -652,7 +652,7 @@ Section::getSubPayload(char* _pDataSection,
 }
 
 void
-Section::readSubPayload(std::fstream& _istream, 
+Section::readSubPayload(std::istream& _istream, 
                         const std::string & _sSubSection, 
                         enum Section::FormatType _eFormatType)
 {
@@ -686,7 +686,7 @@ Section::readSubPayload(std::fstream& _istream,
 void 
 Section::readSubPayload(const char* _pOrigDataSection, 
                         unsigned int _origSectionSize,  
-                        std::fstream& _istream, 
+                        std::istream& _istream, 
                         const std::string & _sSubSection, 
                         enum Section::FormatType _eFormatType, 
                         std::ostringstream &_buffer) const

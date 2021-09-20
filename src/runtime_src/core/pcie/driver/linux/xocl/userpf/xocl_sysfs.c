@@ -662,6 +662,19 @@ static ssize_t nodma_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(nodma);
 
+static ssize_t host_mem_size_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	uint64_t val = 0;
+
+	if (xdev->cma_bank)
+		val = xdev->cma_bank->entry_sz * xdev->cma_bank->entry_num;
+
+	return sprintf(buf, "%d\n", val);
+}
+static DEVICE_ATTR_RO(host_mem_size);
+
 /* - End attributes-- */
 static struct attribute *xocl_attrs[] = {
 	&dev_attr_xclbinuuid.attr,
@@ -694,6 +707,7 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_ulp_uuids.attr,
 	&dev_attr_mig_cache_update.attr,
 	&dev_attr_nodma.attr,
+	&dev_attr_host_mem_size.attr,
 	NULL,
 };
 

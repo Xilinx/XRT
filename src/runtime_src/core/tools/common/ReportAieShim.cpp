@@ -19,6 +19,8 @@
 #include "ReportAieShim.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -256,12 +258,24 @@ ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice,
 void 
 ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
                             const boost::property_tree::ptree& _pt, 
-                            const std::vector<std::string>& /*_elementsFilter*/,
+                            const std::vector<std::string>& _elementsFilter,
                             std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+  std::vector<std::string> aieTileList;
 
   _output << "AIE\n";
+
+  // Loop through all the parameters given under _elementsFilter i.e. -e option
+  for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
+    // Only show certain selected tiles from aieshim that are passed under tiles
+    // Ex. -r aieshim -e tiles 0,3,5
+    if(*it == "tiles") {
+      auto tile_list = std::next(it);
+      if (tile_list != _elementsFilter.end())
+        boost::split(aieTileList, *tile_list, boost::is_any_of(","));
+    }
+  }
 
   try {
     int count = 0;
@@ -275,7 +289,12 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << "  Shim Status" << std::endl;
 
     for (auto &tile : ptShimTiles) {
-      _output << boost::format("Tile[%2d]\n") % count++;
+      int curr_tile = count++;
+      if(std::find(aieTileList.begin(), aieTileList.end(),
+				std::to_string(curr_tile)) == aieTileList.end())
+        continue;
+
+      _output << boost::format("Tile[%2d]\n") % curr_tile;
       _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
       if(tile.second.find("dma") != tile.second.not_found()) {

@@ -825,8 +825,10 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 	uint64_t entry_num = 0, entry_sz = 0, host_reserve_size = 0;
 	struct xocl_dev *xdev = (struct xocl_dev *)drm_p->xdev;
 
-	if (!xdev->cma_bank)
-		return -ENODEV;
+	if (!xdev->cma_bank) {
+		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
+		return 0;
+	}
 
 	phys_addrs = xdev->cma_bank->phys_addrs;
 	entry_num = xdev->cma_bank->entry_num;

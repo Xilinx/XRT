@@ -57,6 +57,7 @@ class XclBin {
   void setKeyValue(const std::string & _keyValue);
   void removeKey(const std::string & _keyValue);
   void addSection(Section* _pSection);
+  void addPsKernel(const std::string &encodedString);
 
   public:
     // Helper method to take given encoded keyValue and break it down to its individual values (e.g., domain, key, and value)

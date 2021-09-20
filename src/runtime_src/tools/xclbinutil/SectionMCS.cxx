@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -292,7 +292,7 @@ SectionMCS::buildBuffer(const std::vector<mcsBufferPair>& _mcsBuffers,
 void
 SectionMCS::readSubPayload(const char* _pOrigDataSection,
                            unsigned int _origSectionSize,
-                           std::fstream& _istream,
+                           std::istream& _istream,
                            const std::string& _sSubSection,
                            enum Section::FormatType _eFormatType,
                            std::ostringstream& _buffer) const {

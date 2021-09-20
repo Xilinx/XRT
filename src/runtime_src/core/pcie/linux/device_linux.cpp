@@ -612,7 +612,8 @@ initialize_query_table()
   emplace_sysfs_get<query::logic_uuids>                      ("", "logic_uuids");
   emplace_sysfs_get<query::interface_uuids>                  ("", "interface_uuids");
   emplace_sysfs_getput<query::rp_program_status>             ("", "rp_program");
-  emplace_sysfs_get<query::shared_host_mem>                  ("address_translator", "host_mem_size");
+  emplace_sysfs_get<query::shared_host_mem>                  ("", "host_mem_size");
+  emplace_sysfs_get<query::enabled_host_mem>                  ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::cpu_affinity>                     ("", "local_cpulist");
   emplace_sysfs_get<query::mailbox_metrics>                  ("mailbox", "recv_metrics");
   emplace_sysfs_get<query::clock_timestamp>                  ("ert_user", "clock_timestamp");
