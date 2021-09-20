@@ -71,6 +71,7 @@ static DEFINE_IDR(xocl_xgq_cid_idr);
 #define XOCL_XGQ_FLASH_TIME 	msecs_to_jiffies(10 * 60 * 1000) 
 #define XOCL_XGQ_DOWNLOAD_TIME 	msecs_to_jiffies(30 * 1000) 
 #define XOCL_XGQ_CONFIG_TIME 	msecs_to_jiffies(10 * 1000) 
+#define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
 /*
  * Note:
@@ -129,6 +130,7 @@ struct xocl_xgq_cmd {
 	int			xgq_cmd_rcode;
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq		*xgq;
+	u64			xgq_cmd_timeout_jiffies; /* timout till */
 };
 
 struct xocl_xgq;
@@ -154,7 +156,9 @@ struct xocl_xgq {
 	u32			xgq_intr_num;
 	struct list_head	xgq_submitted_cmds;
 	struct completion 	xgq_irq_complete;
-	struct xgq_worker	xgq_worker;
+	struct xgq_worker	xgq_complete_worker;
+	struct xgq_worker	xgq_health_worker;
+	bool			xgq_halted;
 	bool			xgq_ospi_inuse;
 	int 			xgq_cmd_id;
 };
@@ -197,10 +201,6 @@ void read_completion(struct xrt_com_queue_entry *ccmd, u64 addr)
 	for (i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
 		ccmd->data[i] = xgq_reg_read32(0, addr + i * 4);
 
-	printk("DZ__ v %x %x %x %x, cid %d, rcode %d\n",
-			ccmd->data[0], ccmd->data[1], ccmd->data[2], ccmd->data[3],
-			ccmd->cid, ccmd->rcode);
-
 	// Write 0 to first word to make sure the cmd state is not NEW
 	xgq_reg_write32(0, addr, 0x0);
 }
@@ -223,6 +223,10 @@ static int complete_worker(void *data)
 			struct xrt_com_queue_entry ccmd;
 
 			usleep_range(1000, 2000);
+
+			if (kthread_should_stop()) {
+				xw->stop = true;
+			}
 
 			mutex_lock(&xgq->xgq_lock);
 
@@ -254,10 +258,153 @@ static int complete_worker(void *data)
 	return xw->error ? 1 : 0;
 }
 
-static int init_worker(struct xgq_worker *xw)
+static bool xgq_submitted_cmd_check(struct xocl_xgq *xgq)
+{
+	struct xocl_xgq_cmd *xgq_cmd;
+	struct list_head *pos, *next;
+	bool found_timeout = false;
+
+	mutex_lock(&xgq->xgq_lock);
+	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
+		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
+
+		XGQ_INFO(xgq, "cmd %llx, jiffies %llx",
+			xgq_cmd->xgq_cmd_timeout_jiffies, jiffies);
+
+		/* Finding timed out cmds */
+		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
+			XGQ_ERR(xgq, "cmd id: %d timed out, hot reset is required!",
+				xgq_cmd->xgq_sq.xgq_sq_head.cid);
+			found_timeout = true;
+			break;
+		}
+	}
+	mutex_unlock(&xgq->xgq_lock);
+
+	return found_timeout;
+}
+
+static void xgq_submitted_cmds_drain(struct xocl_xgq *xgq)
+{
+	struct xocl_xgq_cmd *xgq_cmd;
+	struct list_head *pos, *next;
+
+	mutex_lock(&xgq->xgq_lock);
+	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
+		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
+
+		XGQ_INFO(xgq, "cmd %llx, jiffies %llx",
+			xgq_cmd->xgq_cmd_timeout_jiffies, jiffies);
+
+		/* Finding timed out cmds */
+		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
+			list_del(pos);
+			
+			xgq_cmd->xgq_cmd_rcode = -ETIME;
+			complete(&xgq_cmd->xgq_cmd_complete);
+			XGQ_ERR(xgq, "cmd id: %d timed out, hot reset is required!",
+				xgq_cmd->xgq_sq.xgq_sq_head.cid);
+		}
+	}
+	mutex_unlock(&xgq->xgq_lock);
+}
+
+/*
+ * When driver detach, we need to wait for all commands to drain.
+ * If the one command is already timedout, we can safely recycle it only
+ * after disable interrupts and mark device in bad state, a hot_reset
+ * is needed to recover the device back to normal.
+ */
+static bool xgq_submitted_cmds_empty(struct xocl_xgq *xgq)
+{
+	mutex_lock(&xgq->xgq_lock);
+	if (list_empty(&xgq->xgq_submitted_cmds)) {
+		mutex_unlock(&xgq->xgq_lock);
+		return true;
+	}
+	mutex_unlock(&xgq->xgq_lock);
+	
+	return false;
+}
+
+/*
+ * stop service will be called from driver remove or found timeout cmd from health_worker
+ * 3 steps to stop the service:
+ *   1) halt any incoming request
+ *   2) disable interrupts
+ *   3) poll all existing cmds till finish or timeout
+ *
+ * then, we can safely remove all resources.
+ */
+static void xgq_stop_services(struct xocl_xgq *xgq)
+{
+	/* stop receiving incoming commands */
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_halted = 1;
+	mutex_unlock(&xgq->xgq_lock);
+#if 0	
+	/*TODO disable interrupts */
+	if (!xgq->xgq_polling)
+		xrt_cu_disable_intr(&xgq->xgq_cu, CU_INTR_DONE);
+
+	/* disable intr */
+	for (i = 0; i < xgq->xgq_intr_num; i++) {
+		xocl_user_interrupt_config(xdev, xgq->xgq_intr_base + i, false);
+		xocl_user_interrupt_reg(xdev, xgq->xgq_intr_base + i, NULL, NULL);
+	}
+
+	xrt_cu_hls_fini(&xgq->xgq_cu);
+#endif
+
+	/* wait for all commands to drain */
+	while (xgq_submitted_cmds_empty(xgq) != true) {
+		msleep(XOCL_XGQ_MSLEEP_1S);
+		xgq_submitted_cmds_drain(xgq);
+	}
+}
+
+
+/*
+ * periodically check if there are outstanding timed out commands.
+ * if there is any, stop service and drian all timeout cmds
+ */
+static int health_worker(void *data)
+{
+	struct xgq_worker *xw = (struct xgq_worker *)data;
+	struct xocl_xgq *xgq = xw->xgq;
+
+	while (!xw->stop) {
+		msleep(XOCL_XGQ_MSLEEP_1S * 10);
+
+		if (xgq_submitted_cmd_check(xgq)) {
+			xgq_stop_services(xgq);
+		}
+
+		if (kthread_should_stop()) {
+			xw->stop = true;
+		}
+	}
+
+	return xw->error ? 1 : 0;
+}
+
+static int init_complete_worker(struct xgq_worker *xw)
 {
 	xw->complete_thread =
-		kthread_run(complete_worker, (void *)xw, "xgq-complete-worker");
+		kthread_run(complete_worker, (void *)xw, "complete worker");
+
+	if (IS_ERR(xw->complete_thread)) {
+		int ret = PTR_ERR(xw->complete_thread);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int init_health_worker(struct xgq_worker *xw)
+{
+	xw->complete_thread =
+		kthread_run(health_worker, (void *)xw, "health worker");
 
 	if (IS_ERR(xw->complete_thread)) {
 		int ret = PTR_ERR(xw->complete_thread);
@@ -301,16 +448,20 @@ static irqreturn_t xgq_irq_handler(int irq, void *arg)
 static int submit_cmd(struct xocl_xgq *xgq, struct xocl_xgq_cmd *cmd)
 {
 	u64 slot_addr = 0;
-	int rval;
+	int rval = 0;
 	int i;
 
 	mutex_lock(&xgq->xgq_lock);
+	if (xgq->xgq_halted) {
+		XGQ_ERR(xgq, "xgq service is halted");
+		rval = -EIO;
+		goto done;
+	}
 
 	rval = xgq_produce(&xgq->xgq_queue, &slot_addr);
 	if (rval) {
-		mutex_unlock(&xgq->xgq_lock);
 		XGQ_ERR(xgq, "error: xgq_produce failed: %d", rval);
-		return rval;
+		goto done;
 	}
 
 	/* write head */
@@ -319,15 +470,15 @@ static int submit_cmd(struct xocl_xgq *xgq, struct xocl_xgq_cmd *cmd)
 
 	/* write payload */
 	memcpy_toio((void __iomem *)(slot_addr + sizeof(cmd->xgq_sq.xgq_sq_head)),
-		&cmd->xgq_sq.xgq_sq_pkt,
-		sizeof(cmd->xgq_sq.xgq_sq_pkt));
+		&cmd->xgq_sq.xgq_sq_pkt, sizeof(cmd->xgq_sq.xgq_sq_pkt));
 
 	xgq_notify_peer_produced(&xgq->xgq_queue);
 
 	list_add_tail(&cmd->xgq_cmd_head, &xgq->xgq_submitted_cmds);
-	mutex_unlock(&xgq->xgq_lock);
 
-	return 0;
+done:
+	mutex_unlock(&xgq->xgq_lock);
+	return rval;
 }
 
 static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
@@ -338,39 +489,6 @@ static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
 	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
 
 	complete(&xgq_cmd->xgq_cmd_complete);
-}
-
-/*
- * When cmd is timing out, we abort this cmd and mark the device
- * should be reset.
- */
-static void xgq_cmd_timeout(struct timer_list *t)
-{
-	struct xocl_xgq_cmd *timeout_cmd = from_timer(timeout_cmd, t, xgq_cmd_timer);
-	struct xocl_xgq *xgq = timeout_cmd->xgq;
-	struct xocl_xgq_cmd *xgq_cmd;
-	struct list_head *pos, *next;
-
-	mutex_lock(&xgq->xgq_lock);
-	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
-		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_head);
-
-		if (xgq_cmd == timeout_cmd) {
-			list_del(pos);
-			
-			xgq_cmd->xgq_cmd_rcode = 0;
-			//xgq_cmd->xgq_cmd_rcode = -ETIME;
-			complete(&xgq_cmd->xgq_cmd_complete);
-			mutex_unlock(&xgq->xgq_lock);
-
-			XGQ_ERR(xgq, "cmd id: %d timeout, reset device",
-				xgq_cmd->xgq_sq.xgq_sq_head.cid);
-			return;
-		}
-	}
-
-	mutex_unlock(&xgq->xgq_lock);
-	return;
 }
 
 /*
@@ -454,9 +572,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
 
-	/* init timer */
-	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
-	mod_timer(&cmd->xgq_cmd_timer, jiffies + timer);
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + timer;
 
 	if (submit_cmd(xgq, cmd)) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", cmdp->cid);
@@ -475,7 +592,6 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 done:
 	if (cmd) {
 		remove_xgq_cid(xgq, id);
-		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
 
@@ -565,9 +681,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/* init condition veriable */
 	init_completion(&cmd->xgq_cmd_complete);
 
-	/* init timer */
-	timer_setup(&cmd->xgq_cmd_timer, xgq_cmd_timeout, 0);
-	mod_timer(&cmd->xgq_cmd_timer, jiffies + XOCL_XGQ_CONFIG_TIME);
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
 
 	XGQ_INFO(xgq, "submit cid: %d", cmdp->cid);
 	ret = submit_cmd(xgq, cmd);
@@ -585,11 +700,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	XGQ_INFO(xgq, "rcode: %d", cmd->xgq_cmd_rcode);
 
-	ret = cmd->xgq_cmd_rcode;
+	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
 done:
 	if (cmd) {
 		remove_xgq_cid(xgq, id);
-		del_timer(&cmd->xgq_cmd_timer);
 		kfree(cmd);
 	}
 
@@ -712,31 +826,19 @@ static int xgq_remove(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "driver data is NULL");
 		return -EINVAL;
 	}
-#if 0	
-	/*TODO disable interrupts */
-	if (!xgq->xgq_polling)
-		xrt_cu_disable_intr(&xgq->xgq_cu, CU_INTR_DONE);
+	XGQ_INFO(xgq, "->");
 
-	/* disable intr */
-	for (i = 0; i < xgq->xgq_intr_num; i++) {
-		xocl_user_interrupt_config(xdev, xgq->xgq_intr_base + i, false);
-		xocl_user_interrupt_reg(xdev, xgq->xgq_intr_base + i, NULL, NULL);
-	}
+	xgq_stop_services(xgq);
 
-	xrt_cu_hls_fini(&xgq->xgq_cu);
-#endif
-
-	fini_worker(&xgq->xgq_worker);
+	fini_worker(&xgq->xgq_complete_worker);
+	fini_worker(&xgq->xgq_health_worker);
 
 	if (xgq->xgq_ring_base)
 		iounmap(xgq->xgq_ring_base);
-
-#if !defined(XGQ_DEBUG_IP)
 	if (xgq->xgq_sq_base)
 		iounmap(xgq->xgq_sq_base);
 	if (xgq->xgq_cq_base)
 		iounmap(xgq->xgq_cq_base);
-#endif
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 	mutex_destroy(&xgq->xgq_lock);
@@ -840,9 +942,12 @@ static int xgq_probe(struct platform_device *pdev)
 
 	xgq->xgq_polling = 1;
 
-	xgq->xgq_worker.xgq = xgq;
 	INIT_LIST_HEAD(&xgq->xgq_submitted_cmds);
-	init_worker(&xgq->xgq_worker);
+
+	xgq->xgq_complete_worker.xgq = xgq;
+	xgq->xgq_health_worker.xgq = xgq;
+	init_complete_worker(&xgq->xgq_complete_worker);
+	init_health_worker(&xgq->xgq_health_worker);
 #if 0
 	/*TODO: enable interrupts */
 
