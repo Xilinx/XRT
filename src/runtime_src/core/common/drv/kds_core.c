@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -167,7 +167,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 		struct config_sk_image *cp = &scmd->image[i];
 
 		for (j = 0; j < cp->num_cus; j++) {
-			int scu_idx = j + cp->start_cuidx;
+			u32 scu_idx = j + cp->start_cuidx;
 
 			/*
 			 * TODO: Need consider size limit of the name.
@@ -194,7 +194,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
  * Returns: Negative value for error. 0 or positive value for index
  *
  */
-static int
+static u32
 acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
@@ -271,65 +271,13 @@ out:
 static int
 acquire_scu_idx(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 {
-	struct kds_client *client = xcmd->client;
-	/* User marked CUs */
-	uint8_t user_cus[MAX_CUS];
-	int num_marked;
-	/* After validation */
-	uint8_t valid_cus[MAX_CUS];
-	int num_valid = 0;
-	uint8_t index;
-	u64 usage;
-	u64 min_usage;
-	int i;
-
-	num_marked = cu_mask_to_cu_idx(xcmd, user_cus);
-	if (unlikely(num_marked > scu_mgmt->num_cus)) {
-		kds_err(client, "Too many CUs in CU mask");
-		return -EINVAL;
-	}
-
-	/* Check if CU is added in the context */
-	for (i = 0; i < num_marked; ++i) {
-		if (test_bit(user_cus[i], client->scu_bitmap)) {
-			valid_cus[num_valid] = user_cus[i];
-			++num_valid;
-		}
-	}
-
-	if (num_valid == 1) {
-		index = valid_cus[0];
-		goto out;
-	} else if (num_valid == 0) {
-		kds_err(client, "All CUs in mask are out of context");
-		return -EINVAL;
-	}
-
-	/* Find out the CU with minimum usage */
-	for (i = 1, index = valid_cus[0]; i < num_valid; ++i) {
-		usage = cu_stat_read(scu_mgmt, usage[valid_cus[i]]);
-		min_usage = cu_stat_read(scu_mgmt, usage[index]);
-		if (usage < min_usage)
-			index = valid_cus[i];
-	}
-
-out:
-	cu_stat_inc(scu_mgmt, usage[index]);
-	client_stat_inc(client, scu_s_cnt[index]);
-	xcmd->cu_idx = index;
-	/* Before it go, make sure selected CU is still opening. */
-	if (unlikely(!test_bit(index, client->scu_bitmap))) {
-		client_stat_dec(client, scu_s_cnt[index]);
-		index = -EAGAIN;
-	}
-
-	return index;
+	return 0;
 }
 
 static int
 kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
-	int cu_idx;
+	u32 cu_idx;
 
 	do {
 		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
@@ -405,7 +353,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_ert *ert = kds->ert;
 	int ret = 0;
-	int cu_idx;
+	u32 cu_idx;
 
 	/* BUG_ON(!ert || !ert->submit); */
 
@@ -457,7 +405,7 @@ kds_add_cu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	int cu_idx = info->cu_idx;
+	u32 cu_idx = info->cu_idx;
 	u32 prop;
 	bool shared;
 	int ret = 0;
@@ -510,7 +458,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-	int cu_idx = info->cu_idx;
+	u32 cu_idx = info->cu_idx;
 	unsigned long submitted;
 	unsigned long completed;
 	bool bad_state = false;
@@ -602,7 +550,7 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	int cu_idx = info->cu_idx - 128;
+	u32 cu_idx = info->cu_idx - 128;
 	u32 prop;
 	bool shared;
 	int ret = 0;
@@ -655,7 +603,7 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	int cu_idx = info->cu_idx - 128;
+	u32 cu_idx = info->cu_idx - 128;
 	unsigned long submitted;
 	unsigned long completed;
 
@@ -765,13 +713,17 @@ static const struct file_operations ucu_fops = {
 	.llseek		= noop_llseek,
 };
 
-int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, int cu_idx)
+int kds_open_ucu(struct kds_sched *kds, struct kds_client *client, u32 cu_idx)
 {
 	int fd;
 	struct kds_cu_mgmt *cu_mgmt;
 	struct xrt_cu *xcu;
 
 	cu_mgmt = &kds->cu_mgmt;
+	if (cu_idx >= cu_mgmt->num_cus) {
+		kds_err(client, "CU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
 
 	if (!test_bit(cu_idx, client->cu_bitmap)) {
 		kds_err(client, "cu(%d) isn't reserved\n", cu_idx);
@@ -909,9 +861,11 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	if (ret)
 		return ret;
 
-	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
-	if (!ret)
+	ret = wait_for_completion_interruptible_timeout(&kds->comp, msecs_to_jiffies(3000));
+	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
+		wait_for_completion(&kds->comp);
+	}
 
 	return 0;
 }
@@ -1016,13 +970,13 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		++client->virt_cu_ref;
 	} else {
-	        if (cu_idx >= 128) {
-		        if (kds_add_scu_context(kds, client, info))
-			        return -EINVAL;
-		} else {
-		        if (kds_add_cu_context(kds, client, info))
-			        return -EINVAL;
-		}
+	     if (cu_idx >= 128) {
+		if (kds_add_scu_context(kds, client, info))
+			return -EINVAL;
+	     } else {
+		if (kds_add_cu_context(kds, client, info))
+			return -EINVAL;
+	     }
 	}
 
 	++client->num_ctx;
@@ -1057,13 +1011,13 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 	} else {
-	        if (cu_idx >= 128) {
-		        if (kds_del_scu_context(kds, client, info))
-			        return -EINVAL;
-		} else {
-		        if (kds_del_cu_context(kds, client, info))
-			        return -EINVAL;
-		}
+	     if (cu_idx >= 128) {
+		if (kds_del_scu_context(kds, client, info))
+			return -EINVAL;
+	     } else {
+		if (kds_del_cu_context(kds, client, info))
+			return -EINVAL;
+	     }
 	}
 
 	--client->num_ctx;
@@ -1290,13 +1244,13 @@ static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	return;
 }
 
-static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, u32 cu_idx)
 {
 	kds_err(client, "ert abort op not implemented\n");
 	return;
 }
 
-static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
+static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, u32 cu_idx)
 {
 	kds_err(client, "ert abort_done op not implemented\n");
 	return false;

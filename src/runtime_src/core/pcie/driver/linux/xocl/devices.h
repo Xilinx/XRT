@@ -258,6 +258,7 @@ enum {
 #define	XOCL_CALIB_STORAGE	"calib_storage"
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU			"cu"
+#define	XOCL_SCU		"scu"
 #define	XOCL_P2P		"p2p"
 #define	XOCL_PMC		"pmc"
 #define	XOCL_INTC		"intc"
@@ -316,6 +317,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_INTC,
 	XOCL_SUBDEV_CU,
+	XOCL_SUBDEV_SCU,
 	XOCL_SUBDEV_LAPC,
 	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_PMC,
@@ -804,6 +806,19 @@ struct xocl_subdev_map {
 		.multi_inst = true,			\
 		.override_idx = -1,			\
 		.bar_idx = (char []){ 0, 4 },		\
+	}
+
+/* Fake resource for PS Kernels
+ */
+#define XOCL_DEVINFO_SCU					\
+	{						\
+		XOCL_SUBDEV_SCU,				\
+		XOCL_SCU,				\
+		NULL,				\
+		0,		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
 	}
 
 #define	XOCL_RES_TRACE_FUNNEL			\

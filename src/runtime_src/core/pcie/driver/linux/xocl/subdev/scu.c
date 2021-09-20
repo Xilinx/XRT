@@ -200,9 +200,9 @@ static struct attribute *scu_attrs[] = {
 	NULL,
 };
 
-static struct bin_attribute crc_buf_attr = {
+static struct bin_attribute scu_crc_buf_attr = {
 	.attr = {
-		.name = "crc_buf",
+		.name = "scu_crc_buf",
 		.mode = 0444
 	},
 	.read = crc_buf_show,
@@ -211,7 +211,7 @@ static struct bin_attribute crc_buf_attr = {
 };
 
 static struct bin_attribute *scu_bin_attrs[] = {
-	&crc_buf_attr,
+	&scu_crc_buf_attr,
 	NULL,
 };
 
@@ -264,10 +264,6 @@ static int scu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_scu *xcu;
-	struct resource **res;
-	struct xrt_cu_info *info;
-	struct kernel_info *krnl_info;
-	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	int i;
 
@@ -282,37 +278,13 @@ static int scu_probe(struct platform_device *pdev)
 	xcu->pdev = pdev;
 	xcu->base.dev = XDEV2DEV(xdev);
 
-	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
-	BUG_ON(!info);
-	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
-
 	xcu->base.info.model = XCU_HLS;
-
-	krnl_info = xocl_query_kernel(xdev, info->kname);
-	err = scu_add_args(xcu, krnl_info);
-	if (err)
-		goto err;
-
-	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
-	if (!res) {
-		err = -ENOMEM;
-		goto err;
-	}
-
-	for (i = 0; i < xcu->base.info.num_res; ++i) {
-		res[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res[i]) {
-			err = -EINVAL;
-			goto err1;
-		}
-	}
-	xcu->base.res = res;
 
 	err = xocl_kds_add_scu(xdev, &xcu->base);
 	if (err) {
 		err = 0; //Ignore this error now
 		//XSCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
-		goto err1;
+		goto err;
 	}
 
 	if (sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup))
@@ -322,12 +294,8 @@ static int scu_probe(struct platform_device *pdev)
 
 	return 0;
 
-err2:
-	(void) xocl_kds_del_scu(xdev, &xcu->base);
-err1:
-	vfree(res);
 err:
-	vfree(args);
+	(void) xocl_kds_del_scu(xdev, &xcu->base);
 	return err;
 }
 
