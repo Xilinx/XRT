@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 - 2020 Xilinx, Inc
+ * Copyright (C) 2019 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -154,7 +154,7 @@ getFlashType(const std::string &_sFlashType) {
 void
 SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                                        unsigned int _origSectionSize,
-                                       std::fstream& _istream,
+                                       std::istream& _istream,
                                        std::ostringstream& _buffer) const {
   XUtil::TRACE("SectionFlash::CopyBufferUpdateMetadata");
 
@@ -281,7 +281,7 @@ SectionFlash::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 // -------------------------------------------------------------------------
 
 void
-SectionFlash::createDefaultImage(std::fstream& _istream, std::ostringstream& _buffer) const {
+SectionFlash::createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const {
   XUtil::TRACE("FLASH-DATA");
 
   flash flashHdr = flash{0};
@@ -343,7 +343,7 @@ SectionFlash::createDefaultImage(std::fstream& _istream, std::ostringstream& _bu
 void
 SectionFlash::readSubPayload(const char* _pOrigDataSection,
                              unsigned int _origSectionSize,
-                             std::fstream& _istream,
+                             std::istream& _istream,
                              const std::string& _sSubSectionName,
                              enum Section::FormatType _eFormatType,
                              std::ostringstream& _buffer) const {

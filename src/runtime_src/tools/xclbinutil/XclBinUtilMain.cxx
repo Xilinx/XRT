@@ -179,9 +179,9 @@ int main_(int argc, const char** argv) {
 
       ("target", boost::program_options::value<decltype(sTarget)>(&sTarget), "Target flow for this image.  Valid values: hw, hw_emu, and sw_emu.")
 
-      ("private-key", boost::program_options::value<std::string>(&sPrivateKey), "Private key used in signing the xclbin image.")
-      ("certificate", boost::program_options::value<std::string>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
-      ("digest-algorithm", boost::program_options::value<std::string>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
+      ("private-key", boost::program_options::value<decltype(sPrivateKey)>(&sPrivateKey), "Private key used in signing the xclbin image.")
+      ("certificate", boost::program_options::value<decltype(sCertificate)>(&sCertificate), "Certificate used in signing and validating the xclbin image.")
+      ("digest-algorithm", boost::program_options::value<decltype(sDigestAlgorithm)>(&sDigestAlgorithm), "Digest algorithm. Default: sha512")
       ("validate-signature", boost::program_options::bool_switch(&bValidateSignature), "Validates the signature for the given xclbin archive.")
 
       ("verbose,v", boost::program_options::bool_switch(&bVerbose), "Display verbose/debug information.")
@@ -189,38 +189,40 @@ int main_(int argc, const char** argv) {
 
       ("migrate-forward", boost::program_options::bool_switch(&bMigrateForward), "Migrate the xclbin archive forward to the new binary format.")
 
-      ("add-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
-      ("add-replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
-      ("add-merge-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
-      ("remove-section", boost::program_options::value<std::vector<std::string> >(&sectionsToRemove)->multitoken(), "Section name to remove.")
-      ("dump-section", boost::program_options::value<std::vector<std::string> >(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
-      ("replace-section", boost::program_options::value<std::vector<std::string> >(&sectionsToReplace)->multitoken(), "Section to replace. ")
+      ("add-section", boost::program_options::value<decltype(sectionsToAdd)>(&sectionsToAdd)->multitoken(), "Section name to add.  Format: <section>:<format>:<file>")
+      ("add-replace-section", boost::program_options::value<decltype(sectionsToAddReplace)>(&sectionsToAddReplace)->multitoken(), "Section name to add or replace.  Format: <section>:<format>:<file>")
+      ("add-merge-section", boost::program_options::value<decltype(sectionsToAddMerge)>(&sectionsToAddMerge)->multitoken(), "Section name to add or merge.  Format: <section>:<format>:<file>")
+      ("remove-section", boost::program_options::value<decltype(sectionsToRemove)>(&sectionsToRemove)->multitoken(), "Section name to remove.")
+      ("dump-section", boost::program_options::value<decltype(sectionsToDump)>(&sectionsToDump)->multitoken(), "Section to dump. Format: <section>:<format>:<file>")
+      ("replace-section", boost::program_options::value<decltype(sectionsToReplace)>(&sectionsToReplace)->multitoken(), "Section to replace. ")
 
-      ("key-value", boost::program_options::value<std::vector<std::string> >(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
-      ("remove-key", boost::program_options::value<std::vector<std::string> >(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
+      ("key-value", boost::program_options::value<decltype(keyValuePairs)>(&keyValuePairs)->multitoken(), "Key value pairs.  Format: [USER|SYS]:<key>:<value>")
+      ("remove-key", boost::program_options::value<decltype(keysToRemove)>(&keysToRemove)->multitoken(), "Removes the given user key from the xclbin archive." )
 
-      ("add-signature", boost::program_options::value<std::string>(&sSignature), "Adds a user defined signature to the given xclbin image.")
+      ("add-signature", boost::program_options::value<decltype(sSignature)>(&sSignature), "Adds a user defined signature to the given xclbin image.")
       ("remove-signature", boost::program_options::bool_switch(&bRemoveSignature), "Removes the signature from the xclbin image.")
       ("get-signature", boost::program_options::bool_switch(&bGetSignature), "Returns the user defined signature (if set) of the xclbin image.")
 
-      ("info", boost::program_options::value<std::string>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
+      ("info", boost::program_options::value<decltype(sInfoFile)>(&sInfoFile)->default_value("")->implicit_value("<console>"), "Report accelerator binary content.  Including: generation and packaging data, kernel signatures, connectivity, clocks, sections, etc.  Note: Optionally an output file can be specified.  If none is specified, then the output will go to the console.")
       ("list-sections", boost::program_options::bool_switch(&bListSections), "List all possible section names (Stand Alone Option)")
       ("version", boost::program_options::bool_switch(&bVersion), "Version of this executable.")
       ("force", boost::program_options::bool_switch(&bForce), "Forces a file overwrite.")
  ;
 
   // hidden options
+  std::vector<std::string> addPsKernels;
   std::vector<std::string> badOptions;
   boost::program_options::options_description hidden("Hidden options");
 
   hidden.add_options()
     ("trace,t", boost::program_options::bool_switch(&bTrace), "Trace")
     ("skip-uuid-insertion", boost::program_options::bool_switch(&bSkipUUIDInsertion), "Do not update the xclbin's UUID")
-    ("append-section", boost::program_options::value<std::vector<std::string> >(&sectionsToAppend)->multitoken(), "Section to append to.")
+    ("append-section", boost::program_options::value<decltype(sectionsToAppend)>(&sectionsToAppend)->multitoken(), "Section to append to.")
     ("signature-debug", boost::program_options::bool_switch(&bSignatureDebug), "Dump section debug data.")
-    ("dump-signature", boost::program_options::value<std::string>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
+    ("dump-signature", boost::program_options::value<decltype(sSignatureOutputFile)>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
     ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
-    ("BAD-DATA", boost::program_options::value<std::vector<std::string> >(&badOptions)->multitoken(), "Dummy Data." )
+    ("add-ps-kernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels.  Format: <symbol_name>:<instances>:<path_to_shared_library>")
+    ("BAD-DATA", boost::program_options::value<decltype(badOptions)>(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
   boost::program_options::options_description all("Allowed options");
@@ -534,6 +536,10 @@ int main_(int argc, const char** argv) {
     }
   }
 
+  // -- Add PS Kernels
+  for (auto psKernel : addPsKernels) 
+    xclBin.addPsKernel(psKernel);
+  
   // -- Post Section Processing --
   // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
   if ((bSkipBankGrouping == false) &&

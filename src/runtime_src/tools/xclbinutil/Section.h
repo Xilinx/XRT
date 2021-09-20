@@ -81,7 +81,7 @@ class Section {
   void readPayload(std::fstream& _istream, enum FormatType _eFormatType);
   void printHeader(std::ostream &_ostream) const;
   bool getSubPayload(std::ostringstream &_buf, const std::string _sSubSection, enum Section::FormatType _eFormatType) const;
-  void readSubPayload(std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
+  void readSubPayload(std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType);
   virtual void initXclBinSectionHeader(axlf_section_header& _sectionHeader);
   virtual void writeXclBinSectionBuffer(std::ostream& _ostream) const;
   virtual void appendToSectionMetadata(const boost::property_tree::ptree& _ptAppendData, boost::property_tree::ptree& _ptToAppendTo);
@@ -100,7 +100,7 @@ class Section {
   virtual void marshalToJSON(char* _pDataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
   virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
   virtual void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream &_buf, const std::string &_sSubSection, enum Section::FormatType _eFormatType) const;
-  virtual void readSubPayload(const char *_pOrigDataSection, unsigned int _origSectionSize,  std::fstream &_istream, const std::string &_sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  virtual void readSubPayload(const char *_pOrigDataSection, unsigned int _origSectionSize,  std::istream &_istream, const std::string &_sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
   virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
 
  protected:

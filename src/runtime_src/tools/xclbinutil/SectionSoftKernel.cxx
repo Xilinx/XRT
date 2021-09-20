@@ -131,7 +131,7 @@ SectionSoftKernel::getSubSectionEnum(const std::string _sSubSectionName) const {
 void
 SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
                                             unsigned int _origSectionSize,
-                                            std::fstream& _istream,
+                                            std::istream& _istream,
                                             std::ostringstream& _buffer) const {
   XUtil::TRACE("SectionSoftKernel::CopyBufferUpdateMetadata");
 
@@ -277,7 +277,7 @@ SectionSoftKernel::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 // -------------------------------------------------------------------------
 
 void
-SectionSoftKernel::createDefaultImage(std::fstream& _istream, std::ostringstream& _buffer) const {
+SectionSoftKernel::createDefaultImage(std::istream& _istream, std::ostringstream& _buffer) const {
   XUtil::TRACE("SOFT_KERNEL-OBJ");
 
   soft_kernel softKernelHdr = soft_kernel{0};
@@ -329,7 +329,7 @@ SectionSoftKernel::createDefaultImage(std::fstream& _istream, std::ostringstream
 void
 SectionSoftKernel::readSubPayload(const char* _pOrigDataSection,
                                   unsigned int _origSectionSize,
-                                  std::fstream& _istream,
+                                  std::istream& _istream,
                                   const std::string& _sSubSectionName,
                                   enum Section::FormatType _eFormatType,
                                   std::ostringstream& _buffer) const {
