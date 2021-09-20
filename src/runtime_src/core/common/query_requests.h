@@ -229,6 +229,7 @@ enum class key_type
   rp_program_status,
   cpu_affinity,
   shared_host_mem,
+  enabled_host_mem,
 
   aie_metadata,
   aie_reg_read,
@@ -2492,6 +2493,15 @@ struct shared_host_mem : request
 {
   using result_type = uint64_t;
   static const key_type key = key_type::shared_host_mem;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct enabled_host_mem : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::enabled_host_mem;
 
   virtual boost::any
   get(const device*) const = 0;
