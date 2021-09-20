@@ -56,6 +56,7 @@ enum class key_type
   pcie_express_lane_width_max,
   pcie_bdf,
 
+  instance,
   edge_vendor,
 
   dma_threads_raw,
@@ -84,6 +85,9 @@ enum class key_type
   ps_kernel,
   xocl_errors,
   xclbin_full,
+  ic_enable,
+  ic_load_flash_address,
+
 
   xmc_version,
   xmc_board_name,
@@ -96,8 +100,16 @@ enum class key_type
   expected_sc_version,
   xmc_status,
   xmc_reg_base,
+  xmc_scaling_support,
   xmc_scaling_enabled,
-  xmc_scaling_override,
+  xmc_scaling_power_override,
+  xmc_scaling_temp_override,
+  xmc_scaling_critical_pow_threshold,
+  xmc_scaling_critical_temp_threshold,
+  xmc_scaling_threshold_power_limit,
+  xmc_scaling_threshold_temp_limit,
+  xmc_scaling_power_override_enable,
+  xmc_scaling_temp_override_enable,
   xmc_scaling_reset,
   xmc_qspi_status,
 
@@ -188,6 +200,7 @@ enum class key_type
   heartbeat_stall,
 
   firewall_detect_level,
+  firewall_detect_level_name,
   firewall_status,
   firewall_time_sec,
   power_microwatts,
@@ -224,6 +237,7 @@ enum class key_type
 
   config_mailbox_channel_disable,
   config_mailbox_channel_switch,
+  config_xclbin_change,
   cache_xclbin,
 
   clock_timestamp,
@@ -232,6 +246,7 @@ enum class key_type
   ert_cq_read,
   ert_cu_write,
   ert_cu_read,
+  ert_data_integrity,
 
   noop
 };
@@ -722,6 +737,32 @@ struct xclbin_full : request
   get(const device*) const = 0;
 };
 
+struct ic_enable : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct ic_load_flash_address : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::ic_load_flash_address;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct aie_metadata : request
 {
   using result_type = std::string;
@@ -851,6 +892,24 @@ struct xmc_version : request
     return value;
   }
 };
+
+
+struct instance : request
+{
+  using result_type = int64_t;
+  static const key_type key = key_type::instance;
+  static const char* name() { return "instance"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string 
+  to_string(const result_type& value)
+  {
+    return std::to_string(value);
+  }
+};
+
 
 struct xmc_board_name : request
 {
@@ -982,6 +1041,69 @@ struct xmc_reg_base : request
   get(const device*) const = 0;
 };
 
+struct xmc_scaling_support : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_support;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_critical_temp_threshold : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_critical_temp_threshold;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_critical_pow_threshold : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_critical_pow_threshold;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_threshold_power_limit : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_threshold_power_limit;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_threshold_temp_limit : request
+{
+  using result_type = std::string;       // get value type
+  static const key_type key = key_type::xmc_scaling_threshold_temp_limit;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_power_override_enable : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_power_override_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct xmc_scaling_temp_override_enable : request
+{
+  using result_type = bool;       // get value type
+  static const key_type key = key_type::xmc_scaling_temp_override_enable;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct xmc_scaling_enabled : request
 {
   using result_type = bool;       // get value type
@@ -995,11 +1117,25 @@ struct xmc_scaling_enabled : request
   put(const device*, const boost::any&) const = 0;
 };
 
-struct xmc_scaling_override: request
+struct xmc_scaling_power_override: request
 {
   using result_type = std::string;  // get value type
   using value_type = std::string;   // put value type
-  static const key_type key = key_type::xmc_scaling_override;
+  static const key_type key = key_type::xmc_scaling_power_override;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+
+};
+
+struct xmc_scaling_temp_override: request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+  static const key_type key = key_type::xmc_scaling_temp_override;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2057,6 +2193,17 @@ struct firewall_detect_level : request
   }
 };
 
+struct firewall_detect_level_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::firewall_detect_level_name;
+  static const char* name() { return "level_name"; }
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+};
+
 struct firewall_status : request
 {
   using result_type = uint64_t;
@@ -2403,6 +2550,20 @@ struct config_mailbox_channel_switch : request
   put(const device*, const boost::any&) const = 0;
 };
 
+struct config_xclbin_change : request
+{
+  using result_type = std::string;  // get value type
+  using value_type = std::string;   // put value type
+
+  static const key_type key = key_type::config_xclbin_change;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
 struct cache_xclbin : request
 {
   using result_type = std::string;  // get value type
@@ -2466,6 +2627,22 @@ struct ert_cu_write : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+
+struct ert_data_integrity : request
+{
+  using result_type = bool;
+  static const key_type key = key_type::ert_data_integrity;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  static std::string
+  to_string(result_type value)
+  {
+    return value ? "Pass" : "Fail";
+  }
 };
 
 struct noop : request

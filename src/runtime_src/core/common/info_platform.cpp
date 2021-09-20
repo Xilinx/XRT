@@ -33,22 +33,22 @@ add_static_region_info(const xrt_core::device* device, ptree_type& pt)
 
   static_region.add("vbnv", xrt_core::device_query<xq::rom_vbnv>(device));
 
-  std::vector<std::string> interface_uuids;
+  std::vector<std::string> logic_uuids;
   try {
-    interface_uuids = xrt_core::device_query<xq::interface_uuids>(device);
-    interface_uuids.erase
-      (std::remove_if(interface_uuids.begin(), interface_uuids.end(),
+    logic_uuids = xrt_core::device_query<xq::logic_uuids>(device);
+    logic_uuids.erase
+      (std::remove_if(logic_uuids.begin(), logic_uuids.end(),
                       [](const std::string& s) {
                         return s.empty();
-                      }), interface_uuids.end());
+                      }), logic_uuids.end());
   }
   catch (const xq::exception&) {
   }
   
-  if (!interface_uuids.empty())
-    static_region.add("interface_uuid", xq::interface_uuids::to_uuid_upper_string(interface_uuids[0]));
+  if (!logic_uuids.empty())
+    static_region.add("logic_uuid", xq::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
   else 
-    static_region.add("interface_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
+    static_region.add("logic_uuid", (boost::format("0x%x") % xrt_core::device_query<xq::rom_time_since_epoch>(device)));
 
   try {
     static_region.add("jtag_idcode", xq::idcode::to_string(xrt_core::device_query<xq::idcode>(device)));

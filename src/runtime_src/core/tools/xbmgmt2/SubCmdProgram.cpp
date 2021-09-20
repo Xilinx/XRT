@@ -152,8 +152,8 @@ is_SC_fixed(unsigned int index)
   }
   catch (...) {
     //TODO Catching all the exceptions for now. We may need to catch specific exceptions
-    //Work-around. Assume that sc is fixed if above query failed
-    return true;
+    //Work-around. Assume that sc is not fixed if above query throws an exception
+    return false;
   }
 }
 
@@ -258,7 +258,7 @@ get_file_timestamp(const std::string & _file)
 }
 
 static void
-pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
+pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice, const std::string& vbnv)
 {
   std::cout << boost::format("%s : [%s]\n") % "Device" % _ptDevice.get<std::string>("platform.bdf");
   std::cout << std::endl;
@@ -270,53 +270,44 @@ pretty_print_platform_info(const boost::property_tree::ptree& _ptDevice)
   std::cout << std::endl;
   std::cout << "\nIncoming Configuration\n";
   const boost::property_tree::ptree& available_shells = _ptDevice.get_child("platform.available_shells");
-  // if no shells are installed, do not proceed
-  if(available_shells.empty())
-    throw xrt_core::error("No matching base partitions are installed on the system");
-  // if multiple shells are installed, do not proceed
-  if( available_shells.size() > 1)
-    throw xrt_core::error("Auto update is not possible when multiple shells are installed on the system. Please use --image option to specify the path of a particular flash image.");
 
-  const boost::property_tree::ptree& available_shell = available_shells.front().second;
-  std::pair <std::string, std::string> s = deployment_path_and_filename(available_shell.get<std::string>("file"));
+  boost::property_tree::ptree platform_to_flash;
+  for(auto& image : available_shells) {
+    if((image.second.get<std::string>("vbnv")).compare(vbnv) == 0) {
+      platform_to_flash = image.second;
+      break;
+    }
+  }
+  std::pair <std::string, std::string> s = deployment_path_and_filename(platform_to_flash.get<std::string>("file"));
   std::cout << boost::format("  %-20s : %s\n") % "Deployment File" % s.first;
   std::cout << boost::format("  %-20s : %s\n") % "Deployment Directory" % s.second;
-  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(available_shell.get<std::string>("file").c_str());
-  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(available_shell.get<std::string>("file").c_str());
+  std::cout << boost::format("  %-20s : %s\n") % "Size" % file_size(platform_to_flash.get<std::string>("file").c_str());
+  std::cout << boost::format("  %-20s : %s\n\n") % "Timestamp" % get_file_timestamp(platform_to_flash.get<std::string>("file").c_str());
 
-  std::cout << boost::format("  %-20s : %s\n") % "Platform" % available_shell.get<std::string>("vbnv", "N/A");
-  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % available_shell.get<std::string>("sc_version", "N/A");
-  auto logic_uuid = available_shell.get<std::string>("logic-uuid", "");
+  std::cout << boost::format("  %-20s : %s\n") % "Platform" % platform_to_flash.get<std::string>("vbnv", "N/A");
+  std::cout << boost::format("  %-20s : %s\n") % "SC Version" % platform_to_flash.get<std::string>("sc_version", "N/A");
+  auto logic_uuid = platform_to_flash.get<std::string>("logic-uuid", "");
   if (!logic_uuid.empty()) {
     std::cout << boost::format("  %-20s : %s\n") % "Platform UUID" % logic_uuid;
   } else {
-    std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % available_shell.get<std::string>("id", "N/A");
+    std::cout << boost::format("  %-20s : %s\n") % "Platform ID" % platform_to_flash.get<std::string>("id", "N/A");
   }
 }
 
 static void
-report_status(std::shared_ptr<xrt_core::device> & workingDevice, 
-              boost::property_tree::ptree& pt) 
+report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device) 
 {
-  // Clear returning values.
-  pt.clear();
-
-  boost::property_tree::ptree ptDevice;
-  auto rep = std::make_unique<ReportPlatform>();
-  rep->getPropertyTreeInternal(workingDevice.get(), ptDevice);
-  pt.push_back(std::make_pair(std::to_string(workingDevice->get_device_id()), ptDevice));
-
   std::cout << "----------------------------------------------------\n";
-  pretty_print_platform_info(ptDevice);
+  pretty_print_platform_info(pt_device, vbnv);
   std::cout << "----------------------------------------------------\n";
 
   std::stringstream action_list;
 
-  if (!pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.shell"))
-    action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt.get<std::string>(std::to_string(workingDevice->get_device_id())+".platform.bdf");
+  if (!pt_device.get<bool>("platform.status.shell"))
+    action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt_device.get<std::string>("platform.bdf");
 
-  if (!pt.get<bool>(std::to_string(workingDevice->get_device_id())+".platform.status.sc"))
-    action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt.get<std::string>(std::to_string(workingDevice->get_device_id())+".platform.bdf");
+  if (!pt_device.get<bool>("platform.status.sc"))
+    action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
   
   if(!action_list.str().empty()) {
     std::cout << "Actions to perform:\n" << action_list.str();
@@ -439,9 +430,12 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate)
 static void 
 auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string& image = "") 
 {
-  //report status of all the devices
+  // Get platform information
   boost::property_tree::ptree pt;
-  report_status(workingDevice, pt);
+  boost::property_tree::ptree ptDevice;
+  auto rep = std::make_unique<ReportPlatform>();
+  rep->getPropertyTreeInternal(workingDevice.get(), ptDevice);
+  pt.push_back(std::make_pair(std::to_string(workingDevice->get_device_id()), ptDevice));
 
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
@@ -453,7 +447,13 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
 
     // Check if any base packages are available
     if (available_shells.empty()) {
-      std::cout << "ERROR: No base (e.g., shell) images installed on the server. Operation cancelled.\n";
+      std::cout << "ERROR: No base (e.g., shell) images installed on the server. Operation canceled.\n";
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+
+    // Check if multiple base packages are available
+    if (available_shells.size() > 1) {
+      std::cout << "ERROR: Multiple images installed on the server. Please specify a single image using --image option. Operation canceled.\n";
       throw xrt_core::error(std::errc::operation_canceled);
     }
     image_path = available_shells.front().second.get<std::string>("file");
@@ -483,8 +483,13 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
   DSAInfo dsa(image_path);
 
   // If the shell is not up-to-date and dsa has a flash image, queue the board for update
-  bool same_shell = pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.shell");
-  bool same_sc = pt.get<bool>(std::to_string(workingDevice->get_device_id()) + ".platform.status.sc");
+  boost::property_tree::ptree& pt_dev = pt.get_child(std::to_string(workingDevice->get_device_id()));
+  bool same_shell = (dsa.name == pt_dev.get<std::string>("platform.current_shell.vbnv", ""))
+                      && (dsa.matchId(pt_dev.get<std::string>("platform.current_shell.id", "")));
+  
+  auto sc = pt_dev.get<std::string>("platform.current_shell.sc_version", "");
+  bool same_sc = ((sc.empty()) || (dsa.bmcVer.empty()) || 
+                  (dsa.bmcVer == sc) || (sc.find("FIXED") != std::string::npos));
 
   // Always update Arista devices
   auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(workingDevice);
@@ -508,6 +513,13 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
     std::cout << "\nDevice is up-to-date.  No flashing to performed.\n";
     return;
   }
+
+  // Update the ptree with the status
+  pt_dev.put("platform.status.shell", same_shell);
+  pt_dev.put("platform.status.sc", same_sc);
+
+  //report status of the device
+  report_status(dsa.name, pt_dev);
 
   // Continue to flash whatever we have collected in boardsToUpdate.
   bool needreboot = false;
@@ -802,7 +814,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (!update.empty()) {
     XBU::verbose("Sub command: --base");
     XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
-    std::string empty = "";
     if (update.compare("all") == 0)
       // Note: To get around a bug in the SC flashing code base,
       //       auto_flash will clear the collection. This code need to be refactored and clean up.

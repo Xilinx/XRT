@@ -696,6 +696,11 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 	if (!xcu->info.intr_enable)
 		return -ENOSYS;
 
+	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
+		xcu_err(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
+		return -ENOSYS;
+	}
+
 	if (intr)
 		cu_thread = xrt_cu_intr_thread;
 	else

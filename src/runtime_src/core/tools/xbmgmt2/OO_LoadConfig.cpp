@@ -146,8 +146,9 @@ OO_LoadConfig::execute(const SubCmdOptions& _options) const
 /*
  * so far, we only support the following configs, eg.
  * [Device]
- * mailbox_channel_disable = 0x120
+ * mailbox_channel_disable = 0x20
  * mailbox_channel_switch = 0
+ * xclbin_change = 1
  * cahce_xclbin = 0
  * we may support in the future, like,
  * [Daemon]
@@ -174,8 +175,24 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
       xrt_core::device_update<xrt_core::query::config_mailbox_channel_switch>(_dev.get(), key.second.get_value<std::string>());
       continue;
     }
+    if (!key.first.compare("xclbin_change")) {
+      xrt_core::device_update<xrt_core::query::config_xclbin_change>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
     if (!key.first.compare("cache_xclbin")) {
       xrt_core::device_update<xrt_core::query::cache_xclbin>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("scaling_enabled")) {
+      xrt_core::device_update<xrt_core::query::xmc_scaling_enabled>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("scaling_power_override")) {
+      xrt_core::device_update<xrt_core::query::xmc_scaling_power_override>(_dev.get(), key.second.get_value<std::string>());
+      continue;
+    }
+    if (!key.first.compare("scaling_temp_override")) {
+      xrt_core::device_update<xrt_core::query::xmc_scaling_temp_override>(_dev.get(), key.second.get_value<std::string>());
       continue;
     }
     throw std::runtime_error(boost::str(boost::format("'%s' is not a supported config entry") % key.first));

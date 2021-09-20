@@ -1808,7 +1808,7 @@ static ssize_t scaling_threshold_power_override_show(struct device *dev,
 	}
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t scaling_threshold_power_override_store(struct device *dev,
@@ -1903,7 +1903,7 @@ static ssize_t scaling_critical_temp_threshold_show(struct device *dev,
 		return sprintf(buf, "N/A\n");
 	}
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_critical_temp_threshold);
 
@@ -1926,7 +1926,7 @@ static ssize_t scaling_threshold_temp_limit_show(struct device *dev,
 		val = xmc_get_threshold_temp(xmc);
 	}
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_threshold_temp_limit);
 
@@ -1949,7 +1949,7 @@ static ssize_t scaling_threshold_power_limit_show(struct device *dev,
 		val = xmc_get_threshold_power(xmc);
 	}
 
-	return sprintf(buf, "%uW\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 static DEVICE_ATTR_RO(scaling_threshold_power_limit);
 
@@ -1997,7 +1997,7 @@ static ssize_t scaling_threshold_temp_override_show(struct device *dev,
 	}
 	mutex_unlock(&xmc->xmc_lock);
 
-	return sprintf(buf, "%uC\n", val);
+	return sprintf(buf, "%u\n", val);
 }
 
 static ssize_t scaling_threshold_temp_override_store(struct device *dev,

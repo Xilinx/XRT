@@ -28,6 +28,7 @@
 #include <functional>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
+#include <boost/filesystem.hpp>
 
 namespace {
 
@@ -35,6 +36,29 @@ namespace query = xrt_core::query;
 using pdev = std::shared_ptr<pcidev::pci_device>;
 using key_type = query::key_type;
 const static int LEGACY_COUNT = 4;
+
+static int
+get_render_value(const std::string dir)
+{
+  static const std::string render_name = "renderD"; 
+  int instance_num = INVALID_ID;
+  std::string sub;
+
+  boost::filesystem::path render_dirs(dir);
+  if (!boost::filesystem::is_directory(render_dirs))
+    return instance_num;
+ 
+  boost::filesystem::recursive_directory_iterator end_iter;
+    for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+      if (iter->path().filename().string().compare(0,render_name.size(),render_name)== 0) {   
+        sub = iter->path().filename().string().substr(render_name.size());
+        instance_num = std::stoi(sub);
+        break;
+      }
+    }
+    return instance_num;
+}
+
 
 inline pdev
 get_pcidev(const xrt_core::device* device)
@@ -98,6 +122,29 @@ struct kds_cu_stat
     return cuStats;
   }
 };
+
+struct instance 
+{
+  using result_type = query::instance::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    static const std::string  dev_root = "/sys/bus/pci/devices/";
+    std::string errmsg;
+    auto pdev = get_pcidev(device);
+
+    auto sysfsname = boost::str( boost::format("%04x:%02x:%02x.%x") % pdev->domain % pdev->bus % pdev->dev %  pdev->func);
+    if(device->is_userpf())
+      pdev->instance = get_render_value(dev_root + sysfsname + "/drm");
+    else
+      pdev->sysfs_get("", "instance", errmsg, pdev->instance,static_cast<uint32_t>(INVALID_ID));
+  
+    return pdev->instance;
+  }
+
+};
+
 
 struct kds_scu_stat
 {
@@ -431,6 +478,8 @@ initialize_query_table()
   emplace_sysfs_get<query::rom_uuid>                           ("rom", "uuid");
   emplace_sysfs_get<query::rom_time_since_epoch>               ("rom", "timestamp");
   emplace_sysfs_get<query::xclbin_uuid>                        ("", "xclbinuuid");
+  emplace_sysfs_getput<query::ic_enable>                       ("icap_controller", "enable");
+  emplace_sysfs_getput<query::ic_load_flash_address>           ("icap_controller", "load_flash_addr");
   emplace_sysfs_get<query::memstat>                            ("", "memstat");
   emplace_sysfs_get<query::memstat_raw>                        ("", "memstat_raw");
   emplace_sysfs_get<query::mem_topology_raw>                   ("icap", "mem_topology");
@@ -456,8 +505,16 @@ initialize_query_table()
   emplace_sysfs_get<query::expected_sc_version>                ("xmc", "exp_bmc_ver");
   emplace_sysfs_get<query::xmc_status>                         ("xmc", "status");
   emplace_sysfs_get<query::xmc_reg_base>                       ("xmc", "reg_base");
+  emplace_sysfs_get<query::xmc_scaling_support>                ("xmc", "scaling_support");
   emplace_sysfs_getput<query::xmc_scaling_enabled>             ("xmc", "scaling_enabled");
-  emplace_sysfs_getput<query::xmc_scaling_override>            ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_get<query::xmc_scaling_critical_pow_threshold> ("xmc", "scaling_critical_power_threshold");
+  emplace_sysfs_get<query::xmc_scaling_critical_temp_threshold> ("xmc", "scaling_critical_temp_threshold");
+  emplace_sysfs_get<query::xmc_scaling_threshold_power_limit>  ("xmc", "scaling_threshold_power_limit");
+  emplace_sysfs_get<query::xmc_scaling_threshold_temp_limit>   ("xmc", "scaling_threshold_temp_limit");
+  emplace_sysfs_get<query::xmc_scaling_power_override_enable>  ("xmc", "scaling_threshold_power_override_en");
+  emplace_sysfs_get<query::xmc_scaling_temp_override_enable>   ("xmc", "scaling_threshold_temp_override_en");
+  emplace_sysfs_getput<query::xmc_scaling_power_override>      ("xmc", "scaling_threshold_power_override");
+  emplace_sysfs_getput<query::xmc_scaling_temp_override>       ("xmc", "scaling_threshold_temp_override");
   emplace_sysfs_put<query::xmc_scaling_reset>                  ("xmc", "scaling_reset");
   emplace_sysfs_get<query::m2m>                                ("m2m", "");
   emplace_sysfs_get<query::nodma>                              ("", "nodma");
@@ -529,6 +586,7 @@ initialize_query_table()
   emplace_func0_request<query::mac_addr_list,                  mac_addr_list>();
 
   emplace_sysfs_get<query::firewall_detect_level>             ("firewall", "detected_level");
+  emplace_sysfs_get<query::firewall_detect_level_name>        ("firewall", "detected_level_name");
   emplace_sysfs_get<query::firewall_status>                   ("firewall", "detected_status");
   emplace_sysfs_get<query::firewall_time_sec>                 ("firewall", "detected_time");
 
@@ -564,8 +622,10 @@ initialize_query_table()
   emplace_sysfs_get<query::ert_cq_write>                     ("ert_user", "cq_write_cnt");
   emplace_sysfs_get<query::ert_cu_read>                      ("ert_user", "cu_read_cnt");
   emplace_sysfs_get<query::ert_cu_write>                     ("ert_user", "cu_write_cnt");
+  emplace_sysfs_get<query::ert_data_integrity>               ("ert_user", "data_integrity");
   emplace_sysfs_getput<query::config_mailbox_channel_disable> ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch> ("", "config_mailbox_channel_switch");
+  emplace_sysfs_getput<query::config_xclbin_change>          ("", "config_xclbin_change");
   emplace_sysfs_getput<query::cache_xclbin>                  ("", "cache_xclbin");
 
   emplace_sysfs_get<query::kds_mode>                         ("", "kds_mode");
@@ -576,6 +636,7 @@ initialize_query_table()
 
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
+  emplace_func0_request<query::instance,                     instance>();
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -1,0 +1,24 @@
+# This file defines code ownership in XRT.
+# Each line is a file pattern followed by one or more owners.
+# Order is important. The last matching pattern has the most precedence.
+#
+# <path>/ matches files under <path> and any of its subdirectories unless later match
+# <path>/* matches files under <path> but *not* further nested files.
+
+
+src/runtime_src/core/tools/ @rozumx @ashivangi
+src/runtime_src/core/include/ @stsoe
+src/runtime_src/core/include/xclbin.h @rozumx
+src/runtime_src/core/include/ert.h @maxzhen @mamin506 @stsoe
+src/runtime_src/core/common/ @stsoe @rozumx
+src/runtime_src/core/common/api/ @stsoe
+src/runtime_src/core/common/drv/ @mamin506
+src/runtime_src/core/pcie/emulation/ @chvamshi-xilinx
+src/runtime_src/core/pcie/driver/linux/ @maxzhen
+src/runtime_src/core/pcie/driver/windows/ @arpitxilinx
+src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
+src/runtime_src/xocl/ @stsoe
+src/runtime_src/xdp/ @jvillarre
+src/runtime_src/doc/ @uday610
+src/tests/xrt/ @stsoe
+src/tests/unit_test/ @stsoe

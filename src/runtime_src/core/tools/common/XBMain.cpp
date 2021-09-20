@@ -155,10 +155,11 @@ void  main_(int argc, char** argv,
     sDevice.clear();
     boost::property_tree::ptree available_devices = XBU::get_available_devices(isUserDomain);
 
+    // DRC: Are there any devices
     if (available_devices.empty()) 
       throw std::runtime_error("No devices found.");
 
-    // If there are multiple devices, then no default device can be found.
+    // DRC: Are there multiple devices, if so then no default device can be found.
     if (available_devices.size() > 1) {
       std::cerr << "\nERROR: Multiple devices found. Please specify a single device using the --device option\n\n";
       std::cerr << "List of available devices:" << std::endl;
@@ -171,11 +172,10 @@ void  main_(int argc, char** argv,
       throw xrt_core::error(std::errc::operation_canceled);
     }
 
-    // We have a match, get first entry
-    for (auto &kd : available_devices) {
+    // We have only 1 item in the array, get it
+    for (const auto &kd : available_devices) 
       sDevice = kd.second.get<std::string>("bdf"); // Exit after the first item
-      break;
-    }
+
   }
 
   // If there is a device value, pass it to the sub commands.

@@ -912,7 +912,8 @@ int zocl_get_hbo_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 	if (!(host_mem_start <= args->paddr &&
-	      args->paddr + args->size <= host_mem_end)) {
+	   args->paddr < host_mem_end &&
+	   args->size <= host_mem_end - args->paddr)) {
 		DRM_ERROR("get_hbo: Buffer at out side of reserved memory region\n");
 		return -ENOMEM;
 	}
@@ -1020,7 +1021,7 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 	struct resource res_mem;
 	int err;
 
-	mem_np = of_find_node_by_name(of_root, "reserved-memory");
+	mem_np = of_find_node_by_name(NULL, "reserved-memory");
 	if(!mem_np)
 		return false;
 
@@ -1032,11 +1033,14 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 			 * in this reserved memory region
 			 */
 			if (start_addr >= res_mem.start &&
-					size <= resource_size(&res_mem))
+					size <= resource_size(&res_mem)) {
+				of_node_put(mem_np);
 				return true;
+			}
 		}
 	}
 
+	of_node_put(mem_np);
 	return false;
 }
 

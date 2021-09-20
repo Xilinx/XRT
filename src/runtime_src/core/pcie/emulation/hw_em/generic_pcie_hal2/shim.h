@@ -390,7 +390,7 @@ using addr_type = uint64_t;
       void closemMessengerThread();
       bool mIsTraceHubAvailable;
       uint32_t mCuIndx;
-      const size_t mCuMapSize = 64 * 1024;
+      std::map<std::string, uint64_t> mCURangeMap;
       std::string simulatorType;
       std::string sim_path;
       std::map<uint64_t, std::pair<void*, uint64_t> > mHostOnlyMemMap;
