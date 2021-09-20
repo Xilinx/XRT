@@ -34,6 +34,12 @@ Added
 * Fixed bug in ``xrt::run::wait`` where specified timeout was ignored.
 * Added new ``xrt::device::get_info`` parameters and guaranteed format of return type with new versions of XRT.
 
+**Profiling**
+
+* Profile summary report generated when any profiling option is enabled, no longer just when OpenCL-level profiling is enabled.  All applicable summary tables and guidance will be generated based on the profiling options enabled in the xrt.ini file.
+* New data transfer summary table for aggregate information on a memory resource when monitors are added to memory resources in the design.
+* New AIE profiling metric sets to count different AIE events including (1) floating point exceptions in AIE, (2) tile execution counts, and (3) stream puts and gets.
+
 **Other changes**
 
 * Added missing ``:`` separator in regex when matching the kernel name specified to ``clCreateKernel`` and ``xrt::kernel``.  Without the separator, matching would fail when a specified kernel name is a substring of another kernel name.  The default regex is now ``"(kernelname):(.*)"``.
