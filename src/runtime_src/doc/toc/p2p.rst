@@ -57,28 +57,22 @@ The IO memory region will not be completely released after disabling P2P. Thus, 
 Current P2P Configuration
 .........................
 
-``P2P Enabled`` is shown within ``xbutil query`` output.
+``P2P Enabled`` is shown within ``xbutil examine`` output as below.
 
 ::
 
- # xbutil query
- XSA                             FPGA                        IDCode
- xilinx_vcu1525_dynamic_6_0      xcvu9p-fsgd2104-2L-e        0x14b31093
- Vendor          Device          SubDevice       SubVendor
- 0x10ee          0x6a9f          0x4360          0x10ee
- DDR size        DDR count       Clock0          Clock1
- 34359738368     2               300             500
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            false
+ # xbutil examine --device 0000:03:00.1
 
+  . . . 
+  P2P Status             : disabled
 
-There are three possible values for ``P2P Enabled`` field above.
+There are three possible values for ``P2P Status`` field above.
 
 ============  =========================================================
 Value         Remarks
 ============  =========================================================
-``True``      P2P is enabled
-``False``     P2P is disabled
+``enabled``   P2P is enabled
+``disabled``  P2P is disabled
 ``no iomem``  P2P is enabled in device but system could not allocate IO
               memory, warm reboot is needed
 ============  =========================================================
@@ -86,76 +80,29 @@ Value         Remarks
 Enable P2P
 ..........
 
-Enable P2P after power up sequence.
+The command for enabling p2p is as below
 
-::
+:: 
 
- # xbutil p2p --enable
- ERROR: resoure busy, please try warm reboot
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            no iomem
- # reboot
- ...
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            true
- ...
+ # sudo xbutil configure --device 0000:b3:00.1 --p2p enable
 
-Enable P2P without enough IO memory configured in BIOS.
 
-::
+When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through ``xbutil examine`` that would show P2P status is ``no iomem``
 
- # xbutil p2p --enable
- ERROR: Not enough iomem space.
- Please check BIOS settings
 
 Disable P2P
 ...........
 
-Disable and re-enable P2P.
+The commands for disabling p2p is as below
 
-::
+:: 
+ 
+ # sudo xbutil configure --device 0000:b3:00.1 --p2p disable
 
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            true
- ...
- # xbutil p2p --disable
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            false
- ...
- # xbutil p2p --enable
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            true
- ...
 
-Force Enable/Disable
-....................
+Disabling and re-enabling P2P work without a warm reboot in-between. 
 
-This is for advanced user. Force enabling P2P is going to free and renumerate all devices under same root bus. The result of failed freeing of devices other than Alveo platform is undefined. The best scenario is there is only Alveo platform under the same root bus.
 
-::
-
- # xbutil p2p --enable -f
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            true
- ...
- # xbutil p2p --disable
- # xbutil query
- ...
- PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
- GEN 3x16        2               true            false
- ...
 
 PCIe Topology Considerations
 ............................
