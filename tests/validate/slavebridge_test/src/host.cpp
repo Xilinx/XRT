@@ -33,6 +33,7 @@ int main(int argc, char** argv) {
     std::string test_path;
     std::string iter_cnt = "10000";
     std::string b_file = "/hostmemory.xclbin";
+    std::string old_b_file = "/slavebridge.xclbin";
     bool flag_s = false;
 
     for (int i = 1; i < argc; i++) {
@@ -53,30 +54,35 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
+    std::string binary_file = test_path + b_file;
+    std::ifstream infile(binary_file);
+    // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
+    std::string old_binary_file = test_path + old_b_file;
+    std::ifstream old_infile(old_binary_file);
     if (flag_s) {
-        std::string binaryFile = test_path + b_file;
-        std::ifstream infile(binaryFile);
         if (!infile.good()) {
-            std::cout << "\nNOT SUPPORTED" << std::endl;
-            return EOPNOTSUPP;
+            if (!old_infile.good()) {
+                std::cout << "\nNOT SUPPORTED" << std::endl;
+                return EOPNOTSUPP;
+            } else {
+                std::cout << "\nSUPPORTED" << std::endl;
+                return EXIT_SUCCESS;
+            }
         } else {
             std::cout << "\nSUPPORTED" << std::endl;
             return EXIT_SUCCESS;
         }
     }
 
-    int NUM_KERNEL;
+    int num_kernel;
     std::string filename = "/platform.json";
     std::string platform_json = test_path + filename;
 
     try {
-        boost::property_tree::ptree loadPtreeRoot;
-        boost::property_tree::read_json(platform_json, loadPtreeRoot);
-        boost::property_tree::ptree temp;
-
-        temp = loadPtreeRoot.get_child("total_host_banks");
-        NUM_KERNEL = temp.get_value<int>();
-
+        boost::property_tree::ptree load_ptree_root;
+        boost::property_tree::read_json(platform_json, load_ptree_root);
+        auto temp = load_ptree_root.get_child("total_host_banks");
+        num_kernel = temp.get_value<int>();
     } catch (const std::exception& e) {
         std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
         msg += e.what();
@@ -84,27 +90,37 @@ int main(int argc, char** argv) {
         std::cout << msg;
     }
 
-    std::string binaryFile = test_path + b_file;
-    std::ifstream infile(binaryFile);
     if (!infile.good()) {
-        std::cout << "\nNOT SUPPORTED" << std::endl;
-        return EOPNOTSUPP;
+        if (!old_infile.good()) {
+            std::cout << "\nNOT SUPPORTED" << std::endl;
+            return EOPNOTSUPP;
+        }
     }
 
     cl_int err;
     cl::Context context;
     std::string krnl_name = "hostmemory";
-    std::vector<cl::Kernel> krnls(NUM_KERNEL);
+    if (!infile.good()) {
+        krnl_name = "slavebridge";
+    }
+    std::vector<cl::Kernel> krnls(num_kernel);
     cl::CommandQueue q;
 
     // OPENCL HOST CODE AREA START
     // get_xil_devices() is a utility API which will find the xilinx
     // platforms and will return list of devices connected to Xilinx platform
     auto devices = xcl::get_xil_devices();
-    // read_binary_file() is a utility API which will load the binaryFile
+    // read_binary_file() is a utility API which will load the binary_file
     // and will return the pointer to file buffer.
-    auto fileBuf = xcl::read_binary_file(binaryFile);
-    cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
+    std::vector<unsigned char> file_buf;
+
+    // Backward compatability support if platform had older xclbin
+    if (infile.good()) {
+        file_buf = xcl::read_binary_file(binary_file);
+    } else {
+        file_buf = xcl::read_binary_file(old_binary_file);
+    }
+    cl::Program::Binaries bins{{file_buf.data(), file_buf.size()}};
 
     auto pos = dev_id.find(":");
     cl::Device device;
@@ -134,9 +150,14 @@ int main(int argc, char** argv) {
         std::cout << "Failed to program device with xclbin file!\n";
     } else {
         std::cout << "Device program successful!\n";
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             std::string cu_id = std::to_string(i + 1);
-            std::string krnl_name_full = krnl_name + ":{" + "hostmemory_" + cu_id + "}";
+            std::string krnl_name_full;
+            if (infile.good()) {
+                krnl_name_full = krnl_name + ":{" + "hostmemory_" + cu_id + "}";
+            } else {
+                krnl_name_full = krnl_name + ":{" + "slavebridge_" + cu_id + "}";
+            }
 
             // Here Kernel object is created by specifying kernel name along with
             // compute unit.
@@ -151,26 +172,28 @@ int main(int argc, char** argv) {
     int reps = stoi(iter_cnt);
 
     for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
-        unsigned int DATA_SIZE = i;
+        unsigned int data_size = i;
 
         if (xcl::is_emulation()) {
             reps = 2;
-            if (DATA_SIZE > 8 * 1024) break;
+            if (data_size > 8 * 1024) {
+                break;
+            }
         }
 
-        unsigned int vector_size_bytes = DATA_SIZE;
-        std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(DATA_SIZE);
+        unsigned int vector_size_bytes = data_size;
+        std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(data_size);
 
-        for (uint32_t j = 0; j < DATA_SIZE; j++) {
+        for (uint32_t j = 0; j < data_size; j++) {
             input_host[j] = j % 256;
         }
 
-        std::vector<cl::Buffer> input_buffer(NUM_KERNEL);
-        std::vector<cl::Buffer> output_buffer(NUM_KERNEL);
+        std::vector<cl::Buffer> input_buffer(num_kernel);
+        std::vector<cl::Buffer> output_buffer(num_kernel);
 
-        std::vector<cl_mem_ext_ptr_t> input_buffer_ext(NUM_KERNEL);
-        std::vector<cl_mem_ext_ptr_t> output_buffer_ext(NUM_KERNEL);
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        std::vector<cl_mem_ext_ptr_t> input_buffer_ext(num_kernel);
+        std::vector<cl_mem_ext_ptr_t> output_buffer_ext(num_kernel);
+        for (int i = 0; i < num_kernel; i++) {
             input_buffer_ext[i].flags = XCL_MEM_EXT_HOST_ONLY;
             input_buffer_ext[i].obj = nullptr;
             input_buffer_ext[i].param = 0;
@@ -180,24 +203,24 @@ int main(int argc, char** argv) {
             output_buffer_ext[i].param = 0;
         }
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             OCL_CHECK(err, input_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,
                                                         vector_size_bytes, &input_buffer_ext[i], &err));
             OCL_CHECK(err, output_buffer[i] = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,
                                                          vector_size_bytes, &output_buffer_ext[i], &err));
         }
 
-        unsigned char* map_input_buffer[NUM_KERNEL];
-        unsigned char* map_output_buffer[NUM_KERNEL];
+        unsigned char* map_input_buffer[num_kernel];
+        unsigned char* map_output_buffer[num_kernel];
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
             OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
-            OCL_CHECK(err, err = krnls[i].setArg(2, DATA_SIZE));
+            OCL_CHECK(err, err = krnls[i].setArg(2, data_size));
             OCL_CHECK(err, err = krnls[i].setArg(3, reps));
         }
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             OCL_CHECK(err,
                       map_input_buffer[i] = (unsigned char*)q.enqueueMapBuffer(
                           (input_buffer[i]), CL_FALSE, CL_MAP_WRITE, 0, vector_size_bytes, nullptr, nullptr, &err));
@@ -205,22 +228,20 @@ int main(int argc, char** argv) {
         }
 
         /* prepare data to be written to the device */
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             for (size_t j = 0; j < vector_size_bytes; j++) {
                 map_input_buffer[i][j] = input_host[j];
             }
         }
-        std::chrono::high_resolution_clock::time_point timeStart;
-        std::chrono::high_resolution_clock::time_point timeEnd;
 
-        timeStart = std::chrono::high_resolution_clock::now();
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        auto time_start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < num_kernel; i++) {
             OCL_CHECK(err, err = q.enqueueTask(krnls[i]));
         }
         q.finish();
-        timeEnd = std::chrono::high_resolution_clock::now();
+        auto time_end = std::chrono::high_resolution_clock::now();
 
-        for (int i = 0; i < NUM_KERNEL; i++) {
+        for (int i = 0; i < num_kernel; i++) {
             OCL_CHECK(err,
                       map_output_buffer[i] = (unsigned char*)q.enqueueMapBuffer(
                           (output_buffer[i]), CL_FALSE, CL_MAP_READ, 0, vector_size_bytes, nullptr, nullptr, &err));
@@ -228,8 +249,8 @@ int main(int argc, char** argv) {
         }
 
         // check
-        for (int i = 0; i < NUM_KERNEL; i++) {
-            for (uint32_t j = 0; j < DATA_SIZE; j++) {
+        for (int i = 0; i < num_kernel; i++) {
+            for (uint32_t j = 0; j < data_size; j++) {
                 if (map_output_buffer[i][j] != map_input_buffer[i][j]) {
                     std::cout << "ERROR : kernel failed to copy entry " << j << " input " << map_input_buffer[i][j]
                               << " output " << map_output_buffer[i][j] << std::endl;
@@ -238,22 +259,16 @@ int main(int argc, char** argv) {
             }
         }
 
-        double usduration;
-        double dnsduration;
-        double dsduration;
-        double bpersec;
-        double mbpersec;
-
-        usduration = (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(timeEnd - timeStart).count() / reps);
-
-        dnsduration = (double)usduration;
-        dsduration = dnsduration / ((double)1000000000);
-        bpersec = (DATA_SIZE * NUM_KERNEL) / dsduration;
-        mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+        double usduration =
+            (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
+        double dnsduration = (double)usduration;
+        double dsduration = dnsduration / ((double)1000000000);
+        double bpersec = (data_size * num_kernel) / dsduration;
+        double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
 
         if (mbpersec > max_throughput) max_throughput = mbpersec;
     }
-    std::cout << "Throughput: " << max_throughput << "MB/s\n";
+    std::cout << "Throughput (Type: HOST) (Bank count: " << num_kernel << "): " << max_throughput << "MB/s\n";
 
     std::cout << "TEST PASSED\n";
 
