@@ -34,7 +34,10 @@
 #define CU_AP_CONTINUE	(0x1 << 4)
 #define CU_AP_RESET	(0x1 << 5)
 
+std::string convert_version(std::stringstream& version);
+
 namespace xrt_core { namespace utils {
+
 
 /**
  * ios_flags_restore() - scope guard for ios flags

@@ -26,6 +26,32 @@
 #include <limits>
 #include <boost/algorithm/string.hpp>
 
+std::string convert_version(std::stringstream& version)
+{
+
+  std::string byte ;
+  int VER[10]   = {0};
+  int i =0;
+
+  version.seekg (0, version.end);
+  int len = version.tellg();
+
+  while( i  < 3){
+  len = len -2;
+    if (len < 0){
+      version.seekg(0);
+      version >> std::setw(1) >>byte;
+    }
+    else {
+      version.seekg(len);
+      version >> std::setw(2) >>byte;
+    }
+      VER[i++] = std::stoi(byte,nullptr,16);
+  }
+  auto fmt  = boost::format("%d.%d.%d") % VER[2]  % VER[1] % VER[0];
+  return fmt.str();
+}
+
 namespace {
 
 inline unsigned int
@@ -41,8 +67,6 @@ precision(double value, int p)
   stream << std::fixed << std::setprecision(p) << value;
   return stream.str();
 }
-
-
 
 }
 
