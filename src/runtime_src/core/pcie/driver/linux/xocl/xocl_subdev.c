@@ -2046,3 +2046,45 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 
 	return 0;
 }
+
+/*
+ * A wait_for_completion() hang inside request_firmware() was shown with multiple cards
+ * test. It is due to race condition when multiple threads call request_firmware() at
+ * the same firmware file. Thus, adding a wrapper function to resolve the race.
+ * Loading firmware is not in a critical path, just use a global lock to protect.
+ */
+static DEFINE_MUTEX(firmware_lock);
+int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, size_t *len)
+{
+	const struct firmware *fw = NULL;
+	int ret;
+
+	*buf = NULL;
+	mutex_lock(&firmware_lock);
+	ret = request_firmware(&fw, fw_name, dev);
+	if (ret)
+		goto failed;
+
+	*buf = vmalloc(fw->size);
+	if (*buf) {
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(*buf, fw->data, fw->size);
+	if (len)
+		*len = fw->size;
+	release_firmware(fw);
+	mutex_unlock(&firmware_lock);
+
+	return 0;
+
+failed:
+	if (fw)
+		release_firmware(fw);
+	mutex_unlock(&firmware_lock);
+
+	vfree(*buf);
+	*buf = NULL;
+
+	return ret;
+}

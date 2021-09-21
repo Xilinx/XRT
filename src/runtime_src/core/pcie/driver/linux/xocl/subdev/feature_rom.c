@@ -49,7 +49,6 @@ static char *rom_uuid = "firmware_dir";
 module_param(rom_uuid, charp, 0644);
 MODULE_PARM_DESC(rom_uuid, "uuid value to find firmware directory (max 64 chars)");
 
-static DEFINE_MUTEX(firmware_lock);
 static ssize_t VBNV_show(struct device *dev,
     struct device_attribute *attr, char *buf)
 {
@@ -488,7 +487,6 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	u64 timestamp = rom->header.TimeSinceEpoch;
 	int err = 0;
 	char fw_name[256];
-	const struct firmware *fw;
 	char vendor_fw_dir[16];
 
 	if (funcid != 0) {
@@ -518,30 +516,15 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	}
 
 	xocl_dbg(&pdev->dev, "try loading fw: %s", fw_name);
-	mutex_lock(&firmware_lock);
-	err = request_firmware(&fw, fw_name, &pcidev->dev);
+	err = xocl_request_firmware(&pcidev->dev, fw_name, fw_buf, fw_len);
 	if (err && !is_multi_rp(rom)) {
 		snprintf(fw_name, sizeof(fw_name),
 			"%s/%04x-%04x-%04x-%016llx.%s",
 			vendor_fw_dir, vendor, (deviceid + 1), subdevice, timestamp, suffix);
 		xocl_dbg(&pdev->dev, "try loading fw: %s", fw_name);
-		err = request_firmware(&fw, fw_name, &pcidev->dev);
-	}
-	if (err)
-		goto failed;
-
-	*fw_buf = vmalloc(fw->size);
-	if (*fw_buf != NULL) {
-		memcpy(*fw_buf, fw->data, fw->size);
-		*fw_len = fw->size;
-	} else {
-		err = -ENOMEM;
+		err = xocl_request_firmware(&pcidev->dev, fw_name, fw_buf, fw_len);
 	}
 
-	release_firmware(fw);
-
-failed:
-	mutex_unlock(&firmware_lock);
 	return err;
 }
 
