@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['infoschemaversion_240',['InfoSchemaVersion',['../namespacexrt_1_1info.html#af137cdb12886f4b7d9211141cc66bef3',1,'xrt::info']]]
+  ['memory_5ftype_238',['memory_type',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f',1,'xrt::xclbin::mem']]]
 ];

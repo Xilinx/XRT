@@ -10,7 +10,7 @@ var searchData=
   ['get_5fcus_32',['get_cus',['../classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d',1,'xrt::xclbin::kernel']]],
   ['get_5fhost_5ftype_33',['get_host_type',['../classxrt_1_1xclbin_1_1arg.html#a9b4d4ae4c4aace3003c3acbde25509db',1,'xrt::xclbin::arg']]],
   ['get_5findex_34',['get_index',['../classxrt_1_1xclbin_1_1mem.html#a193679b9234d832daf567655637eaa0b',1,'xrt::xclbin::mem']]],
-  ['get_5finfo_35',['get_info',['../classxrt_1_1device.html#a483a7043274305c132d50d9bb4511254',1,'xrt::device']]],
+  ['get_5finfo_35',['get_info',['../classxrt_1_1device.html#a0db28f39fce7a94f84c31da71b6939fc',1,'xrt::device']]],
   ['get_5fip_36',['get_ip',['../classxrt_1_1xclbin.html#a0fd663b528ded292023776bbdb4c2a9c',1,'xrt::xclbin']]],
   ['get_5fips_37',['get_ips',['../classxrt_1_1xclbin.html#ac539bf90de9be3b9e4ba202b70cbba40',1,'xrt::xclbin']]],
   ['get_5fkernel_38',['get_kernel',['../classxrt_1_1xclbin.html#a1517929bd43700d26af073a94a0b1761',1,'xrt::xclbin']]],
