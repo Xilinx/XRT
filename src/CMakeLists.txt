@@ -16,6 +16,7 @@ include(CMake/unitTestSupport.cmake)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  ${CMAKE_BINARY_DIR}/gen
   )
 
 set(CMAKE_CXX_STANDARD 14)
