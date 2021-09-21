@@ -23,6 +23,7 @@
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
+static DEFINE_MUTEX(firmware_lock);
 static void xclmgmt_reset_pci(struct xclmgmt_dev *lro);
 /**
  * @returns: NULL if AER apability is not found walking up to the root port
@@ -894,10 +895,8 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	int err;
 
 	interface_uuid = xclmgmt_get_interface_uuid(lro);
-	if (!interface_uuid) {
-		err = -EINVAL;
-		goto done;
-	}
+	if (!interface_uuid)
+		return -EINVAL;
 	memset(fw_name, 0, sizeof (fw_name));
 
 	snprintf(fw_name, sizeof(fw_name), "%s/"
@@ -919,6 +918,7 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	       	interface_uuid);
 
 	mgmt_info(lro, "try loading fw: %s", fw_name);
+	mutex_lock(&firmware_lock);
 	err = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
 	if (err)
 		goto done;
@@ -926,5 +926,6 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	err = xocl_xclbin_download(lro, fw->data);
 	release_firmware(fw);
 done:
+	mutex_unlock(&firmware_lock);
 	return err;
 }

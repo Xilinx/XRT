@@ -43,6 +43,7 @@ static xuid_t uuid_null = NULL_UUID_LE;
 #endif
 
 static struct key *icap_keys = NULL;
+static DEFINE_MUTEX(firmware_lock);
 
 #define	ICAP_ERR(icap, fmt, arg...)	\
 	xocl_err(&(icap)->icap_pdev->dev, fmt "\n", ##arg)
@@ -989,6 +990,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		}
 
 		if (sched_bin) {
+			mutex_lock(&firmware_lock);
 			err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 			if (!err)  {
 				xocl_mb_load_sche_image(xdev, sche_fw->data,
@@ -997,6 +999,7 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 				load_sched = true;
 				release_firmware(sche_fw);
 			}
+			mutex_unlock(&firmware_lock);
 		}
 
 		if (!load_sched) {
@@ -3319,6 +3322,7 @@ void icap_key_test(struct icap *icap)
 	const struct firmware *text = NULL;
 	int err = 0;
 
+	mutex_lock(&firmware_lock);
 	err = request_firmware(&sig, "xilinx/signature", &pcidev->dev);
 	if (err) {
 		ICAP_ERR(icap, "can't load signature: %d", err);
@@ -3344,6 +3348,7 @@ done:
 		release_firmware(sig);
 	if (text)
 		release_firmware(text);
+	mutex_unlock(&firmware_lock);
 }
 #endif
 
@@ -4291,10 +4296,12 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	if (sched_bin) {
+		mutex_lock(&firmware_lock);
 		err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
 		if (!err)  {
 			icap->rp_sche_bin = vmalloc(sche_fw->size);
 			if (!icap->rp_sche_bin) {
+				mutex_unlock(&firmware_lock);
 				ICAP_ERR(icap, "Not enough mem for sched bin");
 				ret = -ENOMEM;
 				goto failed;
@@ -4304,6 +4311,7 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 			icap->rp_sche_bin_len = sche_fw->size;
 			release_firmware(sche_fw);
 		}
+		mutex_unlock(&firmware_lock);
 	}
 
 
