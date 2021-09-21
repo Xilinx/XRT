@@ -22,5 +22,7 @@ src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
 src/runtime_src/tools/ @rozumx
 src/runtime_src/tools/scripts/ @rozumx @stsoe
+src/CMake/ @rozumx @stsoe
 src/tests/xrt/ @stsoe
 src/tests/unit_test/ @stsoe
+build/ @stsoe @rozumx
