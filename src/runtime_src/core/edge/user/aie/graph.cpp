@@ -93,6 +93,12 @@ graph_type::
 {
 #ifndef __AIESIM__
     auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+    if (!drv || !drv->getAied()) {
+	std::stringstream warnMsg;
+	warnMsg << "There is no active device open. Unable to close Graph `" << name << "`";
+	xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", warnMsg.str());
+	return;
+    }
     drv->closeGraphContext(id);
     drv->getAied()->deregisterGraph(this);
 #endif
