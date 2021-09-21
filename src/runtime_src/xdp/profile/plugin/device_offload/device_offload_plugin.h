@@ -74,6 +74,7 @@ namespace xdp {
     XDP_EXPORT void readCounters() ;
     XDP_EXPORT virtual void readTrace() = 0 ;
     XDP_EXPORT void checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId) ;
+    XDP_EXPORT bool flushTraceOffloader(DeviceTraceOffload* offloader);
 
   public:
     XDP_EXPORT DeviceOffloadPlugin() ;
