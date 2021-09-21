@@ -175,9 +175,9 @@ namespace xdp {
             while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
           }
           else {
-            offloader->read_trace() ;
-            offloader->read_trace_end() ;
+            offloader->read_trace();
             offloader->process_trace();
+            offloader->read_trace_end();
           }
           checkTraceBufferFullness(offloader, deviceId);
 	} catch (std::exception& /*e*/) {
@@ -221,9 +221,9 @@ namespace xdp {
             while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
           }
           else {
-            offloader->read_trace() ;
-            offloader->read_trace_end() ;
+            offloader->read_trace();
             offloader->process_trace();
+            offloader->read_trace_end();
           }
           checkTraceBufferFullness(offloader, deviceId);
         }
