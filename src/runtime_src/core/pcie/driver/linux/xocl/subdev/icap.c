@@ -4290,10 +4290,9 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	if (sched_bin) {
 		err = xocl_request_firmware(&pcidev->dev, sched_bin, (char **)&icap->rp_sche_bin,
 					    &icap->rp_sche_bin_len);
-		if (err)  {
-			ret = -ENOMEM;
+		if (err)
 			goto failed;
-		}
+
 		ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", icap->rp_sche_bin_len);
 	}
 
