@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -744,16 +744,25 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
-	int bad_state;
 	int ret = 0;
 
 	ret = kds_add_command(kds, xcmd);
 	if (ret)
 		return ret;
 
+	/* Why not wait_for_completion_interruptible_timeout()?
+	 * This is the process to configure ERT. If user ctrl-c, ERT will be
+	 * mark as in bad status and need reset device to recovery from it.
+	 * But ERT is actually alive.
+	 * To avoid this, wait for few seconds for ERT to complete command.
+	 */
 	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
 	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
+		/* ERT abort would handle command in time. The command would be
+		 * marked as ABORT or TIMEOUT and kds->comp would increase.
+		 * It is a  bug if below waiting never finished.
+		 */
 		wait_for_completion(&kds->comp);
 	}
 

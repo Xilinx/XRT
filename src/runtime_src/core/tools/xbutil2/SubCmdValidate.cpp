@@ -333,13 +333,13 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       if (exit_code == EOPNOTSUPP) {
         _ptTest.put("status", "skipped");
       }
-      else if (exit_code == EXIT_FAILURE) {
+      else if (exit_code == EXIT_SUCCESS) {
+        _ptTest.put("status", "passed");
+      }
+      else {
         logger(_ptTest, "Error", os_stdout.str());
         logger(_ptTest, "Error", os_stderr.str());
         _ptTest.put("status", "failed");
-      }
-      else {
-        _ptTest.put("status", "passed");
       }
     } catch (const std::exception& e) {
       logger(_ptTest, "Error", e.what());
@@ -1028,9 +1028,9 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   auto mem_topo = reinterpret_cast<const mem_topology*>(membuf.data());
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
-
+  //TO-DO: introduce busy bar so that we don't have to worry about ProgressBar size
   int counter = 0;
-  XBU::ProgressBar run_test("Running Test", mem_topo->m_count, XBU::is_escape_codes_disabled(), std::cout);
+  XBU::ProgressBar run_test("Running Test", 256, XBU::is_escape_codes_disabled(), std::cout);
   for (auto& mem : boost::make_iterator_range(mem_topo->m_mem_data, mem_topo->m_mem_data + mem_topo->m_count)) {
     auto midx = std::distance(mem_topo->m_mem_data, &mem);
     std::vector<std::string> sup_list = { "HBM", "bank", "DDR" };
@@ -1051,10 +1051,7 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
       }
     }
   }
-  if(counter < mem_topo->m_count)
-    run_test.finish(false, "");
-  else
-    run_test.finish(true, "");
+  run_test.finish(true, "");
  
   if (XBU::is_escape_codes_disabled() == true) 
     std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();

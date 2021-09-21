@@ -1454,7 +1454,7 @@ namespace xdp {
     fout << "COLUMN:<html>Memory<br>Resource</html>,string,"
          << "Memory resource on the device\n" ;
     fout << "COLUMN:<html>Transfer<br>Type</html>,string,"
-         << "Read or write transfer\n" ;
+         << "Read from this memory resource or write to this memory resource\n";
     fout << "COLUMN:<html>Number<br>of Transfers</html>,int,"
          << "Number of data transfers\n" ;
     fout << "COLUMN:<html>Transfer<br>Rate (MB/s)</html>,float,"
@@ -1733,6 +1733,9 @@ namespace xdp {
 	    double aveBW =
 	      (one_hundred * transferRate) / xclbin->maxWriteBW ;
 	    if (aveBW > one_hundred) aveBW = one_hundred ;
+	    auto aveLatency =
+              static_cast<double>(values.WriteLatency[monitorId]) /
+              static_cast<double>(writeTranx) ;
 
 	    fout << device->getUniqueDeviceName() << ","
 		 << xclbin->cus[monitor->cuIndex]->getName() << "/"
@@ -1744,8 +1747,7 @@ namespace xdp {
 		 << transferRate << ","
 		 << aveBW << ","
 		 << (double)(values.WriteBytes[monitorId] / writeTranx) / one_thousand << ","
-		 << (values.WriteLatency[monitorId] / writeTranx) << "," 
-		 << std::endl ;
+		 << aveLatency << ",\n" ;
 	  }
 	  if (readTranx > 0) {
 	      double transferRate = (totalReadTime == zero) ? 0 :
@@ -1753,6 +1755,9 @@ namespace xdp {
 	      double aveBW =
 		(one_hundred * transferRate) / xclbin->maxReadBW ;
 	      if (aveBW > one_hundred) aveBW = one_hundred ;
+              auto aveLatency =
+                static_cast<double>(values.ReadLatency[monitorId]) /
+                static_cast<double>(readTranx) ;
 
 	      fout << device->getUniqueDeviceName() << ","
 		   << xclbin->cus[monitor->cuIndex]->getName() << "/"
@@ -1764,8 +1769,7 @@ namespace xdp {
 		   << transferRate << ","
 		   << aveBW << ","
 		   << (double)(values.ReadBytes[monitorId] / readTranx) / one_thousand << ","
-		   << (values.ReadLatency[monitorId] / readTranx) << "," 
-		   << std::endl ;
+		   << aveLatency << ",\n" ;
 	  }
 	  ++monitorId ;
 	}

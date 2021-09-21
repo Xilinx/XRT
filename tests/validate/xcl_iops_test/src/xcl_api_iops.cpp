@@ -299,7 +299,7 @@ int _main(int argc, char* argv[])
         } else if ((strcmp(argv[i], "-d") == 0) || (strcmp(argv[i], "--device") == 0)) {
             device_str = argv[i + 1];
         } else if ((strcmp(argv[i], "-k") == 0) || (strcmp(argv[i], "--kernel") == 0)) {
-            xclbin_fn = test_path + argv[i + 1];
+            xclbin_fn = argv[i + 1];
         } else if ((strcmp(argv[i], "-t") == 0) || (strcmp(argv[i], "--threads") == 0)) {
             threadNumber = atoi(argv[i + 1]);
         } else if ((strcmp(argv[i], "-l") == 0) || (strcmp(argv[i], "--length") == 0)) {
@@ -316,16 +316,18 @@ int _main(int argc, char* argv[])
         }
     }
 
-    if (test_path.empty()) {
-        std::cout << "ERROR : please provide the platform test path to -p option\n";
-        return EXIT_FAILURE;
-    }
-
+    /* If "-k" option is used, it is a legacy shell which using old stype CU.
+     * The old CU and new CU have different registers.
+     */
     if (xclbin_fn.empty()) {
+        if (test_path.empty())
+            throw std::runtime_error("ERROR : please provide the platform test path to -p option\n");
+
         xclbin_fn = test_path + "/verify.xclbin";
         krnl.name = "verify";
         krnl.new_style = true;
     }
+
     /* Sanity check */
     std::ifstream infile(xclbin_fn);
     if (!infile.good())
@@ -357,9 +359,10 @@ int _main(int argc, char* argv[])
 int main(int argc, char *argv[])
 {
     try {
-        _main(argc, argv);
-        std::cout << "TEST PASSED" << std::endl;
-        return EXIT_SUCCESS;
+        auto ret = _main(argc, argv);
+        if (!ret)
+            std::cout << "TEST PASSED" << std::endl;
+        return ret;
     }
     catch (const std::exception& ex) {
         std::cout << "TEST FAILED: " << ex.what() << std::endl;
