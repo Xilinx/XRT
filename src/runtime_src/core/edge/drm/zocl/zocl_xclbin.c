@@ -843,14 +843,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			 /*
 			  * cleanup previously loaded xclbin related data
 			  * before loading new bitstream/pdi
-			  * */
+			  */
 			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
 				subdev_destroy_cu(zdev);
 				if (zdev->aie) {
 					zocl_aie_reset(zdev);
-					mutex_lock(&zdev->aie_lock);
-					zdev->aie->aie_reset = false;
-					mutex_unlock(&zdev->aie_lock);
+					zocl_destroy_aie(zdev);
 				}
 			}
 			/*
