@@ -223,6 +223,7 @@ enum class key_type
   is_offline,
   f_flash_type,
   flash_type,
+  flash_size,
   board_name,
   interface_uuids,
   logic_uuids,
@@ -2421,6 +2422,15 @@ struct f_flash_type : request
 {
   using result_type = std::string;
   static const key_type key = key_type::f_flash_type;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct flash_size : request
+{
+  using result_type = uint64_t;
+  static const key_type key = key_type::flash_size;
 
   virtual boost::any
   get(const device*) const = 0;

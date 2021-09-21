@@ -67,7 +67,7 @@ class Flasher
 {
 public:
     Flasher(unsigned int index);
-    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
+    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary, firmwareImage* stripped);
     int upgradeBMCFirmware(firmwareImage* bmc);
     void readBack(const std::string& output);
     bool isValid(void) { return m_device != nullptr; }

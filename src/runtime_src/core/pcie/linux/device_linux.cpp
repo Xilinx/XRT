@@ -608,6 +608,7 @@ initialize_query_table()
   emplace_sysfs_get<query::is_ready>                         ("", "ready");
   emplace_sysfs_get<query::is_offline>                       ("", "dev_offline");
   emplace_sysfs_get<query::f_flash_type>                     ("flash", "flash_type");
+  emplace_sysfs_get<query::flash_size>                       ("flash", "size");
   emplace_sysfs_get<query::flash_type>                       ("", "flash_type");
   emplace_sysfs_get<query::board_name>                       ("", "board_name");
   emplace_sysfs_get<query::logic_uuids>                      ("", "logic_uuids");

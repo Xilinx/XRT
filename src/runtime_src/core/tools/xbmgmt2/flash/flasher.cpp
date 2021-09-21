@@ -94,7 +94,7 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
  * upgradeFirmware
  */
 int Flasher::upgradeFirmware(const std::string& flasherType,
-    firmwareImage *primary, firmwareImage *secondary)
+    firmwareImage *primary, firmwareImage *secondary, firmwareImage *stripped)
 {
     int retVal = -EINVAL;
     E_FlasherType type = getFlashType(flasherType);
@@ -110,11 +110,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmware1(*primary);
+            retVal = xspi.xclUpgradeFirmware1(*primary, stripped);
         }
         else
         {
-            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, stripped);
         }
 
         // program icap controller for webstar flow. Required only for U.2

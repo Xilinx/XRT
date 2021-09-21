@@ -80,7 +80,11 @@ update_shell(unsigned int index, const std::string& primary, const std::string& 
   auto pri = std::make_unique<firmwareImage>(primary.c_str(), MCS_FIRMWARE_PRIMARY);
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
-
+  
+  auto stripped = std::make_unique<firmwareImage>(primary.c_str(), STRIPPED_FIRMWARE);
+  if (stripped->fail())
+    stripped = nullptr;
+  
   std::unique_ptr<firmwareImage> sec;
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),
@@ -88,8 +92,8 @@ update_shell(unsigned int index, const std::string& primary, const std::string& 
     if (sec->fail())
       sec = nullptr;
   }
-  
-  if (flasher.upgradeFirmware("", pri.get(), sec.get()) != 0)
+
+  if (flasher.upgradeFirmware("", pri.get(), sec.get(), stripped.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
@@ -118,6 +122,10 @@ update_shell(unsigned int index, const std::string& flashType,
   if (pri->fail())
     throw xrt_core::error(boost::str(boost::format("Failed to read %s") % primary));
 
+  auto stripped = std::make_unique<firmwareImage>(primary.c_str(), STRIPPED_FIRMWARE);
+  if (stripped->fail())
+    stripped = nullptr;
+
   std::unique_ptr<firmwareImage> sec;
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(), MCS_FIRMWARE_SECONDARY);
@@ -125,7 +133,7 @@ update_shell(unsigned int index, const std::string& flashType,
       throw xrt_core::error(boost::str(boost::format("Failed to read %s") % secondary));
   }
 
-  if (flasher.upgradeFirmware(flashType, pri.get(), sec.get()) != 0)
+  if (flasher.upgradeFirmware(flashType, pri.get(), sec.get(), stripped.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
@@ -855,7 +863,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(std::errc::operation_canceled);
     
     for(auto& f : flasher_list) {
-      if (!f.upgradeFirmware("", nullptr, nullptr)) {
+      if (!f.upgradeFirmware("", nullptr, nullptr, nullptr)) {
         std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
         has_reset = true;
       }

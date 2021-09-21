@@ -84,6 +84,7 @@ enum imageType
     BMC_FIRMWARE,
     MCS_FIRMWARE_PRIMARY,
     MCS_FIRMWARE_SECONDARY,
+    STRIPPED_FIRMWARE
 };
 
 class firmwareImage : public std::istringstream
