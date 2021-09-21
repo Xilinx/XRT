@@ -316,9 +316,6 @@ int _main(int argc, char* argv[])
         }
     }
 
-    /* If "-k" option is used, it is a legacy shell which using old stype CU.
-     * The old CU and new CU have different registers.
-     */
     if (xclbin_fn.empty()) {
         if (test_path.empty())
             throw std::runtime_error("ERROR : please provide the platform test path to -p option\n");
