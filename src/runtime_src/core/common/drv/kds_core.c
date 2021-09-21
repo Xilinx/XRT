@@ -750,9 +750,19 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	if (ret)
 		return ret;
 
-	ret = wait_for_completion_interruptible_timeout(&kds->comp, msecs_to_jiffies(3000));
-	if (ret <= 0) {
+	/* Why not wait_for_completion_interruptible_timeout()?
+	 * This is the process to configure ERT. If user ctrl-c, ERT will be
+	 * mark as in bad status and need reset device to recovery from it.
+	 * But ERT is actually alive.
+	 * To avoid this, wait for few seconds for ERT to complete command.
+	 */
+	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
+	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
+		/* ERT abort would handle command in time. The command would be
+		 * marked as ABORT or TIMEOUT and kds->comp would increase.
+		 * It is a  bug if below waiting never finished.
+		 */
 		wait_for_completion(&kds->comp);
 	}
 
