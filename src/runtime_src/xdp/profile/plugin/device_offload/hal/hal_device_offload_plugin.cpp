@@ -113,6 +113,7 @@ namespace xdp {
         } else {
           offloader->read_trace();
           offloader->read_trace_end();
+          offloader->process_trace();
         }
         checkTraceBufferFullness(offloader, o.first);
       } catch (std::exception& /*e*/) {
@@ -151,7 +152,8 @@ namespace xdp {
           while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
         }
         else {
-          offloader->read_trace() ;
+          offloader->read_trace();
+          offloader->process_trace();
         }
       } catch (std::exception& /*e*/) {
       }

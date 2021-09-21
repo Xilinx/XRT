@@ -84,21 +84,39 @@ void DeviceTraceOffload::train_clock_continuous()
 
 void DeviceTraceOffload::process_trace_continuous()
 {
+  if (!has_ts2mm())
+    return;
+
+  while(should_continue())
+  {
+    process_trace();
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
+  }
+  // One last time
+  process_trace();
+}
+
+void DeviceTraceOffload::process_trace()
+{
+  if (!has_ts2mm())
+    return;
+
   bool q_read = false;
+  bool q_empty = true;
   std::unique_ptr<char[]> buf;
   uint64_t size = 0;
-  while (true) {
-    {
-      process_queue_lock.lock();
-      if (!m_data_queue.empty()) {
-        buf = std::move(m_data_queue.front());
-        size = m_size_queue.front();
-        m_data_queue.pop();
-        m_size_queue.pop();
-        q_read = true;
-      }
-      process_queue_lock.unlock();
+  do {
+    q_read=false;
+    process_queue_lock.lock();
+    if (!m_data_queue.empty()) {
+      buf = std::move(m_data_queue.front());
+      size = m_size_queue.front();
+      m_data_queue.pop();
+      m_size_queue.pop();
+      q_read = true;
+      q_empty = m_data_queue.empty();
     }
+    process_queue_lock.unlock();
 
     // Processing takes a lot more time compared to everything else
     if (q_read) {
@@ -106,17 +124,8 @@ void DeviceTraceOffload::process_trace_continuous()
       buf.reset();
       deviceTraceLogger->processTraceData(m_trace_vector);
       m_trace_vector.clear();
-      q_read=false;
-    } else if (!should_continue()) {
-      break;
     }
-
-    process_queue_lock.lock();
-    bool q_empty = m_data_queue.empty();
-    process_queue_lock.unlock();
-    if (q_empty)
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
-  }
+  } while (!q_empty);
 }
 
 bool DeviceTraceOffload::should_continue()
@@ -136,10 +145,10 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
   if (type == OffloadThreadType::TRACE) {
     offload_thread = std::thread(&DeviceTraceOffload::offload_device_continuous, this);
     process_thread = std::thread(&DeviceTraceOffload::process_trace_continuous, this);
-  }
-  else if (type == OffloadThreadType::CLOCK_TRAIN) {
+  } else if (type == OffloadThreadType::CLOCK_TRAIN) {
     offload_thread = std::thread(&DeviceTraceOffload::train_clock_continuous, this);
   }
+
 }
 
 void DeviceTraceOffload::stop_offload()

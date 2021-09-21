@@ -103,6 +103,7 @@ public:
     };
     inline bool continuous_offload() { return continuous ; }
     inline void set_continuous(bool value = true) { continuous = value ; }
+    void process_trace();
 
 private:
     std::mutex status_lock;

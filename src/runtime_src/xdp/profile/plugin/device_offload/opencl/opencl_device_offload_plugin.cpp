@@ -177,6 +177,7 @@ namespace xdp {
           else {
             offloader->read_trace() ;
             offloader->read_trace_end() ;
+            offloader->process_trace();
           }
           checkTraceBufferFullness(offloader, deviceId);
 	} catch (std::exception& /*e*/) {
@@ -222,6 +223,7 @@ namespace xdp {
           else {
             offloader->read_trace() ;
             offloader->read_trace_end() ;
+            offloader->process_trace();
           }
           checkTraceBufferFullness(offloader, deviceId);
         }

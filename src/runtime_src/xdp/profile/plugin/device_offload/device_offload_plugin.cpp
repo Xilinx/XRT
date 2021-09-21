@@ -350,7 +350,8 @@ namespace xdp {
       }
       else
       {
-        offloader->read_trace() ;
+        offloader->read_trace();
+        offloader->process_trace();
       }
       checkTraceBufferFullness(offloader, o.first);
     }
