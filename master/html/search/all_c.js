@@ -1,11 +1,7 @@
 var searchData=
 [
-  ['m2m_67',['m2m',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4d65d483f53fd19eea5625721976b41e',1,'xrt::info']]],
-  ['map_68',['map',['../classxrt_1_1bo.html#a7778be10aa42a273b879657c35b81f95',1,'xrt::bo::map()'],['../classxrt_1_1bo.html#a45ad31292051d5d37766b1c635a9dc33',1,'xrt::bo::map()']]],
-  ['max_5fclock_5ffrequency_5fmhz_69',['max_clock_frequency_mhz',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd6586634142c1d1c7e85e35d96d329f',1,'xrt::info']]],
-  ['mechanical_70',['mechanical',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa7e3fdeae0d52916ea5c86c7e5291f5be',1,'xrt::info']]],
-  ['mem_71',['mem',['../classxrt_1_1xclbin_1_1mem.html',1,'xrt::xclbin::mem'],['../classxrt_1_1xclbin_1_1mem.html#a1f5d939413811332d2f7d91e4d861aab',1,'xrt::xclbin::mem::mem()=default'],['../classxrt_1_1xclbin_1_1mem.html#aa42f675b24bef11060db7161a5951a3b',1,'xrt::xclbin::mem::mem(std::shared_ptr&lt; mem_impl &gt; handle)']]],
-  ['memory_72',['memory',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aacd69b4957f06cd818d7bf3d61980e291',1,'xrt::info']]],
-  ['memory_5fgroup_73',['memory_group',['../namespacexrt.html#a0b5c34a203355370d2901d9e6100f287',1,'xrt']]],
-  ['memory_5ftype_74',['memory_type',['../classxrt_1_1xclbin_1_1mem.html#a4ae64153a1751d25c9b8e95fb3c7525f',1,'xrt::xclbin::mem']]]
+  ['name_73',['name',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab068931cc450442b63f5b3d276ea4297',1,'xrt::info']]],
+  ['nodma_74',['nodma',['../namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa360c16c37a28c145390c2155a4640dde',1,'xrt::info']]],
+  ['none_75',['none',['../classxrt_1_1kernel.html#a77e6ff3b69b1ff2365464f483b5b7dd6a334c4a4c42fdb79d7ebc3e73b517e6f8',1,'xrt::kernel']]],
+  ['normal_76',['normal',['../classxrt_1_1bo.html#ad6a4bb086ce3b1023df8671c29a1d1ddafea087517c26fadd409bd4b9dc642555',1,'xrt::bo']]]
 ];

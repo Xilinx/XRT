@@ -380,8 +380,6 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
@@ -553,6 +551,11 @@ Host&gt;$ sudo systemctl start msd
 
 <span class="c1"># Start MPD in VM</span>
 VM&gt;$ sudo systemctl start mpd
+
+<span class="c1">#Enable these services If you want them to be in active even after reboot</span>
+Host&gt;$ sudo systemctl <span class="nb">enable</span> msd
+
+VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
 </pre></div>
 </div>
 <p>The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:</p>
@@ -701,7 +704,7 @@ One of the configs is “Firwall” Settings to enable or disable:
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 14, 2021.
+        Last updated on September 21, 2021.
       </span>
 
     </p>

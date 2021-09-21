@@ -355,7 +355,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#current-p2p-configuration">Current P2P Configuration</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#enable-p2p">Enable P2P</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#disable-p2p">Disable P2P</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#force-enable-disable">Force Enable/Disable</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#pcie-topology-considerations">PCIe Topology Considerations</a></li>
 </ul>
 </li>
@@ -405,8 +404,6 @@
 <p class="caption"><span class="caption-text">Tools and Utilities</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbutil_legacy.html">xbutil (Legacy)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xbmgmt_legacy.html">xbmgmt (Legacy)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
@@ -542,19 +539,14 @@ If a system stops responding after enabling P2P and warm reboot does not recover
 <p>The IO memory region will not be completely released after disabling P2P. Thus, re-enabling P2P does not need reboot.</p>
 <div class="section" id="current-p2p-configuration">
 <h3>Current P2P Configuration<a class="headerlink" href="#current-p2p-configuration" title="Permalink to this headline">¶</a></h3>
-<p><code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> is shown within <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> output.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil query
-XSA                             FPGA                        IDCode
-xilinx_vcu1525_dynamic_6_0      xcvu9p-fsgd2104-2L-e        0x14b31093
-Vendor          Device          SubDevice       SubVendor
-0x10ee          0x6a9f          0x4360          0x10ee
-DDR size        DDR count       Clock0          Clock1
-34359738368     2               300             500
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            false
+<p><code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> is shown within <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> output as below.</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil examine --device 0000:03:00.1
+
+ . . .
+ P2P Status             : disabled
 </pre></div>
 </div>
-<p>There are three possible values for <code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Enabled</span></code> field above.</p>
+<p>There are three possible values for <code class="docutils literal notranslate"><span class="pre">P2P</span> <span class="pre">Status</span></code> field above.</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="17%" />
@@ -566,10 +558,10 @@ GEN 3x16        2               true            false
 </tr>
 </thead>
 <tbody valign="top">
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">True</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">enabled</span></code></td>
 <td>P2P is enabled</td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">False</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">disabled</span></code></td>
 <td>P2P is disabled</td>
 </tr>
 <tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></td>
@@ -581,69 +573,19 @@ memory, warm reboot is needed</td>
 </div>
 <div class="section" id="enable-p2p">
 <h3>Enable P2P<a class="headerlink" href="#enable-p2p" title="Permalink to this headline">¶</a></h3>
-<p>Enable P2P after power up sequence.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil p2p --enable
-ERROR: resoure busy, please try warm reboot
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            no iomem
-# reboot
-...
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            true
-...
+<p>The command for enabling p2p is as below</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p enable
 </pre></div>
 </div>
-<p>Enable P2P without enough IO memory configured in BIOS.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil p2p --enable
-ERROR: Not enough iomem space.
-Please check BIOS settings
-</pre></div>
-</div>
+<p>When trying to enable p2p, it is possible that the Pcie Bar increase cannot happen without an warm reboot. In those situation when trying to enable the P2P, you will see a message for warm reboot request. You can also verify this through <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span></code> that would show P2P status is <code class="docutils literal notranslate"><span class="pre">no</span> <span class="pre">iomem</span></code></p>
 </div>
 <div class="section" id="disable-p2p">
 <h3>Disable P2P<a class="headerlink" href="#disable-p2p" title="Permalink to this headline">¶</a></h3>
-<p>Disable and re-enable P2P.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            true
-...
-# xbutil p2p --disable
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            false
-...
-# xbutil p2p --enable
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            true
-...
+<p>The commands for disabling p2p is as below</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># sudo xbutil configure --device 0000:b3:00.1 --p2p disable
 </pre></div>
 </div>
-</div>
-<div class="section" id="force-enable-disable">
-<h3>Force Enable/Disable<a class="headerlink" href="#force-enable-disable" title="Permalink to this headline">¶</a></h3>
-<p>This is for advanced user. Force enabling P2P is going to free and renumerate all devices under same root bus. The result of failed freeing of devices other than Alveo platform is undefined. The best scenario is there is only Alveo platform under the same root bus.</p>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span># xbutil p2p --enable -f
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            true
-...
-# xbutil p2p --disable
-# xbutil query
-...
-PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled
-GEN 3x16        2               true            false
-...
-</pre></div>
-</div>
+<p>Disabling and re-enabling P2P work without a warm reboot in-between.</p>
 </div>
 <div class="section" id="pcie-topology-considerations">
 <h3>PCIe Topology Considerations<a class="headerlink" href="#pcie-topology-considerations" title="Permalink to this headline">¶</a></h3>
@@ -917,7 +859,7 @@ Latency(ns)</th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 14, 2021.
+        Last updated on September 21, 2021.
       </span>
 
     </p>
