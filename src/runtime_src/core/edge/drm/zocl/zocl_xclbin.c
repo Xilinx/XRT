@@ -840,6 +840,19 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			DRM_INFO("disable partial bitstream download, "
 			    "axlf flags is %d", axlf_obj->za_flags);
 		} else {
+			 /*
+			  * cleanup previously loaded xclbin related data
+			  * before loading new bitstream/pdi
+			  * */
+			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
+				subdev_destroy_cu(zdev);
+				if (zdev->aie) {
+					zocl_aie_reset(zdev);
+					mutex_lock(&zdev->aie_lock);
+					zdev->aie->aie_reset = false;
+					mutex_unlock(&zdev->aie_lock);
+				}
+			}
 			/*
 			 * Make sure we load PL bitstream first,
 			 * if there is one, before loading AIE PDI.
@@ -989,7 +1002,6 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 */
 		write_unlock(&zdev->attr_rwlock);
 
-		subdev_destroy_cu(zdev);
 		ret = zocl_create_cu(zdev);
 		if (ret) {
 			write_lock(&zdev->attr_rwlock);
