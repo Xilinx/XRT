@@ -414,7 +414,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 13) {
-      std::cout << "ERROR: Incomplete AIM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -563,7 +563,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 10) {
-      std::cout << "ERROR: Incomplete AM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete AM counter data in " << path << std::endl;
       ifs.close();
       return; 
     }
@@ -737,7 +737,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 5) {
-      std::cout << "ERROR: Incomplete ASM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete ASM counter data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -846,7 +846,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 9) {
-      std::cout << "ERROR: Incomplete LAPC data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete LAPC data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -950,7 +950,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 3) {
-      std::cout << "ERROR: Incomplete SPC data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete SPC data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -1020,7 +1020,7 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
     if(!ifs.eof()) {
       accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
     } else {
-      std::cout << "ERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -1323,8 +1323,8 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
 void
 reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
 {
-  _output << "Debug IP Status" << std::endl ;
-  _output << "  Number of IPs found :: " << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
+  _output << "Debug IP Status"
+          << "\n  Number of IPs found :: " << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
 
   try {
     const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
@@ -1335,7 +1335,7 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
      }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1346,8 +1346,7 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_interface_monitor_counters");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for AIM enabled but currently loaded xclbin does not have any AIM. So, AIM status report will NOT be generated." 
+      _output << "\nINFO: Element filter for AIM enabled but currently loaded xclbin does not have any AIM. So, AIM status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1380,7 +1379,7 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
      }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1421,7 +1420,7 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _ge
     }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1432,8 +1431,7 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_stream_monitor_counters");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for ASM enabled but currently loaded xclbin does not have any ASM. So, ASM status report will NOT be generated." 
+      _output << "\nINFO: Element filter for ASM enabled but currently loaded xclbin does not have any ASM. So, ASM status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1462,7 +1460,7 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
     }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1473,8 +1471,7 @@ reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace FIFO");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for Trace FIFO enabled but currently loaded xclbin does not have any Trace FIFO. So, Trace FIFO status report will NOT be generated." 
+      _output << "\nINFO: Element filter for Trace FIFO enabled but currently loaded xclbin does not have any Trace FIFO. So, Trace FIFO status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1493,8 +1490,7 @@ reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool 
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace Stream to Memory");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for TraceS2MM enabled but currently loaded xclbin does not have any TraceS2MM. So, TraceS2MM status report will NOT be generated." 
+      _output << "\nINFO: Element filter for TraceS2MM enabled but currently loaded xclbin does not have any TraceS2MM. So, TraceS2MM status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1513,8 +1509,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("light_weight_axi_protocol_checkers");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for LAPC enabled but currently loaded xclbin does not have any LAPC. So, LAPC status report will NOT be generated." 
+      _output << "\nINFO: Element filter for LAPC enabled but currently loaded xclbin does not have any LAPC. So, LAPC status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1622,7 +1617,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
     }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1633,8 +1628,7 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_streaming_protocol_checkers");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for SPC enabled but currently loaded xclbin does not have any SPC. So, SPC status report will NOT be generated." 
+      _output << "\nINFO: Element filter for SPC enabled but currently loaded xclbin does not have any SPC. So, SPC status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1679,7 +1673,7 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
       auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
 
       boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
-      _output << std::endl
+      _output << "\n"
               << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
               << std::endl;
 
@@ -1696,7 +1690,7 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
     }
   }
   catch( std::exception const& e) {
-    _output << std::endl << "ERROR: " <<  e.what() << std::endl;
+    _output << "\nERROR: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1707,8 +1701,7 @@ reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Integrated Logic Analyzer");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for ILA enabled but currently loaded xclbin does not have any ILA. So, ILA status report will NOT be generated." 
+      _output << "\nINFO: Element filter for ILA enabled but currently loaded xclbin does not have any ILA. So, ILA status report will NOT be generated." 
               << std::endl;
     }
     return;
@@ -1727,8 +1720,7 @@ reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _p
   boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accel_deadlock_detector_status");
   if(boost::none == child) {
     if(true == _gen_not_found_info) {
-      _output << std::endl 
-              << "INFO: Element filter for Accelerator Deadlock Detector enabled but currently loaded xclbin does not have any Accelerator Deadlock Detector. So, Accelerator Deadlock Detector status report will NOT be generated." 
+      _output << "\nINFO: Element filter for Accelerator Deadlock Detector enabled but currently loaded xclbin does not have any Accelerator Deadlock Detector. So, Accelerator Deadlock Detector status report will NOT be generated." 
               << std::endl;
     }
     return;
