@@ -412,6 +412,36 @@ namespace xdp {
     return tiles;
   }
 
+  void AIEProfilingPlugin::configGroupEvents( XAie_DevInst* aieDevInst,
+                                              XAie_LocType& loc,
+                                              XAie_ModuleType mod,
+                                              XAie_Events event,
+                                              std::string& metricSet)
+  {
+    // Set masks for group events
+    // NOTE: Writing to group error enable register is blocked, so ignoring
+    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
+    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
+    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+    else if (event == XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) {
+      if (metricSet == "stream_switch_idle")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_IDLE_MASK);
+      else if (metricSet == "stream_switch_running")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_RUNNING_MASK);
+      else if (metricSet == "stream_switch_stalled")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_STALLED_MASK);
+      else if (metricSet == "stream_switch_tlast")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_TLAST_MASK);
+    } else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
+    } else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+    }
+  }
+
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     XAie_DevInst* aieDevInst =
@@ -472,45 +502,11 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-
-          // Set masks for group events
-          // NOTE: Writing to group error enable register is blocked, so ignoring
-          if (startEvents.at(i) == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_DMA_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_LOCK_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_LOCK_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CONFLICT_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) {
-            if (metricSet == "stream_switch_idle")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_IDLE_MASK);
-            else if (metricSet == "stream_switch_running")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_RUNNING_MASK);
-            else if (metricSet == "stream_switch_stalled")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_STALLED_MASK);
-            else if (metricSet == "stream_switch_tlast")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_TLAST_MASK);
-          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_PROGRAM_FLOW_MASK);
-          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_STALL_MASK);
-          }
-
+          configGroupEvents(aieDevInst, loc, mod, startEvents.at(i), metricSet);
           // Start the counters after group events have been configured
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
           mPerfCounters.push_back(perfCounter);
-
-          // Convert enums to physical event IDs for reporting purposes
-          int counterNum = i;
-          uint8_t phyStartEvent = 0;
-          uint8_t phyEndEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &phyEndEvent);
-          if (!isCore) {
-            phyStartEvent += BASE_MEMORY_COUNTER;
-            phyEndEvent += BASE_MEMORY_COUNTER;
-          }
 
           // Convert enums to physical event IDs for reporting purposes
           uint8_t phyStartEvent = 0;
