@@ -1823,15 +1823,33 @@ ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   }
 
   // Results
-  if(true == debugIpOpt[AXI_MM_MONITOR])     { reportAIM(  _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[ACCEL_MONITOR])      { reportAM(   _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[AXI_STREAM_MONITOR]) { reportASM(  _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) { reportFIFO( _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[TRACE_S2MM])         { reportTS2MM(_output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[LAPC])               { reportLAPC( _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) { reportSPC( _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[ILA])                { reportILA( _output, dbgIpStatus_pt, filter); }
-  if(true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) { reportAccelDeadlock( _output, dbgIpStatus_pt, filter); }
+  if (true == debugIpOpt[AXI_MM_MONITOR]) {
+    reportAIM(  _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ACCEL_MONITOR]) {
+    reportAM(   _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_STREAM_MONITOR]) {
+    reportASM(  _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) {
+    reportFIFO( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[TRACE_S2MM]) {
+    reportTS2MM(_output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[LAPC]) {
+    reportLAPC( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) {
+    reportSPC( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ILA]) {
+    reportILA( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) {
+    reportAccelDeadlock( _output, dbgIpStatus_pt, filter);
+  }
 
   return;
 }
