@@ -14,6 +14,7 @@
 * under the License.
 */
 #include "xcl2.hpp"
+#include <boost/filesystem.hpp>
 #include <algorithm>
 #include <vector>
 #define LENGTH 64
@@ -48,9 +49,9 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
+    auto binaryFile = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binaryFile.string());
     if (flag_s) {
-        std::string binaryFile = test_path + b_file;
-        std::ifstream infile(binaryFile);
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
             return EOPNOTSUPP;
@@ -60,8 +61,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::string binaryFile = test_path + b_file;
-    std::ifstream infile(binaryFile);
     if (!infile.good()) {
         std::cout << "\nNOT SUPPORTED" << std::endl;
         return EOPNOTSUPP;
@@ -94,7 +93,7 @@ int main(int argc, char** argv) {
 
     // read_binary_file() is a utility API which will load the binaryFile
     // and will return the pointer to file buffer.
-    auto fileBuf = xcl::read_binary_file(binaryFile);
+    auto fileBuf = xcl::read_binary_file(binaryFile.string());
     cl::Program::Binaries bins{{fileBuf.data(), fileBuf.size()}};
 
     auto pos = dev_id.find(":");
