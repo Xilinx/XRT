@@ -118,23 +118,14 @@ rh_package_list()
 
     if [ $MAJOR == 8 ]; then
 
-        RH_LIST+=(systemd-devel)
+        RH_LIST+=(\
+          systemd-devel \
+          libarchive \
+          )
 
-        if [ $FLAVOR == "centos" ]; then
-            #fix cmake issue in centos 8.*
+        if [ $FLAVOR == "rhel" ]; then
             RH_LIST+=(\
-            libarchive \
-            )
-        else
-            RH_LIST+=(\
-            opencv \
-            )
-        fi
-
-        if [ $docker == 0 ]; then
-            RH_LIST+=(\
-             kernel-devel-$(uname -r) \
-             kernel-headers-$(uname -r) \
+              opencv \
             )
         fi
 
@@ -143,8 +134,6 @@ rh_package_list()
         RH_LIST+=(\
          libpng12-devel \
          libudev-devel \
-         kernel-devel-$(uname -r) \
-         kernel-headers-$(uname -r) \
          opencv \
          openssl-static \
          protobuf-static \
@@ -152,9 +141,26 @@ rh_package_list()
 
     fi
 
+    if [ $docker == 0 ]; then
+        if [ $FLAVOR == "centos" ]; then
+        # In CentOs kernel-devel and headers with $(uname -r) version 
+        # are not available always which causes xrtdeps to fail if we 
+        # include these packages with specific version.
+            RH_LIST+=(\
+              kernel-devel \
+              kernel-headers \
+            )
+        else 
+            RH_LIST+=(\
+              kernel-devel-$(uname -r) \
+              kernel-headers-$(uname -r) \
+            )
+        fi
+    fi
+ 
     #dmidecode is only applicable for x86_64
     if [ $ARCH == "x86_64" ]; then
-	RH_LIST+=( dmidecode )
+        RH_LIST+=( dmidecode )
     fi
 }
 
@@ -420,9 +426,6 @@ prep_rhel7()
 
     echo "Enabling RHEL SCL repository..."
     yum-config-manager --enable rhel-server-rhscl-7-rpms
-
-    echo "Enabling repository 'rhel-7-server-e4s-optional-rpms"
-    subscription-manager repos --enable "rhel-7-server-e4s-optional-rpms"
 
     echo "Enabling repository 'rhel-7-server-optional-rpms'"
     subscription-manager repos --enable "rhel-7-server-optional-rpms"
