@@ -1711,7 +1711,6 @@ reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   _output << "\nIntegrated Logic Analyzer" << std::endl
           << "  " << ila_pt.get<std::string>("description") << std::endl
           << "  Found : " << ila_pt.get<uint64_t>("count") << std::endl;
-  return;
 }
 
 void
@@ -1729,8 +1728,6 @@ reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _p
   _output << "\nAccelerator Deadlock Detector IP status :" 
           << ((0 == accel_deadlock_pt.get<uint64_t>("is_deadlocked")) ? " No " : " ")
           << "deadlock detected." << std::endl;
-
-  return;
 }
 
 void 
