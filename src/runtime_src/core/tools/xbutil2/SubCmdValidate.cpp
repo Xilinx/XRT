@@ -264,7 +264,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
       { "versal_23_bandwidth.py",   "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "host_mem_23_bandwidth.py", "hostmemory.exe"  },
       { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
@@ -1337,7 +1337,9 @@ print_status(test_status status, std::ostream & _ostream)
     _ostream << "Validation completed";
   if (status == test_status::warning)
     _ostream << ", but with warnings";
-  _ostream << ". Please run the command '--verbose' option for more details" << std::endl;
+  if(!XBU::getVerbose())
+    _ostream << ". Please run the command '--verbose' option for more details";
+  _ostream << std::endl;
 }
 
 /*
