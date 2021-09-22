@@ -80,6 +80,23 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
 #endif
 
 /*
+ * Currently, this is only used as a workaround for the BRAM read/write collision HW
+ * issue on MB ERT, which will cause ERT to read incorrect value from CQ. We only
+ * trust the value until we read twice and got the same value.
+ */
+static inline uint32_t xgq_reg_double_read32(uint64_t io_hdl, uint64_t addr)
+{
+	uint32_t val[2];
+	int i = 0;
+
+	val[1] = xgq_reg_read32(io_hdl, addr);
+	val[0] = val[1] - 1;
+	while (val[0] != val[1])
+		val[i++ & 0x1] = xgq_reg_read32(io_hdl, addr);
+	return val[0];
+}
+
+/*
  * One XGQ consists of one submission (SQ) and one completion ring (CQ) buffer shared by one client
  * and one server. Client send request through SQ to server, which processes it and send back
  * response through CQ.
@@ -111,10 +128,13 @@ struct xgq_header {
 	 */
 	uint32_t xh_sq_consumed;
 	uint32_t xh_cq_consumed;
+
+	uint32_t xh_flags;
 };
 
 /* Software representation of a single ring buffer. */
 struct xgq_ring {
+	struct xgq *xr_xgq; /* pointing back to parent q */
 	uint32_t xr_slot_num;
 	uint32_t xr_slot_sz;
 	uint32_t xr_produced;
@@ -127,14 +147,16 @@ struct xgq_ring {
 
 /* Software representation of a single XGQ. */
 #define XGQ_SERVER		(1UL << 0)
+#define XGQ_DOUBLE_READ		(1UL << 1)
 struct xgq {
-	uint64_t xq_flags;
 	uint64_t xq_io_hdl;
 	uint64_t xq_header_addr;
+	uint32_t xq_flags;
 	struct xgq_ring xq_sq ____cacheline_aligned_in_smp;
 	struct xgq_ring xq_cq ____cacheline_aligned_in_smp;
 };
-#define XGQ_IS_SERVER(xgq)	((xgq->xq_flags & XGQ_SERVER) != 0)
+#define XGQ_IS_SERVER(xgq)		((xgq->xq_flags & XGQ_SERVER) != 0)
+#define XGQ_NEED_DOUBLE_READ(xgq)	((xgq->xq_flags & XGQ_DOUBLE_READ) != 0)
 
 
 /*
@@ -187,7 +209,14 @@ static inline int xgq_ring_empty(struct xgq_ring *ring)
 
 static inline void xgq_ring_read_produced(uint64_t io_hdl, struct xgq_ring *ring)
 {
-	ring->xr_produced = xgq_reg_read32(io_hdl, ring->xr_produced_addr);
+#ifdef BRAM_COLLISION_WORKAROUND
+	ring->xr_produced = xgq_reg_double_read32(io_hdl, ring->xr_produced_addr);
+#else
+	if (XGQ_NEED_DOUBLE_READ(ring->xr_xgq))
+		ring->xr_produced = xgq_reg_double_read32(io_hdl, ring->xr_produced_addr);
+	else
+		ring->xr_produced = xgq_reg_read32(io_hdl, ring->xr_produced_addr);
+#endif
 }
 
 static inline void xgq_ring_write_produced(uint64_t io_hdl, struct xgq_ring *ring)
@@ -197,7 +226,14 @@ static inline void xgq_ring_write_produced(uint64_t io_hdl, struct xgq_ring *rin
 
 static inline void xgq_ring_read_consumed(uint64_t io_hdl, struct xgq_ring *ring)
 {
-	ring->xr_consumed = xgq_reg_read32(io_hdl, ring->xr_consumed_addr);
+#ifdef BRAM_COLLISION_WORKAROUND
+	ring->xr_consumed = xgq_reg_double_read32(io_hdl, ring->xr_consumed_addr);
+#else
+	if (XGQ_NEED_DOUBLE_READ(ring->xr_xgq))
+		ring->xr_consumed = xgq_reg_double_read32(io_hdl, ring->xr_consumed_addr);
+	else
+		ring->xr_consumed = xgq_reg_read32(io_hdl, ring->xr_consumed_addr);
+#endif
 }
 
 static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *ring)
@@ -248,6 +284,9 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	struct xgq_header hdr = {};
 
 	xgq->xq_flags = flags;
+#ifdef BRAM_COLLISION_WORKAROUND
+	xgq->xq_flags |= XGQ_DOUBLE_READ;
+#endif
 	xgq->xq_io_hdl = io_hdl;
 	xgq->xq_header_addr = ring_addr;
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
@@ -267,6 +306,7 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	hdr.xh_cq_offset = xgq->xq_cq.xr_slot_addr - ring_addr;
 	hdr.xh_sq_consumed = 0;
 	hdr.xh_cq_consumed = 0;
+	hdr.xh_flags = xgq->xq_flags;
 	xgq_copy_to_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(hdr));
 
 	// Write the magic number to confirm the header is fully initialized
@@ -371,6 +411,8 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 
 	xgq->xq_flags = 0;
 	xgq->xq_flags |= flags;
+	xgq->xq_flags |= (hdr.xh_flags & XGQ_DOUBLE_READ);
+
 	xgq_init_ring(&xgq->xq_sq, sq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + hdr.xh_sq_offset,
