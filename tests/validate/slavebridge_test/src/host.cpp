@@ -15,6 +15,7 @@
 */
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/filesystem.hpp>
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
@@ -54,11 +55,11 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    std::string binary_file = test_path + b_file;
-    std::ifstream infile(binary_file);
+    auto binary_file = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binary_file.string());
     // This is for backward compatibility support when older platforms still having slavebridge.xclbin.
-    std::string old_binary_file = test_path + old_b_file;
-    std::ifstream old_infile(old_binary_file);
+    auto old_binary_file = boost::filesystem::path(test_path) / old_b_file;
+    std::ifstream old_infile(old_binary_file.string());
     if (flag_s) {
         if (!infile.good()) {
             if (!old_infile.good()) {
@@ -76,18 +77,18 @@ int main(int argc, char** argv) {
 
     int num_kernel;
     std::string filename = "/platform.json";
-    std::string platform_json = test_path + filename;
+    auto platform_json = boost::filesystem::path(test_path) / filename;
 
     try {
         boost::property_tree::ptree load_ptree_root;
-        boost::property_tree::read_json(platform_json, load_ptree_root);
+        boost::property_tree::read_json(platform_json.string(), load_ptree_root);
         auto temp = load_ptree_root.get_child("total_host_banks");
         num_kernel = temp.get_value<int>();
     } catch (const std::exception& e) {
         std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
         msg += e.what();
         msg += ").";
-        std::cout << msg;
+        std::cerr << msg;
     }
 
     if (!infile.good()) {
@@ -116,9 +117,9 @@ int main(int argc, char** argv) {
 
     // Backward compatability support if platform had older xclbin
     if (infile.good()) {
-        file_buf = xcl::read_binary_file(binary_file);
+        file_buf = xcl::read_binary_file(binary_file.string());
     } else {
-        file_buf = xcl::read_binary_file(old_binary_file);
+        file_buf = xcl::read_binary_file(old_binary_file.string());
     }
     cl::Program::Binaries bins{{file_buf.data(), file_buf.size()}};
 
@@ -171,11 +172,13 @@ int main(int argc, char** argv) {
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
 
+    //Starting at 4K and going up to 16M with increments of power of 2    
     for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
         unsigned int data_size = i;
 
         if (xcl::is_emulation()) {
-            reps = 2;
+            reps = 2; // reducing the repeat count to 2 for emulation flow
+            // Running only upto 8K for emulation flow
             if (data_size > 8 * 1024) {
                 break;
             }
@@ -214,10 +217,10 @@ int main(int argc, char** argv) {
         unsigned char* map_output_buffer[num_kernel];
 
         for (int i = 0; i < num_kernel; i++) {
-            OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
-            OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
-            OCL_CHECK(err, err = krnls[i].setArg(2, data_size));
-            OCL_CHECK(err, err = krnls[i].setArg(3, reps));
+            OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i])); // setting input data buffer
+            OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i])); // setting output data buffer
+            OCL_CHECK(err, err = krnls[i].setArg(2, data_size)); // size of the data
+            OCL_CHECK(err, err = krnls[i].setArg(3, reps)); // repeat counter
         }
 
         for (int i = 0; i < num_kernel; i++) {
@@ -262,9 +265,9 @@ int main(int argc, char** argv) {
         double usduration =
             (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
         double dnsduration = (double)usduration;
-        double dsduration = dnsduration / ((double)1000000000);
+        double dsduration = dnsduration / ((double)1000000000);  // convert duration from nanoseconds to seconds
         double bpersec = (data_size * num_kernel) / dsduration;
-        double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+        double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // convert b/sec to mb/sec
 
         if (mbpersec > max_throughput) max_throughput = mbpersec;
     }

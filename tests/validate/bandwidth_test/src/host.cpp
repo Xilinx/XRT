@@ -15,6 +15,7 @@
 */
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/filesystem.hpp>
 #include <math.h>
 #include <sys/time.h>
 #include <xcl2.hpp>
@@ -54,8 +55,9 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    std::string binaryFile = test_path + b_file;
-    std::ifstream infile(binaryFile);
+    
+    auto binaryFile = boost::filesystem::path(test_path) / b_file;
+    std::ifstream infile(binaryFile.string());
     if (flag_s) {
         if (!infile.good()) {
             std::cout << "\nNOT SUPPORTED" << std::endl;
@@ -69,11 +71,11 @@ int main(int argc, char** argv) {
     int num_kernel = 0, num_kernel_ddr = 0;
     bool chk_hbm_mem = false;
     std::string filename = "/platform.json";
-    std::string platform_json = test_path + filename;
+    auto platform_json = boost::filesystem::path(test_path) / filename;
 
     try {
         boost::property_tree::ptree load_ptree_root;
-        boost::property_tree::read_json(platform_json, load_ptree_root);
+        boost::property_tree::read_json(platform_json.string(), load_ptree_root);
 
         auto temp = load_ptree_root.get_child("total_ddr_banks");
         num_kernel = temp.get_value<int>();
@@ -93,7 +95,7 @@ int main(int argc, char** argv) {
         std::string msg("ERROR: Bad JSON format detected while marshaling build metadata (");
         msg += e.what();
         msg += ").";
-        std::cout << msg << std::endl;
+        std::cerr << msg << std::endl;
     }
 
     if (!infile.good()) {
@@ -113,7 +115,7 @@ int main(int argc, char** argv) {
     auto devices = xcl::get_xil_devices();
     // read_binary_file() is a utility API which will load the binaryFile
     // and will return the pointer to file buffer.
-    auto file_buf = xcl::read_binary_file(binaryFile);
+    auto file_buf = xcl::read_binary_file(binaryFile.string());
     cl::Program::Binaries bins{{file_buf.data(), file_buf.size()}};
 
     auto pos = dev_id.find(":");
@@ -160,11 +162,13 @@ int main(int argc, char** argv) {
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
     if (num_kernel_ddr) {
+        //Starting at 4K and going up to 16M with increments of power of 2
         for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
             unsigned int data_size = i;
 
             if (xcl::is_emulation()) {
-                reps = 2;
+                reps = 2; // reducing the repeat count to 2 for emulation flow
+                // Running only upto 8K for emulation flow
                 if (data_size > 8 * 1024) {
                     break;
                 }
@@ -201,10 +205,10 @@ int main(int argc, char** argv) {
             }
 
             for (int i = 0; i < num_kernel_ddr; i++) {
-                OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));
-                OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i]));
-                OCL_CHECK(err, err = krnls[i].setArg(2, data_size));
-                OCL_CHECK(err, err = krnls[i].setArg(3, reps));
+                OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));  // setting input data buffer
+                OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i])); // setting output data buffer
+                OCL_CHECK(err, err = krnls[i].setArg(2, data_size)); // size of the data
+                OCL_CHECK(err, err = krnls[i].setArg(3, reps));  // repeat counter
             }
 
             for (int i = 0; i < num_kernel_ddr; i++) {
@@ -242,9 +246,9 @@ int main(int argc, char** argv) {
                 (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
             double dnsduration = (double)usduration;
-            double dsduration = dnsduration / ((double)1000000000);
+            double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
             double bpersec = (data_size * num_kernel_ddr) / dsduration;
-            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec 
 
             if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
@@ -252,11 +256,13 @@ int main(int argc, char** argv) {
         std::cout << "Throughput (Type: DDR) (Bank count: " << num_kernel_ddr << ") : " << max_throughput << "MB/s\n";
     }
     if (chk_hbm_mem) {
+        //Starting at 4K and going up to 16M with increments of power of 2
         for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
             unsigned int data_size = i;
 
             if (xcl::is_emulation()) {
-                reps = 2;
+                reps = 2; // reducing the repeat count to 2 for emulation flow
+                // Running only upto 8K for emulation flow
                 if (data_size > 8 * 1024) {
                     break;
                 }
@@ -282,10 +288,10 @@ int main(int argc, char** argv) {
             OCL_CHECK(err, input_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
             OCL_CHECK(err, output_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
 
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(0, input_buffer));
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(1, output_buffer));
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(2, data_size));
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(3, reps));
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(0, input_buffer)); // setting input data buffer
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(1, output_buffer)); // setting output data buffer
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(2, data_size)); // size of the data
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(3, reps)); // repeat counter
 
             OCL_CHECK(err, err = q.enqueueWriteBuffer(input_buffer, CL_TRUE, 0, vector_size_bytes, input_host.data(),
                                                       nullptr, nullptr));
@@ -314,9 +320,9 @@ int main(int argc, char** argv) {
                 (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
 
             double dnsduration = (double)usduration;
-            double dsduration = dnsduration / ((double)1000000000);
+            double dsduration = dnsduration / ((double)1000000000); // Convert duration from nanoseconds to seconds
             double bpersec = data_size / dsduration;
-            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // For concurrent Read/Write
+            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
 
             if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
