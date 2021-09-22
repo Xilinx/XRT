@@ -2139,7 +2139,8 @@ static ssize_t scaling_enabled_store(struct device *dev,
 {
 	struct xocl_xmc *xmc = platform_get_drvdata(to_platform_device(dev));
 
-	if (strncmp(buf, "enable", strlen("enable")) == 0)
+	if ((strncmp(buf, "enable", strlen("enable")) == 0) ||
+	   (strncmp(buf, "true", strlen("true")) == 0))
 		runtime_clk_scale_enable(xmc);
 	else
 		runtime_clk_scale_disable(xmc);
