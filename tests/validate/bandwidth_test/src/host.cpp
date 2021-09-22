@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
         std::cout << "ERROR : please provide the platform test path to -p option\n";
         return EXIT_FAILURE;
     }
-    
+
     auto binaryFile = boost::filesystem::path(test_path) / b_file;
     std::ifstream infile(binaryFile.string());
     if (flag_s) {
@@ -89,6 +89,7 @@ int main(int argc, char** argv) {
             }
         }
         if (chk_hbm_mem) {
+            // As HBM is part of platform, number of ddr kernels is total count reduced by 1(single HBM)
             num_kernel_ddr = num_kernel - 1;
         }
     } catch (const std::exception& e) {
@@ -162,7 +163,7 @@ int main(int argc, char** argv) {
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
     if (num_kernel_ddr) {
-        //Starting at 4K and going up to 16M with increments of power of 2
+        // Starting at 4K and going up to 16M with increments of power of 2
         for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
             unsigned int data_size = i;
 
@@ -181,6 +182,7 @@ int main(int argc, char** argv) {
             for (int i = 0; i < num_kernel_ddr; i++) {
                 output_host[i].resize(data_size);
             }
+            // Filling up memory with an incremental byte pattern
             for (uint32_t j = 0; j < data_size; j++) {
                 input_host[j] = j % 256;
             }
@@ -207,8 +209,8 @@ int main(int argc, char** argv) {
             for (int i = 0; i < num_kernel_ddr; i++) {
                 OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));  // setting input data buffer
                 OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i])); // setting output data buffer
-                OCL_CHECK(err, err = krnls[i].setArg(2, data_size)); // size of the data
-                OCL_CHECK(err, err = krnls[i].setArg(3, reps));  // repeat counter
+                OCL_CHECK(err, err = krnls[i].setArg(2, data_size));        // size of the data
+                OCL_CHECK(err, err = krnls[i].setArg(3, reps));             // repeat counter
             }
 
             for (int i = 0; i < num_kernel_ddr; i++) {
@@ -248,7 +250,7 @@ int main(int argc, char** argv) {
             double dnsduration = (double)usduration;
             double dsduration = dnsduration / ((double)1000000000); // Convert the duration from nanoseconds to seconds
             double bpersec = (data_size * num_kernel_ddr) / dsduration;
-            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec 
+            double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // Convert b/sec to mb/sec
 
             if (mbpersec > max_throughput) max_throughput = mbpersec;
         }
@@ -256,7 +258,7 @@ int main(int argc, char** argv) {
         std::cout << "Throughput (Type: DDR) (Bank count: " << num_kernel_ddr << ") : " << max_throughput << "MB/s\n";
     }
     if (chk_hbm_mem) {
-        //Starting at 4K and going up to 16M with increments of power of 2
+        // Starting at 4K and going up to 16M with increments of power of 2
         for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
             unsigned int data_size = i;
 
@@ -288,10 +290,10 @@ int main(int argc, char** argv) {
             OCL_CHECK(err, input_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
             OCL_CHECK(err, output_buffer = cl::Buffer(context, CL_MEM_READ_WRITE, vector_size_bytes, nullptr, &err));
 
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(0, input_buffer)); // setting input data buffer
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(0, input_buffer));  // setting input data buffer
             OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(1, output_buffer)); // setting output data buffer
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(2, data_size)); // size of the data
-            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(3, reps)); // repeat counter
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(2, data_size));     // size of the data
+            OCL_CHECK(err, err = krnls[num_kernel - 1].setArg(3, reps));          // repeat counter
 
             OCL_CHECK(err, err = q.enqueueWriteBuffer(input_buffer, CL_TRUE, 0, vector_size_bytes, input_host.data(),
                                                       nullptr, nullptr));

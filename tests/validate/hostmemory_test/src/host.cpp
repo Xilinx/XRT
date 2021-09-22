@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
     double max_throughput = 0;
     int reps = stoi(iter_cnt);
 
-    //Starting at 4K and going up to 16M with increments of power of 2    
+    // Starting at 4K and going up to 16M with increments of power of 2
     for (uint32_t i = 4 * 1024; i <= 16 * 1024 * 1024; i *= 2) {
         unsigned int data_size = i;
 
@@ -187,6 +187,7 @@ int main(int argc, char** argv) {
         unsigned int vector_size_bytes = data_size;
         std::vector<unsigned char, aligned_allocator<unsigned char> > input_host(data_size);
 
+        // Filling up memory with an incremental byte pattern
         for (uint32_t j = 0; j < data_size; j++) {
             input_host[j] = j % 256;
         }
@@ -217,10 +218,10 @@ int main(int argc, char** argv) {
         unsigned char* map_output_buffer[num_kernel];
 
         for (int i = 0; i < num_kernel; i++) {
-            OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i])); // setting input data buffer
+            OCL_CHECK(err, err = krnls[i].setArg(0, input_buffer[i]));  // setting input data buffer
             OCL_CHECK(err, err = krnls[i].setArg(1, output_buffer[i])); // setting output data buffer
-            OCL_CHECK(err, err = krnls[i].setArg(2, data_size)); // size of the data
-            OCL_CHECK(err, err = krnls[i].setArg(3, reps)); // repeat counter
+            OCL_CHECK(err, err = krnls[i].setArg(2, data_size));        // size of the data
+            OCL_CHECK(err, err = krnls[i].setArg(3, reps));             // repeat counter
         }
 
         for (int i = 0; i < num_kernel; i++) {
@@ -265,7 +266,7 @@ int main(int argc, char** argv) {
         double usduration =
             (double)(std::chrono::duration_cast<std::chrono::nanoseconds>(time_end - time_start).count() / reps);
         double dnsduration = (double)usduration;
-        double dsduration = dnsduration / ((double)1000000000);  // convert duration from nanoseconds to seconds
+        double dsduration = dnsduration / ((double)1000000000); // convert duration from nanoseconds to seconds
         double bpersec = (data_size * num_kernel) / dsduration;
         double mbpersec = (2 * bpersec) / ((double)1024 * 1024); // convert b/sec to mb/sec
 
