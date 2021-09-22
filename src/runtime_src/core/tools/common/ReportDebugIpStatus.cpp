@@ -1355,8 +1355,8 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
 
   _output << "\nAXI Interface Monitor Counters\n";
 
-  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
+  const auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
 
   boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
   _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
@@ -1400,7 +1400,7 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _ge
 
   _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
 
-  auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
+  const auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
 
   boost::format header("  %-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
   _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
@@ -1440,8 +1440,8 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
 
   _output << "\nAXI Stream Monitor Counters\n";
 
-  auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
+  const auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
 
   boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
   _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
@@ -1518,8 +1518,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
 
   _output << "\nLight Weight AXI Protocol Checkers codes \n";
 
-  auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
+  const auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
 
   bool violations_found = false;
   bool invalid_codes = false;
@@ -1669,8 +1669,8 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
     }
 
     if (violations_found && /*aVerbose &&*/ !invalid_codes) {
-      auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
-      auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
+      const auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
+      const auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
 
       boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
       _output << "\n"
