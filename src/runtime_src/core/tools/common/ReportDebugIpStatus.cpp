@@ -1588,8 +1588,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
 
       for(auto& ip : lapc_pt) {
         const boost::property_tree::ptree& entry = ip.second;
-        unsigned int snapshotStatus[4];
-        unsigned int cumulativeStatus[4];
+        unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM];
+        unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM];
   
         const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
         size_t idx = 0;
