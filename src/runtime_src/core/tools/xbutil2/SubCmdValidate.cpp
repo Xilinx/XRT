@@ -349,10 +349,20 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
   // Get out max thruput for bandwidth testcase
   if(xclbin.compare("bandwidth.xclbin") == 0) {
+    // old testcases where we have "Maximum throughput:"
     size_t st = os_stdout.str().find("Maximum");
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+    }
+    else {
+      // new test cases to find "Throughput (Type: {...}) (Bank count: {...}):"
+      auto str = os_stdout.str().find("Throughput", 0);
+      while(str != std::string::npos) {
+        auto end = os_stdout.str().find("\n", str);
+        logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
+        str = os_stdout.str().find("Throughput" , end);
+      }
     }
   }
 
