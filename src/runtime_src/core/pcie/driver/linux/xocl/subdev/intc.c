@@ -337,7 +337,7 @@ static int request_intr(struct platform_device *pdev, int id,
 
 	/* register handler */
 	if (handler) {
-		info = vzalloc(sizeof(struct intr_info));
+		info = kzalloc(sizeof(struct intr_info), GFP_KERNEL);
 		info->handler = handler;
 		info->intr_id = id;
 		info->arg = arg;
@@ -348,7 +348,7 @@ static int request_intr(struct platform_device *pdev, int id,
 
 	/* unregister handler */
 	if (data->info[intr_src]) {
-		vfree(data->info[intr_src]);
+		kfree(data->info[intr_src]);
 		data->info[intr_src] = NULL;
 	}
 

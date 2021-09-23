@@ -212,13 +212,13 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	PACKET_SIZE	16 /* Number of DWORD. */
 
 /*
- * monitor real receive pkt rate for every 8k Bytes.
+ * monitor real receive pkt rate for every 128k Bytes.
  * if the rate is higher than 1MB/s, we think user is trying to
  * transfer xclbin on h/w mailbox, if higher than 1.8MB/s, we think
  * user is doing DOS attack. Neither is allowd. We set a threshold
  * 600000B/s and don't expect any normal msg transfer exceeds it
  */
-#define	RECV_WINDOW_SIZE	0x800 /* Number of DWORD. */
+#define	RECV_WINDOW_SIZE	0x8000 /* Number of DWORD. */
 #define	RECV_RATE_THRESHOLD	600000
 
 #define	FLAG_STI	(1 << 0)
@@ -1136,6 +1136,7 @@ static bool check_recv_pkt_rate(struct mailbox *mbx)
 		mailbox_disable_intr_mode(mbx, false);
 		return false;
 	}
+	MBX_INFO(mbx, "recv pkt rate: %ld B/s", rate);
 
 	return true;
 }

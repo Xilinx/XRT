@@ -19,6 +19,7 @@
 #include "mgmt-core.h"
 #include <linux/module.h>
 #include "../xocl_drv.h"
+#include "../xocl_xclbin.h"
 
 #define XCLMGMT_RESET_MAX_RETRY		10
 
@@ -854,4 +855,76 @@ void xclmgmt_ert_reset(struct xclmgmt_dev *lro)
 void xclmgmt_softkernel_reset(struct xclmgmt_dev *lro)
 {
 	xocl_ps_sk_reset(lro);
+}
+
+static const void* xclmgmt_get_interface_uuid(struct xclmgmt_dev *lro) {
+	int node = -1;
+	const void *uuid;
+
+	if (!lro->core.fdt_blob)
+		return NULL;
+
+	/*
+	 * don't need blp uuid. do we have multiple interface uuid?
+	 */ 
+	node = xocl_fdt_get_next_prop_by_name(lro, lro->core.fdt_blob,
+		-1, PROP_INTERFACE_UUID, &uuid, NULL);
+	if (!uuid || node < 0)
+		return NULL;
+
+	return uuid;
+}
+/*
+ * the xclbins are at
+ * /lib/firmware/xilnx/xclbins/, with format
+ *  uuidA_uuidB.xclbin, where,
+ *  uuidA is the uuid of xclbin (type uuid_t)
+ *  uuidB is the interface uuid of xclbin (type char*)
+ *  both of the uuids are exactly the same to the output of
+ *  xclbinutil --info --input path_to_xclbin |grep -i uuid
+ *  eg
+ *  6250ec80-3f38-4be0-ac90-68bfd3c140a8_937ed70867cf3350bc06304053f4293c.xclbin
+ */
+int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf *xclbin)
+{
+	const char *interface_uuid;
+	char fw_name[256];
+	const struct firmware *fw;
+	const char* xclbin_location = "xilinx/xclbins";
+	int err;
+
+	interface_uuid = xclmgmt_get_interface_uuid(lro);
+	if (!interface_uuid) {
+		err = -EINVAL;
+		goto done;
+	}
+	memset(fw_name, 0, sizeof (fw_name));
+
+	snprintf(fw_name, sizeof(fw_name), "%s/"
+		"%02x%02x%02x%02x-"
+		"%02x%02x-"
+		"%02x%02x-"
+		"%02x%02x-"
+		"%02x%02x%02x%02x%02x%02x"
+		"_%s.xclbin",
+		xclbin_location,
+		xclbin->m_header.uuid.b[0], xclbin->m_header.uuid.b[1],
+		xclbin->m_header.uuid.b[2], xclbin->m_header.uuid.b[3],
+		xclbin->m_header.uuid.b[4], xclbin->m_header.uuid.b[5],
+		xclbin->m_header.uuid.b[6], xclbin->m_header.uuid.b[7],
+		xclbin->m_header.uuid.b[8], xclbin->m_header.uuid.b[9],
+		xclbin->m_header.uuid.b[10],xclbin->m_header.uuid.b[11],
+		xclbin->m_header.uuid.b[12],xclbin->m_header.uuid.b[13],
+		xclbin->m_header.uuid.b[14],xclbin->m_header.uuid.b[15],
+	       	interface_uuid);
+
+	mgmt_info(lro, "try loading fw: %s", fw_name);
+	err = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
+	if (err)
+		goto done;
+
+	err = xocl_xclbin_download(lro, fw->data);
+	release_firmware(fw);
+done:
+	return err;
 }

@@ -380,9 +380,9 @@ struct xocl_subdev {
 	struct cdev			*cdev;
 	bool				hold;
 
-	struct resource		res[XOCL_SUBDEV_MAX_RES];
-	char	res_name[XOCL_SUBDEV_MAX_RES][XOCL_SUBDEV_RES_NAME_LEN];
-	char			bar_idx[XOCL_SUBDEV_MAX_RES];
+	struct resource			*res;
+	char				*res_name;
+	char				*bar_idx;
 };
 
 #define XOCL_GET_DRV_PRI(pldev)					\
@@ -421,6 +421,33 @@ static inline void *xocl_subdev_priv_alloc(u32 size)
 		return NULL;
 
 	return priv->data;
+}
+
+static inline int xocl_subdev_dyn_alloc(struct xocl_subdev *subdev, int num)
+{
+	subdev->res = kzalloc(num * sizeof (struct resource), GFP_KERNEL);
+	subdev->res_name = kzalloc(num * XOCL_SUBDEV_RES_NAME_LEN, GFP_KERNEL);
+	subdev->bar_idx = kzalloc(num * sizeof (char), GFP_KERNEL);
+
+	if (!subdev->res || !subdev->res_name || !subdev->bar_idx)
+		return -ENOMEM;
+	return 0;
+}
+
+static inline void xocl_subdev_dyn_free(struct xocl_subdev *subdev)
+{
+	if (subdev->res) {
+		kfree(subdev->res);
+		subdev->res = NULL;
+	}
+	if (subdev->res_name) {
+		kfree(subdev->res_name);
+		subdev->res_name = NULL;
+	}
+	if (subdev->bar_idx) {
+		kfree(subdev->bar_idx);
+		subdev->bar_idx = NULL;
+	}
 }
 
 typedef	void *xdev_handle_t;
@@ -501,7 +528,7 @@ struct xocl_work {
 struct xocl_dev_core {
 	struct pci_dev		*pdev;
 	int			dev_minor;
-	struct xocl_subdev	*subdevs[XOCL_SUBDEV_NUM];
+	struct xocl_subdev	**subdevs[XOCL_SUBDEV_NUM];
 	struct xocl_subdev	*dyn_subdev_store;
 	int			dyn_subdev_num;
 	struct xocl_pci_funcs	*pci_ops;
@@ -618,9 +645,11 @@ struct xocl_rom_funcs {
 };
 
 #define ROM_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM) ? \
+	 SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM)->pldev : NULL)
 #define	ROM_OPS(xdev)	\
-	((struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM) ? \
+	(struct xocl_rom_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FEATURE_ROM)->ops : NULL)
 #define ROM_CB(xdev, cb)	\
 	(ROM_DEV(xdev) && ROM_OPS(xdev) && ROM_OPS(xdev)->cb)
 #define	xocl_is_unified(xdev)		\
@@ -667,9 +696,11 @@ struct xocl_version_ctrl_funcs {
 };
 
 #define VC_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL)->pldev : NULL)
 #define	VC_OPS(xdev)	\
-	((struct xocl_version_ctrl_funcs *)SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL) ? \
+	(struct xocl_version_ctrl_funcs *)SUBDEV(xdev, XOCL_SUBDEV_VERSION_CTRL)->ops : NULL)
 #define VC_CB(xdev, cb)	\
 	(VC_DEV(xdev) && VC_OPS(xdev) && VC_OPS(xdev)->cb)
 #define	xocl_flat_shell_check(xdev)		\
@@ -686,9 +717,11 @@ struct xocl_msix_funcs {
 	int (*user_intr_unreg)(struct platform_device *pdev, u32 intr);
 };
 #define MSIX_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_MSIX).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_MSIX) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_MSIX)->pldev : NULL)
 #define	MSIX_OPS(xdev)	\
-	((struct xocl_msix_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MSIX).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_MSIX) ? \
+	(struct xocl_msix_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MSIX)->ops : NULL)
 #define MSIX_CB(xdev, cb)	\
 	(MSIX_DEV(xdev) && MSIX_OPS(xdev) && MSIX_OPS(xdev)->cb)
 #define xocl_msix_intr_config(xdev, irq, en)			\
@@ -722,9 +755,11 @@ struct xocl_dma_funcs {
 };
 
 #define DMA_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_DMA).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_DMA) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_DMA)->pldev : NULL)
 #define	DMA_OPS(xdev)	\
-	((struct xocl_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_DMA).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_DMA) ? \
+	(struct xocl_dma_funcs *)SUBDEV(xdev, XOCL_SUBDEV_DMA)->ops : NULL)
 #define DMA_CB(xdev, cb)	\
 	(DMA_DEV(xdev) && DMA_OPS(xdev) && DMA_OPS(xdev)->cb)
 #define	xocl_migrate_bo(xdev, sgt, to_dev, paddr, chan, len)	\
@@ -771,10 +806,12 @@ struct xocl_mb_scheduler_funcs {
 		void *drm_filp, u32 *addrp);
 };
 #define	MB_SCHEDULER_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER)->pldev : NULL)
 #define	MB_SCHEDULER_OPS(xdev)	\
-	((struct xocl_mb_scheduler_funcs *)SUBDEV(xdev,		\
-		XOCL_SUBDEV_MB_SCHEDULER).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_MB_SCHEDULER) ? \
+	(struct xocl_mb_scheduler_funcs *)SUBDEV(xdev,		\
+		XOCL_SUBDEV_MB_SCHEDULER)->ops : NULL)
 #define SCHE_CB(xdev, cb)	\
 	(MB_SCHEDULER_DEV(xdev) && MB_SCHEDULER_OPS(xdev))
 #define	xocl_exec_create_client(xdev, priv)		\
@@ -831,10 +868,12 @@ struct xocl_sysmon_funcs {
 	int (*get_prop)(struct platform_device *pdev, u32 prop, void *val);
 };
 #define	SYSMON_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_SYSMON).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_SYSMON) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_SYSMON)->pldev : NULL)
 #define	SYSMON_OPS(xdev)	\
-	((struct xocl_sysmon_funcs *)SUBDEV(xdev,	\
-		XOCL_SUBDEV_SYSMON).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_SYSMON) ? \
+	(struct xocl_sysmon_funcs *)SUBDEV(xdev,	\
+		XOCL_SUBDEV_SYSMON)->ops : NULL)
 #define SYSMON_CB(xdev, cb)	\
 	(SYSMON_DEV(xdev) && SYSMON_OPS(xdev) && SYSMON_OPS(xdev)->cb)
 #define	xocl_sysmon_get_prop(xdev, prop, val)		\
@@ -858,10 +897,12 @@ struct xocl_firewall_funcs {
 	void (*get_data)(struct platform_device *pdev, void *buf);
 };
 #define AF_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_AF).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_AF) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_AF)->pldev : NULL)
 #define	AF_OPS(xdev)	\
-	((struct xocl_firewall_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_AF).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_AF) ? \
+	(struct xocl_firewall_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_AF)->ops : NULL)
 #define AF_CB(xdev, cb)	\
 	(AF_DEV(xdev) && AF_OPS(xdev) && AF_OPS(xdev)->cb)
 #define	xocl_af_get_prop(xdev, prop, val)		\
@@ -898,10 +939,12 @@ struct xocl_mb_funcs {
 };
 
 #define	MB_DEV(xdev)		\
-	SUBDEV(xdev, XOCL_SUBDEV_MB).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_MB) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_MB)->pldev : NULL)
 #define	MB_OPS(xdev)		\
-	((struct xocl_mb_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_MB).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_MB) ? \
+	(struct xocl_mb_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_MB)->ops : NULL)
 #define MB_CB(xdev, cb)	\
 	(MB_DEV(xdev) && MB_OPS(xdev) && MB_OPS(xdev)->cb)
 #define	xocl_xmc_reset(xdev)			\
@@ -935,10 +978,12 @@ struct xocl_mb_funcs {
 	(MB_CB(xdev, sensor_status) ? MB_OPS(xdev)->sensor_status(MB_DEV(xdev)) : -ENODEV)
 /* ERT FW callbacks */
 #define ERT_DEV(xdev)							\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT).pldev
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT)->pldev : NULL)
 #define ERT_OPS(xdev)							\
-	((struct xocl_mb_funcs *)SUBDEV_MULTI(xdev,			\
-	XOCL_SUBDEV_MB, XOCL_MB_ERT).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_MB, XOCL_MB_ERT) ?		\
+	(struct xocl_mb_funcs *)SUBDEV_MULTI(xdev,			\
+	XOCL_SUBDEV_MB, XOCL_MB_ERT)->ops : NULL)
 #define ERT_CB(xdev, cb)						\
 	(ERT_DEV(xdev) && ERT_OPS(xdev) && ERT_OPS(xdev)->cb)
 #define xocl_ert_reset(xdev)						\
@@ -982,10 +1027,12 @@ struct xocl_ps_funcs {
 };
 
 #define	PS_DEV(xdev)		\
-	SUBDEV(xdev, XOCL_SUBDEV_PS).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_PS) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_PS)->pldev : NULL)
 #define	PS_OPS(xdev)		\
-	((struct xocl_ps_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_PS).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_PS) ? \
+	(struct xocl_ps_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_PS)->ops : NULL)
 #define PS_CB(xdev, cb)	\
 	(PS_DEV(xdev) && PS_OPS(xdev) && PS_OPS(xdev)->cb)
 #define	xocl_ps_sk_reset(xdev)			\
@@ -1012,10 +1059,12 @@ struct xocl_dna_funcs {
 };
 
 #define	DNA_DEV(xdev)		\
-	SUBDEV(xdev, XOCL_SUBDEV_DNA).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_DNA) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_DNA)->pldev : NULL)
 #define	DNA_OPS(xdev)		\
-	((struct xocl_dna_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_DNA).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_DNA) ? \
+	(struct xocl_dna_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_DNA)->ops : NULL)
 #define DNA_CB(xdev, cb)	\
 	(DNA_DEV(xdev) && DNA_OPS(xdev) && DNA_OPS(xdev)->cb)
 #define	xocl_dna_status(xdev)			\
@@ -1029,10 +1078,12 @@ struct xocl_dna_funcs {
 
 
 #define	ADDR_TRANSLATOR_DEV(xdev)		\
-	SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR)->pldev : NULL)
 #define	ADDR_TRANSLATOR_OPS(xdev)		\
-	((struct xocl_addr_translator_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_ADDR_TRANSLATOR).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_ADDR_TRANSLATOR) ? \
+	(struct xocl_addr_translator_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_ADDR_TRANSLATOR)->ops : NULL)
 #define ADDR_TRANSLATOR_CB(xdev, cb)	\
 	(ADDR_TRANSLATOR_DEV(xdev) && ADDR_TRANSLATOR_OPS(xdev) && ADDR_TRANSLATOR_OPS(xdev)->cb)
 #define	xocl_addr_translator_get_entries_num(xdev)			\
@@ -1186,9 +1237,12 @@ struct xocl_mailbox_funcs {
 	int (*set)(struct platform_device *pdev, enum mb_kind kind, u64 data);
 	int (*get)(struct platform_device *pdev, enum mb_kind kind, u64 *data);
 };
-#define	MAILBOX_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).pldev
+#define	MAILBOX_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_MAILBOX) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX)->pldev : NULL)
 #define	MAILBOX_OPS(xdev)	\
-	((struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_MAILBOX) ? \
+	(struct xocl_mailbox_funcs *)SUBDEV(xdev, XOCL_SUBDEV_MAILBOX)->ops : NULL)
 #define MAILBOX_READY(xdev, cb)	\
 	(MAILBOX_DEV(xdev) && MAILBOX_OPS(xdev) && MAILBOX_OPS(xdev)->cb)
 #define	xocl_peer_request(xdev, req, reqlen, resp, resplen, cb, cbarg, rx_timeout, tx_timeout)	\
@@ -1240,11 +1294,14 @@ struct xocl_clock_funcs {
 	uint64_t (*get_data)(struct platform_device *pdev, enum data_kind kind);
 };
 #define CLOCK_DEV_INFO(xdev, idx)					\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).info
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx) ?		\
+	&(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx)->info) : NULL)
 #define	CLOCK_DEV(xdev, idx)						\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).pldev
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx)->pldev : NULL)
 #define	CLOCK_OPS(xdev, idx)						\
-	((struct xocl_clock_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx) ?		\
+	(struct xocl_clock_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CLOCK, idx)->ops : NULL)
 static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 {
 	int i;
@@ -1262,7 +1319,8 @@ static inline int xocl_clock_ops_level(xdev_handle_t xdev)
 #define CLOCK_DEV_LEVEL(xdev) 						\
 ({ \
 	int __idx = xocl_clock_ops_level(xdev);				\
-	(__idx >= 0 ? (CLOCK_DEV_INFO(xdev, __idx).level) : -ENODEV); 	\
+	(__idx >= 0 && CLOCK_DEV_INFO(xdev, __idx) ? \
+	 (CLOCK_DEV_INFO(xdev, __idx)->level) : -ENODEV); 	\
 })
 
 #define	xocl_clock_reconfig_counters(xdev, clk_counter)			\
@@ -1364,9 +1422,12 @@ enum {
 	RP_DOWNLOAD_FORCE,
 	RP_DOWNLOAD_CLEAR,
 };
-#define	ICAP_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ICAP).pldev
+#define	ICAP_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_ICAP) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_ICAP)->pldev : NULL)
 #define	ICAP_OPS(xdev)							\
-	((struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_ICAP) ? \
+	(struct xocl_icap_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ICAP)->ops : NULL)
 #define ICAP_CB(xdev, cb)						\
 	(ICAP_DEV(xdev) && ICAP_OPS(xdev) && ICAP_OPS(xdev)->cb)
 #define	xocl_icap_reset_axi_gate(xdev)					\
@@ -1511,9 +1572,12 @@ struct xocl_mig_funcs {
 	uint32_t (*get_id)(struct platform_device *pdev);
 };
 
-#define	MIG_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).pldev
+#define	MIG_DEV(xdev, idx)	\
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx)->pldev : NULL)
 #define	MIG_OPS(xdev, idx)							\
-	((struct xocl_mig_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx) ?		\
+	(struct xocl_mig_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_MIG, idx)->ops : NULL)
 #define	MIG_CB(xdev, idx)	\
 	(MIG_DEV(xdev, idx) && MIG_OPS(xdev, idx))
 #define	xocl_mig_get_data(xdev, idx, buf, entry_sz)				\
@@ -1537,9 +1601,12 @@ struct xocl_iores_funcs {
 	uint64_t (*get_offset)(struct platform_device *pdev, u32 id);
 };
 
-#define IORES_DEV(xdev, idx)  SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).pldev
+#define IORES_DEV(xdev, idx)  \
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx)->pldev : NULL)
 #define	IORES_OPS(xdev, idx)						\
-	((struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx) ?		\
+	(struct xocl_iores_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_IORES, idx)->ops : NULL)
 #define IORES_CB(xdev, idx, cb)		\
 	(IORES_DEV(xdev, idx) && IORES_OPS(xdev, idx) &&		\
 	IORES_OPS(xdev, idx)->cb)
@@ -1594,10 +1661,12 @@ struct xocl_axigate_funcs {
 };
 
 #define AXIGATE_DEV(xdev, idx)			\
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx).pldev
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx)->pldev : NULL)
 #define AXIGATE_OPS(xdev, idx)			\
-	((struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, \
-	idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, idx) ?		\
+	(struct xocl_axigate_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_AXIGATE, \
+	idx)->ops : NULL)
 #define AXIGATE_CB(xdev, idx, cb)		\
 	(AXIGATE_DEV(xdev, idx) && AXIGATE_OPS(xdev, idx) &&		\
 	AXIGATE_OPS(xdev, idx)->cb)
@@ -1628,10 +1697,12 @@ struct xocl_mailbox_versal_funcs {
 	int (*free_intr)(struct platform_device *pdev);
 };
 #define	MAILBOX_VERSAL_DEV(xdev)	\
-	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL).pldev
+	(SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL)->pldev : NULL)
 #define	MAILBOX_VERSAL_OPS(xdev)	\
-	((struct xocl_mailbox_versal_funcs *)SUBDEV(xdev,	\
-	XOCL_SUBDEV_MAILBOX_VERSAL).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_MAILBOX_VERSAL) ? \
+	(struct xocl_mailbox_versal_funcs *)SUBDEV(xdev,	\
+	XOCL_SUBDEV_MAILBOX_VERSAL)->ops : NULL)
 #define MAILBOX_VERSAL_READY(xdev, cb)	\
 	(MAILBOX_VERSAL_DEV(xdev) && MAILBOX_VERSAL_OPS(xdev) &&	\
 	 MAILBOX_VERSAL_OPS(xdev)->cb)
@@ -1662,9 +1733,12 @@ struct xocl_srsr_funcs {
 	uint32_t (*cache_size)(struct platform_device *pdev);
 };
 
-#define	SRSR_DEV(xdev, idx)	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).pldev
+#define	SRSR_DEV(xdev, idx)	\
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx)->pldev : NULL)
 #define	SRSR_OPS(xdev, idx)							\
-	((struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx) ?		\
+	(struct xocl_srsr_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SRSR, idx)->ops : NULL)
 #define	SRSR_CB(xdev, idx)	\
 	(SRSR_DEV(xdev, idx) && SRSR_OPS(xdev, idx))
 #define	xocl_srsr_reset(xdev, idx)				\
@@ -1697,9 +1771,12 @@ struct calib_storage_funcs {
 	int (*restore)(struct platform_device *pdev);
 };
 
-#define	CALIB_STORAGE_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).pldev
+#define	CALIB_STORAGE_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE)->pldev : NULL)
 #define	CALIB_STORAGE_OPS(xdev)							\
-	((struct calib_storage_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE) ? \
+	(struct calib_storage_funcs *)SUBDEV(xdev, XOCL_SUBDEV_CALIB_STORAGE)->ops : NULL)
 #define	CALIB_STORAGE_CB(xdev)	\
 	(CALIB_STORAGE_DEV(xdev) && CALIB_STORAGE_OPS(xdev))
 #define	xocl_calib_storage_save(xdev)				\
@@ -1717,9 +1794,11 @@ struct xocl_cu_funcs {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
 };
 #define CU_DEV(xdev, idx) \
-	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).pldev
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx)->pldev : NULL)
 #define CU_OPS(xdev, idx) \
-	((struct xocl_cu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx).ops)
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx) ?		\
+	(struct xocl_cu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx)->ops : NULL)
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
 
@@ -1739,9 +1818,12 @@ struct xocl_intc_funcs {
 	int (*csr_read32)(struct platform_device *pdev, u32 off);
 	void (*csr_write32)(struct platform_device *pdev, u32 val, u32 off);
 };
-#define	INTC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_INTC).pldev
+#define	INTC_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_INTC) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_INTC)->pldev : NULL)
 #define INTC_OPS(xdev)  \
-	((struct xocl_intc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_INTC).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_INTC) ? \
+	(struct xocl_intc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_INTC)->ops : NULL)
 #define INTC_CB(xdev, cb) \
 	(INTC_DEV(xdev) && INTC_OPS(xdev) && INTC_OPS(xdev)->cb)
 #define xocl_intc_ert_request(xdev, id, handler, arg) \
@@ -1810,9 +1892,12 @@ struct xocl_ert_user_funcs {
 	int (* enable)(struct platform_device *pdev, bool enable);
 };
 
-#define	ERT_USER_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).pldev
+#define	ERT_USER_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_ERT_USER) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_ERT_USER)->pldev : NULL)
 #define ERT_USER_OPS(xdev)  \
-	((struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_ERT_USER) ? \
+	(struct xocl_ert_user_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_USER)->ops : NULL)
 #define ERT_USER_CB(xdev, cb)  \
 	(ERT_USER_DEV(xdev) && ERT_USER_OPS(xdev) && ERT_USER_OPS(xdev)->cb)
 
@@ -1898,9 +1983,12 @@ struct xocl_flash_funcs {
 		char *buf, size_t n, loff_t off);
 	int (*get_size)(struct platform_device *pdev, size_t *size);
 };
-#define	FLASH_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_FLASH).pldev
+#define	FLASH_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_FLASH) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_FLASH)->pldev : NULL)
 #define	FLASH_OPS(xdev)				\
-	((struct xocl_flash_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FLASH).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_FLASH) ? \
+	(struct xocl_flash_funcs *)SUBDEV(xdev, XOCL_SUBDEV_FLASH)->ops : NULL)
 #define	FLASH_CB(xdev)	(FLASH_DEV(xdev) && FLASH_OPS(xdev))
 #define	xocl_flash_read(xdev, buf, n, off)	\
 	(FLASH_CB(xdev) ?			\
@@ -1913,9 +2001,12 @@ struct xocl_xfer_versal_funcs {
 	int (*download_axlf)(struct platform_device *pdev,
 		const void __user *arg);
 };
-#define	XFER_VERSAL_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).pldev
+#define	XFER_VERSAL_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL)->pldev : NULL)
 #define	XFER_VERSAL_OPS(xdev)					\
-	((struct xocl_xfer_versal_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL) ? \
+	(struct xocl_xfer_versal_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XFER_VERSAL)->ops : NULL)
 #define	XFER_VERSAL_CB(xdev)	(XFER_VERSAL_DEV(xdev) && XFER_VERSAL_OPS(xdev))
 #define	xocl_xfer_versal_download_axlf(xdev, xclbin)	\
 	(XFER_VERSAL_CB(xdev) ?					\
@@ -1924,9 +2015,12 @@ struct xocl_xfer_versal_funcs {
 struct xocl_pmc_funcs {
 	int (*enable_reset)(struct platform_device *pdev);
 };
-#define	PMC_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_PMC).pldev
+#define	PMC_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_PMC) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_PMC)->pldev : NULL)
 #define	PMC_OPS(xdev) \
-	((struct xocl_pmc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_PMC).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_PMC) ? \
+	(struct xocl_pmc_funcs *)SUBDEV(xdev, XOCL_SUBDEV_PMC)->ops : NULL)
 #define	PMC_CB(xdev)	(PMC_DEV(xdev) && PMC_OPS(xdev))
 #define	xocl_pmc_enable_reset(xdev) \
 	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
@@ -1965,9 +2059,12 @@ struct xocl_p2p_funcs {
 	int (*adjust_mem_topo)(struct platform_device *pdev, void *mem_topo);
 	int (*mem_reclaim)(struct platform_device *pdev);
 };
-#define	P2P_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_P2P).pldev
+#define	P2P_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_P2P) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_P2P)->pldev : NULL)
 #define	P2P_OPS(xdev)				\
-	((struct xocl_p2p_funcs *)SUBDEV(xdev, XOCL_SUBDEV_P2P).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_P2P) ? \
+	(struct xocl_p2p_funcs *)SUBDEV(xdev, XOCL_SUBDEV_P2P)->ops : NULL)
 #define	P2P_CB(xdev)	(P2P_DEV(xdev) && P2P_OPS(xdev))
 #define	xocl_p2p_mem_map(xdev, ba, bs, off, len, bar_off)	\
 	(P2P_CB(xdev) ?			\
@@ -2021,9 +2118,12 @@ struct xocl_m2m_funcs {
 	int (*get_host_bank)(struct platform_device *pdev, u64 *addr,
 		u64 *size);
 };
-#define	M2M_DEV(xdev)	SUBDEV(xdev, XOCL_SUBDEV_M2M).pldev
+#define	M2M_DEV(xdev)	\
+	(SUBDEV(xdev, XOCL_SUBDEV_M2M) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_M2M)->pldev : NULL)
 #define	M2M_OPS(xdev)	\
-	((struct xocl_m2m_funcs *)SUBDEV(xdev, XOCL_SUBDEV_M2M).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_M2M) ? \
+	(struct xocl_m2m_funcs *)SUBDEV(xdev, XOCL_SUBDEV_M2M)->ops : NULL)
 #define	M2M_CB(xdev)	(M2M_DEV(xdev) && M2M_OPS(xdev))
 #define	xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, src_handle, dst_handle, size) \
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->copy_bo(M2M_DEV(xdev), src_paddr, dst_paddr, \
@@ -2037,9 +2137,12 @@ struct xocl_pcie_firewall_funcs {
 	int (*unblock)(struct platform_device *pdev, int pf, int bar);
 };
 
-#define PCIE_FIREWALL_DEV(xdev) SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).pldev
+#define PCIE_FIREWALL_DEV(xdev) \
+	(SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL) ? \
+	SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL)->pldev : NULL)
 #define PCIE_FIREWALL_OPS(xdev)					\
-	((struct xocl_pcie_firewall_funcs*)SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL).ops)
+	(SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL) ? \
+	(struct xocl_pcie_firewall_funcs*)SUBDEV(xdev, XOCL_SUBDEV_PCIE_FIREWALL)->ops : NULL)
 #define PCIE_FIREWALL_CB(xdev) (PCIE_FIREWALL_DEV(xdev) && PCIE_FIREWALL_OPS(xdev))
 #define xocl_pcie_firewall_unblock(xdev, pf, bar)			\
 	(PCIE_FIREWALL_CB(xdev) ? PCIE_FIREWALL_OPS(xdev)->unblock(PCIE_FIREWALL_DEV(xdev), pf, bar) : -ENODEV)
