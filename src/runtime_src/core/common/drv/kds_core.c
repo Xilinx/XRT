@@ -177,8 +177,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			strncpy(scu_mgmt->name[scu_idx], (char *)cp->sk_name,
 				sizeof(scu_mgmt->name[0]));
 
-			cu_stat_write(scu_mgmt,usage[scu_mgmt->num_cus],0);
-			scu_mgmt->num_cus++;
+			cu_stat_write(scu_mgmt, usage[scu_idx], 0);
 		}
 	}
 	mutex_unlock(&scu_mgmt->lock);
@@ -767,6 +766,10 @@ int kds_init_sched(struct kds_sched *kds)
 	if (!kds->cu_mgmt.cu_stats)
 		return -ENOMEM;
 
+	kds->scu_mgmt.cu_stats = alloc_percpu(struct cu_stats);
+	if (!kds->scu_mgmt.cu_stats)
+		return -ENOMEM;
+
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
@@ -844,7 +847,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 		kds_err(client, "Unknown type");
 		err = -EINVAL;
 	}
-
 	if (err) {
 		xcmd->cb.notify_host(xcmd, KDS_ERROR);
 		xcmd->cb.free(xcmd);
@@ -860,7 +862,6 @@ int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 	ret = kds_add_command(kds, xcmd);
 	if (ret)
 		return ret;
-
 	ret = wait_for_completion_interruptible_timeout(&kds->comp, msecs_to_jiffies(3000));
 	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
@@ -1339,8 +1340,6 @@ int kds_cfg_update(struct kds_sched *kds)
 	struct xrt_cu *xcu;
 	int ret = 0;
 	int i;
-
-	kds->scu_mgmt.num_cus = 0;
 
 	/* Update PLRAM CU */
 	if (kds->cmdmem.bo) {

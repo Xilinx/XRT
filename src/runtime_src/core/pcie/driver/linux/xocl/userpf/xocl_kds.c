@@ -1085,7 +1085,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	struct config_sk_image *image;
 	struct ps_kernel_data *scu_data;
 	u32 start_cuidx = 0;
-	u32 img_idx = 0;
 	int ret = 0;
 	int i;
 
@@ -1103,10 +1102,9 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->type = ERT_CTRL;
 	ecmd->num_image = ps_kernel->pkn_count;
 	ecmd->count = 1 + ecmd->num_image * sizeof(*image) / 4;
-
 	for (i = 0; i < ecmd->num_image; i++) {
-		image = &ecmd->image[img_idx];
-		scu_data = &ps_kernel->pkn_data[img_idx];
+		image = &ecmd->image[i];
+		scu_data = &ps_kernel->pkn_data[i];
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
@@ -1115,7 +1113,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 
 		start_cuidx += image->num_cus;
-		img_idx++;
 	}
 
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
