@@ -357,11 +357,11 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     }
     else {
       // new test cases to find "Throughput (Type: {...}) (Bank count: {...}):"
-      auto st = os_stdout.str().find("Throughput", 0);
-      while(st != std::string::npos) {
-        auto end = os_stdout.str().find("\n", st);
-        logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
-        st = os_stdout.str().find("Throughput" , end);
+      auto str = os_stdout.str().find("Throughput", 0);
+      while(str != std::string::npos) {
+        auto end = os_stdout.str().find("\n", str);
+        logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
+        str = os_stdout.str().find("Throughput" , end);
       }
     }
   }
