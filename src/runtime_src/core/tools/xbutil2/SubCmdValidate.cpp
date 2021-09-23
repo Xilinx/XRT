@@ -264,7 +264,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
       { "22_verify.py",             "validate.exe"    },
       { "23_bandwidth.py",          "kernel_bw.exe"   },
       { "versal_23_bandwidth.py",   "kernel_bw.exe"   },
-      { "host_mem_23_bandwidth.py", "slavebridge.exe" },
+      { "host_mem_23_bandwidth.py", "hostmemory.exe"  },
       { "xcl_vcu_test.exe",         "xcl_vcu_test.exe"},
       { "xcl_iops_test.exe",        "xcl_iops_test.exe"}
     };
@@ -349,10 +349,20 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
   // Get out max thruput for bandwidth testcase
   if(xclbin.compare("bandwidth.xclbin") == 0) {
+    // old testcases where we have "Maximum throughput:"
     size_t st = os_stdout.str().find("Maximum");
     if (st != std::string::npos) {
       size_t end = os_stdout.str().find("\n", st);
       logger(_ptTest, "Details", os_stdout.str().substr(st, end - st));
+    }
+    else {
+      // new test cases to find "Throughput (Type: {...}) (Bank count: {...}):"
+      auto str = os_stdout.str().find("Throughput", 0);
+      while(str != std::string::npos) {
+        auto end = os_stdout.str().find("\n", str);
+        logger(_ptTest, "Details", os_stdout.str().substr(str, end - str));
+        str = os_stdout.str().find("Throughput" , end);
+      }
     }
   }
 
@@ -1337,7 +1347,9 @@ print_status(test_status status, std::ostream & _ostream)
     _ostream << "Validation completed";
   if (status == test_status::warning)
     _ostream << ", but with warnings";
-  _ostream << ". Please run the command '--verbose' option for more details" << std::endl;
+  if(!XBU::getVerbose())
+    _ostream << ". Please run the command '--verbose' option for more details";
+  _ostream << std::endl;
 }
 
 /*

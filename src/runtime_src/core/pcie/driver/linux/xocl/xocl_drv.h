@@ -2231,6 +2231,7 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
 int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
+int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, size_t *len);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {

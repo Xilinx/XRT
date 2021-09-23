@@ -16,6 +16,7 @@ include(CMake/unitTestSupport.cmake)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime_src/core/include
+  ${CMAKE_BINARY_DIR}/gen
   )
 
 set(CMAKE_CXX_STANDARD 14)
@@ -63,9 +64,9 @@ set (XRT_DEV_COMPONENT "xrt")
 set (XRT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Version adjusted to 2.11 after u30 branch creation
-set(XRT_VERSION_RELEASE 202120)
+set(XRT_VERSION_RELEASE 202210)
 SET(XRT_VERSION_MAJOR 2)
-SET(XRT_VERSION_MINOR 12)
+SET(XRT_VERSION_MINOR 13)
 
 if (DEFINED ENV{XRT_VERSION_PATCH})
   SET(XRT_VERSION_PATCH $ENV{XRT_VERSION_PATCH})

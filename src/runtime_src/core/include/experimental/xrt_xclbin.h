@@ -597,6 +597,7 @@ public:
   uuid
   get_uuid() const;
 
+  /// @cond
   /**
    * get_axlf() - Get the axlf data of the xclbin
    *
@@ -630,6 +631,7 @@ public:
   {
     return reinterpret_cast<SectionType>(get_axlf_section(section).first);
   }
+  /// @endcond
 
 private:
   XCL_DRIVER_DLLESPEC

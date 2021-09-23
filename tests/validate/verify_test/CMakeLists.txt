@@ -27,7 +27,7 @@ add_executable(${TESTNAME}
   ../common/includes/logger/logger.cpp src/host.cpp
   )
 
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread ${OpenCL_LIBRARY} )
