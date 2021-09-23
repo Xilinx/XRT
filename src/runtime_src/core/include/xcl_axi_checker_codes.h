@@ -138,7 +138,7 @@ class xclAXICheckerCodes {
     RECS_WRITE_TO_BVALID_MAX_WAIT
   };
 public:
-  static bool isValidAXICheckerCodes(unsigned int aOverallStatus, unsigned int aSnapshot[4], unsigned int aCumulative[4]) {
+  static bool isValidAXICheckerCodes(unsigned int aOverallStatus, unsigned int aSnapshot[XLAPC_STATUS_REG_NUM], unsigned int aCumulative[XLAPC_STATUS_REG_NUM]) {
     //Validate the codes read from the device.
     //overallstatus could be 0 or 1
     if (aOverallStatus > 1) return false;
@@ -146,7 +146,7 @@ public:
     if (aSnapshot[3]>>5 != 0) return false;
     //There should be only 1 bit set in Snapshot
     int nonzero_snapshots = 0;
-    for (int i=0; i<4; ++i) {
+    for (int i=0; i<XLAPC_STATUS_REG_NUM; ++i) {
       if (aSnapshot[i]!=0) {
         if ((aSnapshot[i] & (aSnapshot[i]-1)) != 0) return false;
         if (nonzero_snapshots) return false;
@@ -158,7 +158,7 @@ public:
     //if snapshot is all zero then overallstatus and cumulative should be zero
     if (!nonzero_snapshots) {
       if (aOverallStatus) return false;
-      for (int i=0; i<4; ++i) {
+      for (int i=0; i<XLAPC_STATUS_REG_NUM; ++i) {
         if (aCumulative[i]) return false;
       }
     }

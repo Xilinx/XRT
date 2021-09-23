@@ -56,6 +56,7 @@ extern "C" {
  */
 #define XLAPC_MAX_NUMBER_SLOTS           31
 #define XLAPC_STATUS_PER_SLOT            9
+#define XLAPC_STATUS_REG_NUM             4
 
 /* Metric counters per slot */
 #define XLAPC_OVERALL_STATUS                0
@@ -140,8 +141,8 @@ XCL_CHECKER_STREAM = 1
 /* Debug checker results */
 typedef struct {
   unsigned int   OverallStatus[XLAPC_MAX_NUMBER_SLOTS];
-  unsigned int   CumulativeStatus[XLAPC_MAX_NUMBER_SLOTS][4];
-  unsigned int   SnapshotStatus[XLAPC_MAX_NUMBER_SLOTS][4];
+  unsigned int   CumulativeStatus[XLAPC_MAX_NUMBER_SLOTS][XLAPC_STATUS_REG_NUM];
+  unsigned int   SnapshotStatus[XLAPC_MAX_NUMBER_SLOTS][XLAPC_STATUS_REG_NUM];
   unsigned int   NumSlots;
   char DevUserName[256];
 } xclDebugCheckersResults;

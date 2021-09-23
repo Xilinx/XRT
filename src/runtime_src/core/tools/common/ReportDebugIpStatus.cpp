@@ -1240,7 +1240,7 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     entry.put("overall_status", lapcResults.OverallStatus[i]);
 
     boost::property_tree::ptree snapshot_pt;
-    for(size_t j = 0; j < 4; j++) {
+    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
       boost::property_tree::ptree e_pt;
       e_pt.put_value(lapcResults.SnapshotStatus[i][j]);
       snapshot_pt.push_back(std::make_pair("", e_pt));
@@ -1248,7 +1248,7 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     entry.add_child("snapshot_status", snapshot_pt); 
 
     boost::property_tree::ptree cumulative_pt;
-    for(size_t j = 0; j < 4; j++) {
+    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
       boost::property_tree::ptree e_pt;
       e_pt.put_value(lapcResults.CumulativeStatus[i][j]);
       cumulative_pt.push_back(std::make_pair("", e_pt));
@@ -1527,8 +1527,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   try {
     for(auto& ip : lapc_pt) {
       const boost::property_tree::ptree& entry = ip.second;
-      unsigned int snapshotStatus[4];
-      unsigned int cumulativeStatus[4];
+      unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM];
+      unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM];
 
       const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
       size_t idx = 0;
@@ -1561,8 +1561,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                 << "    " << xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus)
                 << std::endl;
         // Snapshot reflects first violation, Cumulative has all violations
-        unsigned int transformedStatus[4];
-        std::transform(cumulativeStatus, cumulativeStatus+4 /*past the last element*/,
+        unsigned int transformedStatus[XLAPC_STATUS_REG_NUM];
+        std::transform(cumulativeStatus, cumulativeStatus+XLAPC_STATUS_REG_NUM /*past the last element*/,
                        snapshotStatus,
                        transformedStatus,
                        std::bit_xor<unsigned int>());
