@@ -1322,15 +1322,19 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
 void
 reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
 {
-  _output << "Debug IP Status"
-          << "\n  Number of IPs found :: " << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
+  _output << "Debug IP Status \n  Number of IPs found :: " 
+          << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
 
   try {
     const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
-    _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl ;
+    std::string header("IP Name (element filter option)");
+    _output << "\n  IPs found :"
+            << "\n    " << header << " : Count" << std::endl;
+
+    boost::format valueFormat("    %-"+std::to_string(header.length())+"s : %llu");
     for(auto& ip : dbgIps_pt) {
       const boost::property_tree::ptree& entry = ip.second;
-      _output << "    " << entry.get<std::string>("name") << " : " << std::to_string(entry.get<uint64_t>("count")) << std::endl;
+      _output << valueFormat % entry.get<std::string>("name") % entry.get<uint64_t>("count") << std::endl;
      }
   }
   catch( std::exception const& e) {
@@ -1546,18 +1550,18 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                 snapshotStatus, cumulativeStatus)) {
 
         invalid_codes = true;
-        _output << "CU Name: " << entry.get<std::string>("cu_name") 
-                << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl
-                << "  Invalid codes read, skip decoding" << std::endl;
+        _output << boost::format("CU Name: %s AXI Port: %s \n  Invalid codes read, skip decoding")
+                    % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                << std::endl;
 
       } else if(entry.get<unsigned int>("overall_status")) {
 
         violations_found = true;
-        _output << "CU Name: " << entry.get<std::string>("cu_name") 
-                << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl
-                << "  First violation: " << std::endl
-                << "    " << xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus)
+        _output << boost::format("CU Name: %s AXI Port: %s \n  First violation: \n    %s")
+                    % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                    % xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus) 
                 << std::endl;
+
         // Snapshot reflects first violation, Cumulative has all violations
         unsigned int transformedStatus[XLAPC_STATUS_REG_NUM];
         std::transform(cumulativeStatus, cumulativeStatus+XLAPC_STATUS_REG_NUM /*past the last element*/,
@@ -1565,8 +1569,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                        transformedStatus,
                        std::bit_xor<unsigned int>());
         std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
-        _output << "  Other violations: " << std::endl
-                << "    "
+        _output << "  Other violations: \n    "
                 << (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }
@@ -1642,8 +1645,9 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
   try {
     for(auto& ip : spc_pt) {
       const boost::property_tree::ptree& entry = ip.second;
-      _output << "CU Name: " << entry.get<std::string>("cu_name")
-              << " AXI Port: " << entry.get<std::string>("axi_port") << std::endl;
+      _output << boost::format("CU Name: %s AXI Port: %s")
+                  % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+              << std::endl;
 
       if(!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(entry.get<unsigned int>("pc_asserted"),
                        entry.get<unsigned int>("current_pc"), entry.get<unsigned int>("snapshot_pc"))) {
@@ -1651,13 +1655,13 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
         _output << "  Invalid codes read, skip decoding" << std::endl;
       } else {
         violations_found = true;
-        _output << "  First violation: " << std::endl
-                << "    " 
-                << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("snapshot_pc"))
+        _output << boost::format("  First violation: \n    %s")
+                    % xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("snapshot_pc"))
                 << std::endl;
+
         std::string tStr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("current_pc"));
-        _output << "  Other violations: " << std::endl
-                << "    " << (("" == tStr) ? "None" : tStr)
+        _output << "  Other violations: \n    "
+                << (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }
 
@@ -1705,10 +1709,9 @@ reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
     return;
   }
   const boost::property_tree::ptree& ila_pt = child.get();
-
-  _output << "\nIntegrated Logic Analyzer" << std::endl
-          << "  " << ila_pt.get<std::string>("description") << std::endl
-          << "  Found : " << ila_pt.get<uint64_t>("count") << std::endl;
+  _output << boost::format("\nIntegrated Logic Analyzer\n  %s\n  Found : %llu") 
+              % ila_pt.get<std::string>("description") % ila_pt.get<uint64_t>("count")
+          << std::endl;
 }
 
 void
