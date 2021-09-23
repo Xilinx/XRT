@@ -1315,7 +1315,6 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
   accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
 
   _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
-  return;
 }
 
 // ----- Supporting Functions -------------------------------------------
@@ -1500,7 +1499,6 @@ reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool 
   _output << "\nTrace Stream to Memory" << std::endl
           << "  " << ts2mm_pt.get<std::string>("description") << std::endl
           << "  Found : " << ts2mm_pt.get<uint64_t>("count") << std::endl;
-  return;
 }
 
 void
