@@ -2066,7 +2066,7 @@ int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, s
 		goto failed;
 
 	*buf = vmalloc(fw->size);
-	if (*buf) {
+	if (!*buf) {
 		ret = -ENOMEM;
 		goto failed;
 	}
