@@ -400,14 +400,14 @@ ert_queue_intc_config(struct xocl_ert_user *ert_user, bool enable)
 }
 
 static inline int
-ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size)
+ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size, bool polling)
 {
 	struct ert_queue *queue = ert_user->queue;
 
 	if (!queue)
 		return -ENODEV;
 
-	return queue->func->queue_config(slot_size, ert_user, queue->handle);
+	return queue->func->queue_config(slot_size, polling, ert_user, queue->handle);
 }
 
 static inline uint32_t
@@ -782,7 +782,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 
 	BUG_ON(cmd_opcode(ecmd) != ERT_CONFIGURE);
 
-	ret = ert_config_queue(ert_user, cfg->slot_size);
+	ret = ert_config_queue(ert_user, cfg->slot_size, cfg->polling);
 	if (ret)
 		return ret;
 
