@@ -33,6 +33,9 @@
  */
 #ifndef _AXICHECKERCODES_H_
 #define _AXICHECKERCODES_H_
+
+#include "core/include/xcl_app_debug.h"
+
 class xclAXICheckerCodes {
   enum class AXICheckerCodes {
     AXI_ERRM_AWADDR_BOUNDARY,
