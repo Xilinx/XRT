@@ -1583,8 +1583,10 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 	bool sw_ready, hw_ready;
 	u32 st;
 
+	mutex_lock(&ch->sw_chan_mutex);
 	sw_ready = (ch->sw_chan_msg_id == 0);
-	if (MB_SW_ONLY(mbx))
+	mutex_unlock(&ch->sw_chan_mutex);
+	if (MB_SW_ONLY(mbx))	
 		return sw_ready;
 
 	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
