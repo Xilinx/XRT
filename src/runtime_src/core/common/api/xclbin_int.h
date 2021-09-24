@@ -40,6 +40,10 @@ get_xclbin(xrtXclbinHandle);
 std::pair<const char*, size_t>
 get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind);
 
+// get_axlf_sections() - Retrieve specified sections
+std::vector< std::pair<const char*, size_t>>
+get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
+
 // read_xclbin() - Read specified xclbin file 
 std::vector<char>
 read_xclbin(const std::string& fnm);

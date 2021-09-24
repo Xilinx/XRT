@@ -107,7 +107,7 @@ shim(unsigned index)
   , mCuMaps(128, nullptr)
 {
   xclLog(XRT_INFO, "%s", __func__);
-
+  
   mKernelFD = open("/dev/dri/renderD128", O_RDWR);
   if (mKernelFD < 0) {
     xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
