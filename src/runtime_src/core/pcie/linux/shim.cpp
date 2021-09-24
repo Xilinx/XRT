@@ -1182,60 +1182,50 @@ int shim::cmaEnable(bool enable, uint64_t size)
     int ret = 0;
 
     if (enable) {
+        /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
+         * e.g. We like to get 2M huge page, 2M = 2^21,
+         * 21 = 0x15
+         * Let's find how many 1GB huge page we have to allocate
+         */
+        uint64_t hugepage_flag = 0x1e;
         uint64_t page_sz = 1 << 30;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
-        int err_code = 0;
 
         cma_info.total_size = size;
-        cma_info.entry_num = 0;
+        cma_info.entry_num = page_num;
 
-        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+        cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
 
-        err_code = -errno;
-        if (ret && err_code != -E2BIG)
-            return err_code;
-        else if (err_code == -E2BIG) {
-            /* Once set MAP_HUGETLB, we have to specify bit[26~31] as size in log
-             * e.g. We like to get 2M huge page, 2M = 2^21,
-             * 21 = 0x15
-             * Let's find how many 1GB huge page we have to allocate
-             */
-            uint64_t hugepage_flag = 0x1e;
-            cma_info.entry_num = page_num;
+        for (uint32_t i = 0; i < page_num; ++i) {
+            void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
 
-            if (size < page_sz)
-                return -EINVAL;
-
-            cma_info.user_addr = (uint64_t *)alloca(sizeof(uint64_t)*page_num);
-            ret = 0;
-
-
-            for (uint32_t i = 0; i < page_num; ++i) {
-                void *addr_local = mmap(0x0, page_sz, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB | hugepage_flag << MAP_HUGE_SHIFT, 0, 0);
-
-                if (addr_local == MAP_FAILED) {
-                    xrt_logmsg(XRT_ERROR, "Unable to get huge page.");
-                    ret = -ENOMEM;
-                    break;
-                } else {
-                    cma_info.user_addr[i] = (uint64_t)addr_local;
-                }
+            if (addr_local == MAP_FAILED) {
+                ret = -ENOMEM;
+                break;
+            } else {
+                cma_info.user_addr[i] = (uint64_t)addr_local;
             }
+        }
 
-            if (!ret) {
-                ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
-                if (ret)
-                        ret = -errno;
-            }
+        if (!ret) {
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+            if (ret)
+                    ret = -errno;
+        }
 
-            for (uint32_t i = 0; i < page_num; ++i) {
-                if (!cma_info.user_addr[i])
-                    continue;
+        for (uint32_t i = 0; i < page_num; ++i) {
+            if (!cma_info.user_addr[i])
+                continue;
 
-                 munmap((void*)cma_info.user_addr[i], page_sz);
-            }
+             munmap((void*)cma_info.user_addr[i], page_sz);
+        }
 
+        if (ret) {
+            cma_info.entry_num = 0;
+            ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_ALLOC_CMA, &cma_info);
+            if (ret)
+                    ret = -errno;
         }
 
     } else {

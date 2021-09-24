@@ -35,7 +35,6 @@ ReportFirewall::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree pt;
   try {
-    pt.put("Description","Firewall Information");
     pt.put("firewall_level", xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));
     pt.put("firewall_level_name", xrt_core::device_query<xrt_core::query::firewall_detect_level_name>(_pDevice));
     pt.put("firewall_status", boost::format("0x%x") % xrt_core::device_query<xrt_core::query::firewall_detect_level>(_pDevice));

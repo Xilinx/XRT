@@ -163,6 +163,9 @@ PYBIND11_MODULE(pyxrt, m) {
         .def("set_arg", [](xrt::run& r, int i, int& item){
                             r.set_arg<int&>(i, item);
                         }, "Set a specific kernel scalar argument for this run")
+        .def("wait", ([](xrt::run& r)  {
+                           return r.wait(0);
+                      }), "Wait for the run to complete")
         .def("wait", ([](xrt::run& r, unsigned int timeout_ms)  {
                           return r.wait(timeout_ms);
                       }), "Wait for the specified milliseconds for the run to complete")

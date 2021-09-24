@@ -840,6 +840,27 @@ done:
 
 int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_bank_size)
 {
+	int ret = 0;
+	uint64_t *phys_addrs = 0;
+	uint64_t entry_num = 0, entry_sz = 0, host_reserve_size = 0;
+	struct xocl_dev *xdev = (struct xocl_dev *)drm_p->xdev;
+
+	if (!xdev->cma_bank) {
+		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
+		return 0;
+	}
+
+	phys_addrs = xdev->cma_bank->phys_addrs;
+	entry_num = xdev->cma_bank->entry_num;
+	entry_sz = xdev->cma_bank->entry_sz;
+	ret = xocl_addr_translator_set_page_table(drm_p->xdev, phys_addrs, entry_sz, entry_num);
+	if (ret)
+		return ret;
+
+	host_reserve_size = xocl_addr_translator_get_host_mem_size(drm_p->xdev);
+
+	ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);
+
 	return xocl_addr_translator_enable_remap(drm_p->xdev, base_addr, ddr_bank_size);
 }
 
@@ -868,7 +889,7 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	uint64_t reserved1 = 0;
 	uint64_t reserved2 = 0;
 	uint64_t reserved_start;
-	uint64_t reserved_end, host_reserve_size;
+	uint64_t reserved_end;
 	int err = 0;
 	int i = -1;
 
@@ -1024,9 +1045,6 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 #endif
 
 		if (IS_HOST_MEM(mem_data->m_tag)) {
-			host_reserve_size = xocl_addr_translator_get_host_mem_size(drm_p->xdev);
-
-			ddr_bank_size = min(ddr_bank_size, (size_t)host_reserve_size);
 			err = xocl_set_cma_bank(drm_p, mem_data->m_base_address, ddr_bank_size);
 			if (err) {
 				xocl_err(drm_p->ddev->dev, "Run host_mem to setup host memory access, request 0x%lx bytes", ddr_bank_size);

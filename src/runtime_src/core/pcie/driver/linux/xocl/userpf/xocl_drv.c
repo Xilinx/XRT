@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -48,6 +48,8 @@
 
 #define MAX_DYN_SUBDEV		1024
 #define XDEV_DEFAULT_EXPIRE_SECS	1
+
+#define MAX_SB_APERTURES		256
 
 extern int kds_mode;
 
@@ -284,11 +286,6 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	if (force)
 		xocl_drvinst_kill_proc(xdev->core.drm);
-
-	/* free cma bank*/
-	mutex_lock(&xdev->dev_lock);
-	xocl_cma_bank_free(xdev);
-	mutex_unlock(&xdev->dev_lock);
 
 	/* cleanup drm */
 	if (xdev->core.drm) {
@@ -1278,14 +1275,12 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 {
 	int ret = 0;
 	size_t page_sz = cma_info->total_size/cma_info->entry_num;
-	uint32_t i, j, num = xocl_addr_translator_get_entries_num(xdev);
+	uint32_t i, j, num = MAX_SB_APERTURES;
 	uint64_t *user_addr = NULL, *phys_addrs = NULL, cma_mem_size = 0;
 	uint64_t rounddown_num = rounddown_pow_of_two(cma_info->entry_num);
 
 	BUG_ON(!mutex_is_locked(&xdev->dev_lock));
 
-	if (!num)
-		return -ENODEV;
 	/* Limited by hardware, the entry number can only be power of 2
 	 * rounddown_pow_of_two 255=>>128 63=>>32
 	 */
@@ -1305,7 +1300,7 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 	ret = copy_from_user(user_addr, cma_info->user_addr, sizeof(uint64_t)*rounddown_num);
 	if (ret) {
 		ret = -EFAULT;
-		goto done;
+		goto fail;
 	}
 
 	for (i = 0; i < rounddown_num-1; ++i) {
@@ -1313,7 +1308,7 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 			if (user_addr[i] == user_addr[j]) {
 				ret = -EINVAL;
 				DRM_ERROR("duplicated Huge Page");
-				goto done;
+				goto fail;
 			}
 		}
 	}
@@ -1322,18 +1317,18 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 		if (user_addr[i] & (page_sz - 1)) {
 			DRM_ERROR("Invalid Huge Page");
 			ret = -EINVAL;
-			goto done;
+			goto fail;
 		}
 
 		ret = xocl_cma_mem_alloc_huge_page_by_idx(xdev, i, user_addr[i], page_sz);
 		if (ret)
-			goto done;
+			goto fail;
 	}
 
 	phys_addrs = vzalloc(rounddown_num*sizeof(uint64_t));
 	if (!phys_addrs) {
 		ret = -ENOMEM;
-		goto done;		
+		goto fail;
 	}
 
 	for (i = 0; i < rounddown_num; ++i) {
@@ -1358,16 +1353,19 @@ static int xocl_cma_mem_alloc_huge_page(struct xocl_dev *xdev, struct drm_xocl_a
 	}
 
 	if (ret)
-		goto done;
+		goto fail;
 
 	/* Remember how many cma mem we allocate*/
 	xdev->cma_bank->entry_num = rounddown_num;
 	xdev->cma_bank->entry_sz = page_sz;
+	xdev->cma_bank->phys_addrs = phys_addrs;
 
-	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, rounddown_num);
+	goto done;
+
+fail:
+	vfree(phys_addrs);
 done:
 	vfree(user_addr);
-	vfree(phys_addrs);
 	return ret;
 }
 
@@ -1446,6 +1444,7 @@ static void __xocl_cma_bank_free(struct xocl_dev *xdev)
 
 	xocl_cma_mem_free_all(xdev);
 	xocl_addr_translator_clean(xdev);
+	vfree(xdev->cma_bank->phys_addrs);
 	vfree(xdev->cma_bank);
 	xdev->cma_bank = NULL;
 }
@@ -1455,13 +1454,8 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	int ret = 0;
 	uint64_t page_sz;
 	int64_t i = 0;
-	uint64_t page_num = xocl_addr_translator_get_entries_num(xdev);
+	uint64_t page_num = MAX_SB_APERTURES;
 	uint64_t *phys_addrs = NULL, cma_mem_size = 0;
-
-	if (!page_num) {
-		DRM_ERROR("Doesn't support CMA BANK feature");
-		return -ENODEV;		
-	}
 
 	page_sz = size/page_num;
 
@@ -1479,7 +1473,7 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 		ret = xocl_cma_mem_alloc_by_idx(xdev, page_sz, i);
 		if (ret) {
 			xdev->cma_bank->entry_num = i;
-			goto done;
+			goto fail;
 		}
 	}
 	xdev->cma_bank->entry_num = page_num;
@@ -1487,7 +1481,7 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	phys_addrs = vzalloc(page_num*sizeof(uint64_t));
 	if (!phys_addrs) {
 		ret = -ENOMEM;
-		goto done;		
+		goto fail;
 	}
 
 	for (i = 0; i < page_num; ++i) {
@@ -1512,14 +1506,15 @@ static int xocl_cma_mem_alloc(struct xocl_dev *xdev, uint64_t size)
 	}
 
 	if (ret)
-		goto done;
+		goto fail;
 
 	xdev->cma_bank->entry_sz = page_sz;
+	xdev->cma_bank->phys_addrs = phys_addrs;
 
-	ret = xocl_addr_translator_set_page_table(xdev, phys_addrs, page_sz, page_num);
-done:	
+	return 0;
+
+fail:
 	vfree(phys_addrs);
-
 	return ret;
 }
 
@@ -1534,12 +1529,7 @@ void xocl_cma_bank_free(struct xocl_dev	*xdev)
 int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *cma_info)
 {
 	int err = 0;
-	int num = xocl_addr_translator_get_entries_num(xdev);
-
-	if (!num) {
-		DRM_ERROR("Doesn't support HOST MEM feature");
-		return -ENODEV;
-	}
+	int num = MAX_SB_APERTURES;
 
 	xocl_cleanup_mem(xdev->core.drm);
 	xocl_icap_clean_bitstream(xdev);
@@ -1569,7 +1559,7 @@ int xocl_cma_bank_alloc(struct xocl_dev	*xdev, struct drm_xocl_alloc_cma_info *c
 		/* Cast all err as E2BIG */
 		err = xocl_cma_mem_alloc(xdev, cma_info->total_size);
 		if (err) {
-			err = -E2BIG;
+			err = -ENOMEM;
 			goto done;
 		}
 	}
@@ -1704,6 +1694,25 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	xocl_drvinst_set_offline(xdev, false);
+
+	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
+		/* query for DMA transfer */
+		/* @see Documentation/DMA-mapping.txt */
+		xocl_info(&pdev->dev, "pci_set_dma_mask()\n");
+		/* use 64-bit DMA */
+		xocl_info(&pdev->dev, "Using a 64-bit DMA mask.\n");
+		/* use 32-bit DMA for descriptors */
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		/* use 64-bit DMA, 32-bit for consistent */
+	} else if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(32))) {
+		xocl_info(&pdev->dev, "Could not set 64-bit DMA mask.\n");
+		pci_set_consistent_dma_mask(pdev, DMA_BIT_MASK(32));
+		/* use 32-bit DMA */
+		xocl_info(&pdev->dev, "Using a 32-bit DMA mask.\n");
+	} else {
+		xocl_err(&pdev->dev, "No suitable DMA possible.\n");
+		return -EINVAL;
+	}
 
 	return 0;
 

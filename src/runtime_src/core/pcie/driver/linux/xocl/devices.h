@@ -810,21 +810,12 @@ struct xocl_subdev_map {
 
 /* Fake resource for PS Kernels
  */
-#define XOCL_RES_SCU					\
-	((struct resource []) {				\
-		{					\
-			.start	= 0x0,			\
-			.end	= 0x00FFF,		\
-			.flags	= IORESOURCE_MEM,	\
-		}					\
-	})
-
 #define XOCL_DEVINFO_SCU					\
 	{						\
 		XOCL_SUBDEV_SCU,				\
 		XOCL_SCU,				\
-		XOCL_RES_SCU,				\
-		ARRAY_SIZE(XOCL_RES_SCU),		\
+		NULL,				\
+		0,		\
 		.level = XOCL_SUBDEV_LEVEL_URP,		\
 		.multi_inst = true,			\
 		.override_idx = -1,			\
@@ -3705,11 +3696,11 @@ struct xocl_subdev_map {
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5048, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000-es3",				\
+		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5049, PCI_ANY_ID,					\
-		.vbnv = "xilinx_vck5000-es3",				\
+		.vbnv = "xilinx_vck5000",				\
 		.priv_data = &XOCL_BOARD_VERSAL_USER_RAPTOR2_ES3,	\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x6098, PCI_ANY_ID,					\

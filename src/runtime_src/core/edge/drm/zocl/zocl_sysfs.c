@@ -72,7 +72,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	ssize_t size;
 
-	if (!zdev)
+	if (!zdev || !zdev->zdev_xclbin || !zdev->zdev_xclbin->zx_uuid)
 		return 0;
 
 	size = sprintf(buf, "%pUb\n", zdev->zdev_xclbin->zx_uuid);

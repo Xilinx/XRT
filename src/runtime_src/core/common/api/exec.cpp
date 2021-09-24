@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -114,6 +114,16 @@ unmanaged_wait(const command* cmd)
     kds::unmanaged_wait(cmd);
   else
     sws::unmanaged_wait(cmd);
+}
+    
+// Wait for a command to complete execution with timeout.
+std::cv_status
+unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms)
+{
+  if (kds_enabled())
+    return kds::unmanaged_wait(cmd, timeout_ms);
+  else
+    return sws::unmanaged_wait(cmd, timeout_ms);
 }
 
 void

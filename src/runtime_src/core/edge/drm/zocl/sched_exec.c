@@ -3647,7 +3647,7 @@ sched_is_busy(struct drm_zocl_dev *zdev)
 	return (atomic_read(&exec->scheduler->num_pending) + atomic_read(&exec->scheduler->num_running));
 }
 
-int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)
+int sched_attach_cu(struct drm_zocl_dev *zdev, u32 cu_idx)
 {
 	struct sched_exec_core *exec = zdev->exec;
 	int ret;
@@ -3669,7 +3669,7 @@ int sched_attach_cu(struct drm_zocl_dev *zdev, int cu_idx)
 	return ret;
 }
 
-int sched_detach_cu(struct drm_zocl_dev *zdev, int cu_idx)
+int sched_detach_cu(struct drm_zocl_dev *zdev, u32 cu_idx)
 {
 	struct sched_exec_core *exec = zdev->exec;
 	int cu_mask;

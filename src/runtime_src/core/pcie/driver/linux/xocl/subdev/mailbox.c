@@ -212,13 +212,13 @@ MODULE_PARM_DESC(mailbox_no_intr,
 #define	PACKET_SIZE	16 /* Number of DWORD. */
 
 /*
- * monitor real receive pkt rate for every 8k Bytes.
+ * monitor real receive pkt rate for every 128k Bytes.
  * if the rate is higher than 1MB/s, we think user is trying to
  * transfer xclbin on h/w mailbox, if higher than 1.8MB/s, we think
  * user is doing DOS attack. Neither is allowd. We set a threshold
  * 600000B/s and don't expect any normal msg transfer exceeds it
  */
-#define	RECV_WINDOW_SIZE	0x800 /* Number of DWORD. */
+#define	RECV_WINDOW_SIZE	0x8000 /* Number of DWORD. */
 #define	RECV_RATE_THRESHOLD	600000
 
 #define	FLAG_STI	(1 << 0)
@@ -857,25 +857,54 @@ static void handle_timer_event(struct mailbox_channel *ch)
 	clear_bit(MBXCS_BIT_TICK, &ch->mbc_state);
 }
 
+/*
+ * Without intr, only RX channel needs polling while its idle in case
+ * the peer sends msg.
+ */
+static inline bool chan_needs_idle_polling(struct mailbox_channel *ch)
+{
+	return mailbox_no_intr && is_rx_chan(ch);
+}
+
 static void chan_sleep(struct mailbox_channel *ch, bool idle)
 {
 	const u32 short_sleep = 100; /* in us */
-	const u32 long_sleep = short_sleep * 1000; /* in us */
-	const u32 transit_time = long_sleep * 10; /* in us, time before switching to long sleep */
-	unsigned long sleep_time = 0;
+	/* us, time before switching to long sleep */
+	const u32 transit_time = short_sleep * 10000;
+	bool sleepshort = false;
 
 	if (idle) {
-		if (ch->idle_peroid <= transit_time)
-			sleep_time = short_sleep;
-		else
-			sleep_time = long_sleep;
-		ch->idle_peroid += sleep_time;
+		/*
+		 * Do not fall to long sleep too quickly. There might be new msgs to
+		 * process right after we finished processing the previous one.
+		 */
+		if (chan_needs_idle_polling(ch)) {
+			if (ch->idle_peroid <= transit_time) {
+				sleepshort = true;
+				ch->idle_peroid += short_sleep;
+			}
+		}
 	} else {
-		sleep_time = short_sleep;
+		sleepshort = true;
 		ch->idle_peroid = 0;
 	}
 
-	usleep_range(sleep_time / 2, sleep_time);
+	if (sleepshort) {
+		/* This will be counted as system load since it's not interruptible. */
+		usleep_range(short_sleep / 2, short_sleep);
+	} else {
+		/*
+		 * While we need to poll while being idle, we ought to rely on timer,
+		 * but it's proven to be not reliable, hence the _timeout as plan B
+		 * to make sure we poll HW as often as we planned. The polling rate
+		 * should be low so not to consume noticable CPU cycles and it needs
+		 * to be interruptible so not to be counted as system load.
+		 */
+		if (chan_needs_idle_polling(ch))
+			wait_for_completion_interruptible_timeout(&ch->mbc_worker, MAILBOX_TIMER);
+		else
+			wait_for_completion_interruptible(&ch->mbc_worker);
+	}
 }
 
 static void chan_worker(struct work_struct *work)
@@ -892,14 +921,12 @@ static void chan_worker(struct work_struct *work)
 			 * finish processing it or it's time'd out.
 			 */
 			chan_sleep(ch, false);
-		} else if (mailbox_no_intr) {
-			chan_sleep(ch, true);
 		} else {
 			/*
-			 * Wait for next poll triggered by intr or timer, which should
-			 * happen much less frequently.
+			 * Nothing to do, sleep until we're woken up, but see the devil in
+			 * details inside chan_sleep().
 			 */
-			wait_for_completion_interruptible(&ch->mbc_worker);
+			chan_sleep(ch, true);
 		}
 
 		progress = ch->mbc_tran(ch);
@@ -1156,6 +1183,7 @@ static bool check_recv_pkt_rate(struct mailbox *mbx)
 		mailbox_disable_intr_mode(mbx, false);
 		return false;
 	}
+	MBX_INFO(mbx, "recv pkt rate: %ld B/s", rate);
 
 	return true;
 }

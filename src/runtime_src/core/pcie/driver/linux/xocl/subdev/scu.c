@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo CU Sub-device Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2021 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -20,7 +20,7 @@
 	xocl_dbg(&xcuc->pdev->dev, fmt "\n", ##arg)
 
 #define IRQ_DISABLED 0
-struct xocl_scu {
+struct xocl_cu {
 	struct xrt_cu		 base;
 	struct platform_device	*pdev;
 	DECLARE_BITMAP(flag, 1);
@@ -31,7 +31,7 @@ static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
 
 	return sprintf(buf, "%d\n", xcu->debug);
@@ -41,9 +41,9 @@ static ssize_t debug_store(struct device *dev,
 	struct device_attribute *da, const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-	u32 debug;
+	u32 debug = 0;
 
 	if (kstrtou32(buf, 10, &debug) == -EINVAL)
 		return -EINVAL;
@@ -59,7 +59,7 @@ static ssize_t
 cu_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
 	return show_cu_stat(&cu->base, buf);
 }
@@ -69,7 +69,7 @@ static ssize_t
 cu_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
 	return show_cu_info(&cu->base, buf);
 }
@@ -79,7 +79,7 @@ static ssize_t
 poll_interval_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
 	return sprintf(buf, "%d\n", cu->base.interval_min);
 }
@@ -89,8 +89,8 @@ poll_interval_store(struct device *dev, struct device_attribute *attr,
 	    const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
-	u32 interval;
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	u32 interval = 0;
 
 	if (kstrtou32(buf, 10, &interval) == -EINVAL)
 		return -EINVAL;
@@ -106,7 +106,7 @@ static ssize_t
 busy_threshold_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
 	return sprintf(buf, "%d\n", cu->base.busy_threshold);
 }
@@ -116,8 +116,8 @@ busy_threshold_store(struct device *dev, struct device_attribute *attr,
 		     const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
-	int threshold;
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
+	int threshold = 0;
 
 	if (kstrtos32(buf, 10, &threshold) == -EINVAL)
 		return -EINVAL;
@@ -132,7 +132,7 @@ static ssize_t
 name_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu_info *info = &cu->base.info;
 
 	return sprintf(buf, "CU[%d]\n", info->cu_idx);
@@ -143,7 +143,7 @@ static ssize_t
 base_paddr_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu_info *info = &cu->base.info;
 
 	return sprintf(buf, "0x%llx\n", info->addr);
@@ -154,7 +154,7 @@ static ssize_t
 size_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu_info *info = &cu->base.info;
 
 	return sprintf(buf, "%ld\n", info->size);
@@ -165,7 +165,7 @@ static ssize_t
 stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct xocl_scu *cu = platform_get_drvdata(pdev);
+	struct xocl_cu *cu = platform_get_drvdata(pdev);
 
 	return show_formatted_cu_stat(&cu->base, buf);
 }
@@ -177,7 +177,7 @@ crc_buf_show(struct file *filp, struct kobject *kobj,
 	     loff_t offset, size_t count)
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
-	struct xocl_scu *cu = (struct xocl_scu *)dev_get_drvdata(dev);
+	struct xocl_cu *cu = (struct xocl_cu *)dev_get_drvdata(dev);
 	struct xrt_cu *xcu;
 
 	if (!cu)
@@ -200,9 +200,9 @@ static struct attribute *scu_attrs[] = {
 	NULL,
 };
 
-static struct bin_attribute crc_buf_attr = {
+static struct bin_attribute scu_crc_buf_attr = {
 	.attr = {
-		.name = "crc_buf",
+		.name = "scu_crc_buf",
 		.mode = 0444
 	},
 	.read = crc_buf_show,
@@ -211,7 +211,7 @@ static struct bin_attribute crc_buf_attr = {
 };
 
 static struct bin_attribute *scu_bin_attrs[] = {
-	&crc_buf_attr,
+	&scu_crc_buf_attr,
 	NULL,
 };
 
@@ -220,7 +220,7 @@ static const struct attribute_group scu_attrgroup = {
 	.bin_attrs = scu_bin_attrs,
 };
 
-static int scu_add_args(struct xocl_scu *xcu, struct kernel_info *kinfo)
+static int scu_add_args(struct xocl_cu *xcu, struct kernel_info *kinfo)
 {
 	struct xrt_cu_arg *args = NULL;
 	int i;
@@ -254,7 +254,7 @@ static int scu_add_args(struct xocl_scu *xcu, struct kernel_info *kinfo)
 	return 0;
 }
 
-static void scu_del_args(struct xocl_scu *xcu)
+static void scu_del_args(struct xocl_cu *xcu)
 {
 	if (xcu->base.info.args)
 		vfree(xcu->base.info.args);
@@ -263,11 +263,7 @@ static void scu_del_args(struct xocl_scu *xcu)
 static int scu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_scu *xcu;
-	struct resource **res;
-	struct xrt_cu_info *info;
-	struct kernel_info *krnl_info;
-	struct xrt_cu_arg *args = NULL;
+	struct xocl_cu *xcu;
 	int err = 0;
 	int i;
 
@@ -282,37 +278,13 @@ static int scu_probe(struct platform_device *pdev)
 	xcu->pdev = pdev;
 	xcu->base.dev = XDEV2DEV(xdev);
 
-	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
-	BUG_ON(!info);
-	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
-
 	xcu->base.info.model = XCU_HLS;
-
-	krnl_info = xocl_query_kernel(xdev, info->kname);
-	err = scu_add_args(xcu, krnl_info);
-	if (err)
-		goto err;
-
-	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
-	if (!res) {
-		err = -ENOMEM;
-		goto err;
-	}
-
-	for (i = 0; i < xcu->base.info.num_res; ++i) {
-		res[i] = platform_get_resource(pdev, IORESOURCE_MEM, i);
-		if (!res[i]) {
-			err = -EINVAL;
-			goto err1;
-		}
-	}
-	xcu->base.res = res;
 
 	err = xocl_kds_add_scu(xdev, &xcu->base);
 	if (err) {
 		err = 0; //Ignore this error now
 		//XSCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
-		goto err1;
+		goto err;
 	}
 
 	if (sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup))
@@ -322,12 +294,8 @@ static int scu_probe(struct platform_device *pdev)
 
 	return 0;
 
-err2:
-	(void) xocl_kds_del_scu(xdev, &xcu->base);
-err1:
-	vfree(res);
 err:
-	vfree(args);
+	(void) xocl_kds_del_scu(xdev, &xcu->base);
 	return err;
 }
 
@@ -335,7 +303,7 @@ static int scu_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xrt_cu_info *info;
-	struct xocl_scu *xcu;
+	struct xocl_cu *xcu;
 
 	xcu = platform_get_drvdata(pdev);
 	if (!xcu)
@@ -344,7 +312,7 @@ static int scu_remove(struct platform_device *pdev)
 	(void) sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
 	info = &xcu->base.info;
 
-	(void) xocl_kds_del_cu(xdev, &xcu->base);
+	(void) xocl_kds_del_scu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);

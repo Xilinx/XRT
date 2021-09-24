@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020-2021 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -275,17 +275,22 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	      struct drm_xocl_ctx *args)
 {
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	int cu_idx = args->cu_index;
+	u32 cu_idx = args->cu_index;
+	int ret;
 
 	if (!kds->cu_intr_cap) {
 		userpf_err(xdev, "Shell not support CU to host interrupt");
 		return -EOPNOTSUPP;
 	}
 
+	ret = kds_open_ucu(kds, client, cu_idx);
+	if (ret < 0)
+		return ret;
+
 	userpf_info(xdev, "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
-	return kds_open_ucu(kds, client, cu_idx);
+	return 0;
 }
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
@@ -1051,14 +1056,13 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret)
 		goto out;
 
-	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
-		userpf_err(xdev, "Cfg command state %d", ecmd->state);
+	if (ecmd->state != ERT_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Cfg command state %d. ERT will be disabled",
+			   ecmd->state);
 		ret = 0;
 		kds->ert_disable = true;
 		goto out;
 	}
-
-	WARN_ON(ecmd->state != ERT_CMD_STATE_COMPLETED);
 
 	/* If xrt.ini is not disabled, let it determines ERT enable/disable */
 	if (!kds->ini_disable)
@@ -1081,7 +1085,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	struct config_sk_image *image;
 	struct ps_kernel_data *scu_data;
 	u32 start_cuidx = 0;
-	u32 img_idx = 0;
 	int ret = 0;
 	int i;
 
@@ -1099,10 +1102,9 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->type = ERT_CTRL;
 	ecmd->num_image = ps_kernel->pkn_count;
 	ecmd->count = 1 + ecmd->num_image * sizeof(*image) / 4;
-
 	for (i = 0; i < ecmd->num_image; i++) {
-		image = &ecmd->image[img_idx];
-		scu_data = &ps_kernel->pkn_data[img_idx];
+		image = &ecmd->image[i];
+		scu_data = &ps_kernel->pkn_data[i];
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
@@ -1111,7 +1113,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 
 		start_cuidx += image->num_cus;
-		img_idx++;
 	}
 
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
