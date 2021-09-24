@@ -454,20 +454,6 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) break;
-          mPerfCounters.push_back(perfCounter);
-
-          // Convert enums to physical event IDs for reporting purposes
-          int counterNum = i;
-          uint8_t phyStartEvent = 0;
-          uint8_t phyEndEvent = 0;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &phyEndEvent);
-          if (!isCore) {
-            phyStartEvent += BASE_MEMORY_COUNTER;
-            phyEndEvent += BASE_MEMORY_COUNTER;
-          }
 
           // Set masks for group events
           // NOTE: Writing to group error enable register is blocked, so ignoring
@@ -491,8 +477,22 @@ namespace xdp {
           } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
             XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_STALL_MASK);
           }
-          //else if (startEvents.at(i) == XAIE_EVENT_GROUP_ERRORS_MEM)
-          //  XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_ERROR_MASK);
+
+          // Start the counters after group events have been configured
+          ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
+          mPerfCounters.push_back(perfCounter);
+
+          // Convert enums to physical event IDs for reporting purposes
+          int counterNum = i;
+          uint8_t phyStartEvent = 0;
+          uint8_t phyEndEvent = 0;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &phyEndEvent);
+          if (!isCore) {
+            phyStartEvent += BASE_MEMORY_COUNTER;
+            phyEndEvent += BASE_MEMORY_COUNTER;
+          }
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);

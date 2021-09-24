@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
-set(TESTNAME "slavebridge.exe")
+set(TESTNAME "hostmemory.exe")
 
 if (WIN32)
   set(OpenCL_INCLUDE_DIR ${OCL_ROOT}/include)
@@ -15,7 +15,7 @@ endif(WIN32)
 
 include_directories(../../../src/include/1_2 ../../../src/runtime_src/core/include src/ ../common/includes/xcl2 ../common/includes/cmdparser ../common/includes/logger )
 add_executable(${TESTNAME} ../common/includes/xcl2/xcl2.cpp ../common/includes/cmdparser/cmdlineparser.cpp ../common/includes/logger/logger.cpp src/host.cpp)
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread ${OpenCL_LIBRARY} )

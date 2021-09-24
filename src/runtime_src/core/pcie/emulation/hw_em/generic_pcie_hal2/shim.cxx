@@ -647,6 +647,8 @@ namespace xclhwemhal2 {
 
       std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
       kernels.push_back(kernelName);
+      int address_range = 0;
+      std::string instanceName;
 
       if (mLogStream.is_open())
          mLogStream << __func__ << " Filling kernel " << kernelName << " info from xclbin.xml" << std::endl;
@@ -670,9 +672,18 @@ namespace xclhwemhal2 {
             mLogStream << __func__ << " Filling kernel Args name: " << name << " id: " << id << " port: " << port << " info from xclbin.xml" << std::endl;
         }
 
+        if (xml_kernel_info.first == "port") {
+          std::string mode = xml_kernel_info.second.get<std::string>("<xmlattr>.mode");
+          if (mode == "slave") {
+            address_range = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.range"));
+            if (mLogStream.is_open())
+              mLogStream << __func__ << " Getting the Address Range of mode : " << mode << " info from xclbin.xml" << std::endl;
+          }
+        }
+
         if (xml_kernel_info.first == "instance")
         {
-          std::string instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
+          instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
           for (auto& xml_remap : xml_kernel_info.second)
           {
             if (xml_remap.first != "addrRemap")
@@ -683,10 +694,6 @@ namespace xclhwemhal2 {
 
             uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
             mCuBaseAddress = base & 0xFFFFFFFF00000000;
-
-            uint64_t range = convert(xml_remap.second.get<std::string>("<xmlattr>.range"));
-            std::string kernelInstanceStr = kernelName + ":" + instanceName;
-            mCURangeMap[kernelInstanceStr] = range;
 
             std::string vbnv  = mDeviceInfo.mName;
             //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
@@ -704,6 +711,11 @@ namespace xclhwemhal2 {
             }
             break;
           }
+        }
+
+        if (address_range != 0 && !kernelName.empty() && !instanceName.empty() ) {
+          std::string kernelInstanceStr = kernelName + ":" + instanceName;
+          mCURangeMap[kernelInstanceStr] = address_range;
         }
       }
     }

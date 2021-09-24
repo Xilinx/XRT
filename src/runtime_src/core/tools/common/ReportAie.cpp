@@ -19,6 +19,8 @@
 #include "ReportAie.h"
 #include "core/common/query_requests.h"
 #include "core/common/device.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -502,13 +504,32 @@ ReportAie::getPropertyTree20202(const xrt_core::device * _pDevice,
   _pt.add_child("aie_metadata", populate_aie(_pDevice, "Aie_Metadata"));
 }
 
-void 
+void
 ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
-                       const boost::property_tree::ptree& _pt, 
-                       const std::vector<std::string>& /*_elementsFilter*/, 
+                       const boost::property_tree::ptree& _pt,
+                       const std::vector<std::string>& _elementsFilter,
                        std::ostream & _output) const
 {
   boost::property_tree::ptree empty_ptree;
+  std::vector<std::string> aieCoreList;
+  bool is_less = false;
+
+  // Loop through all the parameters given under _elementsFilter i.e. -e option
+  for (auto it = _elementsFilter.begin(); it != _elementsFilter.end(); ++it) {
+    // Only show certain selected cores from aie that are passed under cores
+    // Ex. -r aie -e cores 0,3,5
+    if(*it == "cores") {
+      auto core_list = std::next(it);
+      if (core_list != _elementsFilter.end())
+        boost::split(aieCoreList, *core_list, boost::is_any_of(","));
+    }
+    // Show less information (core Status, Program Counter, Link Register, Stack
+    // Pointer) for each cores.
+    // Ex. -r aie -e less
+    if(*it == "less") {
+      is_less = true;
+    }
+  }
 
   // validate and print aie metadata by checking schema_version node
   if(!_pt.get_child_optional("aie_metadata.schema_version"))
@@ -537,7 +558,12 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
       _output << std::endl;
       count = 0;
       for (auto& tile : graph.get_child("tile")) {
-        _output << boost::format("Core [%2d]\n") % count++;
+        int curr_core = count++;
+        if(aieCoreList.size() && (std::find(aieCoreList.begin(), aieCoreList.end(),
+		     std::to_string(curr_core)) == aieCoreList.end()))
+          continue;
+
+        _output << boost::format("Core [%2d]\n") % curr_core;
         _output << fmt4("%d") % "Column" % tile.second.get<int>("column");
         _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
 
@@ -546,7 +572,13 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
         _output << fmt8("%s") % "Program Counter" % tile.second.get<std::string>("core.program_counter");
         _output << fmt8("%s") % "Link Register" % tile.second.get<std::string>("core.link_register");
         _output << fmt8("%s") % "Stack Pointer" % tile.second.get<std::string>("core.stack_pointer");
-        if(tile.second.find("dma") != tile.second.not_found()) {
+
+	if(is_less) {
+	  _output << std::endl;
+	  continue;
+	}
+
+	if(tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
           _output << boost::format("        %s:\n") % "MM2S";
 

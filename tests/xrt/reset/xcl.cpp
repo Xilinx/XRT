@@ -125,6 +125,8 @@ run(int argc, char* argv[])
   std::unique_lock<std::mutex> lk(mutex);
   while (!reset)
     cond.wait(lk);
+
+  return 0;
 }
 
 int main(int argc, char* argv[])

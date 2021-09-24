@@ -19,7 +19,7 @@ endif()
 
 add_subdirectory(verify_test)
 add_subdirectory(bandwidth_test)
-add_subdirectory(slavebridge_test)
+add_subdirectory(hostmemory_test)
 
 # Special iops performance test cases
 add_subdirectory(xcl_iops_test)
