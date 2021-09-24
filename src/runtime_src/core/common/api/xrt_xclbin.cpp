@@ -476,7 +476,7 @@ public:
   {
     auto section = reinterpret_cast<SectionType>(get_axlf_section(kind).first);
     if (!section)
-      throw std::runtime_error("Requested xclbin section " + std::to_string(kind) + " does not exist");
+      throw std::runtime_error("Request xclbin section " + std::to_string(kind) + " does not exist");
     return section;
   }
 
@@ -725,28 +725,6 @@ xclbin::
 get_axlf() const
 {
   return handle ? handle->get_axlf() : nullptr;
-}
-
-std::pair<const char*, size_t>
-xclbin::
-get_axlf_section(axlf_section_kind kind) const
-{
-  if (!handle)
-    throw std::runtime_error("No xclbin");
-
-  auto sec = handle->get_axlf_section(kind);
-  if (sec.first && sec.second)
-    return sec;
-
-  // sec is nullptr, check if kind is one of the group sections,
-  // which then does not appear in the xclbin and should default to
-  // the none group one.
-  if (kind == ASK_GROUP_TOPOLOGY)
-    return handle->get_axlf_section(MEM_TOPOLOGY);
-  else if (kind == ASK_GROUP_CONNECTIVITY)
-    return handle->get_axlf_section(CONNECTIVITY);
-
-  throw std::runtime_error("No such axlf section (" + std::to_string(kind) + ") in xclbin");
 }
 
 ////////////////////////////////////////////////////////////////
