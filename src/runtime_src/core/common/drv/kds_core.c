@@ -1259,13 +1259,13 @@ static void ert_dummy_submit(struct kds_ert *ert, struct kds_command *xcmd)
 	return;
 }
 
-static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, u32 cu_idx)
+static void ert_dummy_abort(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
 	kds_err(client, "ert abort op not implemented\n");
 	return;
 }
 
-static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, u32 cu_idx)
+static bool ert_dummy_abort_done(struct kds_ert *ert, struct kds_client *client, int cu_idx)
 {
 	kds_err(client, "ert abort_done op not implemented\n");
 	return false;
