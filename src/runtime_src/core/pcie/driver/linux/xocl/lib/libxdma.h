@@ -214,6 +214,7 @@
 	#define VMEM_FLAGS (VM_IO | VM_RESERVED)
 #endif
 
+//#define __LIBXDMA_DEBUG__
 #ifdef __LIBXDMA_DEBUG__
 #define dbg_io		pr_err
 #define dbg_fops	pr_err
@@ -431,6 +432,18 @@ struct xdma_request_cb {
 	struct sw_desc sdesc[0];
 };
 
+#define XDMA_ENGINE_DBG
+
+#ifdef XDMA_ENGINE_DBG
+#define XDMA_DBG_MAX_RECS 50
+#define XDMA_DBG_MAX_SIZE 80
+
+struct xdma_msg_dbg {
+	u64	xmd_ts;
+	char	xmd_msgbuf[XDMA_DBG_MAX_SIZE];
+};
+#endif
+
 struct xdma_engine {
 	unsigned long magic;	/* structure ID for sanity checks */
 	struct xdma_dev *xdev;	/* parent device */
@@ -528,7 +541,10 @@ struct xdma_engine {
 
 	/* cpu attached to intr_work */
 	unsigned int intr_work_cpu;
-
+#ifdef XDMA_ENGINE_DBG
+	struct xdma_msg_dbg xdma_msg_log[XDMA_DBG_MAX_RECS];
+	u32    xdma_msg_idx;
+#endif
 };
 
 struct xdma_user_irq {
@@ -657,6 +673,35 @@ void enable_perf(struct xdma_engine *engine);
 void get_perf_stats(struct xdma_engine *engine);
 void xdma_proc_aio_requests(void *dev_hndl, int channel, bool write);
 
+static inline void xdma_msg_log_collect(struct xdma_engine *engine, const char *fmt, ...)
+{
+#ifdef XDMA_ENGINE_DBG
+	va_list args;
+	struct xdma_msg_dbg *log = &engine->xdma_msg_log[engine->xdma_msg_idx];
+
+	va_start(args, fmt);
+	vsnprintf(log->xmd_msgbuf, XDMA_DBG_MAX_SIZE, fmt, args);
+	va_end(args);
+
+	engine->xdma_msg_idx = (engine->xdma_msg_idx + 1) % XDMA_DBG_MAX_RECS;
+#endif
+}
+
+/* Only call this when serious issue occured */
+static inline void xdma_msg_log_dump(struct xdma_engine *engine)
+{
+#ifdef XDMA_ENGINE_DBG
+	u32 idx, elem_idx = engine->xdma_msg_idx;
+	struct xdma_dev *xdev = engine->xdev;
+
+	/* Traverse logs from older to newer */
+	for (idx = 0; idx < XDMA_DBG_MAX_RECS; idx++) {
+		printk("%s %s", dev_name(&xdev->pdev->dev),
+			engine->xdma_msg_log[elem_idx].xmd_msgbuf);
+		elem_idx = (elem_idx + 1) % XDMA_DBG_MAX_RECS;
+	}
+#endif
+}
 
 #endif /* XDMA_LIB_H */
 

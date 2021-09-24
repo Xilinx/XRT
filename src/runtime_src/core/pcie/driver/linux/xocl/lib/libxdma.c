@@ -27,7 +27,6 @@
 #include "libxdma_api.h"
 #include "cdev_sgdma.h"
 
-
 extern unsigned int desc_blen_max;
 
 #define xocl_pr_info(fmt, args...)				\
@@ -562,6 +561,9 @@ static int engine_start_mode_config(struct xdma_engine *engine)
 			wr |= (u32)XDMA_CTRL_NON_INCR_ADDR;
 	}
 
+	xdma_msg_log_collect(engine, "start dma engine %s, channel %d\n",
+		engine->name, engine->channel);
+
 	/* start the engine */
 	write_register(wr, &engine->regs->control,
 		       (unsigned long)(&engine->regs->control) -
@@ -989,6 +991,35 @@ static struct xdma_request_cb *xdma_request_alloc(struct sg_table *sgt)
 
 	return req;
 }
+
+#ifdef __LIBXDMA_DEBUG__
+static void sgt_dump(struct sg_table *sgt)
+{
+	int i;
+	struct scatterlist *sg = sgt->sgl;
+
+	xocl_pr_info("sgt 0x%p, sgl 0x%p, nents %u/%u.\n",
+		sgt, sgt->sgl, sgt->nents, sgt->orig_nents);
+
+	for (i = 0; i < sgt->orig_nents; i++, sg = sg_next(sg))
+		xocl_pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx,%u.\n",
+			i, sg, sg_page(sg), sg->offset, sg->length,
+			sg_dma_address(sg), sg_dma_len(sg));
+}
+
+static void xdma_request_cb_dump(struct xdma_request_cb *req)
+{
+	int i;
+
+	xocl_pr_info("request 0x%p, total %u, ep 0x%llx, sw_desc %u, sgt 0x%p.\n",
+		req, req->total_len, req->ep_addr, req->sw_desc_cnt, req->sgt);
+	sgt_dump(req->sgt);
+	for (i = 0; i < req->sw_desc_cnt; i++)
+		xocl_pr_info("%d/%u, 0x%llx, %u.\n",
+			i, req->sw_desc_cnt, req->sdesc[i].addr,
+			req->sdesc[i].len);
+}
+#endif
 
 static int xdma_init_request(struct xdma_request_cb *req)
 {
@@ -1429,6 +1460,9 @@ submit_req:
 
 	return 0;
 }
+
+static int test = 0;
+
 static int xdma_process_requests(struct xdma_engine *engine,
 		struct xdma_request_cb *req)
 {
@@ -1451,13 +1485,24 @@ static int xdma_process_requests(struct xdma_engine *engine,
 		return rv;
 	}
 	if ((!req->cb || !req->cb->io_done) && (rv == 0)) {
+
+		xdma_msg_log_collect(engine,
+			"start waiting for req desc_cnt %u, desc_completed %u\n",
+			req->sw_desc_cnt, req->desc_completed);
+
 		timeout = wait_event_timeout(req->arbtr_wait,
 				req->sw_desc_cnt == req->desc_completed,
 				msecs_to_jiffies(10000)); /* 10sec timeout */
 
+		xdma_msg_log_collect(engine,
+			"wait_event done req desc_cnt %u, desc_completed %u\n",
+			req->sw_desc_cnt, req->desc_completed);
+
 		/* Check for timeouts*/
 		if (timeout == 0) {
 			pr_err("Request completion timeout\n");
+
+			xdma_msg_log_dump(engine);
 			engine_reg_dump(engine);
 			rv = -EIO;
 		}
@@ -2002,6 +2047,9 @@ static irqreturn_t xdma_channel_irq(int irq, void *dev_id)
 		dbg_irq("%s(irq=%d) xdev=%p ??\n", __func__, irq, xdev);
 		return IRQ_NONE;
 	}
+
+	xdma_msg_log_collect(engine, "irq:%d received. engine %s, channel %d\n",
+		irq, engine->name, engine->channel);
 
 	irq_regs = (struct interrupt_regs *)(xdev->bar[xdev->config_bar_idx] +
 					     XDMA_OFS_INT_CTRL);
@@ -3087,36 +3135,6 @@ static int engine_init(struct xdma_engine *engine, struct xdma_dev *xdev,
 
 
 
-#ifdef __LIBXDMA_DEBUG__
-static void sgt_dump(struct sg_table *sgt)
-{
-	int i;
-	struct scatterlist *sg = sgt->sgl;
-
-	xocl_pr_info("sgt 0x%p, sgl 0x%p, nents %u/%u.\n",
-		sgt, sgt->sgl, sgt->nents, sgt->orig_nents);
-
-	for (i = 0; i < sgt->orig_nents; i++, sg = sg_next(sg))
-		xocl_pr_info("%d, 0x%p, pg 0x%p,%u+%u, dma 0x%llx,%u.\n",
-			i, sg, sg_page(sg), sg->offset, sg->length,
-			sg_dma_address(sg), sg_dma_len(sg));
-}
-
-static void xdma_request_cb_dump(struct xdma_request_cb *req)
-{
-	int i;
-
-	xocl_pr_info("request 0x%p, total %u, ep 0x%llx, sw_desc %u, sgt 0x%p.\n",
-		req, req->total_len, req->ep_addr, req->sw_desc_cnt, req->sgt);
-	sgt_dump(req->sgt);
-	for (i = 0; i < req->sw_desc_cnt; i++)
-		xocl_pr_info("%d/%u, 0x%llx, %u.\n",
-			i, req->sw_desc_cnt, req->sdesc[i].addr,
-			req->sdesc[i].len);
-}
-#endif
-
-
 ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			 struct sg_table *sgt, bool dma_mapped, int timeout_ms,
 			 struct xdma_io_cb *cb)
@@ -3209,6 +3227,9 @@ ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 
 	dbg_tfr("%s, len %u sg cnt %u.\n", engine->name, req->total_len,
 		req->sw_desc_cnt);
+
+	xdma_msg_log_collect(engine, "engine:%s, channel %d, len %u sg cnt %u.\n",
+		engine->name, engine->channel, req->total_len, req->sw_desc_cnt);
 
 	/* If this is async request return immediately. */
 	if (req->cb && req->cb->io_done)
