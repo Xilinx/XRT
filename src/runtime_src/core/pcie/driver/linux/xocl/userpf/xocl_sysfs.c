@@ -693,7 +693,7 @@ static ssize_t host_mem_size_show(struct device *dev,
 	if (xdev->cma_bank)
 		val = xdev->cma_bank->entry_sz * xdev->cma_bank->entry_num;
 
-	return sprintf(buf, "%d\n", val);
+	return sprintf(buf, "%lld\n", val);
 }
 static DEVICE_ATTR_RO(host_mem_size);
 
