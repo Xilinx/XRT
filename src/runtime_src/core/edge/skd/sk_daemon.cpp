@@ -28,6 +28,7 @@
 #include "sk_daemon.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/pskernel_parse.h"
 #include "core/edge/user/shim.h"
 
 xclDeviceHandle devHdl;
@@ -145,12 +146,14 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
 static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 {
   void *sk_handle;
-  kernel_t kernel;
+  void *kernel;
+  kernel_t old_kernel;
   struct sk_operations ops;
   uint32_t *args_from_host;
-  int32_t kernel_return;
+  int32_t kernel_return = 0;
   unsigned int boh;
   int ret;
+  
 
   devHdl = initXRTHandle(0);
   if (!devHdl) {
@@ -166,12 +169,27 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
   /* Open and load the soft kernel. */
   sk_handle = dlopen(path, RTLD_LAZY | RTLD_GLOBAL);
+  char *errstr = dlerror();
+  if(errstr != NULL) {
+    syslog(LOG_ERR, "Dynamic Link error: %s\n", errstr);
+    return;
+  }
   if (!sk_handle) {
     syslog(LOG_ERR, "Cannot open %s\n", path);
     return;
   }
 
-  kernel = (kernel_t)dlsym(sk_handle, name);
+  // Parse PS kernel for arguments and map buffers
+  std::vector<xrt_core::pskernel::kernel_argument> args = xrt_core::pskernel::pskernel_parse(path,name);
+  syslog(LOG_INFO,"PS kernel arguments parsed.  Num Arguments = %d\n",args.size());
+  
+  old_kernel = (kernel_t)dlsym(sk_handle, name);
+  if (!old_kernel) {
+    syslog(LOG_ERR, "Cannot find kernel %s\n", name);
+    return;
+  }
+
+  kernel = dlsym(sk_handle, name);
   if (!kernel) {
     syslog(LOG_ERR, "Cannot find kernel %s\n", name);
     return;
@@ -194,6 +212,28 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       return;
   }
 
+  // Prep FFI type for all kernel arguments
+  ffi_cif cif;
+  ffi_type *ffi_args[args.size()];
+  void *values[args.size()];
+  ffi_arg rc;
+  void* ffi_arg_values[args.size()];
+  
+  // Buffer Objects
+  unsigned int boHandles[args.size()];
+  void* bos[args.size()];
+  uint64_t boSize[args.size()];
+  std::vector<int> bo_list;
+  
+  for(int i=0;i<args.size();i++) {
+    ffi_args[i] = &args[i].ffitype;
+  }
+  
+  if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_uint32,ffi_args) != FFI_OK) {
+    syslog(LOG_ERR, "Cannot prep FFI arguments!");
+    return;
+  }
+  
   while (1) {
     ret = waitNextCmd(cu_idx);
 
@@ -203,13 +243,55 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
       break;
     }
 
+    syslog(LOG_INFO, "Got new kernel command!\n");
+    
     /* Reg file indicates the kernel should not be running. */
     if (!(args_from_host[0] & 0x1))
       continue; //AP_START bit is not set; New Cmd is not available
 
-    /* Start run the soft kernel. */
-    kernel_return = kernel(&args_from_host[1], &ops);
+    // New PS Kernel implementation
+    // Check for call signature of only 2 arguments and 2nd argument has name of ops
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
+    } else {
+      // FFI PS Kernel implementation
+      // Map buffers used by kernel
+      for(int i=0;i<args.size();i++) {
+	if(args[i].type == xrt_core::pskernel::kernel_argument::argtype::global) {
+	  uint64_t *buf_addr_ptr = (uint64_t*)(&args_from_host[args[i].offset/4]);
+	  uint64_t buf_addr = reinterpret_cast<uint64_t>(*buf_addr_ptr);
+	  uint64_t *buf_size_ptr = (uint64_t*)(&args_from_host[args[i].offset/4+2]);
+	  uint64_t buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
+	  boSize[i] = buf_size;
+	  
+	  boHandles[i] = xclGetHostBO(devHdl,buf_addr,buf_size);
+	  bos[i] = xclMapBO(devHdl,boHandles[i],true);
+	  ffi_arg_values[i] = &bos[i];
+	  bo_list.emplace_back(i);
+	} else {
+	  ffi_arg_values[i] = &args_from_host[args[i].offset/4];
+	}
+      }
+    
+    }
+
+    // Original PS Kernel implementation
+    // Check for call signature of only 2 arguments and 2nd argument has name os ops
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
+      kernel_return = old_kernel(&args_from_host[1],&ops);
+    } else {
+      ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
+    }
     args_from_host[1] = (uint32_t)kernel_return;
+
+    // Unmap Buffers
+    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
+      // Nothing to be done here for original PS kernel implementation
+    } else {
+      for(auto i:bo_list) {
+	munmap(bos[i],boSize[i]);
+	xclFreeBO(devHdl,boHandles[i]);
+      }
+    }
   }
 
   dlclose(sk_handle);
