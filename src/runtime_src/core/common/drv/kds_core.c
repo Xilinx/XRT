@@ -276,7 +276,7 @@ acquire_scu_idx(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 static int
 kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
-	u32 cu_idx;
+	u32 cu_idx = 0;
 
 	do {
 		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
@@ -352,7 +352,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_ert *ert = kds->ert;
 	int ret = 0;
-	u32 cu_idx;
+	u32 cu_idx = 0;
 
 	/* BUG_ON(!ert || !ert->submit); */
 
@@ -549,10 +549,17 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = info->cu_idx - 128;
-	u32 prop;
+	u32 cu_idx = 0;
+	u32 prop = 0;
 	bool shared;
 	int ret = 0;
+
+        if (cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", cu_idx, MAX_CUS);
+		return -EINVAL;
+        } else {
+                cu_idx = info->cu_idx - MAX_CUS;
+        }
 
 	if (cu_idx >= scu_mgmt->num_cus) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -602,17 +609,24 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = info->cu_idx - 128;
-	unsigned long submitted;
-	unsigned long completed;
+	u32 cu_idx = 0;
+	unsigned long submitted = 0;
+	unsigned long completed = 0;
+
+        if (cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", cu_idx, MAX_CUS);
+		return -EINVAL;
+        } else {
+                cu_idx = info->cu_idx - MAX_CUS;
+        }
 
 	if (cu_idx >= scu_mgmt->num_cus) {
-		kds_err(client, "CU(%d) not found", cu_idx);
+		kds_err(client, "SCU(%d) not found", cu_idx);
 		return -EINVAL;
 	}
 
 	if (!test_and_clear_bit(cu_idx, client->scu_bitmap)) {
-		kds_err(client, "CU(%d) has never been reserved", cu_idx);
+		kds_err(client, "SCU(%d) has never been reserved", cu_idx);
 		return -EINVAL;
 	}
 
@@ -971,7 +985,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		++client->virt_cu_ref;
 	} else {
-	     if (cu_idx >= 128) {
+	     if (cu_idx >= MAX_CUS) {
 		if (kds_add_scu_context(kds, client, info))
 			return -EINVAL;
 	     } else {
@@ -1012,7 +1026,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 	} else {
-	     if (cu_idx >= 128) {
+	     if (cu_idx >= MAX_CUS) {
 		if (kds_del_scu_context(kds, client, info))
 			return -EINVAL;
 	     } else {

@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo CU Sub-device Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2021 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -43,7 +43,7 @@ static ssize_t debug_store(struct device *dev,
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &cu->base;
-	u32 debug;
+	u32 debug = 0;
 
 	if (kstrtou32(buf, 10, &debug) == -EINVAL)
 		return -EINVAL;
@@ -90,7 +90,7 @@ poll_interval_store(struct device *dev, struct device_attribute *attr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
-	u32 interval;
+	u32 interval = 0;
 
 	if (kstrtou32(buf, 10, &interval) == -EINVAL)
 		return -EINVAL;
@@ -117,7 +117,7 @@ busy_threshold_store(struct device *dev, struct device_attribute *attr,
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct xocl_cu *cu = platform_get_drvdata(pdev);
-	int threshold;
+	int threshold = 0;
 
 	if (kstrtos32(buf, 10, &threshold) == -EINVAL)
 		return -EINVAL;

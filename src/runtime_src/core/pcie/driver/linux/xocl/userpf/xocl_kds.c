@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020-2021 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
