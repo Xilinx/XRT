@@ -1529,8 +1529,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
   try {
     for(auto& ip : lapc_pt) {
       const boost::property_tree::ptree& entry = ip.second;
-      unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM];
-      unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM];
+      unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
+      unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
 
       const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
       size_t idx = 0;
@@ -1563,7 +1563,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                 << std::endl;
 
         // Snapshot reflects first violation, Cumulative has all violations
-        unsigned int transformedStatus[XLAPC_STATUS_REG_NUM];
+        unsigned int transformedStatus[XLAPC_STATUS_REG_NUM] = {0};
         std::transform(cumulativeStatus, cumulativeStatus+XLAPC_STATUS_REG_NUM /*past the last element*/,
                        snapshotStatus,
                        transformedStatus,
@@ -1591,8 +1591,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
 
       for(auto& ip : lapc_pt) {
         const boost::property_tree::ptree& entry = ip.second;
-        unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM];
-        unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM];
+        unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
+        unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
   
         const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
         size_t idx = 0;
