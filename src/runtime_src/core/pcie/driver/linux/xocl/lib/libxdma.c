@@ -1461,8 +1461,6 @@ submit_req:
 	return 0;
 }
 
-static int test = 0;
-
 static int xdma_process_requests(struct xdma_engine *engine,
 		struct xdma_request_cb *req)
 {
