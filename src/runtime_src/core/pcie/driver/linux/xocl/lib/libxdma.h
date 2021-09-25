@@ -435,7 +435,7 @@ struct xdma_request_cb {
 	struct sw_desc sdesc[0];
 };
 
-#define XDMA_ENGINE_DBG
+//#define XDMA_ENGINE_DBG
 
 #ifdef XDMA_ENGINE_DBG
 #define XDMA_DBG_MAX_RECS 50
