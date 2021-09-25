@@ -40,6 +40,9 @@
 #include <linux/cpuset.h>
 #include <linux/signal.h>
 #include <linux/errno.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
+#include <linux/sched/clock.h>
+#endif
 
 
 #include "../xocl_drv.h"
@@ -679,6 +682,8 @@ static inline void xdma_msg_log_collect(struct xdma_engine *engine, const char *
 	va_list args;
 	struct xdma_msg_dbg *log = &engine->xdma_msg_log[engine->xdma_msg_idx];
 
+	log->xmd_ts = local_clock();
+
 	va_start(args, fmt);
 	vsnprintf(log->xmd_msgbuf, XDMA_DBG_MAX_SIZE, fmt, args);
 	va_end(args);
@@ -693,10 +698,15 @@ static inline void xdma_msg_log_dump(struct xdma_engine *engine)
 #ifdef XDMA_ENGINE_DBG
 	u32 idx, elem_idx = engine->xdma_msg_idx;
 	struct xdma_dev *xdev = engine->xdev;
+	u64 ts;
+	unsigned long nsec;
 
 	/* Traverse logs from older to newer */
 	for (idx = 0; idx < XDMA_DBG_MAX_RECS; idx++) {
-		printk("%s %s", dev_name(&xdev->pdev->dev),
+		ts = engine->xdma_msg_log[elem_idx].xmd_ts;
+		nsec = do_div(ts, 1000000000);
+		printk("%s [%5lu.%06lu] %s", dev_name(&xdev->pdev->dev),
+			(unsigned long)ts, nsec / 1000,
 			engine->xdma_msg_log[elem_idx].xmd_msgbuf);
 		elem_idx = (elem_idx + 1) % XDMA_DBG_MAX_RECS;
 	}
