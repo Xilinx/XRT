@@ -2329,29 +2329,28 @@ int shim::xclCloseIPInterruptNotify(int fd)
 
 unsigned xclProbe()
 {
-  PROBE_CB;
-
+  return xdp::hal::profiling_wrapper("xclProbe", [] {
     return pcidev::get_dev_ready();
+  }) ;
 }
 
 xclDeviceHandle
 xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
 {
+  return xdp::hal::profiling_wrapper("xclOpen", [deviceIndex] {
   try {
     if(pcidev::get_dev_total() <= deviceIndex) {
       xrt_core::message::send(xrt_core::message::severity_level::info, "XRT",
         std::string("Cannot find index " + std::to_string(deviceIndex) + " \n"));
-      return nullptr;
+      return static_cast<xclDeviceHandle>(nullptr);
     }
-
-  OPEN_CB;
 
     xocl::shim *handle = new xocl::shim(deviceIndex);
 
     if (handle->handleCheck(handle) == 0) {
       xrt_core::send_exception_message(strerror(errno) +
         std::string(" Device index ") + std::to_string(deviceIndex));
-      return nullptr;
+      return static_cast<xclDeviceHandle>(nullptr);
     }
 
     return static_cast<xclDeviceHandle>(handle);
@@ -2363,7 +2362,8 @@ xclOpen(unsigned int deviceIndex, const char*, xclVerbosityLevel)
     xrt_core::send_exception_message(ex.what());
   }
 
-  return nullptr;
+  return static_cast<xclDeviceHandle>(nullptr);
+  }) ;
 }
 
 xclDeviceHandle
@@ -2384,18 +2384,19 @@ xclOpenByBDF(const char *bdf)
 
 void xclClose(xclDeviceHandle handle)
 {
-  CLOSE_CB;
-
+  xdp::hal::profiling_wrapper("xclClose", [handle] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (drv) {
         delete drv;
         return;
     }
+  }) ;
 }
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
-  LOAD_XCLBIN_CB ;
+  return xdp::hal::profiling_wrapper("xclLoadXclBin",
+  [handle, buffer] {
 
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
@@ -2440,6 +2441,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
     xrt_core::send_exception_message(ex.what());
     return -EINVAL;
   }
+  }) ;
 }
 
 int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
@@ -2457,34 +2459,38 @@ int xclLogMsg(xclDeviceHandle, xrtLogMsgLevel level, const char* tag, const char
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
-  WRITE_CB;
-
+  return xdp::hal::profiling_wrapper("xclWrite",
+  [handle, space, offset, hostBuf, size] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWrite(space, offset, hostBuf, size) : -ENODEV;
+  }) ;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
-  READ_CB;
-
+  return xdp::hal::profiling_wrapper("xclRead",
+  [handle, space, offset, hostBuf, size] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRead(space, offset, hostBuf, size) : -ENODEV;
+  }) ;
 }
 
 int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t data)
 {
-  REG_WRITE_CB;
-
+  return xdp::hal::profiling_wrapper("xclRegWrite",
+  [handle, ipIndex, offset, data] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
+  }) ; 
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-  REG_READ_CB;
-
+  return xdp::hal::profiling_wrapper("xclRegRead",
+  [handle, ipIndex, offset, datap] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegRead(ipIndex, offset, datap) : -ENODEV;
+  }) ;
 }
 
 int xclGetErrorStatus(xclDeviceHandle handle, xclErrorStatus *info)
@@ -2509,53 +2515,62 @@ unsigned int xclVersion ()
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
-  ALLOC_BO_CB;
+  return xdp::hal::profiling_wrapper("xclAllocBO",
+                              [handle, size, unused, flags]
+                              {
+  xocl::shim *drv = xocl::shim::handleCheck(handle);
+  return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
+                              } ) ;
 
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclAllocBO(size, unused, flags) : -ENODEV;
+
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
-  ALLOC_USERPTR_BO_CB;
-
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
+  return xdp::hal::profiling_wrapper("xclAllocUserPtrBO",
+    [handle, userptr, size, flags] {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      return drv ? drv->xclAllocUserPtrBO(userptr, size, flags) : -ENODEV;
+    } ) ;
 }
 
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle) {
 
-  FREE_BO_CB;
-
-    xocl::shim *drv = xocl::shim::handleCheck(handle);
-    if (!drv) {
-        return;
-    }
-    drv->xclFreeBO(boHandle);
+  xdp::hal::profiling_wrapper("xclFreeBO",
+    [handle, boHandle] {
+      xocl::shim *drv = xocl::shim::handleCheck(handle);
+      if (!drv) {
+          return;
+      }
+      drv->xclFreeBO(boHandle);
+    }) ;
 }
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src, size_t size, size_t seek)
 {
-  WRITE_BO_CB;
-
+  return xdp::hal::buffer_transfer_profiling_wrapper("xclWriteBO", size, true,
+  [handle, boHandle, src, size, seek] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclWriteBO(boHandle, src, size, seek) : -ENODEV;
+  });
 }
 
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_t size, size_t skip)
 {
-  READ_BO_CB;
-
+  return xdp::hal::buffer_transfer_profiling_wrapper("xclReadBO", size, false,
+  [handle, boHandle, dst, size, skip] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
+  }); 
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
-  MAP_BO_CB;
 
+  return xdp::hal::profiling_wrapper("xclMapBO", [handle, boHandle, write] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclMapBO(boHandle, write) : nullptr;
+  }) ;
 }
 
 int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
@@ -2566,7 +2581,9 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  SYNC_BO_CB ;
+  return xdp::hal::buffer_transfer_profiling_wrapper("xclSyncBO", size,
+                                              (dir == XCL_BO_SYNC_BO_TO_DEVICE),
+  [handle, boHandle, dir, size, offset] {
 
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (size == 0) {
@@ -2574,16 +2591,19 @@ int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection 
       return 0;
     }
     return drv ? drv->xclSyncBO(boHandle, dir, size, offset) : -ENODEV;
+   }) ;
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle,
             unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
-  COPY_BO_CB ;
 
+  return xdp::hal::profiling_wrapper("xclCopyBO",
+  [handle, dst_boHandle, src_boHandle, size, dst_offset, src_offset] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ?
       drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
+  }) ;
 }
 
 int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned short *targetFreqMHz)
@@ -2594,22 +2614,22 @@ int xclReClock2(xclDeviceHandle handle, unsigned short region, const unsigned sh
 
 int xclLockDevice(xclDeviceHandle handle)
 {
-  LOCK_DEVICE_CB;
-
+  return xdp::hal::profiling_wrapper("xclLockDevice", [handle] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
     return drv->xclLockDevice() ? 0 : 1;
+  });
 }
 
 int xclUnlockDevice(xclDeviceHandle handle)
 {
-  UNLOCK_DEVICE_CB;
-
+  return xdp::hal::profiling_wrapper("xclUnlockDevice", [handle] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     if (!drv)
         return -ENODEV;
     return drv->xclUnlockDevice() ? 0 : 1;
+  }) ;
 }
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
@@ -2666,26 +2686,29 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
-  UNMGD_PWRITE_CB;
-
+  return xdp::hal::profiling_wrapper("xclUnmgdPwrite",
+  [handle, flags, buf, count, offset] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
+  }) ;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
-  UNMGD_PREAD_CB;
-
+  return xdp::hal::profiling_wrapper("xclUnmgdPread",
+  [handle, flags, buf, count, offset] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+  }) ;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
-  GET_BO_PROP_CB;
-
+  return xdp::hal::profiling_wrapper("xclGetBOProperties",
+  [handle, boHandle, properties] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclGetBOProperties(boHandle, properties) : -ENODEV;
+  }) ;
 }
 
 int xclGetUsageInfo(xclDeviceHandle handle, xclDeviceUsage *info)
@@ -2703,10 +2726,11 @@ int xclGetSectionInfo(xclDeviceHandle handle, void* section_info, size_t * secti
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
-  EXEC_BUF_CB;
-
+  return xdp::hal::profiling_wrapper("xclExecBuf",
+  [handle, cmdBO] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclExecBuf(cmdBO) : -ENODEV;
+  }) ;
 }
 
 int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
@@ -2723,34 +2747,39 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
-  EXEC_WAIT_CB;
-
-  xocl::shim *drv = xocl::shim::handleCheck(handle);
-  return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
+  return xdp::hal::profiling_wrapper("xclExecWait",
+  [handle, timeoutMilliSec] {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclExecWait(timeoutMilliSec) : -ENODEV;
+  });
 }
 
 int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 {
+  return xdp::hal::profiling_wrapper("xclOpenContext",
+  [handle, xclbinId, ipIndex, shared] {
+
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
 #endif
 
-  OPEN_CONTEXT_CB;
-
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
+  }) ;
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)
 {
+  return xdp::hal::profiling_wrapper("xclCloseContext",
+  [handle, xclbinId, ipIndex] {
+
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   return 0;
 #endif
 
-  CLOSE_CONTEXT_CB;
-
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclCloseContext(xclbinId, ipIndex) : -ENODEV;
+  });
 }
 
 const axlf_section_header* wrap_get_axlf_section(const axlf* top, axlf_section_kind kind)
