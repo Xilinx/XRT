@@ -85,7 +85,8 @@ stamp(std::ostream& os) {
   return os;
 }
 
-int run_children(int argc, char *argv[], char *envp[], unsigned count)
+static int
+run_children(int argc, char *argv[], char *envp[], unsigned int count)
 {
     const char *path = argv[0];
     char buf[8];
@@ -110,16 +111,17 @@ int run_children(int argc, char *argv[], char *envp[], unsigned count)
  * Runs multiple processes each exercising the same shared hello world kernel in loop
  */
 
-static const unsigned LOOP = 16;
-static const unsigned CHILDREN = 8;
+static constexpr unsigned LOOP = 16;
+static constexpr unsigned CHILDREN = 8;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int runChildren(int argc, char *argv[], char *envp[], unsigned count);
+int runChildren(int argc, char *argv[], char *envp[], unsigned int count);
 
 static const char gold[] = "Hello World\n";
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -182,7 +184,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, size_t n_runs, bool verbos
 }
 
 
-int
+static int
 run(int argc, char** argv, char *envp[])
 {
   if (argc < 3) {
@@ -249,9 +251,9 @@ main(int argc, char** argv, char *envp[])
   catch (std::exception const& e) {
     std::cout << "Exception: " << e.what() << "\n";
     std::cout << "FAILED TEST\n";
-    return 1;
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (...) {
+    std::cout << "TEST FAILED\n";
+  }
+  return 1;
 }

@@ -26,16 +26,17 @@
  * Runs an OpenCL kernel which writes "Hello World\n" into the buffer passed
  */
 
-#define ARRAY_SIZE 20
+static constexpr int ARRAY_SIZE = 20;
 ////////////////////////////////////////////////////////////////////////////////
 
-#define LENGTH (20)
+static constexpr int LENGTH = 20;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char gold[] = "Hello World\n";
+static constexpr char gold[] = "Hello World\n";
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -74,7 +75,8 @@ run(const xrt::device& device, const xrt::uuid& uuid, bool verbose)
 }
 
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   if (argc < 3) {
     usage();
@@ -130,9 +132,9 @@ int main(int argc, char** argv)
   catch (std::exception const& e) {
     std::cout << "Exception: " << e.what() << "\n";
     std::cout << "FAILED TEST\n";
-    return 1;
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (...) {
+    std::cout << "TEST FAILED\n";
+  }
+  return 1;
 }
