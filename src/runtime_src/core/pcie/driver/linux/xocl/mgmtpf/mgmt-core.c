@@ -1325,6 +1325,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 
 	if ((dev_info->flags & XOCL_DSAFLAG_MFG) != 0) {
 		(void) xocl_subdev_create_all(lro);
+		xocl_drvinst_set_offline(lro, false);
 		return 0;
 	}
 
