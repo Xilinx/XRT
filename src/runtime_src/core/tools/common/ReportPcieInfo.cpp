@@ -66,5 +66,6 @@ ReportPcieInfo::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity", "0");
   _output << boost::format("  %-22s : %s\n") % "Shared Host Memory" % pt_pcie.get<std::string>("shared_host_mem_size_bytes", "0");
   _output << boost::format("  %-22s : %s\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
+  _output << boost::format("  %-22s : %s\n") % "Enabled Host Memory" % pt_pcie.get<std::string>("enabled_host_mem_size_bytes", "0");
   _output << std::endl;
 }

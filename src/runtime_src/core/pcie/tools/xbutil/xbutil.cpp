@@ -1193,7 +1193,7 @@ int xcldev::device::runTestCase(const std::string& py,
         auto device = pcidev::get_dev(m_idx);
         std::string bdf = boost::str(boost::format("%04x:%02x:%02x.%01x") % device->domain % device->bus % device->dev % device->func);
 
-        cmd = xrtTestCasePath + " " + xclbinPath + " -d " + bdf + " " + args;
+        cmd = xrtTestCasePath + " -p " + xclbinPath + " -d " + bdf + " " + args;
 
     }
     else if (py.find(".exe") == std::string::npos) { //OLD FLOW:

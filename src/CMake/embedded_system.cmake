@@ -118,6 +118,9 @@ install (
   COMPONENT ${XRT_DEV_COMPONENT}
   )
 
+# --- Find Package Support ---
+include (CMake/findpackage.cmake)
+
 if (DEFINED CROSS_COMPILE)
   set (LINUX_FLAVOR ${flavor})
   set (LINUX_VERSION ${version})

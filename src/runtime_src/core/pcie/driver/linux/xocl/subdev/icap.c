@@ -159,15 +159,15 @@ struct icap {
 	void			*partition_metadata;
 
 	void			*rp_bit;
-	unsigned long		rp_bit_len;
+	size_t			rp_bit_len;
 	void			*rp_fdt;
-	unsigned long		rp_fdt_len;
+	size_t			rp_fdt_len;
 	void			*rp_mgmt_bin;
-	unsigned long		rp_mgmt_bin_len;
+	size_t			rp_mgmt_bin_len;
 	void			*rp_sche_bin;
-	unsigned long		rp_sche_bin_len;
+	size_t			rp_sche_bin_len;
 	void			*rp_sc_bin;
-	unsigned long		*rp_sc_bin_len;
+	size_t			*rp_sc_bin_len;
 	char			rp_vbnv[128];
 
 	struct bmc		bmc_header;
@@ -948,14 +948,13 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct axlf *bin_obj_axlf;
-	const struct firmware *sche_fw;
 	int err = 0;
 	uint64_t mbBinaryOffset = 0;
 	uint64_t mbBinaryLength = 0;
 	const struct axlf_section_header *mbHeader = 0;
 	bool load_sched = false, load_mgmt = false;
-	char *fw_buf = NULL;
-	size_t fw_size = 0;
+	char *fw_buf = NULL, *sched_buf = NULL;
+	size_t fw_size = 0, sched_len = 0;
 
 	/* Can only be done from mgmt pf. */
 	if (!ICAP_PRIVILEGED(icap))
@@ -989,13 +988,13 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		}
 
 		if (sched_bin) {
-			err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
+			err = xocl_request_firmware(&pcidev->dev, sched_bin,
+						    &sched_buf, &sched_len);
 			if (!err)  {
-				xocl_mb_load_sche_image(xdev, sche_fw->data,
-					sche_fw->size);
-				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
+				xocl_mb_load_sche_image(xdev, sched_buf, sched_len);
+				ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sched_len);
 				load_sched = true;
-				release_firmware(sche_fw);
+				vfree(sched_buf);
 			}
 		}
 
@@ -1887,7 +1886,7 @@ done:
 	return err;
 }
 
-static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
+static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, bool force_download)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	uint64_t ch_state = 0;
@@ -1906,8 +1905,12 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	/* Optimization for transferring entire xclbin thru mailbox. */
 	peer_uuid = (xuid_t *)icap_get_data_nolock(icap->icap_pdev, PEER_UUID);
 	if (uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
-		ICAP_INFO(icap, "xclbin already on peer, skip downloading");
-		return 0;
+		if (force_download) {
+			ICAP_INFO(icap, "%s Force xclbin download", __func__);
+		} else {
+		        ICAP_INFO(icap, "xclbin already on peer, skip downloading");
+		        return 0;
+		}
 	}
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
@@ -2445,7 +2448,7 @@ static void icap_cache_max_host_mem_aperture(struct icap *icap)
  * TODO: ignoring errors for 4) now, need more justification.
  */
 static int __icap_download_bitstream_user(struct platform_device *pdev,
-	struct axlf *xclbin)
+	struct axlf *xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -2462,7 +2465,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 
-	err = __icap_peer_xclbin_download(icap, xclbin);
+	err = __icap_peer_xclbin_download(icap, xclbin, force_download);
 
 	/* TODO: Remove this after new KDS replace the legacy one */
 	/*
@@ -2587,7 +2590,7 @@ done:
 }
 
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
-	struct axlf *xclbin)
+	struct axlf *xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 
@@ -2598,7 +2601,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	return ICAP_PRIVILEGED(icap) ?
 		__icap_download_bitstream_mgmt(pdev, xclbin) :
-		__icap_download_bitstream_user(pdev, xclbin);
+		__icap_download_bitstream_user(pdev, xclbin, force_download);
 }
 
 /*
@@ -2607,7 +2610,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
  * for user icap or mgmt icap.
  */
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
-	const void *u_xclbin)
+	const void *u_xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
@@ -2686,7 +2689,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	err = __icap_download_bitstream_axlf(pdev, xclbin);
+	err = __icap_download_bitstream_axlf(pdev, xclbin, force_download);
 
 done:
 	mutex_unlock(&icap->icap_lock);
@@ -3365,23 +3368,24 @@ static DEVICE_ATTR_RW(cache_expire_secs);
 void icap_key_test(struct icap *icap)
 {
 	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(icap->icap_pdev);
-	const struct firmware *sig = NULL;
-	const struct firmware *text = NULL;
+	char *sig_buf = NULL, text_buf = NULL;
+	size_t sig_len = 0, text_len = 0;
 	int err = 0;
 
-	err = request_firmware(&sig, "xilinx/signature", &pcidev->dev);
+	err = xocl_request_firmware(&pcidev->dev, "xilinx/signature", &sig_buf, &sig_len);
 	if (err) {
 		ICAP_ERR(icap, "can't load signature: %d", err);
 		goto done;
 	}
-	err = request_firmware(&text, "xilinx/text", &pcidev->dev);
+	err = xocl_request_firmware(&pcidev->dev, "xilinx/text", &pcidev->dev,
+				    &text_buf, &text_len);
 	if (err) {
 		ICAP_ERR(icap, "can't load text: %d", err);
 		goto done;
 	}
 
-	err = icap_verify_signature(icap, text->data, text->size,
-		sig->data, sig->size);
+	err = icap_verify_signature(icap, text_buf, text_len,
+		sig_buf, sig_len);
 	if (err) {
 		ICAP_ERR(icap, "Failed to verify data file");
 		goto done;
@@ -3390,10 +3394,8 @@ void icap_key_test(struct icap *icap)
 	ICAP_INFO(icap, "Successfully verified data file!!!");
 
 done:
-	if (sig)
-		release_firmware(sig);
-	if (text)
-		release_firmware(text);
+	vfree(sig_buf);
+	vfree(text_buf);
 }
 #endif
 
@@ -4158,7 +4160,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	const struct axlf_section_header *section;
 	void *header;
 	struct XHwIcap_Bit_Header bit_header = { 0 };
-	const struct firmware *sche_fw = NULL;
 	ssize_t ret, len;
 	int err;
 	const char *sched_bin = XDEV(xdev)->priv.sched_bin;
@@ -4341,19 +4342,12 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	}
 
 	if (sched_bin) {
-		err = request_firmware(&sche_fw, sched_bin, &pcidev->dev);
-		if (!err)  {
-			icap->rp_sche_bin = vmalloc(sche_fw->size);
-			if (!icap->rp_sche_bin) {
-				ICAP_ERR(icap, "Not enough mem for sched bin");
-				ret = -ENOMEM;
-				goto failed;
-			}
-			ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", sche_fw->size);
-			memcpy(icap->rp_sche_bin, sche_fw->data, sche_fw->size);
-			icap->rp_sche_bin_len = sche_fw->size;
-			release_firmware(sche_fw);
-		}
+		err = xocl_request_firmware(&pcidev->dev, sched_bin, (char **)&icap->rp_sche_bin,
+					    &icap->rp_sche_bin_len);
+		if (err)
+			goto failed;
+
+		ICAP_INFO(icap, "stashed shared mb sche bin, len %ld", icap->rp_sche_bin_len);
 	}
 
 
@@ -4383,8 +4377,6 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 failed:
 	xrt_xclbin_free_header(&bit_header);
 	icap_free_bins(icap);
-	if (sche_fw)
-		release_firmware(sche_fw);
 
 	vfree(axlf);
 	mutex_unlock(&icap->icap_lock);

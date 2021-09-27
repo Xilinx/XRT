@@ -1437,7 +1437,7 @@ struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
-		const void __user *arg);
+		const void __user *arg, bool force_download);
 	int (*download_boot_firmware)(struct platform_device *pdev);
 	int (*download_rp)(struct platform_device *pdev, int level, int flag);
 	int (*post_download_rp)(struct platform_device *pdev);
@@ -1482,9 +1482,9 @@ enum {
 	(ICAP_CB(xdev, reset_bitstream) ?				\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
 	-ENODEV)
-#define	xocl_icap_download_axlf(xdev, xclbin)				\
+#define	xocl_icap_download_axlf(xdev, xclbin, force_download)		\
 	(ICAP_CB(xdev, download_bitstream_axlf) ?			\
-	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin) : \
+	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin, force_download) : \
 	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
 	(ICAP_CB(xdev, download_boot_firmware) ?			\
@@ -2303,6 +2303,7 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
 int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
+int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, size_t *len);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {

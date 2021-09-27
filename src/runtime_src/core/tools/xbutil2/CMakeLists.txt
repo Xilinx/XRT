@@ -37,10 +37,10 @@ set(XBUTIL_V2_SRCS ${XBUTIL_V2_BASE_FILES} ${XBUTIL_V2_SUBCMD_FILES})
 # Determine the name of the executable
 if(WIN32)
   set(XBUTIL2_NAME "xbutil")     # Yes, on windows the file name will be xbutil
-  set(XRT_LOADER_SCRIPTS "xbutil" "xbutil.bat")
+  set(XRT_HELPER_SCRIPTS "xbutil" "xbutil.bat")
 else()
   set(XBUTIL2_NAME "xbutil2")
-  set(XRT_LOADER_SCRIPTS "xbutil")
+  set(XRT_HELPER_SCRIPTS "xbutil")
 endif()
 
 add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
@@ -86,11 +86,6 @@ if (NOT WIN32)
 endif()
 
 # Install our built executable
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-  install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
-else()
-  install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
-  install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
-endif()
+install (TARGETS ${XBUTIL2_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
+install (PROGRAMS ${XRT_HELPER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
 # -----------------------------------------------------------------------------
