@@ -1520,8 +1520,10 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 	bool sw_ready, hw_ready;
 	u32 st;
 
+	mutex_lock(&ch->sw_chan_mutex);
 	sw_ready = (ch->sw_chan_msg_id == 0);
-	if (MB_SW_ONLY(mbx))
+	mutex_unlock(&ch->sw_chan_mutex);
+	if (MB_SW_ONLY(mbx))	
 		return sw_ready;
 
 	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
@@ -1545,15 +1547,15 @@ static bool chan_do_tx(struct mailbox_channel *ch)
 	bool chan_ready = is_tx_chan_ready(ch);
 	bool sent = false;
 
-	if (!chan_ready)
-		return sent; /* Channel is not empty, nothing can be sent. */
-
 	/* Finished sending a whole msg, call it done. */
 	if (ch->mbc_cur_msg && (ch->mbc_cur_msg->mbm_len == ch->mbc_bytes_done))
 		chan_msg_done(ch, 0);
 
 	if (!ch->mbc_cur_msg)
 		dequeue_tx_msg(ch);
+
+	if (!chan_ready)
+		return sent; /* Channel is not empty, nothing can be sent. */
 
 	/* Send the next pkg out. */
 	if (ch->mbc_cur_msg) {
