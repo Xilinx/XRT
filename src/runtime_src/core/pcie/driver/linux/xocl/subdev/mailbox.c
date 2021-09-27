@@ -1583,8 +1583,10 @@ static bool is_tx_chan_ready(struct mailbox_channel *ch)
 	bool sw_ready, hw_ready;
 	u32 st;
 
+	mutex_lock(&ch->sw_chan_mutex);
 	sw_ready = (ch->sw_chan_msg_id == 0);
-	if (MB_SW_ONLY(mbx))
+	mutex_unlock(&ch->sw_chan_mutex);
+	if (MB_SW_ONLY(mbx))	
 		return sw_ready;
 
 	st = mailbox_reg_rd(mbx, &mbx->mbx_regs->mbr_status);
@@ -1851,92 +1853,6 @@ static ssize_t recv_metrics_show(struct device *dev,
 
 static DEVICE_ATTR_RO(recv_metrics);
 
-static void mailbox_send_test_ready(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	req.req = XCL_MAILBOX_REQ_TEST_READY;
-	mbx->mbx_test_send_status =
-	       _mailbox_post_notify(mbx->mbx_pdev, &req, sizeof(req));
-}
-
-static void mailbox_send_test_firewall(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	req.req = XCL_MAILBOX_REQ_FIREWALL;
-	mbx->mbx_test_send_status =
-	       _mailbox_post_notify(mbx->mbx_pdev, &req, sizeof(req));
-}
-
-static void mailbox_send_test_mgmt_state(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
-
-	data_len = sizeof(struct xcl_mailbox_peer_state);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	if (!mbx->mbx_send_body) {
-		mbx->mbx_test_send_status = -EINVAL;
-		return;
-	}
-	req = kzalloc(reqlen, GFP_KERNEL);
-	if (!req) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-
-	req->req = XCL_MAILBOX_REQ_MGMT_STATE;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
-	mbx->mbx_test_send_status =
-	       _mailbox_post_notify(mbx->mbx_pdev, req, reqlen);
-
-	kfree(req);
-}
-
-static void mailbox_send_test_chg_shell(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	req.req = XCL_MAILBOX_REQ_CHG_SHELL;
-	mbx->mbx_test_send_status =
-	       _mailbox_post_notify(mbx->mbx_pdev, &req, sizeof(req));
-}
-
-static void mailbox_send_test_read(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	req.req = XCL_MAILBOX_REQ_TEST_READ;
-	mbx->mbx_recv_body = kzalloc(TEST_MSG_LEN, GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = TEST_MSG_LEN;
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, &req, sizeof(req),
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-}
-
-static void mailbox_send_test_hot_reset(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	req.req = XCL_MAILBOX_REQ_HOT_RESET;
-	mbx->mbx_recv_body = kzalloc(sizeof (int), GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = sizeof (int);
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, &req, sizeof(req),
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-}
-
 static void mailbox_send_test_load_xclbin_kaddr(struct mailbox *mbx)
 {
 	struct xcl_mailbox_req *req = NULL;
@@ -1972,24 +1888,26 @@ static void mailbox_send_test_load_xclbin_kaddr(struct mailbox *mbx)
 	kfree(req);
 }
 
-static void mailbox_send_test_load_xclbin(struct mailbox *mbx)
+#define TEST_PEER_DATA_LEN 8192
+static void _mailbox_send_test(struct mailbox *mbx, size_t data_len, size_t resp_len)
 {
 	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
+	size_t reqlen = 0;
 
-	if (!mbx->mbx_send_body) {
+	if (data_len && !mbx->mbx_send_body) {
 		mbx->mbx_test_send_status = -EINVAL;
 		return;
 	}
 
-	mbx->mbx_recv_body = kzalloc(sizeof (int), GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
+	if (resp_len) {
+		mbx->mbx_recv_body = kzalloc(resp_len, GFP_KERNEL);
+		if (!mbx->mbx_recv_body) {
+			mbx->mbx_test_send_status = -ENOMEM;
+			return;
+		}
+		mbx->mbx_recv_body_len = resp_len;
 	}
-	mbx->mbx_recv_body_len = sizeof (int);
 
-	data_len = mbx->mbx_send_body_len;
 	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
 	req = vzalloc(reqlen);
 	if (!req) {
@@ -1997,175 +1915,19 @@ static void mailbox_send_test_load_xclbin(struct mailbox *mbx)
 		return;
 	}
 
-	req->req = XCL_MAILBOX_REQ_LOAD_XCLBIN;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
+	req->req = mbx->mbx_test_msg_type;
+	if (data_len)
+		memcpy(req->data, mbx->mbx_send_body, data_len);
 
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, req, reqlen,
+	if (resp_len)
+		mbx->mbx_test_send_status =
+			_mailbox_request(mbx->mbx_pdev, req, reqlen,
 			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
 			NULL, NULL, 0, 0);
+	else
+		mbx->mbx_test_send_status =
+			_mailbox_post_notify(mbx->mbx_pdev, req, reqlen);
 	vfree(req);
-}
-
-static void mailbox_send_test_reclock(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
-
-	if (!mbx->mbx_send_body) {
-		mbx->mbx_test_send_status = -EINVAL;
-		return;
-	}
-
-	mbx->mbx_recv_body = kzalloc(sizeof (int), GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = sizeof (int);
-
-	data_len = sizeof(struct xcl_mailbox_clock_freqscaling);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	req = kzalloc(reqlen, GFP_KERNEL);
-	if (!req) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-
-	req->req = XCL_MAILBOX_REQ_RECLOCK;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
-
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, req, reqlen,
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-	kfree(req);
-}
-
-#define TEST_PEER_DATA_LEN 8192
-static void mailbox_send_test_peer_data(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
-
-	if (!mbx->mbx_send_body) {
-		mbx->mbx_test_send_status = -EINVAL;
-		return;
-	}
-
-	mbx->mbx_recv_body = kzalloc(TEST_PEER_DATA_LEN, GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = TEST_PEER_DATA_LEN;
-
-	data_len = sizeof(struct xcl_mailbox_subdev_peer);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	req = kzalloc(reqlen, GFP_KERNEL);
-	if (!req) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-
-	req->req = XCL_MAILBOX_REQ_PEER_DATA;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
-
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, req, reqlen,
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-	kfree(req);
-}
-
-static void mailbox_send_test_user_probe(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
-
-	if (!mbx->mbx_send_body) {
-		mbx->mbx_test_send_status = -EINVAL;
-		return;
-	}
-
-	mbx->mbx_recv_body = kzalloc(sizeof (struct xcl_mailbox_conn_resp),
-		GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = sizeof (struct xcl_mailbox_conn_resp);
-
-	data_len = sizeof(struct xcl_mailbox_conn);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	req = kzalloc(reqlen, GFP_KERNEL);
-	if (!req) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-
-	req->req = XCL_MAILBOX_REQ_USER_PROBE;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
-
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, req, reqlen,
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-	kfree(req);
-}
-
-static void mailbox_send_test_program_shell(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req req = { 0 };
-
-	mbx->mbx_recv_body = kzalloc(sizeof (int), GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = sizeof (int);
-
-	req.req = XCL_MAILBOX_REQ_PROGRAM_SHELL;
-
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, &req, sizeof(req),
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-}
-
-static void mailbox_send_test_read_p2p_bar_addr(struct mailbox *mbx)
-{
-	struct xcl_mailbox_req *req = NULL;
-	size_t data_len = 0, reqlen = 0;
-
-	if (!mbx->mbx_send_body) {
-		mbx->mbx_test_send_status = -EINVAL;
-		return;
-	}
-
-	mbx->mbx_recv_body = kzalloc(sizeof (int), GFP_KERNEL);
-	if (!mbx->mbx_recv_body) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-	mbx->mbx_recv_body_len = sizeof (int);
-
-	data_len = sizeof(struct xcl_mailbox_p2p_bar_addr);
-	reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	req = kzalloc(reqlen, GFP_KERNEL);
-	if (!req) {
-		mbx->mbx_test_send_status = -ENOMEM;
-		return;
-	}
-
-	req->req = XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR;
-	memcpy(req->data, mbx->mbx_send_body, data_len);
-
-	mbx->mbx_test_send_status =
-		_mailbox_request(mbx->mbx_pdev, req, reqlen,
-			mbx->mbx_recv_body, &mbx->mbx_recv_body_len,
-			NULL, NULL, 0, 0);
-	kfree(req);
 }
 
 static void mailbox_test_send(struct mailbox *mbx)
@@ -2186,44 +1948,45 @@ static void mailbox_test_send(struct mailbox *mbx)
 		break;
 	/* post */
 	case XCL_MAILBOX_REQ_TEST_READY:
-		mailbox_send_test_ready(mbx);
-		break;
 	case XCL_MAILBOX_REQ_FIREWALL:
-		mailbox_send_test_firewall(mbx);
+	case XCL_MAILBOX_REQ_CHG_SHELL:
+		_mailbox_send_test(mbx, 0, 0);
 		break;
 	case XCL_MAILBOX_REQ_MGMT_STATE:
-		mailbox_send_test_mgmt_state(mbx);
-		break;
-	case XCL_MAILBOX_REQ_CHG_SHELL:
-		mailbox_send_test_chg_shell(mbx);
+		_mailbox_send_test(mbx,
+			sizeof (struct xcl_mailbox_peer_state), 0);
 		break;
 	/* request */
 	case XCL_MAILBOX_REQ_TEST_READ:
-		mailbox_send_test_read(mbx);
-		break;
-	case XCL_MAILBOX_REQ_HOT_RESET:
-		mailbox_send_test_hot_reset(mbx);
+		_mailbox_send_test(mbx, 0, TEST_MSG_LEN);
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN_KADDR:
 		mailbox_send_test_load_xclbin_kaddr(mbx);
 		break;
 	case XCL_MAILBOX_REQ_LOAD_XCLBIN:
-		mailbox_send_test_load_xclbin(mbx);
+		_mailbox_send_test(mbx,
+			mbx->mbx_send_body_len, sizeof (int));
 		break;
 	case XCL_MAILBOX_REQ_RECLOCK:
-		mailbox_send_test_reclock(mbx);
+		_mailbox_send_test(mbx,
+			sizeof (struct xcl_mailbox_clock_freqscaling),
+			sizeof (int));
 		break;
 	case XCL_MAILBOX_REQ_PEER_DATA:
-		mailbox_send_test_peer_data(mbx);
+		_mailbox_send_test(mbx, sizeof (struct xcl_mailbox_subdev_peer),
+			TEST_PEER_DATA_LEN);
 		break;
 	case XCL_MAILBOX_REQ_USER_PROBE:
-		mailbox_send_test_user_probe(mbx);
+		_mailbox_send_test(mbx, sizeof (struct xcl_mailbox_conn),
+			sizeof (struct xcl_mailbox_conn_resp));
 		break;
 	case XCL_MAILBOX_REQ_PROGRAM_SHELL:
-		mailbox_send_test_program_shell(mbx);
+	case XCL_MAILBOX_REQ_HOT_RESET:
+		_mailbox_send_test(mbx, 0, sizeof (int));
 		break;
 	case XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR:
-		mailbox_send_test_read_p2p_bar_addr(mbx);
+		_mailbox_send_test(mbx,
+			sizeof(struct xcl_mailbox_p2p_bar_addr), sizeof (int));
 		break;
 	}
 

@@ -357,6 +357,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	void *ulp_blob;
 	void *kernels;
 	int rc;
+	bool force_download = false;
 
 	if (!xocl_is_unified(xdev)) {
 		userpf_err(xdev, "XOCL: not unified Shell\n");
@@ -385,6 +386,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 			// We come here if user sets force_xclbin_program
 			// option "true" in xrt.ini under [Runtime] section
 			DRM_WARN("%s Force xclbin download", __func__);
+			force_download = true;
 		} else {
 			goto done;
 		}
@@ -525,7 +527,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		XDEV(xdev)->kernels = kernels;
 	}
 
-	err = xocl_icap_download_axlf(xdev, axlf);
+	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	if (err) {
 		/* TODO: remove this. Coupling scheduler is a bad idea.
 		 */
