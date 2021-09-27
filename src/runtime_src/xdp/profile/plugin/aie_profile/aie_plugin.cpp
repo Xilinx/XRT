@@ -289,6 +289,159 @@ namespace xdp {
     return numFreeCtr;
   }
 
+  std::string AIEProfilingPlugin::getMetricSet(bool isCore, const std::string& metricsStr)
+  {
+    std::vector<std::string> vec;
+
+    boost::split(vec, metricsStr, boost::is_any_of(":"));
+    for (int i=0; i < vec.size(); ++i) {
+      boost::replace_all(vec.at(i), "{", "");
+      boost::replace_all(vec.at(i), "}", "");
+    }
+
+    // Determine specification type based on vector size:
+    //   * Size = 1: All tiles
+    //     * aie_profile_core_metrics = <heat_map|stalls|execution>
+    //     * aie_profile_memory_metrics = <dma_locks|conflicts>
+    //   * Size = 2: Single tile
+    //     * aie_profile_core_metrics = {<column>,<row>}:<heat_map|stalls|execution>
+    //     * aie_profile_memory_metrics = {<column>,<row>}:<dma_locks|conflicts>
+    //   * Size = 3: Range of tiles
+    //     * aie_profile_core_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<heat_map|stalls|execution>
+    //     * aie_profile_memory_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<dma_locks|conflicts>
+    std::string metricSet  = vec.at( vec.size()-1 );
+    std::string moduleName = isCore ? "core" : "memory";
+
+    // Ensure requested metric set is supported (if not, use default)
+    if ((isCore && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
+        || (!isCore && (mMemoryStartEvents.find(metricSet) == mMemoryStartEvents.end()))) {
+      std::string defaultSet = isCore ? "heat_map" : "conflicts";
+      std::stringstream msg;
+      msg << "Unable to find " << moduleName << " metric set " << metricSet
+          << ". Using default of " << defaultSet << ".";
+      xrt_core::message::send(severity_level::warning, "XRT", msg.str());
+      metricSet = defaultSet;
+    }
+    return metricSet;
+  }
+
+  std::vector<tile_type> AIEProfilingPlugin::getTilesForProfiling(bool isCore, const std::string& metricsStr, void* handle)
+  {
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+
+    std::vector<std::string> vec;
+    boost::split(vec, metricsStr, boost::is_any_of(":"));
+
+    // Compile list of tiles based on how its specified in setting
+    std::vector<tile_type> tiles;
+
+    if (vec.size() == 1) {
+      //aie_profile_core_metrics = <heat_map|stalls|execution>
+      // Capture all tiles across all graphs
+      auto graphs = xrt_core::edge::aie::get_graphs(device.get());
+      for (auto& graph : graphs) {
+        /*
+         * Core module profiling uses all unique core tiles in aie control
+         * Memory module profiling uses all unique core + dma tiles in aie control
+         */
+        auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
+            xrt_core::edge::aie::module_type::core);
+        if (!isCore) {
+          auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
+            xrt_core::edge::aie::module_type::dma);
+          std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(coreTiles));
+        }
+        std::sort(coreTiles.begin(), coreTiles.end(),
+          [](tile_type t1, tile_type t2) {
+              if (t1.row == t2.row)
+                return t1.col > t2.col;
+              else
+                return t1.row > t2.row;
+          }
+        );
+        std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(tiles),
+          [](tile_type t1, tile_type t2) {
+              return ((t1.col == t2.col) && (t1.row == t2.row));
+          }
+        );
+      }
+    }
+    else if (vec.size() == 2) {
+      // aie_profile_core_metrics = {<column>,<row>}:<heat_map|stalls|execution>
+      std::vector<std::string> tileVec;
+      boost::split(tileVec, vec.at(0), boost::is_any_of(","));
+
+      xrt_core::edge::aie::tile_type tile;
+      tile.col = std::stoi(tileVec.at(0));
+      tile.row = std::stoi(tileVec.at(1));
+      tiles.push_back(tile);
+    }
+    else if (vec.size() == 3) {
+      // aie_profile_core_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<heat_map|stalls|execution>
+      std::vector<std::string> minTileVec;
+      boost::split(minTileVec, vec.at(0), boost::is_any_of(","));
+      uint32_t minCol = std::stoi(minTileVec.at(0));
+      uint32_t minRow = std::stoi(minTileVec.at(1));
+
+      std::vector<std::string> maxTileVec;
+      boost::split(maxTileVec, vec.at(1), boost::is_any_of(","));
+      uint32_t maxCol = std::stoi(maxTileVec.at(0));
+      uint32_t maxRow = std::stoi(maxTileVec.at(1));
+
+      for (uint32_t col = minCol; col <= maxCol; ++col) {
+        for (uint32_t row = minRow; row <= maxRow; ++row) {
+          xrt_core::edge::aie::tile_type tile;
+          tile.col = col;
+          tile.row = row;
+          tiles.push_back(tile);
+        }
+      }
+    }
+
+    // Report tiles (debug only)
+    {
+      std::string moduleName = isCore ? "core" : "memory";
+      std::stringstream msg;
+      msg << "Tiles used for AIE " << moduleName << " profile counters: ";
+      for (auto& tile : tiles) {
+        msg << "(" << tile.col << "," << tile.row << "), ";
+      }
+      xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+    }
+
+    return tiles;
+  }
+
+  void AIEProfilingPlugin::configGroupEvents( XAie_DevInst* aieDevInst,
+                                              XAie_LocType& loc,
+                                              XAie_ModuleType mod,
+                                              XAie_Events event,
+                                              std::string& metricSet)
+  {
+    // Set masks for group events
+    // NOTE: Writing to group error enable register is blocked, so ignoring
+    if (event == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_DMA_MASK);
+    else if (event == XAIE_EVENT_GROUP_LOCK_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_LOCK_MASK);
+    else if (event == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CONFLICT_MASK);
+    else if (event == XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) {
+      if (metricSet == "stream_switch_idle")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_IDLE_MASK);
+      else if (metricSet == "stream_switch_running")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_RUNNING_MASK);
+      else if (metricSet == "stream_switch_stalled")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_STALLED_MASK);
+      else if (metricSet == "stream_switch_tlast")
+        XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_STREAM_SWITCH_TLAST_MASK);
+    } else if (event == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_PROGRAM_FLOW_MASK);
+    } else if (event == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
+      XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
+    }
+  }
+
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     XAie_DevInst* aieDevInst =
@@ -302,14 +455,14 @@ namespace xdp {
     }
 
     bool runtimeCounters = false;
-	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
-
     // Get AIE clock frequency
+	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
     // Configure both core and memory module counters
     for (int module=0; module < 2; ++module) {
       bool isCore = (module == 0);
+      std::string moduleName = isCore ? "core" : "memory";
 
       std::string metricsStr = isCore ?
           xrt_core::config::get_aie_profile_core_metrics() :
@@ -317,122 +470,17 @@ namespace xdp {
       if (metricsStr.empty())
         continue;
 
-      std::vector<std::string> vec;
-      boost::split(vec, metricsStr, boost::is_any_of(":"));
-
-      for (int i=0; i < vec.size(); ++i) {
-        boost::replace_all(vec.at(i), "{", "");
-        boost::replace_all(vec.at(i), "}", "");
-      }
-      
-      // Determine specification type based on vector size:
-      //   * Size = 1: All tiles
-      //     * aie_profile_core_metrics = <heat_map|stalls|execution>
-      //     * aie_profile_memory_metrics = <dma_locks|conflicts>
-      //   * Size = 2: Single tile
-      //     * aie_profile_core_metrics = {<column>,<row>}:<heat_map|stalls|execution>
-      //     * aie_profile_memory_metrics = {<column>,<row>}:<dma_locks|conflicts>
-      //   * Size = 3: Range of tiles
-      //     * aie_profile_core_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<heat_map|stalls|execution>
-      //     * aie_profile_memory_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<dma_locks|conflicts>
-      std::string metricSet  = vec.at( vec.size()-1 );
-      std::string moduleName = isCore ? "core" : "memory";
-
-      // Ensure requested metric set is supported (if not, use default)
-      if ((isCore && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
-          || (!isCore && (mMemoryStartEvents.find(metricSet) == mMemoryStartEvents.end()))) {
-        std::string defaultSet = isCore ? "heat_map" : "conflicts";
-        std::stringstream msg;
-        msg << "Unable to find " << moduleName << " metric set " << metricSet 
-            << ". Using default of " << defaultSet << ".";
-        xrt_core::message::send(severity_level::warning, "XRT", msg.str());
-        metricSet = defaultSet;
-      }
-
-      // Compile list of tiles based on how its specified in setting
-      std::vector<tile_type> tiles;
-
-      if (vec.size() == 1) {
-        // Capture all tiles across all graphs
-        auto graphs = xrt_core::edge::aie::get_graphs(device.get());
-
-        for (auto& graph : graphs) {
-          /*
-           * Core module profiling uses all unique core tiles in aie control
-           * Memory module profiling uses all unique core + dma tiles in aie control
-           */
-          auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-              xrt_core::edge::aie::module_type::core);
-          if (!isCore) {
-            auto dmaTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
-              xrt_core::edge::aie::module_type::dma);
-            std::move(dmaTiles.begin(), dmaTiles.end(), back_inserter(coreTiles));
-          }
-          std::sort(coreTiles.begin(), coreTiles.end(),
-            [](tile_type t1, tile_type t2) {
-                if (t1.row == t2.row)
-                  return t1.col > t2.col;
-                else
-                  return t1.row > t2.row;
-            }
-          );
-          std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(tiles),
-            [](tile_type t1, tile_type t2) {
-                return ((t1.col == t2.col) && (t1.row == t2.row));
-            }
-          );
-        }
-      }
-      else if (vec.size() == 2) {
-        std::vector<std::string> tileVec;
-        boost::split(tileVec, vec.at(0), boost::is_any_of(","));
-
-        xrt_core::edge::aie::tile_type tile;
-        tile.col = std::stoi(tileVec.at(0));
-        tile.row = std::stoi(tileVec.at(1));
-        tiles.push_back(tile);
-      }
-      else if (vec.size() == 3) {
-        std::vector<std::string> minTileVec;
-        boost::split(minTileVec, vec.at(0), boost::is_any_of(","));
-        uint32_t minCol = std::stoi(minTileVec.at(0));
-        uint32_t minRow = std::stoi(minTileVec.at(1));
-        
-        std::vector<std::string> maxTileVec;
-        boost::split(maxTileVec, vec.at(1), boost::is_any_of(","));
-        uint32_t maxCol = std::stoi(maxTileVec.at(0));
-        uint32_t maxRow = std::stoi(maxTileVec.at(1));
-
-        for (uint32_t col = minCol; col <= maxCol; ++col) {
-          for (uint32_t row = minRow; row <= maxRow; ++row) {
-            xrt_core::edge::aie::tile_type tile;
-            tile.col = col;
-            tile.row = row;
-            tiles.push_back(tile);
-          }
-        }
-      }
-
-      // Report tiles (debug only)
-      {
-        std::stringstream msg;
-        msg << "Tiles used for AIE " << moduleName << " profile counters: ";
-        for (auto& tile : tiles) {
-          msg << "(" << tile.col << "," << tile.row << "), ";
-        }
-        xrt_core::message::send(severity_level::debug, "XRT", msg.str());
-      }
+      auto metricSet = getMetricSet(isCore, metricsStr);
+      auto tiles = getTilesForProfiling(isCore, metricsStr, handle);
 
       // Get vector of pre-defined metrics for this set
       auto startEvents = isCore ? mCoreStartEvents[metricSet] : mMemoryStartEvents[metricSet];
       auto endEvents   = isCore ?   mCoreEndEvents[metricSet] :   mMemoryEndEvents[metricSet];
-
       uint8_t resetEvent = 0;
-      int counterId = 0;
       
       int NUM_COUNTERS = isCore ? NUM_CORE_COUNTERS : NUM_MEMORY_COUNTERS;
       int numTileCounters[NUM_COUNTERS+1] = {0};
-
+      int counterId = 0;
       // Ask Resource manager for resource availability
       auto numFreeCounters  = getNumFreeCtr(aieDevice, tiles, isCore, metricSet);
 
@@ -454,37 +502,13 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-
-          // Set masks for group events
-          // NOTE: Writing to group error enable register is blocked, so ignoring
-          if (startEvents.at(i) == XAIE_EVENT_GROUP_DMA_ACTIVITY_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_DMA_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_LOCK_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_LOCK_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM)
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CONFLICT_MASK);
-          else if (startEvents.at(i) == XAIE_EVENT_GROUP_STREAM_SWITCH_CORE) {
-            if (metricSet == "stream_switch_idle")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_IDLE_MASK);
-            else if (metricSet == "stream_switch_running")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_RUNNING_MASK);
-            else if (metricSet == "stream_switch_stalled")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_STALLED_MASK);
-            else if (metricSet == "stream_switch_tlast")
-              XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_STREAM_SWITCH_TLAST_MASK);
-          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_PROGRAM_FLOW_CORE) {
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_PROGRAM_FLOW_MASK);
-          } else if (startEvents.at(i) == XAIE_EVENT_GROUP_CORE_STALL_CORE) {
-            XAie_EventGroupControl(aieDevInst, loc, mod, startEvents.at(i), GROUP_CORE_STALL_MASK);
-          }
-
+          configGroupEvents(aieDevInst, loc, mod, startEvents.at(i), metricSet);
           // Start the counters after group events have been configured
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
           mPerfCounters.push_back(perfCounter);
 
           // Convert enums to physical event IDs for reporting purposes
-          int counterNum = i;
           uint8_t phyStartEvent = 0;
           uint8_t phyEndEvent = 0;
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &phyStartEvent);
@@ -496,7 +520,7 @@ namespace xdp {
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
-          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, counterNum, 
+          (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
               phyStartEvent, phyEndEvent, resetEvent, clockFreqMhz, moduleName, counterName);
           counterId++;
           numCounters++;
