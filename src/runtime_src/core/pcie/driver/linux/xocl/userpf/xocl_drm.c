@@ -789,7 +789,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 				continue;
 
 			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
-				xocl_addr_translator_disable_remap(drm_p->xdev);
+				xocl_addr_translator_clean(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
 			addr = topology->m_mem_data[i].m_base_address;
