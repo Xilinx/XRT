@@ -1843,7 +1843,7 @@ done:
 	return err;
 }
 
-static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
+static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, bool force_download)
 {
 	xdev_handle_t xdev = xocl_get_xdev(icap->icap_pdev);
 	uint64_t ch_state = 0;
@@ -1862,8 +1862,12 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin)
 	/* Optimization for transferring entire xclbin thru mailbox. */
 	peer_uuid = (xuid_t *)icap_get_data_nolock(icap->icap_pdev, PEER_UUID);
 	if (uuid_equal(peer_uuid, &xclbin->m_header.uuid)) {
-		ICAP_INFO(icap, "xclbin already on peer, skip downloading");
-		return 0;
+		if (force_download) {
+			ICAP_INFO(icap, "%s Force xclbin download", __func__);
+		} else {
+		        ICAP_INFO(icap, "xclbin already on peer, skip downloading");
+		        return 0;
+		}
 	}
 
 	xocl_mailbox_get(xdev, CHAN_STATE, &ch_state);
@@ -2401,7 +2405,7 @@ static void icap_cache_max_host_mem_aperture(struct icap *icap)
  * TODO: ignoring errors for 4) now, need more justification.
  */
 static int __icap_download_bitstream_user(struct platform_device *pdev,
-	struct axlf *xclbin)
+	struct axlf *xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -2417,7 +2421,7 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
 
-	err = __icap_peer_xclbin_download(icap, xclbin);
+	err = __icap_peer_xclbin_download(icap, xclbin, force_download);
 
 	/* TODO: Remove this after new KDS replace the legacy one */
 	/*
@@ -2536,7 +2540,7 @@ done:
 }
 
 static int __icap_download_bitstream_axlf(struct platform_device *pdev,
-	struct axlf *xclbin)
+	struct axlf *xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 
@@ -2547,7 +2551,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
 
 	return ICAP_PRIVILEGED(icap) ?
 		__icap_download_bitstream_mgmt(pdev, xclbin) :
-		__icap_download_bitstream_user(pdev, xclbin);
+		__icap_download_bitstream_user(pdev, xclbin, force_download);
 }
 
 /*
@@ -2556,7 +2560,7 @@ static int __icap_download_bitstream_axlf(struct platform_device *pdev,
  * for user icap or mgmt icap.
  */
 static int icap_download_bitstream_axlf(struct platform_device *pdev,
-	const void *u_xclbin)
+	const void *u_xclbin, bool force_download)
 {
 	struct icap *icap = platform_get_drvdata(pdev);
 	struct axlf *xclbin = (struct axlf *)u_xclbin;
@@ -2635,7 +2639,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		goto done;
 	}
 
-	err = __icap_download_bitstream_axlf(pdev, xclbin);
+	err = __icap_download_bitstream_axlf(pdev, xclbin, force_download);
 
 done:
 	mutex_unlock(&icap->icap_lock);
