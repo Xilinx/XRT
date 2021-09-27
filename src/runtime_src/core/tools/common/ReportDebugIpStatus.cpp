@@ -1569,8 +1569,7 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
                        transformedStatus,
                        std::bit_xor<unsigned int>());
         std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
-        _output << "  Other violations: \n    "
-                << (("" == tStr) ? "None" : tStr)
+        _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }
     }
@@ -1660,8 +1659,7 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
                 << std::endl;
 
         std::string tStr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("current_pc"));
-        _output << "  Other violations: \n    "
-                << (("" == tStr) ? "None" : tStr)
+        _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
                 << std::endl;
       }
 
