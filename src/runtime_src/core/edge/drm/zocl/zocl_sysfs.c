@@ -36,8 +36,7 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 
 	/* TODO: this should be as simple as */
 	/* return stroe_kds_echo(&zdev->kds, buf, count); */
-	return store_kds_echo(&zdev->kds, buf, count,
-			      kds_mode, 0, &kds_echo);
+	return store_kds_echo(&zdev->kds, buf, count, &kds_echo);
 }
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
 
