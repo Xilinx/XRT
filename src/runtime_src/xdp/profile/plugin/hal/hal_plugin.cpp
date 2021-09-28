@@ -20,7 +20,6 @@
 
 #include "xdp/profile/plugin/hal/hal_plugin.h"
 #include "xdp/profile/writer/hal/hal_host_trace_writer.h"
-#include "xdp/profile/writer/hal/hal_summary_writer.h"
 
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -54,10 +53,6 @@ namespace xdp {
                                               toolVersion) ;
     writers.push_back(writer) ;
     (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE");
-#ifdef HAL_SUMMARY
-    writers.push_back(new HALSummaryWriter("hal_summary.csv"));
-#endif
-
   }
 
   HALPlugin::~HALPlugin()
