@@ -55,7 +55,7 @@ struct xrt_ert_queue_funcs {
 
 	int (*submit)(struct xrt_ert_command *ecmd, void *queue_handle);
 
-	int  (*queue_config)(uint32_t slot_size, void *ert_handle, void *queue_handle);
+	int  (*queue_config)(uint32_t slot_size, bool polling, void *ert_handle, void *queue_handle);
 
 	uint32_t (*max_slot_num)(void *queue_handle);
 
