@@ -48,7 +48,6 @@ add_executable(${XBUTIL2_NAME} ${XBUTIL_V2_SRCS})
 # Determine what functionality should be added
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
-  target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
 else()
   target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
 endif()
