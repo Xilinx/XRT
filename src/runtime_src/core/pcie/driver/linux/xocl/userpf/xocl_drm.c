@@ -508,33 +508,46 @@ static struct drm_driver mm_drm_driver = {
 	.postclose			= xocl_client_release,
 	.open				= xocl_client_open,
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-	.gem_free_object_unlocked       = xocl_free_object,
-#else
-	.gem_free_object		= xocl_free_object,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+		.gem_free_object_unlocked       = xocl_free_object,
+	#else
+		.gem_free_object		= xocl_free_object,
+	#endif
 #endif
-	.gem_vm_ops			= &xocl_vm_ops,
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+        .gem_vm_ops                     = &xocl_vm_ops,
+        .gem_prime_get_sg_table         = xocl_gem_prime_get_sg_table,
+        .gem_prime_vmap                 = xocl_gem_prime_vmap,
+        .gem_prime_vunmap               = xocl_gem_prime_vunmap,
+        .gem_prime_export               = drm_gem_prime_export,
+#endif
 
 	.ioctls				= xocl_ioctls,
 	.num_ioctls			= (ARRAY_SIZE(xocl_ioctls)-NUM_KERNEL_IOCTLS),
 	.fops				= &xocl_driver_fops,
 
-	.gem_prime_get_sg_table		= xocl_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
-	.gem_prime_vmap			= xocl_gem_prime_vmap,
-	.gem_prime_vunmap		= xocl_gem_prime_vunmap,
 	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
-	.gem_prime_export		= drm_gem_prime_export,
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid			= drm_pci_set_busid,
 #endif
 	.name				= XOCL_MODULE_NAME,
 	.desc				= XOCL_DRIVER_DESC,
 	.date				= driver_date,
+};
+
+const struct drm_gem_object_funcs xocl_gem_object_funcs = {
+        .free = xocl_free_object,
+        .get_sg_table = xocl_gem_prime_get_sg_table,
+        .vmap = xocl_gem_prime_vmap,
+        .vunmap = xocl_gem_prime_vunmap,
+        .vm_ops = &xocl_vm_ops,
 };
 
 void *xocl_drm_init(xdev_handle_t xdev_hdl)
