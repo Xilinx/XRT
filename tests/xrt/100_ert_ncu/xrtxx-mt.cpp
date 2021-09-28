@@ -39,13 +39,14 @@
 # pragma warning ( disable : 4267 )
 #endif
 
-const size_t ELEMENTS = 16;
-const size_t ARRAY_SIZE = 8;
-const size_t MAXCUS = 8;
+static constexpr size_t ELEMENTS = 16;
+static constexpr size_t ARRAY_SIZE = 8;
+static constexpr size_t MAXCUS = 8;
 
-size_t compute_units = MAXCUS;
+static size_t compute_units = MAXCUS;
 
-static void usage()
+static void
+usage()
 {
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
@@ -156,7 +157,7 @@ run_async(const xrt::device& device, const xrt::kernel& kernel)
   return job.runs;
 }
 
-static int
+static void
 run(const xrt::device& device, const xrt::kernel& kernel, size_t num_jobs, size_t seconds)
 {
   std::vector<std::future<size_t>> jobs;
@@ -183,11 +184,10 @@ run(const xrt::device& device, const xrt::kernel& kernel, size_t num_jobs, size_
             << compute_units << " "
             << seconds << " "
             << total << "\n";
-
-  return 0;
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -239,8 +239,7 @@ int
 main(int argc, char* argv[])
 {
   try {
-    run(argc,argv);
-    return 0;
+    return run(argc,argv);
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << "\n";

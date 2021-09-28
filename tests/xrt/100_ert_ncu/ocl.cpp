@@ -28,12 +28,12 @@
 #include <iostream>
 #include <cstdarg>
 
-const size_t ELEMENTS = 16;
-const size_t ARRAY_SIZE = 8;
-const size_t MAXCUS = 8;
+static constexpr size_t ELEMENTS = 16;
+static constexpr size_t ARRAY_SIZE = 8;
+static constexpr size_t MAXCUS = 8;
 
-size_t cus = MAXCUS;
-size_t rsize = std::numeric_limits<size_t>::max();
+static size_t cus = MAXCUS;
+static size_t rsize = std::numeric_limits<size_t>::max();
 
 #define MAYBE_UNUSED __attribute__((unused))
 
@@ -175,7 +175,7 @@ kernel_done(cl_event event, cl_int status, void* data)
   clReleaseEvent(event);
 }
 
-static int
+static void
 run(cl_context context, cl_command_queue queue, cl_kernel kernel, size_t num_jobs, size_t seconds)
 {
   std::vector<job_type> jobs;
@@ -202,11 +202,9 @@ run(cl_context context, cl_command_queue queue, cl_kernel kernel, size_t num_job
             << cus << " "
             << seconds << " "
             << total << "\n";
-
-  return 0;
 }
 
-static int
+static void
 run(const std::string& fnm, size_t jobs, size_t seconds)
 {
   // Init OCL
@@ -250,10 +248,10 @@ run(const std::string& fnm, size_t jobs, size_t seconds)
   clReleaseContext(context);
   clReleaseDevice(device);
   std::for_each(devices.begin(),devices.end(),[](cl_device_id d){clReleaseDevice(d);});
-  return 0;
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -297,8 +295,7 @@ int
 main(int argc, char* argv[])
 {
   try {
-    run(argc,argv);
-    return 0;
+    return run(argc,argv);
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << "\n";

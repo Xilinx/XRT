@@ -58,13 +58,14 @@ load_xclbin(xclDeviceHandle device, const std::string& fnm)
 
 }
 
-const size_t ELEMENTS = 16;
-const size_t ARRAY_SIZE = 8;
-const size_t MAXCUS = 8;
+static constexpr size_t ELEMENTS = 16;
+static constexpr size_t ARRAY_SIZE = 8;
+static constexpr size_t MAXCUS = 8;
 
-size_t compute_units = MAXCUS;
+static size_t compute_units = MAXCUS;
 
-static void usage()
+static void
+usage()
 {
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
@@ -238,7 +239,7 @@ launcher_thread(xclDeviceHandle d)
 }
 
 
-static int
+static void
 run(xclDeviceHandle d,size_t num_jobs, size_t seconds, int first_used_mem)
 {
   g_jobs.reserve(num_jobs);
@@ -269,11 +270,10 @@ run(xclDeviceHandle d,size_t num_jobs, size_t seconds, int first_used_mem)
             << compute_units << " "
             << seconds << " "
             << total << "\n";
-
-  return 0;
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -356,8 +356,7 @@ int
 main(int argc, char* argv[])
 {
   try {
-    run(argc,argv);
-    return 0;
+    return run(argc,argv);
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << "\n";

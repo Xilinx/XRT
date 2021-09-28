@@ -29,8 +29,8 @@
 # pragma warning ( disable : 4244 )
 #endif
 
-static const int size = 256;
-int data_size = size*size;
+static constexpr int size = 256;
+static int data_size = size*size;
 
 /**
  * Runs an OpenCL kernel which writes known 16 integers into a 64 byte
@@ -38,7 +38,8 @@ int data_size = size*size;
  * driver API.
  */
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -s <hal_driver>\n";
@@ -114,7 +115,7 @@ run(xrt::device& device, const xrt::uuid& uuid, bool random, bool verbose)
 }
 
 
-int
+static int
 run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -167,7 +168,8 @@ run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);
@@ -177,9 +179,9 @@ int main(int argc, char** argv)
   catch (std::exception const& e) {
     std::cout << "Exception: " << e.what() << "\n";
     std::cout << "FAILED TEST\n";
-    return 1;
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (...) {
+    std::cout << "TEST FAILED\n";
+  }
+  return 1;
 }
