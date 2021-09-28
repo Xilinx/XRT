@@ -106,7 +106,7 @@ if [[ ${XRT_PROG} == "xbutil2" ]] && [[ ${LEGACY_PROG} = "XBUTIL" ]]; then
     echo "---------------------------------------------------------------------"
     echo "Error: Legacy command used with new tools.
 
-    It has been detected that a depricated legacy command is being used
+    It has been detected that a deprecated legacy command is being used
     without the --legacy option.  This will ultimately result in
     a 'Unknown command' error.
 
