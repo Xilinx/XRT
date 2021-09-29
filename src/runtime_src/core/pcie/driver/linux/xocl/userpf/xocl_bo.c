@@ -306,6 +306,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct drm_xocl_bo *xobj;
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
+	struct drm_gem_object *obj;
 	unsigned memidx = xocl_bo_ddr_idx(user_flags);
 	bool xobj_inited = false;
 	int err = 0;
@@ -355,12 +356,17 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	if (xobj->flags == XOCL_BO_EXECBUF)
 		xobj->metadata.state = DRM_XOCL_EXECBUF_STATE_ABORT;
 
+	obj = &xobj->base;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	obj->funcs = &xocl_gem_object_funcs;
+#endif
+
 	if (xobj->flags & XOCL_DRM_SHMEM) {
-		err = drm_gem_object_init(dev, &xobj->base, size);
+		err = drm_gem_object_init(dev, obj, size);
 		if (err)
 			goto failed;
 	} else
-		drm_gem_private_object_init(dev, &xobj->base, size);
+		drm_gem_private_object_init(dev, obj, size);
 
 	xobj_inited = true;
 
@@ -1191,6 +1197,7 @@ out_free:
 	return ERR_PTR(ret);
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj)
 {
 	struct drm_xocl_bo *xobj = to_xocl_bo(obj);
@@ -1203,6 +1210,23 @@ void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 {
 
 }
+#else
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+{
+        struct drm_xocl_bo *xobj = to_xocl_bo(obj);
+
+        BO_ENTER("xobj %p", xobj);
+        dma_buf_map_set_vaddr(map, xobj->vmapping);
+
+        return 0;
+}
+
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+{
+
+}
+#endif
+
 
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 {
@@ -1230,7 +1254,11 @@ int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma)
 		vma->vm_ops = xobj->dmabuf_vm_ops;
 	} else if (!IS_ERR_OR_NULL(xobj->base.dma_buf) && !IS_ERR_OR_NULL(xobj->base.dma_buf->file)) {
 		vma->vm_file = get_file(xobj->base.dma_buf->file);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+		vma->vm_ops = xobj->base.funcs->vm_ops;
+#else
 		vma->vm_ops = xobj->base.dev->driver->gem_vm_ops;
+#endif
 	}
 
 	vma->vm_private_data = obj;
