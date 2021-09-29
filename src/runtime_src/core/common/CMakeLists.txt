@@ -7,6 +7,16 @@ include_directories(
 
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
+
+pkg_check_modules(LIBDW REQUIRED libdw)
+INCLUDE_DIRECTORIES(${LIBDW_INCLUDEDIR})
+
+pkg_check_modules(LIBELF REQUIRED libelf)
+INCLUDE_DIRECTORIES(${LIBELF_INCLUDEDIR})
+
+pkg_check_modules(LIBFFI REQUIRED libffi)
+INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
+
 endif (NOT WIN32)
 
 file(GLOB XRT_CORE_COMMON_LIB_FILES
@@ -33,6 +43,11 @@ if (DEFINED XRT_AIE_BUILD)
     "api/aie/*.cpp"
     )
   list(APPEND XRT_CORE_COMMON_LIB_FILES ${XRT_CORE_COMMON_AIE_LIB_FILES})
+endif()
+
+if (DEFINED XRT_PSKERNEL_BUILD)
+  list(APPEND XRT_CORE_COMMON_LIB_FILES "pskernel_parse.cpp")
+  list(APPEND XRT_CORE_COMMON_LIB_FILES "api/pskernel/xrt_pskernel.cpp")
 endif()
 
 # Files to include in object list
@@ -68,7 +83,7 @@ target_link_libraries(xrt_coreutil_static
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
-  target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
+  target_link_libraries(xrt_coreutil PRIVATE pthread dl ${LIBDW_LDFLAGS} ${LIBELF_LDFLAGS} ${LIBFFI_LDFLAGS} PUBLIC uuid)
 
   # Targets of xrt_coreutil_static must link with these additional
   # system libraries
