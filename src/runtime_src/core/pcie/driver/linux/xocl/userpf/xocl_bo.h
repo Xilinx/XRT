@@ -178,8 +178,15 @@ int xocl_sync_bo_callback_ioctl(struct drm_device *dev, void *data,
 struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
+#else
+int xocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map);
+void xocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map);
+#endif
+
 int xocl_gem_prime_mmap(struct drm_gem_object *obj, struct vm_area_struct *vma);
 int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	struct ert_start_copybo_cmd *cmd);
