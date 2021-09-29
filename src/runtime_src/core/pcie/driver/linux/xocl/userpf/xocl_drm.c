@@ -542,13 +542,16 @@ static struct drm_driver mm_drm_driver = {
 	.date				= driver_date,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 const struct drm_gem_object_funcs xocl_gem_object_funcs = {
         .free = xocl_free_object,
+        .vm_ops = &xocl_vm_ops,
         .get_sg_table = xocl_gem_prime_get_sg_table,
         .vmap = xocl_gem_prime_vmap,
         .vunmap = xocl_gem_prime_vunmap,
-        .vm_ops = &xocl_vm_ops,
+        .export = drm_gem_prime_export,
 };
+#endif
 
 void *xocl_drm_init(xdev_handle_t xdev_hdl)
 {
