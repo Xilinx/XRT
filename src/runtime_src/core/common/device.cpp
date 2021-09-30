@@ -265,7 +265,7 @@ get_axlf_section_or_error(axlf_section_kind section, const uuid& xclbin_id) cons
   throw error(EINVAL, "no such xclbin section");
 }
 
-std::vector<std::pair<const char*, size_t> >
+std::vector<std::pair<const char*, size_t>>
 device::
 get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id) const
 {
@@ -274,12 +274,12 @@ get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id) const
     throw error(EINVAL, "xclbin id mismatch");
 
   if (!m_xclbin)
-    return std::vector<std::pair<const char*, size_t> >();
+    return std::vector<std::pair<const char*, size_t>>();
 
   return xrt_core::xclbin_int::get_axlf_sections(m_xclbin, section);
 }
 
-std::vector<std::pair<const char*, size_t> >
+std::vector<std::pair<const char*, size_t>>
 device::
 get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id) const
 {

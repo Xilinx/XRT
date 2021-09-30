@@ -476,7 +476,7 @@ public:
   {
     auto section = reinterpret_cast<SectionType>(get_axlf_section(kind).first);
     if (!section)
-      throw std::runtime_error("Request xclbin section " + std::to_string(kind) + " does not exist");
+      throw std::runtime_error("Requested xclbin section " + std::to_string(kind) + " does not exist");
     return section;
   }
 
@@ -553,15 +553,15 @@ class xclbin_full : public xclbin_impl
         if (!data.empty()) {
           auto pos = m_axlf_sections.emplace(kind, std::move(data));
           if (kind == IP_LAYOUT)
-            ip_layout = reinterpret_cast<const ::ip_layout*>((pos)->second.data());
+            ip_layout = reinterpret_cast<const ::ip_layout*>(pos->second.data());
         }
       }
 
       if (!hdr)
         continue;
 
-      if(kind == SOFT_KERNEL) {
-	while(hdr != nullptr) {
+      if (kind == SOFT_KERNEL) {
+	while (hdr != nullptr) {
 	  auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
 	  std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
 	  m_axlf_sections.emplace(kind , std::move(data));
@@ -619,7 +619,7 @@ public:
       : std::make_pair(nullptr, size_t(0));
   }
 
-  std::vector< std::pair<const char*, size_t> >
+  std::vector<std::pair<const char*, size_t>>
   get_axlf_sections(axlf_section_kind kind) const override
   {
     auto result = m_axlf_sections.equal_range(kind);
@@ -627,10 +627,10 @@ public:
     int count = std::distance(result.first, result.second);
 
     if (count > 0) {
-      std::vector< std::pair<const char*, size_t> > return_sections;
+      std::vector<std::pair<const char*, size_t>> return_sections;
 
       for (auto itr = result.first; itr != result.second; itr++)
-	return_sections.emplace_back(std::make_pair((*itr).second.data(), (*itr).second.size()));
+        return_sections.emplace_back(std::make_pair(itr->second.data(), itr->second.size()));
 
       return return_sections;
     }
@@ -725,6 +725,28 @@ xclbin::
 get_axlf() const
 {
   return handle ? handle->get_axlf() : nullptr;
+}
+
+std::pair<const char*, size_t>
+xclbin::
+get_axlf_section(axlf_section_kind kind) const
+{
+  if (!handle)
+    throw std::runtime_error("No xclbin");
+
+  auto sec = handle->get_axlf_section(kind);
+  if (sec.first && sec.second)
+    return sec;
+
+  // sec is nullptr, check if kind is one of the group sections,
+  // which then does not appear in the xclbin and should default to
+  // the none group one.
+  if (kind == ASK_GROUP_TOPOLOGY)
+    return handle->get_axlf_section(MEM_TOPOLOGY);
+  else if (kind == ASK_GROUP_CONNECTIVITY)
+    return handle->get_axlf_section(CONNECTIVITY);
+
+  throw std::runtime_error("No such axlf section (" + std::to_string(kind) + ") in xclbin");
 }
 
 ////////////////////////////////////////////////////////////////
