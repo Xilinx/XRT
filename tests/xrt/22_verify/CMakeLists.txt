@@ -6,6 +6,9 @@ set(TESTNAME "22_verify")
 add_executable(${TESTNAME} main.cpp)
 target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
 
+add_executable(${TESTNAME}_xcl xcl.cpp)
+target_link_libraries(${TESTNAME}_xcl PRIVATE ${xrt_coreutil_LIBRARY} ${xrt_core_LIBRARY})
+
 # Experimental demo of static linking.
 # Should be built into to PUBLIC options along with find_package
 if (DEFINED ENV{XRT_STATIC_BUILD})
@@ -31,7 +34,8 @@ endif()
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME}_xcl PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
-install(TARGETS ${TESTNAME}
+install(TARGETS ${TESTNAME} ${TESTNAME}_xcl
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})
