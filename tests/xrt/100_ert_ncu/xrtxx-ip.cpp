@@ -43,18 +43,19 @@
 # pragma warning ( disable : 4267 )
 #endif
 
-constexpr uint32_t AP_START    = 0x1;
-constexpr uint32_t AP_DONE     = 0x2;
-constexpr uint32_t AP_IDLE     = 0x4;
+static constexpr uint32_t AP_START    = 0x1;
+static constexpr uint32_t AP_DONE     = 0x2;
+static constexpr uint32_t AP_IDLE     = 0x4;
 
-const size_t ELEMENTS = 16;
-const size_t ARRAY_SIZE = 8;
-const size_t MAXCUS = 8;
+static constexpr size_t ELEMENTS = 16;
+static constexpr size_t ARRAY_SIZE = 8;
+static constexpr size_t MAXCUS = 8;
 
 static size_t compute_units = MAXCUS;
 static bool use_interrupt = false;
 
-static void usage()
+static void
+usage()
 {
   std::cout << "usage: %s [options] \n\n";
   std::cout << "  -k <bitstream>\n";
@@ -206,7 +207,7 @@ run_async(const xrt::device& device, const xrt::uuid& xid, const std::string& ip
   return job.runs;
 }
 
-static int
+static void
 run(const xrt::device& device, const xrt::uuid& xid, size_t cus, size_t seconds)
 {
   std::vector<std::future<size_t>> jobs;
@@ -233,11 +234,10 @@ run(const xrt::device& device, const xrt::uuid& xid, size_t cus, size_t seconds)
             << compute_units << " "
             << seconds << " "
             << total << "\n";
-
-  return 0;
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   std::vector<std::string> args(argv+1,argv+argc);
 
@@ -291,8 +291,7 @@ int
 main(int argc, char* argv[])
 {
   try {
-    run(argc,argv);
-    return 0;
+    return run(argc,argv);
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << "\n";
