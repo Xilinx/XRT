@@ -414,7 +414,6 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		DRM_WARN("ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
 #if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
 		__attribute__ ((fallthrough));
 #else
