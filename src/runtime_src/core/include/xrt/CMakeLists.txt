@@ -6,7 +6,6 @@ set(XRT_XRT_HEADER_SRC
   xrt_bo.h
   xrt_device.h
   xrt_graph.h
-  xrt_pskernel.h
   xrt_kernel.h
   xrt_uuid.h)
 
