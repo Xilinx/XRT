@@ -604,6 +604,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
+		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
 		/* PS ERT is not sync with host. Have to skip 6 data */
 		if (!xocl_ps_sched_on(xdev))
 			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));

@@ -47,6 +47,15 @@
 	xocl_info(&XDEV(d)->pdev->dev, ##args)
 #define userpf_dbg(d, args...)                     \
 	xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+#define userpf_info_once(d, args...)               \
+({                                                 \
+	 static bool __info_once __read_mostly;    \
+						   \
+	 if (!__info_once) {                       \
+		 __info_once = true;               \
+		 userpf_info(d, ##args);           \
+	 }                                         \
+ })
 
 #define xocl_get_root_dev(dev, root)		\
 	for (root = dev; root->bus && root->bus->self; root = root->bus->self)
