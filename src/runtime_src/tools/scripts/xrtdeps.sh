@@ -67,7 +67,6 @@ rh_package_list()
      curl \
      dkms \
      elfutils-devel \
-     elfutils-libs \
      gcc \
      gcc-c++ \
      gdb \
@@ -253,8 +252,6 @@ fd_package_list()
      curl \
      dkms \
      dmidecode \
-     elfutils-devel \
-     elfutils-libs \
      gcc \
      gcc-c++ \
      gdb \
