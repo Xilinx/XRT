@@ -156,7 +156,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       auto hdl = dev->get_device_handle();
       auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(dev));
       if (auto err = xclLoadXclBin(hdl,reinterpret_cast<const axlf*>(raw.data())))
-        throw xrt_core::error(err, "Could not program device" + bdf);
+        throw xrt_core::error(err, "Could not program device " + bdf);
 
       std::cout << "INFO: xbutil program succeeded on " << bdf << std::endl;
     }

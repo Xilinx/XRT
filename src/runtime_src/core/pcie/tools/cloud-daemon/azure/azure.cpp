@@ -222,6 +222,22 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
+bool AzureDev::xclbin_section_hdr_present(const struct axlf *xclbin, enum axlf_section_kind kind)
+{
+    unsigned int i = 0;
+    unsigned int sections = XCLBIN_MAX_NUM_SECTION;
+
+    if (xclbin->m_header.m_numSections < XCLBIN_MAX_NUM_SECTION)
+        sections = xclbin->m_header.m_numSections;
+
+    for (i = 0; i < sections; i++) {
+        if (xclbin->m_sections[i].m_sectionKind == kind)
+            return true;
+    }
+
+    return false;
+}
+
 int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
@@ -233,6 +249,13 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     if (fpgaSerialNumber.empty())
         return -E_EMPTY_SN;
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
+
+    // check if the xclbin is valid
+    if (xclbin_section_hdr_present(buffer, BITSTREAM)) {
+        std::cout << "xclbin is not valid" << std::endl;
+        return -EINVAL;
+    }
+
     int index = 0;
     std::string imageSHA;
     std::vector<std::string> chunks;
