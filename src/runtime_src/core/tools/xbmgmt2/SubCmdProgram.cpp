@@ -84,7 +84,7 @@ update_shell(unsigned int index, const std::string& primary, const std::string& 
   auto stripped = std::make_unique<firmwareImage>(primary.c_str(), STRIPPED_FIRMWARE);
   if (stripped->fail())
     stripped = nullptr;
-  
+
   std::unique_ptr<firmwareImage> sec;
   if (!secondary.empty()) {
     sec = std::make_unique<firmwareImage>(secondary.c_str(),

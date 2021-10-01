@@ -545,7 +545,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
 }
 
 //Method for updating QSPI (expects 1 MCS files)
-int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1, std::istream* stripped) {
+int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1, std::istream& stripped) {
     int status = 0;
     uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
 
@@ -591,7 +591,7 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1, std::istream* st
 
 
 //Method for updating dual QSPI (expects 2 MCS files)
-int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2, std::istream* stripped) {
+int XSPI_Flasher::xclUpgradeFirmware2(std::istream& mcsStream1, std::istream& mcsStream2, std::istream& stripped) {
     int status = 0;
     uint32_t bitstream_start_loc = 0, bitstream_shift_addr = 0;
 
@@ -2198,7 +2198,7 @@ static int programXSpiDrv(xrt_core::device *dev, std::FILE *mFlashDev, std::istr
     return 0;
 }
 
-int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream, std::istream* stripped)
+int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream, std::istream& stripped)
 {
     int ret = 0;
     uint32_t bsGuardAddr;
@@ -2219,7 +2219,7 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream, std::istream* str
     // start writing bitstream, so that we don't corrupt bitstream.
     if (stripped) {
         std::vector<unsigned char> data{
-            std::istreambuf_iterator<char>(*stripped),
+            std::istreambuf_iterator<char>(stripped),
             std::istreambuf_iterator<char>()};
         ret = xclWriteData(data);
         if (ret)
@@ -2236,10 +2236,10 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream, std::istream* str
 }
 
 int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
-    std::istream& mcsStream1, std::istream* stripped)
+    std::istream& mcsStream1, std::istream& stripped)
 {
     int ret = 0;
-    uint32_t bsGuardAddr;
+    uint32_t bsGuardAddr = 0;
 
     if (mcsStreamIsGolden(mcsStream0)) {
         ret = programXSpiDrv(mDev.get(), mFlashDev, mcsStream0, 0, 0);
@@ -2261,7 +2261,7 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
     // start writing bitstream, so that we don't corrupt bitstream.
     if (stripped) {
         std::vector<unsigned char> data{
-            std::istreambuf_iterator<char>(*stripped),
+            std::istreambuf_iterator<char>(stripped),
             std::istreambuf_iterator<char>()};
         ret = xclWriteData(data);
         if (ret)
@@ -2289,21 +2289,23 @@ struct flash_data_header {
     uint8_t reserved[16];
 };
 // Max file data length can be saved on flash
-static const size_t xrt_max_data_len = 1024 * 1024;
+static constexpr size_t xrt_max_data_len = 1024 * 1024;
 
-static uint32_t getParity32(std::vector<unsigned char>& data)
+static uint32_t 
+getParity32(const std::vector<unsigned char>& data)
 {
     uint32_t parity = 0;
 
     for (size_t len = 0; len < data.size(); len += 4) {
-        uint32_t tmp;
+        uint32_t tmp = 0;
         std::memcpy(&tmp, data.data() + len, std::min(4ul, data.size() - len));
         parity ^= tmp;
     }
     return parity;
 }
 
-int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
+int XSPI_Flasher::
+xclWriteData(const std::vector<unsigned char>& data)
 {
     const int flash_index = 0;
 
@@ -2317,7 +2319,6 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
             << std::endl;
         return -EINVAL;
     }
-
     auto size = xrt_core::device_query<xrt_core::query::flash_size>(mDev);
     if (size == 0)
         return -EINVAL;
@@ -2330,7 +2331,6 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
         std::cout << "failed to write meta data to flash: " << ret << std::endl;
         return ret;
     }
-
     // Write meta data onto flash
     flash_data_header header = { 0 };
     std::memcpy(header.magic, magic.c_str(), magic.size());
@@ -2345,14 +2345,14 @@ int XSPI_Flasher::xclWriteData(std::vector<unsigned char>& data)
             << std::endl;
         return ret;
     }
-
     std::cout << boost::format(
         "Persisted %d bytes of meta data to flash %d @0x%x\n")
         %data.size() %flash_index %(addr - data.size());
     return 0;
 }
 
-int XSPI_Flasher::xclReadData(std::vector<unsigned char>& data)
+int XSPI_Flasher::
+xclReadData(std::vector<unsigned char>& data)
 {
     const int flash_index = 0;
 

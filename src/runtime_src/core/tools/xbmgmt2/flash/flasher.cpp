@@ -110,11 +110,11 @@ int Flasher::upgradeFirmware(const std::string& flasherType,
         }
         else if(secondary == nullptr)
         {
-            retVal = xspi.xclUpgradeFirmware1(*primary, stripped);
+            retVal = xspi.xclUpgradeFirmware1(*primary, *stripped);
         }
         else
         {
-            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, stripped);
+            retVal = xspi.xclUpgradeFirmware2(*primary, *secondary, *stripped);
         }
 
         // program icap controller for webstar flow. Required only for U.2

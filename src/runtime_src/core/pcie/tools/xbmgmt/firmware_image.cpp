@@ -483,7 +483,8 @@ std::ostream& operator<<(std::ostream& stream, const DSAInfo& dsa)
  * @return true  - The string was found;
  *         false - the string was not found
  */
-static bool findBytesInBuffer(const char * pBuffer, uint64_t _bufferSize,
+static bool 
+findBytesInBuffer(const char * pBuffer, uint64_t _bufferSize,
                   const std::string& _searchString,
                   unsigned int& _foundOffset) {
 
@@ -509,7 +510,8 @@ static bool findBytesInBuffer(const char * pBuffer, uint64_t _bufferSize,
   return false;
 }
 
-static void remove_xsabin_mirror(void * pXsaBinBuffer)
+static void 
+remove_xsabin_mirror(void * pXsaBinBuffer)
 {
   static const std::string MIRROR_DATA_START = "XCLBIN_MIRROR_DATA_START";
   static const std::string MIRROR_DATA_END = "XCLBIN_MIRROR_DATA_END";
@@ -542,7 +544,8 @@ static void remove_xsabin_mirror(void * pXsaBinBuffer)
   axlf_header->m_header.m_length = bufferSize - bytesRemoved;
 }
 
-static void remove_xsabin_section(void * pXsaBinBuffer, enum axlf_section_kind sectionToRemove)
+static void 
+remove_xsabin_section(void * pXsaBinBuffer, enum axlf_section_kind sectionToRemove)
 {
   // Simple DRC check
   if (pXsaBinBuffer == nullptr)
