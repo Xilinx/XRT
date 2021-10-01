@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -1807,6 +1807,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	/* Initial intc sub-device before CU/ERT sub-devices */
 	xocl_init_intc,
 	xocl_init_cu,
+	xocl_init_scu,
 	xocl_init_addr_translator,
 	xocl_init_p2p,
 	xocl_init_spc,
@@ -1847,6 +1848,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_accel_deadlock_detector,
 	xocl_fini_mem_hbm,
 	xocl_fini_cu,
+	xocl_fini_scu,
 	xocl_fini_addr_translator,
 	xocl_fini_p2p,
 	xocl_fini_spc,
