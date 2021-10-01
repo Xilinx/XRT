@@ -604,8 +604,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		userpf_info(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
-		convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+		/* PS ERT is not sync with host. Have to skip 6 data */
+		if (!xocl_ps_sched_on(xdev))
+			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
 		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_KEY_VAL:
@@ -1015,6 +1017,10 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	regmap_size = kds_get_max_regmap_size(kds);
 	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
 		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
+
+	/* PS ERT required slot size to be power of 2 */
+	if (xocl_ps_sched_on(xdev))
+		ecmd->slot_size = round_up_to_next_power2(ecmd->slot_size);
 
 	if (ecmd->slot_size > MAX_CQ_SLOT_SIZE)
 		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
