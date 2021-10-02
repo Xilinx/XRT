@@ -2703,6 +2703,9 @@ static void process_request(struct mailbox *mbx, struct mailbox_msg *msg)
 	const char *recvstr = "received request from peer";
 	const char *sendstr = "sending test msg to peer";
 
+	if (req->req >= XCL_MAILBOX_REQ_MAX)
+		return;
+
 	mbx->mbx_recv_req[req->req]++;
 	if (req_is_disabled(mbx->mbx_pdev, req->req)) {
 		MBX_WARN(mbx, "req %d is received on disabled channel", req->req);
