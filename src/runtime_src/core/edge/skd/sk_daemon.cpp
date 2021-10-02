@@ -225,11 +225,11 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
   uint64_t boSize[args.size()];
   std::vector<int> bo_list;
   
-  for(int i=0;i<args.size();i++) {
+  for (int i=0;i<args.size();i++) {
     ffi_args[i] = &args[i].ffitype;
   }
   
-  if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_uint32,ffi_args) != FFI_OK) {
+  if (ffi_prep_cif(&cif,FFI_DEFAULT_ABI, args.size(), &ffi_type_uint32,ffi_args) != FFI_OK) {
     syslog(LOG_ERR, "Cannot prep FFI arguments!");
     return;
   }
@@ -251,8 +251,7 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
     // New PS Kernel implementation
     // Check for call signature of only 2 arguments and 2nd argument has name of ops
-    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
-    } else {
+    if (!((args.size()==2 && args[1].name.compare("ops")==0) || args.empty())) {
       // FFI PS Kernel implementation
       // Map buffers used by kernel
       for(int i=0;i<args.size();i++) {
@@ -276,18 +275,20 @@ static void softKernelLoop(char *name, char *path, uint32_t cu_idx)
 
     // Original PS Kernel implementation
     // Check for call signature of only 2 arguments and 2nd argument has name os ops
-    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
+    if ((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
       kernel_return = old_kernel(&args_from_host[1],&ops);
-    } else {
+    } 
+    else {
       ffi_call(&cif,FFI_FN(kernel), &kernel_return, ffi_arg_values);
     }
     args_from_host[1] = (uint32_t)kernel_return;
 
     // Unmap Buffers
-    if((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
+    if ((args.size()==2 && args[1].name.compare("ops")==0) || args.empty()) {
       // Nothing to be done here for original PS kernel implementation
-    } else {
-      for(auto i:bo_list) {
+    } 
+    else {
+      for (auto i:bo_list) {
 	munmap(bos[i],boSize[i]);
 	xclFreeBO(devHdl,boHandles[i]);
       }
