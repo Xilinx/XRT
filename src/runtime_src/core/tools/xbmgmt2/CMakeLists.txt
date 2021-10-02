@@ -43,6 +43,8 @@ add_executable(${XBMGMT2_NAME} ${XBMGMT_V2_SRCS})
 # Determine what functionality should be added
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   target_compile_definitions(${XBMGMT2_NAME} PRIVATE ENABLE_NATIVE_SUBCMDS_AND_REPORTS)
+else()
+  target_compile_definitions(${XBUTIL2_NAME} PRIVATE ENABLE_DEFAULT_ONE_DEVICE_OPTION)
 endif()
 
 # Static build is a Linux / Ubuntu option only
