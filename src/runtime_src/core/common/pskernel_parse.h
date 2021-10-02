@@ -17,16 +17,19 @@
 #ifndef pskernel_parse_h_
 #define pskernel_parse_h_
 
+#include <fcntl.h>
+#include <fnmatch.h>
+#include <limits>
+#include <map>
+#include <unordered_map>
+#include <vector>
+
+// Elfutils and FFI library
+#include <dwarf.h>
 #include <elfutils/libdw.h>
 #include <elfutils/libdwfl.h>
 #include <ffi.h>
-#include <dwarf.h>
-#include <fnmatch.h>
-#include <fcntl.h>
-#include <unordered_map>
-#include <map>
-#include <vector>
-#include <limits>
+
 
 namespace xrt_core { namespace pskernel {
 /**
@@ -51,9 +54,12 @@ struct kernel_argument
   ffi_type ffitype;
 };
 
-std::vector<kernel_argument> extract_args (Dwarf_Die *die);
-std::vector<kernel_argument> pskernel_parse(char *so_file, size_t size, const char *func_name);
-std::vector<kernel_argument> pskernel_parse(const char *so_file, const char *func_name);
+std::vector<kernel_argument> 
+extract_args (Dwarf_Die *die);
+std::vector<kernel_argument> 
+pskernel_parse(char *so_file, size_t size, const char *func_name);
+std::vector<kernel_argument> 
+pskernel_parse(const char *so_file, const char *func_name);
 
 }}
 

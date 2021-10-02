@@ -86,4 +86,7 @@ else()
   )
 endif()
 
-install (TARGETS xrt_hwemu LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+install (TARGETS xrt_hwemu 
+  EXPORT xrt-targets
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
+)

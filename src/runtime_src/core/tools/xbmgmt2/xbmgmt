@@ -20,6 +20,20 @@ fi
 DEFAULT=xbmgmt2
 XRT_PROG=""
 
+
+# -- Legacy commands
+declare -A LEGACY_COMMANDS=( \
+        ["help"]="XBMGMT" \
+        ["version"]="XBMGMT" \
+        ["scan"]="XBMGMT" \
+        ["flash"]="XBMGMT" \
+        ["clock"]="XBMGMT" \
+        ["partition"]="XBMGMT" \
+        ["config"]="XBMGMT" \
+        ["nifd"]="XBMGMT" \
+        ["hotplug"]="XBMGMT" \
+    )
+
 # Examine the options and look for -new/--new
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
@@ -67,11 +81,34 @@ if [[ ${XRT_PROG} == "xbmgmt" ]] && [[ -t 1 ]]; then
     sub-commands and options can be found on the Xilinx Runtime (XRT)
     documentation page:
     
-    https://xilinx.github.io/XRT/master/html/xbtools_map.html
+    https://xilinx.github.io/XRT/master/html/ 
 
     Please update your scripts and tools to use the next generation
     sub-commands and options."
     echo "---------------------------------------------------------------------"
+fi
+
+# Determine if the user has specified a legacy command
+LEGACY_PROG=${LEGACY_COMMANDS[${XRTWRAP_PROG_ARGS[0]}]}
+
+# Additional friendly messessages
+if [[ ${XRT_PROG} == "xbmgmt2" ]] && [[ ${LEGACY_PROG} = "XBMGMT" ]]; then
+    echo "---------------------------------------------------------------------"
+    echo "Error: Legacy command used with new tools.
+         
+       You are using a deprecated legacy command. This will ultimately 
+       result in an 'Unknown command' error.
+    
+       It is recommended that you update your scripts and tools to use
+       the next generation sub-commands and options. These are 
+       documented on the Xilinx Runtime (XRT) documentation page:
+ 
+       https://xilinx.github.io/XRT/master/html/ 
+ 
+       If you must use a legacy command, you will have to use the 
+       --legacy option on the command line."
+    echo "---------------------------------------------------------------------"
+    echo
 fi
 
 # -- Find and call the loader

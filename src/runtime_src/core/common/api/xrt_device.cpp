@@ -20,8 +20,8 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_device.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
-#include "core/include/experimental/xrt_device.h"
-#include "core/include/experimental/xrt_aie.h"
+#include "core/include/xrt/xrt_device.h"
+#include "core/include/xrt/xrt_aie.h"
 
 #include "core/common/system.h"
 #include "core/common/device.h"
@@ -130,8 +130,10 @@ to_string(const xrt_core::device* device)
   return to_value<param, QueryRequestType>(device, [](const auto& q) { return QueryRequestType::to_string(q); });
 }
 
+// Return a json string conforming to ABI schema
+// ABI remains unused until we actually have a new schema  
 static std::string
-json_str(const boost::property_tree::ptree& pt) 
+json_str(const boost::property_tree::ptree& pt, const xrt::detail::abi&) 
 {
   std::stringstream ss;
   boost::property_tree::write_json(ss, pt);
@@ -252,7 +254,7 @@ get_xclbin_section(axlf_section_kind section, const uuid& uuid) const
 
 boost::any
 device::
-get_info(info::device param) const
+get_info(info::device param, const xrt::detail::abi& abi) const
 {
   switch (param) {
   case info::device::bdf :                    // std::string
@@ -289,26 +291,37 @@ get_info(info::device param) const
   case info::device::offline :
     return query::raw<info::device::offline, xrt_core::query::is_offline>(handle.get());
   case info::device::electrical :            // std::string
-    return query::json_str(xrt_core::sensor::read_electrical(handle.get()));
+    return query::json_str(xrt_core::sensor::read_electrical(handle.get()), abi);
   case info::device::thermal :               // std::string
-    return query::json_str(xrt_core::sensor::read_thermals(handle.get()));
+    return query::json_str(xrt_core::sensor::read_thermals(handle.get()), abi);
   case info::device::mechanical :            // std::string
-    return query::json_str(xrt_core::sensor::read_mechanical(handle.get()));
+    return query::json_str(xrt_core::sensor::read_mechanical(handle.get()), abi);
   case info::device::memory :                // std::string
-    return query::json_str(xrt_core::memory::memory_topology(handle.get()));
+    return query::json_str(xrt_core::memory::memory_topology(handle.get()), abi);
   case info::device::platform :              // std::string
-    return query::json_str(xrt_core::platform::platform_info(handle.get()));
+    return query::json_str(xrt_core::platform::platform_info(handle.get()), abi);
   case info::device::pcie_info :                  // std::string
-    return query::json_str(xrt_core::platform::pcie_info(handle.get()));
+    return query::json_str(xrt_core::platform::pcie_info(handle.get()), abi);
   case info::device::dynamic_regions :         // std::string
-    return query::json_str(xrt_core::memory::xclbin_info(handle.get()));
+    return query::json_str(xrt_core::memory::xclbin_info(handle.get()), abi);
   case info::device::host :                   // std::string
     boost::property_tree::ptree pt;
     xrt_core::get_xrt_build_info(pt);
-    return query::json_str(pt);
+    return query::json_str(pt, abi);
   }
 
   throw std::runtime_error("internal error: unreachable");
+}
+
+// Deprecated but left for support of old existing binaries in the
+// field that reference this symbol. Unused since xrt-2.12.x
+boost::any
+device::
+get_info(info::device param) const
+{
+  // Old binaries call get_info without ABI and by
+  // default will use current ABI version
+  return get_info(param, xrt::detail::abi{});
 }
 
 } // xrt

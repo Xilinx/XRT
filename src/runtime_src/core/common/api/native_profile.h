@@ -81,8 +81,8 @@ class sync_logger : public api_call_logger
   size_t m_buffer_size ;
 
   sync_logger() = delete ;
-  sync_logger(const generic_api_call_logger& x) = delete ;
-  sync_logger(generic_api_call_logger&& x) = delete ;
+  sync_logger(const sync_logger& x) = delete ;
+  sync_logger(sync_logger&& x) = delete ;
   void operator=(const sync_logger& x) = delete ;
   void operator=(sync_logger&& x) = delete ;
 

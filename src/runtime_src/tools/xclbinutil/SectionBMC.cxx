@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018, 2020 Xilinx, Inc
+ * Copyright (C) 2018, 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -118,7 +118,7 @@ SectionBMC::getSubSectionEnum(const std::string _sSubSectionName) const {
 void
 SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection, 
                                      unsigned int _origSectionSize,  
-                                     std::fstream& _istream, 
+                                     std::istream& _istream, 
                                      std::ostringstream &_buffer) const
 {
   XUtil::TRACE("SectionBMC::CopyBufferUpdateMetadata");
@@ -233,7 +233,7 @@ SectionBMC::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 // -------------------------------------------------------------------------
 
 void
-SectionBMC::createDefaultFWImage(std::fstream & _istream, std::ostringstream &_buffer) const
+SectionBMC::createDefaultFWImage(std::istream & _istream, std::ostringstream &_buffer) const
 {
   bmc bmcHdr = bmc {0};
 
@@ -279,7 +279,7 @@ SectionBMC::createDefaultFWImage(std::fstream & _istream, std::ostringstream &_b
 void 
 SectionBMC::readSubPayload(const char* _pOrigDataSection, 
                            unsigned int _origSectionSize,  
-                           std::fstream& _istream, 
+                           std::istream& _istream, 
                            const std::string & _sSubSectionName, 
                            enum Section::FormatType _eFormatType,
                            std::ostringstream &_buffer) const

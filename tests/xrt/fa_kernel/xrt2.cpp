@@ -31,7 +31,8 @@
 # pragma warning ( disable : 4244 )
 #endif
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -167,7 +168,7 @@ run(const xrt::device& device, xrt::kernel& aes)
   }
 }
 
-int
+static int
 run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -211,7 +212,8 @@ run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);
@@ -223,7 +225,8 @@ int main(int argc, char** argv)
     std::cout << "FAILED TEST\n";
     return 1;
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (...) {
+    std::cout << "TEST FAILED\n";
+  }
+  return 1;
 }

@@ -197,30 +197,30 @@ static void check_nonzero_interrupt_status(struct xdma_dev *xdev)
 
 	w = read_register(&reg->user_int_enable);
 	if (w)
-		xocl_pr_info("%s xdma%d user_int_enable = 0x%08x\n",
+		pr_info("%s xdma%d user_int_enable = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->channel_int_enable);
 	if (w)
-	xocl_pr_info("%s xdma%d channel_int_enable = 0x%08x\n",
+		pr_info("%s xdma%d channel_int_enable = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->user_int_request);
 	if (w)
-		xocl_pr_info("%s xdma%d user_int_request = 0x%08x\n",
+		pr_info("%s xdma%d user_int_request = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 	w = read_register(&reg->channel_int_request);
 	if (w)
-		xocl_pr_info("%s xdma%d channel_int_request = 0x%08x\n",
+		pr_info("%s xdma%d channel_int_request = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 
 	w = read_register(&reg->user_int_pending);
 	if (w)
-		xocl_pr_info("%s xdma%d user_int_pending = 0x%08x\n",
+		pr_info("%s xdma%d user_int_pending = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 	w = read_register(&reg->channel_int_pending);
 	if (w)
-		xocl_pr_info("%s xdma%d channel_int_pending = 0x%08x\n",
+		pr_info("%s xdma%d channel_int_pending = 0x%08x\n",
 			dev_name(&xdev->pdev->dev), xdev->idx, w);
 }
 
@@ -332,35 +332,35 @@ static void engine_reg_dump(struct xdma_engine *engine)
 	BUG_ON(!engine);
 
 	w = read_register(&engine->regs->identifier);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (id).\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (id).\n",
 		engine->name, &engine->regs->identifier, w);
 	w &= BLOCK_ID_MASK;
 	if (w != BLOCK_ID_HEAD) {
-		xocl_pr_info("%s: engine id missing, 0x%08x exp. & 0x%x = 0x%x\n",
+		pr_info("%s: engine id missing, 0x%08x exp. & 0x%x = 0x%x\n",
 			 engine->name, w, BLOCK_ID_MASK, BLOCK_ID_HEAD);
 		return;
 	}
 	/* extra debugging; inspect complete engine set of registers */
 	w = read_register(&engine->regs->status);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (status).\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (status).\n",
 		engine->name, &engine->regs->status, w);
 	w = read_register(&engine->regs->control);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (control)\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (control)\n",
 		engine->name, &engine->regs->control, w);
 	w = read_register(&engine->sgdma_regs->first_desc_lo);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_lo)\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_lo)\n",
 		engine->name, &engine->sgdma_regs->first_desc_lo, w);
 	w = read_register(&engine->sgdma_regs->first_desc_hi);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_hi)\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_hi)\n",
 		engine->name, &engine->sgdma_regs->first_desc_hi, w);
 	w = read_register(&engine->sgdma_regs->first_desc_adjacent);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_adjacent).\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (first_desc_adjacent).\n",
 		engine->name, &engine->sgdma_regs->first_desc_adjacent, w);
 	w = read_register(&engine->regs->completed_desc_count);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (completed_desc_count).\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (completed_desc_count).\n",
 		engine->name, &engine->regs->completed_desc_count, w);
 	w = read_register(&engine->regs->interrupt_enable_mask);
-	xocl_pr_info("%s: ioread32(0x%p) = 0x%08x (interrupt_enable_mask)\n",
+	pr_info("%s: ioread32(0x%p) = 0x%08x (interrupt_enable_mask)\n",
 		engine->name, &engine->regs->interrupt_enable_mask, w);
 }
 
@@ -455,7 +455,7 @@ static void engine_status_dump(struct xdma_engine *engine)
 	}
 
 	buf[len - 1] = '\0';
-	xocl_pr_info("%s\n", buffer);
+	pr_info("%s\n", buffer);
 }
 
 static u32 engine_status_read(struct xdma_engine *engine, bool clear, bool dump)
@@ -1459,6 +1459,7 @@ static int xdma_process_requests(struct xdma_engine *engine,
 		if (timeout == 0) {
 			pr_err("Request completion timeout\n");
 			engine_reg_dump(engine);
+			check_nonzero_interrupt_status(engine->xdev);
 			rv = -EIO;
 		}
 

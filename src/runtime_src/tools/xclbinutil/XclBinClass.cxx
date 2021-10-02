@@ -27,6 +27,7 @@
 #include <boost/filesystem.hpp>
 #include <random>
 #include <sstream>
+#include <boost/format.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -1643,5 +1644,115 @@ XclBin::reportInfo(std::ostream &_ostream, const std::string & _sInputFile, bool
   FormattedOutput::reportInfo(_ostream, _sInputFile, m_xclBinHeader, m_sections, _bVerbose);
 }
 
+
+static void
+parsePSKernelString(const std::string& encodedString,
+                    std::string& symbol_name,
+                    unsigned int& num_instances,
+                    std::string& path_to_library)
+// Line being parsed:
+//   Syntax: <symbol_name>:<instances>:<path_to_shared_library>
+//   Example: myKernel:3:./data/mylib.so
+//
+// Note: A file name can contain a colen (e.g., C:\test)
+{
+  const std::string delimiters = ":";      // Our delimiter
+
+  // Working variables
+  std::string::size_type pos = 0;
+  std::string::size_type lastPos = 0;
+  std::vector<std::string> tokens;
+
+  // Parse the string until the entire string has been parsed or 3 tokens have been found
+  while ((lastPos < encodedString.length() + 1) &&
+         (tokens.size() < 3)) {
+    pos = encodedString.find_first_of(delimiters, lastPos);
+
+    if ((pos == std::string::npos) ||
+        (tokens.size() == 2)) {
+      pos = encodedString.length();
+    }
+
+    std::string token = encodedString.substr(lastPos, pos - lastPos);
+    tokens.push_back(token);
+    lastPos = pos + 1;
+  }
+
+  if (tokens.size() != 3) {
+    std::string errMsg = XUtil::format("Error: Expected format <symbol_name>:<instances>:<path_to_shared_library> when adding a PS Kernel.  Received: %s.", encodedString.c_str());
+    throw std::runtime_error(errMsg);
+  }
+
+  // -- Get the path to the PS kernel library
+  path_to_library = tokens[2];
+  if (!boost::filesystem::exists(path_to_library)) {
+    std::string errMsg = "ERROR: The PS kernel library does not exist: " + path_to_library;
+    throw std::runtime_error(errMsg);
+  }
+
+  // -- Get the number of instances
+  num_instances = std::stoi(tokens[1]);
+
+  // -- PS Symbolic name
+  symbol_name = tokens[0];
+}
+
+
+
+void
+XclBin::addPsKernel(const std::string& encodedString) {
+  // Get the PS Kernel metadata from the encoded string
+  std::string symbolic_name;
+  std::string path_to_library;
+  unsigned int num_instances = 0;
+  parsePSKernelString(encodedString, symbolic_name, num_instances, path_to_library);
+
+  // Determine if this section already exists
+  Section* pSection = findSection(SOFT_KERNEL, symbolic_name);
+  if (pSection != nullptr) {
+    std::string errMsg = boost::str(boost::format("ERROR: The PS Kernel (e.g SOFT_KERNEL) section with the symbolic name '%s' already exists") % symbolic_name);
+    throw std::runtime_error(errMsg);
+  }
+
+  // Create the section
+  pSection = Section::createSectionObjectOfKind(SOFT_KERNEL, symbolic_name);
+
+  // At this point we know we can add the subsection
+  XUtil::TRACE(boost::str(boost::format("Adding PS Kernel SubSection '%s' OBJ") % symbolic_name));
+
+  // -- Add shared library first
+  std::fstream iSectionFile;
+  iSectionFile.open(path_to_library, std::ifstream::in | std::ifstream::binary);
+  if (!iSectionFile.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + path_to_library;
+    throw std::runtime_error(errMsg);
+  }
+
+  pSection->readSubPayload(iSectionFile, "OBJ", Section::FT_RAW);
+
+  // -- Add the metadata
+  XUtil::TRACE(boost::str(boost::format("Adding PS Kernel SubSection '%s' METADATA") % symbolic_name));
+  boost::property_tree::ptree ptPsKernel;
+  ptPsKernel.put("mpo_name", symbolic_name);
+  ptPsKernel.put("mpo_version", "0.0.0");
+  ptPsKernel.put("mpo_md5_value", "00000000000000000000000000000000");
+  ptPsKernel.put("mpo_symbol_name", symbolic_name);
+  ptPsKernel.put("m_num_instances", num_instances);
+
+  boost::property_tree::ptree ptRTD;
+  ptRTD.add_child("soft_kernel_metadata", ptPsKernel);
+
+  std::ostringstream buffer;
+  boost::property_tree::write_json(buffer, ptRTD);
+  std::istringstream iSectionMetadata(buffer.str());
+  pSection->readSubPayload(iSectionMetadata, "METADATA", Section::FT_JSON);
+
+  // -- Now add the section to the collection and report our successful status
+  addSection(pSection);
+  std::string sSectionAddedName = pSection->getSectionKindAsString();
+
+  XUtil::QUIET("");
+  XUtil::QUIET(XUtil::format("Section: SOFT_KERNEL (PS KERNEL), SubName: '%s' was successfully added.", symbolic_name.c_str()));
+}
 
 

@@ -91,4 +91,7 @@ else()
     )
 endif()
 
-install (TARGETS xrt_core LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+install (TARGETS xrt_core 
+  EXPORT xrt-targets 
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
+)

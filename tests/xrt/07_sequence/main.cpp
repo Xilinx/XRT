@@ -29,9 +29,10 @@
  * driver API.
  */
 
-static const int DATA_SIZE = 16;
+static constexpr int DATA_SIZE = 16;
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -42,7 +43,7 @@ static void usage()
     std::cout << "* Bitstream is required\n";
 }
 
-const unsigned goldenSequence[16] = {
+static constexpr unsigned goldenSequence[16] = {
     0X586C0C6C,
     'X',
     0X586C0C6C,
@@ -61,7 +62,8 @@ const unsigned goldenSequence[16] = {
     '\0'
 };
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   if (argc < 3) {
     usage();
@@ -120,7 +122,8 @@ int run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);

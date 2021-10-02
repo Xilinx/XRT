@@ -1437,7 +1437,7 @@ struct xocl_icap_funcs {
 	void (*reset_axi_gate)(struct platform_device *pdev);
 	int (*reset_bitstream)(struct platform_device *pdev);
 	int (*download_bitstream_axlf)(struct platform_device *pdev,
-		const void __user *arg);
+		const void __user *arg, bool force_download);
 	int (*download_boot_firmware)(struct platform_device *pdev);
 	int (*download_rp)(struct platform_device *pdev, int level, int flag);
 	int (*post_download_rp)(struct platform_device *pdev);
@@ -1482,9 +1482,9 @@ enum {
 	(ICAP_CB(xdev, reset_bitstream) ?				\
 	ICAP_OPS(xdev)->reset_bitstream(ICAP_DEV(xdev)) :		\
 	-ENODEV)
-#define	xocl_icap_download_axlf(xdev, xclbin)				\
+#define	xocl_icap_download_axlf(xdev, xclbin, force_download)		\
 	(ICAP_CB(xdev, download_bitstream_axlf) ?			\
-	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin) : \
+	ICAP_OPS(xdev)->download_bitstream_axlf(ICAP_DEV(xdev), xclbin, force_download) : \
 	-ENODEV)
 #define	xocl_icap_download_boot_firmware(xdev)				\
 	(ICAP_CB(xdev, download_boot_firmware) ?			\
@@ -1845,6 +1845,20 @@ struct xocl_cu_funcs {
 	(struct xocl_cu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_CU, idx)->ops : NULL)
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
+
+/* SCU callback */
+struct xocl_scu_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
+};
+#define SCU_DEV(xdev, idx) \
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx)->pldev : NULL)
+#define SCU_OPS(xdev, idx) \
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx) ?		\
+	(struct xocl_scu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx)->ops : NULL)
+#define SCU_CB(xdev, idx, cb) \
+	(SCU_DEV(xdev, idx) && SCU_OPS(xdev, idx) && SCU_OPS(xdev, idx)->cb)
 
 /* INTC call back */
 enum intc_mode {
@@ -2289,6 +2303,7 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 	int *bar_idx, resource_size_t *bar_off);
 int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout);
+int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, size_t *len);
 
 static inline void xocl_lock_xdev(xdev_handle_t xdev)
 {
@@ -2327,6 +2342,16 @@ static inline int xocl_kds_add_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 static inline int xocl_kds_del_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 {
 	return kds_del_cu(&XDEV(xdev)->kds, xcu);
+}
+
+static inline int xocl_kds_add_scu(xdev_handle_t xdev, struct xrt_cu *xcu)
+{
+	return kds_add_scu(&XDEV(xdev)->kds, xcu);
+}
+
+static inline int xocl_kds_del_scu(xdev_handle_t xdev, struct xrt_cu *xcu)
+{
+	return kds_del_scu(&XDEV(xdev)->kds, xcu);
 }
 
 static inline int xocl_kds_init_ert(xdev_handle_t xdev, struct kds_ert *ert)
@@ -2545,6 +2570,9 @@ void xocl_fini_kds(void);
 
 int __init xocl_init_cu(void);
 void xocl_fini_cu(void);
+
+int __init xocl_init_scu(void);
+void xocl_fini_scu(void);
 
 int __init xocl_init_addr_translator(void);
 void xocl_fini_addr_translator(void);

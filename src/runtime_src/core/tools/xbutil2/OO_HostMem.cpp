@@ -118,7 +118,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
     // Exit if ENABLE action is specified but size is not
     if(enable && size == 0)
-      throw xrt_core::error(std::errc::invalid_argument, "Please specify a non-zero memory size between 4M and 1G.");
+      throw xrt_core::error(std::errc::invalid_argument, "Please specify a non-zero memory size between 4M and 1G as a power of 2.");
 
     // Collect all of the devices of interest
     std::set<std::string> deviceNames;
