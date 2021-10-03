@@ -1463,6 +1463,7 @@ void
 shim::
 registerAieArray()
 {
+  delete aieArray.release();
   aieArray = std::make_unique<zynqaie::Aie>(mCoreDevice);
   aied = std::make_unique<zynqaie::Aied>(mCoreDevice.get());
 }
@@ -1471,8 +1472,11 @@ void
 shim::
 deregisterAieArray()
 {
-  delete aieArray.release();
-  delete aied.release();
+  if (isAieRegistered())
+    delete aieArray.release();
+
+  if (aied->isregisterGraph())
+    delete aied.release();
 }
 
 bool

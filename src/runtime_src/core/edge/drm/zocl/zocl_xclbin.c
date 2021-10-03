@@ -846,10 +846,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  */
 			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
 				subdev_destroy_cu(zdev);
-				if (zdev->aie) {
-					zocl_aie_reset(zdev);
-					zocl_destroy_aie(zdev);
+				if (zdev->aie && !zdev->aie->aie_reset) {
+					ret = zocl_aie_reset(zdev);
+					if (ret) {
+						DRM_ERROR("AIE Reset Failed");
+						goto out0;
+					}
 				}
+				zocl_destroy_aie(zdev);
 			}
 			/*
 			 * Make sure we load PL bitstream first,

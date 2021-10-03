@@ -39,6 +39,7 @@ public:
   ~Aied();
   void registerGraph(const graph_type *graph);
   void deregisterGraph(const graph_type *graph);
+  bool isregisterGraph();
 
 private:
   bool done;

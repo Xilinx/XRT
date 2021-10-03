@@ -95,6 +95,12 @@ Aied::registerGraph(const graph_type *graph)
   mGraphs.push_back(graph);
 }
 
+bool
+Aied::isregisterGraph()
+{
+  return mGraphs.empty();
+}
+
 void
 Aied::deregisterGraph(const graph_type *graph)
 {
