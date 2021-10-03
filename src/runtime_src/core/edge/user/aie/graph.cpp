@@ -101,6 +101,7 @@ graph_type::
     }
     drv->closeGraphContext(id);
     drv->getAied()->deregisterGraph(this);
+    drv->deregisterAieArray();
 #endif
 }
 
