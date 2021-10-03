@@ -34,7 +34,7 @@
 #define NUM_MEMORY_COUNTERS 2
 #define BASE_MEMORY_COUNTER 128
 
-#define GROUP_DMA_MASK                   0x0000f000
+#define GROUP_DMA_MASK                   0x00000fff
 #define GROUP_LOCK_MASK                  0x55555555
 #define GROUP_CONFLICT_MASK              0x000000ff
 #define GROUP_ERROR_MASK                 0x00003fff
