@@ -44,9 +44,7 @@ namespace xdp {
     // There is only one bucket where all the APIs will go
     fout << "STRUCTURE" << "\n" ;
     fout << "Group_Start,Native API Host Trace\n" ;
-    fout << "Group_Start,Native XRT API Calls" << "\n" ;
-    fout << "Dynamic_Row," << APIBucket << ",General,API Events" << "\n" ;
-    fout << "Group_End,Native XRT API Calls" << "\n" ;
+    fout << "Dynamic_Row," << APIBucket << ",Native XRT API Calls,API Events" << "\n" ;
     fout << "Group_Start,Host to Device Data Transfers\n" ;
     fout << "Dynamic_Row," << readBucket << ",Reads,Read Transfers\n" ;
     fout << "Dynamic_Row," << writeBucket << ",Writes,Write Transfers\n" ;
