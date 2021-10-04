@@ -276,7 +276,7 @@ acquire_scu_idx(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 static int
 kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
-	u32 cu_idx = 0;
+	int cu_idx = 0;
 
 	do {
 		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
@@ -352,7 +352,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_ert *ert = kds->ert;
 	int ret = 0;
-	u32 cu_idx = 0;
+	int cu_idx = 0;
 
 	/* BUG_ON(!ert || !ert->submit); */
 
@@ -554,8 +554,8 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 	bool shared;
 	int ret = 0;
 
-        if (cu_idx < MAX_CUS) {
-		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", cu_idx, MAX_CUS);
+        if (info->cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
         } else {
                 cu_idx = info->cu_idx - MAX_CUS;
@@ -613,8 +613,8 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
 
-        if (cu_idx < MAX_CUS) {
-		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", cu_idx, MAX_CUS);
+        if (info->cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
         } else {
                 cu_idx = info->cu_idx - MAX_CUS;
