@@ -266,10 +266,10 @@ namespace xocl {
         counter_mark_objects_released_cb() ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_read(cl_mem buffer)
     {
-      return [buffer](xocl::event* e, cl_int status, const std::string&) 
+      return [buffer](xocl::event* e, cl_int status)
              {
                if (!counter_action_read_cb) return ;
                if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -316,10 +316,10 @@ namespace xocl {
              } ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_write(cl_mem buffer)
     {
-      return [buffer](xocl::event* e, cl_int status, const std::string&) 
+      return [buffer](xocl::event* e, cl_int status) 
              {
                if (!counter_action_write_cb) return ;
                if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -360,13 +360,13 @@ namespace xocl {
              } ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags)
     {
       // Don't do anything for this migration
       if (flags & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED)
       {
-        return [](xocl::event*, cl_int, const std::string&) { } ;
+        return [](xocl::event*, cl_int) { } ;
       }
 
       cl_mem buffer = num_mem_objects > 0 ? mem_objects[0] : nullptr ;
@@ -380,7 +380,7 @@ namespace xocl {
       if (flags & CL_MIGRATE_MEM_OBJECT_HOST)
       {
         // Read
-        return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
+        return [buffer, totalSize](xocl::event* e, cl_int status)
                {
                  if (!counter_action_read_cb) return ;
                  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -426,7 +426,7 @@ namespace xocl {
       else
       {
         // Write
-        return [buffer, totalSize](xocl::event* e, cl_int status, const std::string&)
+        return [buffer, totalSize](xocl::event* e, cl_int status)
                {
                  if (!counter_action_write_cb) return ;
                  if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -468,10 +468,10 @@ namespace xocl {
       }
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_ndrange(cl_kernel kernel)
     {
-      return [kernel](xocl::event* e, cl_int status, const std::string&)
+      return [kernel](xocl::event* e, cl_int status)
              {
                if (!counter_kernel_execution_cb) return ;
                if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -570,7 +570,7 @@ namespace xocl {
              } ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_ndrange_migrate(cl_event event, cl_kernel kernel)
     {
       auto xevent = xocl::xocl(event) ;
@@ -606,12 +606,12 @@ namespace xocl {
       
       if (mem0 == nullptr)
       {
-        return [](xocl::event*, cl_int, const std::string&)
+        return [](xocl::event*, cl_int)
                {
                } ;
       }
 
-      return [mem0, totalSize](xocl::event* e, cl_int status, const std::string&) 
+      return [mem0, totalSize](xocl::event* e, cl_int status)
              {
                if (!counter_action_write_cb) return ;
                if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -652,10 +652,10 @@ namespace xocl {
              } ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_map(cl_mem buffer, cl_map_flags flags)
     {
-      return [buffer, flags](xocl::event* e, cl_int status, const std::string&)
+      return [buffer, flags](xocl::event* e, cl_int status)
         {
           if (!counter_action_read_cb) return ;
           if (status != CL_RUNNING && status != CL_COMPLETE) return ;
@@ -704,10 +704,10 @@ namespace xocl {
         } ;
     }
 
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
     counter_action_unmap(cl_mem buffer)
     {
-      return [buffer](xocl::event* e, cl_int status, const std::string&)
+      return [buffer](xocl::event* e, cl_int status)
         {
           if (!counter_action_write_cb) return ;
           if (status != CL_RUNNING && status != CL_COMPLETE) return ;
