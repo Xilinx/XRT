@@ -527,10 +527,11 @@ namespace xdp {
     auto aims = db->getStaticInfo().getAIMonitors(deviceId, xclbin) ;
     if (aims == nullptr) return ;
 
-    // aims is a map of slotID to Monitor*.  We can get the traceID of an AIM
-    //  by slotID * 2.
+    // aims is a map of slotID to Monitor*.
+    //  We can get the read traceID of an AIM by slotID * 2 and
+    //  the write traceID of an AIM by (slotID * 2) + 1
     for (auto pair : (*aims)) {
-      uint64_t aimTraceID = (pair.first * 2) ;
+      uint64_t aimSlotID = (pair.first * 2) ;
       Monitor* mon = pair.second ;
       if (!mon) continue ;
 
@@ -544,8 +545,8 @@ namespace xdp {
         }
       }
 
-      addApproximateDataTransferEvent(KERNEL_READ, aimTraceID, amId, cuId) ;
-      addApproximateDataTransferEvent(KERNEL_WRITE, aimTraceID, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_READ, aimSlotID, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_WRITE, aimSlotID + 1, amId, cuId) ;
     }
   }
 
@@ -557,7 +558,7 @@ namespace xdp {
          aimIndex < (db->getStaticInfo()).getNumAIM(deviceId, xclbin) ;
          ++aimIndex) {
 
-      uint64_t aimTraceID = aimIndex + MIN_TRACE_ID_AIM ;
+      uint64_t aimSlotID = (aimIndex * 2) + MIN_TRACE_ID_AIM ;
       Monitor* mon =
         db->getStaticInfo().getAIMonitor(deviceId, xclbin, aimIndex);
       if (!mon)
@@ -570,8 +571,8 @@ namespace xdp {
       if (cu) {
         amId = cu->getAccelMon();
       }
-      addApproximateDataTransferEvent(KERNEL_READ, aimTraceID, amId, cuId) ;
-      addApproximateDataTransferEvent(KERNEL_WRITE, aimTraceID, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_READ, aimSlotID, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_WRITE, aimSlotID + 1, amId, cuId) ;
     }
   }
 

@@ -54,10 +54,8 @@ namespace xdp {
     
     fout << "Group_Start,HAL Host Trace" << std::endl ;
 
-    fout << "Group_Start,HAL API Calls" << std::endl ;
-    fout << "Dynamic_Row," << ++rowCount << ",General,0x0,API_CALL" << std::endl;
+    fout << "Dynamic_Row," << ++rowCount << ",HAL API Calls,API_CALL" << std::endl;
     eventTypeBucketIdMap[HAL_API_CALL] = rowCount;
-    fout << "Group_End,HAL API Calls" << std::endl ;
     
     fout << "Group_Start,Data Transfer" << std::endl ;
     fout << "Dynamic_Row," << ++rowCount << ",Read,READ_BUFFER" << std::endl ;
