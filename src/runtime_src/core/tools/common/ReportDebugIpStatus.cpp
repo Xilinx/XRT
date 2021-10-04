@@ -1337,8 +1337,8 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
       _output << valueFormat % entry.get<std::string>("name") % entry.get<uint64_t>("count") << std::endl;
      }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1381,8 +1381,8 @@ reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
               << std::endl;
      }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1422,8 +1422,8 @@ reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _ge
               << std::endl;
     }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1462,8 +1462,8 @@ reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
               << std::endl;
     }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1616,8 +1616,8 @@ reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _
       }
     }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1689,8 +1689,8 @@ reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
       }
     }
   }
-  catch( std::exception const& e) {
-    _output << "\nERROR: " <<  e.what() << std::endl;
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
   }
   _output << std::endl;
 }
@@ -1706,10 +1706,15 @@ reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _g
     }
     return;
   }
-  const boost::property_tree::ptree& ila_pt = child.get();
-  _output << boost::format("\nIntegrated Logic Analyzer\n  %s\n  Found : %llu") 
-              % ila_pt.get<std::string>("description") % ila_pt.get<uint64_t>("count")
-          << std::endl;
+  try {
+    const boost::property_tree::ptree& ila_pt = child.get();
+    _output << boost::format("\nIntegrated Logic Analyzer\n  %s\n  Found : %llu") 
+                % ila_pt.get<std::string>("description") % ila_pt.get<uint64_t>("count")
+            << std::endl;
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
 }
 
 void
@@ -1723,10 +1728,15 @@ reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _p
     }
     return;
   }
-  const boost::property_tree::ptree& accel_deadlock_pt = child.get();
-  _output << "\nAccelerator Deadlock Detector IP status :" 
-          << ((0 == accel_deadlock_pt.get<uint64_t>("is_deadlocked")) ? " No " : " ")
-          << "deadlock detected." << std::endl;
+  try {
+    const boost::property_tree::ptree& accel_deadlock_pt = child.get();
+    _output << "\nAccelerator Deadlock Detector IP status :" 
+            << ((0 == accel_deadlock_pt.get<uint64_t>("is_deadlocked")) ? " No " : " ")
+            << "deadlock detected." << std::endl;
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
 }
 
 void 
