@@ -236,7 +236,7 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
 
     // check if the xclbin is valid
     if (xclbin::get_axlf_section(buffer, BITSTREAM) != nullptr) {
-        std::cout << "xclbin is not valid" << std::endl;
+        std::cout << "xclbin is invalid, please provide azure xclbin" << std::endl;
         return -EINVAL;
     }
 

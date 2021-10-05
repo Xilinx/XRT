@@ -1340,7 +1340,8 @@ int shim::xclLoadXclBin(const xclBin *buffer)
       else if (ret == -EINVAL) {
         xrt_logmsg(XRT_ERROR, "Trying to load/program invalid xclbin");
       }
-      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT",
+         std::string("See dmesg log for details. err = " + std::to_string(ret)));
     }
 
     return ret;
