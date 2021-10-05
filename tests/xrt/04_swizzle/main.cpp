@@ -24,9 +24,10 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 
-static const int DATA_SIZE = 4096;
+static constexpr int DATA_SIZE = 4096;
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -37,7 +38,8 @@ static void usage()
     std::cout << "* Bitstream is required\n";
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   if (argc < 3) {
     usage();
@@ -129,7 +131,8 @@ int run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);

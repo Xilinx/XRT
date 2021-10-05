@@ -26,7 +26,7 @@
 #include "xrt/xrt_bo.h"
 
 // This value is shared with worgroup size in kernel.cl
-constexpr auto COUNT = 1024;
+static constexpr auto COUNT = 1024;
 
 static void
 usage()
@@ -127,7 +127,7 @@ run_c(const std::string& xclbin_fnm)
   xrtXclbinFreeHandle(xhdl);
 }
 
-int 
+static int 
 run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -169,7 +169,8 @@ run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     if (!run(argc, argv))

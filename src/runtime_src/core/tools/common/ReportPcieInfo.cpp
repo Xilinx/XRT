@@ -38,7 +38,7 @@ ReportPcieInfo::getPropertyTree20202( const xrt_core::device * dev,
   xrt::device device(dev->get_device_id());
   boost::property_tree::ptree pt_pcie_info;
   std::stringstream ss;
-  ss << device.get_info<xrt::info::device::pcie_info>(xrt::info::InfoSchemaVersion::json_20202);
+  ss << device.get_info<xrt::info::device::pcie_info>();
   boost::property_tree::read_json(ss, pt_pcie_info);
   
   // There can only be 1 root node
@@ -66,5 +66,6 @@ ReportPcieInfo::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-22s : %s\n") % "CPU Affinity" % pt_pcie.get<std::string>("cpu_affinity", "0");
   _output << boost::format("  %-22s : %s\n") % "Shared Host Memory" % pt_pcie.get<std::string>("shared_host_mem_size_bytes", "0");
   _output << boost::format("  %-22s : %s\n") % "Max Shared Host Memory" % pt_pcie.get<std::string>("max_shared_host_mem_aperture_bytes", "0");
+  _output << boost::format("  %-22s : %s\n") % "Enabled Host Memory" % pt_pcie.get<std::string>("enabled_host_mem_size_bytes", "0");
   _output << std::endl;
 }

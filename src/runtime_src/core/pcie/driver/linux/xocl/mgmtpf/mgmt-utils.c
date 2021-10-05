@@ -889,13 +889,13 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 {
 	const char *interface_uuid;
 	char fw_name[256];
-	const struct firmware *fw;
 	const char* xclbin_location = "xilinx/xclbins";
+	char *fw_buf = NULL;
 	int err;
 
 	interface_uuid = xclmgmt_get_interface_uuid(lro);
 	if (!interface_uuid)
-		goto done;
+		return -EINVAL;
 	memset(fw_name, 0, sizeof (fw_name));
 
 	snprintf(fw_name, sizeof(fw_name), "%s/"
@@ -917,12 +917,12 @@ int xclmgmt_xclbin_fetch_and_download(struct xclmgmt_dev *lro, const struct axlf
 	       	interface_uuid);
 
 	mgmt_info(lro, "try loading fw: %s", fw_name);
-	err = request_firmware(&fw, fw_name, &lro->core.pdev->dev);
+	err = xocl_request_firmware(&lro->core.pdev->dev, fw_name, &fw_buf, NULL);
 	if (err)
 		goto done;
 
-	err = xocl_xclbin_download(lro, fw->data);
-	release_firmware(fw);
+	err = xocl_xclbin_download(lro, fw_buf);
 done:
+	vfree(fw_buf);
 	return err;
 }

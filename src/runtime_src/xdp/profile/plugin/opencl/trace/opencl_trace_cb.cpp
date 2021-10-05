@@ -77,9 +77,7 @@ namespace xdp {
 			  uint64_t deviceAddress,
 			  const char* memoryResource,
 			  size_t bufferSize,
-			  bool isP2P,
-			  unsigned long long int* /*dependencies*/,
-			  uint64_t /*numDependencies*/)
+			  bool isP2P)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -103,14 +101,6 @@ namespace xdp {
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
-
-    /*
-    if (dependencies != nullptr && numDependencies > 0) {
-      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
-	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
-      }
-    }
-    */
   }
 
   static void action_write(uint64_t id,
@@ -118,9 +108,7 @@ namespace xdp {
 			   uint64_t deviceAddress,
 			   const char* memoryResource,
 			   size_t bufferSize,
-			   bool isP2P,
-			   unsigned long long int* /*dependencies*/,
-			   uint64_t /*numDependencies*/)
+			   bool isP2P)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -150,14 +138,6 @@ namespace xdp {
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
-
-    /*
-    if (dependencies != nullptr && numDependencies > 0) {
-      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
-	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
-      }
-    }
-    */
   }
 
   static void action_copy(uint64_t id,
@@ -167,9 +147,7 @@ namespace xdp {
 			  uint64_t dstDeviceAddress,
 			  const char* dstMemoryResource,
 			  size_t bufferSize,
-			  bool isP2P,
-			  unsigned long long int* /*dependencies*/,
-			  uint64_t /*numDependencies*/)
+			  bool isP2P)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -195,14 +173,6 @@ namespace xdp {
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
-
-    /*
-    if (dependencies != nullptr && numDependencies > 0) {
-      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
-	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
-      }
-    }
-    */
   }
   
   static void action_ndrange(uint64_t id,
@@ -213,9 +183,7 @@ namespace xdp {
 			     size_t workgroupConfigurationX,
 			     size_t workgroupConfigurationY,
 			     size_t workgroupConfigurationZ,
-			     size_t workgroupSize,
-			     unsigned long long int* /*dependencies*/,
-			     uint64_t /*numDependencies*/)
+			     size_t workgroupSize)
   {
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
@@ -256,14 +224,6 @@ namespace xdp {
     else {
       (db->getDynamicInfo()).addOpenCLMapping(id, event->getEventId(), start);
     }
-
-    /*
-    if (dependencies != nullptr && numDependencies > 0) {
-      for (uint32_t i = 0 ; i < numDependencies ; ++i) {
-	(db->getDynamicInfo()).addDependency(static_cast<uint64_t>(dependencies[i]), id) ;
-      }
-    }
-    */
   }
 
 } // end namespace xdp
@@ -302,18 +262,14 @@ void action_read(unsigned long long int id,
 		 unsigned long long int deviceAddress,
 		 const char* memoryResource,
 		 size_t bufferSize,
-		 bool isP2P,
-		 unsigned long long int* dependencies,
-		 unsigned long long int numDependencies)
+		 bool isP2P)
 {
   xdp::action_read(static_cast<uint64_t>(id),
 		   isStart,
 		   static_cast<uint64_t>(deviceAddress),
 		   memoryResource,
 		   bufferSize, 
-		   isP2P,
-		   dependencies,
-		   static_cast<uint64_t>(numDependencies)) ;
+		   isP2P) ;
 }
 
 extern "C"
@@ -322,18 +278,14 @@ void action_write(unsigned long long int id,
 		  unsigned long long int deviceAddress,
 		  const char* memoryResource,
 		  size_t bufferSize,
-		  bool isP2P,
-		  unsigned long long int* dependencies,
-		  unsigned long long int numDependencies)
+		  bool isP2P)
 {
   xdp::action_write(static_cast<uint64_t>(id),
 		    isStart,
 		    static_cast<uint64_t>(deviceAddress),
 		    memoryResource,
 		    bufferSize, 
-		    isP2P,
-		    dependencies,
-		    static_cast<uint64_t>(numDependencies)) ;
+		    isP2P) ;
 }
 
 extern "C"
@@ -344,9 +296,7 @@ void action_copy(unsigned long long int id,
 		 unsigned long long int dstDeviceAddress,
 		 const char* dstMemoryResource,
 		 size_t bufferSize,
-		 bool isP2P,
-		 unsigned long long int* dependencies,
-		 unsigned long long int numDependencies)
+		 bool isP2P)
 {
   xdp::action_copy(static_cast<uint64_t>(id),
 		   isStart,
@@ -355,9 +305,7 @@ void action_copy(unsigned long long int id,
 		   static_cast<uint64_t>(dstDeviceAddress),
 		   dstMemoryResource,
 		   bufferSize,
-		   isP2P,
-		   dependencies,
-		   static_cast<uint64_t>(numDependencies)) ;
+		   isP2P) ;
 }
 
 extern "C"
@@ -369,9 +317,7 @@ void action_ndrange(unsigned long long int id,
 		    size_t workgroupConfigurationX,
 		    size_t workgroupConfigurationY,
 		    size_t workgroupConfigurationZ,
-		    size_t workgroupSize,
-		    unsigned long long int* dependencies,
-		    unsigned long long int numDependencies)
+		    size_t workgroupSize)
 {
   xdp::action_ndrange(static_cast<uint64_t>(id),
 		      isStart,
@@ -381,7 +327,5 @@ void action_ndrange(unsigned long long int id,
 		      workgroupConfigurationX,
 		      workgroupConfigurationY,
 		      workgroupConfigurationZ,
-		      workgroupSize,
-		      dependencies,
-		      static_cast<uint64_t>(numDependencies)) ;
+		      workgroupSize) ;
 }

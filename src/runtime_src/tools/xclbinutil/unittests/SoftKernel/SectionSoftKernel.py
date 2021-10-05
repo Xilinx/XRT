@@ -36,7 +36,7 @@ def main():
   step = "1) Read in a soft kernel and its metadata"
 
   inputJSON = os.path.join(args.resource_dir, "softkernel.rtd")
-  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  inputKernel = os.path.join(args.resource_dir, "dummySoftKernel.txt")
   softKernelName = "my_kernel"
 
   cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
@@ -47,7 +47,7 @@ def main():
   step = "2) Read in a soft kernel and its metadata where the symbol name is 1 character too long"
 
   inputJSON = os.path.join(args.resource_dir, "softkernel_longname.rtd")
-  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  inputKernel = os.path.join(args.resource_dir, "dummySoftKernel.txt")
   softKernelName = "my_kernel"
 
   cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
@@ -66,7 +66,7 @@ def main():
   step = "3) Read in a soft kernel and its metadata where the instances are greater then 128"
   
   inputJSON = os.path.join(args.resource_dir, "softkernel_129instances.rtd")
-  inputKernel = os.path.join(args.resource_dir, "softkernel.so")
+  inputKernel = os.path.join(args.resource_dir, "dummySoftKernel.txt")
   softKernelName = "my_kernel"
   
   cmd = [xclbinutil, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-OBJ:RAW:" + inputKernel, "--add-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + inputJSON]
@@ -80,6 +80,21 @@ def main():
     raise Exception("Error: Large instance count accepted.  DRC check did not trip.")
 
   # ---------------------------------------------------------------------------
+
+  step = "4) Read in a soft kernel via --add-ps-kernel option"
+
+  inputKernel = os.path.join(args.resource_dir, "dummySoftKernel.txt")
+  expectedJSON = os.path.join(args.resource_dir, "expectedPSKernel.json")
+  outputJSON = "pskernel_output.json"
+  softKernelName = "my_kernel"
+  numInstances = "3"
+
+  cmd = [xclbinutil, "--add-ps-kernel", softKernelName + ":" + numInstances + ":" + inputKernel, "--dump-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + outputJSON, "--force"]
+  execCmd(step, cmd)
+
+  jsonFileCompare(expectedJSON, outputJSON)
+  # ---------------------------------------------------------------------------
+
 
   # If the code gets this far, all is good.
   return False

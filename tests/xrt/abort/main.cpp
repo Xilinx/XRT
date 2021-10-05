@@ -67,6 +67,10 @@ This example illustrates sw reset using xrt::run::abort.
 #include "xrt/xrt_kernel.h"
 #include "experimental/xrt_ini.h"
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 using value_type = std::uint32_t;
 
 static size_t data_size = 8 * 1024 * 1024;
@@ -97,7 +101,7 @@ adjust_for_hw_emulation()
 {
   if (!is_hw_emulation())
     return;
-  
+
   data_size = 4096;
   data_size_bytes = data_size * sizeof(int);
 }
@@ -151,7 +155,7 @@ timeout(xrt::run run, int hang, int timeout_ms)
     int waits = 1;
     while (run.wait(timeout_ms) == ERT_CMD_STATE_TIMEOUT)
       ++waits;
-    
+
     std::cout << "timeout (" << waits << "): kernel completed with state (" << run.state() << ")\n";
   }
 }
@@ -200,7 +204,7 @@ run(const xrt::device& device, const xrt::uuid& uuid, int hang, int timeout_ms, 
     timeout(run, hang, timeout_ms);
   else
     run.wait();
-      
+
   // sync result from device to host
   out.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
 

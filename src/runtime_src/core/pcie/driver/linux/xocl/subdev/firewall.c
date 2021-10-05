@@ -656,7 +656,7 @@ static int firewall_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static void get_fw_ep_name(char *res_name, char *result)
+static void get_fw_ep_name(const char *res_name, char *result)
 {
 	if (!strncmp(res_name, NODE_AF_CTRL_MGMT, strlen(NODE_AF_CTRL_MGMT)))
 		strcpy(result, "CTRL_MGMT");

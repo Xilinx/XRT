@@ -1016,7 +1016,7 @@ public:
         pcidev::get_dev(m_idx)->sysfs_get( "icap", "idcode",                 errmsg, idcode );
         pcidev::get_dev(m_idx)->sysfs_get( "dna", "dna",                     errmsg, dna );
         pcidev::get_dev(m_idx)->sysfs_get("", "local_cpulist",               errmsg, cpu_affinity);
-        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("address_translator", "host_mem_size",
+        pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("", "host_mem_size",
                                                                              errmsg, host_mem_size, 0);
         pcidev::get_dev(m_idx)->sysfs_get<uint64_t>("icap", "max_host_mem_aperture",
                                                                              errmsg, max_host_mem_aperture, 0);

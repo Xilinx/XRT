@@ -45,10 +45,10 @@ namespace xdp {
   void UserEventsTraceWriter::writeStructure()
   {
     fout << "STRUCTURE" << std::endl ;
-    fout << "Group_Start,User Events" << std::endl ;
-    fout << "Dynamic_Row," << bucketId << ",General,User Events from APIs"
+    fout << "Group_Start,User and Internal Events" << std::endl ;
+    fout << "Dynamic_Row," << bucketId << ",General,User Events from APIs and Internally Generated Events"
 	 << std::endl ;
-    fout << "Group_End,User Events" << std::endl ;
+    fout << "Group_End,User and Internal Events" << std::endl ;
   }
 
   void UserEventsTraceWriter::writeStringTable()

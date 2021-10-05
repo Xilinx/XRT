@@ -142,6 +142,7 @@ struct xocl_ert_user {
 
 static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user);
 static inline void ert_user_cmd_submit(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd);
+static void free_ert_user_event(struct ert_user_event *event);
 
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
@@ -400,14 +401,14 @@ ert_queue_intc_config(struct xocl_ert_user *ert_user, bool enable)
 }
 
 static inline int
-ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size)
+ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size, bool polling)
 {
 	struct ert_queue *queue = ert_user->queue;
 
 	if (!queue)
 		return -ENODEV;
 
-	return queue->func->queue_config(slot_size, ert_user, queue->handle);
+	return queue->func->queue_config(slot_size, polling, ert_user, queue->handle);
 }
 
 static inline uint32_t
@@ -782,7 +783,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 
 	BUG_ON(cmd_opcode(ecmd) != ERT_CONFIGURE);
 
-	ret = ert_config_queue(ert_user, cfg->slot_size);
+	ret = ert_config_queue(ert_user, cfg->slot_size, cfg->polling);
 	if (ret)
 		return ret;
 
@@ -1246,6 +1247,7 @@ static void xocl_ert_user_remove_event(struct xocl_ert_user *ert_user, struct er
 			continue;
 
 		list_del(&curr->ev_entry);
+		free_ert_user_event(curr);
 		break;
 	}
 
@@ -1389,6 +1391,7 @@ static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *cli
 			continue;
 
 		list_del(&curr->ev_entry);
+		free_ert_user_event(curr);
 		break;
 	}
 
@@ -1438,8 +1441,6 @@ add_event:
 	mutex_unlock(&ert_user->ev_lock);
 
 	wait_for_completion(&event->cmp);
-
-	free_ert_user_event(event);
 
 	return  ert_user->bad_state;
 }

@@ -27,7 +27,8 @@
 #include <string>
 #include <vector>
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <bitstream>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -331,6 +332,5 @@ main(int argc, char* argv[])
   catch (...) {
     std::cout << "TEST FAILED\n";
   }
-
   return 1;
 }

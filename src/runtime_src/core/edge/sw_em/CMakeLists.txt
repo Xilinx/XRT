@@ -59,4 +59,7 @@ target_link_libraries(xrt_swemu
   uuid
   )
 
-install (TARGETS xrt_swemu LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR})
+install (TARGETS xrt_swemu 
+  EXPORT xrt-targets
+  LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}
+)

@@ -274,6 +274,7 @@ pcie_info(const xrt_core::device * device)
     ptree.add("cpu_affinity", xrt_core::device_query<xq::cpu_affinity>(device));
     ptree.add("max_shared_host_mem_aperture_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::max_shared_host_mem_aperture_bytes>(device)));
     ptree.add("shared_host_mem_size_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::shared_host_mem>(device)));
+    ptree.add("enabled_host_mem_size_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::enabled_host_mem>(device)));
   }
   catch(const xq::exception&) {
   }

@@ -37,19 +37,19 @@ namespace xocl {
      } // end namespace counters
 
     // Functions used by the host counters plugin
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_ndrange(cl_kernel kernel) ;
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_read(cl_mem buffer) ;
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_write(cl_mem buffer) ;
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_migrate(cl_uint num_mem_objects, const cl_mem* mem_objects, cl_mem_migration_flags flags) ;
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_ndrange_migrate(cl_event event, cl_kernel kernel);
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_map(cl_mem buffer, cl_map_flags flags);
-    std::function<void (xocl::event*, cl_int, const std::string&)>
+    std::function<void (xocl::event*, cl_int)>
       counter_action_unmap(cl_mem buffer) ;
 
     void log_cu_start(const xocl::execution_context* ctx,

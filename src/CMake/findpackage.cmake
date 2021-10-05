@@ -10,11 +10,19 @@ string(TOLOWER ${PROJECT_NAME} LOWER_NAME)
 
 # Generate xrt-config.cmake
 # For use by xrt consumers (using cmake) to import xrt libraries
-configure_package_config_file (
-  ${CMAKE_SOURCE_DIR}/CMake/config/xrt.fp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
-  INSTALL_DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
-  )
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  configure_package_config_file (
+    ${CMAKE_SOURCE_DIR}/CMake/config/xrt.fp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
+    INSTALL_DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
+    )
+else()
+  configure_package_config_file (
+    ${CMAKE_SOURCE_DIR}/CMake/config/xrt-edge.fp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${LOWER_NAME}-config.cmake
+    INSTALL_DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
+    )
+endif()
 
 # Generate xrt-config-version.cmake
 # Consumers my require a particular version
@@ -44,8 +52,10 @@ install(
   )
 endif()
 
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 install(
   EXPORT xrt-dev-targets
   NAMESPACE ${PROJECT_NAME}::
   DESTINATION ${XRT_INSTALL_DIR}/share/cmake/${PROJECT_NAME}
   )
+endif()

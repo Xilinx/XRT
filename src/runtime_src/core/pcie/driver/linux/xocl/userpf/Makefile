@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016-2020 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
 #
 # Authors:
 #
@@ -84,6 +84,7 @@ xocl-y := \
 	../subdev/memory_hbm.o \
 	../subdev/address_translator.o \
 	../subdev/cu.o \
+	../subdev/scu.o \
 	../subdev/p2p.o \
 	../subdev/intc.o \
 	../subdev/m2m.o \

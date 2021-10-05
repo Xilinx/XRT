@@ -49,11 +49,11 @@ kernel and the use of mailbox to change the adder values of incr.
 
 Since incr is a streaming kernel, it is stalled while waiting for
 input from first stage adder. Any updates the mailbox inputs are
-picked up only immediately after the kernel asserts AP_READY and 
-before it enters AP_START.  In counted auto restart, the kernel 
+picked up only immediately after the kernel asserts AP_READY and
+before it enters AP_START.  In counted auto restart, the kernel
 is only observable as AP_START and changes to mailbox inputs are picked up
 only after the kernel finishes and immediately before it against becomes
-AP_START.  From this sample host code this means that changes to the 
+AP_START.  From this sample host code this means that changes to the
 scalar adders are seen only in the following iteration of the pipeline.
 
 While the 'incr' kernel is compiled with mailbox and restart counter,
@@ -87,6 +87,10 @@ kernels without the specified features.
 #include "experimental/xrt_ini.h"
 #include "experimental/xrt_mailbox.h"
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 using value_type = std::uint32_t;
 
 static size_t data_size = 8 * 1024 * 1024;
@@ -116,7 +120,7 @@ adjust_for_hw_emulation()
 {
   if (!is_hw_emulation())
     return;
-  
+
   data_size = 4096;
   data_size_bytes = data_size * sizeof(int);
 }

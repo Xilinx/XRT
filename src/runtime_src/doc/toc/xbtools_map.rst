@@ -13,7 +13,7 @@ This document maps the legacy ``xbutil``/``xbmgmt`` commands to the new ``xbutil
  2) The help menus (``--help``) of these new utilities have also been improved and are highly descriptive with regards to both the commands and options. Please refer to them as needed.
  3) The new command opions have both short and long format, for example ``-d`` or ``--device``. In the table below, only the longer option format is used.
 
-You may refer the documentation of the new tools in the following links :ref:`xbutil2.rst` and :ref:`xbmgmt2.rst` . 
+You may refer the documentation of the new tools in the following links :doc:`xbutil` and :doc:`xbmgmt` . 
 
 xbutil
 ~~~~~~
@@ -79,6 +79,18 @@ xbutil
 |            |             |                   |                      |
 +------------+-------------+-------------------+----------------------+
 |            |             |                   |                      |
+|``dmatest`` |``validate`` |``-d <bdf>``       |``--device <bdf>``    |
+|            |             |                   |                      |
++------------+-------------+-------------------+----------------------+
+|            |             |                   |                      |
+|            |             |                   |    ``--run DMA``     |
+|            |             |                   |                      |
++------------+-------------+-------------------+----------------------+
+|            |             |                   |                      |
+|            |             |``-b <blksize kb>``|    n/a               |
+|            |             |                   |                      |
++------------+-------------+-------------------+----------------------+
+|            |             |                   |                      |
 |            |             |``-p <xclbin>``    |``--user <xclbin>``   |
 |            |             |                   |                      |
 +------------+-------------+-------------------+----------------------+
@@ -109,6 +121,10 @@ xbutil
 |            |             |                   |                      |
 |            |             |                   | ``--p2p validate``   |
 |            |             |                   |                      |
++------------+-------------+-------------------+----------------------+
+|            |             |                   |                      |
+| ``mem``    |             | ``--read``        |   Not Supported      |
+|            |             | ``--write``       |                      |  
 +------------+-------------+-------------------+----------------------+
 
 
