@@ -14,7 +14,7 @@ To facilitate running the same ``xbutil`` or ``xbmgmt`` command on a multi-card 
   #xball <xbutil | xbmgmt> <utility arguments>
   xball xbutil examine
 
-The ``xball`` script will detect all the cards attached to the server, and execute the xbutil (or xbmgmt) command on all of them.
+The ``xball`` script will detect all the cards attached to the server, and execute the ``xbutil`` or ``xbmgmt`` command on all of them.
 
 Additionally, the ``xball`` script provides a filtering option to execute the command on some specific cards, such as
 
