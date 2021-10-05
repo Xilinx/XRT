@@ -1,7 +1,7 @@
 /*
- * Partial Copyright (C) 2019-2020 Xilinx, Inc
+ * Partial Copyright (C) 2019-2021 Xilinx, Inc
  *
- * Microsoft provides sample code how RESTful APIs are being called 
+ * Microsoft provides sample code how RESTful APIs are being called
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -222,22 +222,6 @@ static size_t WriteCallback(void *contents, size_t size, size_t nmemb, void *use
     return size * nmemb;
 }
 
-bool AzureDev::xclbin_section_hdr_present(const struct axlf *xclbin, enum axlf_section_kind kind)
-{
-    unsigned int i = 0;
-    unsigned int sections = XCLBIN_MAX_NUM_SECTION;
-
-    if (xclbin->m_header.m_numSections < XCLBIN_MAX_NUM_SECTION)
-        sections = xclbin->m_header.m_numSections;
-
-    for (i = 0; i < sections; i++) {
-        if (xclbin->m_sections[i].m_sectionKind == kind)
-            return true;
-    }
-
-    return false;
-}
-
 int AzureDev::azureLoadXclBin(const xclBin *buffer)
 {
     char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (buffer));
@@ -251,7 +235,7 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
 
     // check if the xclbin is valid
-    if (xclbin_section_hdr_present(buffer, BITSTREAM)) {
+    if (xclbin::get_axlf_section(buffer, BITSTREAM) != nullptr) {
         std::cout << "xclbin is not valid" << std::endl;
         return -EINVAL;
     }

@@ -134,7 +134,6 @@ private:
     void get_fpga_serialNo(std::string &fpgaSerialNo);
     void msleep(long msecs);
     int goingTimeout();
-    bool xclbin_section_hdr_present(const struct axlf *xclbin, enum axlf_section_kind kind);
 };
 
 
