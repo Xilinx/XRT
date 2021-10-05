@@ -7,7 +7,7 @@
 xball
 =====
 
-To facilitate running same ``xbutil`` or ``xbmgmt`` command on a multicard environment XRT provides a utility script named ``xball`` (pronanciated as x-b-all). For example, 
+To facilitate running the same ``xbutil`` or ``xbmgmt`` command on a multi-card environment XRT provides a utility script named ``xball``. The script ``xball`` can be used as below:  
 
 .. code-block:: shell
 
@@ -16,7 +16,7 @@ To facilitate running same ``xbutil`` or ``xbmgmt`` command on a multicard envir
 
 The ``xball`` script will detect all the cards attached to the server, and execute the xbutil (or xbmgmt) command on all of them.
 
-Additionally ``xballi`` provides a filtering option to execute the command on some specific cards, such as
+Additionally, the ``xball`` script provides a filtering option to execute the command on some specific cards, such as
 
 .. code-block:: shell
 
