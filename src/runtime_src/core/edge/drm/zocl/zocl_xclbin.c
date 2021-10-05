@@ -847,7 +847,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
 				subdev_destroy_cu(zdev);
 				if (zdev->aie) {
-					zocl_aie_reset(zdev);
+					/*
+					 * Dont reset if aie is already in reset
+					 * state
+					 */
+					if( !zdev->aie->aie_reset) {
+						ret = zocl_aie_reset(zdev);
+						if (ret)
+							goto out0;
+					}
 					zocl_destroy_aie(zdev);
 				}
 			}
