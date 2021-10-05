@@ -18,6 +18,7 @@ src/runtime_src/core/pcie/driver/linux/ @maxzhen
 src/runtime_src/core/pcie/driver/windows/ @arpitxilinx
 src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
 src/runtime_src/xocl/ @stsoe
+src/runtime_src/xocl/api/plugin/xdp/ @jvillarre
 src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
 src/runtime_src/tools/ @rozumx

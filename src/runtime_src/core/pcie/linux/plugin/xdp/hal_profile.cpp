@@ -79,14 +79,17 @@ std::function<void (bool, bool, const char*, unsigned long long int,
                                                   error_function) ;
   }
 
-static bool hal_plugins_loaded = false ;
-
-  api_call_logger::api_call_logger(const char* function)
-    : m_id(0), m_fullname(function)
+  bool loader::hal_plugins_loaded = false ;
+  loader::loader()
   {
     if (hal_plugins_loaded) return ;
     hal_plugins_loaded = true ;
     xdp::hal_hw_plugins::load() ;
+  }
+
+  api_call_logger::api_call_logger(const char* function)
+    : m_id(0), m_fullname(function)
+  {
   }
 
   generic_api_call_logger::generic_api_call_logger(const char* function)

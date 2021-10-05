@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020 Xilinx, Inc.
+ * Copyright (C) 2020-2021 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -164,14 +164,12 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	}
 
 	if (ecmd->opcode == ERT_SK_START) {
-		xcmd->opcode = OP_START_SK;
-		ecmd->type = ERT_SCU;
+		start_skrnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 	} else {
 		xcmd->opcode = OP_CONFIG_SK;
 		ecmd->type = ERT_CTRL;
+		xcmd->execbuf = (u32 *)ecmd;
 	}
-
-	xcmd->execbuf = (u32 *)ecmd;
 
 	return 0;
 }
@@ -360,7 +358,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
 	off_idx = 4 + num_cu;
 	for (i = 0; i < num_scu; i++)
-		kds->scu_mgmt.usage[i] = ecmd->data[off_idx + i];
+		kds->scu_mgmt.cu_stats->usage[i] = ecmd->data[off_idx + i];
 
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;
@@ -604,8 +602,10 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		start_krnl_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_EXEC_WRITE:
-		userpf_info(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
-		convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+		/* PS ERT is not sync with host. Have to skip 6 data */
+		if (!xocl_ps_sched_on(xdev))
+			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
 		start_krnl_kv_ecmd2xcmd(to_start_krnl_pkg(ecmd), xcmd);
 		break;
 	case ERT_START_KEY_VAL:
@@ -1016,6 +1016,10 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	if (ecmd->slot_size < regmap_size + MAX_HEADER_SIZE)
 		ecmd->slot_size = regmap_size + MAX_HEADER_SIZE;
 
+	/* PS ERT required slot size to be power of 2 */
+	if (xocl_ps_sched_on(xdev))
+		ecmd->slot_size = round_up_to_next_power2(ecmd->slot_size);
+
 	if (ecmd->slot_size > MAX_CQ_SLOT_SIZE)
 		ecmd->slot_size = MAX_CQ_SLOT_SIZE;
 	/* cfg->slot_size is for debug purpose */
@@ -1087,7 +1091,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	struct config_sk_image *image;
 	struct ps_kernel_data *scu_data;
 	u32 start_cuidx = 0;
-	u32 img_idx = 0;
 	int ret = 0;
 	int i;
 
@@ -1105,10 +1108,9 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	ecmd->type = ERT_CTRL;
 	ecmd->num_image = ps_kernel->pkn_count;
 	ecmd->count = 1 + ecmd->num_image * sizeof(*image) / 4;
-
 	for (i = 0; i < ecmd->num_image; i++) {
-		image = &ecmd->image[img_idx];
-		scu_data = &ps_kernel->pkn_data[img_idx];
+		image = &ecmd->image[i];
+		scu_data = &ps_kernel->pkn_data[i];
 
 		image->start_cuidx = start_cuidx;
 		image->num_cus = scu_data->pkd_num_instances;
@@ -1117,7 +1119,6 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		((char *)image->sk_name)[PS_KERNEL_NAME_LENGTH - 1] = 0;
 
 		start_cuidx += image->num_cus;
-		img_idx++;
 	}
 
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));

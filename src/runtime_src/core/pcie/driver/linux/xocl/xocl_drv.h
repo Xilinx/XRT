@@ -1846,6 +1846,20 @@ struct xocl_cu_funcs {
 #define CU_CB(xdev, idx, cb) \
 	(CU_DEV(xdev, idx) && CU_OPS(xdev, idx) && CU_OPS(xdev, idx)->cb)
 
+/* SCU callback */
+struct xocl_scu_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
+};
+#define SCU_DEV(xdev, idx) \
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx) ?		\
+	SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx)->pldev : NULL)
+#define SCU_OPS(xdev, idx) \
+	(SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx) ?		\
+	(struct xocl_scu_funcs *)SUBDEV_MULTI(xdev, XOCL_SUBDEV_SCU, idx)->ops : NULL)
+#define SCU_CB(xdev, idx, cb) \
+	(SCU_DEV(xdev, idx) && SCU_OPS(xdev, idx) && SCU_OPS(xdev, idx)->cb)
+
 /* INTC call back */
 enum intc_mode {
 	ERT_INTR,
@@ -2330,6 +2344,16 @@ static inline int xocl_kds_del_cu(xdev_handle_t xdev, struct xrt_cu *xcu)
 	return kds_del_cu(&XDEV(xdev)->kds, xcu);
 }
 
+static inline int xocl_kds_add_scu(xdev_handle_t xdev, struct xrt_cu *xcu)
+{
+	return kds_add_scu(&XDEV(xdev)->kds, xcu);
+}
+
+static inline int xocl_kds_del_scu(xdev_handle_t xdev, struct xrt_cu *xcu)
+{
+	return kds_del_scu(&XDEV(xdev)->kds, xcu);
+}
+
 static inline int xocl_kds_init_ert(xdev_handle_t xdev, struct kds_ert *ert)
 {
 	return kds_init_ert(&XDEV(xdev)->kds, ert);
@@ -2546,6 +2570,9 @@ void xocl_fini_kds(void);
 
 int __init xocl_init_cu(void);
 void xocl_fini_cu(void);
+
+int __init xocl_init_scu(void);
+void xocl_fini_scu(void);
 
 int __init xocl_init_addr_translator(void);
 void xocl_fini_addr_translator(void);
