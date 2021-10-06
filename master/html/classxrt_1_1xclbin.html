@@ -135,11 +135,6 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a523c96967160da1a6abf7f8029afac5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a650f8a98861909e1ddeb53d0d09b1e28"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1uuid.html">uuid</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a650f8a98861909e1ddeb53d0d09b1e28">get_uuid</a> () const</td></tr>
 <tr class="separator:a650f8a98861909e1ddeb53d0d09b1e28"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9fe1ec500f446eb20f404aa1cab3d31c"><td class="memItemLeft" align="right" valign="top">const axlf *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a9fe1ec500f446eb20f404aa1cab3d31c">get_axlf</a> () const</td></tr>
-<tr class="separator:a9fe1ec500f446eb20f404aa1cab3d31c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ada97b6d5c2c2bfbdd32fd634e412b835"><td class="memTemplParams" colspan="2">template&lt;typename SectionType &gt; </td></tr>
-<tr class="memitem:ada97b6d5c2c2bfbdd32fd634e412b835"><td class="memTemplItemLeft" align="right" valign="top">SectionType&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#ada97b6d5c2c2bfbdd32fd634e412b835">get_axlf_section</a> (axlf_section_kind section) const</td></tr>
-<tr class="separator:ada97b6d5c2c2bfbdd32fd634e412b835"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin and provides APIs to access meta data.">xrt::xclbin</a> represents an xclbin and provides APIs to access meta data. </p>
@@ -283,64 +278,6 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
-<a id="a9fe1ec500f446eb20f404aa1cab3d31c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9fe1ec500f446eb20f404aa1cab3d31c">&#9670;&nbsp;</a></span>get_axlf()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">const axlf* xrt::xclbin::get_axlf </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1xclbin.html#a9fe1ec500f446eb20f404aa1cab3d31c">get_axlf()</a> - Get the axlf data of the xclbin</p>
-<dl class="section return"><dt>Returns</dt><dd>The axlf data of the xclbin object</dd></dl>
-<p>An exception is thrown if the data is missing. </p>
-
-</div>
-</div>
-<a id="ada97b6d5c2c2bfbdd32fd634e412b835"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ada97b6d5c2c2bfbdd32fd634e412b835">&#9670;&nbsp;</a></span>get_axlf_section()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<div class="memtemplate">
-template&lt;typename SectionType &gt; </div>
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">SectionType xrt::xclbin::get_axlf_section </td>
-          <td>(</td>
-          <td class="paramtype">axlf_section_kind&#160;</td>
-          <td class="paramname"><em>section</em></td><td>)</td>
-          <td> const</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p><a class="el" href="classxrt_1_1xclbin.html#ada97b6d5c2c2bfbdd32fd634e412b835">get_axlf_section()</a> - Retrieve specified xclbin section</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">section</td><td>The section to retrieve </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>The specified section if available cast to specified type. Note, that this is an unsafe cast, behavior is undefined if the specified SectionType is invalid.</dd></dl>
-<p>The SectionType template parameter is an axlf type from xclbin.h and it much match the type of the section data retrieved.</p>
-<p>Throws if requested section does not exist in the xclbin. </p>
-
-</div>
-</div>
 <a id="a0fd663b528ded292023776bbdb4c2a9c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0fd663b528ded292023776bbdb4c2a9c">&#9670;&nbsp;</a></span>get_ip()</h2>
 
@@ -490,7 +427,7 @@ template&lt;typename SectionType &gt; </div>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__xclbin_8h_source.html">xrt_xclbin.h</a></li>
+<li>/scratch/udayd/DOC/XRT/src/runtime_src/core/include/experimental/<a class="el" href="xrt__xclbin_8h_source.html">xrt_xclbin.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

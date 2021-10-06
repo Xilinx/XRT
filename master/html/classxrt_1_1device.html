@@ -353,7 +353,8 @@ template&lt;info::device param&gt; </div>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1device.html#a0db28f39fce7a94f84c31da71b6939fc">get_info()</a> - Retrieve device parameter information</p>
 <p>This function is templated on the enumeration value as defined in the enumeration <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a" title="Device information parameters.">xrt::info::device</a>.</p>
-<p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="el" href="namespacexrt_1_1info.html">xrt::info</a> </p>
+<p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="el" href="namespacexrt_1_1info.html">xrt::info</a></p>
+<p>This function guarantees return values conforming to the format used by the time the application was built and for a two year period minimum. In other words, XRT can be updated to new versions without affecting the format of the return type. </p>
 
 </div>
 </div>
@@ -561,7 +562,7 @@ template&lt;typename SectionType &gt; </div>
 </div>
 </div>
 <hr/>The documentation for this class was generated from the following file:<ul>
-<li>/scratch/home/udayd/PREPARE_DOC/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__device_8h_source.html">xrt_device.h</a></li>
+<li>/scratch/udayd/DOC/XRT/src/runtime_src/core/include/xrt/<a class="el" href="xrt__device_8h_source.html">xrt_device.h</a></li>
 </ul>
 </div><!-- contents -->
 <!-- start footer part -->

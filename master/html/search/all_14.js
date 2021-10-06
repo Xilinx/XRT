@@ -1,7 +1,8 @@
 var searchData=
 [
-  ['info_111',['info',['../namespacexrt_1_1info.html',1,'xrt']]],
-  ['ini_112',['ini',['../namespacexrt_1_1ini.html',1,'xrt']]],
+  ['info_110',['info',['../namespacexrt_1_1info.html',1,'xrt']]],
+  ['ini_111',['ini',['../namespacexrt_1_1ini.html',1,'xrt']]],
+  ['xcl_5fbuffer_5fhandle_112',['xcl_buffer_handle',['../structxcl__buffer__handle.html',1,'']]],
   ['xclbin_113',['xclbin',['../classxrt_1_1xclbin.html',1,'xrt::xclbin'],['../classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a',1,'xrt::xclbin::xclbin()=default'],['../classxrt_1_1xclbin.html#a4c24708c27ac85e382ef026b0dfa2270',1,'xrt::xclbin::xclbin(const std::string &amp;filename)'],['../classxrt_1_1xclbin.html#afc9cd922c779cffa0f87f17fd498143d',1,'xrt::xclbin::xclbin(const std::vector&lt; char &gt; &amp;data)'],['../classxrt_1_1xclbin.html#ad8b24ec146087a16ea963d1a84aed18e',1,'xrt::xclbin::xclbin(const axlf *top)']]],
   ['xrt_114',['xrt',['../namespacexrt.html',1,'']]],
   ['xrt_5fbo_2eh_115',['xrt_bo.h',['../xrt__bo_8h.html',1,'']]],
