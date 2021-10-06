@@ -398,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Building Platforms</span></p>
@@ -638,7 +639,8 @@
 <span id="_CPPv3I_N4info6deviceEENK3xrt6device8get_infoEv"></span><span id="_CPPv2I_N4info6deviceEENK3xrt6device8get_infoEv"></span><span class="target" id="classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"></span>template&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a> <code class="descname">param</code>&gt;<br /><a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::param_traits&lt;<a class="reference internal" href="#_CPPv4N3xrt4infoE" title="xrt::info">info</a>::<a class="reference internal" href="#_CPPv4N3xrt4info6deviceE" title="xrt::info::device">device</a>, <a class="reference internal" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="xrt::device::get_info::param">param</a>&gt;::return_type <code class="descname">get_info</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I_N4info6deviceEENK3xrt6device8get_infoEN4info12param_traitsIN4info6deviceE5paramE11return_typeEv" title="Permalink to this definition">¶</a><br /></dt>
 <dd><p><a class="reference internal" href="#classxrt_1_1device_1a0db28f39fce7a94f84c31da71b6939fc"><span class="std std-ref">get_info()</span></a> - Retrieve device parameter information</p>
 <p>This function is templated on the enumeration value as defined in the enumeration <a class="reference internal" href="#namespacexrt_1_1info_1a7a27ce3a06c2a28f53579eb4f02a829a"><span class="std std-ref">xrt::info::device</span></a>.</p>
-<p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="reference internal" href="#namespacexrt_1_1info"><span class="std std-ref">xrt::info</span></a> </p>
+<p>The return type of the parameter is based on the instantiated param_traits for the given param enumeration supplied as template argument, see namespace <a class="reference internal" href="#namespacexrt_1_1info"><span class="std std-ref">xrt::info</span></a></p>
+<p>This function guarantees return values conforming to the format used by the time the application was built and for a two year period minimum. In other words, XRT can be updated to new versions without affecting the format of the return type. </p>
 </dd></dl>
 
 <dl class="function">
@@ -882,36 +884,6 @@
 <dd>UUID of xclbin</dd>
 </dl>
 </p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv4NK3xrt6xclbin8get_axlfEv">
-<span id="_CPPv3NK3xrt6xclbin8get_axlfEv"></span><span id="_CPPv2NK3xrt6xclbin8get_axlfEv"></span><span id="xrt::xclbin::get_axlfC"></span><span class="target" id="classxrt_1_1xclbin_1a9fe1ec500f446eb20f404aa1cab3d31c"></span><em class="property">const</em> axlf *<code class="descname">get_axlf</code><span class="sig-paren">(</span><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4NK3xrt6xclbin8get_axlfEv" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1a9fe1ec500f446eb20f404aa1cab3d31c"><span class="std std-ref">get_axlf()</span></a> - Get the axlf data of the xclbin</p>
-<p><p>An exception is thrown if the data is missing. </p>
-<dl class="docutils">
-<dt><strong>Return</strong></dt>
-<dd>The axlf data of the xclbin object</dd>
-</dl>
-</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind">
-<span id="_CPPv3I0ENK3xrt6xclbin16get_axlf_sectionE17axlf_section_kind"></span><span id="_CPPv2I0ENK3xrt6xclbin16get_axlf_sectionE17axlf_section_kind"></span><span class="target" id="classxrt_1_1xclbin_1ada97b6d5c2c2bfbdd32fd634e412b835"></span>template&lt;typename <code class="descname">SectionType</code>&gt;<br /><a class="reference internal" href="#_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind" title="xrt::xclbin::get_axlf_section::SectionType">SectionType</a> <code class="descname">get_axlf_section</code><span class="sig-paren">(</span>axlf_section_kind <em>section</em><span class="sig-paren">)</span> <em class="property">const</em><a class="headerlink" href="#_CPPv4I0ENK3xrt6xclbin16get_axlf_sectionE11SectionType17axlf_section_kind" title="Permalink to this definition">¶</a><br /></dt>
-<dd><p><a class="reference internal" href="#classxrt_1_1xclbin_1ada97b6d5c2c2bfbdd32fd634e412b835"><span class="std std-ref">get_axlf_section()</span></a> - Retrieve specified xclbin section</p>
-<p><p>The SectionType template parameter is an axlf type from xclbin.h and it much match the type of the section data retrieved.</p>
-<dl class="docutils">
-<dt><strong>Return</strong></dt>
-<dd>The specified section if available cast to specified type. Note, that this is an unsafe cast, behavior is undefined if the specified SectionType is invalid.</dd>
-<dt><strong>Parameters</strong></dt>
-<dd><ul class="breatheparameterlist first last simple">
-<li><code class="docutils literal notranslate"><span class="pre">section</span></code>: The section to retrieve </li>
-</ul>
-</dd>
-</dl>
-</p>
-<p>Throws if requested section does not exist in the xclbin. </p>
 </dd></dl>
 
 </div>
@@ -3505,7 +3477,7 @@ XCL_DRIVER_DLLESPEC int <code class="descname">xrtRunClose</code><span class="si
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 21, 2021.
+        Last updated on October 06, 2021.
       </span>
 
     </p>

@@ -59,7 +59,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="XRT Setup for Embedded Flow" href="yocto.html" />
-    <link rel="prev" title="xbmgmt" href="xbmgmt.html" /> 
+    <link rel="prev" title="xball" href="xball.html" /> 
 	</head>
 	<body>
 		<div class="xilinx-bs3"/>
@@ -382,6 +382,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Utility Migration Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#xbutil">xbutil</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt">xbmgmt</a></li>
@@ -584,49 +585,64 @@ New</th>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">dmatest</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">validate</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
+<td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">--run</span> <span class="pre">DMA</span></code></td>
+</tr>
 <tr class="row-even"><td>&#160;</td>
+<td>&#160;</td>
+<td><code class="docutils literal notranslate"><span class="pre">-b</span> <span class="pre">&lt;blksize</span> <span class="pre">kb&gt;</span></code></td>
+<td>n/a</td>
+</tr>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--user</span> <span class="pre">&lt;xclbin&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">host_mem</span></code></td>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">host_mem</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--enable</span></code>
 <code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">enable</span></code>
 <code class="docutils literal notranslate"><span class="pre">--size</span> <span class="pre">&lt;sz&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--host-mem</span> <span class="pre">disable</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">p2p</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">p2p</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">configure</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--device</span> <span class="pre">&lt;bdf&gt;</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--enable</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">enable</span></code></td>
 </tr>
-<tr class="row-even"><td>&#160;</td>
+<tr class="row-odd"><td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--disable</span></code></td>
 <td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">disable</span></code></td>
 </tr>
-<tr class="row-odd"><td>&#160;</td>
+<tr class="row-even"><td>&#160;</td>
 <td>&#160;</td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--p2p</span> <span class="pre">validate</span></code></td>
 </tr>
-<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">mem</span></code></td>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">mem</span></code></td>
 <td>&#160;</td>
 <td><code class="docutils literal notranslate"><span class="pre">--read</span></code>
 <code class="docutils literal notranslate"><span class="pre">--write</span></code></td>
@@ -763,7 +779,7 @@ New</th>
         <a href="yocto.html" class="btn btn-neutral float-right" title="XRT Setup for Embedded Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="xbmgmt.html" class="btn btn-neutral float-left" title="xbmgmt" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="xball.html" class="btn btn-neutral float-left" title="xball" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -773,7 +789,7 @@ New</th>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on September 21, 2021.
+        Last updated on October 06, 2021.
       </span>
 
     </p>
