@@ -49,6 +49,7 @@ install_recipes()
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
         echo '                    file://runtime_src/core/edge/drm/zocl/LICENSE;md5=7d040f51aae6ac6208de74e88a3795f8 "' >> $XRT_BB
+	echo 'DEPEND += " elfutils"' >> $XRT_BB
     fi
 
     grep "inherit externalsrc" $ZOCL_BB
@@ -234,6 +235,16 @@ if [[ $full == 1 ]]; then
   sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
   sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
   sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
+  if ! grep -Fxq "CONFIG_libdw=y" project-spec/configs/rootfs_config; then
+    echo CONFIG_libdw=y >> project-spec/configs/rootfs_config
+  fi
+  if ! grep -Fxq "CONFIG_libelf=y" project-spec/configs/rootfs_config; then
+    echo CONFIG_libelf=y >> project-spec/configs/rootfs_config
+  fi
+  if ! grep -Fxq "CONFIG_libffi=y" project-spec/configs/rootfs_config; then
+    echo CONFIG_libffi=y >> project-spec/configs/rootfs_config
+  fi
+  petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   $PETA_BIN/petalinux-build
 else
