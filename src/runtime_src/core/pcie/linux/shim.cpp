@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  * Author(s): Umang Parekh
  *          : Sonal Santan
  *          : Ryan Radjabi
@@ -1337,7 +1337,7 @@ int shim::xclLoadXclBin(const xclBin *buffer)
         xrt_logmsg(XRT_ERROR, "CU was deadlocked? Hardware is not stable");
         xrt_logmsg(XRT_ERROR, "Please reset device with 'xbutil reset'");
       }
-      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err=%d", ret);
+      xrt_logmsg(XRT_ERROR, "See dmesg log for details. err = %d", ret);
     }
 
     return ret;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -65,9 +65,9 @@ send(severity_level l, const char* tag, const char* format, Args ... args)
       send(severity_level::error, tag, "Illegal arguments in log format string");
       return;
     }
-    
-    std::vector<char> buf(sz+1);
-    snprintf(buf.data(), sz, format, args ...);
+
+    std::vector<char> buf(sz + 1);
+    snprintf(buf.data(), sz + 1, format, args ...);
     send(l, tag, buf.data());
   }
 }
