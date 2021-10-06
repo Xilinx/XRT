@@ -76,6 +76,9 @@ static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "Accelerator Deadlock Detector (accel_deadlock_detector)"
 };
 
+static size_t cuNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
+static size_t portNameMaxStrLen[DEBUG_IP_TYPE_MAX] = {0};
+
 class DebugIpStatusCollector
 {
 
@@ -86,9 +89,6 @@ class DebugIpStatusCollector
 
   uint64_t debugIpNum[DEBUG_IP_TYPE_MAX];
   bool     debugIpOpt[DEBUG_IP_TYPE_MAX];
-
-  size_t   cuNameMaxStrLen[DEBUG_IP_TYPE_MAX];
-  size_t   portNameMaxStrLen[DEBUG_IP_TYPE_MAX];
 
   std::vector<std::string> cuNames[DEBUG_IP_TYPE_MAX];
   std::vector<std::string> portNames[DEBUG_IP_TYPE_MAX];
@@ -107,10 +107,6 @@ public :
   inline std::string getInfoMessage() { return infoMessage ; }
 
   void collect();
-  void collect(const std::vector<std::string> & _elementsFilter);
-
-  void printOverview(std::ostream& _output);
-  void printAllResults(std::ostream& _output);
 
   void populateOverview(boost::property_tree::ptree &_pt);
   void populateAllResults(boost::property_tree::ptree &_pt);
@@ -130,16 +126,6 @@ private :
   void readSPChecker(debug_ip_data*);
   void readAccelDeadlockDetector(debug_ip_data*);
 
-  void printAIMResults(std::ostream&);
-  void printAMResults(std::ostream&);
-  void printASMResults(std::ostream&);
-  void printFIFOResults(std::ostream&);
-  void printTS2MMResults(std::ostream&);
-  void printLAPCResults(std::ostream&);
-  void printSPCResults(std::ostream&);
-  void printILAResults(std::ostream&);
-  void printAccelDeadlockResults(std::ostream&);
-
   void populateAIMResults(boost::property_tree::ptree &_pt);
   void populateAMResults(boost::property_tree::ptree &_pt);
   void populateASMResults(boost::property_tree::ptree &_pt);
@@ -150,9 +136,7 @@ private :
   void populateILAResults(boost::property_tree::ptree &_pt);
   void populateAccelDeadlockResults(boost::property_tree::ptree &_pt);
 
-  void processElementFilter(const std::vector<std::string> & _elementsFilter);
 };
-
 
 
 DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
@@ -162,8 +146,6 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     , infoMessage("")
     , debugIpNum{0}
     , debugIpOpt{false}
-    , cuNameMaxStrLen{0}
-    , portNameMaxStrLen{0}
     , aimResults{0}
     , asmResults{0}
     , amResults{0}
@@ -242,113 +224,10 @@ DebugIpStatusCollector::getDebugIpLayout()
   return dbgIpLayout;
 }
 
-
-void 
-DebugIpStatusCollector::printOverview(std::ostream& _output)
-{
-  debug_ip_layout* dbgIpLayout = getDebugIpLayout();
-  if(nullptr == dbgIpLayout)
-    return;
-
-  uint64_t count = 0;
-  for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
-    switch(dbgIpLayout->m_debug_ip_data[i].m_type) {
-      case LAPC:
-      case ILA:
-      case AXI_MM_MONITOR:
-      case AXI_MONITOR_FIFO_FULL:
-      case ACCEL_MONITOR:
-      case AXI_STREAM_MONITOR:
-      case AXI_STREAM_PROTOCOL_CHECKER:
-      case TRACE_S2MM:
-      case ACCEL_DEADLOCK_DETECTOR:
-        ++count;
-        ++debugIpNum[dbgIpLayout->m_debug_ip_data[i].m_type];
-        break;
-      case UNDEFINED:
-      case AXI_TRACE_FUNNEL:
-      case AXI_MONITOR_FIFO_LITE:
-      case AXI_DMA:
-      case TRACE_S2MM_FULL:
-      case AXI_NOC:
-        // No need to show these Debug IP types
-        continue;
-      default:
-        _output << "  Found invalid IP in debug ip layout with type "
-                << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
-        return;
-    }
-  }
-
-  _output << "  Number of IPs found :: " << count << std::endl; // Total count with the IPs actually shown
-
-  std::stringstream sstr;
-  for(uint32_t i = 0; i < DEBUG_IP_TYPE_MAX; i++) {
-    if(0 == debugIpNum[i]) {
-       continue;
-    }
-    sstr << debugIpNames[i] << " : " << debugIpNum[i] << std::endl;
-  }
-
-  _output << "  IPs found [<ipname <(element filter option)>> :<count>)]: " << std::endl << sstr.str() << std::endl;
-}
-
 void 
 DebugIpStatusCollector::collect()
 { 
   getDebugIpData();
-}
-
-void 
-DebugIpStatusCollector::collect(const std::vector<std::string> & _elementsFilter)
-{
-  if(_elementsFilter.size()) {
-    processElementFilter(_elementsFilter);
-  }
-  collect();
-}
-
-void 
-DebugIpStatusCollector::processElementFilter(const std::vector<std::string> & _elementsFilter)
-{
-  // reset debugIpOpt to all "false" and then process given element filter
-  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, false);
-
-  for(auto& itr : _elementsFilter) {
-    if(itr == "aim") {
-      debugIpOpt[AXI_MM_MONITOR] = true;
-    } else if(itr == "am") {
-      debugIpOpt[ACCEL_MONITOR] = true;
-    } else if(itr == "asm") {
-      debugIpOpt[AXI_STREAM_MONITOR] = true;
-    } else if(itr == "lapc") {
-      debugIpOpt[LAPC] = true;
-    } else if(itr == "spc") {
-      debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER] = true;
-    } else if(itr == "fifo") {
-      debugIpOpt[AXI_MONITOR_FIFO_FULL] = true;
-    } else if(itr == "ts2mm") {
-      debugIpOpt[TRACE_S2MM] = true;
-    } else if(itr == "ila") {
-      debugIpOpt[ILA] = true;
-    } else if(itr == "accel_deadlock_detector") {
-      debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
-    }
-  }
-}
-
-void 
-DebugIpStatusCollector::printAllResults(std::ostream& _output)
-{
-  printAIMResults(_output);
-  printAMResults(_output);
-  printASMResults(_output);
-  printFIFOResults(_output);
-  printTS2MMResults(_output);
-  printLAPCResults(_output);
-  printSPCResults(_output);
-  printILAResults(_output);
-  printAccelDeadlockResults(_output);
 }
 
 void 
@@ -535,7 +414,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 13) {
-      std::cout << "ERROR: Incomplete AIM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -623,35 +502,6 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.LastReadData[index]  |= currData[8];
 }
 
-void 
-DebugIpStatusCollector::printAIMResults(std::ostream& _output)
-{  
-  if(0 == aimResults.NumSlots) {
-    return;
-  }
-
-  _output << "\nAXI Interface Monitor Counters\n";
-  auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
-
-  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
-  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
-                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
-          << std::endl;
-
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  0x%-14x  0x%-14x  0x%-14x 0x%-14x");
-  for (size_t i = 0; i< aimResults.NumSlots; ++i) {
-    _output << valueFormat
-                  % cuNames[AXI_MM_MONITOR][i] % portNames[AXI_MM_MONITOR][i]
-                  % (static_cast<double>(aimResults.WriteBytes[i]) / 1000.0) % aimResults.WriteTranx[i]
-                  % (static_cast<double>(aimResults.ReadBytes[i]) / 1000.0)  % aimResults.ReadTranx[i]
-                  % aimResults.OutStandCnts[i]
-                  % aimResults.LastWriteAddr[i] % aimResults.LastWriteData[i]
-                  % aimResults.LastReadAddr[i]  % aimResults.LastReadData[i]
-            << std::endl;
-  }
-}
-
 
 void 
 DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
@@ -713,7 +563,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 10) {
-      std::cout << "ERROR: Incomplete AM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete AM counter data in " << path << std::endl;
       ifs.close();
       return; 
     }
@@ -825,32 +675,6 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   }
 }
 
-void 
-DebugIpStatusCollector::printAMResults(std::ostream& _output)
-{
-  if(0 == amResults.NumSlots) {
-    return;
-  }
-
-  _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
-
-  auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
-
-  boost::format header("  %-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
-  _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
-          << std::endl;
-
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x  0x%-14x");
-  for (size_t i = 0; i < amResults.NumSlots; ++i) {
-    _output << valueFormat
-                  % cuNames[ACCEL_MONITOR][i] 
-                  % amResults.CuExecCount[i] % amResults.CuStartCount[i] % amResults.CuMaxParallelIter[i] 
-                  % amResults.CuExecCycles[i] 
-                  % amResults.CuStallExtCycles[i] % amResults.CuStallIntCycles[i] % amResults.CuStallStrCycles[i]
-                  % amResults.CuMinExecCycles[i]  % amResults.CuMaxExecCycles[i]
-            << std::endl;
-  }
-}
 
 void 
 DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
@@ -913,7 +737,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 5) {
-      std::cout << "ERROR: Incomplete ASM counter data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete ASM counter data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -959,57 +783,6 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   asmResults.StrBusyCycles[index] = currData[2] ;
   asmResults.StrStallCycles[index] = currData[3] ;
   asmResults.StrStarveCycles[index] = currData[4] ;
-}
-
-void 
-DebugIpStatusCollector::printASMResults(std::ostream& _output)
-{
-  if(0 == asmResults.NumSlots) {
-    return;
-  }
-  _output << "\nAXI Stream Monitor Counters\n";
-  auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
-
-  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
-  _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
-          << std::endl;
-
-  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu %-16llu");
-  for (size_t i = 0; i < asmResults.NumSlots; ++i) {
-    _output << valueFormat
-                  % cuNames[AXI_STREAM_MONITOR][i] % portNames[AXI_STREAM_MONITOR][i]
-                  % asmResults.StrNumTranx[i]
-                  % (static_cast<double>(asmResults.StrDataBytes[i]) / 1000.0)
-                  % asmResults.StrBusyCycles[i] % asmResults.StrStallCycles[i] % asmResults.StrStarveCycles[i]
-            << std::endl;
-  }
-}
-
-void 
-DebugIpStatusCollector::printFIFOResults(std::ostream& _output)
-{
-  if(0 == debugIpNum[AXI_MONITOR_FIFO_FULL]) {
-    return;
-  }
-
-  _output << "\nTrace FIFO" << std::endl
-          << "FIFO on PL that stores trace events from all monitors" << std::endl
-          << "Found : " << debugIpNum[AXI_MONITOR_FIFO_FULL] << std::endl;
-  return;
-}
-
-void 
-DebugIpStatusCollector::printTS2MMResults(std::ostream& _output)
-{
-  if(0 == debugIpNum[TRACE_S2MM]) {
-    return;
-  }
-
-  _output << "\nTrace Stream to Memory" << std::endl
-          << "Offloads trace events from all monitors to a memory resource (DDR, HBM, PLRAM)" << std::endl
-          << "Found : " << debugIpNum[TRACE_S2MM] << std::endl;
-  return;
 }
 
 
@@ -1073,7 +846,7 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 9) {
-      std::cout << "ERROR: Incomplete LAPC data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete LAPC data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -1116,68 +889,6 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
 }
 
-void 
-DebugIpStatusCollector::printLAPCResults(std::ostream& _output)
-{ 
-  if(0 == lapcResults.NumSlots) {
-    return;
-  }
-
-  bool violations_found = false;
-  bool invalid_codes = false;
-  _output << "\nLight Weight AXI Protocol Checkers codes \n";
-  auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
-  auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
-
-  for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
-    if (!xclAXICheckerCodes::isValidAXICheckerCodes(lapcResults.OverallStatus[i],
-                lapcResults.SnapshotStatus[i], lapcResults.CumulativeStatus[i])) {
-      _output << "CU Name: " << cuNames[LAPC][i] << " AXI Port: " << portNames[LAPC][i] << "\n";
-      _output << "  Invalid codes read, skip decoding\n";
-      invalid_codes = true;
-    } else if (lapcResults.OverallStatus[i]) {
-      _output << "CU Name: " << cuNames[LAPC][i] << " AXI Port: " << portNames[LAPC][i] << "\n";
-      _output << "  First violation: \n";
-      _output << "    " <<  xclAXICheckerCodes::decodeAXICheckerCodes(lapcResults.SnapshotStatus[i]);
-      //snapshot reflects first violation, cumulative has all violations
-      unsigned int tCummStatus[4];
-      std::transform(lapcResults.CumulativeStatus[i], lapcResults.CumulativeStatus[i]+4, lapcResults.SnapshotStatus[i], tCummStatus, std::bit_xor<unsigned int>());
-      _output << "  Other violations: \n";
-      std::string tstr = xclAXICheckerCodes::decodeAXICheckerCodes(tCummStatus);
-      if (tstr == "") {
-        _output << "    None";
-      } else {
-        _output << "    " <<  tstr;
-      }
-      violations_found = true;
-    }
-  }
-  if (!violations_found && !invalid_codes)
-    _output << "No AXI violations found \n";
-
-  if (violations_found && /*aVerbose &&*/ !invalid_codes) {
-    boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
-    _output << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot[0]" % "Snapshot[1]" % "Snapshot[2]" % "Snapshot[3]"
-                      % "Cumulative[0]" % "Cumulative[1]" % "Cumulative[2]" % "Cumulative[3]"
-            << std::endl;
-
-    boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
-    for (size_t i = 0; i < lapcResults.NumSlots; ++i) {
-      _output << valueFormat
-                    % cuNames[LAPC][i] % portNames[LAPC][i]
-                    % lapcResults.OverallStatus[i]
-                    % lapcResults.SnapshotStatus[i][0] 
-                    % lapcResults.SnapshotStatus[i][1] 
-                    % lapcResults.SnapshotStatus[i][2] 
-                    % lapcResults.SnapshotStatus[i][3]
-                    % lapcResults.CumulativeStatus[i][0] 
-                    % lapcResults.CumulativeStatus[i][1] 
-                    % lapcResults.CumulativeStatus[i][2] 
-                    % lapcResults.CumulativeStatus[i][3] 
-              << std::endl;
-    }
-  }
-}
 
 void 
 DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
@@ -1239,7 +950,7 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
     }
 
     if(valBuf.size() < 3) {
-      std::cout << "ERROR: Incomplete SPC data in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete SPC data in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -1272,74 +983,6 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   spcResults.SnapshotPC[index] = snapshot_pc;
 }
 
-void 
-DebugIpStatusCollector::printSPCResults(std::ostream& _output)
-{
-  if(0 == spcResults.NumSlots) {
-    return;
-  }
-
-  // Now print out all of the values (and their interpretations)
-  _output << "\nAXI Streaming Protocol Checkers codes\n";
-  bool invalid_codes = false ;
-  bool violations_found = false ;
-
-  for (size_t i = 0 ; i < spcResults.NumSlots; ++i) {
-    _output << "CU Name: " << cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] 
-            << " AXI Port: " << portNames[AXI_STREAM_PROTOCOL_CHECKER][i] << std::endl;
-
-    if (!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(
-                     spcResults.PCAsserted[i], spcResults.CurrentPC[i], 
-                     spcResults.SnapshotPC[i])) {
-      _output << "  Invalid codes read, skip decoding\n";
-      invalid_codes = true ;
-    } else {
-      _output << "  First violation: " << std::endl
-              << "    " << xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(spcResults.SnapshotPC[i])
-              << "  Other violations: " << std::endl;
-      std::string tstr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(spcResults.CurrentPC[i]);
-      if (tstr == "") {
-        _output << "    None";
-      } else {
-        _output << "    " <<  tstr;
-      }
-      violations_found = true;
-    }
-  }
-  if (!violations_found && !invalid_codes)
-    _output << "No AXI violations found \n";
-
-  if (violations_found && /*aVerbose &&*/ !invalid_codes) {
-    auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
-    auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
-
-    boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
-    _output << std::endl
-            << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
-            << std::endl;
-
-    boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
-    for (size_t i = 0; i < spcResults.NumSlots; ++i) {
-      _output << valueFormat
-                    % cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] % portNames[AXI_STREAM_PROTOCOL_CHECKER][i]
-                    % spcResults.PCAsserted[i] % spcResults.SnapshotPC[i] % spcResults.CurrentPC[i]
-              << std::endl;
-    }
-  }
-}
-
-void 
-DebugIpStatusCollector::printILAResults(std::ostream& _output)
-{
-  if(0 == debugIpNum[ILA]) {
-    return;
-  }
-
-  _output << "\nIntegrated Logic Analyzer" << std::endl
-          << "Enables debugging and performance monitoring of kernel running on hardware"
-          << "Found : " << debugIpNum[ILA] << std::endl;
-  return;
-}
 
 void 
 DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
@@ -1377,7 +1020,7 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
     if(!ifs.eof()) {
       accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
     } else {
-      std::cout << "ERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
+      std::cout << "\nERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
       ifs.close();
       return;
     }
@@ -1391,47 +1034,6 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
                   dbgIpInfo->m_base_address + 0x0,
                   &(accelDeadlockResults.DeadlockStatus), sizeof(uint32_t));
 }
-
-void 
-DebugIpStatusCollector::printAccelDeadlockResults(std::ostream& _output)
-{
-  if(0 == accelDeadlockResults.Num) {
-    return;
-  }
-
-  std::string statusStr;
-  if(0 == accelDeadlockResults.DeadlockStatus) {
-    statusStr = "No";
-  }
-  _output << "\nAccelerator Deadlock Detector IP status : " << statusStr << " deadlock detected.\n" << std::endl;
-  return;
-}
-
-void 
-DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
-{
-  if(0 == accelDeadlockResults.Num) {
-    return;
-  }
-
-  boost::property_tree::ptree accel_deadlock_pt;
-
-  // Atmost 1 Accelerator Deadlock Detector Ip per design
-  boost::property_tree::ptree entry;
-  std::string statusStr;
-  if(0 == accelDeadlockResults.DeadlockStatus) {
-    statusStr = "no_";
-  }
-  statusStr += "deadlock_detected";
-
-  entry.put("status", statusStr);
-
-  accel_deadlock_pt.push_back(std::make_pair("", entry));
-
-  _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
-  return;
-}
-
 
 
 void 
@@ -1633,8 +1235,25 @@ DebugIpStatusCollector::populateLAPCResults(boost::property_tree::ptree &_pt)
     boost::property_tree::ptree entry;
 
     entry.put("name", std::string(cuNames[LAPC][i] + "/" + portNames[LAPC][i]));
+    entry.put("cu_name", cuNames[LAPC][i]);
+    entry.put("axi_port", portNames[LAPC][i]);
+    entry.put("overall_status", lapcResults.OverallStatus[i]);
 
-    // To Do : Handle violations
+    boost::property_tree::ptree snapshot_pt;
+    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
+      boost::property_tree::ptree e_pt;
+      e_pt.put_value(lapcResults.SnapshotStatus[i][j]);
+      snapshot_pt.push_back(std::make_pair("", e_pt));
+    }
+    entry.add_child("snapshot_status", snapshot_pt); 
+
+    boost::property_tree::ptree cumulative_pt;
+    for(size_t j = 0; j < XLAPC_STATUS_REG_NUM; j++) {
+      boost::property_tree::ptree e_pt;
+      e_pt.put_value(lapcResults.CumulativeStatus[i][j]);
+      cumulative_pt.push_back(std::make_pair("", e_pt));
+    }
+    entry.add_child("cumulative_status", cumulative_pt); 
 
     lapc_pt.push_back(std::make_pair("", entry));
   }
@@ -1656,15 +1275,17 @@ DebugIpStatusCollector::populateSPCResults(boost::property_tree::ptree &_pt)
     boost::property_tree::ptree entry;
 
     entry.put("name", std::string(cuNames[AXI_STREAM_PROTOCOL_CHECKER][i] + "/" + portNames[AXI_STREAM_PROTOCOL_CHECKER][i]));
-
-    // To Do : Handle violations
+    entry.put("cu_name", cuNames[AXI_STREAM_PROTOCOL_CHECKER][i]);
+    entry.put("axi_port", portNames[AXI_STREAM_PROTOCOL_CHECKER][i]);
+    entry.put("pc_asserted", spcResults.PCAsserted[i]);
+    entry.put("current_pc", spcResults.CurrentPC[i]);
+    entry.put("snapshot_pc", spcResults.SnapshotPC[i]);
 
     spc_pt.push_back(std::make_pair("", entry));
   }
 
   _pt.add_child("axi_streaming_protocol_checkers", spc_pt);
 }
-
 
 void 
 DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
@@ -1681,6 +1302,483 @@ DebugIpStatusCollector::populateILAResults(boost::property_tree::ptree &_pt)
 
 }
 
+void 
+DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree &_pt)
+{
+  if(0 == accelDeadlockResults.Num) {
+    return;
+  }
+
+  // Only 1 Accelerator Deadlock Detector Ip per design
+  boost::property_tree::ptree accel_deadlock_pt;
+
+  accel_deadlock_pt.put("is_deadlocked", accelDeadlockResults.DeadlockStatus);
+
+  _pt.add_child("accel_deadlock_detector_status", accel_deadlock_pt); 
+}
+
+// ----- Supporting Functions -------------------------------------------
+
+void
+reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
+{
+  _output << "Debug IP Status \n  Number of IPs found :: " 
+          << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
+
+  try {
+    const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
+    std::string header("IP Name (element filter option)");
+    _output << "\n  IPs found :"
+            << "\n    " << header << " : Count" << std::endl;
+
+    boost::format valueFormat("    %-"+std::to_string(header.length())+"s : %llu");
+    for(auto& ip : dbgIps_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat % entry.get<std::string>("name") % entry.get<uint64_t>("count") << std::endl;
+     }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportAIM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_interface_monitor_counters");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for AIM enabled but currently loaded xclbin does not have any AIM. So, AIM status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& aim_pt = child.get();
+
+  _output << "\nAXI Interface Monitor Counters\n";
+
+  const auto col1 = std::max(cuNameMaxStrLen[AXI_MM_MONITOR], strlen("Region or CU")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[AXI_MM_MONITOR], strlen("Type or Port"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s %-16s");
+  _output << header % "Region or CU" % "Type or Port" %  "Write kBytes" % "Write Trans." % "Read kBytes" % "Read Tranx."
+                    % "Outstanding Cnt" % "Last Wr Addr" % "Last Wr Data" % "Last Rd Addr" % "Last Rd Data"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16.3f  %-16llu  %-16.3f  %-16llu  %-16llu  %-16x  %-16x  %-16x %-16x");
+
+  try {
+    for(auto& ip : aim_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("region_or_cu")     % entry.get<std::string>("type_or_port")
+                   % entry.get<std::string>("write_kBytes")     % entry.get<uint64_t>("write_trans")
+                   % entry.get<std::string>("read_kBytes")      % entry.get<uint64_t>("read_tranx")
+                   % entry.get<uint64_t>("outstanding_count")
+                   % entry.get<std::string>("last_write_addr")  % entry.get<std::string>("last_write_data")
+                   % entry.get<std::string>("last_read_addr")   % entry.get<std::string>("last_read_data")
+              << std::endl;
+     }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportAM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accelerator_monitor_counters");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << std::endl 
+              << "INFO: Element filter for AM enabled but currently loaded xclbin does not have any AM. So, AM status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& am_pt = child.get();
+
+  _output << "\nAccelerator Monitor Counters (hex values are cycle count)\n";
+
+  const auto col1 = std::max(cuNameMaxStrLen[ACCEL_MONITOR], strlen("Compute Unit")) + 4;
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-8s  %-8s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  _output << header % "Compute Unit"  % "Ends" % "Starts" % "Max Parallel Itr" % "Execution" % "Memory Stall" % "Pipe Stall" % "Stream Stall" % "Min Exec" % "Max Exec"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-8llu  %-8llu  %-16llu  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+  try {
+    for(auto& ip : am_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("compute_unit")
+                   % entry.get<uint64_t>("ends") % entry.get<uint64_t>("starts") % entry.get<uint64_t>("max_parallel_itr")
+                   % entry.get<std::string>("execution")
+                   % entry.get<std::string>("memory_stall") % entry.get<std::string>("pipe_stall") % entry.get<std::string>("stream_stall")
+                   % entry.get<std::string>("min_exec") % entry.get<std::string>("max_exec") 
+              << std::endl;
+    }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportASM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_stream_monitor_counters");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for ASM enabled but currently loaded xclbin does not have any ASM. So, ASM status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& asm_pt = child.get();
+
+  _output << "\nAXI Stream Monitor Counters\n";
+
+  const auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Master")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_MONITOR], strlen("Stream Slave"));
+
+  boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s");
+  _output << header % "Stream Master" % "Stream Slave" % "Num Trans." % "Data kBytes" % "Busy Cycles" % "Stall Cycles" % "Starve Cycles"
+          << std::endl;
+
+  boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16llu  %-16.3f  %-16llu  %-16llu  %-16llu");
+  try {
+    for(auto& ip : asm_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << valueFormat
+                   % entry.get<std::string>("stream_master") % entry.get<std::string>("stream_slave")
+                   % entry.get<uint64_t>("num_trans")
+                   % entry.get<std::string>("data_kBytes")
+                   % entry.get<uint64_t>("busy_cycles") % entry.get<uint64_t>("stall_cycles") % entry.get<uint64_t>("starve_cycles")
+              << std::endl;
+    }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportFIFO(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace FIFO");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for Trace FIFO enabled but currently loaded xclbin does not have any Trace FIFO. So, Trace FIFO status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& fifo_pt = child.get();
+
+  _output << "\nTrace FIFO" << std::endl
+          << "  " << fifo_pt.get<std::string>("description") << std::endl
+          << "  Found : " << fifo_pt.get<uint64_t>("count") << std::endl;
+  return;
+}
+
+void
+reportTS2MM(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Trace Stream to Memory");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for TraceS2MM enabled but currently loaded xclbin does not have any TraceS2MM. So, TraceS2MM status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& ts2mm_pt = child.get();
+
+  _output << "\nTrace Stream to Memory" << std::endl
+          << "  " << ts2mm_pt.get<std::string>("description") << std::endl
+          << "  Found : " << ts2mm_pt.get<uint64_t>("count") << std::endl;
+}
+
+void
+reportLAPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("light_weight_axi_protocol_checkers");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for LAPC enabled but currently loaded xclbin does not have any LAPC. So, LAPC status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& lapc_pt = child.get();
+
+  _output << "\nLight Weight AXI Protocol Checkers codes \n";
+
+  const auto col1 = std::max(cuNameMaxStrLen[LAPC], strlen("CU Name")) + 4;
+  const auto col2 = std::max(portNameMaxStrLen[LAPC], strlen("AXI Portname"));
+
+  bool violations_found = false;
+  bool invalid_codes = false;
+
+  try {
+    for(auto& ip : lapc_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
+      unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
+
+      const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
+      size_t idx = 0;
+      for(auto& e : snapshot_pt) {
+        snapshotStatus[idx] = e.second.get_value<unsigned int>();
+        ++idx;
+        if(idx >= XLAPC_STATUS_REG_NUM) {
+          break;
+        }  
+      }
+
+      const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
+      idx = 0;
+      for(auto& e : cumulative_pt) {
+        cumulativeStatus[idx] = e.second.get_value<unsigned int>();
+        ++idx;
+        if(idx >= XLAPC_STATUS_REG_NUM) {
+          break;
+        }  
+      }
+
+      if (!xclAXICheckerCodes::isValidAXICheckerCodes(entry.get<unsigned int>("overall_status"),
+                snapshotStatus, cumulativeStatus)) {
+
+        invalid_codes = true;
+        _output << boost::format("CU Name: %s AXI Port: %s \n  Invalid codes read, skip decoding")
+                    % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                << std::endl;
+
+      } else if(entry.get<unsigned int>("overall_status")) {
+
+        violations_found = true;
+        _output << boost::format("CU Name: %s AXI Port: %s \n  First violation: \n    %s")
+                    % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                    % xclAXICheckerCodes::decodeAXICheckerCodes(snapshotStatus) 
+                << std::endl;
+
+        // Snapshot reflects first violation, Cumulative has all violations
+        unsigned int transformedStatus[XLAPC_STATUS_REG_NUM] = {0};
+        std::transform(cumulativeStatus, cumulativeStatus+XLAPC_STATUS_REG_NUM /*past the last element*/,
+                       snapshotStatus,
+                       transformedStatus,
+                       std::bit_xor<unsigned int>());
+        std::string tStr = xclAXICheckerCodes::decodeAXICheckerCodes(transformedStatus);
+        _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
+                << std::endl;
+      }
+    }
+    if(!violations_found && !invalid_codes) {
+      _output << "No AXI violations found" << std::endl;
+    }
+
+    if (violations_found && !invalid_codes) {
+      boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s  %-16s");
+
+      _output << header % "CU Name" % "AXI Portname" % "Overall Status" 
+                        % "Snapshot[0]" % "Snapshot[1]" % "Snapshot[2]" % "Snapshot[3]"
+                        % "Cumulative[0]" % "Cumulative[1]" % "Cumulative[2]" % "Cumulative[3]"
+            << std::endl;
+
+      boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x  %-16x");
+
+
+      for(auto& ip : lapc_pt) {
+        const boost::property_tree::ptree& entry = ip.second;
+        unsigned int snapshotStatus[XLAPC_STATUS_REG_NUM]   = {0};
+        unsigned int cumulativeStatus[XLAPC_STATUS_REG_NUM] = {0};
+  
+        const boost::property_tree::ptree& snapshot_pt = entry.get_child("snapshot_status");
+        size_t idx = 0;
+        for(auto& e : snapshot_pt) {
+          snapshotStatus[idx] = e.second.get_value<unsigned int>(); 
+          ++idx;
+          if(idx >= XLAPC_STATUS_REG_NUM) {
+            break;
+          }  
+        }
+
+        const boost::property_tree::ptree& cumulative_pt = entry.get_child("cumulative_status");
+        idx = 0;
+        for(auto& e : cumulative_pt) {
+          cumulativeStatus[idx] = e.second.get_value<unsigned int>(); 
+          ++idx;  
+          if(idx >= XLAPC_STATUS_REG_NUM) {
+            break;
+          }  
+        }
+
+        _output << valueFormat
+                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                     % entry.get<unsigned int>("overall_status")
+                     % snapshotStatus[0]   % snapshotStatus[1]   % snapshotStatus[2]   % snapshotStatus[3]
+                     % cumulativeStatus[0] % cumulativeStatus[1] % cumulativeStatus[2] % cumulativeStatus[3]
+                << std::endl;
+      }
+    }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportSPC(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("axi_streaming_protocol_checkers");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for SPC enabled but currently loaded xclbin does not have any SPC. So, SPC status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  const boost::property_tree::ptree& spc_pt = child.get();
+
+  // Now print out all of the values (and their interpretations)
+  _output << "\nAXI Streaming Protocol Checkers codes\n";
+
+  bool invalid_codes = false ;
+  bool violations_found = false ;
+
+  try {
+    for(auto& ip : spc_pt) {
+      const boost::property_tree::ptree& entry = ip.second;
+      _output << boost::format("CU Name: %s AXI Port: %s")
+                  % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+              << std::endl;
+
+      if(!xclStreamingAXICheckerCodes::isValidStreamingAXICheckerCodes(entry.get<unsigned int>("pc_asserted"),
+                       entry.get<unsigned int>("current_pc"), entry.get<unsigned int>("snapshot_pc"))) {
+        invalid_codes = true;
+        _output << "  Invalid codes read, skip decoding" << std::endl;
+      } else {
+        violations_found = true;
+        _output << boost::format("  First violation: \n    %s")
+                    % xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("snapshot_pc"))
+                << std::endl;
+
+        std::string tStr = xclStreamingAXICheckerCodes::decodeStreamingAXICheckerCodes(entry.get<unsigned int>("current_pc"));
+        _output << boost::format("  Other violations: \n    %s") % (("" == tStr) ? "None" : tStr)
+                << std::endl;
+      }
+
+    }
+    if (!violations_found && !invalid_codes) {
+      _output << "No AXI violations found " << std::endl;
+    }
+
+    if (violations_found && /*aVerbose &&*/ !invalid_codes) {
+      const auto col1 = std::max(cuNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("CU Name")) + 4;
+      const auto col2 = std::max(portNameMaxStrLen[AXI_STREAM_PROTOCOL_CHECKER], strlen("AXI Portname"));
+
+      boost::format header("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16s  %-16s  %-16s");
+      _output << "\n"
+              << header % "CU Name" % "AXI Portname" % "Overall Status" % "Snapshot" % "Current"
+              << std::endl;
+
+      boost::format valueFormat("  %-"+std::to_string(col1)+"s %-"+std::to_string(col2)+"s  %-16x  %-16x  %-16x");
+      for(auto& ip : spc_pt) {
+        const boost::property_tree::ptree& entry = ip.second;
+        _output << valueFormat
+                     % entry.get<std::string>("cu_name") % entry.get<std::string>("axi_port")
+                     % entry.get<unsigned int>("pc_asserted") 
+                     % entry.get<unsigned int>("snapshot_pc") 
+                     % entry.get<unsigned int>("current_pc")
+                << std::endl;
+      }
+    }
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+  _output << std::endl;
+}
+
+void
+reportILA(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("Integrated Logic Analyzer");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for ILA enabled but currently loaded xclbin does not have any ILA. So, ILA status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  try {
+    const boost::property_tree::ptree& ila_pt = child.get();
+    _output << boost::format("\nIntegrated Logic Analyzer\n  %s\n  Found : %llu") 
+                % ila_pt.get<std::string>("description") % ila_pt.get<uint64_t>("count")
+            << std::endl;
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+}
+
+void
+reportAccelDeadlock(std::ostream& _output, const boost::property_tree::ptree& _pt, bool _gen_not_found_info)
+{
+  boost::optional<const boost::property_tree::ptree&> child = _pt.get_child_optional("accel_deadlock_detector_status");
+  if(boost::none == child) {
+    if(true == _gen_not_found_info) {
+      _output << "\nINFO: Element filter for Accelerator Deadlock Detector enabled but currently loaded xclbin does not have any Accelerator Deadlock Detector. So, Accelerator Deadlock Detector status report will NOT be generated." 
+              << std::endl;
+    }
+    return;
+  }
+  try {
+    const boost::property_tree::ptree& accel_deadlock_pt = child.get();
+    _output << "\nAccelerator Deadlock Detector IP status :" 
+            << ((0 == accel_deadlock_pt.get<uint64_t>("is_deadlocked")) ? " No " : " ")
+            << "deadlock detected." << std::endl;
+  }
+  catch(std::exception const& e) {
+    _output << "\nWARNING: " <<  e.what() << std::endl;
+  }
+}
+
+void 
+processElementFilter(bool *debugIpOpt, const std::vector<std::string> & _elementsFilter)
+{
+  // reset debugIpOpt to all "false" and then process given element filter
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, false);
+
+  for(auto& itr : _elementsFilter) {
+    if(itr == "aim") {
+      debugIpOpt[AXI_MM_MONITOR] = true;
+    } else if(itr == "am") {
+      debugIpOpt[ACCEL_MONITOR] = true;
+    } else if(itr == "asm") {
+      debugIpOpt[AXI_STREAM_MONITOR] = true;
+    } else if(itr == "lapc") {
+      debugIpOpt[LAPC] = true;
+    } else if(itr == "spc") {
+      debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER] = true;
+    } else if(itr == "fifo") {
+      debugIpOpt[AXI_MONITOR_FIFO_FULL] = true;
+    } else if(itr == "ts2mm") {
+      debugIpOpt[TRACE_S2MM] = true;
+    } else if(itr == "ila") {
+      debugIpOpt[ILA] = true;
+    } else if(itr == "accel_deadlock_detector") {
+      debugIpOpt[ACCEL_DEADLOCK_DETECTOR] = true;
+    }
+  }
+}
 
 };
 
@@ -1720,19 +1818,56 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 
 
 void 
-ReportDebugIpStatus::writeReport( const xrt_core::device* _pDevice,
-                                  const boost::property_tree::ptree& /*_pt*/, 
+ReportDebugIpStatus::writeReport( const xrt_core::device* /*_pDevice*/,
+                                  const boost::property_tree::ptree& _pt, 
                                   const std::vector<std::string>& _elementsFilter,
                                   std::ostream & _output) const
 {
-  auto handle = _pDevice->get_device_handle();
 
-  _output << "Debug IP Status" << std::endl ;
+  const boost::property_tree::ptree& dbgIpStatus_pt = _pt.get_child("debug_ip_status");
 
-  DebugIpStatusCollector collector(handle, false, _output);
-  collector.printOverview(_output);
-  collector.collect(_elementsFilter);
-  collector.printAllResults(_output);
+  //Print Overview
+  reportOverview(_output, dbgIpStatus_pt);
+
+  // Process Element Filter
+  bool debugIpOpt[DEBUG_IP_TYPE_MAX];
+  // By default, enable status collection for all Debug IP types
+  std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
+
+  bool filter = false;
+  if(_elementsFilter.size()) {
+    filter = true;
+    processElementFilter(debugIpOpt, _elementsFilter);
+  }
+
+  // Results
+  if (true == debugIpOpt[AXI_MM_MONITOR]) {
+    reportAIM(  _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ACCEL_MONITOR]) {
+    reportAM(   _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_STREAM_MONITOR]) {
+    reportASM(  _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_MONITOR_FIFO_FULL]) {
+    reportFIFO( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[TRACE_S2MM]) {
+    reportTS2MM(_output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[LAPC]) {
+    reportLAPC( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[AXI_STREAM_PROTOCOL_CHECKER]) {
+    reportSPC( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ILA]) {
+    reportILA( _output, dbgIpStatus_pt, filter);
+  }
+  if (true == debugIpOpt[ACCEL_DEADLOCK_DETECTOR]) {
+    reportAccelDeadlock( _output, dbgIpStatus_pt, filter);
+  }
 
   return;
 }
