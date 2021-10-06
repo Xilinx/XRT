@@ -312,7 +312,7 @@ command_queue_check_csr(struct command_queue *cmd_queue)
 
 			if (!mask)
 				break;
-			if (mask & 0x1 != 0x1)
+			if (!(mask & 0x1))
 				continue;
 			ecmd = cmd_queue->submit_queue[cmd_idx];
 			if (!ecmd) {
