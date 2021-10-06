@@ -35,8 +35,8 @@ PROGRAM=`basename $0`
 
 # XRT Version variables
 XRT_MAJOR_VERSION=2
-XRT_MINOR_VERSION=11
-RELEASE_VERSION=202110
+XRT_MINOR_VERSION=13
+RELEASE_VERSION=202210
 
 # Pick XRT_VERSION_PATCH from Env variable
 if [ -z $XRT_VERSION_PATCH ]; then
@@ -83,7 +83,7 @@ XRT_DIR=`readlink -f $THIS_SCRIPT_DIR/../`
 DEBIAN=`readlink -f $THIS_SCRIPT_DIR/debian`
 
 if [ -z $AARCH ]; then
-    error "$AARCH is required option"
+    error "-aarch is required option"
 fi
 
 if [[ $AARCH == "aarch64" ]]; then
@@ -120,15 +120,21 @@ cd $DEBIAN_ARTIFACTS
 rsync -r $XRT_DIR/* $DEBIAN_ARTIFACTS --exclude=build
 
 #creating source code tarball for sbuild
-tar -cvf $THIS_SCRIPT_DIR/$BUILD_FOLDER/xrt_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}.orig.tar .
-xz -z $THIS_SCRIPT_DIR/$BUILD_FOLDER/xrt_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}.orig.tar
+tar -cvf $THIS_SCRIPT_DIR/$BUILD_FOLDER/xrt_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}.orig.tar .
+xz -z $THIS_SCRIPT_DIR/$BUILD_FOLDER/xrt_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}.orig.tar
 cp -rf $DEBIAN $DEBIAN_ARTIFACTS
 
 # changing XRT package version number
 sed -i "1d" $DEBIAN_ARTIFACTS/debian/changelog
-sed -i "1s/^/xrt (${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}-0ubuntu2) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
+sed -i "1s/^/xrt (${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}) experimental;urgency=medium\n/" $DEBIAN_ARTIFACTS/debian/changelog
 
 time sbuild --no-run-lintian -d focal --arch=arm64 -c $SYSROOT -s
+
+cd $THIS_SCRIPT_DIR/$BUILD_FOLDER
+# rename the packages created for consistency
+mv xrt-embedded_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_embedded_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
+mv xrt-zocl-dkms_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.deb xrt_zocl_dkms_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.deb
+mv xrt-embedded-dbgsym_${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_arm64.ddeb xrt_embedded_dbgsym_${RELEASE_VERSION}.${XRT_MAJOR_VERSION}.${XRT_MINOR_VERSION}.${XRT_VERSION_PATCH}_20.04-arm64.ddeb
 
 eval "$SAVED_OPTIONS"; # Restore shell options
 echo "** COMPLETE [${BASH_SOURCE[0]}] **"

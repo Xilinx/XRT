@@ -675,10 +675,6 @@ XRT_EXPORT
 device_list
 loadDevices();
 
-XRT_EXPORT
-void
-load_xdp();
-
 } // namespace hal
 
 namespace hal2 {
