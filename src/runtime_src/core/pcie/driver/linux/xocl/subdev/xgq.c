@@ -574,24 +574,6 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	return ret == xclbin_len ? 0 : -EIO;
 }
 
-#if 0
-/* A-sync ops is not supported in XGQ now, we keep this for future improvement */
-static void xgq_af_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
-{
-	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
-
-	/* Note: we only care rcode for now */
-	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
-
-	/* the func suppose to finish quick and call complete itself */
-	if (xgq_cmd->xgq_af_handle && xgq_cmd->xgq_af_handle->func)
-		xgq_cmd->xgq_af_handle->func(
-			xgq_cmd->xgq_af_handle->arg, ccmd->rcode);
-
-	kfree(xgq_cmd);
-}
-#endif
-
 static int xgq_check_firewall(struct platform_device *pdev)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
@@ -616,7 +598,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/*TODO: payload is to be filed for retriving log back */
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
-	hdr->opcode = XRT_CMD_OP_FIREWALL;
+	hdr->opcode = XRT_CMD_OP_GET_LOG_PAGE;
 	hdr->state = XRT_SQ_CMD_NEW;
 	hdr->count = sizeof(*payload);
 	id = get_xgq_cid(xgq);
@@ -642,8 +624,6 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	/* wait for command completion */
 	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
-
-	XGQ_INFO(xgq, "rcode: %d", cmd->xgq_cmd_rcode);
 
 	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
 done:
