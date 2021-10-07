@@ -40,6 +40,9 @@
 #include "aws_dev.h"
 
 static std::map<std::string, size_t>index_map;
+#ifndef INTERNAL_TESTING_FOR_AWS
+static std::thread rescan_thread[16];
+#endif
 /*
  * Functions each plugin needs to provide
  */
@@ -451,15 +454,25 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
     return ret;
 }
 
+#ifndef INTERNAL_TESTING_FOR_AWS
+static void awsPciRescan(int index)
+{
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    fpga_pci_rescan_slot_app_pfs(index);
+}
+#endif
+
 /*
  * On AWS F1, fpga user PF without xclbin being loaded (cleared) has different
  * device id (0x1042) than that of the user PF with xclbin being loaded (0xf010)
- * Changint the device id needs pci node remove and rescan.
+ * Changing the device id needs pci node remove and rescan.
  * fpga_pci_rescan_slot_app_pfs( mBoardNumber ) is the function used to do that.
- * removal of the pf requires unload the xocl driver, within mpd it is impossible.
- * So we assume the user already made the change by loading a default afi from cmdline
- * with fpga-load-local-image.
- * From mpd & xocl perspective, whichever device id doesn't matter.
+ * Doing so in the context of xclbin download ioctl is impossible.
+ * What we are doing here is, if pcie removal & rescan is required, we will return
+ * EAGAIN to userload, at the same time, we do removal & rescan in a separate thread,
+ * Userload code (shim), when seeing EAGAIN, will retry the xclbin download after
+ * the device id has been changed.
+ * This is all transparent to end user.
  */
 int AwsDev::awsLoadXclBin(const xclBin *buffer)
 {
@@ -473,14 +486,19 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     xclmgmt_ioc_bitstream_axlf obj = { const_cast<axlf *>(buffer) };
     return ioctl(mMgtHandle, cmd, &obj);
 #else
-    int retVal = 0;
     axlf *axlfbuffer = reinterpret_cast<axlf*>(const_cast<xclBin*> (buffer));
     char* afi_id = get_afi_from_axlf(axlfbuffer);
-    union fpga_mgmt_load_local_image_options opt;
 
     if (!afi_id)
         return -EINVAL;
 
+    // get old image info before loading new
+    // new image info can only be achieved after being loaded
+    fpga_mgmt_image_info imageInfoOld;
+    fpga_mgmt_describe_local_image(mBoardNumber, &imageInfoOld, 0);
+
+    int retVal = 0;
+    union fpga_mgmt_load_local_image_options opt;
     // force data retention option
     fpga_mgmt_init_load_local_image_options(&opt);
     opt.flags = FPGA_CMD_DRAM_DATA_RETENTION;
@@ -495,12 +513,33 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
     }
     // check retVal from image load
-    if (retVal) {
-        std::cout << "Failed to load AFI, error: " << retVal << std::endl;
-        return -retVal;
-    }
+    if (retVal)
+        goto failed;
 
-    return sleepUntilLoaded( std::string(afi_id) );
+    fpga_mgmt_image_info imageInfoNew;
+    retVal = sleepUntilLoaded(std::string(afi_id), &imageInfoNew);
+    if (retVal)
+        goto failed;
+
+    // if there is device id change, or shell version change (2rp case), we do a rescan
+    // at the same time, we ask the user (shim) to reload the 2nd time later
+    std::cout << "device id before load: 0x" <<  std::hex << imageInfoOld.spec.map[FPGA_APP_PF].device_id << std::endl;
+    std::cout << "device id after load: 0x" <<  imageInfoNew.ids.afi_device_ids.device_id << std::endl;
+    std::cout << "shell version before load: 0x" <<  imageInfoOld.sh_version << std::endl;
+    std::cout << "shell version after load: 0x" <<  imageInfoNew.sh_version << std::dec << std::endl;
+    if (imageInfoOld.spec.map[FPGA_APP_PF].device_id != imageInfoNew.ids.afi_device_ids.device_id ||
+        imageInfoOld.sh_version != imageInfoNew.sh_version) {
+            std::cout << "pci removal & rescan..." << std::endl;
+            if (rescan_thread[mBoardNumber].joinable())
+                    rescan_thread[mBoardNumber].join();
+            rescan_thread[mBoardNumber]  = std::thread(awsPciRescan, mBoardNumber);
+        return -EAGAIN;
+    }
+    
+    return 0;
+failed:
+    std::cerr << "Failed to load AFI, error: " << retVal << std::endl;
+    return -retVal;
 #endif
 }
 
@@ -585,19 +624,7 @@ bool AwsDev::isGood() {
 
 int AwsDev::awsUserProbe(xcl_mailbox_conn_resp *resp)
 {
-#ifndef INTERNAL_TESTING_FOR_AWS
-    fpga_slot_spec spec_array[16];
-    std::memset(spec_array, 0, sizeof(fpga_slot_spec) * 16);
-    if (fpga_pci_get_all_slot_specs(spec_array, 16)) {
-        std::cout << "ERROR: failed at fpga_pci_get_all_slot_specs" << std::endl;
-        return -1;
-    }
-
-    if (spec_array[mBoardNumber].map[FPGA_APP_PF].device_id != AWS_UserPF_DEVICE_ID)
-        resp->conn_flags |= XCL_MB_PEER_READY;
-#else
     resp->conn_flags |= XCL_MB_PEER_READY;
-#endif
     return 0;
 }
 
@@ -688,10 +715,10 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
 
 //private functions
 #ifndef INTERNAL_TESTING_FOR_AWS
-int AwsDev::sleepUntilLoaded( const std::string &afi )
+int AwsDev::sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info *image_info )
 {
     for( int i = 0; i < 20; i++ ) {
-        std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
+        std::this_thread::sleep_for( std::chrono::milliseconds( 500 ) );
         fpga_mgmt_image_info info;
         std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info) );
         int result = fpga_mgmt_describe_local_image( mBoardNumber, &info, 0 );
@@ -700,6 +727,7 @@ int AwsDev::sleepUntilLoaded( const std::string &afi )
             return 1;
         }
         if( (info.status == FPGA_STATUS_LOADED) && !std::strcmp(info.ids.afi_id, const_cast<char*>(afi.c_str())) ) {
+            *image_info = info;
             break;
         }
     }

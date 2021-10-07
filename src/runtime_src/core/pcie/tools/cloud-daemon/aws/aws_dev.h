@@ -98,33 +98,6 @@ public:
 
             std::string sysfs_name = domain_str.str() + ":" + bus_str.str() + ":" + dev_str.str() + "." + func_str;
             index_map[sysfs_name] = i;
-
-            if (spec_array[i].map[FPGA_APP_PF].device_id == AWS_UserPF_DEVICE_ID) {
-                std::cout << "aws: load default afi to " << sysfs_name  << std::endl;
-                std::string agfi = DEFAULT_GLOBAL_AFI;
-                fpga_mgmt_load_local_image( i, const_cast<char*>(agfi.c_str()) );
-                int j, result = 0;
-                for (j = 0; j < 300; j++) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                    fpga_mgmt_image_info info;
-                    std::memset( &info, 0, sizeof(struct fpga_mgmt_image_info));
-                    result = fpga_mgmt_describe_local_image(i, &info, 0);
-                    if (result) {
-                        std::cout << "aws: init: load default afi failed: " << result << std::endl;
-                        break;
-                    }
-                    if( (info.status == FPGA_STATUS_LOADED) && !std::strcmp(info.ids.afi_id, const_cast<char*>(agfi.c_str())) ) {
-                        break;
-                }
-                if (j >= 300) {
-                    std::cout << "aws: init: load default afi timeout" << std::endl;
-                    break;
-                }
-                if (result)
-                    break;
-                fpga_pci_rescan_slot_app_pfs(i);
-                }
-            }
         }
 #endif
         return 0;
@@ -151,7 +124,7 @@ private:
 #ifdef INTERNAL_TESTING_FOR_AWS
     int mMgtHandle;
 #else
-    int sleepUntilLoaded( const std::string &afi );
+    int sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info* new_afi );
     char* get_afi_from_axlf(const axlf * buffer);
 #endif
 };
