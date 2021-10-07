@@ -499,7 +499,10 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	cmd->xgq = xgq;
 
 	/* set up payload */
-	payload = &(cmd->xgq_cmd_entry.data_payload);
+	payload = (opcode == XRT_CMD_OP_LOAD_XCLBIN) ?
+		&(cmd->xgq_cmd_entry.pdi_payload) :
+		&(cmd->xgq_cmd_entry.xclbin_payload);
+
 	payload->address = memcpy_to_devices(xgq, u_xclbin, xclbin_len);
 	payload->size = xclbin_len;
 	payload->addr_type = XRT_CMD_ADD_TYPE_AP_OFFSET;

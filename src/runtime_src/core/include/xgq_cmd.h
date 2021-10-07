@@ -290,7 +290,8 @@ struct xrt_cmd_sq {
 	union {
 		struct xrt_cmd_log_payload 	log_payload;
 		struct xrt_cmd_clock_payload 	clock_payload;
-		struct xrt_cmd_data_payload 	data_payload;
+		struct xrt_cmd_data_payload 	pdi_payload;
+		struct xrt_cmd_data_payload 	xclbin_payload;
 	};
 };
 
