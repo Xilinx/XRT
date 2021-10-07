@@ -173,6 +173,18 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   auto dev = xrt_core::get_mgmtpf_device(index);
+  
+  //if factory image, update SC
+  auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
+  if(is_mfg) {
+    std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+    if (bmc->fail())
+      throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
+
+    if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
+      throw xrt_core::error("Failed to update SC flash image");
+    return;
+  }
 
   // If SC is fixed, stop flashing immediately
   if (is_SC_fixed(index)) 
@@ -216,7 +228,12 @@ update_SC(unsigned int  index, const std::string& file)
 // To be replaced with a cleaner fix
 // Hack: added linux specific code to bring back mgmt pf
 #ifdef __GNUC__
-const static int dev_timeout = 60;
+  std::string errmsg;
+  peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
+  if (!errmsg.empty())
+    throw xrt_core::error("Userpf is not online. Please warm reboot.");
+  
+  const static int dev_timeout = 60;
   int wait = 0;
   do {
     auto hdl = peer_dev->open("", O_RDWR);
