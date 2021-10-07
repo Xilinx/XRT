@@ -505,11 +505,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		 */
 		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
 			xocl_xdev_info(xdev, "check interface uuid");
-			if (!XDEV(xdev)->fdt_blob) {
-				userpf_err(xdev, "did not find platform dtb");
-				err = -EINVAL;
-				goto done;
-			}
 			err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char*)xdev->ulp_blob));

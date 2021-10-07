@@ -797,7 +797,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_P2P,
@@ -836,7 +836,7 @@ static struct xocl_subdev_map subdev_map[] = {
 		.flags = 0,
 		.build_priv_data = NULL,
 		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
 		.id = XOCL_SUBDEV_PCIE_FIREWALL,
@@ -1635,25 +1635,43 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	// comment this out for debugging xclbin download only
 	//return 0;
 
-	if (!blob || !subset_blob) {
-		xocl_xdev_err(xdev_hdl, "blob is NULL");
+	/*
+	 * There is case where xclbin is built with raptor flow, but shell
+	 * isn't. So in this case, blob is null, subset_blob is not, and
+	 * we don't expect to see interface_uuid in xclbin partition
+	 * metadata
+	 */
+	if (!subset_blob || fdt_check_header(subset_blob)) {
+		xocl_xdev_err(xdev_hdl, "invalid subset blob");
 		return -EINVAL;
 	}
 
-	if (fdt_check_header(blob) || fdt_check_header(subset_blob)) {
-		xocl_xdev_err(xdev_hdl, "Invalid fdt blob");
-		return -EINVAL;
-	}
-
+	/*
+	 * If there is no interface_uuid in partition metadata, we don't
+	 * check blp/plp and compare. This is valid case.
+	 */
 	subset_offset = fdt_path_offset(subset_blob, INTERFACES_PATH);
-	if (subset_offset < 0) {
-		xocl_xdev_err(xdev_hdl, "Invalid subset_offset %d",
-			       	subset_offset);
+	if (subset_offset < 0)
+		return 0;
+
+	subset_offset = fdt_first_subnode(subset_blob, subset_offset);
+	if (subset_offset < 0)
+		return 0;
+
+	subset_int_uuid = fdt_getprop(subset_blob, subset_offset,
+		"interface_uuid", NULL);
+	if (!subset_int_uuid)
+		return 0;
+
+	/*
+	 * there is interface uuid in xclbin. we need to check blp/plp
+	 */
+	if (!blob || fdt_check_header(blob)) {
+		xocl_xdev_err(xdev_hdl, "invalid blob");
 		return -EINVAL;
 	}
 
-	for (subset_offset = fdt_first_subnode(subset_blob, subset_offset);
-		subset_offset >= 0;
+	for (; subset_offset >= 0;
 		subset_offset = fdt_next_subnode(subset_blob, subset_offset)) {
 		subset_int_uuid = fdt_getprop(subset_blob, subset_offset,
 				"interface_uuid", NULL);

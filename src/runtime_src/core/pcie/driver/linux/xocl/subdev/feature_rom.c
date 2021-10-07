@@ -715,6 +715,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 		vendor = XOCL_PL_TO_PCI_DEV(pdev)->vendor;
 		did = XOCL_PL_TO_PCI_DEV(pdev)->device;
 		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010)) { // MAGIC, we should define elsewhere
+#define AWS_F1_SHELL_NAME "xilinx_aws-vu9p-f1_shell-dynamic"
 			xocl_dbg(&pdev->dev,
 				"Found AWS VU9P Device without featureROM");
 			/*
@@ -730,7 +731,7 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			memset(rom->header.VBNVName, 0,
 				sizeof(rom->header.VBNVName));
 			strncpy(rom->header.VBNVName,
-				"xilinx_aws-vu9p-f1_shell-v04261818_201920_2", 43);
+				AWS_F1_SHELL_NAME, strlen(AWS_F1_SHELL_NAME));
 			rom->header.MajorVersion = 4;
 			rom->header.MinorVersion = 0;
 			rom->header.VivadoBuildID = 0xabcd;

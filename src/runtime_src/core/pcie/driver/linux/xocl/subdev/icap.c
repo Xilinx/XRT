@@ -2463,14 +2463,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
-	/* TODO: link this comment to specific function in xocl_ioctl.c */
-	/* has to create mem topology even with failure case
-	 * please refer the comment in xocl_ioctl.c
-	 * without creating mem topo, memory corruption could happen
-	 */
-	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
-	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
-
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download);
 
 	/* TODO: Remove this after new KDS replace the legacy one */
@@ -2501,14 +2493,22 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	icap_create_subdev_debugip(pdev);
 
-	icap_cache_max_host_mem_aperture(icap);
-
 	/* Initialize Group Topology and Group Connectivity */
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
 
 	icap_probe_urpdev_all(pdev, xclbin);
 	xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 done:
+	/* TODO: link this comment to specific function in xocl_ioctl.c */
+	/* has to create mem topology even with failure case
+	 * please refer the comment in xocl_ioctl.c
+	 * without creating mem topo, memory corruption could happen
+	 */
+	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
+
+	icap_cache_max_host_mem_aperture(icap);
+
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
@@ -2648,11 +2648,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 */
 	if (header && xrt_xclbin_get_section_hdr(xclbin, BITSTREAM)) {
 		ICAP_INFO(icap, "check interface uuid");
-		if (!XDEV(xdev)->fdt_blob) {
-			ICAP_ERR(icap, "did not find platform dtb");
-			err = -EINVAL;
-			goto done;
-		}
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char *)xclbin +
