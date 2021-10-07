@@ -27,21 +27,22 @@ usage_and_exit()
 
 dodeb()
 {
-	dir=$BUILD_DIR/debbuild/$PKG_NAME-$version-$revision
+	dir=$BUILD_DIR/debbuild/$PKG_NAME-$PKG_VER
 	mkdir -p $dir/DEBIAN
+
 cat <<EOF >$dir/DEBIAN/control
 
 Package: $PKG_NAME
 Architecture: all
-Version: $version-$revision
+Version: $PKG_VER
 Priority: optional
 Description: Xilinx Versal firmware
 Maintainer: Xilinx Inc.
 
 EOF
 
-	mkdir -p $dir/lib/firmware/xilinx
-	rsync -avz $1 $dir/lib/firmware/xilinx/$PKG_NAME-$version-$revision.pdi
+	app_root=$1
+	rsync -avz $app_root $dir
 	dpkg-deb --build $dir $PACKAGE_DIR
 }
 
@@ -181,5 +182,5 @@ xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
 if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"
 fi
-#dodeb $APU_PDI
+dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
