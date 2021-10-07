@@ -79,20 +79,38 @@ static inline uint32_t xgq_reg_read32(uint64_t hdl, uint64_t addr)
 }
 #endif
 
+static inline uint32_t xgq_read32(uint64_t io_hdl, uint64_t addr, int is_mem)
+{
+#ifdef XGQ_MEM_REG_ACCESS_DIFFER
+	return is_mem ? xgq_mem_read32(io_hdl, addr) : xgq_reg_read32(io_hdl, addr);
+#else
+	return xgq_reg_read32(io_hdl, addr);
+#endif
+}
+
+static inline void xgq_write32(uint64_t io_hdl, uint64_t addr, uint32_t val, int is_mem)
+{
+#ifdef XGQ_MEM_REG_ACCESS_DIFFER
+	is_mem ? xgq_mem_write32(io_hdl, addr, val) : xgq_reg_write32(io_hdl, addr, val);
+#else
+	xgq_reg_write32(io_hdl, addr, val);
+#endif
+}
+
 /*
  * Currently, this is only used as a workaround for the BRAM read/write collision HW
  * issue on MB ERT, which will cause ERT to read incorrect value from CQ. We only
  * trust the value until we read twice and got the same value.
  */
-static inline uint32_t xgq_reg_double_read32(uint64_t io_hdl, uint64_t addr)
+static inline uint32_t xgq_double_read32(uint64_t io_hdl, uint64_t addr, int is_mem)
 {
 	uint32_t val[2];
 	int i = 0;
 
-	val[1] = xgq_reg_read32(io_hdl, addr);
+	val[1] = xgq_read32(io_hdl, addr, is_mem);
 	val[0] = val[1] - 1;
 	while (val[0] != val[1])
-		val[i++ & 0x1] = xgq_reg_read32(io_hdl, addr);
+		val[i++ & 0x1] = xgq_read32(io_hdl, addr, is_mem);
 	return val[0];
 }
 
@@ -130,6 +148,13 @@ struct xgq_header {
 	uint32_t xh_cq_consumed;
 
 	uint32_t xh_flags;
+
+	/*
+	 * On some platforms, there is no dedicated producer pointer register. We can use
+	 * below in-mem version to communicate b/w the peers.
+	 */
+	uint32_t xh_sq_produced;
+	uint32_t xh_cq_produced;
 };
 
 /* Software representation of a single ring buffer. */
@@ -148,6 +173,7 @@ struct xgq_ring {
 /* Software representation of a single XGQ. */
 #define XGQ_SERVER		(1UL << 0)
 #define XGQ_DOUBLE_READ		(1UL << 1)
+#define XGQ_IN_MEM_PROD		(1UL << 2)
 struct xgq {
 	uint64_t xq_io_hdl;
 	uint64_t xq_header_addr;
@@ -155,8 +181,9 @@ struct xgq {
 	struct xgq_ring xq_sq ____cacheline_aligned_in_smp;
 	struct xgq_ring xq_cq ____cacheline_aligned_in_smp;
 };
-#define XGQ_IS_SERVER(xgq)		((xgq->xq_flags & XGQ_SERVER) != 0)
-#define XGQ_NEED_DOUBLE_READ(xgq)	((xgq->xq_flags & XGQ_DOUBLE_READ) != 0)
+#define XGQ_IS_SERVER(xgq)		(((xgq)->xq_flags & XGQ_SERVER) != 0)
+#define XGQ_NEED_DOUBLE_READ(xgq)	(((xgq)->xq_flags & XGQ_DOUBLE_READ) != 0)
+#define XGQ_IS_IN_MEM_PROD(xgq)		(((xgq)->xq_flags & XGQ_IN_MEM_PROD) != 0)
 
 
 /*
@@ -174,7 +201,7 @@ static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, si
 	uint32_t *src = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, tgt += 4)
-		xgq_mem_write32(io_hdl, tgt, src[i]);
+		xgq_write32(io_hdl, tgt, src[i], XGQ_TRUE);
 }
 
 static inline void xgq_copy_from_ring(uint64_t io_hdl, void *buf, uint64_t src, size_t len)
@@ -183,12 +210,14 @@ static inline void xgq_copy_from_ring(uint64_t io_hdl, void *buf, uint64_t src, 
 	uint32_t *tgt = (uint32_t *)buf;
 
 	for (i = 0; i < len / 4; i++, src += 4)
-		tgt[i] = xgq_mem_read32(io_hdl, src);
+		tgt[i] = xgq_read32(io_hdl, src, XGQ_TRUE);
 }
 
-static inline void xgq_init_ring(struct xgq_ring *ring, uint64_t produced, uint64_t consumed,
-				 uint64_t slots, uint32_t slot_num, uint32_t slot_size)
+static inline void xgq_init_ring(struct xgq *xgq, struct xgq_ring *ring,
+				 uint64_t produced, uint64_t consumed, uint64_t slots,
+				 uint32_t slot_num, uint32_t slot_size)
 {
+	ring->xr_xgq = xgq;
 	ring->xr_produced_addr = produced;
 	ring->xr_consumed_addr = consumed;
 	ring->xr_slot_addr = slots;
@@ -210,35 +239,40 @@ static inline int xgq_ring_empty(struct xgq_ring *ring)
 static inline void xgq_ring_read_produced(uint64_t io_hdl, struct xgq_ring *ring)
 {
 #ifdef BRAM_COLLISION_WORKAROUND
-	ring->xr_produced = xgq_reg_double_read32(io_hdl, ring->xr_produced_addr);
+	ring->xr_produced = xgq_double_read32(io_hdl, ring->xr_produced_addr,
+					      XGQ_IS_IN_MEM_PROD(ring->xr_xgq));
 #else
-	if (XGQ_NEED_DOUBLE_READ(ring->xr_xgq))
-		ring->xr_produced = xgq_reg_double_read32(io_hdl, ring->xr_produced_addr);
-	else
-		ring->xr_produced = xgq_reg_read32(io_hdl, ring->xr_produced_addr);
+	if (XGQ_NEED_DOUBLE_READ(ring->xr_xgq)) {
+		ring->xr_produced = xgq_double_read32(io_hdl, ring->xr_produced_addr,
+						      XGQ_IS_IN_MEM_PROD(ring->xr_xgq));
+	} else {
+		ring->xr_produced = xgq_read32(io_hdl, ring->xr_produced_addr,
+					       XGQ_IS_IN_MEM_PROD(ring->xr_xgq));
+	}
 #endif
 }
 
 static inline void xgq_ring_write_produced(uint64_t io_hdl, struct xgq_ring *ring)
 {
-	xgq_reg_write32(io_hdl, ring->xr_produced_addr, ring->xr_produced);
+	xgq_write32(io_hdl, ring->xr_produced_addr, ring->xr_produced,
+		    XGQ_IS_IN_MEM_PROD(ring->xr_xgq));
 }
 
 static inline void xgq_ring_read_consumed(uint64_t io_hdl, struct xgq_ring *ring)
 {
 #ifdef BRAM_COLLISION_WORKAROUND
-	ring->xr_consumed = xgq_reg_double_read32(io_hdl, ring->xr_consumed_addr);
+	ring->xr_consumed = xgq_double_read32(io_hdl, ring->xr_consumed_addr, XGQ_TRUE);
 #else
 	if (XGQ_NEED_DOUBLE_READ(ring->xr_xgq))
-		ring->xr_consumed = xgq_reg_double_read32(io_hdl, ring->xr_consumed_addr);
+		ring->xr_consumed = xgq_double_read32(io_hdl, ring->xr_consumed_addr, XGQ_TRUE);
 	else
-		ring->xr_consumed = xgq_reg_read32(io_hdl, ring->xr_consumed_addr);
+		ring->xr_consumed = xgq_read32(io_hdl, ring->xr_consumed_addr, XGQ_TRUE);
 #endif
 }
 
 static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *ring)
 {
-	xgq_reg_write32(io_hdl, ring->xr_consumed_addr, ring->xr_consumed);
+	xgq_write32(io_hdl, ring->xr_consumed_addr, ring->xr_consumed, XGQ_TRUE);
 }
 
 static inline uint64_t xgq_ring_slot_ptr(struct xgq_ring *ring, int produce)
@@ -282,6 +316,7 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	    size_t n_slots, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
 {
 	struct xgq_header hdr = {};
+	uint64_t sqprod, cqprod;
 
 	xgq->xq_flags = flags;
 #ifdef BRAM_COLLISION_WORKAROUND
@@ -289,10 +324,19 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 #endif
 	xgq->xq_io_hdl = io_hdl;
 	xgq->xq_header_addr = ring_addr;
-	xgq_init_ring(&xgq->xq_sq, sq_produced,
+	
+	if (XGQ_IS_IN_MEM_PROD(xgq)) {
+		/* Passed-in sq/cq producer pointer will be ignored. */
+		sqprod = ring_addr + offsetof(struct xgq_header, xh_sq_produced);
+		cqprod = ring_addr + offsetof(struct xgq_header, xh_cq_produced);
+	} else {
+		sqprod = sq_produced;
+		cqprod = cq_produced;
+	}
+	xgq_init_ring(xgq, &xgq->xq_sq, sqprod,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + sizeof(struct xgq_header), n_slots, slot_size);
-	xgq_init_ring(&xgq->xq_cq, cq_produced,
+	xgq_init_ring(xgq, &xgq->xq_cq, cqprod,
 		      ring_addr + offsetof(struct xgq_header, xh_cq_consumed),
 		      ring_addr + sizeof(struct xgq_header) + n_slots * slot_size,
 		      n_slots, sizeof(struct xrt_com_queue_entry));
@@ -305,7 +349,9 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	hdr.xh_sq_slot_size = slot_size;
 	hdr.xh_cq_offset = xgq->xq_cq.xr_slot_addr - ring_addr;
 	hdr.xh_sq_consumed = 0;
-	hdr.xh_cq_consumed = 0;
+	hdr.xh_sq_consumed = 0;
+	hdr.xh_cq_produced = 0;
+	hdr.xh_cq_produced = 0;
 	hdr.xh_flags = xgq->xq_flags;
 	xgq_copy_to_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(hdr));
 
@@ -355,16 +401,21 @@ xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr, 
 	return 0;
 }
 
+/*
+ * Alloc a group of XGQs on the ring buffer. Producer pointers will be embedded in the header.
+ */
 static inline int
-xgq_group_alloc(struct xgq *a_xgq, size_t n_qs, uint64_t flags, uint64_t io_hdl,
-		uint64_t ring_addr, size_t *ring_len, const uint32_t *a_slot_size,
-		const uint64_t *a_sq_produced, const uint64_t *a_cq_produced)
+xgq_group_alloc(struct xgq *a_xgq, size_t n_qs, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
+		size_t *ring_len, const uint32_t *a_slot_size, const uint32_t max_slots)
 {
 	size_t i;
 	size_t total_len = 0;
 	size_t rlen = *ring_len;
 	uint32_t numslots = 1;
 	uint64_t raddr = ring_addr;
+
+	/* Only support in-mem producer pointer for group xgq alloc. */
+	flags |= XGQ_IN_MEM_PROD;
 
 	for (i = 0; i < n_qs; i++) {
 		if (a_slot_size[i] % sizeof(uint32_t))
@@ -379,10 +430,11 @@ xgq_group_alloc(struct xgq *a_xgq, size_t n_qs, uint64_t flags, uint64_t io_hdl,
 	numslots >>= 1;
 	if (numslots < XGQ_MIN_NUM_SLOTS)
 		return -E2BIG;
+	if (max_slots && numslots > max_slots)
+		numslots = max_slots;
 
 	for (i = 0; i < n_qs; i++) {
-		xgq_init(&a_xgq[i], flags, io_hdl, raddr, numslots, a_slot_size[i],
-			a_sq_produced[i], a_cq_produced[i]);
+		xgq_init(&a_xgq[i], flags, io_hdl, raddr, numslots, a_slot_size[i], 0, 0);
 		raddr += xgq_ring_len(numslots, a_slot_size[i]);
 	}
 
@@ -390,11 +442,12 @@ xgq_group_alloc(struct xgq *a_xgq, size_t n_qs, uint64_t flags, uint64_t io_hdl,
 	return 0;
 }
 
-static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr,
+static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
 			     uint64_t sq_produced, uint64_t cq_produced)
 {
 	struct xgq_header hdr = {};
 	uint32_t nslots;
+	uint64_t sqprod, cqprod;
 
 	xgq_copy_from_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(uint32_t));
 	// Magic number must show up to confirm the header is fully initialized
@@ -412,12 +465,21 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 	xgq->xq_flags = 0;
 	xgq->xq_flags |= flags;
 	xgq->xq_flags |= (hdr.xh_flags & XGQ_DOUBLE_READ);
+	xgq->xq_flags |= (hdr.xh_flags & XGQ_IN_MEM_PROD);
 
-	xgq_init_ring(&xgq->xq_sq, sq_produced,
+	if (XGQ_IS_IN_MEM_PROD(xgq)) {
+		/* Passed-in sq/cq producer pointer will be ignored. */
+		sqprod = ring_addr + offsetof(struct xgq_header, xh_sq_produced);
+		cqprod = ring_addr + offsetof(struct xgq_header, xh_cq_produced);
+	} else {
+		sqprod = sq_produced;
+		cqprod = cq_produced;
+	}
+	xgq_init_ring(xgq, &xgq->xq_sq, sqprod,
 		      ring_addr + offsetof(struct xgq_header, xh_sq_consumed),
 		      ring_addr + hdr.xh_sq_offset,
 		      hdr.xh_slot_num, hdr.xh_sq_slot_size);
-	xgq_init_ring(&xgq->xq_cq, cq_produced,
+	xgq_init_ring(xgq, &xgq->xq_cq, cqprod,
 		      ring_addr + offsetof(struct xgq_header, xh_cq_consumed),
 		      ring_addr + hdr.xh_cq_offset,
 		      hdr.xh_slot_num, sizeof(struct xrt_com_queue_entry));
@@ -456,8 +518,8 @@ static inline int xgq_consume(struct xgq *xgq, uint64_t *slot_addr)
 	 * See comments above XGQ_ENTRY_NEW_FLAG_MASK for details.
 	 */
 	while (!(val & XGQ_ENTRY_NEW_FLAG_MASK))
-		val = xgq_mem_read32(xgq->xq_io_hdl, *slot_addr);
-	xgq_mem_write32(xgq->xq_io_hdl, *slot_addr, val & ~XGQ_ENTRY_NEW_FLAG_MASK);
+		val = xgq_read32(xgq->xq_io_hdl, *slot_addr, XGQ_TRUE);
+	xgq_write32(xgq->xq_io_hdl, *slot_addr, val & ~XGQ_ENTRY_NEW_FLAG_MASK, XGQ_TRUE);
 #endif
 
 	return 0;

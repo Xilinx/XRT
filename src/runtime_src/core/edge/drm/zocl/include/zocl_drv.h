@@ -275,6 +275,7 @@ void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
 int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info);
 void subdev_destroy_cu(struct drm_zocl_dev *zdev);
 /* Sub device driver */
+extern struct platform_driver zocl_xgq_cu_driver;
 extern struct platform_driver cu_driver;
 struct zocl_cu_ops {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);

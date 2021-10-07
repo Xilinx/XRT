@@ -34,6 +34,7 @@
 #include "sched_exec.h"
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
+#include "zocl_xgq_ert.h"
 
 #define ZOCL_DRIVER_NAME        "zocl"
 #define ZOCL_DRIVER_DESC        "Zynq BO manager"
@@ -52,6 +53,10 @@ static char driver_date[9];
 #endif
 
 extern int kds_mode;
+
+int enable_xgq_ert = 1;
+module_param(enable_xgq_ert, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(enable_xgq_ert, "0 = legacy ERT mode, 1 = XGQ ERT mode (default)");
 
 static const struct vm_operations_struct reg_physical_vm_ops = {
 #ifdef CONFIG_HAVE_IOREMAP_PROT
@@ -864,7 +869,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	mutex_init(&zdev->mm_lock);
 
 	subdev = zocl_find_pdev("ert_hw");
-	if (subdev) {
+	if (!enable_xgq_ert && subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
 		/* Trust device tree for now, but a better place should be
 		 * feature rom.
@@ -1065,42 +1070,53 @@ static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
 	.driver			= {
-		.name		        = "zocl-drm",
+		.name	        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,
 	},
 };
 
 static struct platform_driver *const drivers[] = {
-	&zocl_ert_driver,
 	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
+	&zocl_xgq_cu_driver,
 };
 
 static int __init zocl_init(void)
 {
 	int ret;
+	struct platform_driver *ert_drv = enable_xgq_ert ? &zocl_xgq_ert_driver : &zocl_ert_driver;
 
 	/* Make sure register sub device in the first place. */
 	ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
 	if (ret < 0)
 		return ret;
 
+	ret = platform_driver_register(ert_drv);
+	if (ret < 0)
+		goto err_ert;
+
 	ret = platform_driver_register(&zocl_drm_private_driver);
 	if (ret < 0)
 		goto err;
 
 	return 0;
-err:
+
+err_ert:
 	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+err:
+	platform_driver_unregister(ert_drv);
 	return ret;
 }
 module_init(zocl_init);
 
 static void __exit zocl_exit(void)
 {
+	struct platform_driver *ert_drv = enable_xgq_ert ? &zocl_xgq_ert_driver : &zocl_ert_driver;
+
 	/* Remove zocl driver first, as it is using other driver */
 	platform_driver_unregister(&zocl_drm_private_driver);
+	platform_driver_unregister(ert_drv);
 	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
 }
 module_exit(zocl_exit);
