@@ -31,6 +31,10 @@ namespace XBU = XBUtilities;
 #include "core/common/message.h"
 #include "core/common/utils.h"
 #include "flash/flasher.h"
+// Remove linux specific code
+#ifdef __GNUC__
+#include "core/pcie/linux/scan.cpp"
+#endif
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
@@ -169,6 +173,18 @@ update_SC(unsigned int  index, const std::string& file)
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   auto dev = xrt_core::get_mgmtpf_device(index);
+  
+  //if factory image, update SC
+  auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(dev);
+  if(is_mfg) {
+    std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
+    if (bmc->fail())
+      throw xrt_core::error(boost::str(boost::format("Failed to read %s") % file));
+
+    if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
+      throw xrt_core::error("Failed to update SC flash image");
+    return;
+  }
 
   // If SC is fixed, stop flashing immediately
   if (is_SC_fixed(index)) 
@@ -191,6 +207,16 @@ update_SC(unsigned int  index, const std::string& file)
     return;
   }
 
+// To be replaced with a cleaner fix
+// Mgmt pf needs to shutdown so that the board doesn't brick
+// Hack: added linux specific code to shutdown mgmt pf
+#ifdef __GNUC__
+  auto mgmt_dev = pcidev::get_dev(index, false);
+  auto peer_dev = mgmt_dev->lookup_peer_dev();
+  if (pcidev::shutdown(mgmt_dev))
+    throw xrt_core::error("Only proceed with SC update if all user applications for the target card(s) are stopped.");
+#endif
+
   std::unique_ptr<firmwareImage> bmc = std::make_unique<firmwareImage>(file.c_str(), BMC_FIRMWARE);
 
   if (bmc->fail())
@@ -198,6 +224,28 @@ update_SC(unsigned int  index, const std::string& file)
 
   if (flasher.upgradeBMCFirmware(bmc.get()) != 0)
     throw xrt_core::error("Failed to update SC flash image");
+
+// To be replaced with a cleaner fix
+// Hack: added linux specific code to bring back mgmt pf
+#ifdef __GNUC__
+  std::string errmsg;
+  peer_dev->sysfs_put("", "shutdown", errmsg, "0\n");
+  if (!errmsg.empty())
+    throw xrt_core::error("Userpf is not online. Please warm reboot.");
+  
+  const static int dev_timeout = 60;
+  int wait = 0;
+  do {
+    auto hdl = peer_dev->open("", O_RDWR);
+    if (hdl != -1) {
+      peer_dev->close(hdl);
+      break;
+    }
+    sleep(1);
+  } while (++wait < dev_timeout);
+  if (wait == dev_timeout)
+    throw xrt_core::error("User function is not back online. Please warm reboot.");
+#endif 
 }
 
 /* 
