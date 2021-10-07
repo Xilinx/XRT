@@ -1,8 +1,5 @@
 #!/bin/bash
 
-#
-# e.g. ./build_versal.sh 5.10.0-xilinx-v2021.2-202120.2.12.0-r0.0 versal
-#
 error()
 {
 	echo "ERROR: $1" 1>&2
@@ -14,8 +11,8 @@ usage()
 	echo "Usage: $PROGRAM [options]"
 	echo "  options:"
 	echo "          -help                           Print this usage"
-	echo "          -setup				Setup file to use"
-        echo "          -clean                          Remove build files"
+	echo "          -setup                          Setup file to use"
+	echo "          -clean                          Remove build files"
 	echo ""
 }
 
