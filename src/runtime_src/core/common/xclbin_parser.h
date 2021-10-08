@@ -50,9 +50,11 @@ struct kernel_argument
 
 struct kernel_properties
 {
+  enum class kernel_type { none, pl, ps };
   enum class mailbox_type { none, in , out, inout };
   using restart_type = size_t;
   std::string name;
+  kernel_type type = kernel_type::none;
   restart_type counted_auto_restart = 0;
   mailbox_type mailbox = mailbox_type::none;
   size_t address_range = 0;
