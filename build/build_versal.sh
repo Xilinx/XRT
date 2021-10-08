@@ -102,6 +102,33 @@ SYSTEM_DTB_ADDR="0x20001000"
 KERNEL_ADDR="0x30000000"
 ROOTFS_ADDR="0x32000000"
 
+clean=0
+while [ $# -gt 0 ]; do
+	case $1 in
+		-help )
+			usage_and_exit 0
+			;;
+		-setup )
+			shift
+			SETTINGS_FILE=$1
+			;;
+		-clean )
+			clean=1
+			;;
+		* )
+			error "Unregognized option: $1"
+			;;
+	esac
+	shift
+done
+
+if [[ $clean == 1 ]]; then
+	echo $PWD
+	echo "/bin/rm -rf $BUILD_DIR $VERSAL_BUILD_DIR/$PKG_NAME-*"
+	/bin/rm -rf $BUILD_DIR $VERSAL_BUILD_DIR/$PKG_NAME-*
+	exit 0
+fi
+
 if [ -f $SETTINGS_FILE ]; then
 	source $SETTINGS_FILE
 fi
