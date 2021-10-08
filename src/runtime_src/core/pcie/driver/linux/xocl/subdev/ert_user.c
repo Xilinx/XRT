@@ -1247,7 +1247,6 @@ static void xocl_ert_user_remove_event(struct xocl_ert_user *ert_user, struct er
 			continue;
 
 		list_del(&curr->ev_entry);
-		free_ert_user_event(curr);
 		break;
 	}
 
@@ -1288,8 +1287,8 @@ int ert_user_thread(void *data)
 		process_ert_cq(ert_user);
 
 		if (unlikely(ev_client)) {
-			complete(&ev_client->cmp);
 			xocl_ert_user_remove_event(ert_user, ev_client);
+			complete(&ev_client->cmp);
 		}
 
 		/* If any event occured, we should drain all the related commands ASAP
@@ -1441,6 +1440,8 @@ add_event:
 	mutex_unlock(&ert_user->ev_lock);
 
 	wait_for_completion(&event->cmp);
+
+	free_ert_user_event(event);
 
 	return  ert_user->bad_state;
 }
