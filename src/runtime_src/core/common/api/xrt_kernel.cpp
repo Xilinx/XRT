@@ -1055,7 +1055,7 @@ private:
   // as its lifetime exceed that of xrt::kernel (ensured by
   // shared xrt::xclbin ownership in kernel object).
   using xarg = xrt_core::xclbin::kernel_argument;
-  xarg arg; // argument meta data from xclbin
+  xarg arg;    // argument meta data from xclbin
 
   std::unique_ptr<iarg> content;
 
@@ -1837,6 +1837,7 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
+    , encode_cumasks(rhs->encode_cumasks)
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -1863,6 +1864,31 @@ public:
   get_ert_cmd()
   {
     return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
+  }
+
+  // Use to explicitly restrict what CUs can be used
+  // Specified CUs are ignored if they are not currently
+  // managed by this run object
+  void
+  set_cus(const std::bitset<max_cus>& mask)
+  {
+    auto itr = std::remove_if(ips.begin(), ips.end(),
+                              [&mask] (const auto& ip) {
+                                return !mask.test(ip->get_cuidx());
+                              });
+
+    if (itr == ips.begin())
+      throw std::runtime_error("Specified No compute units left");
+
+    // update the cumask to set remaining cus, note that removed
+    // cus, while not erased, are no longer valid per move sematics
+    cumask.reset();
+    std::for_each(ips.begin(), itr, [this](const auto& ip) { cumask.set(ip->get_cuidx()); });
+
+    // erase the removed ips and mark that CUs must be
+    // encoded in command packet.
+    ips.erase(itr,ips.end());
+    encode_cumasks = true;
   }
 
   const std::bitset<max_cus>&
@@ -2641,6 +2667,12 @@ const std::bitset<max_cus>&
 get_cumask(const xrt::run& run)
 {
   return run.get_handle()->get_cumask();
+}
+
+void
+set_cus(xrt::run& run, const std::bitset<max_cus>& mask)
+{
+  return run.get_handle()->set_cus(mask);
 }
 
 void
