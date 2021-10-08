@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,19 +14,19 @@
  * under the License.
  */
 
-#ifndef _XOSPIVERSAL_H_
-#define _XOSPIVERSAL_H_
+#ifndef _XGQ_FLASHER_H_
+#define _XGQ_FLASHER_H_
 
 #include <iostream>
 #include "core/common/system.h"
 #include "core/common/device.h"
 
-class XOSPIVER_Flasher
+class XGQ_Flasher
 {
 public:
-    /* Constructor of ospi_versal flash */
-    XOSPIVER_Flasher(std::shared_ptr<xrt_core::device> dev);
-    /* API of flashing binStream via ospi_versal driver */
+    /* Constructor of ospi_xgq flash */
+    XGQ_Flasher(std::shared_ptr<xrt_core::device> dev);
+    /* API of flashing binStream via ospi_xgq driver */
     int xclUpgradeFirmware(std::istream& binStream);
 
 private:

@@ -1960,7 +1960,7 @@ static int __icap_peer_xclbin_download(struct icap *icap, struct axlf *xclbin, b
 		 * xclbin. TODO Revisit this value after understanding the
 		 * expected time consumption on Versal.
 		 */
-		timeout = (xclbin->m_header.m_length) / (1024 * 1024) * 2;
+		timeout = (xclbin->m_header.m_length) / (1024 * 1024) * 2 + 5;
 	}
 
 	/* In Azure cloud, there is special requirement for xclbin download
@@ -2676,7 +2676,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 		err = -EINVAL;
 		goto done;
 	}
-
 	if (!xocl_verify_timestamp(xdev,
 		xclbin->m_header.m_featureRomTimeStamp)) {
 		ICAP_ERR(icap, "TimeStamp of ROM did not match Xclbin");

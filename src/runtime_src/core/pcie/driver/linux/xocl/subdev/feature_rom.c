@@ -501,7 +501,7 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	}
 
 	err = get_vendor_firmware_dir(vendor, vendor_fw_dir, sizeof(vendor_fw_dir));
-    // Failure returns -E2BIG
+	// Failure returns -E2BIG
 	if (err < 0)
 		return err;
 
