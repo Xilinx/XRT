@@ -53,10 +53,16 @@
 #define XRT_Q1_SUB_SIZE		(XRT_SUB_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
 #define XRT_Q1_COM_SIZE		(XRT_COM_Q1_SLOT_SIZE * XRT_QUEUE1_SLOT_NUM) // NOLINT
 
+/* Opcode encoding rules:
+ * | 15 ------ 11 | 10 ----- 8 | 7 ----- 0 |
+ * +--------------+------------+-----------+
+ * |   Reserved   |    Type    |  OP's ID  |
+ * +--------------+------------+-----------+
+ */
 enum xrt_cmd_opcode {
+	/* Management command type */
 	XRT_CMD_OP_LOAD_XCLBIN		= 0x0,
 	XRT_CMD_OP_CONFIGURE		= 0x1,
-	XRT_CMD_OP_CONFIGURE_PS_KERNEL	= 0x2,
 
 	XRT_CMD_OP_GET_LOG_PAGE		= 0x8,
 
@@ -64,8 +70,19 @@ enum xrt_cmd_opcode {
 	XRT_CMD_OP_CLOCK		= 0xb,
 	XRT_CMD_OP_VMC			= 0xc,
 
-	XRT_CMD_OP_START_PL_CUIDX	= 0x100,
-	XRT_CMD_OP_START_PL_CUIDX_INDIR	= 0x101,
+	/* User command type */
+	XRT_CMD_OP_START_CUIDX	            = 0x100,
+	XRT_CMD_OP_START_CUIDX_INDIR	    = 0x101,
+	XRT_CMD_OP_START_CUIDX_KV	        = 0x102,
+	XRT_CMD_OP_START_CUIDX_KV_INDIR	    = 0x103,
+	XRT_CMD_OP_INIT_CUIDX	            = 0x104,
+	XRT_CMD_OP_INIT_CUIDX_INDIR         = 0x105,
+	XRT_CMD_OP_INIT_CUIDX_KV	        = 0x106,
+	XRT_CMD_OP_INIT_CUIDX_KV_INDIR	    = 0x107,
+	XRT_CMD_OP_CFG_START	            = 0x108,
+	XRT_CMD_OP_CFG_END	                = 0x109,
+	XRT_CMD_OP_CFG_CU	                = 0x10a,
+	XRT_CMD_OP_QUERY_CU	                = 0x10b,
 
 	XRT_CMD_OP_BARRIER		= 0x200,
 	XRT_CMD_OP_EXIT_ERT		= 0x201,
@@ -113,7 +130,7 @@ enum xrt_cmd_page_id {
 #define XGQ_ENTRY_NEW_FLAG_MASK		0x80000000
 
 /**
- * struct xrt_sub_queue_entry: XGQ submission queue entry format
+ * struct xrt_cmd_sq_hdr: XGQ submission queue entry header format
  *
  * @opcode:	[15-0]	command opcode identifying specific command
  * @count:	[30-16]	number of bytes representing packet payload
@@ -125,30 +142,28 @@ enum xrt_cmd_page_id {
  * An command ID is used to identify the command. When the command
  * is completed, the same command ID is put into the completion
  * queue entry.
+ *
+ * Please define this at the begin of a command struct
  */
-struct xrt_sub_queue_entry {
+struct xrt_cmd_sq_hdr {
 	union {
 		struct {
 			uint32_t opcode:16; /* [15-0]   */
 			uint32_t count:15;  /* [30-16] */
 			uint32_t state:1;   /* [31] */
-			uint16_t cid;
-			uint16_t rsvd;
+			uint16_t cid; uint16_t rsvd;
 		};
 		uint32_t header[2]; // NONLINT
 	};
-	uint32_t data[1]; // NOLINT
 };
 
 /**
- * struct xrt_com_queue_entry: XGQ completion queue entry format
+ * struct xrt_cmd_cq_hdr: XGQ completion queue entry header format
  *
- * @rcode:	return code
- * @result:	command specific result
- * @cid:	unique command id
- * @cstate:	command state
+ * @cid:        unique command id
+ * @cstate:     command state
  * @specific:	flag indicates there is command specific info in result
- * @state:	flag indicates this is a new entry
+ * @state:      flag indicates this is a new entry
  *
  * When a command is completed, a completion entry is put into completion
  * queue. A generic command state is put into cstate. The command is
@@ -157,28 +172,59 @@ struct xrt_sub_queue_entry {
  * can be put into rcode. This is useful for some case like PS kernel.
  *
  * All completion queue entries have a same fixed size of 4 words.
+ *
+ * Please define this at the begin of a command struct
  */
-struct xrt_com_queue_entry {
+struct xrt_cmd_cq_hdr {
 	union {
 		struct {
 			uint16_t cid;
 			uint16_t cstate:14;
 			uint16_t specifc:1;
 			uint16_t state:1;
+		};
+		uint32_t header[1]; // NOLINT
+	};
+};
+
+/**
+ * struct xrt_sub_queue_entry: XGQ submission queue entry
+ *
+ * @hdr: header of the entry
+ * @data: payload of the entry
+ *
+ * XGQ submission command is variable length command.
+ * This is very useful when a XGQ entity needs to access command payload,
+ * but it doesn't need to know the detail of the payload. 
+ */
+struct xrt_sub_queue_entry {
+	struct xrt_cmd_sq_hdr  hdr;
+	uint32_t data[1]; // NOLINT
+};
+
+/**
+ * struct xrt_com_queue_entry: XGQ completion queue entry format
+ *
+ */
+struct xrt_com_queue_entry {
+	struct xrt_cmd_cq_hdr hdr;
+	union {
+		struct {
 			uint32_t result;
 			uint32_t resvd;
 			uint32_t rcode;
 		};
-		uint32_t data[4]; // NOLINT
+		uint32_t data[3]; // NOLINT
 	};
 };
 
-#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_sub_queue_entry) - 4) // NOLINT
+#define XGQ_SUB_HEADER_SIZE	(sizeof(struct xrt_cmd_sq_hdr)) // NOLINT
 #define XRT_COM_Q1_SLOT_SIZE	(sizeof(struct xrt_com_queue_entry)) // NOLINT
 
 /**
  * struct xrt_cmd_load_xclbin: load XCLBIN command
  *
+ * @hdr: header of the command
  * @address:	XCLBIN address
  * @size:	XCLBIN size in Byte
  * @addr_type:	Address type
@@ -188,16 +234,7 @@ struct xrt_com_queue_entry {
  * embedded.
  */
 struct xrt_cmd_load_xclbin {
-	union {
-		struct {
-			uint32_t opcode:16; /* [15-0]   */
-			uint32_t count:15;  /* [30-16] */
-			uint32_t state:1;   /* [31] */
-			uint16_t cid;
-			uint16_t rsvd;
-		};
-		uint32_t header[2]; // NOLINT
-	};
+	struct xrt_cmd_sq_hdr  hdr;
 	uint64_t address;
 	uint32_t size;
 	uint32_t addr_type:4;
@@ -205,62 +242,12 @@ struct xrt_cmd_load_xclbin {
 };
 
 struct xrt_cmd_configure {
-	union {
-		struct {
-			uint32_t opcode:16; /* [15-0]   */
-			uint32_t count:15;  /* [30-16] */
-			uint32_t state:1;   /* [31] */
-			uint16_t cid;
-			uint16_t rsvd;
-		};
-		uint32_t header[2]; // NOLINT
-	};
-	uint32_t data[1]; // NOLINT
-};
-
-/**
- * struct xrt_cmd_start_cuidx: start CU by index command
- *
- * @cu_idx:	cu index to start
- * @data:	cu parameters
- *
- * This command is used to start a specific CU with its index. And the
- * CU parameters are embedded in the command payload.
- */
-struct xrt_cmd_start_cuidx {
-	union {
-		struct {
-			uint32_t opcode:16; /* [15-0]   */
-			uint32_t count:15;  /* [30-16] */
-			uint32_t state:1;   /* [31] */
-			uint16_t cid;
-			uint16_t rsvd;
-		};
-		uint32_t header[2]; // NOLINT
-	};
-	uint32_t cu_idx;	/* cu index to start */
+	struct xrt_cmd_sq_hdr  hdr;
 	uint32_t data[1]; // NOLINT
 };
 
 struct xrt_cmd_exit_ert {
-	union {
-		struct {
-			uint32_t opcode:16; /* [15-0]   */
-			uint32_t count:15;  /* [30-16] */
-			uint32_t state:1;   /* [31] */
-			uint16_t cid;
-			uint16_t rsvd;
-		};
-		uint32_t header[2]; // NOLINT
-	};
-};
-
-struct xrt_cmd_sq_hdr {
-	uint32_t opcode:16; /* [15-0]   */
-	uint32_t count:15;  /* [30-16] */
-	uint32_t state:1;   /* [31] */
-	uint16_t cid;
-	uint16_t rsvd;
+	struct xrt_cmd_sq_hdr  hdr;
 };
 
 struct xrt_cmd_log_payload {

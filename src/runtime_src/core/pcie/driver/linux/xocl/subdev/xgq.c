@@ -132,7 +132,7 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
 	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
 		xgq_cmd = list_entry(pos, struct xocl_xgq_cmd, xgq_cmd_list);
 
-		if (xgq_cmd->xgq_cmd_entry.hdr.cid == ccmd->cid) {
+		if (xgq_cmd->xgq_cmd_entry.hdr.cid == ccmd->hdr.cid) {
 
 			list_del(pos);
 			if (xgq_cmd->xgq_cmd_cb)
@@ -142,7 +142,7 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
 
 	}
 
-	XGQ_WARN(xgq, "unknown cid %d received", ccmd->cid);
+	XGQ_WARN(xgq, "unknown cid %d received", ccmd->hdr.cid);
 	return;
 }
 

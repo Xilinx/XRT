@@ -321,7 +321,7 @@ command_queue_check_csr(struct command_queue *cmd_queue)
 			}
 
 			CMDQUEUE_DBG(cmd_queue, "%s -> ecmd %llx\n", __func__, (u64)ecmd);
-			ecmd->complete_entry.cstate = KDS_COMPLETED;
+			ecmd->complete_entry.hdr.cstate = KDS_COMPLETED;
 			ecmd->cb.notify(cmd_queue->ert_handle);
 		}
 	}
@@ -344,7 +344,7 @@ command_queue_poll(void *queue_handle)
 	/* check the completed command in submit queue */
 	list_for_each_entry_safe(ecmd, next, &cmd_queue->sq, list) {
 
-		if (ecmd->complete_entry.cstate == KDS_COMPLETED) {
+		if (ecmd->complete_entry.hdr.cstate == KDS_COMPLETED) {
 			list_del(&ecmd->list);
 			cmd_queue->sq_num--;
 			command_queue_complete(ecmd, cmd_queue);
@@ -379,7 +379,7 @@ command_queue_submit(struct xrt_ert_command *ecmd, void *queue_handle)
 	++cmd_queue->sq_num;
 
 	if (kds_echo) {
-		ecmd->complete_entry.cstate = KDS_COMPLETED;
+		ecmd->complete_entry.hdr.cstate = KDS_COMPLETED;
 		ecmd->cb.notify(cmd_queue->ert_handle);
 	} else {
 
@@ -487,7 +487,7 @@ cmd_queue_versal_isr(void *arg)
 		CMDQUEUE_DBG(cmd_queue, "[%s] slot: %d\n", __func__, slot);
 		ecmd = cmd_queue->submit_queue[slot];
 		if (ecmd) {
-			ecmd->complete_entry.cstate = KDS_COMPLETED;
+			ecmd->complete_entry.hdr.cstate = KDS_COMPLETED;
 			ecmd->cb.notify(cmd_queue->ert_handle);
 		} else {
 			CMDQUEUE_ERR(cmd_queue, "not in submitted queue %d\n", slot);
@@ -514,7 +514,7 @@ cmd_queue_isr(int irq, void *arg)
 
 	ecmd = cmd_queue->submit_queue[irq];
 	if (ecmd) {
-		ecmd->complete_entry.cstate = KDS_COMPLETED;
+		ecmd->complete_entry.hdr.cstate = KDS_COMPLETED;
 		ecmd->cb.notify(cmd_queue->ert_handle);
 	} else {
 		CMDQUEUE_ERR(cmd_queue, "not in submitted queue %d\n", irq);
@@ -574,8 +574,8 @@ command_queue_abort(void *client, void *queue_handle)
 		if (ecmd->client != client)
 			continue;
 
-		if (ecmd->complete_entry.cstate != KDS_COMPLETED)
-			ecmd->complete_entry.cstate = KDS_TIMEOUT;
+		if (ecmd->complete_entry.hdr.cstate != KDS_COMPLETED)
+			ecmd->complete_entry.hdr.cstate = KDS_TIMEOUT;
 
 		list_del(&ecmd->list);
 		cmd_queue->sq_num--;
