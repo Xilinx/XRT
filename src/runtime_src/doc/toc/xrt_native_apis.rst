@@ -265,13 +265,13 @@ This section describes a few other specific use-cases using buffers.
 DMA-BUF API
 ***********
 
-XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. 
+XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. The buffer handle is essentially a file descriptor, hence when accross the processes a sutitable IPC mechanism should be adopted (example, UDS or Unix Domain Sockets) so that FD of one process can properly translated into another process. 
 
 - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
 - ``xrt::bo()`` constructor: Allocate a BO imported from exported buffer handle
 
 
-Consider the situation of exporting buffer from device 1 to device 2. 
+Consider the situation of exporting buffer from device 1 to device 2 inside the same host process. 
 
 .. code:: c++
       :number-lines: 18
