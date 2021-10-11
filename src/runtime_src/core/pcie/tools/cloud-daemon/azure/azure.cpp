@@ -1,7 +1,7 @@
 /*
- * Partial Copyright (C) 2019-2020 Xilinx, Inc
+ * Partial Copyright (C) 2019-2021 Xilinx, Inc
  *
- * Microsoft provides sample code how RESTful APIs are being called 
+ * Microsoft provides sample code how RESTful APIs are being called
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -233,6 +233,13 @@ int AzureDev::azureLoadXclBin(const xclBin *buffer)
     if (fpgaSerialNumber.empty())
         return -E_EMPTY_SN;
     std::cout << "LoadXclBin FPGA serial No: " << fpgaSerialNumber << std::endl;
+
+    // check if the xclbin is valid
+    if (xclbin::get_axlf_section(buffer, BITSTREAM) != nullptr) {
+        std::cout << "xclbin is invalid, please provide azure xclbin" << std::endl;
+        return -E_INVALID_XCLBIN;
+    }
+
     int index = 0;
     std::string imageSHA;
     std::vector<std::string> chunks;

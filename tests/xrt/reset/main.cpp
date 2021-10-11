@@ -48,7 +48,7 @@ install()
   signal(SIGINT, SigIntHandler);
 }
 
-void
+static void
 run(xrt::device& device)
 {
   install();
@@ -57,7 +57,7 @@ run(xrt::device& device)
     cond.wait(lk);
 }
 
-int
+static int
 run(int argc, char* argv[])
 {
   std::string device_index = "0";
@@ -89,7 +89,8 @@ run(int argc, char* argv[])
     cond.wait(lk);
 }
 
-int main(int argc, char* argv[])
+int
+main(int argc, char* argv[])
 {
   try {
     auto ret = run(argc, argv);

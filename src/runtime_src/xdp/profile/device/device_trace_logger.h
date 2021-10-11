@@ -30,7 +30,7 @@ public:
   virtual ~DeviceTraceLogger() {}
 
   virtual void processTraceData(std::vector<xclTraceResults>& traceVector) = 0;
-  virtual void endProcessTraceData(std::vector<xclTraceResults>& traceVector) = 0;
+  virtual void endProcessTraceData() = 0;
 };
 
 }

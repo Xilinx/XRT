@@ -41,9 +41,7 @@ void action_read(unsigned long long int id,
 		 unsigned long long int deviceAddress,
 		 const char* memoryResource,
 		 size_t bufferSize,
-		 bool isP2P,
-		 unsigned long long int* dependencies,
-		 unsigned long long int numDependencies) ;
+		 bool isP2P) ;
 
 extern "C"
 void action_write(unsigned long long int id,
@@ -51,9 +49,7 @@ void action_write(unsigned long long int id,
 		  unsigned long long int deviceAddress,
 		  const char* memoryResource,
 		  size_t bufferSize,
-		  bool isP2P,
-		  unsigned long long int* dependencies,
-		  unsigned long long int numDependencies) ;
+		  bool isP2P) ;
 
 extern "C"
 void action_copy(unsigned long long int id,
@@ -63,9 +59,7 @@ void action_copy(unsigned long long int id,
 		 unsigned long long int dstDeviceAddress,
 		 const char* dstMemoryResource,
 		 size_t bufferSize,
-		 bool isP2P,
-		 unsigned long long int* dependencies,
-		 unsigned long long int numDependencies) ;
+		 bool isP2P) ;
 
 extern "C"
 void action_ndrange(unsigned long long int id,
@@ -76,8 +70,6 @@ void action_ndrange(unsigned long long int id,
 		    size_t workgroupConfigurationX,
 		    size_t workgroupConfigurationY,
 		    size_t workgroupConfiguraionZ,
-		    size_t workgroupSize,
-		    unsigned long long int* dependencies,
-		    unsigned long long int numDependencies) ;
+		    size_t workgroupSize) ;
 
 #endif

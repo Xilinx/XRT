@@ -293,20 +293,15 @@ command_queue_complete(struct xrt_ert_command *ecmd, void *queue_handle)
 	ecmd->cb.complete(ecmd, cmd_queue->ert_handle);
 }
 
-static void
-command_queue_poll(void *queue_handle)
+static inline void
+command_queue_check_csr(struct command_queue *cmd_queue)
 {
-	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
-	xdev_handle_t xdev = xocl_get_xdev(cmd_queue->pdev);
-	struct xrt_ert_command *ecmd = NULL, *next = NULL;
 	u32 mask = 0;
 	u32 slot_idx = 0, section_idx = 0;
+	struct xrt_ert_command *ecmd = NULL;
+	xdev_handle_t xdev = xocl_get_xdev(cmd_queue->pdev);
 
-	if (!cmd_queue->sq_num)
-		return;
-
-	CMDQUEUE_DBG(cmd_queue, "cmd_queue->sq_num %d\n", cmd_queue->sq_num);
-
+	CMDQUEUE_INFO(cmd_queue, "minm cmd_queue->polling_mode %d\n", cmd_queue->polling_mode);
 	for (section_idx = 0; section_idx < 4; ++section_idx) {
 		mask = xocl_intc_ert_read32(xdev, (section_idx<<2));
 		if (!mask)
@@ -317,17 +312,34 @@ command_queue_poll(void *queue_handle)
 
 			if (!mask)
 				break;
-			if (mask & 0x1) {
-				ecmd = cmd_queue->submit_queue[cmd_idx];
-				if (ecmd) {
-					CMDQUEUE_DBG(cmd_queue, "%s -> ecmd %llx\n", __func__, (u64)ecmd);
-					ecmd->complete_entry.cstate = KDS_COMPLETED;
-					ecmd->cb.notify(cmd_queue->ert_handle);
-				} else
-					CMDQUEUE_DBG(cmd_queue, "ERR: submit queue slot is empty\n");
+			if (!(mask & 0x1))
+				continue;
+			ecmd = cmd_queue->submit_queue[cmd_idx];
+			if (!ecmd) {
+				CMDQUEUE_DBG(cmd_queue, "ERR: submit queue slot is empty\n");
+				continue;
 			}
+
+			CMDQUEUE_DBG(cmd_queue, "%s -> ecmd %llx\n", __func__, (u64)ecmd);
+			ecmd->complete_entry.cstate = KDS_COMPLETED;
+			ecmd->cb.notify(cmd_queue->ert_handle);
 		}
 	}
+}
+
+static void
+command_queue_poll(void *queue_handle)
+{
+	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
+	struct xrt_ert_command *ecmd = NULL, *next = NULL;
+
+	if (!cmd_queue->sq_num)
+		return;
+
+	CMDQUEUE_DBG(cmd_queue, "cmd_queue->sq_num %d\n", cmd_queue->sq_num);
+
+	if (cmd_queue->polling_mode)
+		command_queue_check_csr(cmd_queue);
 
 	/* check the completed command in submit queue */
 	list_for_each_entry_safe(ecmd, next, &cmd_queue->sq, list) {
@@ -513,7 +525,7 @@ cmd_queue_isr(int irq, void *arg)
 }
 
 static int
-command_queue_config(uint32_t slot_size, void *ert_handle, void *queue_handle)
+command_queue_config(uint32_t slot_size, bool polling_mode, void *ert_handle, void *queue_handle)
 {
 	struct command_queue *cmd_queue = (struct command_queue *)queue_handle;
 
@@ -539,6 +551,7 @@ command_queue_config(uint32_t slot_size, void *ert_handle, void *queue_handle)
 
 	cmd_queue->num_slots = cmd_queue->cq_range / slot_size;
 	cmd_queue->slot_size = slot_size;
+	cmd_queue->polling_mode = polling_mode;
 
 	cmd_queue_reset(cmd_queue);
 

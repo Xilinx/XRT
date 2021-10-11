@@ -32,6 +32,10 @@ struct client_stats {
 	unsigned long		s_cnt[MAX_CUS];
 	/* Per CU counter that counts when a command is completed or error */
 	unsigned long		c_cnt[MAX_CUS];
+	/* Per soft CU counter that counts when a command is submitted to SCU */
+	unsigned long		scu_s_cnt[MAX_CUS];
+	/* Per soft CU counter that counts when a command is completed or error */
+	unsigned long		scu_c_cnt[MAX_CUS];
 };
 
 struct cu_stats {

@@ -249,7 +249,7 @@ void DeviceTraceOffload::read_trace_end()
   // Trace logger will clear it's state and add approximations 
   // for pending events
   m_trace_vector.clear();
-  deviceTraceLogger->endProcessTraceData(m_trace_vector);
+  deviceTraceLogger->endProcessTraceData();
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
     m_initialized = false;

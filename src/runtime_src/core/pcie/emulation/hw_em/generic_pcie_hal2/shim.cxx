@@ -2938,13 +2938,17 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       return -1;
   } 
   else if (sBO->fd >= 0) {
-    //As per the hemants comments, when src buffer is p2p buffer, we better copy from device to host and copy from host to another device.
+    // CR-1112934 Copy data from exported fd to temp buffer using read API
     unsigned char temp_buffer[size];
-    // copy data from source buffer to temp buffer
-    if (xclCopyBufferDevice2Host((void*)temp_buffer, sBO->base, size, src_offset, sBO->topology) != size) {
-      std::cerr << "ERROR: copy buffer from device to host failed " << std::endl;
-      return -1;
+    int bytes_read = read(sBO->fd, temp_buffer, size);
+
+    if (bytes_read) {
+      if (mLogStream.is_open())
+      {
+        mLogStream << __func__ << ", data read successfully from the src fd to local buffer." << std::endl;
+      }
     }
+
     // copy data from temp buffer to destination buffer
     if (xclCopyBufferHost2Device(dBO->base, (void*)temp_buffer, size, dst_offset, dBO->topology) != size) {
       std::cerr << "ERROR: copy buffer from host to device failed " << std::endl;

@@ -57,7 +57,7 @@ public:
   using event_callback_list = std::vector<event_callback_type>;
 
   using action_enqueue_type = std::function<void (event*)>;
-  using action_profile_type = std::function<void (event*, cl_int, const std::string&)>;
+  using action_profile_type = std::function<void (event*, cl_int)>;
   using action_debug_type = std::function<void (event*)>;
   using action_lop_type = std::function<void (event*, cl_int)>;
 
@@ -163,17 +163,17 @@ public:
    * doesn't enable profiling.
    */
   /*virtual*/ void
-  trigger_profile_action(cl_int status, const std::string& cuname= "")
+  trigger_profile_action(cl_int status)
   {
     if (m_profile_action)
-      m_profile_action(this,status,cuname);
+      m_profile_action(this,status);
   }
 
   void
-  trigger_profile_counter_action(cl_int status, const std::string& cuname = "")
+  trigger_profile_counter_action(cl_int status)
   {
     if (m_profile_counter_action)
-      m_profile_counter_action(this, status, cuname) ;
+      m_profile_counter_action(this, status) ;
   }
 
   void
@@ -617,10 +617,10 @@ public:
   }
 
   void
-  trigger_profile_action(cl_int status, const std::string& cuname="")
+  trigger_profile_action(cl_int status)
   {
     if (m_profile_action)
-      m_profile_action(this,status,cuname);
+      m_profile_action(this,status);
   }
 #endif
 

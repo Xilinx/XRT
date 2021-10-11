@@ -1655,7 +1655,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			if (ret)
 				return ret;
 			break;
-		case XOCL_VSEC_FLASH_TYPE_VERSAL:
+		case XOCL_VSEC_FLASH_TYPE_XFER_VERSAL:
 			xocl_xdev_dbg(xdev,
 			    "VSEC VERSAL FLASH RES Start 0x%llx, bar %d",
 			    offset, bar);
@@ -1667,6 +1667,26 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			memcpy(((struct xocl_flash_privdata *)
 			    (subdev_info.priv_data))->flash_type,
 			    FLASH_TYPE_OSPI_VERSAL, strlen(FLASH_TYPE_OSPI_VERSAL));
+
+			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
+				offset, bar);
+
+			if (ret)
+				return ret;
+			break;
+		case XOCL_VSEC_FLASH_TYPE_XGQ:
+			/*TODO: VSEC definition is TBD, we now get res from metadata */
+			xocl_xdev_dbg(xdev,
+			    "VSEC XGQ FLASH RES Start 0x%llx, bar %d",
+			    offset, bar);
+
+			/* set devinfo to xfer versal */
+			subdev_info.id = XOCL_SUBDEV_XGQ;
+			subdev_info.name = XOCL_XGQ;
+			subdev_info.res[0].name = XOCL_XGQ;
+			memcpy(((struct xocl_flash_privdata *)
+			    (subdev_info.priv_data))->flash_type,
+			    FLASH_TYPE_OSPI_XGQ, strlen(FLASH_TYPE_OSPI_XGQ));
 
 			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
 				offset, bar);
@@ -2045,4 +2065,46 @@ int xocl_wait_pci_status(struct pci_dev *pdev, u16 mask, u16 val, int timeout)
 		return -ETIME;
 
 	return 0;
+}
+
+/*
+ * A wait_for_completion() hang inside request_firmware() was shown with multiple cards
+ * test. It is due to race condition when multiple threads call request_firmware() at
+ * the same firmware file. Thus, adding a wrapper function to resolve the race.
+ * Loading firmware is not in a critical path, just use a global lock to protect.
+ */
+static DEFINE_MUTEX(firmware_lock);
+int xocl_request_firmware(struct device *dev, const char *fw_name, char **buf, size_t *len)
+{
+	const struct firmware *fw = NULL;
+	int ret;
+
+	*buf = NULL;
+	mutex_lock(&firmware_lock);
+	ret = request_firmware(&fw, fw_name, dev);
+	if (ret)
+		goto failed;
+
+	*buf = vmalloc(fw->size);
+	if (!*buf) {
+		ret = -ENOMEM;
+		goto failed;
+	}
+	memcpy(*buf, fw->data, fw->size);
+	if (len)
+		*len = fw->size;
+	release_firmware(fw);
+	mutex_unlock(&firmware_lock);
+
+	return 0;
+
+failed:
+	if (fw)
+		release_firmware(fw);
+	mutex_unlock(&firmware_lock);
+
+	vfree(*buf);
+	*buf = NULL;
+
+	return ret;
 }

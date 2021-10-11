@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2020 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -37,6 +37,7 @@ enum azure_rest_err {
     E_GET_RESET_STATUS = 2031,
     E_EMPTY_SN = 2040,
     E_REST_TIMEOUT = 2050,
+    E_INVALID_XCLBIN = 2060,
 };
 /*
  * This class is for azure xclbin download handling.

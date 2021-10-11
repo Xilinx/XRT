@@ -560,6 +560,13 @@ get_enable_pr()
 }
 
 inline bool
+get_enable_aied()
+{
+  static bool value = detail::get_bool_value("Runtime.enable_aied",true);
+  return value;
+}
+
+inline bool
 get_multiprocess()
 {
   static bool value = get_kds() && detail::get_bool_value("Runtime.multiprocess",true);

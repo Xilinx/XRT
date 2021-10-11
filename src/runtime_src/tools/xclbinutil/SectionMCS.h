@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,7 +36,7 @@ class SectionMCS : public Section {
  protected:
   virtual void getSubPayload(char* _pDataSection, unsigned int _sectionSize, std::ostringstream &_buf, const std::string &_sSubSectionName, enum Section::FormatType _eFormatType) const;
   virtual void marshalToJSON(char* _buffer, unsigned int _pDataSegment, boost::property_tree::ptree& _ptree) const;
-  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::fstream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
+  virtual void readSubPayload(const char* _pOrigDataSection, unsigned int _origSectionSize,  std::istream& _istream, const std::string & _sSubSection, enum Section::FormatType _eFormatType, std::ostringstream &_buffer) const;
   virtual void writeSubPayload(const std::string & _sSubSectionName, FormatType _eFormatType, std::fstream&  _oStream) const;
 
  protected:

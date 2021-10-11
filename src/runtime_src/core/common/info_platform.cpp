@@ -226,6 +226,7 @@ void
 add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
 {
   ptree_type pt_platform;
+  ptree_type pt_platforms;
 
   add_static_region_info(device, pt_platform);
   add_board_info(device, pt_platform);
@@ -234,7 +235,8 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_clock_info(device, pt_platform);
   add_mac_info(device, pt_platform);
 
-  pt_platform_array.push_back(std::make_pair("", pt_platform));
+  pt_platforms.push_back(std::make_pair("", pt_platform));
+  pt_platform_array.add_child("platforms", pt_platforms);
 }
 
 } //unnamed namespace
@@ -272,6 +274,7 @@ pcie_info(const xrt_core::device * device)
     ptree.add("cpu_affinity", xrt_core::device_query<xq::cpu_affinity>(device));
     ptree.add("max_shared_host_mem_aperture_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::max_shared_host_mem_aperture_bytes>(device)));
     ptree.add("shared_host_mem_size_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::shared_host_mem>(device)));
+    ptree.add("enabled_host_mem_size_bytes", xrt_core::utils::unit_convert(xrt_core::device_query<xq::enabled_host_mem>(device)));
   }
   catch(const xq::exception&) {
   }

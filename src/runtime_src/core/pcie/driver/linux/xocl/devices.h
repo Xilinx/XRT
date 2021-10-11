@@ -79,6 +79,7 @@ enum {
 #define	FLASH_TYPE_QSPIPS_X4_SINGLE	"qspi_ps_x4_single"
 #define	FLASH_TYPE_OSPI_VERSAL	"ospi_versal"
 #define	FLASH_TYPE_QSPI_VERSAL	"qspi_versal"
+#define	FLASH_TYPE_OSPI_XGQ	"ospi_xgq"
 
 #define XOCL_SUBDEV_MAX_RES		32
 #define XOCL_SUBDEV_RES_NAME_LEN	64
@@ -258,6 +259,7 @@ enum {
 #define	XOCL_CALIB_STORAGE	"calib_storage"
 #define	XOCL_ADDR_TRANSLATOR	"address_translator"
 #define	XOCL_CU			"cu"
+#define	XOCL_SCU		"scu"
 #define	XOCL_P2P		"p2p"
 #define	XOCL_PMC		"pmc"
 #define	XOCL_INTC		"intc"
@@ -270,6 +272,7 @@ enum {
 #define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
 #define	XOCL_CFG_GPIO		"ert_cfg_gpio"
 #define	XOCL_COMMAND_QUEUE	"command_queue"
+#define	XOCL_XGQ		"xgq"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -316,6 +319,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ADDR_TRANSLATOR,
 	XOCL_SUBDEV_INTC,
 	XOCL_SUBDEV_CU,
+	XOCL_SUBDEV_SCU,
 	XOCL_SUBDEV_LAPC,
 	XOCL_SUBDEV_SPC,
 	XOCL_SUBDEV_PMC,
@@ -325,6 +329,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,
 	XOCL_SUBDEV_CFG_GPIO,
 	XOCL_SUBDEV_COMMAND_QUEUE,
+	XOCL_SUBDEV_XGQ,
 	XOCL_SUBDEV_NUM
 };
 
@@ -804,6 +809,19 @@ struct xocl_subdev_map {
 		.multi_inst = true,			\
 		.override_idx = -1,			\
 		.bar_idx = (char []){ 0, 4 },		\
+	}
+
+/* Fake resource for PS Kernels
+ */
+#define XOCL_DEVINFO_SCU					\
+	{						\
+		XOCL_SUBDEV_SCU,				\
+		XOCL_SCU,				\
+		NULL,				\
+		0,		\
+		.level = XOCL_SUBDEV_LEVEL_URP,		\
+		.multi_inst = true,			\
+		.override_idx = -1,			\
 	}
 
 #define	XOCL_RES_TRACE_FUNNEL			\

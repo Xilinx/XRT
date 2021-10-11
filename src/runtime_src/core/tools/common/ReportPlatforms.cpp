@@ -43,7 +43,7 @@ ReportPlatforms::getPropertyTree20202( const xrt_core::device * dev,
   boost::property_tree::read_json(ss, pt_platform);
  
   // There can only be 1 root node
-  pt.add_child("platforms", pt_platform);
+  pt = pt_platform;
 }
 
 void 

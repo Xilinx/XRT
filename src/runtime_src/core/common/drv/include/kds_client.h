@@ -37,8 +37,10 @@
  * @lock: Mutex to protext context related members
  * @xclbin_id: UUID of xclbin cache
  * @num_ctx: Number of context that opened
+ * @num_scu_ctx: Number of soft kernel context that opened
  * @virt_cu_ref: Reference count of virtual CU
  * @cu_bitmap: bitmap of opening CU
+ * @scu_bitmap: bitmap of opening SCU
  * @waitq: Wait queue for poll client
  * @event: Events to notify user client
  */
@@ -49,6 +51,7 @@ struct kds_client {
 	struct mutex		  lock;
 	void			 *xclbin_id;
 	int			  num_ctx;
+	int			  num_scu_ctx;
 	int			  virt_cu_ref;
 
 	struct list_head          graph_list;
@@ -56,6 +59,7 @@ struct kds_client {
 	u32                       aie_ctx;
 
 	DECLARE_BITMAP(cu_bitmap, MAX_CUS);
+	DECLARE_BITMAP(scu_bitmap, MAX_CUS);
 	/* Per client statistics. Use percpu variable for two reasons
 	 * 1. no lock is need while modifying these counters
 	 * 2. do not need to worry about cache false share

@@ -24,13 +24,14 @@
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
 
-#define ARRAY_SIZE 8
+static constexpr int ARRAY_SIZE = 8;
 
 /**
  * Runs an OpenCL addone kernel adding one to every 8 unsigned long
  */
 
-static void usage()
+static void
+usage()
 {
   std::cout << "usage: %s [options] -k <bitstream>\n\n"
             << "\n"
@@ -74,7 +75,8 @@ run(xrt::device& device, const xrt::uuid& uuid, size_t n_elements)
 }
 
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   if (argc < 3) {
     usage();
@@ -124,7 +126,8 @@ int run(int argc, char** argv)
   return 0;
 }
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);
@@ -134,9 +137,9 @@ int main(int argc, char** argv)
   catch (std::exception const& e) {
     std::cout << "Exception: " << e.what() << "\n";
     std::cout << "FAILED TEST\n";
-    return 1;
   }
-
-  std::cout << "PASSED TEST\n";
-  return 0;
+  catch (...) {
+    std::cout << "TEST FAILED\n";
+  }
+  return 1;
 }

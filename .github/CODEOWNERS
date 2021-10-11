@@ -13,12 +13,18 @@ src/runtime_src/core/include/ert.h @maxzhen @mamin506 @stsoe
 src/runtime_src/core/common/ @stsoe @rozumx
 src/runtime_src/core/common/api/ @stsoe
 src/runtime_src/core/common/drv/ @mamin506
+src/runtime_src/core/pcie/ @stsoe
 src/runtime_src/core/pcie/emulation/ @chvamshi-xilinx
 src/runtime_src/core/pcie/driver/linux/ @maxzhen
 src/runtime_src/core/pcie/driver/windows/ @arpitxilinx
 src/runtime_src/core/pcie/linux/plugin/xdp/ @jvillarre
 src/runtime_src/xocl/ @stsoe
+src/runtime_src/xocl/api/plugin/xdp/ @jvillarre
 src/runtime_src/xdp/ @jvillarre
 src/runtime_src/doc/ @uday610
+src/runtime_src/tools/ @rozumx
+src/runtime_src/tools/scripts/ @rozumx @stsoe
+src/CMake/ @rozumx @stsoe
 src/tests/xrt/ @stsoe
 src/tests/unit_test/ @stsoe
+build/ @stsoe @rozumx
