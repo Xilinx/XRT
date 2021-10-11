@@ -49,7 +49,7 @@
 #include "core/include/xrt/xrt_bo.h"
 #include "em_defines.h"
 #include "ert.h"
-#include "xgq_cmd.h"
+#include "xgq_cmd_common.h"
 #include "xgq_hwemu_plat.h"
 
 namespace xclhwemhal2 {
@@ -99,7 +99,7 @@ namespace hwemu {
       int      complete_worker();
       void     update_doorbell();
       int      submit_cmd(xgq_cmd *xcmd);
-      void     read_completion(xrt_com_queue_entry& ccmd, uint64_t addr);
+      void     read_completion(xgq_com_queue_entry& ccmd, uint64_t addr);
       void     iowrite32_ctrl(uint32_t addr, uint32_t data);
       void     iowrite32_mem(uint32_t addr, uint32_t data);
       uint32_t ioread32_ctrl(uint32_t addr);

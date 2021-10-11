@@ -35,15 +35,15 @@
  *
  */
 
-#ifndef USER_XGQ_CMD_H
-#define USER_XGQ_CMD_H
+#ifndef XGQ_CMD_ERT_H
+#define XGQ_CMD_ERT_H
 
-#include "xgq_cmd.h"
+#include "xgq_cmd_common.h"
 
 /* This header file defines struct of user command type opcode */
 
 /**
- * struct xrt_cmd_start_cuidx: start CU by index command
+ * struct xgq_cmd_start_cuidx: start CU by index command
  *
  * @cu_idx:	cu index to start
  * @offset:	register offset in words
@@ -52,8 +52,8 @@
  * This command is used to start a specific CU with its index. And the
  * CU parameters are embedded in the command payload.
  */
-struct xrt_cmd_start_cuidx {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_start_cuidx {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -63,7 +63,7 @@ struct xrt_cmd_start_cuidx {
 };
 
 /**
- * struct xrt_cmd_start_cuidx_kv: start CU with offset-value pairs by index command
+ * struct xgq_cmd_start_cuidx_kv: start CU with offset-value pairs by index command
  *
  * @cu_idx:	cu index to start
  * @data: cu parameters in a [offset:value] list. The offset is in bytes.
@@ -71,8 +71,8 @@ struct xrt_cmd_start_cuidx {
  * This command is used to start a specific CU with its index. And the
  * [offset:value] list are embedded in the command payload.
  */
-struct xrt_cmd_start_cuidx_kv {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_start_cuidx_kv {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -85,7 +85,7 @@ struct xrt_cmd_start_cuidx_kv {
 };
 
 /**
- * struct xrt_cmd_init_cuidx: init CU by index command
+ * struct xgq_cmd_init_cuidx: init CU by index command
  *
  * @cu_idx:	cu index to init
  * @offset:	register offset in words
@@ -96,8 +96,8 @@ struct xrt_cmd_start_cuidx_kv {
  *
  * This command would NOT kick off the CU.
  */
-struct xrt_cmd_init_cuidx {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_init_cuidx {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -107,7 +107,7 @@ struct xrt_cmd_init_cuidx {
 };
 
 /**
- * struct xrt_cmd_init_cuidx_kv: init CU with offset-value pairs by index command
+ * struct xgq_cmd_init_cuidx_kv: init CU with offset-value pairs by index command
  *
  * @cu_idx:	cu index to init
  * @data: cu parameters in a [offset:value] list. The offset is in bytes.
@@ -117,8 +117,8 @@ struct xrt_cmd_init_cuidx {
  *
  * This command would NOT kick off the CU.
  */
-struct xrt_cmd_init_cuidx_kv {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_init_cuidx_kv {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -131,7 +131,7 @@ struct xrt_cmd_init_cuidx_kv {
 };
 
 /**
- * struct xrt_cmd_config_start: configure start command
+ * struct xgq_cmd_config_start: configure start command
  *
  * @num_cus: number of CUs
  * @i2h: ERT interrupt to host enable
@@ -140,8 +140,8 @@ struct xrt_cmd_init_cuidx_kv {
  *
  * This command would let ERT goes into configure state
  */
-struct xrt_cmd_config_start {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_config_start {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:13;
@@ -152,17 +152,17 @@ struct xrt_cmd_config_start {
 };
 
 /**
- * struct xrt_com_config_start: configure start command completion
+ * struct xgq_cmd_resp_config_start: configure start command response
  *
  * @i2h: ERT interrupt to host enabled
  * @i2e: Host interrupt to ERT enable
  * @cui: CU interrupt to ERT enable
  * @ob:  device supports out of band memory
  *
- * The completion command for start configure command.
+ * The response of start configure command.
  */
-struct xrt_com_config_start {
-	struct xrt_cmd_cq_hdr hdr;
+struct xgq_cmd_resp_config_start {
+	struct xgq_cmd_cq_hdr hdr;
 
 	uint32_t i2h:1;
 	uint32_t i2e:1;
@@ -174,16 +174,16 @@ struct xrt_com_config_start {
 };
 
 /**
- * struct xrt_cmd_config_end: configure end command
+ * struct xgq_cmd_config_end: configure end command
  *
  * This command has no payload. Once ERT received this command it knowns configure is done.
  */
-struct xrt_cmd_config_end {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_config_end {
+	struct xgq_cmd_sq_hdr hdr;
 };
 
 /**
- * struct xrt_cmd_config_cu: configure CU command
+ * struct xgq_cmd_config_cu: configure CU command
  *
  * @cu_idx: cu index to configure
  * @ip_ctrl: IP control protocol
@@ -195,8 +195,8 @@ struct xrt_cmd_config_end {
  *
  * Configure PL/PS CUs.
  */
-struct xrt_cmd_config_cu {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_config_cu {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -212,14 +212,14 @@ struct xrt_cmd_config_cu {
 };
 
 /**
- * struct xrt_cmd_query_cu: query CU command
+ * struct xgq_cmd_query_cu: query CU command
  *
  * @cu_idx: cu index to query
  * @type: type of the queue
  *
  */
-struct xrt_cmd_query_cu {
-	struct xrt_cmd_sq_hdr hdr;
+struct xgq_cmd_query_cu {
+	struct xgq_cmd_sq_hdr hdr;
 
 	/* word 2 */
 	uint32_t cu_idx:12;
@@ -229,7 +229,7 @@ struct xrt_cmd_query_cu {
 };
 
 /**
- * struct xrt_com_query_cu: query CU command completion
+ * struct xgq_cmd_resp_query_cu: query CU command response
  *
  * @status: status of the CU
  *
@@ -238,8 +238,8 @@ struct xrt_cmd_query_cu {
  * @offset: ring buffer offset
  *
  */
-struct xrt_com_query_cu {
-	struct xrt_cmd_cq_hdr hdr;
+struct xgq_cmd_resp_query_cu {
+	struct xgq_cmd_cq_hdr hdr;
 
 	union {
 		struct {
@@ -257,4 +257,4 @@ struct xrt_com_query_cu {
 	uint32_t rcode;
 };
 
-#endif // USER_XGQ_CMD_H
+#endif // XGQ_CMD_ERT_H

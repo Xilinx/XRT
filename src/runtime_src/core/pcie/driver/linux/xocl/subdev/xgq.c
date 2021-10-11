@@ -9,7 +9,7 @@
 
 #include "xrt_xclbin.h"
 #include "../xocl_drv.h"
-#include "xgq_cmd.h"
+#include "xgq_cmd_common.h"
 #include "../xgq_xocl_plat.h"
 #include <linux/time.h>
 
@@ -76,10 +76,10 @@ static DEFINE_IDR(xocl_xgq_cid_idr);
 #define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(10 * 1000) 
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
-typedef void (*xocl_xgq_complete_cb)(void *arg, struct xrt_com_queue_entry *ccmd);
+typedef void (*xocl_xgq_complete_cb)(void *arg, struct xgq_com_queue_entry *ccmd);
 
 struct xocl_xgq_cmd {
-	struct xrt_cmd_sq	xgq_cmd_entry;
+	struct xgq_cmd_sq	xgq_cmd_entry;
 	struct list_head	xgq_cmd_list;
 	struct completion	xgq_cmd_complete;
 	xocl_xgq_complete_cb    xgq_cmd_cb;
@@ -124,7 +124,7 @@ struct xocl_xgq {
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
  * and find cmd by cid; perform callback and remove from submitted_cmds.
  */
-static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
+static void cmd_complete(struct xocl_xgq *xgq, struct xgq_com_queue_entry *ccmd)
 {
 	struct xocl_xgq_cmd *xgq_cmd = NULL;
 	struct list_head *pos = NULL, *next = NULL;
@@ -149,11 +149,11 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xrt_com_queue_entry *ccmd)
 /*
  * Read completed cmd based on XGQ protocol.
  */
-void read_completion(struct xrt_com_queue_entry *ccmd, u64 addr)
+void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
 {
 	u32 i = 0;
 
-	for (i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
+	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / 4; i++)
 		ccmd->data[i] = xgq_reg_read32(0, addr + i * 4);
 
 	// Write 0 to first word to make sure the cmd state is not NEW
@@ -174,7 +174,7 @@ static int complete_worker(void *data)
 		
 		while (!list_empty(&xgq->xgq_submitted_cmds)) {
 			u64 slot_addr = 0;
-			struct xrt_com_queue_entry ccmd;
+			struct xgq_com_queue_entry ccmd;
 
 			usleep_range(1000, 2000);
 			if (kthread_should_stop()) {
@@ -423,7 +423,7 @@ done:
 	return rval;
 }
 
-static void xgq_complete_cb(void *arg, struct xrt_com_queue_entry *ccmd)
+static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 {
 	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
 
@@ -472,16 +472,16 @@ static inline void remove_xgq_cid(struct xocl_xgq *xgq, int id)
  * Utilize shared memory between host and device to transfer data.
  */
 static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
-	u64 xclbin_len, enum xrt_cmd_opcode opcode, u32 timer)
+	u64 xclbin_len, enum xgq_cmd_opcode opcode, u32 timer)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
-	struct xrt_cmd_data_payload *payload = NULL;
-	struct xrt_cmd_sq_hdr *hdr = NULL;
+	struct xgq_cmd_data_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
 	ssize_t ret = 0;
 	int id = 0;
 
-	if (opcode != XRT_CMD_OP_LOAD_XCLBIN && 
-	    opcode != XRT_CMD_OP_DOWNLOAD_PDI) {
+	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
+	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -499,18 +499,18 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	cmd->xgq = xgq;
 
 	/* set up payload */
-	payload = (opcode == XRT_CMD_OP_LOAD_XCLBIN) ?
+	payload = (opcode == XGQ_CMD_OP_LOAD_XCLBIN) ?
 		&(cmd->xgq_cmd_entry.pdi_payload) :
 		&(cmd->xgq_cmd_entry.xclbin_payload);
 
 	payload->address = memcpy_to_devices(xgq, u_xclbin, xclbin_len);
 	payload->size = xclbin_len;
-	payload->addr_type = XRT_CMD_ADD_TYPE_AP_OFFSET;
+	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
 
 	/* set up hdr */
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = opcode;
-	hdr->state = XRT_SQ_CMD_NEW;
+	hdr->state = XGQ_SQ_CMD_NEW;
 	hdr->count = sizeof(*payload);
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
@@ -568,7 +568,7 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	mutex_unlock(&xgq->xgq_lock);
 	
 	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len,
-		XRT_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
+		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
 	mutex_lock(&xgq->xgq_lock);
 	xgq->xgq_data_transfer_inuse = false;
@@ -581,8 +581,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_cmd *cmd = NULL;
-	struct xrt_cmd_log_payload *payload = NULL;
-	struct xrt_cmd_sq_hdr *hdr = NULL;
+	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
 
@@ -601,8 +601,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	/*TODO: payload is to be filed for retriving log back */
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
-	hdr->opcode = XRT_CMD_OP_GET_LOG_PAGE;
-	hdr->state = XRT_SQ_CMD_NEW;
+	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
+	hdr->state = XGQ_SQ_CMD_NEW;
 	hdr->count = sizeof(*payload);
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
@@ -713,7 +713,7 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 	}
 	
 	ret = xgq_transfer_data(xgq, kdata, data_len,
-		XRT_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
+		XGQ_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
 
 done:
 	mutex_lock(&xgq->xgq_lock);

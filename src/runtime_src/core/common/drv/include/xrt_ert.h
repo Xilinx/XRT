@@ -15,7 +15,7 @@
 
 #include "ert.h"
 #include "kds_command.h"
-#include "xgq_cmd.h"
+#include "xgq_cmd_common.h"
 
 struct xrt_ert_command;
 
@@ -37,7 +37,7 @@ struct xrt_ert_command {
 	// payload size in words
 	uint32_t			payload_size;
 	uint32_t			cu_idx;
-	struct xrt_com_queue_entry	complete_entry;
+	struct xgq_com_queue_entry	complete_entry;
 	uint32_t			response_size;
 
 	uint32_t			response[0];

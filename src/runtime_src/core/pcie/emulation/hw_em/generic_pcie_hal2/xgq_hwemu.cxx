@@ -36,7 +36,7 @@
  */
 
 #include "shim.h"
-#include "user_xgq_cmd.h"
+#include "xgq_cmd_ert.h"
 
 using namespace xclhwemhal2;
 
@@ -147,9 +147,9 @@ namespace hwemu {
     return 0;
   }
 
-  void xgq_queue::read_completion(xrt_com_queue_entry& ccmd, uint64_t addr)
+  void xgq_queue::read_completion(xgq_com_queue_entry& ccmd, uint64_t addr)
   {
-    for (uint32_t i = 0; i < XRT_COM_Q1_SLOT_SIZE / 4; i++)
+    for (uint32_t i = 0; i < XGQ_COM_Q1_SLOT_SIZE / 4; i++)
       ccmd.data[i] = ioread32_mem(addr + i * 4);
 
     // Write 0 to first word to make sure the cmd state is not NEW
@@ -201,7 +201,7 @@ namespace hwemu {
         if (rval)
           continue;
 
-        xrt_com_queue_entry ccmd;
+        xgq_com_queue_entry ccmd;
         read_completion(ccmd, slot_addr);
 
         auto scmd = submitted_cmds[ccmd.hdr.cid];
@@ -212,13 +212,13 @@ namespace hwemu {
           std::cout << "Info: command " << scmd->cmdid << " completed." << std::endl;
 
         if (scmd->is_ertpkt()) {
-          if (ccmd.hdr.cstate == XRT_CMD_STATE_COMPLETED)
+          if (ccmd.hdr.cstate == XGQ_CMD_STATE_COMPLETED)
             scmd->set_state(ERT_CMD_STATE_COMPLETED);
           else
             scmd->set_state(ERT_CMD_STATE_ERROR);
           xgqp->cmd_pool.destroy(scmd);
         } else {
-          scmd->rval = ccmd.hdr.cstate == XRT_CMD_STATE_COMPLETED ? 0 : -1;
+          scmd->rval = ccmd.hdr.cstate == XGQ_CMD_STATE_COMPLETED ? 0 : -1;
           // Notify command completion
           scmd->cmd_cv.notify_all();
         }
@@ -275,9 +275,9 @@ namespace hwemu {
       case ERT_CONFIGURE:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          auto *cmdp = reinterpret_cast<xrt_cmd_configure *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xgq_cmd_configure *>(sq_buf.data());
 
-          cmdp->hdr.opcode = XRT_CMD_OP_CONFIGURE;
+          cmdp->hdr.opcode = XGQ_CMD_OP_CONFIGURE;
           cmdp->hdr.state = 1;
           cmdp->hdr.cid = cmdid;
           cmdp->hdr.count = payload_size();
@@ -288,9 +288,9 @@ namespace hwemu {
       case ERT_START_CU:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          auto *cmdp = reinterpret_cast<xrt_cmd_start_cuidx *>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xgq_cmd_start_cuidx *>(sq_buf.data());
 
-          cmdp->hdr.opcode = XRT_CMD_OP_START_CUIDX;
+          cmdp->hdr.opcode = XGQ_CMD_OP_START_CUIDX;
           cmdp->hdr.state = 1;
           cmdp->hdr.cid = cmdid;
           cmdp->hdr.count = payload_size();
@@ -303,9 +303,9 @@ namespace hwemu {
       case ERT_EXIT:
         {
           sq_buf.resize((payload_size() + XGQ_SUB_HEADER_SIZE) / sizeof(uint32_t));
-          auto *cmdp = reinterpret_cast<xrt_cmd_exit_ert*>(sq_buf.data());
+          auto *cmdp = reinterpret_cast<xgq_cmd_exit_ert*>(sq_buf.data());
 
-          cmdp->hdr.opcode = XRT_CMD_OP_EXIT_ERT;
+          cmdp->hdr.opcode = XGQ_CMD_OP_EXIT_ERT;
           cmdp->hdr.state = 1;
           cmdp->hdr.cid = cmdid;
           cmdp->hdr.count = payload_size();
@@ -326,22 +326,22 @@ namespace hwemu {
     memcpy(data, buf, size);
     auto paddr = static_cast<uint32_t>(xbo.address());
 
-    sq_buf.resize(sizeof(xrt_cmd_load_xclbin));
-    auto *cmdp = reinterpret_cast<xrt_cmd_load_xclbin *>(sq_buf.data());
+    sq_buf.resize(sizeof(xgq_cmd_load_xclbin));
+    auto *cmdp = reinterpret_cast<xgq_cmd_load_xclbin *>(sq_buf.data());
 
-    cmdp->hdr.opcode = XRT_CMD_OP_LOAD_XCLBIN;
+    cmdp->hdr.opcode = XGQ_CMD_OP_LOAD_XCLBIN;
     cmdp->hdr.state = 1;
     cmdp->hdr.cid = cmdid;
-    cmdp->hdr.count = sizeof(xrt_cmd_load_xclbin) - XGQ_SUB_HEADER_SIZE;
+    cmdp->hdr.count = sizeof(xgq_cmd_load_xclbin) - XGQ_SUB_HEADER_SIZE;
     cmdp->address = paddr;
     cmdp->size = size;
-    cmdp->addr_type = XRT_CMD_ADD_TYPE_SLAVEBRIDGE;
+    cmdp->addr_type = XGQ_CMD_ADD_TYPE_SLAVEBRIDGE;
 
     return 0;
   }
 
   xocl_xgq::xocl_xgq(HwEmShim* dev)
-    : queue(dev, this, XRT_QUEUE1_SLOT_NUM, XRT_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE)
+    : queue(dev, this, XGQ_QUEUE1_SLOT_NUM, XGQ_SUB_Q1_SLOT_SIZE, XRT_XGQ_SUB_BASE, XRT_XGQ_COM_BASE)
   {
     device = dev;
   }
