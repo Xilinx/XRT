@@ -204,6 +204,13 @@ public:
   void
   load_xclbin(const uuid& xclbin_id);
 
+
+  // Get the currently loaded xclbin
+  // Throws if xclbin uuid does match
+  XRT_CORE_COMMON_EXPORT
+  xrt::xclbin
+  get_xclbin(const uuid& xclbin_id);
+
   /**
    * register_axlf() - Callback from shim after AXLF succesfully loaded
    *

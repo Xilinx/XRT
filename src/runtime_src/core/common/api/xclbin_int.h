@@ -20,9 +20,14 @@
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/experimental/xrt_xclbin.h"
+#include "core/common/xclbin_parser.h"
 
-namespace xrt_core {
-namespace xclbin_int {
+#include <set>
+
+// Provide access to xrt::xclbin data that is not directly exposed
+// to end users via xrt::xclbin.   These functions are used by
+// XRT core implementation.
+namespace xrt_core { namespace xclbin_int {
 
 // is_valid_or_error() - Throw if invalid handle
 void
@@ -48,7 +53,27 @@ get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 std::vector<char>
 read_xclbin(const std::string& fnm);
 
-} //xclbin_int
-}; // xrt_core
+// get_properties() - Get kernel properties
+const xrt_core::xclbin::kernel_properties&
+get_properties(const xrt::xclbin::kernel& kernel);
+
+// get_arginfo() - Get xclbin kernel argument metadata
+// Sorted by arg index, but appended with rtinfo args (if any)
+// which have no index
+const std::vector<xrt_core::xclbin::kernel_argument>&
+get_arginfo(const xrt::xclbin::kernel& kernel);
+
+// get_ip_idx() - Get the ip_layout index of a ip in the xclbin
+// This is used to cross-correlated to connectivity information
+// To be rooted out after refactoring completes
+unsigned int
+get_ip_idx(const xrt::xclbin::ip& ip);
+
+// get_ip_data() - Get the ip_data element of an ip in the xclbin
+// To be rooted out after refactoring completes
+const ip_data*
+get_ip_data(const xrt::xclbin::ip& ip);
+
+}} // xclbin_int, xrt_core
 
 #endif

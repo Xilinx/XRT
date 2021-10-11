@@ -213,6 +213,16 @@ load_xclbin(const uuid& xclbin_id)
 #endif
 }
 
+xrt::xclbin
+device::
+get_xclbin(const uuid& xclbin_id)
+{
+  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
+    throw error(EINVAL, "xclbin id mismatch");
+
+  return m_xclbin;
+}
+
 // This function is called after an axlf has been succesfully loaded
 // by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
 // be called explicitly by end-user code, the callback is necessary in

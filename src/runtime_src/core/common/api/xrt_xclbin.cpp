@@ -31,10 +31,14 @@
 #include "core/include/xclbin.h"
 
 #include "native_profile.h"
+#include "xclbin_int.h"
+
+#include <boost/algorithm/string.hpp>
 
 #include <array>
 #include <fstream>
 #include <numeric>
+#include <regex>
 #include <set>
 #include <vector>
 
@@ -99,6 +103,49 @@ copy_axlf(const axlf* top)
   auto data = reinterpret_cast<const char*>(top);
   std::copy(data, data + size, header.begin());
   return header;
+}
+
+// Default implementation to get the name of an element
+template <typename ElementType>
+static std::string
+get_name(const ElementType& element)
+{
+  return element.get_name();
+}
+
+// Name matching filtering
+template <typename InputItr, typename OutputItr>
+static OutputItr
+copy_if_name_match(InputItr first, InputItr last, OutputItr dst, const std::string& name)
+{
+  // "kernel:{cu1,cu2,cu3}" -> "(kernel):((cu1)|(cu2)|(cu3))"
+  // "kernel" -> "(kernel):((.*))"
+  auto create_regex = [](const auto& str) {
+    std::regex r("^(.*):\\{(.*)\\}$");
+    std::smatch m;
+    if (!regex_search(str,m,r))
+      return "^(" + str + "):((.*))$";            // "(kernel):((.*))"
+
+    std::string kernel = m[1];
+    std::string insts = m[2];                     // "cu1,cu2,cu3"
+    std::string regex = "^(" + kernel + "):(";    // "(kernel):("
+    std::vector<std::string> cus;                 // split at ','
+    boost::split(cus,insts,boost::is_any_of(","));
+
+    // compose final regex
+    int count = 0;
+    for (auto& cu : cus)
+      regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
+    regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
+    return regex;
+  };
+
+  std::regex r(create_regex(name));
+  return std::copy_if(first, last, dst,
+                       [&r](const auto& element) {
+                         return regex_match(get_name(element), r);
+                       });
+
 }
 
 }
@@ -215,6 +262,11 @@ public:
     return m_args[argidx];
   }
 
+  xrt::xclbin::ip::control_type
+  get_control_type() const
+  {
+    return static_cast<xrt::xclbin::ip::control_type>((m_ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+  }
 };
 
 // class kernel_impl - wrap xclbin XML kernel entry
@@ -230,15 +282,20 @@ class xclbin::kernel_impl
 {
 public: // purposely not a struct to match decl in xrt_xclbin.h
   std::string m_name;
+  xrt_core::xclbin::kernel_properties m_properties;
   std::vector<xclbin::ip> m_cus;
   std::vector<xclbin::arg> m_args;
   std::vector<xrt_core::xclbin::kernel_argument> m_arginfo;
   
 public:
   kernel_impl(std::string&& nm,
+              xrt_core::xclbin::kernel_properties&& props,
               std::vector<xclbin::ip>&& cus,
               std::vector<xrt_core::xclbin::kernel_argument>&& arguments)
-    : m_name(std::move(nm)), m_cus(std::move(cus)), m_arginfo(std::move(arguments))
+    : m_name(std::move(nm))
+    , m_properties(std::move(props))
+    , m_cus(std::move(cus))
+    , m_arginfo(std::move(arguments))
   {
     // For each kernel argument create an xclbin::arg which is the union
     // of all memory connections used by compute units at this argument
@@ -273,6 +330,17 @@ public:
       }
       m_args.emplace_back(std::move(kargimpl));
     }
+  }
+
+  std::vector<xclbin::ip>
+  get_cus(const std::string& kname)
+  {
+    if (kname.empty())
+      return m_cus;
+
+    std::vector<xclbin::ip> vec;
+    copy_if_name_match(m_cus.begin(), m_cus.end(), std::back_inserter(vec), kname);
+    return vec;
   }
 };
 
@@ -386,11 +454,12 @@ class xclbin_impl
       auto ip_layout = m_ximpl->get_section_or_error<const ::ip_layout*>(IP_LAYOUT);
 
       for (auto& kernel : xrt_core::xclbin::get_kernels(xml.first, xml.second)) {
+        auto props = xrt_core::xclbin::get_kernel_properties(xml.first, xml.second, kernel.name);
         auto cus = xrt_core::xclbin::get_cus(ip_layout, kernel.name);  // ip_data*
         auto ips = kernel_cus_to_ips(cus);                             // xrt::xclbin::ip
         m_kernels.emplace_back
           (std::make_shared<xclbin::kernel_impl>
-           (std::move(kernel.name), std::move(ips), std::move(kernel.args)));
+           (std::move(kernel.name), std::move(props), std::move(ips), std::move(kernel.args)));
       }
     }
 
@@ -500,6 +569,19 @@ public:
   get_ips() const
   {
     return get_xclbin_info()->m_ips;
+  }
+
+  std::vector<xclbin::ip>
+  get_ips(const std::string& name)
+  {
+    // Filter ips to those matching specified name
+    const auto& ips = get_xclbin_info()->m_ips;
+    if (name.empty())
+      return ips;
+
+    std::vector<xclbin::ip> vec;
+    copy_if_name_match(ips.begin(), ips.end(), std::back_inserter(vec), name);
+    return vec;
   }
 
   xclbin::ip
@@ -761,9 +843,16 @@ get_name() const
 
 std::vector<xclbin::ip>
 xclbin::kernel::
+get_cus(const std::string& kname) const
+{
+  return handle ? handle->get_cus(kname) : std::vector<xclbin::ip>{};
+}
+
+std::vector<xclbin::ip>
+xclbin::kernel::
 get_cus() const
 {
-  return handle ? handle->m_cus : std::vector<xclbin::ip>{};
+  return get_cus("");
 }
 
 xclbin::ip
@@ -811,6 +900,15 @@ xclbin::ip::
 get_name() const
 {
   return handle ? reinterpret_cast<const char*>(handle->m_ip->m_name) : "";
+}
+
+xclbin::ip::control_type
+xclbin::ip::
+get_control_type() const
+{
+  return handle
+    ? handle->get_control_type()
+    : static_cast<xclbin::ip::control_type>(std::numeric_limits<uint8_t>::max());
 }
 
 size_t
@@ -1003,7 +1101,7 @@ is_valid_or_error(xrtXclbinHandle handle)
 const axlf*
 get_axlf(xrtXclbinHandle handle)
 {
-  auto xclbin = get_xclbin(handle);
+  auto xclbin = ::get_xclbin(handle);
   return xclbin->get_axlf();
 }
 
@@ -1029,6 +1127,30 @@ std::vector<char>
 read_xclbin(const std::string& fnm)
 {
   return ::read_xclbin(fnm);
+}
+
+const xrt_core::xclbin::kernel_properties&
+get_properties(const xrt::xclbin::kernel& kernel)
+{
+  return kernel.get_handle()->m_properties;
+}
+
+const std::vector<xrt_core::xclbin::kernel_argument>&
+get_arginfo(const xrt::xclbin::kernel& kernel)
+{
+  return kernel.get_handle()->m_arginfo;
+}
+
+unsigned int
+get_ip_idx(const xrt::xclbin::ip& ip)
+{
+  return ip.get_handle()->m_ip_layout_idx;
+}
+
+const ip_data*
+get_ip_data(const xrt::xclbin::ip& ip)
+{
+  return ip.get_handle()->m_ip;
 }
 
 }} // namespace xclbin_int, core_core
