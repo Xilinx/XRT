@@ -1,0 +1,844 @@
+
+
+
+<!DOCTYPE HTML>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+	<head>
+		<meta charset="utf-8">
+		
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+		<link rel="stylesheet" href="https://static.cloud.coveo.com/searchui/v2.4382/css/CoveoFullSearch.css"/>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<meta name="description"/>
+		<meta name="keywords"/>
+		<meta property="og:title" content=""/>
+		<meta property="og:description"/>
+		<!-- favicon -->
+		<link rel="icon" type="image/vnd.microsoft.icon" href="_static/favicon.ico"/>
+		<link rel="shortcut icon" type="image/vnd.microsoft.icon" href="_static/favicon.ico"/>
+		<!-- Fonts -->
+		<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" rel="stylesheet" type="text/css"/>
+
+  
+  
+  
+  
+
+  
+      <script type="text/javascript" src="_static/js/jquery.min.js"></script>	
+	  <script type="text/javascript" src="_static/js/gtm.js"></script>
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+    <script type="text/javascript" src="_static/js/d3dd8c60ed.js"></script>
+    <script type="text/javascript" src="_static/js/common-ui-all.min.js"></script>		
+    <script type="text/javascript" src="_static/js/header-footer.min.js"></script>	
+    <script type="text/javascript" src="_static/js/jquery-ui.min.js"></script>	
+    <script type="text/javascript" src="_static/js/CoveoJsSearch.Lazy.min.js"></script>	
+    <script type="text/javascript" src="_static/js/linkid.js"></script>		
+    <script type="text/javascript" src="_static/js/Searchbox.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/common-ui-all.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/header-footer.min.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/pro.min.css" media="all" />
+  <link rel="stylesheet" href="_static/graphviz.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="FPGA device readiness within user VM" href="fpga_device_ready.html" />
+    <link rel="prev" title="Mailbox Inter-domain Communication Protocol" href="mailbox.proto.html" /> 
+	</head>
+	<body>
+		<div class="xilinx-bs3"/>
+		<div class="root responsivegrid">
+			<div class="aem-Grid aem-Grid--16 aem-Grid--default--16 aem-Grid--large--16 aem-Grid--xlarge--16 aem-Grid--xxlarge--16 aem-Grid--xxxlarge--16 ">
+				<div class="xilinxExperienceFragments experiencefragment aem-GridColumn aem-GridColumn--default--12">
+					<div class="xf-content-height">
+						<div class="aem-Grid aem-Grid--16 aem-Grid--default--16 ">
+							<div class="header parbase aem-GridColumn aem-GridColumn--default--12">
+								<noindex>
+									<header data-component="header">
+										<nav class="navbar navbar-default aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid main-nav">
+													<div class="row">
+														<div class="col-xs-12">
+															<div class="logo-column">
+																<div class="logo">
+																	<a href="https://www.xilinx.com/">
+																	<img src="https://raw.githubusercontent.com/Xilinx/Image-Collateral/main/xilinx-header-logo.svg" title="Xilinx Inc"/>
+																	</a>
+																</div>
+															</div>
+															<div class="navbar-column">
+																<div class="navbar navbar-collapse collapse" id="xilinx-main-menu">
+																	<div class="mobile-search-container">
+																		<div id="headerSearchBox" class="headerSearch"
+																			data-component="header-search" 
+																			data-redirect-if-empty="false"
+																			data-coveo-access-token="xxa237d4dd-f0aa-47fc-9baa-af9121851b33"
+																			data-coveo-organization-id="xilinxcomprode2rjoqok">
+																			<div class='coveo-search-section'>
+																				<div class="CoveoAnalytics" data-search-hub="Site"></div>
+																				<ul class="dropdown-menu options">
+																					<li class="option" data-label="All" data-action-link="https://www.xilinx.com/search/site-keyword-search.html" data-search-hub="Site">
+																						<a href="#">
+																						All</a>
+																					</li>
+																					<li data-label="Silicon Devices" data-action-link="https://www.xilinx.com//products/silicon-devices/si-keyword-search.html" data-search-hub="Product">
+																						<a href="#">
+																						Silicon Devices</a>
+																					</li>
+																					<li data-label="Boards and Kits" data-action-link="https://www.xilinx.com//products/boards-and-kits/bk-keyword-search.html" data-search-hub="Product">
+																						<a href="#">
+																						Boards and Kits</a>
+																					</li>
+																					<li data-label="Intellectual Property" data-action-link="https://www.xilinx.com//products/intellectual-property/ip-keyword-search.html" data-search-hub="Product">
+																						<a href="#">
+																						Intellectual Property</a>
+																					</li>
+																					<li data-label="Support" class="option" data-action-link="https://www.xilinx.com/search/support-keyword-search.html" data-search-hub="Support">
+																						<a href="#">
+																						Support</a>
+																						<ul>
+																							<li data-label="Documentation" data-action-link="https://www.xilinx.com//support/documentation-navigation/documentation-keyword-search.html" data-search-hub="Document">
+																								<a href="#">
+																								Documentation</a>
+																							</li>
+																							<li data-label="Knowledge Base" data-action-link="https://www.xilinx.com//support/answer-navigation/answer-keyword-search.html" data-search-hub="AnswerRecord">
+																								<a href="#">
+																								Knowledge Base</a>
+																							</li>
+																							<li data-label="Community Forums" data-action-link="https://www.xilinx.com/search/forums-keyword-search.html" data-search-hub="Forums">
+																								<a href="#">
+																								Community Forums</a>
+																							</li>
+																						</ul>
+																					</li>
+																					<li data-label="Partners" data-action-link="https://www.xilinx.com//alliance/member-keyword-search.html" data-search-hub="Partner">
+																						<a href="#">
+																						Partners</a>
+																					</li>
+																					<li data-label="Videos" data-action-link="https://www.xilinx.com/video/video-keyword-search.html" data-search-hub="Video">
+																						<a href="#">
+																						Videos</a>
+																					</li>
+																					<li data-label="Press" data-action-link="https://www.xilinx.com/search/press-keyword-search.html" data-search-hub="Press">
+																						<a href="#">
+																						Press</a>
+																					</li>
+																				</ul>
+																				<a href="#" class="btn dropdown-toggle value" data-toggle="dropdown"></a>
+																				<div class="CoveoSearchbox" data-id="coveosearchbox" data-action-link="https://www.xilinx.com/search/site-keyword-search.html" data-placeholder="Search Xilinx"></div>
+																			</div>
+																		</div>
+																	</div>
+																	<ul class="nav navbar-nav nav-justified">
+																		<li class="accordion-toggle-icons" data-component="toggle-dropdown">
+																			<a href="https://www.xilinx.com/applications.html">
+																			Applications</a> 
+																		</li>
+																		<li class="accordion-toggle-icons" data-component="toggle-dropdown">
+																			<a href="https://www.xilinx.com/products/silicon-devices.html">
+																			Products</a> 
+																		</li>
+																		<li class="accordion-toggle-icons" data-component="toggle-dropdown">
+																			<a href="https://developer.xilinx.com/">
+																			Developers</a> 
+																		</li>
+																		<li class="accordion-toggle-icons" data-component="toggle-dropdown">
+																			<a href="https://www.xilinx.com/support.html">
+																			Support</a> 
+																		</li>
+																		<li class="accordion-toggle-icons" data-component="toggle-dropdown">
+																			<a href="https://www.xilinx.com/about/company-overview.html">
+																			About</a> 
+																		</li>
+																	</ul>
+																</div>
+															</div>
+															<script type="text/javascript" src="_static/js/gtm.js"></script>
+															<!--<div class="mini-nav">
+																<button type="button" data-function="xilinx-mobile-menu" id="nav-toggle" class="navbar-toggle collapsed visible-xs-block" aria-expanded="false">
+																<span></span>
+																<span></span>
+																<span></span>
+																<span></span>
+																</button>
+																<ul class="list-inline">
+																	<li class="dropdown user-menu">
+																		<button data-toggle="dropdown">
+																		<span class="sr-only">Account</span>
+																		<span class="fas fa-user"></span>
+																		</button>
+																		<ul class="dropdown-menu">
+																			<li>
+																				<a href="https://www.xilinx.com/myprofile/subscriptions.html">
+																				My Account</a>
+																			</li>
+																			<li>
+																				<a href="https://www.xilinx.com/registration/create-account.html">
+																				Create Account</a>
+																			</li>
+																			<li>
+																				<a href="https://www.xilinx.com/bin/protected/en/signout">
+																				Sign Out</a>
+																			</li>
+																		</ul>
+																	</li>
+																	<li class="hidden-xs">
+																		<button data-function="search-toggle">
+																		<span class="sr-only">Search</span>
+																		<span class="far fa-search"></span>
+																		</button>
+																	</li>
+																</ul>
+															</div>
+															-->
+															<div class="search-container">
+																<div id="headerSearchBox" class="headerSearch"
+																	data-component="header-search" 
+																	data-redirect-if-empty="false"
+																	data-coveo-access-token="xxa237d4dd-f0aa-47fc-9baa-af9121851b33"
+																	data-coveo-organization-id="xilinxcomprode2rjoqok">
+																	<div class='coveo-search-section'>
+																		<div class="CoveoAnalytics" data-search-hub="Site"></div>
+																		<ul class="dropdown-menu options">
+																			<li class="option" data-label="All" data-action-link="https://www.xilinx.com/search/site-keyword-search.html" data-search-hub="Site">
+																				<a href="#">
+																				All</a>
+																			</li>
+																			<li data-label="Silicon Devices" data-action-link="https://www.xilinx.com/products/silicon-devices/si-keyword-search.html" data-search-hub="Product">
+																				<a href="#">
+																				Silicon Devices</a>
+																			</li>
+																			<li data-label="Boards and Kits" data-action-link="https://www.xilinx.com/products/boards-and-kits/bk-keyword-search.html" data-search-hub="Product">
+																				<a href="#">
+																				Boards and Kits</a>
+																			</li>
+																			<li data-label="Intellectual Property" data-action-link="https://www.xilinx.com/products/intellectual-property/ip-keyword-search.html" data-search-hub="Product">
+																				<a href="#">
+																				Intellectual Property</a>
+																			</li>
+																			<li data-label="Support" class="option" data-action-link="https://www.xilinx.com/search/support-keyword-search.html" data-search-hub="Support">
+																				<a href="#">
+																				Support</a>
+																				<ul>
+																					<li data-label="Documentation" data-action-link="https://www.xilinx.com/support/documentation-navigation/documentation-keyword-search.html" data-search-hub="Document">
+																						<a href="#">
+																						Documentation</a>
+																					</li>
+																					<li data-label="Knowledge Base" data-action-link="https://www.xilinx.com/support/answer-navigation/answer-keyword-search.html" data-search-hub="AnswerRecord">
+																						<a href="#">
+																						Knowledge Base</a>
+																					</li>
+																					<li data-label="Community Forums" data-action-link="https://www.xilinx.com/search/forums-keyword-search.html" data-search-hub="Forums">
+																						<a href="#">
+																						Community Forums</a>
+																					</li>
+																				</ul>
+																			</li>
+																			<li data-label="Partners" data-action-link="https://www.xilinx.com/alliance/member-keyword-search.html" data-search-hub="Partner">
+																				<a href="#">
+																				Partners</a>
+																			</li>
+																			<li data-label="Videos" data-action-link="https://www.xilinx.com/video/video-keyword-search.html" data-search-hub="Video">
+																				<a href="#">
+																				Videos</a>
+																			</li>
+																			<li data-label="Press" data-action-link="https://www.xilinx.com/search/press-keyword-search.html" data-search-hub="Press">
+																				<a href="#">
+																				Press</a>
+																			</li>
+																		</ul>
+																		<a href="#" class="btn dropdown-toggle value" data-toggle="dropdown"></a>
+																		<div class="CoveoSearchbox" data-id="coveosearchbox" data-action-link="https://www.xilinx.com/search/site-keyword-search.html" data-placeholder="Search Xilinx"></div>
+																	</div>
+																</div>
+																<button data-function="search-toggle">
+																<span class="sr-only">Search</span>
+																<span class="far fa-times"></span>
+																</button>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</nav>
+									</header>
+								</noindex>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="parsys aem-GridColumn--xxxlarge--none aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+						<div class="container-fluid">
+							<div class="row">
+							<div class="col-xs-12">
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> XRT
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                2021.2
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms.html">XRT and Vitis™ Platform Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="system_requirements.html">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="build.html">Building the XRT Software Stack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="install.html">XRT Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Use Model and Features</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="execution-model.html">Execution Model Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_kernel_executions.html">XRT Controlled Kernel Execution Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multiprocess.html">Multi-Process Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="p2p.html">PCIe Peer-to-Peer (P2P)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="m2m.html">Memory-to-Memory (M2M)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hm.html">Host Memory Access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_ini.html">Configuration File xrt.ini</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Video Acceleration Using XMA</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xma_user_guide.html">XMA Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_apps_dev.html">Application Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_plugin_dev.html">Plugin Development Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xmakernels.main.html">XMA Upper Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma.main.html">XMA Lower Edge API Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xma_19.2.html">Migration from Legacy XMA</a></li>
+</ul>
+<p class="caption"><span class="caption-text">User API Library</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="opencl_extension.html">Xilinx OpenCL extension</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native_apis.html">XRT Native APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html">XRT Native Library C++ API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt_native.main.html#id1">XRT Native Library C API</a></li>
+</ul>
+<p class="caption"><span class="caption-text">XRT Developer's Space</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="platforms_partitions.html">Alveo™ Platform Loading Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sysfs.html">Linux Sys FileSystem Nodes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="formats.html">Binary Formats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrt.main.html">XRT Core Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ert.main.html">Embedded Runtime Library</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mgmt-ioctl.main.html">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xocl_ioctl.main.html">XOCL (PCIe User Physical Function) Driver Interfaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="zocl_ioctl.main.html">ZOCL Driver Interfaces</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Tools and Utilities</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbmgmt.html">xbmgmt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xball.html">xball</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xbtools_map.html">Utility Migration Guide</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Building Platforms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="yocto.html">XRT Setup for Embedded Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="test.html">Developer Build and Test Instructions</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Cloud Support</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="mailbox.main.html">Mailbox Subdevice Driver</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mailbox.proto.html">Mailbox Inter-domain Communication Protocol</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">MSD/MPD and Plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd">Mailbox, Message Service Daemon(MSD) and Message Proxy Daemon(MPD)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#enhancement-to-mpd">Enhancement to MPD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-mpd-plugin">Example MPD plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#summary">Summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#special-case">Special Case</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#note">Note</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fpga_device_ready.html">FPGA device readiness within user VM</a></li>
+<li class="toctree-l1"><a class="reference internal" href="vsec.html">Accessing vsec within VM</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="security.html">Security of Alveo Platform</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Python binding</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pyxrt.html">XRT Python Bindings</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Debug and Faqs</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="debug-faq.html">XRT/Board Debug FAQ</a></li>
+</ul>
+
+            
+			<p class="caption"><span class="caption-text">This Page</span></p>
+				<ul class="current">
+				  <li class="toctree-l1"><a href="_sources/cloud_vendor_support.rst.txt"
+						rel="nofollow">Show Source</a></li>						
+				</ul>
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">XRT</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>MSD/MPD and Plugins</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/cloud_vendor_support.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <span class="target" id="cloud-vendor-support-rst"></span><div class="section" id="msd-mpd-and-plugins">
+<h1>MSD/MPD and Plugins<a class="headerlink" href="#msd-mpd-and-plugins" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h2>
+<p>When FPGAs are deployed at cloud vendors, either VM based (IaaS) or container based (PaaS), there are
+some common concerns need to be addressed.</p>
+<ol class="arabic">
+<li><p class="first">MGMT PF and USER PF of the FPGA are separated</p>
+<p>Cloud vendors own the MGMT PF, while users own the USER PF. Any operations by the user on USER PF
+should not damage or compromise the operation of MGMT PF.</p>
+</li>
+<li><p class="first">xclbin files needs to be protected</p>
+<p>Some of the xclbin files are provided by third-party ISVs – they don’t want the users access their
+xclbin files, but use them indirectly. That is, the xclbin files in user VM or container are not the
+real ones that are running on the cards. Instead, they are fake one with the BITSTREAM section stripped.
+xclbin download on the fake xclbin files in VM should result in the real one being programed without any
+user perceiving</p>
+</li>
+<li><p class="first">Cloud vendors have more control on the xclbin download process</p>
+<p>Download xclbin involves the talking between VMs or containers and the hosts. Cloud vendors have their
+own ways they trust to do this.</p>
+</li>
+</ol>
+<p>XRT addresses all of these concerns</p>
+</div>
+<div class="section" id="mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd">
+<h2>Mailbox, Message Service Daemon(MSD) and Message Proxy Daemon(MPD)<a class="headerlink" href="#mailbox-message-service-daemon-msd-and-message-proxy-daemon-mpd" title="Permalink to this headline">¶</a></h2>
+<p>The following picture illustrates how a xclbin file is downloaded on baremetal machine</p>
+<div align="center" class="align-center"><img alt="_images/mailbox-msd-mpd-architecture.svg" src="_images/mailbox-msd-mpd-architecture.svg" /></div>
+<p>As shown by the red arrows in the picture, the flow of the download in this case is as following:</p>
+<ol class="arabic simple">
+<li>User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API</li>
+<li>Shim layer issues ioctl to xocl driver</li>
+<li>Xocl driver subdev icap sends the req to subdev mailbox (the xclbin file is in host memory, the req  size is very small)</li>
+<li>Mailbox transfers the req to the peer in xclmgmt through hw mailbox</li>
+<li>Xclmgmt driver subdev mailbox forwards the req to the  subdev icap</li>
+<li>Xclmgmt driver subdev icap receives the req, gets xclbin file from memory, and programs the icap</li>
+<li>Response is sent back to the user following the reverse way</li>
+</ol>
+<p><strong>Note:</strong> <em>This model also works for containers running on top of baremetal if no special requirement, ie, xclbin protection,
+is needed</em></p>
+<p>XRT has its xclmgmt and xocl driver separated. Mailbox is communication channel between the 2 drivers, with
+which the user can do some management works with USER PF in VM, ie. download xclbin. However, HW mailbox by
+design has very low bandwidth, and that makes transfer of a hundred Mega Byte xclbin file very slow. SW mailbox
+is the complementary to the mailbox framework to overcome this, and it also helps as well for cases where there
+are no working HW mailbox</p>
+<p>SW mailbox relies on MSD/MPD. MSD resides in userspace of the machine(ie. Host) where xclmgmt driver is installed,
+while MPD resides in userspace of the machine(ie. VM) where xocl driver is installed. They talk to the mailbox subdev
+in the corresponding driver. MSD/MPD may be connected through external networking, eg. Ethernet, and make the download
+xclbin faster</p>
+<p><strong>Note:</strong> <em>In order to use SW mailbox, the cloud vendor has to setup the networking connection between Host and VM.
+And this model provides a faster xclbin download, but doesn’t provide xclbin protection</em></p>
+<p>Once the networking connection is setup, the following configurations are also required</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># In host, make sure the IP address configured is the one VM talks to</span>
+Host&gt;$ sudo xbmgmt config --show
+
+<span class="c1"># If the IP address is not correct, change it by running</span>
+Host&gt;$ sudo xbmgmt config --daemon --host &lt;host-or-ip&gt;
+
+<span class="c1"># Start MSD in host</span>
+Host&gt;$ sudo systemctl start msd
+
+<span class="c1"># Start MPD in VM</span>
+VM&gt;$ sudo systemctl start mpd
+
+<span class="c1">#Enable these services If you want them to be in active even after reboot</span>
+Host&gt;$ sudo systemctl <span class="nb">enable</span> msd
+
+VM&gt;$ sudo systemctl <span class="nb">enable</span> mpd
+</pre></div>
+</div>
+<p>The flow of downloading xclbin through SW mailbox and MSD/MPD is illustrated as below:</p>
+<div align="center" class="align-center"><img alt="_images/sw-mailbox-msd-mpd-download.svg" src="_images/sw-mailbox-msd-mpd-download.svg" /></div>
+<p>As shown by the green arrows in the picture, the flow of the download in this case is as following:</p>
+<ol class="arabic simple">
+<li>User requests xclbin download from ‘xbutil program’ cmdline or OpenCL API</li>
+<li>Shim layer issues ioctl to xocl driver</li>
+<li>Xocl driver subdev icap sends the req to subdev mailbox</li>
+<li>Mailbox transfers the req  and xclbin file to MPD as mailbox message</li>
+<li>MPD forwards the mailbox message to MSD</li>
+<li>MSD transfers the mailbox message to xclmgmt driver subdev mailbox</li>
+<li>Xclmgmt driver subdev mailbox forwards the req to the  subdev icap</li>
+<li>Xclmgmt driver subdev icap receives the req, and programs the icap</li>
+<li>Response is sent back to the user following the reverse way</li>
+</ol>
+<p>The mailbox(HW&amp;SW) and MSD/MPD framework perfectly addresses the 1st concern mentioned above</p>
+</div>
+<div class="section" id="enhancement-to-mpd">
+<h2>Enhancement to MPD<a class="headerlink" href="#enhancement-to-mpd" title="Permalink to this headline">¶</a></h2>
+<p>MSD/MPD are mailbox message centric. They focus on the delivering of the mailbox message and don’t interpret them.
+In order to protect the xclbin file, in which case users feed fake xclbin files to xocl then plugins get real ones
+and re-feed to xclmgmt, MSD/MPD have to interpret and understand the download xclbin message. An enhancement to MPD
+interprets the mailbox message and calls into vendor specific plugin to download the xclbin</p>
+<p>The input to the plugin is the xclbin file fed by the user in VM or container – it may be a fake xclbin file. The
+plugin calls cloud vendor specific APIs to do the real download. It is the cloud vendor responsibility to,</p>
+<ol class="arabic simple">
+<li>Save the real xclbin files in a dedicated database</li>
+<li>Retrieve the real xclbin from fake one</li>
+<li>Ascertain the legality of the download itself</li>
+<li>Talk to the MGMT PF (xclmgmt driver) to download the real xclbin</li>
+</ol>
+<p><strong>Note:</strong> <em>In this model, the cloud vendor APIs don’t know anything about mailbox. They talk to ICAP through ioctl directly. So
+MSD is not being used</em></p>
+<p>The flow of downloading protected xclbin through plugin is illustrated as below:</p>
+<div align="center" class="align-center"><img alt="_images/sw-mailbox-mpd-plugin-download.svg" src="_images/sw-mailbox-mpd-plugin-download.svg" /></div>
+<p>The vendor private part shown in the picture needs to,</p>
+<ol class="arabic simple">
+<li>Provide database to save real xclbin files</li>
+<li>Provide download API to MPD plugin</li>
+<li><dl class="first docutils">
+<dt>Check the legality of the download</dt>
+<dd><ol class="first last lowerroman">
+<li>whether the user is authorized</li>
+<li>whether the xclbin is valid</li>
+<li>whether the FPGA owned by the user</li>
+<li>etc</li>
+</ol>
+</dd>
+</dl>
+</li>
+<li>Retrieve the real xclbin</li>
+<li>Download the retrieved xclbin</li>
+</ol>
+<p>The enhancement to the MPD and the plugin address the 2nd and 3rd concerns mentioned above</p>
+</div>
+<div class="section" id="example-mpd-plugin">
+<h2>Example MPD plugin<a class="headerlink" href="#example-mpd-plugin" title="Permalink to this headline">¶</a></h2>
+<p>The example plugin aims at containers running on top of baremetal machines. In this case, both MGMT PF and USER PF are in the same
+domain, so plugin can call ioctl on xclmgmt directly to program ICAP after it retrieves the real xclbin. This is the use case
+for Nimbix</p>
+<p>The plugin is built as shared object – libcontainer_mpd_plugin.so, and when users install the container pkg, the ‘so’ file
+will be installed at /opt/xilinx/xrt/lib, and a soft link file – libmpd_plugin.so is created under the same folder
+linking to the plugin shared object. MPD tries to dlopen(3) the shared object when it gets started</p>
+<p>This delivered container plugin by default just uses the input xclbin file as output(that means no xclbin protection),
+show-casing how this plugin is going to be implemented. It does have example code how to save real xclbin, how to retrieve
+real xclbin from fake one, and how to download a protected xclbin, as user’s reference</p>
+<p>This plugin can also be used for internal test on the MPD and mailbox</p>
+<p>Example how a ubuntu host of containers configures the plugin</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># install xrt pkg</span>
+$ sudo apt install /opt/xrt_201920.2.3.0_18.04-xrt.deb
+
+<span class="c1"># install xrt pkg</span>
+$ sudo apt install /opt/xrt_201920.2.3.0_18.04-container.deb
+
+<span class="c1"># config mailbox channel switch</span>
+<span class="c1"># this has to be manually configurated to ensure download xclbin going through SW mailbox</span>
+$ sudo <span class="nb">echo</span> 0x100 &gt; /sys/bus/pci/devices/0000<span class="se">\:</span><span class="m">65</span><span class="se">\:</span><span class="m">00</span>.0/config_mailbox_channel_switch
+
+<span class="c1"># When cloud vendor (eg. Nimbix) wants to enable its own xclbin protection mechanism, this</span>
+<span class="c1"># plugin needs to be rebuilt and the built &#39;so&#39; needs to be copied to /opt/xilinx/xrt/lib</span>
+<span class="c1"># eg</span>
+$ sudo cp libcontainer_mpd_plugin.so /opt/xilinx/xrt/lib
+$ sudo systemctl restart mpd
+</pre></div>
+</div>
+</div>
+<div class="section" id="summary">
+<h2>Summary<a class="headerlink" href="#summary" title="Permalink to this headline">¶</a></h2>
+<p>With the MSD/MPD framework and MPD enhancement,</p>
+<ol class="arabic simple">
+<li>Same XRT pkg is installed everywhere, baremetal/IaaS/PaaS/etc. Vendors only need to create/install their
+specific plugins</li>
+<li>Users have same Xilinx® FPGA using experience everywhere – they don’t even know whether they are running
+within baremetal, VM, or containers, they don’t know whether the xclbin files they see are real one, fake
+one or any other kind either</li>
+</ol>
+<p>The following picture illustrates how XRT is being deployed in different scenarios at cloud vendors</p>
+<div align="center" class="align-center"><img alt="_images/xrt-deployment-cloud.svg" src="_images/xrt-deployment-cloud.svg" /></div>
+</div>
+<div class="section" id="special-case">
+<h2>Special Case<a class="headerlink" href="#special-case" title="Permalink to this headline">¶</a></h2>
+<p>There is special case where download xclbin from within user VM is not required.</p>
+<p>In this special case, neither MSD/MPD nor plugins are required since no xclbin download is allowed from guest. xclbins can be preloaded
+either by hypervisor or dom0 type VM where the mgmt PF is assigned. The apps in user VM run without any change, i.e.
+xclbin download ioctl is still issued to xocl driver, xocl driver gets the uuid of the preloaded xclbin with a XCL_MAILBOX_REQ_PEER_DATA
+mailbox opcode to xclmgmt, and if the uuid matches with that of the xclbin requested for download, the ioctl returns immediately with success.
+If the uuids don’t match, download request in the guest fails.
+download happening.</p>
+</div>
+<div class="section" id="note">
+<h2>Note<a class="headerlink" href="#note" title="Permalink to this headline">¶</a></h2>
+<p>There are some machine configurations which prevents TCP connections. User should update the configurations to allow TCP connections.
+One of the configs is “Firwall” Settings to enable or disable:
+1. firewall disable command: ufw disable
+2. firewall enable command: ufw enable</p>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+<!-- Atalwar: Moved the footer code to layout.html to resolve conflict with the Xilinx template -->
+</footer>
+
+        </div>
+      </div>
+	  
+	  
+	  <!-- Sphinx Page Footer block -->
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fpga_device_ready.html" class="btn btn-neutral float-right" title="FPGA device readiness within user VM" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="mailbox.proto.html" class="btn btn-neutral float-left" title="Mailbox Inter-domain Communication Protocol" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo" class="copyright">
+    <p class="footerinfo">
+      <span class="lastupdated">
+        Last updated on October 11, 2021.
+      </span>
+
+    </p>
+  </div>	  
+      </div>
+    </section>
+
+
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+   <script type="text/javascript">
+    jQuery(function() { Search.loadIndex("searchindex.js"); });
+  </script>
+
+  <script type="text/javascript" id="searchindexloader"></script>     	    
+	    
+	    
+  
+  
+    
+  
+  
+
+  
+  <!--  Xilinx template footer block -->
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="xilinxExperienceFragments experiencefragment aem-GridColumn--default--none aem-GridColumn aem-GridColumn--offset--default--0 aem-GridColumn--default--16">
+					<div class="xf-content-height">
+						<div class="aem-Grid aem-Grid--16 aem-Grid--default--16 ">
+							<div class="footer parbase aem-GridColumn--default--none aem-GridColumn aem-GridColumn--offset--default--0 aem-GridColumn--default--16">
+								<noindex>
+									<footer>
+										<div class="aem-Grid aem-Grid--16">
+											<div class="aem-GridColumn aem-GridColumn--xxxlarge--none aem-GridColumn--xsmall--16 aem-GridColumn--offset--xsmall--0 aem-GridColumn--xlarge--none aem-GridColumn--xxlarge--none aem-GridColumn--default--none aem-GridColumn--offset--large--1 aem-GridColumn--xlarge--12 aem-GridColumn--offset--default--0 aem-GridColumn--xxlarge--10 aem-GridColumn--offset--xlarge--2 aem-GridColumn--offset--xxlarge--3 aem-GridColumn--offset--xxxlarge--4 aem-GridColumn--xsmall--none aem-GridColumn--large--none aem-GridColumn aem-GridColumn--large--14 aem-GridColumn--xxxlarge--8 aem-GridColumn--default--16">
+												<div class="container-fluid sub-footer">
+													<div class="row">
+														<div class="footerSocial parbase">
+															<div class="col-md-push-6 col-lg-push-6 col-md-6 col-lg-6">
+																<ul class="list-inline pull-right social-menu">
+																	<li>
+																		<a href="https://www.linkedin.com/company/xilinx">
+																		<span class="linkedin icon"></span>
+																		<span class="sr-only">Connect on LinkedIn</span>
+																		</a>
+																	</li>
+																	<li>
+																		<a href="https://www.twitter.com/XilinxInc">
+																		<span class="twitter icon"></span>
+																		<span class="sr-only">Follow us on Twitter</span>
+																		</a>
+																	</li>
+																	<li>
+																		<a href="https://www.facebook.com/XilinxInc">
+																		<span class="facebook icon"></span>
+																		<span class="sr-only">Connect on Facebook</span>
+																		</a>
+																	</li>
+																	<li>
+																		<a href="https://www.youtube.com/XilinxInc">
+																		<span class="youtube icon"></span>
+																		<span class="sr-only">Watch us on YouTube</span>
+																		</a>
+																	</li>
+																	<li>
+																		<a href="https://www.xilinx.com/registration/subscriber-signup.html">
+																		<span class="newsletter icon"></span>
+																		<span class="sr-only">Subscribe to Newsletter</span>
+																		</a>
+																	</li>
+																</ul>
+															</div>
+														</div>
+														<div class="col-md-pull-6 col-lg-pull-6 col-md-6 col-lg-6">
+															<span class="copyright">
+                                  
+                                  &copy; 2017-2020, Xilinx, Inc.
+                              </span>
+															<ul class="list-inline sub-menu">
+																<li>
+																	<a href="https://www.xilinx.com/about/privacy-policy.html">Privacy</a>
+																</li>
+																<li>
+																	<a href="https://www.xilinx.com/about/legal.html">Legal</a>
+																</li>
+																<li>
+																	<a href="https://www.xilinx.com/about/contact.html">Contact</a>
+																</li>
+															</ul>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</footer>
+								</noindex>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="quicklinks parbase aem-GridColumn--default--none aem-GridColumn aem-GridColumn--offset--default--0 aem-GridColumn--default--16">
+					<noindex>
+						<span class="quickLinks">
+							<ul>
+								<li>
+									<a href="#top" class="btn backToTop">
+									<span class="fas fa-angle-up" aria-hidden="true"></span>
+									</a>
+								</li>
+							</ul>
+						</span>
+					</noindex>
+				</div>
+			</div>
+		</div>
+		<script>window.CQ = window.CQ || {}</script>
+		<script src="https://static.cloud.coveo.com/searchui/v2.4382/js/CoveoJsSearch.Lazy.min.js"></script>
+		<script>
+			var underscoreSetup = function () {
+			  _.templateSettings.interpolate = /\{\{=([^-][\S\s]+?)\}\}/g;
+			  _.templateSettings.evaluate = /\{\{([^-=][\S\s]+?)\}\}/g;
+			  _.templateSettings.escape = /\{\{-([^=][\S\s]+?)\}\}/g;
+			}
+			
+			underscoreSetup();
+		</script>
+	</body>
+</html>
