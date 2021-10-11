@@ -46,6 +46,24 @@
 # include <errno.h>
 #endif
 
+/**
+ * This header file could be used both in driver and user space applications.
+ * It could be used cross platform as well. Need assert macro.
+ */
+#ifdef __cplusplus
+  // Used C++ static assert
+  #define XGQ_STATIC_ASSERT(e,m) \
+    static_assert (e, m)
+#else
+  // Use our "custom" kernel compilation assert
+  #define XGQ_ASSERT_CONCAT_(a, b) a##b
+  #define XGQ_ASSERT_CONCAT(a, b) XGQ_ASSERT_CONCAT_(a, b)
+
+  // Create an artifitial assertion via a bad divide by zero assertion.
+  #define XGQ_STATIC_ASSERT(e,m) \
+    enum { XGQ_ASSERT_CONCAT(assert_line_, __LINE__) = 1/(int)(!!(e)) }
+#endif
+
 #define XGQ_SUB_Q1_SLOT_SIZE	512	// NOLINT
 #define XGQ_QUEUE1_SLOT_NUM	4	// NOLINT
 #define XGQ_QUEUE1_SLOT_MASK	(XGQ_QUEUE1_SLOT_NUM - 1)	// NOLINT
@@ -162,6 +180,7 @@ struct xgq_cmd_sq_hdr {
 		uint32_t header[2]; // NOLINT
 	};
 };
+XGQ_STATIC_ASSERT(sizeof(struct xgq_cmd_sq_hdr) == 8, "xgq_cmd_sq_hdr structure no longer is 8 bytes in size");
 
 /**
  * struct xgq_cmd_cq_hdr: XGQ completion queue entry header format
@@ -188,6 +207,7 @@ struct xgq_cmd_cq_hdr {
 		uint32_t header[1]; // NOLINT
 	};
 };
+XGQ_STATIC_ASSERT(sizeof(struct xgq_cmd_cq_hdr) == 4, "xgq_cmd_cq_hdr structure no longer is 4 bytes in size");
 
 /**
  * struct xgq_sub_queue_entry: XGQ submission queue entry
@@ -231,6 +251,7 @@ struct xgq_com_queue_entry {
 		uint32_t data[3]; // NOLINT
 	};
 };
+XGQ_STATIC_ASSERT(sizeof(struct xgq_com_queue_entry) == 16, "xgq_com_queue_entry structure no longer is 16 bytes in size");
 
 #define XGQ_SUB_HEADER_SIZE	(sizeof(struct xgq_cmd_sq_hdr)) // NOLINT
 #define XGQ_COM_Q1_SLOT_SIZE	(sizeof(struct xgq_com_queue_entry)) // NOLINT
