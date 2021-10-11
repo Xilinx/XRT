@@ -1,0 +1,4 @@
+<map id="xrt::xclbin::mem" name="xrt::xclbin::mem">
+<area shape="rect" id="node1" title="xrt::xclbin::mem represents a physical device memory bank" alt="" coords="17,95,147,121"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,5,159,47"/>
+</map>
