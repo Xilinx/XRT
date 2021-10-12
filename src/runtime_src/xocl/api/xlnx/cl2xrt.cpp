@@ -14,7 +14,7 @@
  * under the License.
  */
 #define XOCL_SOURCE  // exported for end application use
-#include "CL/cl2xrt.hpp"
+#include "xocl/config.h"
 #include "xocl/core/device.h"
 #include "xocl/core/kernel.h"
 #include "xocl/core/memory.h"
@@ -22,6 +22,8 @@
 #include "core/include/experimental/xrt_bo.h"
 #include "core/include/experimental/xrt_device.h"
 #include "core/include/experimental/xrt_kernel.h"
+
+#include <CL/cl2xrt.hpp>
 
 namespace xrt { namespace opencl {
 
