@@ -36,7 +36,7 @@
 #define TS2MM_CIRCULAR_BUF      0x50
 #define TS2MM_AP_CTRL           0x0
 
-// Commands
+// Command for HLS ap_start
 #define TS2MM_AP_START          0x1
 
 // little less than 4GB
