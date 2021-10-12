@@ -38,6 +38,7 @@
 #ifndef XGQ_CMD_ERT_H
 #define XGQ_CMD_ERT_H
 
+/* !!! This header file is for internal project use only and it is subject to removal without notice !!! */
 #include "xgq_cmd_common.h"
 
 /* This header file defines struct of user command type opcode */

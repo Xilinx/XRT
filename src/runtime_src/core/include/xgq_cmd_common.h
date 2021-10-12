@@ -38,6 +38,7 @@
 #ifndef XGQ_CMD_COMMON_H
 #define XGQ_CMD_COMMON_H
 
+/* !!! This header file is for internal project use only and it is subject to removal without notice !!! */
 #if defined(__KERNEL__)
 # include <linux/types.h>
 #else
