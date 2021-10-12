@@ -707,9 +707,9 @@ public:
   }
 
   hal::operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector& vec)
+  readTrace(xclPerfMonType type)
   {
-    return m_hal->readTrace(type,vec);
+    return m_hal->readTrace(type);
   }
 
   hal::operations_result<void>

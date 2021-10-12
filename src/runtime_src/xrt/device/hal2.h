@@ -452,11 +452,11 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector& vec)
+  readTrace(xclPerfMonType type)
   {
     if (!m_ops->mReadTrace)
       return hal::operations_result<size_t>();
-    return m_ops->mReadTrace(m_handle,type, vec);
+    return m_ops->mReadTrace(m_handle,type);
   }
 
   virtual hal::operations_result<void>

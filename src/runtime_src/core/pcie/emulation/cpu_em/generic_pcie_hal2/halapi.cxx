@@ -279,7 +279,7 @@ uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, xclPerfMonType type)
 }
 
 
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type, xclTraceResultsVector& traceVector)
+size_t xclPerfMonReadTrace(xclDeviceHandle handle, xclPerfMonType type)
 {
   xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
   if (!drv)

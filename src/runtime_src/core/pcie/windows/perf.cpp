@@ -103,7 +103,6 @@ uint32_t xclPerfMonGetTraceCount(xclDeviceHandle handle, enum xclPerfMonType typ
 
 
 
-size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type,
-                                   xclTraceResultsVector& traceVector);
+size_t xclPerfMonReadTrace(xclDeviceHandle handle, enum xclPerfMonType type);
 
 #endif

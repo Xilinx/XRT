@@ -31,8 +31,6 @@
 #include "xdp/config.h"
 #include "core/common/uuid.h"
 
-#include "core/include/xclperf.h"
-
 namespace xdp {
 
   // Forward declarations

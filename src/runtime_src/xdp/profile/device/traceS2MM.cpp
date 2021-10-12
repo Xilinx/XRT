@@ -180,7 +180,6 @@ void TraceS2MM::parsePacket(uint64_t packet, uint64_t firstTimestamp, xclTraceRe
     result.TraceID = (packet >> 49) & 0xFFF;
     result.Reserved = (packet >> 61) & 0x1;
     result.Overflow = (packet >> 62) & 0x1;
-    result.EventID = XCL_PERF_MON_HW_EVENT;
     result.EventFlags = ((packet >> 45) & 0xF) | ((packet >> 57) & 0x10);
     //result.isClockTrain = false;
     result.isClockTrain = 0 ;

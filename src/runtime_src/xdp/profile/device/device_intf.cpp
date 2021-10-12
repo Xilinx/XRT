@@ -42,7 +42,6 @@
 
 #endif
 
-#include "xclperf.h"
 #include "xcl_perfmon_parameters.h"
 #include "tracedefs.h"
 #include "core/common/message.h"

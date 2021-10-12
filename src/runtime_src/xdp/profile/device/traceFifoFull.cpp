@@ -158,7 +158,6 @@ void TraceFifoFull::processTraceData(std::vector<xclTraceResults>& traceVector,u
       results.Reserved = (currentSample >> 61) & 0x1;
       results.Overflow = (currentSample >> 62) & 0x1;
       results.Error = (currentSample >> 63) & 0x1;
-      results.EventID = XCL_PERF_MON_HW_EVENT;
       results.EventFlags = ((currentSample >> 45) & 0xF) | ((currentSample >> 57) & 0x10) ;
       results.isClockTrain = 0 ;
 

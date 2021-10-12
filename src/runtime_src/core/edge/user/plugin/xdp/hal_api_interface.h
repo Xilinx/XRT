@@ -60,7 +60,7 @@ namespace xdphalinterface {
     ~APIInterfaceLoader() ;
   } ;
   
-  void load_xdp_hal_interface_plugin_library(HalPluginConfig* config);
+  void load_xdp_hal_interface_plugin_library();
   void register_hal_interface_callbacks(void* handle) ;
   int error_hal_interface_callbacks() ;
   

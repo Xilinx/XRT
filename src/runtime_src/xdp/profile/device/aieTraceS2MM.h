@@ -64,7 +64,7 @@ public:
      * One word is 64 bit with current implementation
      * IP should support word packing if we want to support 512 bit words
      */
-    virtual void parseTraceBuf(void* /*buf*/, uint64_t /*size*/, xclTraceResultsVector& /*traceVector*/) {}
+    virtual void parseTraceBuf(void* /*buf*/, uint64_t /*size*/) {}
 };
 
 } //  xdp

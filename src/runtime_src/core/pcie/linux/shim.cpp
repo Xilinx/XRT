@@ -2177,7 +2177,6 @@ int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
   uint16_t nifd_instance = 0;
   std::string device_name = std::string(DRIVER_NAME_ROOT) + std::string(DEVICE_PREFIX) + std::to_string(user_instance);
   std::string nifd_name = std::string(DRIVER_NAME_ROOT) + std::string(NIFD_PREFIX) + std::to_string(nifd_instance);
-  info->device_type = DeviceType::XBB;
   info->device_index = mBoardNumber;
   info->user_instance = user_instance;
   info->nifd_instance = nifd_instance;

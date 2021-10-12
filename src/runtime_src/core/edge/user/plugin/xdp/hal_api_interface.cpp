@@ -20,7 +20,7 @@ namespace xdphalinterface {
   {
     if (xrt_core::config::get_profile_api())
     {
-      load_xdp_hal_interface_plugin_library(nullptr) ;
+      load_xdp_hal_interface_plugin_library() ;
     }
   }
 
@@ -97,7 +97,7 @@ namespace xdphalinterface {
     return 0 ;
   }
 
-  void load_xdp_hal_interface_plugin_library(HalPluginConfig* )
+  void load_xdp_hal_interface_plugin_library()
   {
     static xrt_core::module_loader
       xdp_hal_interface_loader("xdp_hal_api_interface_plugin",

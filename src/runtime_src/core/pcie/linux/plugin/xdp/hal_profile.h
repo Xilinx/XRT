@@ -17,7 +17,6 @@
 #ifndef XDP_PROFILE_HAL_PLUGIN_H_
 #define XDP_PROFILE_HAL_PLUGIN_H_
 
-#include "core/include/xclperf.h"
 #include "core/include/xclhal2.h"
 
 #include "core/common/config_reader.h"

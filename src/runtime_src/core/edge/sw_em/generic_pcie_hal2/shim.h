@@ -128,7 +128,7 @@ namespace xclcpuemhal2 {
       size_t xclPerfMonStartTrace(xclPerfMonType type, uint32_t startTrigger);
       size_t xclPerfMonStopTrace(xclPerfMonType type);
       uint32_t xclPerfMonGetTraceCount(xclPerfMonType type);
-      size_t xclPerfMonReadTrace(xclPerfMonType type, xclTraceResultsVector& traceVector);
+      size_t xclPerfMonReadTrace(xclPerfMonType type);
 
       // Sanity checks
       int xclGetDeviceInfo2(xclDeviceInfo2 *info);

@@ -32,6 +32,12 @@ class DeviceEventCreatorFromTrace
   XclbinInfo* xclbin = nullptr ;
   VPDatabase* db = nullptr;
 
+  // Useful masks for device events
+  static const uint64_t XAM_TRACE_CU_MASK        = 0x1 ;
+  static const uint64_t XAM_TRACE_STALL_INT_MASK = 0x2 ;
+  static const uint64_t XAM_TRACE_STALL_STR_MASK = 0x4 ;
+  static const uint64_t XAM_TRACE_STALL_EXT_MASK = 0x8 ;
+
   std::vector<uint64_t>  traceIDs;
   // Keep track of the event ID and device timestamp of CU starts
   std::vector<std::list<std::pair<uint64_t, uint64_t>>> cuStarts;

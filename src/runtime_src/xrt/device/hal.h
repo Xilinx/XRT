@@ -26,7 +26,6 @@
 #include "core/include/xrt.h"
 #include "core/include/experimental/xrt_device.h"
 
-#include "xclperf.h"
 #include "xcl_app_debug.h"
 #include "xstream.h"
 #include "ert.h"
@@ -534,7 +533,7 @@ public:
 
 
   virtual operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector&)
+  readTrace(xclPerfMonType type)
   {
     return operations_result<size_t>();
   }

@@ -39,9 +39,6 @@ namespace xrt_xocl { namespace hal2 {
 typedef xclVerbosityLevel     verbosity_level;
 typedef xclDeviceHandle       device_handle;
 typedef xclDeviceInfo2        device_info;
-typedef xclPerfMonType        perfmon_type;
-typedef xclPerfMonEventType   perfmon_event_type;
-typedef xclPerfMonEventID     perfmon_event_id;
 
 class operations
 {
@@ -111,8 +108,7 @@ private:
                                         uint32_t options);
   typedef size_t (* stopTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef uint32_t (* countTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
-  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type,
-                                       xclTraceResultsVector& traceVector);
+  typedef size_t (* readTraceFuncType)(xclDeviceHandle handle, xclPerfMonType type);
   typedef size_t (* debugReadIPStatusFuncType)(xclDeviceHandle handle, xclDebugReadType type,
                                                void* debugResults);
 
