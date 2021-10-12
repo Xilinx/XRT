@@ -21,8 +21,10 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_kernel.h"
 #include "core/include/experimental/xrt_mailbox.h"
+#include "core/include/experimental/xrt_xclbin.h"
 #include "native_profile.h"
 #include "kernel_int.h"
+#include "xclbin_int.h"
 
 #include "command.h"
 #include "exec.h"
@@ -1048,8 +1050,12 @@ private:
     }
   };
 
+  // Kernel argument meta data is copied from xrt::xclbin
+  // but should consider using it directly from xrt::xclbin
+  // as its lifetime exceed that of xrt::kernel (ensured by
+  // shared xrt::xclbin ownership in kernel object).
   using xarg = xrt_core::xclbin::kernel_argument;
-  xarg arg;         // argument meta data from xclbin
+  xarg arg;    // argument meta data from xclbin
 
   std::unique_ptr<iarg> content;
 
@@ -1065,8 +1071,8 @@ public:
   {}
 
   explicit
-  argument(xarg&& karg)
-    : arg(std::move(karg))
+  argument(const xarg& karg)
+    : arg(karg)
   {
     // Determine type
     switch (arg.type) {
@@ -1202,13 +1208,15 @@ class kernel_impl
   using property_type = xrt_core::xclbin::kernel_properties;
   using mailbox_type = property_type::mailbox_type;
 
-  std::shared_ptr<device_type> device; // shared ownership
   std::string name;                    // kernel name
+  std::shared_ptr<device_type> device; // shared ownership
+  xrt::xclbin xclbin;                  // xclbin with this kernel
+  xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
   std::vector<ipctx> ipctxs;           // CU context locks
+  const property_type& properties;     // Kernel properties from XML meta
   ipctx vctx;                          // virtual CU context
   std::bitset<max_cus> cumask;         // cumask for command execution
-  property_type properties;            // Kernel properties from XML meta
   size_t regmap_size = 0;              // CU register map size
   size_t fa_num_inputs = 0;            // Fast adapter number of inputs per meta data
   size_t fa_num_outputs = 0;           // Fast adapter number of outputs per meta data
@@ -1296,22 +1304,22 @@ class kernel_impl
   }
 
   IP_CONTROL
-  get_ip_control(const std::vector<const ip_data*>& ips)
+  get_ip_control(const std::vector<xrt::xclbin::ip>& ips)
   {
     if (ips.empty())
       return AP_CTRL_NONE;
 
-    auto ctrl = ::get_ip_control(ips[0]);
+    auto ctrl = ips[0].get_control_type();
     for (size_t idx = 1; idx < ips.size(); ++idx) {
-      auto ctrlatidx = ::get_ip_control(ips[idx]);
+      auto ctrlatidx = ips[idx].get_control_type();
       if (ctrlatidx == ctrl)
         continue;
-      if (ctrlatidx != AP_CTRL_CHAIN && ctrlatidx != AP_CTRL_HS)
+      if (ctrlatidx != xrt::xclbin::ip::control_type::chain && ctrlatidx != xrt::xclbin::ip::control_type::hs)
         throw std::runtime_error("CU control protocol mismatch");
-      ctrl = AP_CTRL_HS; // mix of CHAIN and HS is recorded as AP_CTRL_HS
+      ctrl = xrt::xclbin::ip::control_type::hs; // mix of CHAIN and HS is recorded as AP_CTRL_HS
     }
 
-    return ctrl;
+    return static_cast<IP_CONTROL>(ctrl);
   }
 
   void
@@ -1342,6 +1350,15 @@ class kernel_impl
     return count++;
   }
 
+  static xrt::xclbin::kernel
+  get_kernel_or_error(const xrt::xclbin& xclbin, const std::string& nm)
+  {
+    if (auto krnl = xclbin.get_kernel(nm))
+      return krnl;
+
+    throw xrt_core::error("No such kernel '" + nm + "'");
+  }
+
 public:
   // kernel_type - constructor
   //
@@ -1350,26 +1367,15 @@ public:
   // @nm:      name identifying kernel and/or kernel and instances
   // @am:      access mode for underlying compute units
   kernel_impl(std::shared_ptr<device_type> dev, const xrt::uuid& xclbin_id, const std::string& nm, ip_context::access_mode am)
-    : device(std::move(dev))                                   // share ownership
-    , name(nm.substr(0,nm.find(":")))                          // filter instance names
+    : name(nm.substr(0,nm.find(":")))                          // filter instance names
+    , device(std::move(dev))                                   // share ownership
+    , xclbin(device->core_device->get_xclbin(xclbin_id))       // xclbin with kernel
+    , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
+    , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
     , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin_id))
     , uid(create_uid())
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
-
-    // ip_layout section for collecting CUs
-    auto ip_section = device->core_device->get_axlf_section(IP_LAYOUT, xclbin_id);
-    if (!ip_section.first)
-      throw std::runtime_error("No ip layout available to construct kernel, make sure xclbin is loaded");
-    auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
-
-    // xml section for kernel arguments
-    auto xml_section = device->core_device->get_axlf_section(EMBEDDED_METADATA, xclbin_id);
-    if (!xml_section.first)
-      throw std::runtime_error("No xml metadata available to construct kernel, make sure xclbin is loaded");
-
-    // initialize kernel properties from xml meta data
-    properties = xrt_core::xclbin::get_kernel_properties(xml_section.first, xml_section.second, name);
 
     // mailbox kernels opens CU in exclusive mode for direct read/write access
     if (properties.mailbox != mailbox_type::none || properties.counted_auto_restart > 0) {
@@ -1378,32 +1384,34 @@ public:
     }
 
     // Compare the matching CUs against the CU sort order to create cumask
-    auto kernel_cus = xrt_core::xclbin::get_cus(ip_layout, nm);
+    const auto& kernel_cus = xkernel.get_cus(nm);  // xrt::xclbin::ip objects for matching kernel CUs
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    const auto& all_cus = device->core_device->get_cus(xclbin_id);  // sort order
-    for (const ip_data* cu : kernel_cus) {
-      if (::get_ip_control(cu) == AP_CTRL_NONE)
+    const auto& all_cus = device->core_device->get_cus(xclbin_id); // sort order
+    for (const auto& cu : kernel_cus) {
+      if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
-      auto itr = std::find(all_cus.begin(), all_cus.end(), cu->m_base_address);
+
+      auto itr = std::find(all_cus.begin(), all_cus.end(), cu.get_base_address());
       if (itr == all_cus.end())
         throw std::runtime_error("unexpected error");
-      auto cuidx = std::distance(all_cus.begin(), itr);         // sort order index
-      auto ipidx = std::distance(ip_layout->m_ip_data, cu); // ip_layout index
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, properties.address_range, cu, ipidx, cuidx, am));
+      auto cuidx = std::distance(all_cus.begin(), itr);     // sort order index
+      auto ipidx = xrt_core::xclbin_int::get_ip_idx(cu);    // ip_layout index
+      auto ipdata = xrt_core::xclbin_int::get_ip_data(cu);  // ::ip_data* 
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, properties.address_range, ipdata, ipidx, cuidx, am));
       cumask.set(cuidx);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
     }
-
+    
     // set kernel protocol
     protocol = get_ip_control(kernel_cus);
 
-    // get kernel arguments from xml parser
+    // get kernel arguments from xclbin kernel meta data
     // compute regmap size, convert to typed argument
-    for (auto& arg : xrt_core::xclbin::get_kernel_arguments(xml_section.first, xml_section.second, name)) {
+    for (auto& arg : xrt_core::xclbin_int::get_arginfo(xkernel)) {
       regmap_size = std::max(regmap_size, (arg.offset + arg.size) / sizeof(uint32_t));
-      args.emplace_back(std::move(arg));
+      args.emplace_back(arg);
     }
 
     // amend args with computed data based on kernel protocol
@@ -1829,6 +1837,7 @@ public:
     , cmd(std::make_shared<kernel_command>(kernel->get_device()))
     , data(clone_command_data(rhs))
     , uid(create_uid())
+    , encode_cumasks(rhs->encode_cumasks)
   {
     XRT_DEBUGF("run_impl::run_impl(%d)\n" , uid);
   }
@@ -1855,6 +1864,31 @@ public:
   get_ert_cmd()
   {
     return cmd->get_ert_cmd<ERT_COMMAND_TYPE>();
+  }
+
+  // Use to explicitly restrict what CUs can be used
+  // Specified CUs are ignored if they are not currently
+  // managed by this run object
+  void
+  set_cus(const std::bitset<max_cus>& mask)
+  {
+    auto itr = std::remove_if(ips.begin(), ips.end(),
+                              [&mask] (const auto& ip) {
+                                return !mask.test(ip->get_cuidx());
+                              });
+
+    if (itr == ips.begin())
+      throw std::runtime_error("Specified No compute units left");
+
+    // update the cumask to set remaining cus, note that removed
+    // cus, while not erased, are no longer valid per move sematics
+    cumask.reset();
+    std::for_each(ips.begin(), itr, [this](const auto& ip) { cumask.set(ip->get_cuidx()); });
+
+    // erase the removed ips and mark that CUs must be
+    // encoded in command packet.
+    ips.erase(itr,ips.end());
+    encode_cumasks = true;
   }
 
   const std::bitset<max_cus>&
@@ -2633,6 +2667,12 @@ const std::bitset<max_cus>&
 get_cumask(const xrt::run& run)
 {
   return run.get_handle()->get_cumask();
+}
+
+void
+set_cus(xrt::run& run, const std::bitset<max_cus>& mask)
+{
+  return run.get_handle()->set_cus(mask);
 }
 
 void

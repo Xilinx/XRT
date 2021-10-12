@@ -191,8 +191,10 @@ public:
    * @param ehdl
    *  Exported buffer handle, implementation specific type
    * 
-   * The exported buffer handle is acquired by using the export() method
-   * and can be passed to another process.  
+   * If the exported buffer handle acquired by using the export() method is 
+   * from another process, then it must be transferred through proper IPC 
+   * mechanism translating the underlying file-descriptor asscociated with 
+   * the buffer 
    */
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
@@ -302,7 +304,9 @@ public:
    *  Exported buffer handle
    *
    * An exported buffer can be imported on another device by this
-   * process or another process.
+   * process or another process. For multiprocess transfer, the exported
+   * buffer must be transferred through a proper IPC facility to translate
+   * the underlying file-descriptor properly into another process. 
    */
   XCL_DRIVER_DLLESPEC
   xclBufferExportHandle

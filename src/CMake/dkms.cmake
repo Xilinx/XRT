@@ -274,7 +274,8 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xclerr_int.h
   include/xrt_error_code.h
   include/xrt_mem.h
-  include/xgq_cmd.h
+  include/xgq_cmd_common.h
+  include/xgq_cmd_ert.h
   include/xgq_impl.h
   )
 

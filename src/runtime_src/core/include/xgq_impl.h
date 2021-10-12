@@ -38,6 +38,7 @@
 #ifndef XGQ_IMPL_H
 #define XGQ_IMPL_H
 
+/* !!! This header file is for internal project use only and it is subject to removal without notice !!! */
 #if defined(__KERNEL__)
 # include <linux/types.h>
 #else
@@ -46,7 +47,7 @@
 # include <errno.h>
 #endif /* __KERNEL__ */
 
-#include "xgq_cmd.h"
+#include "xgq_cmd_common.h"
 
 /*
  * Standard bool type's portability is poor across multiple OSes and HW platforms.
@@ -143,7 +144,7 @@ struct xgq {
 
 static inline size_t xgq_ring_len(size_t nslots, size_t slotsz)
 {
-	return sizeof(struct xgq_header) + nslots * (slotsz + sizeof(struct xrt_com_queue_entry));
+	return sizeof(struct xgq_header) + nslots * (slotsz + sizeof(struct xgq_com_queue_entry));
 }
 
 static inline void xgq_copy_to_ring(uint64_t io_hdl, void *buf, uint64_t tgt, size_t len)
@@ -256,7 +257,7 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	xgq_init_ring(&xgq->xq_cq, cq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_cq_consumed),
 		      ring_addr + sizeof(struct xgq_header) + n_slots * slot_size,
-		      n_slots, sizeof(struct xrt_com_queue_entry));
+		      n_slots, sizeof(struct xgq_com_queue_entry));
 
 	hdr.xh_magic = 0;
 	hdr.xh_major = XGQ_MAJOR;
@@ -378,7 +379,7 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t ring_addr
 	xgq_init_ring(&xgq->xq_cq, cq_produced,
 		      ring_addr + offsetof(struct xgq_header, xh_cq_consumed),
 		      ring_addr + hdr.xh_cq_offset,
-		      hdr.xh_slot_num, sizeof(struct xrt_com_queue_entry));
+		      hdr.xh_slot_num, sizeof(struct xgq_com_queue_entry));
 
 	xgq_fast_forward(xgq, &xgq->xq_sq);
 	xgq_fast_forward(xgq, &xgq->xq_cq);

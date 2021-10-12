@@ -63,6 +63,13 @@ XRT_CORE_COMMON_EXPORT
 xrt::run
 clone(const xrt::run& run);
 
+// This API is provide to allow implementations such as OpenCL
+// to dictate what kernel CUs to use.  For example sub-device
+// may restrict CUs.
+XRT_CORE_COMMON_EXPORT
+void
+set_cus(xrt::run& run, const std::bitset<128>& mask);
+
 XRT_CORE_COMMON_EXPORT
 const std::bitset<128>&
 get_cumask(const xrt::run& run);
