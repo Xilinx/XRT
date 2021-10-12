@@ -1799,6 +1799,7 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	core->priv.flash_type = in->flash_type;
 	core->priv.board_name = in->board_name;
 	core->priv.p2p_bar_sz = in->p2p_bar_sz;
+	core->priv.ert_intr_limit = in->ert_intr_limit;
 	if (in->flags & XOCL_DSAFLAG_SET_DSA_VER)
 		core->priv.dsa_ver = in->dsa_ver;
 	if (in->flags & XOCL_DSAFLAG_SET_XPR)

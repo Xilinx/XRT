@@ -118,6 +118,7 @@ struct xocl_board_private {
 	uint64_t		p2p_bar_sz;
 	const char		*vbnv;
 	const char		*sched_bin;
+	uint32_t		ert_intr_limit;
 };
 
 struct xocl_flash_privdata {
@@ -2813,7 +2814,8 @@ struct xocl_subdev_map {
 		.flags       = XOCL_DSAFLAG_DYNAMIC_IP,                 \
 		.board_name  = "x3522pv",                               \
 		.subdev_info = RES_USER_VSEC,                           \
-		.subdev_num  = ARRAY_SIZE(RES_USER_VSEC)                \
+		.subdev_num  = ARRAY_SIZE(RES_USER_VSEC),                \
+		.ert_intr_limit = 1						\
 	}
 
 #define XOCL_BOARD_X3522PV_MGMT_RAPTOR2                     \
@@ -2869,6 +2871,7 @@ struct xocl_subdev_map {
 		.board_name = "u55n",					\
 		.subdev_info	= RES_USER_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
+		.ert_intr_limit = 1					\
 	}
 
 #define	XOCL_BOARD_U55N_MGMT_RAPTOR2					\

@@ -47,6 +47,10 @@
 #define	ERTUSER_DBG(ert_user, fmt, arg...)
 #endif
 
+
+#define MAX_SLOT_NUM			128
+#define ERT_INTR_NUM			4
+
 #define sched_debug_packet(packet, size)				\
 ({									\
 	int i;								\
@@ -83,6 +87,7 @@ struct xocl_ert_user {
 
 	/* Configure dynamically */
 	unsigned int		num_slots;
+	unsigned int		slot_num_limit;
 	unsigned int		slot_size;
 	bool			is_configured;
 	bool			ctrl_busy;
@@ -731,7 +736,7 @@ static int ert_cfg_cmd(struct xocl_ert_user *ert_user, struct xrt_ert_command *e
 
 	slot_size = cfg->slot_size;
 
-	max_slot_num = ert_queue_max_slot_num(ert_user);
+	max_slot_num = min((unsigned int)ert_queue_max_slot_num(ert_user), ert_user->slot_num_limit);
 	if (slot_size < (cq_range / max_slot_num))
 		slot_size = cq_range / max_slot_num;
 
@@ -1531,6 +1536,15 @@ static int ert_user_probe(struct platform_device *pdev)
 		xocl_err(&pdev->dev, "did not get private data");
 	}
 
+	/* This is a potential workaround for missing XDMA interrupt issue happens on u55n platform
+	 * We limit the slot number to 32 so only one ert intc interrupt will be generated
+	 * Lizhi has done the test to limit the slot number to 16 and hasn't been able to reproduce
+	 * the issue, might somewhat alleviate the problem
+	 */
+	if (XDEV(xdev)->priv.ert_intr_limit)
+		ert_user->slot_num_limit = XDEV(xdev)->priv.ert_intr_limit *(MAX_SLOT_NUM/ERT_INTR_NUM);
+	else
+		ert_user->slot_num_limit = MAX_SLOT_NUM;
 
 	err = sysfs_create_group(&pdev->dev.kobj, &ert_user_attr_group);
 	if (err) {
