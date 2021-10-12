@@ -217,6 +217,7 @@ class xclbin::ip_impl
 public: // purposely not a struct to match decl in xrt_xclbin.h
   const ::ip_data* m_ip;            // 
   int32_t m_ip_layout_idx;          // index in IP_LAYOUT seciton
+  size_t m_size = 0;                // address range of this ip (a kernel property)
   std::vector<xclbin::arg> m_args;  // index by argument index
 
   void
@@ -266,6 +267,15 @@ public:
   get_control_type() const
   {
     return static_cast<xrt::xclbin::ip::control_type>((m_ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+  }
+
+  // Bit awkward backdoor to set the address range size
+  // of this IP.  The address_range is a property of the
+  // kernel when it should be an ip_data struct member
+  void
+  set_size(size_t address_range)
+  {
+    m_size = address_range;
   }
 };
 
@@ -373,12 +383,16 @@ class xclbin_impl
     // corresponding to the ip_data element.  The lookup is O(n) which
     // makes the overall algorithm for converting kernel CUs O(n^2)
     // but efficiency doesn't matter here.
+    //
+    // Awkward handlng of address range, which is a property of the kernel.
     xclbin::ip
-    kernel_cu_to_ip(const ::ip_data* cu)
+    kernel_cu_to_ip(const ::ip_data* cu, size_t address_range)
     {
       for (auto& ip : m_ips)
-        if (ip.get_name() == reinterpret_cast<const char*>(cu->m_name))
+        if (ip.get_name() == reinterpret_cast<const char*>(cu->m_name)) {
+          ip.get_handle()->set_size(address_range); // set kernel address range
           return ip;
+        }
       throw std::runtime_error("unexpected error, kernel cu doesn't exist");
     }
 
@@ -388,11 +402,11 @@ class xclbin_impl
     // already constructed and cached xclbin::ip objects.  O(n^2) yes,
     // but not important.
     std::vector<xclbin::ip>
-    kernel_cus_to_ips(const std::vector<const ::ip_data*>& cus)
+    kernel_cus_to_ips(const std::vector<const ::ip_data*>& cus, size_t address_range)
     {
       std::vector<xclbin::ip> ips;
       for (auto cu : cus)
-        ips.emplace_back(kernel_cu_to_ip(cu));
+        ips.emplace_back(kernel_cu_to_ip(cu, address_range));
       return ips;
     }
 
@@ -456,7 +470,7 @@ class xclbin_impl
       for (auto& kernel : xrt_core::xclbin::get_kernels(xml.first, xml.second)) {
         auto props = xrt_core::xclbin::get_kernel_properties(xml.first, xml.second, kernel.name);
         auto cus = xrt_core::xclbin::get_cus(ip_layout, kernel.name);  // ip_data*
-        auto ips = kernel_cus_to_ips(cus);                             // xrt::xclbin::ip
+        auto ips = kernel_cus_to_ips(cus, props.address_range);        // xrt::xclbin::ip
         m_kernels.emplace_back
           (std::make_shared<xclbin::kernel_impl>
            (std::move(kernel.name), std::move(props), std::move(ips), std::move(kernel.args)));
@@ -939,6 +953,13 @@ get_base_address() const
   return handle ? handle->m_ip->m_base_address : std::numeric_limits<uint64_t>::max();
 }
 
+size_t
+xclbin::ip::
+get_size() const
+{
+  return handle ? handle->m_size : 0;
+}
+
 ////////////////////////////////////////////////////////////////
 // xrt::xclbin::arg
 ////////////////////////////////////////////////////////////////
@@ -987,6 +1008,13 @@ xclbin::arg::
 get_host_type() const
 {
   return handle && handle->m_arginfo ? handle->m_arginfo->hosttype : "<type>";
+}
+
+size_t
+xclbin::arg::
+get_index() const
+{
+  return handle && handle->m_arginfo ? handle->m_arginfo->index : xrt_core::xclbin::kernel_argument::no_index;
 }
 ////////////////////////////////////////////////////////////////
 // xrt::xclbin::mem
@@ -1139,18 +1167,6 @@ const std::vector<xrt_core::xclbin::kernel_argument>&
 get_arginfo(const xrt::xclbin::kernel& kernel)
 {
   return kernel.get_handle()->m_arginfo;
-}
-
-unsigned int
-get_ip_idx(const xrt::xclbin::ip& ip)
-{
-  return ip.get_handle()->m_ip_layout_idx;
-}
-
-const ip_data*
-get_ip_data(const xrt::xclbin::ip& ip)
-{
-  return ip.get_handle()->m_ip;
 }
 
 }} // namespace xclbin_int, core_core

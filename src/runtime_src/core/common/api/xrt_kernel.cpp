@@ -427,32 +427,28 @@ class ip_context
 
     // @device: core device
     // @conn: connectivity section of xclbin
-    // @ipidx: index of the ip for which connectivity data is created
-    connectivity(const xrt_core::device* device, const xrt::uuid& xclbin_id, int32_t ipidx)
+    connectivity(const xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip)
     {
-      const auto& memidx_encoding = device->get_memidx_encoding(xclbin_id);
-      auto conn = device->get_axlf_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY, xclbin_id);
-      if (!conn)
-        return;
-      // Compute the connections for IP with specified index
-      for (int count = 0; count < conn->m_count; ++count) {
-        auto& cxn  = conn->m_connection[count];
-        if (cxn.m_ip_layout_index != ipidx)
-          continue;
+      const auto& memidx_encoding = device->get_memidx_encoding(xclbin.get_uuid());
 
-        auto argidx = cxn.arg_index;
-        auto memidx = cxn.mem_data_index;
+      // collect the memory connections for each IP argument
+      for (const auto& arg : ip.get_args()) {
+        auto argidx = arg.get_index();
 
-        // disregard memory indices that do not map to a memory mapped bank
-        // this could be streaming connections
-        if (memidx_encoding.at(memidx) == std::numeric_limits<size_t>::max())
-          continue;
+        for (const auto& mem : arg.get_mems()) {
+          auto memidx = mem.get_index();
 
-        resize(argidx + 1, &memidx_encoding);
-        connections[argidx].set(memidx);
+          // disregard memory indices that do not map to a memory mapped bank
+          // this could be streaming connections
+          if (memidx_encoding.at(memidx) == std::numeric_limits<size_t>::max())
+            continue;
 
-        // default connections is largest memidx to account for groups
-        default_connection[argidx] = std::max(default_connection[argidx], memidx);
+          resize(argidx + 1, &memidx_encoding);
+          connections[argidx].set(memidx);
+
+          // default connections is largest memidx to account for groups
+          default_connection[argidx] = std::max(default_connection[argidx], memidx);
+        }
       }
     }
 
@@ -481,14 +477,13 @@ public:
   // open() - open a context in a specific IP/CU
   //
   // @device:    Device on which context should opened
-  // @xclbin_id: UUID of xclbin containeing the IP definition
+  // @xclbin:    xclbin containeing the IP definition
   // @ip:        The ip_data defintion for this IP from the xclbin
-  // @ipidx:     Index of IP in the IP_LAYOUT section of xclbin
   // @cuidx:     Sorted index of CU used when populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::uuid& xclbin_id, size_t range,
-       const ip_data* ip, unsigned int ipidx, unsigned int cuidx, access_mode am)
+  open(xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip,
+       unsigned int cuidx, access_mode am)
   {
     static std::mutex mutex;
     static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, max_cus>> dev2ips;
@@ -497,7 +492,7 @@ public:
     auto ipctx = ips[cuidx].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id, range, ip, ipidx, cuidx, am));
+      ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin, ip, cuidx, am));
       ips[cuidx] = ipctx;
     }
 
@@ -515,7 +510,7 @@ public:
   // This keeps a lock on the xclbin after it is loaded onto the device
   // without locking any specific CU.
   static std::shared_ptr<ip_context>
-  open_virtual_cu(xrt_core::device* device, const xrt::uuid& xclbin_id)
+  open_virtual_cu(xrt_core::device* device, const xrt::xclbin& xclbin)
   {
     static std::mutex mutex;
     static std::map<xrt_core::device*, std::weak_ptr<ip_context>> dev2vip;
@@ -524,7 +519,7 @@ public:
     auto ipctx = vip.lock();
     if (!ipctx)
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
-      vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin_id));
+      vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin));
     return ipctx;
   }
 
@@ -595,14 +590,15 @@ public:
 
 private:
   // regular CU
-  ip_context(xrt_core::device* dev, const xrt::uuid& xclbin_id, size_t range,
-             const ip_data* ip, unsigned int ipindex, unsigned int cuindex, access_mode am)
+  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, xrt::xclbin::ip xip,
+             unsigned int cuindex, access_mode am)
     : device(dev)
-    , xid(xclbin_id)
-    , args(dev, xclbin_id, ipindex)
+    , xid(xclbin.get_uuid())
+    , ip(std::move(xip))
+    , args(dev, xclbin, ip)
     , cuidx(cuindex)
-    , address(ip->m_base_address)
-    , size(range)
+    , address(ip.get_base_address())
+    , size(ip.get_size())
     , access(am)
   {
     if (access != access_mode::none)
@@ -610,9 +606,9 @@ private:
   }
 
   // virtual CU
-  ip_context(xrt_core::device* dev, xrt::uuid xclbin_id)
+  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin)
     : device(dev)
-    , xid(std::move(xclbin_id))
+    , xid(xclbin.get_uuid())
     , cuidx(virtual_cu_idx)
     , address(0)
     , size(0)
@@ -623,10 +619,11 @@ private:
 
   xrt_core::device* device; //
   xrt::uuid xid;            // xclbin uuid
+  xrt::xclbin::ip ip;       // the xclbin ip object
   connectivity args;        // argument memory connections
   unsigned int cuidx;       // cu index for execution
-  uint64_t address;         // base address for programming
-  size_t size;              // address space size
+  uint64_t address;         // cache base address for programming
+  size_t size;              // cache address space size
   access_mode access;       // compute unit access mode
 };
 
@@ -1372,7 +1369,7 @@ public:
     , xclbin(device->core_device->get_xclbin(xclbin_id))       // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
-    , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin_id))
+    , vctx(ip_context::open_virtual_cu(device->core_device.get(), xclbin))
     , uid(create_uid())
   {
     XRT_DEBUGF("kernel_impl::kernel_impl(%d)\n" , uid);
@@ -1389,7 +1386,7 @@ public:
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
     const auto& all_cus = device->core_device->get_cus(xclbin_id); // sort order
-    for (const auto& cu : kernel_cus) {
+    for (const auto& cu : kernel_cus) {  // xrt::xclbin::ip
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
@@ -1397,9 +1394,7 @@ public:
       if (itr == all_cus.end())
         throw std::runtime_error("unexpected error");
       auto cuidx = std::distance(all_cus.begin(), itr);     // sort order index
-      auto ipidx = xrt_core::xclbin_int::get_ip_idx(cu);    // ip_layout index
-      auto ipdata = xrt_core::xclbin_int::get_ip_data(cu);  // ::ip_data* 
-      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin_id, properties.address_range, ipdata, ipidx, cuidx, am));
+      ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin, cu, cuidx, am));
       cumask.set(cuidx);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
     }
