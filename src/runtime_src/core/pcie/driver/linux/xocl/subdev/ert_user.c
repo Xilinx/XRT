@@ -957,12 +957,12 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 			if ((cmd_opcode(ecmd) == ERT_START_CU
 			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
 			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL) &&
-				ecmd->complete_entry.cstate == KDS_COMPLETED) {
+				ecmd->complete_entry.hdr.cstate == KDS_COMPLETED) {
 				ert_user->cu_stat[xcmd->cu_idx].inflight--;
 				ert_user->cu_stat[xcmd->cu_idx].usage++;
 			}
-			set_xcmd_timestamp(xcmd, ecmd->complete_entry.cstate);
-			xcmd->cb.notify_host(xcmd, ecmd->complete_entry.cstate);
+			set_xcmd_timestamp(xcmd, ecmd->complete_entry.hdr.cstate);
+			xcmd->cb.notify_host(xcmd, ecmd->complete_entry.hdr.cstate);
 			xcmd->cb.free(xcmd);
 		}
 		ert_free_cmd(ecmd);
@@ -1014,13 +1014,13 @@ int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq, st
 
 		if (unlikely(ert_user->bad_state || (xcmd && ev_client && ev_client->client == xcmd->client))) {
 			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
-			ecmd->complete_entry.cstate = KDS_ABORT;
+			ecmd->complete_entry.hdr.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
 		if (ert_pre_process(ert_user, ecmd)) {
 			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
-			ecmd->complete_entry.cstate = KDS_ABORT;
+			ecmd->complete_entry.hdr.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
