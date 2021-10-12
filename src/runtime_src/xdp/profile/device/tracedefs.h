@@ -36,7 +36,7 @@
 #define TS2MM_CIRCULAR_BUF      0x50
 #define TS2MM_AP_CTRL           0x0
 
-// Commands
+// Command for HLS ap_start
 #define TS2MM_AP_START          0x1
 
 // little less than 4GB
@@ -51,8 +51,10 @@
 #define TS2MM_MIN_READ_SIZE      0x200
 #define DEFAULT_TRACE_OFFLOAD_INTERVAL_MS 10
 
-#define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Timeline trace could be incomplete. \
-Please use 'coarse' option for data transfer trace or turn off Stall profiling"
+#define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
+1. Use larger FIFO size or DDR/HBM bank as 'trace_memory' in linking options.\n\
+2. Use 'coarse' option for data_transfer_trace and/or turn off stall_trace in runtime settings."
+
 #define CONTINUOUS_OFFLOAD_WARN_MSG_FIFO   "Continuous offload is currently not supported in FIFO trace offload. Disabling this option."
 
 #define TS2MM_WARN_MSG_BUFSIZE_BIG    "Trace Buffer size is too big. The maximum size of 4095M will be used."
