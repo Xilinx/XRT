@@ -62,7 +62,7 @@
 
   // Create an artifitial assertion via a bad divide by zero assertion.
   #define XGQ_STATIC_ASSERT(e,m) \
-    enum { XGQ_ASSERT_CONCAT(assert_line_, __LINE__) = 1/(int)(!!(e)) }
+    enum { XGQ_ASSERT_CONCAT(xgq_assert_line_, __LINE__) = 1/(int)(!!(e)) }
 #endif
 
 #define XGQ_SUB_Q1_SLOT_SIZE	512	// NOLINT
