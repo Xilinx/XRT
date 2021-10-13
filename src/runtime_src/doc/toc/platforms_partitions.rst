@@ -9,7 +9,7 @@
 =================================
 
 Alveo platforms are architected as two physical FPGA partitions: *Shell* and *User*. Shell provides basic infrastructure
-for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. :doc:`security.rst`
+for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. :doc:`security`
 enumerates the shell functionality in detail. User partition contains user compiled binary called xclbin which is loaded by XRT using
 DFX technology.
 
@@ -70,4 +70,4 @@ User
 User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API ``xclLoadXclBin()`` and command line utility ``xbutil program`` to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.
 
 .. note::
-   Refer to :doc:`mailbox.main.rst` for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.
+   Refer to :doc:`mailbox.main` for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.

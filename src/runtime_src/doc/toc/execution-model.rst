@@ -9,17 +9,17 @@ Execution Model Overview
 
 Introduction
 ============
-Xilinx® FPGA based acceleration platform architecture are described in the :doc:`platforms.rst` document. On *Alveo PCIe* platforms *xocl* driver binds to user physical function and *xclmgmt* driver binds to management physical function. The ioctls exported by xocl are described in :doc:`xocl_ioctl.main.rst` document and ioctls exported by xclmgmt are described in :doc:`mgmt-ioctl.main.rst` document. On *Zynq Ultrascale+ MPSoC* platforms *zocl* driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.
+Xilinx® FPGA based acceleration platform architecture are described in the :doc:`platforms` document. On *Alveo PCIe* platforms *xocl* driver binds to user physical function and *xclmgmt* driver binds to management physical function. The ioctls exported by xocl are described in :doc:`xocl_ioctl.main` document and ioctls exported by xclmgmt are described in :doc:`mgmt-ioctl.main` document. On *Zynq Ultrascale+ MPSoC* platforms *zocl* driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.
 
 Image Download
 ==============
 
-Xilinx® Vitis compiler, v++ compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :doc:`formats.rst` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides a similar ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
+Xilinx® Vitis compiler, v++ compiles user's device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in :doc:`formats` document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides a similar ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user's compute units programmed into the FPGA fabric.
 
 Memory Management
 =================
 
-Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in :doc:`xrt.main.rst` document.
+Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in :doc:`xrt.main` document.
 
 For both class of platforms, memory management is performed inside Linux kernel driver. Both drivers use DRM GEM for memory management which includes buffer allocator, buffer mmap support, reference counting of buffers and DMA-BUF export/import. These operations are made available via ioctls exported by the drivers.
 
@@ -28,7 +28,7 @@ xocl
 
 Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use Linux *drm_mm* for allocation of memory and Linux *drm_gem* framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA/QDMA PCIe memory mapped DMA engine is used. Users call sync ioctl to effect DMA in requested direction.
 
-xocl also supports PCIe Host Memory Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section :doc:`hm.rst` provides more information.
+xocl also supports PCIe Host Memory Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section :doc:`hm` provides more information.
 
 zocl
 ----
@@ -40,7 +40,7 @@ Execution Management
 
 Both xocl and zocl support structured execution framework. After xclbin has been loaded by the driver compute units defined by the xclbin are live and ready for execution. The compute units are controlled by driver component called Kernel Domain Scheduler (KDS). KDS queues up execution tasks from client processes via ioctls and then schedules them on available compute units. Both drivers export an ioctl for queuing up execution tasks.
 
-User space submits execution commands to KDS in well defined command packets. The commands are defined in :doc:`ert.main.rst`
+User space submits execution commands to KDS in well defined command packets. The commands are defined in :doc:`ert.main`
 
 KDS notifies user process of a submitted execution task completion asynchronously via POSIX poll mechanism. On PCIe platforms KDS leverages hardware scheduler running on Microblaze soft processor for fine control of compute units. Compute units use interrupts to notify xocl/zocl when they are done. KDS also supports polling mode where KDS actively polls the compute units for completion instead of relying on interrupts from compute units.
 
