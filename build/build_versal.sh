@@ -116,7 +116,7 @@ while [ $# -gt 0 ]; do
 			clean=1
 			;;
 		* )
-			error "Unregognized option: $1"
+			error "Unrecognized option: $1"
 			;;
 	esac
 	shift
