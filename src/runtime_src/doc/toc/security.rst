@@ -96,7 +96,7 @@ PF BAR Driver  Purpose
 1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
                memory.
                By default its size is limited to 256MB but can be expanded
-	       using XRT xbutil tool as described in :doc:`p2p.rst`
+	       using XRT xbutil tool as described in :doc:`p2p`
 == === ======= ===============================================================
 
 Sample output of Linux ``lspci`` command for U50 device below::
