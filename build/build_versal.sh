@@ -14,8 +14,7 @@ usage()
 	echo "          -images                         Versal images path"
 	echo "          -setup                          Setup file to use"
 	echo "          -clean                          Remove build files"
-	echo "          -setup                          Setup file to use"
-        echo "          -clean                          Remove build files"
+        echo "          -output                         output path"
 	echo ""
 }
 
@@ -117,6 +116,10 @@ while [ $# -gt 0 ]; do
 			shift
 			SETTINGS_FILE=$1
 			;;
+                -output )
+			shift
+                        OUTPUT_DIR=$1
+			;;
 		-clean )
 			clean=1
 			;;
@@ -214,3 +217,8 @@ if [[ ! -e $FW_FILE ]]; then
 fi
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
+
+if [[ "X$OUTPUT_DIR" != "X" ]]; then
+	cp $BUILD_DIR/*.rpm $OUTPUT_DIR
+	cp $BUILD_DIR/*.deb $OUTPUT_DIR
+fi 
