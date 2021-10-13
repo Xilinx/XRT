@@ -64,7 +64,7 @@ into subdevices and handles the following functionality:
 * AXI Firewall management in data and control paths. AXI firewalls protect shell and PCIe from untrusted user partition.
 * Shell upgrade by programming QSPI flash constroller.
 * Device reset and recovery upon detecting AXI firewall trips or explicit request from end user.
-* Communication with user pf driver xocl via hardware mailbox. The protocol is defined :ref:`mailbox.proto.rst`
+* Communication with user pf driver xocl via hardware mailbox. The protocol is defined :doc:`mailbox.proto.rst`
 * Interrupt handling for AXI Firewall and Mailbox HW IPs.
 * Device DNA (unique ID) discovery and validation.
 * DDR and HBM memory ECC handling and reporting.
@@ -93,7 +93,7 @@ are exercised using well-defined APIs in ``xrt.h`` header file.
 
 
 .. note::
-   Section :ref:`security.rst` describes PCIe platform security and robustness in detail.
+   Section :doc:`security.rst` describes PCIe platform security and robustness in detail.
 
 
 PCIe Based Hybrid Platforms
@@ -124,7 +124,7 @@ Zynq-7000 and ZYNQ Ultrascale+ MPSoC Based Embedded Platforms
     Versal ACAP Embedded stack
 
 XRT supports ZYNQ-7000, ZYNQ Ultrascale+ MPSoC and Versal ACAP. User can create their own embedded platforms
-and enable XRT with the steps described :ref:`yocto.rst`.
+and enable XRT with the steps described :doc:`yocto.rst`.
 
 `Source code <https://github.com/Xilinx/Vitis_Embedded_Platform_Source>`_ and
 `pre-built <https://www.xilinx.com/support/download/index.html/content/xilinx/en/downloadNav/embedded-platforms.html>`_
@@ -152,4 +152,4 @@ following functionality with well defined APIs in ``xrt.h`` and ``xrt_aie.h`` (f
 * AIE GMIO data mover programming to move data between NOC and AIE.
 
 .. note::
-   Section :ref:`execution-model.rst` provides a high level overview of execution model.
+   Section :doc:`execution-model.rst` provides a high level overview of execution model.

@@ -14,7 +14,7 @@ the FPGA is deployed, there are still other factors to be considered.
 With MSD/MPD or Plugins used
 ============================
 
-In this case, :ref:`mailbox.main.rst` has to be opened from guest VM, and  MPD service must be active in the guest VM.
+In this case, :doc:`mailbox.main.rst` has to be opened from guest VM, and  MPD service must be active in the guest VM.
 
 For MSD/MPD, the MSD service must be active also either from hypervisor or dom0 type VM where the mgmt PF of the FPGA
 is assigned.
@@ -24,7 +24,7 @@ For Plugins, the vendor specific plugin package has to be installed
 Without MSD/MPD or Plugins used
 ===============================
   
-In this case, :ref:`mailbox.main.rst` is still being used, but there is no open to the mailbox subdevice from user,
+In this case, :doc:`mailbox.main.rst` is still being used, but there is no open to the mailbox subdevice from user,
 and MPD service is inactive.
 To make the FPGA device ready, the XCL_MAILBOX_REQ_LOAD_XCLBIN opcode has to be disabled in xclmgmt.
 System administrator managing the privileged management physical function driver xclmgmt can disable specific opcodes

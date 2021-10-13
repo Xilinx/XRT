@@ -33,7 +33,7 @@ Shell
 
 The Shell provides core infrastructure to the Alveo platform. It includes *hardened* PCIe
 block which provides physical connectivity to the host PCIe bus via two physical functions
-as described in :ref:`platforms.rst`.
+as described in :doc:`platforms.rst`.
 The Shell is *trusted* partition of the Alveo platform and for all practical purposes
 should be treated like an ASIC. During system boot, the shell is loaded from the PROM.
 Once loaded, the Shell cannot be changed.
@@ -62,20 +62,20 @@ paths protect the Shell from un-trusted User partition. For example if a slave i
 bug or is malicious the appropriate firewall will step in and protect the Shell from the
 failing slave as soon as a non compliant AXI transaction is placed on AXI bus.
 
-Newer revisions of shell have a feature called :ref:`sb.rst` which provides direct access to host
+Newer revisions of shell have a feature called :doc:`sb.rst` which provides direct access to host
 memory from kernels in the User partition. With this feature kernels can initiate PCIe burst
 transfers from PF1 without direct access to PCIe bus. AXI Firewall (SI) in reverse direction protects
 PCIe from non-compliant transfers.
 
 .. note::
-   Features :ref:`sb.rst` and :ref:`p2p.rst` are not available in all shells.
+   Features :doc:`sb.rst` and :doc:`p2p.rst` are not available in all shells.
 
 
 For more information on firewall protection see `Firewall`_ section below.
 
 For shell update see `Shell Update`_ section below.
 
-Compatibility enforcement between Shell and User xclbin is described in :ref:`platform_partitions.rst`
+Compatibility enforcement between Shell and User xclbin is described in :doc:`platform_partitions.rst`
 
 PCIe Topology
 -------------
@@ -96,7 +96,7 @@ PF BAR Driver  Purpose
 1  4   xocl    CPU direct and P2P access to device attached DDR/HBM/PL-RAM
                memory.
                By default its size is limited to 256MB but can be expanded
-	       using XRT xbutil tool as described in :ref:`p2p.rst`
+	       using XRT xbutil tool as described in :doc:`p2p.rst`
 == === ======= ===============================================================
 
 Sample output of Linux ``lspci`` command for U50 device below::
@@ -150,7 +150,7 @@ compute units typically expose a well defined register space on the PCIe BAR for
 XRT. An user compiled image does not have any physical path to directly interact with PCIe
 Bus. Compiled images do have access to device DDR.
 
-More information on xclbin can be found in :ref:`formats.rst`.
+More information on xclbin can be found in :doc:`formats.rst`.
 
 Xclbin Generation
 =================
@@ -225,7 +225,7 @@ Baremetal
 
 In Baremetal deployment model, both physical functions are visible to the end user who *does not*
 have root privileges. End user have access to both XRT **xclmgmt** and XRT **xocl** drivers. The system
-administrator trusts both drivers which provide well defined :ref:`mgmt-ioctl.main.rst` and :ref:`xocl_ioctl.main.rst`.
+administrator trusts both drivers which provide well defined :doc:`mgmt-ioctl.main.rst` and :doc:`xocl_ioctl.main.rst`.
 End user does have the privilege to load xclbins which should be signed for maximum security. This
 will ensure that only known good xclbins are loaded by end users.
 
@@ -239,12 +239,12 @@ In Pass-through Virtualization deployment model, management physical function (P
 but user physical function (PF1) is visible to the guest VM. Host considers the guest VM a *hostile* environment.
 End users in guest VM may be root and may be running modified implementation of XRT **xocl** driver -- XRT
 **xclmgmt** driver does not trust XRT xocl driver. xclmgmt as described before exposes well defined
-:ref:`mgmt-ioctl.main.rst` to the host. In a good and clean deployment end users in guest VM interact with
-standard xocl using well defined :ref:`xocl_ioctl.main.rst`.
+:doc:`mgmt-ioctl.main.rst` to the host. In a good and clean deployment end users in guest VM interact with
+standard xocl using well defined :doc:`xocl_ioctl.main.rst`.
 
 As explained under the Shell section above, by design xocl has limited access to violet shaded Shell peripherals.
 This ensures that users in guest VM cannot perform any privileged operation like updating flash image or device
-reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in :ref:`platforms.rst`.
+reset. A user in guest VM can only perform operations listed under USER PF (PF1) section in :doc:`platforms.rst`.
 
 A guest VM user can potentially crash a compute unit in User partition, deadlock data path AXI bus or corrupt
 device memory. If the user has root access he may compromise VM memory. But none of this can bring down the
@@ -252,7 +252,7 @@ host or the PCIe bus. Host memory is protected by system IOMMU. Device reset and
 
 A user cannot load a malicious xclbin on the User partition since xclbin downloads are done by xclmgmt
 drive. xclbins are passed on to the host via a plugin based MPD/MSD framework defined in
-:ref:`mailbox.main.rst`. Host can add any extra checks necessary to validate xclbins received from guest VM.
+:doc:`mailbox.main.rst`. Host can add any extra checks necessary to validate xclbins received from guest VM.
 
 This deployment model is ideal for public cloud where host does not trust the guest VM. This is the prevalent
 deployment model for FaaS operators.
@@ -332,7 +332,7 @@ can configure the mailbox to ignore specific opcodes using xbmgmt utility.
         Host>$ xbmgmt advanced --load-conf --input=/tmp/config.ini -d bdf
 
 
-:ref:`mailbox.main.rst` has details on mailbox usage.
+:doc:`mailbox.main.rst` has details on mailbox usage.
 
 Device Reset and Recovery
 =========================
@@ -340,7 +340,7 @@ Device Reset and Recovery
 Device reset and recovery is a privileged operation and can only be performed by xclmgmt driver. xocl
 driver can request device reset by sending a message to xclmgmt driver over the Mailbox. An end user
 can reset a device by using XRT **xbutil** utility. This utility talks to xocl driver which uses the reset
-message as defined in :ref:`mailbox.main.rst`
+message as defined in :doc:`mailbox.main.rst`
 
 Currently Alveo boards are reset by using PCIe bus *hot reset* mechanism. This resets the board peripherals
 and also the PCIe link. As part of reset, drivers kill all the clients which have opened the device node by
@@ -363,6 +363,6 @@ Compute Kernel Execution Models
 ===============================
 
 XRT and Alveo support software defined compute kernel execution models having standard AXI hardware
-interfaces. More details on :ref:`xrt_kernel_executions.rst`. These well understood models do not require
+interfaces. More details on :doc:`xrt_kernel_executions.rst`. These well understood models do not require
 direct register access from user space. To execute a compute kernel XRT has a well defined *exec command buffer*
 API and a *wait for exec completion* API. These operations are exposed as ioctls by the xocl driver.
