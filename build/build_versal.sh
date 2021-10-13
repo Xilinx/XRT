@@ -11,8 +11,11 @@ usage()
 	echo "Usage: $PROGRAM [options]"
 	echo "  options:"
 	echo "          -help                           Print this usage"
+	echo "          -images                         Versal images path"
 	echo "          -setup                          Setup file to use"
 	echo "          -clean                          Remove build files"
+	echo "          -setup                          Setup file to use"
+        echo "          -clean                          Remove build files"
 	echo ""
 }
 
@@ -90,23 +93,25 @@ SETTINGS_FILE="petalinux.build"
 
 THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
 THIS_SCRIPT_DIR="$( cd "$( dirname "${THIS_SCRIPT}" )" >/dev/null 2>&1 && pwd )"
-VERSAL_BUILD_DIR="$THIS_SCRIPT_DIR/versal"
-IMAGES_DIR="$VERSAL_BUILD_DIR/images/linux"
-BUILD_DIR="$VERSAL_BUILD_DIR/apu_build"
-PACKAGE_DIR="$VERSAL_BUILD_DIR"
+BUILD_DIR="$THIS_SCRIPT_DIR/apu_build"
+PACKAGE_DIR="$BUILD_DIR"
 FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
 INSTALL_ROOT="$BUILD_DIR/lib"
 PKG_NAME="xrt-apu"
 
-SYSTEM_DTB_ADDR="0x20001000"
-KERNEL_ADDR="0x30000000"
-ROOTFS_ADDR="0x32000000"
+SYSTEM_DTB_ADDR="0x1000"
+KERNEL_ADDR="0x20100000"
+ROOTFS_ADDR="0x21000000"
 
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
 		-help )
 			usage_and_exit 0
+			;;
+		-images )
+			shift
+			IMAGES_DIR=$1
 			;;
 		-setup )
 			shift
@@ -124,8 +129,8 @@ done
 
 if [[ $clean == 1 ]]; then
 	echo $PWD
-	echo "/bin/rm -rf $BUILD_DIR $VERSAL_BUILD_DIR/$PKG_NAME-*"
-	/bin/rm -rf $BUILD_DIR $VERSAL_BUILD_DIR/$PKG_NAME-*
+	echo "/bin/rm -rf $BUILD_DIR"
+	/bin/rm -rf $BUILD_DIR
 	exit 0
 fi
 
@@ -137,7 +142,7 @@ if [ ! -f $MKIMAGE ]; then
 	error "Can not find mkimage(1) at $MKIMAGE"
 fi
 
-PKG_VER=`basename $VERSAL_BUILD_DIR/xrt-[0-9]* | awk -F'-' '{print $2}'`
+PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
 if [[ "X$PKG_VER" == "X" ]]; then
 	error "Can not get package version"
 fi
@@ -155,6 +160,7 @@ BIF_FILE="$BUILD_DIR/apu.bif"
 cat << EOF > $BIF_FILE
 all:
 {
+    id_code = 0x14ca8093
     extended_id_code = 0x01
     image {
         id = 0x1c000000, name=apu_subsystem
