@@ -63,17 +63,6 @@ get_properties(const xrt::xclbin::kernel& kernel);
 const std::vector<xrt_core::xclbin::kernel_argument>&
 get_arginfo(const xrt::xclbin::kernel& kernel);
 
-// get_ip_idx() - Get the ip_layout index of a ip in the xclbin
-// This is used to cross-correlated to connectivity information
-// To be rooted out after refactoring completes
-unsigned int
-get_ip_idx(const xrt::xclbin::ip& ip);
-
-// get_ip_data() - Get the ip_data element of an ip in the xclbin
-// To be rooted out after refactoring completes
-const ip_data*
-get_ip_data(const xrt::xclbin::ip& ip);
-
 }} // xclbin_int, xrt_core
 
 #endif

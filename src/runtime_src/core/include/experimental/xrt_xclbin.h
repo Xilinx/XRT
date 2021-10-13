@@ -278,6 +278,16 @@ public:
     XCL_DRIVER_DLLESPEC
     std::string
     get_host_type() const;
+
+    /**
+     * get_index() - Get the index of this argument
+     *
+     * @return
+     *   Argument index
+     */
+    XCL_DRIVER_DLLESPEC
+    size_t
+    get_index() const;
   };
 
   /*!
@@ -373,6 +383,22 @@ public:
     XCL_DRIVER_DLLESPEC
     uint64_t
     get_base_address() const;
+
+    /**
+     * get_size() - Get the address range size of this IP.
+     *
+     * @return
+     *  The size of this IP
+     *
+     * The address range is a property of the kernel and 
+     * as such only valid for for kernel compute units.
+     *
+     * For IPs that are not associated with a kernel, the
+     * size return is 0.
+     */
+    XCL_DRIVER_DLLESPEC
+    size_t
+    get_size() const;
   };
 
   /*!
