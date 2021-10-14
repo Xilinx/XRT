@@ -1,0 +1,109 @@
+name: Mini Pipeline
+
+on:     
+  pull_request:
+
+jobs:
+  vm_creation:
+    runs-on: enclave_host
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - name: Acquire Host
+      run: |
+        echo "Wait for Previous PR to complete"
+        while [ ! -f ~/pipeline/unlock.txt ]; do sleep 1m; done
+        echo "Previous PR is complete"
+        sudo rm -f ~/pipeline/unlock.txt > /dev/null
+    - name: Checkout PR
+      uses: actions/checkout@v2
+    - name: Creating a VM from snapshot on enclave host
+      run: |
+        sudo .github/scripts/pipeline/create_vm.sh
+    - name: Attaching Cards to VM
+      run: | 
+        sudo .github/scripts/pipeline/attach_cards.sh
+  verification:
+    runs-on: ${{ matrix.os }}
+    needs: vm_creation
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      matrix:
+        os: [ u200_18.04, u50_7.8, u250_20.04]
+      fail-fast: false
+    timeout-minutes: 40
+    steps:
+    - name: Setup
+      run: sudo ~/pipeline/setup.sh
+    - name: Checkout PR
+      uses: actions/checkout@v2
+    - name: Build XRT
+      run: |
+        .github/scripts/pipeline/build_xrt.sh
+    - name: XRT build artifacts
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: Build Artifacts
+        path: build/Release
+    - name: Install XRT
+      run: |
+        .github/scripts/pipeline/install_xrt.sh
+    - name: Install platform packages
+      run: |
+        .github/scripts/pipeline/install_platform.sh
+    - name: reset card
+      timeout-minutes: 5
+      run: |
+        source /opt/xilinx/xrt/setup.sh
+        echo "Y" | xbutil reset -d
+    - name: Examine card
+      timeout-minutes: 5
+      run: |
+        source /opt/xilinx/xrt/setup.sh
+        xbutil examine
+    - name: Validate card
+      timeout-minutes: 5
+      run: |
+        source /opt/xilinx/xrt/setup.sh
+        xbutil validate -d --verbose --batch
+    - name: Drivers reloading
+      timeout-minutes: 10
+      run: |
+        x=1
+        while [ $x -le 10 ]
+        do
+                sudo rmmod xocl && sudo rmmod xclmgmt
+                sudo modprobe xocl && sudo modprobe xclmgmt
+                x=$(( $x + 1 ))
+        done
+        
+  ConsoleOutput:
+    runs-on: ${{ matrix.os }}
+    needs: vm_creation
+    defaults:
+      run:
+        shell: 'script -q -c "timeout 40m bash {0}" exit 0'
+    strategy:
+      matrix:
+        os: [ ubuntu18.04, centos7.8, ubuntu20.04 ]
+      fail-fast: false
+    steps:
+    - name: Console Output
+      run: |
+        sudo virsh console ${{ matrix.os }}
+        
+  Cleanup:
+    runs-on: cleanup
+    needs: verification
+    if: always()
+    steps:
+    - name: Clean
+      run: |
+        sudo virsh destroy centos7.8
+        sudo virsh destroy ubuntu18.04
+        sudo virsh destroy ubuntu20.04
+        touch ~/pipeline/unlock.txt

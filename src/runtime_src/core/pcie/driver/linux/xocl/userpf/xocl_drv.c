@@ -1573,6 +1573,7 @@ int xocl_userpf_probe(struct pci_dev *pdev,
 	}
 
 	/* this is used for all subdevs, bind it to device earlier */
+	
 	pci_set_drvdata(pdev, xdev);
 
 	mutex_init(&xdev->dev_lock);

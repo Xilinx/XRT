@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<hostdev mode="subsystem" type="pci" managed="yes">
+  <source>
+    <address domain="0" bus="0" slot="0" function="1"/>
+  </source>
+</hostdev>
+
