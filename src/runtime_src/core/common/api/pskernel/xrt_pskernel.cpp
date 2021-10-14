@@ -22,6 +22,7 @@
 #include "core/include/experimental/xrt_pskernel.h"
 #include "core/common/api/native_profile.h"
 #include "core/common/api/kernel_int.h"
+#include "core/common/api/xclbin_int.h"
 
 #include "core/common/api/command.h"
 #include "core/common/api/exec.h"
@@ -333,7 +334,8 @@ class psip_context
     // @ipidx: index of the ip for which connectivity data is created
     connectivity(const xrt_core::device* device, const xrt::uuid& xclbin_id, int32_t ipidx)
     {
-      const auto& memidx_encoding = device->get_memidx_encoding(xclbin_id);
+      auto xclbin = device->get_xclbin(xclbin_id);
+      const auto& memidx_encoding = xrt_core::xclbin_int::get_membank_encoding(xclbin);
       auto conn = device->get_axlf_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY, xclbin_id);
       if (!conn)
         return;

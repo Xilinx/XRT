@@ -424,7 +424,7 @@ class ip_context
     // @conn: connectivity section of xclbin
     connectivity(const xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip)
     {
-      const auto& memidx_encoding = device->get_memidx_encoding(xclbin.get_uuid());
+      const auto& memidx_encoding = xrt_core::xclbin_int::get_membank_encoding(xclbin);
 
       // collect the memory connections for each IP argument
       for (const auto& arg : ip.get_args()) {

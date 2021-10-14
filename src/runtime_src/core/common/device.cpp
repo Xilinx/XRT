@@ -16,104 +16,32 @@
 #define XCL_DRIVER_DLL_EXPORT  // in same dll as exported xrt apis
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "device.h"
-#include "error.h"
-#include "utils.h"
-#include "debug.h"
-#include "query_requests.h"
 #include "config_reader.h"
+#include "debug.h"
+#include "error.h"
+#include "query_requests.h"
+#include "utils.h"
 #include "xclbin_parser.h"
 #include "xclbin_swemu.h"
-#include "core/common/api/xclbin_int.h"
+
+#include "core/include/ert.h"
 #include "core/include/xrt.h"
 #include "core/include/xclbin.h"
-#include "core/include/ert.h"
+#include "core/include/xrt/xrt_uuid.h"
+#include "core/include/experimental/xrt_xclbin.h"
+
+#include "core/common/api/xclbin_int.h"
+
 #include <boost/format.hpp>
-#include <string>
-#include <iostream>
-#include <fstream>
 #include <functional>
+#include <exception>
+#include <string>
+#include <utility>
+#include <vector>
 
 #ifdef _WIN32
 #pragma warning ( disable : 4996 )
 #endif
-
-namespace {
-
-// Encode / compress memory connections, a mapping from mem_topology
-// memory index to encoded index.  The compressed indices facilitate
-// small sized std::bitset for representing kernel argument
-// connectivity.
-//
-// The complicated part of this routine is to partition the set of all
-// memory banks into groups of banks with same base address and size
-// such that all banks within a group can share the same encoded index.
-static std::vector<size_t>
-compute_memidx_encoding(const ::mem_topology* mem_topology)
-{
-  if ( mem_topology == nullptr )
-    return {};
-
-  // The resulting encoding midx -> eidx
-  std::vector<size_t> enc(mem_topology->m_count, std::numeric_limits<size_t>::max());
-
-  struct membank
-  {
-    const mem_data* mdata;
-    int32_t midx;
-    membank(const mem_data* md, int32_t mi) : mdata(md), midx(mi) {}
-  };
-
-  // Collect all memory banks of interest
-  std::vector<membank> membanks;
-  for (int32_t midx = 0; midx < mem_topology->m_count; ++midx) {
-    const auto& mem = mem_topology->m_mem_data[midx];
-
-    if (!mem.m_used)
-      continue;
-    
-    // skip types that are of no interest for global connection
-    if (mem.m_type == MEM_STREAMING || mem.m_type == MEM_STREAMING_CONNECTION)
-      continue;
-
-    membanks.emplace_back(&mem, midx);
-  }
-
-  // Sort collected memory banks on addr decreasing order, the size
-  // use stable sort for predicatability (see #3795)
-  std::stable_sort(membanks.begin(), membanks.end(),
-                   [](const auto& mb1, const auto& mb2) {
-                     return (mb1.mdata->m_base_address > mb2.mdata->m_base_address)
-                       || ((mb1.mdata->m_base_address == mb2.mdata->m_base_address)
-                           && (mb1.mdata->m_size > mb2.mdata->m_size));
-                   });
-
-  // Process each memory bank and assign encoded index based on
-  // address/size partitioning, such that memory banks with same
-  // base address and same size share same encoded index
-  size_t eidx = 0;  // encoded index
-  auto itr = membanks.begin();
-  while (itr != membanks.end()) {
-    const auto& mb = *(itr);
-    auto addr = mb.mdata->m_base_address;
-    auto size = mb.mdata->m_size;
-
-    // first element not part of the sorted (decreasing) range
-    auto upper = std::find_if(itr, membanks.end(),
-                              [addr, size] (const auto& mb) {
-                                return ((mb.mdata->m_base_address != addr) || (mb.mdata->m_size != size));
-                              });
-
-    // process the range assigning same encoded index to all banks in group
-    for (; itr != upper; ++itr)
-      enc[(*itr).midx] = eidx;
-
-    ++eidx; // increment for next iteration
-  }
-
-  return enc;
-}
-
-}
 
 namespace xrt_core {
 
@@ -215,7 +143,7 @@ load_xclbin(const uuid& xclbin_id)
 
 xrt::xclbin
 device::
-get_xclbin(const uuid& xclbin_id)
+get_xclbin(const uuid& xclbin_id) const
 {
   if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
     throw error(EINVAL, "xclbin id mismatch");
@@ -233,10 +161,6 @@ register_axlf(const axlf* top)
 {
   if (!m_xclbin || m_xclbin.get_uuid() != uuid(top->m_header.uuid))
       m_xclbin = xrt::xclbin{top};
-
-  // Compute memidx encoding / compression. The compressed indices facilitate
-  // small sized std::bitset for representing kernel argument connectivity
-  m_memidx_encoding = compute_memidx_encoding(get_axlf_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY));
 
   // Compute CU sort order, kernel driver zocl and xocl now assign and
   // control the sort order, which is accessible via a query request.
@@ -297,15 +221,6 @@ get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id) con
   if (!ret.empty())
     return ret;
   throw error(EINVAL, "no such xclbin section");
-}
-
-const std::vector<size_t>&
-device::
-get_memidx_encoding(const uuid& xclbin_id) const
-{
-  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
-    throw error(EINVAL, "xclbin id mismatch");
-  return m_memidx_encoding;
 }
 
 device::memory_type
