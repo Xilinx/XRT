@@ -136,7 +136,7 @@ protected:
     bool m_initialized = false;
     // Default dma chunk size
     uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-    bool m_debug = true; /* Enable Output stream for log */
+    bool m_debug = false; /* Enable Output stream for log */
 
 private:
     void read_trace_fifo(bool force=true);
