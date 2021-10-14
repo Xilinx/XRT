@@ -24,7 +24,7 @@ XRT Software Stack for PCIe Accelerator Cards
 XRT software stack requires Linux kernel 3.10+. 
 
 The XRT software stack is tested on RHEL/CentOS and Ubuntu. 
-For the detailed list of supported OS, please refer to the specific release versions of `UG1451 XRT Release Notes <https://www.xilinx.com/search/site-keyword-search.html#q=ug1451>`_. 
+For the detailed list of supported OS, please refer to the specific release versions of `UG1451 XRT Release Notes <https://www.xilinx.com/support/documentation-navigation/see-all-versions.html?xlnxproducttypes=Design%20Tools&xlnxdocumentid=UG1451>`_. 
 
 XRT is needed on both application development and deployment environments. 
 
