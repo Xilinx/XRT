@@ -27,13 +27,13 @@ components consume different sections of xclbin by programming the hardware
 and initializing key data structures in XRT userspace libraries and XRT
 kernel drivers.
 
-xclbins can also be signed. More information can be found in :ref:`security.rst`.
+xclbins can also be signed. More information can be found in :doc:`security`.
 
 The path to ``xclbin.h`` is ``xrt/include/xclbin.h`` inside XRT
 installation directory.
 
 XRT provides a very powerful utility, **xclbinutil** which can be used to read/write/change
-xclbins. More information can be found in the section on :ref:`xclbintools.rst`
+xclbins. More information can be found in the section on :doc:`xclbintools`
 
 Feature ROM
 ~~~~~~~~~~~
