@@ -39,7 +39,10 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
     m_read_trace = std::bind(&DeviceTraceOffload::read_trace_s2mm, this, std::placeholders::_1);
   }
 
+  // Initialize internal variables
   m_prev_clk_train_time = std::chrono::system_clock::now();
+  m_process_trace = false;
+  m_process_trace_done = false;
 }
 
 DeviceTraceOffload::~DeviceTraceOffload()
@@ -66,9 +69,18 @@ void DeviceTraceOffload::offload_device_continuous()
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
 
-  // Do a final forced read
+  // Do final forced reads
   m_read_trace(true);
+  read_leftover_circular_buf();
+
+  // Stop processing thread
+  m_process_trace = false;
+  while (!m_process_trace_done);
+
+  // Clear all state and add approximations
   read_trace_end();
+
+  // Tell external plugin that offload has finished
   offload_finished();
 }
 
@@ -87,13 +99,16 @@ void DeviceTraceOffload::process_trace_continuous()
   if (!has_ts2mm())
     return;
 
-  while(should_continue())
+  m_process_trace = true;
+  m_process_trace_done = false;
+  while (m_process_trace)
   {
     process_trace();
     std::this_thread::sleep_for(std::chrono::milliseconds(sleep_interval_ms));
   }
   // One last time
   process_trace();
+  m_process_trace_done = true;
 }
 
 void DeviceTraceOffload::process_trace()
@@ -120,6 +135,7 @@ void DeviceTraceOffload::process_trace()
 
     // Processing takes a lot more time compared to everything else
     if (q_read) {
+      debug_stream << "Process " << size << " bytes of trace" << std::endl;
       dev_intf->parseTraceData(buf.get(), size, m_trace_vector);
       buf.reset();
       deviceTraceLogger->processTraceData(m_trace_vector);
@@ -235,7 +251,7 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf)
   return m_initialized;
 }
 
-void DeviceTraceOffload::read_trace_end()
+void DeviceTraceOffload::read_leftover_circular_buf()
 {
   // If we use circular buffer then, final trace read
   // might stop at trace buffer boundry and to read the entire
@@ -245,7 +261,10 @@ void DeviceTraceOffload::read_trace_end()
       << "Try to read left over circular buffer data" << std::endl;
     m_read_trace(true);
   }
+}
 
+void DeviceTraceOffload::read_trace_end()
+{
   // Trace logger will clear it's state and add approximations 
   // for pending events
   m_trace_vector.clear();

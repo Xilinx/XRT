@@ -26,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <cstring>
+#include <atomic>
 
 #include "xdp/config.h"
 #include "core/include/xclperf.h"
@@ -71,6 +72,8 @@ public:
     virtual void read_trace_end();
     XDP_EXPORT
     void train_clock();
+    XDP_EXPORT
+    void process_trace();
 
 public:
     void set_trbuf_alloc_sz(uint64_t sz) {
@@ -103,7 +106,6 @@ public:
     };
     inline bool continuous_offload() { return continuous ; }
     inline void set_continuous(bool value = true) { continuous = value ; }
-    void process_trace();
 
 private:
     std::mutex status_lock;
@@ -134,7 +136,7 @@ protected:
     bool m_initialized = false;
     // Default dma chunk size
     uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-    bool m_debug = false; /* Enable Output stream for log */
+    bool m_debug = true; /* Enable Output stream for log */
 
 private:
     void read_trace_fifo(bool force=true);
@@ -148,6 +150,7 @@ private:
     void offload_device_continuous();
     void offload_finished();
     void process_trace_continuous();
+    void read_leftover_circular_buf();
 
     // Clock Training Params
     bool m_force_clk_train = true;
@@ -163,6 +166,10 @@ private:
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;
     bool m_trace_warn_big_done = false;
+
+    // Internal flag to end trace processing thread
+    std::atomic<bool> m_process_trace;
+    std::atomic<bool> m_process_trace_done;
 };
 
 }
