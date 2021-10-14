@@ -21,6 +21,7 @@
 
 #include "core/common/xclbin_parser.h"
 #include "core/common/api/kernel_int.h"
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include <iostream>
 #include <fstream>
@@ -370,7 +371,7 @@ execute()
   // In order to keep scheduler busy, we need more than just one
   // workgroup at a time, so here we try to ensure that the scheduled
   // commands at any given time is twice the number of available CUs.
-  auto limit = (m_control == AP_CTRL_CHAIN) ? 20 * m_num_cus : 2 * m_num_cus;
+  auto limit = (m_control == xrt::xclbin::ip::control_type::chain) ? 20 * m_num_cus : 2 * m_num_cus;
   for (size_t i = m_active; !m_done && i < limit; ++i) {
     start();
     XRT_DEBUGF("active=%d\n",m_active);

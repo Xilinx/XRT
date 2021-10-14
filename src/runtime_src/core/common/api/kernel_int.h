@@ -23,6 +23,7 @@
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include <bitset>
 #include <cstdint>
@@ -81,7 +82,7 @@ get_num_cus(const xrt::run& run)
 }
 
 XRT_CORE_COMMON_EXPORT
-IP_CONTROL
+xrt::xclbin::ip::control_type
 get_control_protocol(const xrt::run& run);
 
 XRT_CORE_COMMON_EXPORT

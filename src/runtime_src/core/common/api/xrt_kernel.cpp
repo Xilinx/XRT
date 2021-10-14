@@ -22,15 +22,18 @@
 #include "core/include/experimental/xrt_kernel.h"
 #include "core/include/experimental/xrt_mailbox.h"
 #include "core/include/experimental/xrt_xclbin.h"
-#include "native_profile.h"
-#include "kernel_int.h"
-#include "xclbin_int.h"
+#include "core/include/ert.h"
+#include "core/include/ert_fa.h"
 
-#include "command.h"
-#include "exec.h"
 #include "bo.h"
+#include "command.h"
 #include "device_int.h"
 #include "enqueue.h"
+#include "exec.h"
+#include "kernel_int.h"
+#include "native_profile.h"
+#include "xclbin_int.h"
+
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
 #include "core/common/device.h"
@@ -39,9 +42,7 @@
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/xclbin_parser.h"
-#include "core/include/ert.h"
-#include "core/include/ert_fa.h"
-#include "core/include/xclbin.h"
+
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -153,12 +154,6 @@ debug_cmd_packet(const std::string& msg, const ert_packet* pkt)
     ostr << "pkt->data[" << std::setw(indent3) << i << "] = 0x"
          << std::setw(indent8) << std::hex << pkt->data[i] << std::dec << "\n";
   return fnm;
-}
-
-inline IP_CONTROL
-get_ip_control(const ip_data* ip)
-{
-  return IP_CONTROL((ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
 }
 
 // Helper class for representing an in-memory kernel argument.  User
@@ -1204,6 +1199,7 @@ class kernel_impl
   using ipctx = std::shared_ptr<ip_context>;
   using property_type = xrt_core::xclbin::kernel_properties;
   using mailbox_type = property_type::mailbox_type;
+  using control_type = xrt::xclbin::ip::control_type;
 
   std::string name;                    // kernel name
   std::shared_ptr<device_type> device; // shared ownership
@@ -1220,7 +1216,7 @@ class kernel_impl
   size_t fa_input_entry_bytes = 0;     // Fast adapter input desc bytes
   size_t fa_output_entry_bytes = 0;    // Fast adapter output desc bytes
   size_t num_cumasks = 1;              // Required number of command cu masks
-  uint32_t protocol = 0;               // Default opcode
+  control_type protocol = control_type::none; // Default opcode
   uint32_t uid;                        // Internal unique id for debug
 
   // Compute data for FAST_ADAPTER descriptor use (see ert_fa.h)
@@ -1278,9 +1274,9 @@ class kernel_impl
   void
   amend_args()
   {
-    if (protocol == FAST_ADAPTER)
+    if (protocol == control_type::fa)
       amend_fa_args();
-    else if (protocol == AP_CTRL_HS || protocol == AP_CTRL_CHAIN)
+    else if (protocol == control_type::hs || protocol == control_type::chain)
       amend_ap_args();
   }
 
@@ -1300,23 +1296,23 @@ class kernel_impl
     return ipctx->get_cuidx();
   }
 
-  IP_CONTROL
+  control_type
   get_ip_control(const std::vector<xrt::xclbin::ip>& ips)
   {
     if (ips.empty())
-      return AP_CTRL_NONE;
+      return control_type::none;
 
     auto ctrl = ips[0].get_control_type();
     for (size_t idx = 1; idx < ips.size(); ++idx) {
       auto ctrlatidx = ips[idx].get_control_type();
       if (ctrlatidx == ctrl)
         continue;
-      if (ctrlatidx != xrt::xclbin::ip::control_type::chain && ctrlatidx != xrt::xclbin::ip::control_type::hs)
+      if (ctrlatidx != control_type::chain && ctrlatidx != control_type::hs)
         throw std::runtime_error("CU control protocol mismatch");
-      ctrl = xrt::xclbin::ip::control_type::hs; // mix of CHAIN and HS is recorded as AP_CTRL_HS
+      ctrl = control_type::hs; // mix of CHAIN and HS is recorded as AP_CTRL_HS
     }
 
-    return static_cast<IP_CONTROL>(ctrl);
+    return ctrl;
   }
 
   void
@@ -1324,7 +1320,7 @@ class kernel_impl
   {
     kcmd->extra_cu_masks = num_cumasks - 1;  //  -1 for mandatory mask
     kcmd->count = num_cumasks + regmap_size;
-    kcmd->opcode = (protocol == FAST_ADAPTER) ? ERT_START_FA : ERT_START_CU;
+    kcmd->opcode = (protocol == control_type::fa) ? ERT_START_FA : ERT_START_CU;
     kcmd->type = ERT_CU;
     kcmd->state = ERT_CMD_STATE_NEW;
   }
@@ -1481,10 +1477,10 @@ public:
     return ipctxs;
   }
 
-  IP_CONTROL
+  control_type
   get_ip_control_protocol() const
   {
-    return IP_CONTROL(protocol);
+    return protocol;
   }
 
   // Group id is the memory bank index where a global buffer
@@ -1588,6 +1584,7 @@ class run_impl
 {
   friend class mailbox_impl;
   using ipctx = std::shared_ptr<ip_context>;
+  using control_type = xrt::xclbin::ip::control_type;
 
   // Helper hierarchy to set argument value per control protocol type
   // The @data member is the payload to be populated with argument
@@ -1694,7 +1691,7 @@ class run_impl
   virtual std::unique_ptr<arg_setter>
   make_arg_setter()
   {
-    if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
+    if (kernel->get_ip_control_protocol() == control_type::fa)
       return std::make_unique<fa_arg_setter>(data);
     else
       return std::make_unique<hs_arg_setter>(data);
@@ -2237,7 +2234,7 @@ public:
   std::unique_ptr<arg_setter>
   make_arg_setter() override
   {
-    if (kernel->get_ip_control_protocol() == FAST_ADAPTER)
+    if (kernel->get_ip_control_protocol() == control_type::fa)
       throw xrt_core::error("Mailbox not supported with FAST_ADAPTER");
     else
       return std::make_unique<hs_arg_setter>(data, this); // data is run_impl::data
@@ -2676,7 +2673,7 @@ pop_callback(const xrt::run& run)
   run.get_handle()->pop_callback();
 }
 
-IP_CONTROL
+xrt::xclbin::ip::control_type
 get_control_protocol(const xrt::run& run)
 {
   return run.get_handle()->get_kernel()->get_ip_control_protocol();
