@@ -71,6 +71,7 @@
 #define NODE_CLK_KERNEL2 "ep_aclk_kernel_01"
 #define NODE_CLK_KERNEL3 "ep_aclk_hbm_00"
 #define NODE_KDMA_CTRL "ep_kdma_ctrl_00"
+#define NODE_KDMA_NODMA_CTRL "ep_kdma_nodma_ctrl_00"
 #define NODE_FPGA_CONFIG "ep_fpga_configuration_00"
 #define NODE_FPGA_CONFIG_01 "ep_fpga_configuration_01"
 #define NODE_ICAP_RESET "ep_icap_reset_00"

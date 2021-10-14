@@ -2977,7 +2977,6 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 
 	if (kind == MEM_TOPOLOGY || kind == ASK_GROUP_TOPOLOGY) {
 		struct mem_topology *mem_topo = *target;
-		u64 hbase, hsz;
 		int i;
 
 		for (i = 0; i< mem_topo->m_count; ++i) {
@@ -2985,11 +2984,10 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 			    mem_topo->m_mem_data[i].m_used)
 				continue;
 
-			if (!xocl_m2m_host_bank(xdev, &hbase, &hsz)) {
-				mem_topo->m_mem_data[i].m_used = 1;
-				mem_topo->m_mem_data[i].m_base_address = hbase;
-				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
-			}
+			xocl_m2m_host_bank(xdev,
+				&(mem_topo->m_mem_data[i].m_base_address),
+				&(mem_topo->m_mem_data[i].m_size),
+				&(mem_topo->m_mem_data[i].m_used));
 		}
 		/* Xclbin binary has been adjusted as a workaround of Bios Limitation of some machine 
 		 * We won't be able to retain the device memory because of the limitation
