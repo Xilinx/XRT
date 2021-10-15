@@ -33,6 +33,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
@@ -209,7 +210,7 @@ public:
   // Throws if xclbin uuid does match
   XRT_CORE_COMMON_EXPORT
   xrt::xclbin
-  get_xclbin(const uuid& xclbin_id);
+  get_xclbin(const uuid& xclbin_id) const;
 
   /**
    * register_axlf() - Callback from shim after AXLF succesfully loaded
@@ -288,15 +289,6 @@ public:
   std::vector<std::pair<const char*, size_t>>
   get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
 
-  /**
-   * get_memidx_encoding() - An encoding compressing mem topology indices
-   *
-   * Returned container is indexed by mem_topology index and maps to
-   * encoded index.
-   */
-  const std::vector<size_t>&
-  get_memidx_encoding(const uuid& xclbin_id = uuid()) const;
-
   memory_type
   get_memory_type(size_t memidx) const;
 
@@ -367,7 +359,6 @@ public:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
 
-  std::vector<size_t> m_memidx_encoding; // compressed mem_toplogy indices
   std::vector<uint64_t> m_cus;           // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                  // currently loaded xclbin
 };

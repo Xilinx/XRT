@@ -63,6 +63,9 @@ get_properties(const xrt::xclbin::kernel& kernel);
 const std::vector<xrt_core::xclbin::kernel_argument>&
 get_arginfo(const xrt::xclbin::kernel& kernel);
 
+const std::vector<size_t>&
+get_membank_encoding(const xrt::xclbin& xclbin);
+
 }} // xclbin_int, xrt_core
 
 #endif
