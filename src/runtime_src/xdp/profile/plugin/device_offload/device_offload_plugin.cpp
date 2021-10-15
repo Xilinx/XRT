@@ -331,6 +331,30 @@ namespace xdp {
     }
   }
 
+  bool DeviceOffloadPlugin::flushTraceOffloader(DeviceTraceOffload* offloader)
+  {
+    if (!offloader)
+      return false;
+
+    try {
+      if (offloader->continuous_offload()) {
+        offloader->stop_offload() ;
+        // To avoid a race condition, wait until the offloader has stopped
+        while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
+      }
+      else {
+        offloader->read_trace();
+        offloader->process_trace();
+        offloader->read_trace_end();
+      }
+    } catch (std::exception& /*e*/) {
+        // Reading the trace could throw an exception if ioctls fail.
+        return false;
+      }
+
+    return true;
+  }
+
   void DeviceOffloadPlugin::writeAll(bool openNewFiles)
   {
     if (!active) return ;
@@ -339,19 +363,9 @@ namespace xdp {
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
     //  and write our writers.
-    for (auto o : offloaders)
-    {
+    for (auto o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
-      if (offloader->continuous_offload())
-      {
-        offloader->stop_offload() ;
-        // To avoid a race condition, wait until the offloader has stopped
-        while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-      }
-      else
-      {
-        offloader->read_trace() ;
-      }
+      flushTraceOffloader(offloader);
       checkTraceBufferFullness(offloader, o.first);
     }
 

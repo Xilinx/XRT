@@ -104,19 +104,8 @@ namespace xdp {
 
     for (auto o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
-
-      try {
-        if(offloader->continuous_offload()) {
-          offloader->stop_offload();
-          // To avoid a race condition, wait until the thread is stopped
-          while (offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-        } else {
-          offloader->read_trace();
-          offloader->read_trace_end();
-        }
-        checkTraceBufferFullness(offloader, o.first);
-      } catch (std::exception& /*e*/) {
-      }
+      flushTraceOffloader(offloader);
+      checkTraceBufferFullness(offloader, o.first);
     }
   }
 
@@ -141,22 +130,11 @@ namespace xdp {
     
     uint64_t deviceId = db->addDevice(path) ;
 
-    if (offloaders.find(deviceId) != offloaders.end())
-    {
-      try {
-        auto offloader = std::get<0>(offloaders[deviceId]) ;
-        if (offloader->continuous_offload()) {
-          offloader->stop_offload() ;
-          // To avoid a race condition, wait until the offloader has stopped
-          while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-        }
-        else {
-          offloader->read_trace() ;
-        }
-      } catch (std::exception& /*e*/) {
-      }
+    if (offloaders.find(deviceId) != offloaders.end()) {
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      flushTraceOffloader(offloader);
     }
-    readCounters() ;
+    readCounters();
 
     clearOffloader(deviceId) ;
     (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
