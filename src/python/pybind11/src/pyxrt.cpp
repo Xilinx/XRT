@@ -78,9 +78,6 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("pcie_info", xrt::info::device::pcie_info)
         .value("host", xrt::info::device::host)
         .value("dynamic_regions", xrt::info::device::dynamic_regions);
-
-    py::enum_<xrt::info::InfoSchemaVersion>(m, "xrt_info_schema", "Schema version for device information")
-        .value("json_20202", xrt::info::InfoSchemaVersion::json_20202);
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
@@ -108,41 +105,41 @@ PYBIND11_MODULE(pyxrt, m) {
                                 return d.load_xclbin(xclbin);
                             }, "Load the xclbin to the device")
         .def("get_xclbin_uuid", &xrt::device::get_xclbin_uuid, "Return the UUID object representing the xclbin loaded on the device")
-        .def("get_info", [] (xrt::device& d, xrt::info::device key, xrt::info::InfoSchemaVersion version) {
+        .def("get_info", [] (xrt::device& d, xrt::info::device key) {
                              /* Convert the value to string since we can have only one return type for get_info() */
                              switch (key) {
                              case xrt::info::device::bdf:
-                                 return d.get_info<xrt::info::device::bdf>(version);
+                                 return d.get_info<xrt::info::device::bdf>();
                              case xrt::info::device::interface_uuid:
-                                 return d.get_info<xrt::info::device::interface_uuid>(version).to_string();
+                                 return d.get_info<xrt::info::device::interface_uuid>().to_string();
                              case xrt::info::device::kdma:
-                                 return std::to_string(d.get_info<xrt::info::device::kdma>(version));
+                                 return std::to_string(d.get_info<xrt::info::device::kdma>());
                              case xrt::info::device::max_clock_frequency_mhz:
-                                 return std::to_string(d.get_info<xrt::info::device::max_clock_frequency_mhz>(version));
+                                 return std::to_string(d.get_info<xrt::info::device::max_clock_frequency_mhz>());
                              case xrt::info::device::m2m:
-                                 return std::to_string(d.get_info<xrt::info::device::m2m>(version));
+                                 return std::to_string(d.get_info<xrt::info::device::m2m>());
                              case xrt::info::device::name:
-                                 return d.get_info<xrt::info::device::name>(version);
+                                 return d.get_info<xrt::info::device::name>();
                              case xrt::info::device::nodma:
-                                 return std::to_string(d.get_info<xrt::info::device::nodma>(version));
+                                 return std::to_string(d.get_info<xrt::info::device::nodma>());
                              case xrt::info::device::offline:
-                                 return std::to_string(d.get_info<xrt::info::device::offline>(version));
+                                 return std::to_string(d.get_info<xrt::info::device::offline>());
                              case xrt::info::device::electrical:
-                                 return d.get_info<xrt::info::device::electrical>(version);
+                                 return d.get_info<xrt::info::device::electrical>();
                              case xrt::info::device::thermal:
-                                 return d.get_info<xrt::info::device::thermal>(version);
+                                 return d.get_info<xrt::info::device::thermal>();
                              case xrt::info::device::mechanical:
-                                 return d.get_info<xrt::info::device::mechanical>(version);
+                                 return d.get_info<xrt::info::device::mechanical>();
                              case xrt::info::device::memory:
-                                 return d.get_info<xrt::info::device::memory>(version);
+                                 return d.get_info<xrt::info::device::memory>();
                              case xrt::info::device::platform:
-                                 return d.get_info<xrt::info::device::platform>(version);
+                                 return d.get_info<xrt::info::device::platform>();
                              case xrt::info::device::pcie_info:
-                                 return d.get_info<xrt::info::device::pcie_info>(version);
+                                 return d.get_info<xrt::info::device::pcie_info>();
                              case xrt::info::device::host:
-                                 return d.get_info<xrt::info::device::host>(version);
+                                 return d.get_info<xrt::info::device::host>();
                              case xrt::info::device::dynamic_regions:
-                                 return d.get_info<xrt::info::device::dynamic_regions>(version);
+                                 return d.get_info<xrt::info::device::dynamic_regions>();
                              default:
                                  return std::string("NA");
                              }

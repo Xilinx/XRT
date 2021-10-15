@@ -22,6 +22,8 @@
 #include "xocl/core/compute_unit.h"
 
 #include "core/include/xclbin.h"
+#include "core/include/experimental/xrt_xclbin.h"
+
 #include <mutex>
 #include <array>
 #include <algorithm>
@@ -85,7 +87,7 @@ private:
   size_t m_num_cus = 0;
 
   // Control protocol
-  IP_CONTROL m_control = IP_CONTROL(0);
+  xrt::xclbin::ip::control_type m_control = xrt::xclbin::ip::control_type::hs;
 
   // The kernel run object to be started and managed by this context
   xrt::run m_run;

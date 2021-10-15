@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -96,7 +96,7 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	for (i = 0; i < scu_mgmt->num_cus; ++i) {
 		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
 				scu_mgmt->name[i], scu_mgmt->status[i],
-				scu_mgmt->usage[i]);
+				cu_stat_read(scu_mgmt,usage[i]));
 	}
 	mutex_unlock(&scu_mgmt->lock);
 
@@ -167,7 +167,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 		struct config_sk_image *cp = &scmd->image[i];
 
 		for (j = 0; j < cp->num_cus; j++) {
-			int scu_idx = j + cp->start_cuidx;
+			u32 scu_idx = j + cp->start_cuidx;
 
 			/*
 			 * TODO: Need consider size limit of the name.
@@ -177,8 +177,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
 			strncpy(scu_mgmt->name[scu_idx], (char *)cp->sk_name,
 				sizeof(scu_mgmt->name[0]));
 
-			scu_mgmt->num_cus++;
-			scu_mgmt->usage[i] = 0;
+			cu_stat_write(scu_mgmt, usage[scu_idx], 0);
 		}
 	}
 	mutex_unlock(&scu_mgmt->lock);
@@ -194,7 +193,7 @@ kds_scu_config(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
  * Returns: Negative value for error. 0 or positive value for index
  *
  */
-static int
+static u32
 acquire_cu_idx(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
@@ -260,10 +259,24 @@ out:
 	return index;
 }
 
+/**
+ * acquire_scu_idx - Get ready CU index
+ *
+ * @xcmd: Command
+ *
+ * Returns: Negative value for error. 0 or positive value for index
+ *
+ */
+static int
+acquire_scu_idx(struct kds_scu_mgmt *scu_mgmt, struct kds_command *xcmd)
+{
+	return 0;
+}
+
 static int
 kds_cu_dispatch(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 {
-	int cu_idx;
+	int cu_idx = 0;
 
 	do {
 		cu_idx = acquire_cu_idx(cu_mgmt, xcmd);
@@ -339,7 +352,7 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_ert *ert = kds->ert;
 	int ret = 0;
-	int cu_idx;
+	int cu_idx = 0;
 
 	/* BUG_ON(!ert || !ert->submit); */
 
@@ -365,9 +378,16 @@ kds_submit_ert(struct kds_sched *kds, struct kds_command *xcmd)
 		}
 		break;
 	case OP_CONFIG:
-	case OP_START_SK:
 	case OP_CLK_CALIB:
 	case OP_VALIDATE:
+		break;
+	case OP_START_SK:
+		/* KDS should select a CU and set it in cu_mask */
+		do {
+			cu_idx = acquire_scu_idx(&kds->scu_mgmt, xcmd);
+		} while(cu_idx == -EAGAIN);
+		if (cu_idx < 0)
+			return cu_idx;
 		break;
 	default:
 		kds_err(xcmd->client, "Unknown opcode");
@@ -524,6 +544,110 @@ skip:
 	return 0;
 }
 
+static int
+kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
+		   struct kds_ctx_info *info)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	u32 cu_idx = 0;
+	u32 prop = 0;
+	bool shared;
+	int ret = 0;
+
+        if (info->cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
+		return -EINVAL;
+        } else {
+                cu_idx = info->cu_idx - MAX_CUS;
+        }
+
+	if (cu_idx >= scu_mgmt->num_cus) {
+		kds_err(client, "SCU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
+
+	if (test_and_set_bit(cu_idx, client->scu_bitmap)) {
+		kds_err(client, "SCU(%d) has been added", cu_idx);
+		return -EINVAL;
+	}
+
+	prop = info->flags & CU_CTX_PROP_MASK;
+	shared = (prop != CU_CTX_EXCLUSIVE);
+
+	/* scu_mgmt->cu_refs is the critical section of multiple clients */
+	mutex_lock(&scu_mgmt->lock);
+	/* Must check exclusive bit is set first */
+	if (scu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK) {
+		kds_err(client, "CU(%d) has been exclusively reserved", cu_idx);
+		ret = -EBUSY;
+		goto err;
+	}
+
+	/* Not allow exclusively reserved if CU is shared */
+	if (!shared && scu_mgmt->cu_refs[cu_idx]) {
+		kds_err(client, "CU(%d) has been shared", cu_idx);
+		ret = -EBUSY;
+		goto err;
+	}
+
+	/* CU is not shared and not exclusively reserved */
+	if (!shared)
+		scu_mgmt->cu_refs[cu_idx] |= CU_EXCLU_MASK;
+	else
+		++scu_mgmt->cu_refs[cu_idx];
+	mutex_unlock(&scu_mgmt->lock);
+
+	return 0;
+err:
+	mutex_unlock(&scu_mgmt->lock);
+	clear_bit(cu_idx, client->scu_bitmap);
+	return ret;
+}
+
+static int
+kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
+		   struct kds_ctx_info *info)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	u32 cu_idx = 0;
+	unsigned long submitted = 0;
+	unsigned long completed = 0;
+
+        if (info->cu_idx < MAX_CUS) {
+		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
+		return -EINVAL;
+        } else {
+                cu_idx = info->cu_idx - MAX_CUS;
+        }
+
+	if (cu_idx >= scu_mgmt->num_cus) {
+		kds_err(client, "SCU(%d) not found", cu_idx);
+		return -EINVAL;
+	}
+
+	if (!test_and_clear_bit(cu_idx, client->scu_bitmap)) {
+		kds_err(client, "SCU(%d) has never been reserved", cu_idx);
+		return -EINVAL;
+	}
+
+	/* Before close, make sure no remain commands in CU's queue. */
+	submitted = client_stat_read(client, scu_s_cnt[cu_idx]);
+	completed = client_stat_read(client, scu_c_cnt[cu_idx]);
+	if (submitted == completed)
+		goto skip;
+
+skip:
+	/* scu_mgmt->cu_refs is the critical section of multiple clients */
+	mutex_lock(&scu_mgmt->lock);
+	if (scu_mgmt->cu_refs[cu_idx] & CU_EXCLU_MASK)
+		scu_mgmt->cu_refs[cu_idx] = 0;
+	else
+		--scu_mgmt->cu_refs[cu_idx];
+	mutex_unlock(&scu_mgmt->lock);
+
+	return 0;
+}
+
 static int kds_ucu_release(struct inode *inode, struct file *filp)
 {
 	struct xrt_cu *xcu = filp->private_data;
@@ -656,6 +780,10 @@ int kds_init_sched(struct kds_sched *kds)
 	if (!kds->cu_mgmt.cu_stats)
 		return -ENOMEM;
 
+	kds->scu_mgmt.cu_stats = alloc_percpu(struct cu_stats);
+	if (!kds->scu_mgmt.cu_stats)
+		return -ENOMEM;
+
 	INIT_LIST_HEAD(&kds->clients);
 	mutex_init(&kds->lock);
 	mutex_init(&kds->cu_mgmt.lock);
@@ -733,7 +861,6 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 		kds_err(client, "Unknown type");
 		err = -EINVAL;
 	}
-
 	if (err) {
 		xcmd->cb.notify_host(xcmd, KDS_ERROR);
 		xcmd->cb.free(xcmd);
@@ -744,16 +871,25 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 int kds_submit_cmd_and_wait(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	struct kds_client *client = xcmd->client;
-	int bad_state;
 	int ret = 0;
 
 	ret = kds_add_command(kds, xcmd);
 	if (ret)
 		return ret;
 
+	/* Why not wait_for_completion_interruptible_timeout()?
+	 * This is the process to configure ERT. If user ctrl-c, ERT will be
+	 * mark as in bad status and need reset device to recovery from it.
+	 * But ERT is actually alive.
+	 * To avoid this, wait for few seconds for ERT to complete command.
+	 */
 	ret = wait_for_completion_timeout(&kds->comp, msecs_to_jiffies(3000));
 	if (!ret) {
 		kds->ert->abort_sync(kds->ert, client, NO_INDEX);
+		/* ERT abort would handle command in time. The command would be
+		 * marked as ABORT or TIMEOUT and kds->comp would increase.
+		 * It is a  bug if below waiting never finished.
+		 */
 		wait_for_completion(&kds->comp);
 	}
 
@@ -802,6 +938,13 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
 	};
 	bitmap_zero(client->cu_bitmap, MAX_CUS);
+	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		info.cu_idx = bit + MAX_CUS;
+		kds_del_context(kds, client, &info);
+		bit = find_next_bit(client->scu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->scu_bitmap, MAX_CUS);
 	mutex_unlock(&client->lock);
 
 	WARN_ON(client->num_ctx);
@@ -853,8 +996,13 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		++client->virt_cu_ref;
 	} else {
+	     if (cu_idx >= MAX_CUS) {
+		if (kds_add_scu_context(kds, client, info))
+			return -EINVAL;
+	     } else {
 		if (kds_add_cu_context(kds, client, info))
 			return -EINVAL;
+	     }
 	}
 
 	++client->num_ctx;
@@ -889,8 +1037,13 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 	} else {
+	     if (cu_idx >= MAX_CUS) {
+		if (kds_del_scu_context(kds, client, info))
+			return -EINVAL;
+	     } else {
 		if (kds_del_cu_context(kds, client, info))
 			return -EINVAL;
+	     }
 	}
 
 	--client->num_ctx;
@@ -1028,6 +1181,42 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		/* m2m cu */
 		if (xcu->info.intr_id == M2M_CU_ID)
 			cu_mgmt->num_cdma--;
+
+		return 0;
+	}
+
+	return -ENODEV;
+}
+
+int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+
+	if (scu_mgmt->num_cus >= MAX_CUS)
+		return -ENOMEM;
+
+	scu_mgmt->xcus[scu_mgmt->num_cus] = xcu;
+	xcu->info.cu_idx = scu_mgmt->num_cus;
+	++scu_mgmt->num_cus;
+
+	return 0;
+}
+
+int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
+{
+	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	int i;
+
+	if (scu_mgmt->num_cus == 0)
+		return -EINVAL;
+
+	for (i = 0; i < MAX_CUS; i++) {
+		if (scu_mgmt->xcus[i] != xcu)
+			continue;
+
+		--scu_mgmt->num_cus;
+		scu_mgmt->xcus[i] = NULL;
+		cu_stat_write(scu_mgmt, usage[i], 0);
 
 		return 0;
 	}
@@ -1177,8 +1366,6 @@ int kds_cfg_update(struct kds_sched *kds)
 	int ret = 0;
 	int i;
 
-	kds->scu_mgmt.num_cus = 0;
-
 	/* Update PLRAM CU */
 	if (kds->cmdmem.bo) {
 		ret = kds_fa_assign_cmdmem(kds);
@@ -1306,6 +1493,26 @@ void cfg_ecmd2xcmd(struct ert_configure_cmd *ecmd,
 
 	/* Expect a ordered list of CU address */
 	memcpy(xcmd->info, ecmd->data, xcmd->isize);
+}
+
+void start_skrnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,
+			  struct kds_command *xcmd)
+{
+	xcmd->opcode = OP_START_SK;
+
+	xcmd->execbuf = (u32 *)ecmd;
+	if (ecmd->stat_enabled) {
+		xcmd->timestamp_enabled = 1;
+		set_xcmd_timestamp(xcmd, KDS_NEW);
+	}
+
+	xcmd->cu_mask[0] = ecmd->cu_mask;
+	memcpy(&xcmd->cu_mask[1], ecmd->data, ecmd->extra_cu_masks);
+	xcmd->num_mask = 1 + ecmd->extra_cu_masks;
+
+	xcmd->isize = (ecmd->count - xcmd->num_mask) * sizeof(u32);
+	memcpy(xcmd->info, &ecmd->data[ecmd->extra_cu_masks], xcmd->isize);
+	ecmd->type = ERT_SCU;
 }
 
 void start_krnl_ecmd2xcmd(struct ert_start_kernel_cmd *ecmd,

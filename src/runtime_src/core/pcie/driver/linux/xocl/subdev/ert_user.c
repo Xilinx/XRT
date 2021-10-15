@@ -142,6 +142,7 @@ struct xocl_ert_user {
 
 static void ert_submit_exit_cmd(struct xocl_ert_user *ert_user);
 static inline void ert_user_cmd_submit(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd);
+static void free_ert_user_event(struct ert_user_event *event);
 
 static ssize_t clock_timestamp_show(struct device *dev,
 			   struct device_attribute *attr, char *buf)
@@ -400,14 +401,14 @@ ert_queue_intc_config(struct xocl_ert_user *ert_user, bool enable)
 }
 
 static inline int
-ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size)
+ert_config_queue(struct xocl_ert_user *ert_user, uint32_t slot_size, bool polling)
 {
 	struct ert_queue *queue = ert_user->queue;
 
 	if (!queue)
 		return -ENODEV;
 
-	return queue->func->queue_config(slot_size, ert_user, queue->handle);
+	return queue->func->queue_config(slot_size, polling, ert_user, queue->handle);
 }
 
 static inline uint32_t
@@ -782,7 +783,7 @@ ert_cfg_host(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 
 	BUG_ON(cmd_opcode(ecmd) != ERT_CONFIGURE);
 
-	ret = ert_config_queue(ert_user, cfg->slot_size);
+	ret = ert_config_queue(ert_user, cfg->slot_size, cfg->polling);
 	if (ret)
 		return ret;
 
@@ -956,12 +957,12 @@ static inline void process_ert_cq(struct xocl_ert_user *ert_user)
 			if ((cmd_opcode(ecmd) == ERT_START_CU
 			|| cmd_opcode(ecmd) == ERT_EXEC_WRITE
 			|| cmd_opcode(ecmd) == ERT_START_KEY_VAL) &&
-				ecmd->complete_entry.cstate == KDS_COMPLETED) {
+				ecmd->complete_entry.hdr.cstate == KDS_COMPLETED) {
 				ert_user->cu_stat[xcmd->cu_idx].inflight--;
 				ert_user->cu_stat[xcmd->cu_idx].usage++;
 			}
-			set_xcmd_timestamp(xcmd, ecmd->complete_entry.cstate);
-			xcmd->cb.notify_host(xcmd, ecmd->complete_entry.cstate);
+			set_xcmd_timestamp(xcmd, ecmd->complete_entry.hdr.cstate);
+			xcmd->cb.notify_host(xcmd, ecmd->complete_entry.hdr.cstate);
 			xcmd->cb.free(xcmd);
 		}
 		ert_free_cmd(ecmd);
@@ -1013,13 +1014,13 @@ int process_ert_rq(struct xocl_ert_user *ert_user, struct ert_user_queue *rq, st
 
 		if (unlikely(ert_user->bad_state || (xcmd && ev_client && ev_client->client == xcmd->client))) {
 			ERTUSER_ERR(ert_user, "%s abort\n", __func__);
-			ecmd->complete_entry.cstate = KDS_ABORT;
+			ecmd->complete_entry.hdr.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
 		if (ert_pre_process(ert_user, ecmd)) {
 			ERTUSER_ERR(ert_user, "%s bad cmd, opcode: %d\n", __func__, cmd_opcode(ecmd));
-			ecmd->complete_entry.cstate = KDS_ABORT;
+			ecmd->complete_entry.hdr.cstate = KDS_ABORT;
 			bad_cmd = true;
 		}
 
@@ -1286,8 +1287,8 @@ int ert_user_thread(void *data)
 		process_ert_cq(ert_user);
 
 		if (unlikely(ev_client)) {
-			complete(&ev_client->cmp);
 			xocl_ert_user_remove_event(ert_user, ev_client);
+			complete(&ev_client->cmp);
 		}
 
 		/* If any event occured, we should drain all the related commands ASAP
@@ -1389,6 +1390,7 @@ static bool xocl_ert_user_abort_done(struct kds_ert *ert, struct kds_client *cli
 			continue;
 
 		list_del(&curr->ev_entry);
+		free_ert_user_event(curr);
 		break;
 	}
 

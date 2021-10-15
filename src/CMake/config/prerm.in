@@ -57,7 +57,7 @@ rm -rf /etc/systemd/system/msd.service
 rm -rf /etc/systemd/system/mpd.service
 systemctl daemon-reload
 # Remove config file for MSD as well
-/opt/xilinx/xrt/bin/xbmgmt config --purge 2>&1 > /dev/null
+/opt/xilinx/xrt/bin/xbmgmt --legacy config --purge 2>&1 > /dev/null
 
 echo "Unloading old XRT Linux kernel modules"
 rmmod xocl

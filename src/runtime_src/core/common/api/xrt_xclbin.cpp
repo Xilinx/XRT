@@ -31,10 +31,14 @@
 #include "core/include/xclbin.h"
 
 #include "native_profile.h"
+#include "xclbin_int.h"
+
+#include <boost/algorithm/string.hpp>
 
 #include <array>
 #include <fstream>
 #include <numeric>
+#include <regex>
 #include <set>
 #include <vector>
 
@@ -46,8 +50,7 @@
 #endif
 
 namespace {
-
-constexpr size_t max_sections = 11;
+constexpr size_t max_sections = 12;
 static const std::array<axlf_section_kind, max_sections> kinds = {
   EMBEDDED_METADATA,
   AIE_METADATA,
@@ -59,7 +62,8 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
   DEBUG_IP_LAYOUT,
   SYSTEM_METADATA,
   CLOCK_FREQ_TOPOLOGY,
-  BUILD_METADATA
+  BUILD_METADATA,
+  SOFT_KERNEL
 };
 
 XRT_CORE_UNUSED
@@ -99,6 +103,49 @@ copy_axlf(const axlf* top)
   auto data = reinterpret_cast<const char*>(top);
   std::copy(data, data + size, header.begin());
   return header;
+}
+
+// Default implementation to get the name of an element
+template <typename ElementType>
+static std::string
+get_name(const ElementType& element)
+{
+  return element.get_name();
+}
+
+// Name matching filtering
+template <typename InputItr, typename OutputItr>
+static OutputItr
+copy_if_name_match(InputItr first, InputItr last, OutputItr dst, const std::string& name)
+{
+  // "kernel:{cu1,cu2,cu3}" -> "(kernel):((cu1)|(cu2)|(cu3))"
+  // "kernel" -> "(kernel):((.*))"
+  auto create_regex = [](const auto& str) {
+    std::regex r("^(.*):\\{(.*)\\}$");
+    std::smatch m;
+    if (!regex_search(str,m,r))
+      return "^(" + str + "):((.*))$";            // "(kernel):((.*))"
+
+    std::string kernel = m[1];
+    std::string insts = m[2];                     // "cu1,cu2,cu3"
+    std::string regex = "^(" + kernel + "):(";    // "(kernel):("
+    std::vector<std::string> cus;                 // split at ','
+    boost::split(cus,insts,boost::is_any_of(","));
+
+    // compose final regex
+    int count = 0;
+    for (auto& cu : cus)
+      regex.append("|", count++ ? 1 : 0).append("(").append(cu).append(")");
+    regex += ")$";  // "^(kernel):((cu1)|(cu2)|(cu3))$"
+    return regex;
+  };
+
+  std::regex r(create_regex(name));
+  return std::copy_if(first, last, dst,
+                       [&r](const auto& element) {
+                         return regex_match(get_name(element), r);
+                       });
+
 }
 
 }
@@ -170,6 +217,7 @@ class xclbin::ip_impl
 public: // purposely not a struct to match decl in xrt_xclbin.h
   const ::ip_data* m_ip;            // 
   int32_t m_ip_layout_idx;          // index in IP_LAYOUT seciton
+  size_t m_size = 0;                // address range of this ip (a kernel property)
   std::vector<xclbin::arg> m_args;  // index by argument index
 
   void
@@ -215,6 +263,20 @@ public:
     return m_args[argidx];
   }
 
+  xrt::xclbin::ip::control_type
+  get_control_type() const
+  {
+    return static_cast<xrt::xclbin::ip::control_type>((m_ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT);
+  }
+
+  // Bit awkward backdoor to set the address range size
+  // of this IP.  The address_range is a property of the
+  // kernel when it should be an ip_data struct member
+  void
+  set_size(size_t address_range)
+  {
+    m_size = address_range;
+  }
 };
 
 // class kernel_impl - wrap xclbin XML kernel entry
@@ -230,15 +292,20 @@ class xclbin::kernel_impl
 {
 public: // purposely not a struct to match decl in xrt_xclbin.h
   std::string m_name;
+  xrt_core::xclbin::kernel_properties m_properties;
   std::vector<xclbin::ip> m_cus;
   std::vector<xclbin::arg> m_args;
   std::vector<xrt_core::xclbin::kernel_argument> m_arginfo;
   
 public:
   kernel_impl(std::string&& nm,
+              xrt_core::xclbin::kernel_properties&& props,
               std::vector<xclbin::ip>&& cus,
               std::vector<xrt_core::xclbin::kernel_argument>&& arguments)
-    : m_name(std::move(nm)), m_cus(std::move(cus)), m_arginfo(std::move(arguments))
+    : m_name(std::move(nm))
+    , m_properties(std::move(props))
+    , m_cus(std::move(cus))
+    , m_arginfo(std::move(arguments))
   {
     // For each kernel argument create an xclbin::arg which is the union
     // of all memory connections used by compute units at this argument
@@ -274,6 +341,17 @@ public:
       m_args.emplace_back(std::move(kargimpl));
     }
   }
+
+  std::vector<xclbin::ip>
+  get_cus(const std::string& kname)
+  {
+    if (kname.empty())
+      return m_cus;
+
+    std::vector<xclbin::ip> vec;
+    copy_if_name_match(m_cus.begin(), m_cus.end(), std::back_inserter(vec), kname);
+    return vec;
+  }
 };
 
 // class xclbin_impl - Base class for xclbin objects
@@ -281,10 +359,11 @@ class xclbin_impl
 {
   // struct xclbin_info - on demand xclbin meta data access
   //
-  // Constructed first time data is needed, which in many cases it
-  // never is.  The class keeps xclbin::mem, xclbin::ip, and
-  // xclbin::kernel objects along with references into the xclbin
-  // data itself
+  // Constructed first time data is needed.  The class keeps
+  // xclbin::mem, xclbin::ip, and xclbin::kernel objects along with
+  // references into the xclbin data itself.
+  //
+  // Also adds some computed data that is used by XRT core implementation.
   struct xclbin_info
   {
     const xclbin_impl* m_ximpl;
@@ -292,56 +371,26 @@ class xclbin_impl
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
 
-    // kernel_cu_to_ip() - convert ::ip_data entry to xclbin::ip object
-    //
-    // Kernels are composed of compute units, which are represented as
-    // xclbin::ip objects.  In the xclbin, kernel compute units are
-    // collected from IP_LAYOUT through name matching.  Since
-    // IP_LAYOUT is processed before xclbin::kernels are created, the
-    // collected ip_data elements for the compute units already exist
-    // in m_ips.
-    //
-    // This function iterates m_ips to look for the xclbin::ip object
-    // corresponding to the ip_data element.  The lookup is O(n) which
-    // makes the overall algorithm for converting kernel CUs O(n^2)
-    // but efficiency doesn't matter here.
-    xclbin::ip
-    kernel_cu_to_ip(const ::ip_data* cu)
-    {
-      for (auto& ip : m_ips)
-        if (ip.get_name() == reinterpret_cast<const char*>(cu->m_name))
-          return ip;
-      throw std::runtime_error("unexpected error, kernel cu doesn't exist");
-    }
-
-    // kernel_cus_to_ips() - convert list of ::ip_data to xclbin::ip objects
-    //
-    // Convert ip_data elements associated with kernel object into
-    // already constructed and cached xclbin::ip objects.  O(n^2) yes,
-    // but not important.
-    std::vector<xclbin::ip>
-    kernel_cus_to_ips(const std::vector<const ::ip_data*>& cus)
-    {
-      std::vector<xclbin::ip> ips;
-      for (auto cu : cus)
-        ips.emplace_back(kernel_cu_to_ip(cu));
-      return ips;
-    }
+    // encoded / compressed memory connection used by
+    // xrt core to manage compute unit connectivity.
+    std::vector<size_t> m_membank_encoding;
 
     // init_mems() - populate m_mems with xrt::mem objects
     //
     // Iterate the GROUP_TOPOLOGY section in xclbin and create
     // xclbin::mem objects for each used mem_data entry.
-    void
-    init_mems()
+    static std::vector<xclbin::mem>
+    init_mems(const xclbin_impl* ximpl)
     {
-      if (auto mem_topology = m_ximpl->get_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY)) {
-        m_mems.reserve(mem_topology->m_count);
+      std::vector<xclbin::mem> mems;
+      if (auto mem_topology = ximpl->get_section<const ::mem_topology*>(ASK_GROUP_TOPOLOGY)) {
+        mems.reserve(mem_topology->m_count);
         for (int32_t idx = 0; idx < mem_topology->m_count; ++idx) {
-          m_mems.emplace_back
-            (std::make_shared<xclbin::mem_impl>(mem_topology->m_mem_data + idx, idx));
+          auto mem = mem_topology->m_mem_data + idx;
+          mems.emplace_back(std::make_shared<xclbin::mem_impl>(mem, idx));
         }
       }
+      return mems;
     }
 
     // init_ips() - populate m_ips with xclbin::ip objects
@@ -353,20 +402,23 @@ class xclbin_impl
     //
     // A pre-condition for this function is that init_mems() must have
     // been called.
-    void
-    init_ips()
+    static std::vector<xclbin::ip>
+    init_ips(const xclbin_impl* ximpl, const std::vector<xclbin::mem>& mems)
     {
-      auto ip_layout = m_ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
+      auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
       if (!ip_layout)
-        return;
+        return {};
       
-      auto conn = m_ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
+      auto conn = ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
 
-      m_ips.reserve(ip_layout->m_count);
+      std::vector<xclbin::ip> ips;
+      ips.reserve(ip_layout->m_count);
       for (int32_t idx = 0; idx < ip_layout->m_count; ++idx)
-        m_ips.emplace_back
+        ips.emplace_back
           (std::make_shared<xclbin::ip_impl>
-           (conn, m_mems, ip_layout->m_ip_data + idx, idx));
+           (conn, mems, ip_layout->m_ip_data + idx, idx));
+
+      return ips;
     }
 
     // init_kernels() - populate m_kernels with xclbin::kernel objects
@@ -376,33 +428,106 @@ class xclbin_impl
     //
     // Pre-condition for this function is that init_mems() and init_ips()
     // have been called.
-    void
-    init_kernels()
+    static std::vector<xclbin::kernel>
+    init_kernels(const xclbin_impl* ximpl, const std::vector<xclbin::ip>& ips)
     {
-      auto xml = m_ximpl->get_axlf_section(EMBEDDED_METADATA);
+      auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
       if (!xml.first)
-        return;
+        return {};
 
-      auto ip_layout = m_ximpl->get_section_or_error<const ::ip_layout*>(IP_LAYOUT);
-
+      // get kernel CUs from xclbin meta data
+      std::vector<xclbin::kernel> kernels;
       for (auto& kernel : xrt_core::xclbin::get_kernels(xml.first, xml.second)) {
-        auto cus = xrt_core::xclbin::get_cus(ip_layout, kernel.name);  // ip_data*
-        auto ips = kernel_cus_to_ips(cus);                             // xrt::xclbin::ip
-        m_kernels.emplace_back
+        auto props = xrt_core::xclbin::get_kernel_properties(xml.first, xml.second, kernel.name);
+        std::vector<xclbin::ip> cus;
+        copy_if_name_match(ips.begin(), ips.end(), std::back_inserter(cus), kernel.name);
+        kernels.emplace_back
           (std::make_shared<xclbin::kernel_impl>
-           (std::move(kernel.name), std::move(ips), std::move(kernel.args)));
+           (std::move(kernel.name), std::move(props), std::move(cus), std::move(kernel.args)));
       }
+
+      return kernels;
+    }
+
+    // init_mem_encoding() - compress memory indices
+    // 
+    // Mapping from memory index to encoded index.  The compressed
+    // indices facilitate small sized std::bitset for representing
+    // kernel argument connectivity.
+    //
+    // The complicated part of this routine is to partition the set of
+    // all memory banks into groups of banks with same base address
+    // and size such that all banks within a group can share the same
+    // encoded index.
+    static std::vector<size_t>
+    init_mem_encoding(std::vector<xclbin::mem> mems) // by-value on purpose
+    {
+      // resulting encoding midx -> eidx, initialize before filtering
+      std::vector<size_t> enc(mems.size(), std::numeric_limits<size_t>::max());
+
+      // collect memory banks of interest (filter streaming entries)
+      mems.erase(std::remove_if(mems.begin(), mems.end(),
+        [](const auto& mem) {
+          if (!mem.get_used())
+            return true; // remove
+          using memory_type = xrt::xclbin::mem::memory_type;
+          auto mt = mem.get_type();
+          return (mt == memory_type::streaming || mt == memory_type::streaming_connection); // remove
+        }), mems.end());
+
+      if (mems.empty())
+        return {};
+
+      // sort collected memory banks on addr decreasing order, the size
+      std::sort(mems.begin(), mems.end(),
+        [](const auto& mb1, const auto& mb2) {
+          // decreasing base address
+          auto a1 = mb1.get_base_address();
+          auto a2 = mb2.get_base_address();
+          if (a1 > a2)
+            return true;
+      
+          // decreasing size
+          auto s1 = mb1.get_size_kb();
+          auto s2 = mb2.get_size_kb();
+          return ((a1 == a2) && (s1 > s2));
+        });
+
+      // process each memory bank and assign encoded index based on
+      // address/size partitioning, such that memory banks with same
+      // base address and same size share same encoded index
+      size_t eidx = 0;  // encoded index
+      auto itr = mems.begin();
+      while (itr != mems.end()) {
+        const auto& mb = *(itr);
+        auto addr = mb.get_base_address();
+        auto size = mb.get_size_kb();
+
+        // first element not part of the sorted (decreasing) range
+        auto upper = std::find_if(itr, mems.end(),
+          [addr, size] (const auto& mb) {
+            return ((mb.get_base_address() != addr) || (mb.get_size_kb() != size));
+          });
+
+        // process the range assigning same encoded index to all banks in group
+        for (; itr != upper; ++itr)
+          enc[(*itr).get_index()] = eidx;
+        
+        ++eidx; // increment for next iteration
+      }
+
+      return enc;
     }
 
     // xclbin_info() - constructor for xclbin meta data
     explicit
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
-    {
-      init_mems();     // must be first
-      init_ips();      // must be before kernels
-      init_kernels();
-    }
+      , m_mems(init_mems(m_ximpl))
+      , m_ips(init_ips(m_ximpl, m_mems))
+      , m_kernels(init_kernels(m_ximpl, m_ips))
+      , m_membank_encoding(init_mem_encoding(m_mems))
+    {}
   };
   
   // cache of meta data extracted from xclbin
@@ -430,6 +555,10 @@ public:
   virtual
   std::pair<const char*, size_t>
   get_axlf_section(axlf_section_kind section) const = 0;
+
+  virtual
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections(axlf_section_kind section) const = 0;
 
   virtual
   const std::vector<char>&
@@ -476,7 +605,7 @@ public:
     return section;
   }
 
-  std::vector<xclbin::kernel>
+  const std::vector<xclbin::kernel>&
   get_kernels() const
   {
     return get_xclbin_info()->m_kernels;
@@ -492,10 +621,23 @@ public:
     return xclbin::kernel{};
   }
 
-  std::vector<xclbin::ip>
+  const std::vector<xclbin::ip>&
   get_ips() const
   {
     return get_xclbin_info()->m_ips;
+  }
+
+  std::vector<xclbin::ip>
+  get_ips(const std::string& name)
+  {
+    // Filter ips to those matching specified name
+    const auto& ips = get_xclbin_info()->m_ips;
+    if (name.empty())
+      return ips;
+
+    std::vector<xclbin::ip> vec;
+    copy_if_name_match(ips.begin(), ips.end(), std::back_inserter(vec), name);
+    return vec;
   }
 
   xclbin::ip
@@ -508,10 +650,16 @@ public:
     return xclbin::ip{};
   }
   
-  std::vector<xclbin::mem>
+  const std::vector<xclbin::mem>&
   get_mems() const
   {
     return get_xclbin_info()->m_mems;
+  }
+
+  const std::vector<size_t>&
+  get_membank_encoding() const
+  {
+    return get_xclbin_info()->m_membank_encoding;
   }
 };
 
@@ -524,7 +672,7 @@ class xclbin_full : public xclbin_impl
   std::vector<char> m_axlf;  // complete copy of xclbin raw data
   const axlf* m_top = nullptr;
   uuid m_uuid;
-  std::map<axlf_section_kind, std::vector<char>> m_axlf_sections;
+  std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
 
   void
   init_axlf()
@@ -549,16 +697,26 @@ class xclbin_full : public xclbin_impl
         if (!data.empty()) {
           auto pos = m_axlf_sections.emplace(kind, std::move(data));
           if (kind == IP_LAYOUT)
-            ip_layout = reinterpret_cast<const ::ip_layout*>((pos.first)->second.data());
+            ip_layout = reinterpret_cast<const ::ip_layout*>(pos->second.data());
         }
       }
 
       if (!hdr)
         continue;
 
-      auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-      std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-      m_axlf_sections.emplace(kind , std::move(data));
+      if (kind == SOFT_KERNEL) {
+	while (hdr != nullptr) {
+	  auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+	  std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+	  m_axlf_sections.emplace(kind , std::move(data));
+	  hdr = ::xclbin::get_axlf_section_next(m_top, hdr, kind);
+	}
+      }
+      else {
+	auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+	std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+	m_axlf_sections.emplace(kind , std::move(data));
+      }
     }
   }
   
@@ -603,6 +761,26 @@ public:
     return itr != m_axlf_sections.end()
       ? std::make_pair((*itr).second.data(), (*itr).second.size())
       : std::make_pair(nullptr, size_t(0));
+  }
+
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections(axlf_section_kind kind) const override
+  {
+    auto result = m_axlf_sections.equal_range(kind);
+
+    int count = std::distance(result.first, result.second);
+
+    if (count > 0) {
+      std::vector<std::pair<const char*, size_t>> return_sections;
+
+      for (auto itr = result.first; itr != result.second; itr++)
+        return_sections.emplace_back(std::make_pair(itr->second.data(), itr->second.size()));
+
+      return return_sections;
+    }
+    else {
+      return {};
+    }
   }
 
   const axlf*
@@ -727,9 +905,16 @@ get_name() const
 
 std::vector<xclbin::ip>
 xclbin::kernel::
+get_cus(const std::string& kname) const
+{
+  return handle ? handle->get_cus(kname) : std::vector<xclbin::ip>{};
+}
+
+std::vector<xclbin::ip>
+xclbin::kernel::
 get_cus() const
 {
-  return handle ? handle->m_cus : std::vector<xclbin::ip>{};
+  return get_cus("");
 }
 
 xclbin::ip
@@ -779,6 +964,15 @@ get_name() const
   return handle ? reinterpret_cast<const char*>(handle->m_ip->m_name) : "";
 }
 
+xclbin::ip::control_type
+xclbin::ip::
+get_control_type() const
+{
+  return handle
+    ? handle->get_control_type()
+    : static_cast<xclbin::ip::control_type>(std::numeric_limits<uint8_t>::max());
+}
+
 size_t
 xclbin::ip::
 get_num_args() const
@@ -805,6 +999,13 @@ xclbin::ip::
 get_base_address() const
 {
   return handle ? handle->m_ip->m_base_address : std::numeric_limits<uint64_t>::max();
+}
+
+size_t
+xclbin::ip::
+get_size() const
+{
+  return handle ? handle->m_size : 0;
 }
 
 ////////////////////////////////////////////////////////////////
@@ -855,6 +1056,13 @@ xclbin::arg::
 get_host_type() const
 {
   return handle && handle->m_arginfo ? handle->m_arginfo->hosttype : "<type>";
+}
+
+size_t
+xclbin::arg::
+get_index() const
+{
+  return handle && handle->m_arginfo ? handle->m_arginfo->index : xrt_core::xclbin::kernel_argument::no_index;
 }
 ////////////////////////////////////////////////////////////////
 // xrt::xclbin::mem
@@ -969,7 +1177,7 @@ is_valid_or_error(xrtXclbinHandle handle)
 const axlf*
 get_axlf(xrtXclbinHandle handle)
 {
-  auto xclbin = get_xclbin(handle);
+  auto xclbin = ::get_xclbin(handle);
   return xclbin->get_axlf();
 }
 
@@ -985,10 +1193,34 @@ get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind)
   return xclbin.get_handle()->get_axlf_section(kind);
 }
 
+std::vector<std::pair<const char*, size_t>>
+get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind)
+{
+  return xclbin.get_handle()->get_axlf_sections(kind);
+}
+
 std::vector<char>
 read_xclbin(const std::string& fnm)
 {
   return ::read_xclbin(fnm);
+}
+
+const xrt_core::xclbin::kernel_properties&
+get_properties(const xrt::xclbin::kernel& kernel)
+{
+  return kernel.get_handle()->m_properties;
+}
+
+const std::vector<xrt_core::xclbin::kernel_argument>&
+get_arginfo(const xrt::xclbin::kernel& kernel)
+{
+  return kernel.get_handle()->m_arginfo;
+}
+
+const std::vector<size_t>&
+get_membank_encoding(const xrt::xclbin& xclbin)
+{
+  return xclbin.get_handle()->get_membank_encoding();
 }
 
 }} // namespace xclbin_int, core_core

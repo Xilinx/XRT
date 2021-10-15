@@ -777,7 +777,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 
-    return kernel_properties{kname, restart, mailbox, address_range, sw_reset};
+    return kernel_properties{kname, kernel_properties::kernel_type::pl, restart, mailbox, address_range, sw_reset};
   }
 
   return kernel_properties{};

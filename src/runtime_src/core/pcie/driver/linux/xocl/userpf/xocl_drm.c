@@ -508,27 +508,32 @@ static struct drm_driver mm_drm_driver = {
 	.postclose			= xocl_client_release,
 	.open				= xocl_client_open,
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
-	.gem_free_object_unlocked       = xocl_free_object,
-#else
-	.gem_free_object		= xocl_free_object,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
+		.gem_free_object_unlocked       = xocl_free_object,
+	#else
+		.gem_free_object		= xocl_free_object,
+	#endif
 #endif
-	.gem_vm_ops			= &xocl_vm_ops,
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+        .gem_vm_ops                     = &xocl_vm_ops,
+        .gem_prime_get_sg_table         = xocl_gem_prime_get_sg_table,
+        .gem_prime_vmap                 = xocl_gem_prime_vmap,
+        .gem_prime_vunmap               = xocl_gem_prime_vunmap,
+        .gem_prime_export               = drm_gem_prime_export,
+#endif
 
 	.ioctls				= xocl_ioctls,
 	.num_ioctls			= (ARRAY_SIZE(xocl_ioctls)-NUM_KERNEL_IOCTLS),
 	.fops				= &xocl_driver_fops,
 
-	.gem_prime_get_sg_table		= xocl_gem_prime_get_sg_table,
 	.gem_prime_import_sg_table	= xocl_gem_prime_import_sg_table,
-	.gem_prime_vmap			= xocl_gem_prime_vmap,
-	.gem_prime_vunmap		= xocl_gem_prime_vunmap,
 	.gem_prime_mmap			= xocl_gem_prime_mmap,
 
 	.prime_handle_to_fd		= drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle		= drm_gem_prime_fd_to_handle,
 	.gem_prime_import		= drm_gem_prime_import,
-	.gem_prime_export		= drm_gem_prime_export,
 #if ((LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)))
 	.set_busid			= drm_pci_set_busid,
 #endif
@@ -536,6 +541,17 @@ static struct drm_driver mm_drm_driver = {
 	.desc				= XOCL_DRIVER_DESC,
 	.date				= driver_date,
 };
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+const struct drm_gem_object_funcs xocl_gem_object_funcs = {
+        .free = xocl_free_object,
+        .vm_ops = &xocl_vm_ops,
+        .get_sg_table = xocl_gem_prime_get_sg_table,
+        .vmap = xocl_gem_prime_vmap,
+        .vunmap = xocl_gem_prime_vunmap,
+        .export = drm_gem_prime_export,
+};
+#endif
 
 void *xocl_drm_init(xdev_handle_t xdev_hdl)
 {
@@ -789,7 +805,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 				continue;
 
 			if (IS_HOST_MEM(topology->m_mem_data[i].m_tag))
-				xocl_addr_translator_disable_remap(drm_p->xdev);
+				xocl_addr_translator_clean(drm_p->xdev);
 
 			xocl_info(drm_p->ddev->dev, "Taking down DDR : %d", i);
 			addr = topology->m_mem_data[i].m_base_address;
@@ -845,8 +861,10 @@ int xocl_set_cma_bank(struct xocl_drm *drm_p, uint64_t base_addr, size_t ddr_ban
 	uint64_t entry_num = 0, entry_sz = 0, host_reserve_size = 0;
 	struct xocl_dev *xdev = (struct xocl_dev *)drm_p->xdev;
 
-	if (!xdev->cma_bank)
-		return -ENODEV;
+	if (!xdev->cma_bank) {
+		xocl_warn(drm_p->ddev->dev, "Could not find reserved HOST mem, Skipped");		
+		return 0;
+	}
 
 	phys_addrs = xdev->cma_bank->phys_addrs;
 	entry_num = xdev->cma_bank->entry_num;

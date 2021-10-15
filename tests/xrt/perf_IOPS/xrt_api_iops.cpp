@@ -12,12 +12,17 @@
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_kernel.h"
 
-void usage()
+#ifdef _WIN32
+# pragma warning( disable : 4244 )
+#endif
+
+static void usage()
 {
   std::cout  << "Usage: test -k <xclbin>\n";
 }
 
-double runTest(std::vector<xrt::run>& cmds, unsigned int total)
+static double
+runTest(std::vector<xrt::run>& cmds, unsigned int total)
 {
   int i = 0;
   unsigned int issued = 0, completed = 0;
@@ -46,7 +51,8 @@ double runTest(std::vector<xrt::run>& cmds, unsigned int total)
   return (std::chrono::duration_cast<std::chrono::microseconds>(end - start)).count();
 }
 
-int testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
+static void
+testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
 {
   /* The command would incease */
   std::vector<unsigned int> cmds_per_run = { 10,50,100,200,500,1000,1500,2000,3000,5000,10000,50000,100000,500000,1000000 };
@@ -69,11 +75,10 @@ int testSingleThread(const xrt::device& device, const xrt::uuid& uuid)
               << " iops: " << (num_cmds * 1000.0 * 1000.0 / duration)
               << std::endl;
   }
-
-  return 0;
 }
 
-int _main(int argc, char* argv[])
+static int
+_main(int argc, char* argv[])
 {
   if (argc < 3 || argv[1] != std::string("-k")) {
     usage();
@@ -93,8 +98,7 @@ int _main(int argc, char* argv[])
 int main(int argc, char *argv[])
 {
   try {
-    _main(argc, argv);
-    return 0;
+    return _main(argc, argv);
   }
   catch (const std::exception& ex) {
     std::cout << "TEST FAILED: " << ex.what() << std::endl;

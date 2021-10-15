@@ -23,6 +23,7 @@
 #include "experimental/xrt_xclbin.h"
 
 #ifdef __cplusplus
+# include "xrt/detail/abi.h"
 # include "xrt/detail/param_traits.h"
 # include <memory>
 # include <boost/any.hpp> // std::any c++17
@@ -103,23 +104,6 @@ enum class device : unsigned int {
   pcie_info,
   host, 
   dynamic_regions
-};
-
-/*!
- * @enum InfoSchemaVersion 
- *
- * @brief
- * Json schemaVersion parameters
- *
- * @details
- * Use with `xrt::device::get_info()` to retrieve a perticular version 
- * of schema of the properties.
- *
- * @var json_20202 
- *  Json 2020.2 schema
- */
-enum class InfoSchemaVersion  {
-  json_20202
 };
 
 /// @cond 
@@ -260,20 +244,24 @@ public:
    * get_info() - Retrieve device parameter information
    *
    * This function is templated on the enumeration value as defined in
-   * the enumeration xrt::info::device and takes in 
-   * xrt::info::InfoSchemaVersion as a parameter.
+   * the enumeration xrt::info::device.
    *
    * The return type of the parameter is based on the instantiated
    * param_traits for the given param enumeration supplied as template
    * argument, see namespace xrt::info
+   *
+   * This function guarantees return values conforming to the format
+   * used by the time the application was built and for a two year
+   * period minimum.  In other words, XRT can be updated to new
+   * versions without affecting the format of the return type.
    */
   template <info::device param>
   typename info::param_traits<info::device, param>::return_type
-  get_info(info::InfoSchemaVersion version) const
+  get_info() const
   {
     return boost::any_cast<
       typename info::param_traits<info::device, param>::return_type  
-    >(get_info(param, version));
+    >(get_info(param, xrt::detail::abi{}));
   }
 
   /**
@@ -369,7 +357,8 @@ public:
     return handle;
   }
 
-  XCL_DRIVER_DLLESPEC void
+  XCL_DRIVER_DLLESPEC
+  void
   reset();
 
   explicit
@@ -384,10 +373,16 @@ private:
   std::pair<const char*, size_t>
   get_xclbin_section(axlf_section_kind section, const uuid& uuid) const;
 
+  // Deprecated but left for ABI compatibility of old existing
+  // binaries in the field that reference this symbol. Unused in
+  // new applications since xrt-2.12.x
   XCL_DRIVER_DLLESPEC
   boost::any
-  get_info(info::device param, info::InfoSchemaVersion version) const;
+  get_info(info::device param) const;
 
+  XCL_DRIVER_DLLESPEC
+  boost::any
+  get_info(info::device param, const xrt::detail::abi&) const;
 private:
   std::shared_ptr<xrt_core::device> handle;
 };

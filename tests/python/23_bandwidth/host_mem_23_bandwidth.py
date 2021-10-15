@@ -21,6 +21,7 @@ import ctypes.util
 import sys
 import time
 import math
+import errno
 
 # Following found in PYTHONPATH setup by XRT
 from xrt_binding import *
@@ -77,7 +78,11 @@ def getInputOutputBuffer(devhdl, krnlhdl, argno, isInput):
     return bo, bobuf
 
 def runKernel(opt):
-    khandle3 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth3")
+    try:
+        khandle3 = xrtPLKernelOpen(opt.handle, opt.xuuid, "bandwidth3")
+    except Exception as e:
+        return errno.EOPNOTSUPP
+
     kfunc = xrtKernelGetFunc(xrtBufferHandle, xrtBufferHandle, ctypes.c_int, ctypes.c_int)
 
     output_bo3, output_buf3 = getInputOutputBuffer(opt.handle, khandle3, 0, False)
@@ -159,7 +164,9 @@ def main(args):
         initXRT(opt)
         assert (opt.first_mem >= 0), "Incorrect memory configuration"
 
-        runKernel(opt)
+        if (runKernel(opt) == errno.EOPNOTSUPP):
+            print("EOPNOTSUPP")
+            sys.exit(errno.EOPNOTSUPP)
         print("PASSED TEST")
 
     except OSError as o:

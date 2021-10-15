@@ -22,7 +22,11 @@
 #include <iostream>
 #include <thread>
 #include <chrono>
+#include <queue>
 #include <functional>
+#include <memory>
+#include <cstring>
+#include <atomic>
 
 #include "xdp/config.h"
 #include "core/include/xclperf.h"
@@ -68,6 +72,8 @@ public:
     virtual void read_trace_end();
     XDP_EXPORT
     void train_clock();
+    XDP_EXPORT
+    void process_trace();
 
 public:
     void set_trbuf_alloc_sz(uint64_t sz) {
@@ -105,6 +111,7 @@ private:
     std::mutex status_lock;
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
+    std::thread process_thread;
     bool continuous = false ;
 
     uint64_t sleep_interval_ms;
@@ -121,6 +128,9 @@ private:
     bool m_trbuf_full = false;
     bool trbuf_offload_done = false;
     uint64_t m_trbuf_addr = 0;
+    std::queue<std::unique_ptr<char[]>> m_data_queue;
+    std::queue<uint64_t> m_size_queue;
+    std::mutex process_queue_lock;
 
 protected:
     bool m_initialized = false;
@@ -139,6 +149,8 @@ private:
     void train_clock_continuous();
     void offload_device_continuous();
     void offload_finished();
+    void process_trace_continuous();
+    void read_leftover_circular_buf();
 
     // Clock Training Params
     bool m_force_clk_train = true;
@@ -154,6 +166,10 @@ private:
     // Used to check read precondition in ts2mm
     uint64_t m_wordcount_old = 0;
     bool m_trace_warn_big_done = false;
+
+    // Internal flag to end trace processing thread
+    std::atomic<bool> m_process_trace;
+    std::atomic<bool> m_process_trace_done;
 };
 
 }

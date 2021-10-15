@@ -163,14 +163,20 @@ XBUtilities::runScript( const std::string & env,
   }
 
   is_done = true;
-  bool exitCode = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
-  run_test.get()->finish(exitCode, final_description);
+  bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
+  bool skipped = (os_stdout.str().find("EOPNOTSUPP") != std::string::npos) ? true : false;
+  run_test.get()->finish(passed, final_description);
   // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
   // Remove this once busybar is implemented
   std::cout << EscapeCodes::cursor().prev_line() << EscapeCodes::cursor().clear_line();
   t.join();
 
-  return exitCode ? 0 : 1;
+  if (skipped)
+    return EOPNOTSUPP;
+  else if (passed)
+    return 0;
+  else
+    return 1;
 }
 #else
 

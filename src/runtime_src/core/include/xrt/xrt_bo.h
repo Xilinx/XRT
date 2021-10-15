@@ -46,6 +46,12 @@ typedef uint64_t xrtBufferFlags;
  * typedef xrtMemoryGroup - Memory bank group for buffer
  */
 typedef uint32_t xrtMemoryGroup;
+
+/**
+ * Typed xclBufferHandle used to prevent ambiguity
+ * Use when constructing xrt::bo from xclBufferHandle
+ */
+struct xcl_buffer_handle { xclBufferHandle bhdl; };
   
 #ifdef __cplusplus
 
@@ -185,8 +191,10 @@ public:
    * @param ehdl
    *  Exported buffer handle, implementation specific type
    * 
-   * The exported buffer handle is acquired by using the export() method
-   * and can be passed to another process.  
+   * If the exported buffer handle acquired by using the export() method is 
+   * from another process, then it must be transferred through proper IPC 
+   * mechanism translating the underlying file-descriptor asscociated with 
+   * the buffer 
    */
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
@@ -203,6 +211,31 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   bo(const bo& parent, size_t size, size_t offset);
+
+  /// @cond
+  /**
+   * bo() - Constructor from xclBufferHandle
+   *
+   * @param dhdl
+   *  Device on which the buffer handle was created
+   * @param xhdl
+   *  Typified shim buffer handle created with xclAllocBO variants
+   *
+   * This function allows construction of xrt::bo object from an
+   * xclBufferHandle supposedly allocated using deprecated xcl APIs.
+   * The buffer handle is allocated with xclAllocBO and must be
+   * freed with xclFreeBO. 
+   *
+   * Note that argument xclBufferHandle must be wrapped as
+   * an xcl_buffer_handle in order to disambiguate the untyped
+   * xclBufferHandle.
+   *
+   * Mixing xcl style APIs and xrt APIs is discouraged and
+   * as such this documentation is not included in doxygen.
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(xclDeviceHandle dhdl, xcl_buffer_handle xhdl);
+  /// @endcond
 
   /**
    * bo() - Copy ctor
@@ -271,7 +304,9 @@ public:
    *  Exported buffer handle
    *
    * An exported buffer can be imported on another device by this
-   * process or another process.
+   * process or another process. For multiprocess transfer, the exported
+   * buffer must be transferred through a proper IPC facility to translate
+   * the underlying file-descriptor properly into another process. 
    */
   XCL_DRIVER_DLLESPEC
   xclBufferExportHandle
@@ -519,6 +554,31 @@ xrtBOExport(xrtBufferHandle bhdl);
 XCL_DRIVER_DLLESPEC
 xrtBufferHandle
 xrtBOSubAlloc(xrtBufferHandle parent, size_t size, size_t offset);
+
+/* 
+ * xrtBOAllocFromXcl() - Undocumented allocation from an xclBufferHandle
+ *
+ * @dhdl:  XRT device handle on which the buffer is residing.
+ * @xhdl:  The xcl buffer handle to convert to an xrtBufferHandle
+ * Return: xrtBufferHandle which must be freed using `xrtBOFree`
+ *
+ * Note that argument xclBufferHandle must be wrapped as
+ * an xcl_buffer_handle in order to disambiguate the untyped
+ * xclBufferHandle.
+ *
+ * Please note that the device is an xrtDeviceHandle.  It is the
+ * responsibility of the user to convert an xclDeviceHandle to 
+ * an xrtDeviceHandle before calling this API.
+ *
+ * The xrtBufferHandle returned by this API
+ *
+ * The argument xcl buffer handle must be explicitly freed using
+ * xclFreeBO, in other words xclAllocBO requires xclFreeBO and
+ * xrtBOAlloc requires xrtBOFree.
+ */
+XCL_DRIVER_DLLESPEC
+xrtBufferHandle
+xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl);
 
 /**
  * xrtBOFree() - Free a previously allocated BO

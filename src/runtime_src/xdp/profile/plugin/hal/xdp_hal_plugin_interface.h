@@ -17,14 +17,22 @@
 #ifndef XDP_HAL_PLUGIN_INTERFACE_H_
 #define XDP_HAL_PLUGIN_INTERFACE_H_
 
-#include "xclperf.h"
-
 #include "xdp/config.h"
 
 extern "C" {
 
-XDP_EXPORT void hal_level_xdp_cb_func(HalCallbackType cb_type, void* payload);
+// Generic start/stop callbacks
+XDP_EXPORT
+void hal_generic_cb(bool isStart, const char* name, unsigned long long int id) ;
 
+// Specialization start/stop callbacks
+XDP_EXPORT
+void buffer_transfer_cb(bool isWrite, 
+			bool isStart,
+			const char* name,
+			unsigned long long int id,
+			unsigned long long int bufferId,
+			unsigned long long int size) ;
 }
 
 #endif

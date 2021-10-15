@@ -33,6 +33,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 #include <boost/any.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/optional/optional.hpp>
@@ -204,6 +205,13 @@ public:
   void
   load_xclbin(const uuid& xclbin_id);
 
+
+  // Get the currently loaded xclbin
+  // Throws if xclbin uuid does match
+  XRT_CORE_COMMON_EXPORT
+  xrt::xclbin
+  get_xclbin(const uuid& xclbin_id) const;
+
   /**
    * register_axlf() - Callback from shim after AXLF succesfully loaded
    *
@@ -260,13 +268,26 @@ public:
   }
 
   /**
-   * get_memidx_encoding() - An encoding compressing mem topology indices
+   * get_axlf_sections() - Get sections from currently loaded axlf
    *
-   * Returned container is indexed by mem_topology index and maps to
-   * encoded index.
+   * xclbin_id:  Check that xclbin_id matches currently cached
+   * Return:     Vectors of Pair of section data and size in bytes
+   *
+   * This function provides access to meta data sections that are
+   * from currently loaded xclbin.  The returned sections are from when the
+   * xclbin was loaded by this process.  The function cannot be used
+   * unless this process loaded the xclbin.
+   *
+   * The function returns {nullptr, 0} if section is not cached.
+   *
+   * Same behavior as other get_axlf_sections()
    */
-  const std::vector<size_t>&
-  get_memidx_encoding(const uuid& xclbin_id = uuid()) const;
+  XRT_CORE_COMMON_EXPORT
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
+
+  std::vector<std::pair<const char*, size_t>>
+  get_axlf_sections_or_error(axlf_section_kind section, const uuid& xclbin_id = uuid()) const;
 
   memory_type
   get_memory_type(size_t memidx) const;
@@ -338,7 +359,6 @@ public:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
 
-  std::vector<size_t> m_memidx_encoding; // compressed mem_toplogy indices
   std::vector<uint64_t> m_cus;           // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                  // currently loaded xclbin
 };

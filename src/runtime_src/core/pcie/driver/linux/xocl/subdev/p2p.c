@@ -48,11 +48,8 @@ MODULE_PARM_DESC(p2p_max_bar_size,
 
 #endif
 
-#if defined(P2P_API_V3)
-#warning "P2P not ported to Linux kernel 5.10"
-#endif
 
-#if defined(P2P_API_V1) || defined(P2P_API_V2)
+#if defined(P2P_API_V1) || defined(P2P_API_V2) || defined(P2P_API_V3)
 #include <linux/memremap.h>
 #endif
 
@@ -161,7 +158,7 @@ struct p2p_mem_chunk {
 	/* Used by kernel API */
 	struct percpu_ref	xpmc_percpu_ref;
 	struct completion	xpmc_comp;
-#ifdef  P2P_API_V2
+#if defined(P2P_API_V2) || defined(P2P_API_V3)
 	struct dev_pagemap	xpmc_pgmap;
 #endif
 };
@@ -418,6 +415,26 @@ static int p2p_mem_chunk_reserve(struct p2p *p2p, struct p2p_mem_chunk *chk)
 			percpu_ref_kill(pref);
 		}
 	}
+
+#elif   defined(P2P_API_V3)
+                ret = devm_add_action_or_reset(dev, p2p_percpu_ref_exit, pref);
+                if (ret) {
+                        p2p_err(p2p, "add exit action failed");
+                        percpu_ref_exit(pref);
+                } else {
+                        chk->xpmc_pgmap.type = MEMORY_DEVICE_PCI_P2PDMA;
+                        chk->xpmc_pgmap.range.start = res.start;
+                        chk->xpmc_pgmap.range.end = res.end;
+                        chk->xpmc_pgmap.nr_range = 1;
+
+
+                        chk->xpmc_va = devm_memremap_pages(dev, &chk->xpmc_pgmap);
+                        ret = devm_add_action_or_reset(dev, p2p_percpu_ref_kill, pref);
+                        if (ret) {
+                                p2p_err(p2p, "add kill action failed");
+                                percpu_ref_kill(pref);
+                        }
+                }
 #endif
 
 	devres_close_group(dev, chk->xpmc_res_grp);

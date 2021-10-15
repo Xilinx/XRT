@@ -20,9 +20,14 @@
 
 // This file defines implementation extensions to the XRT XCLBIN APIs.
 #include "core/include/experimental/xrt_xclbin.h"
+#include "core/common/xclbin_parser.h"
 
-namespace xrt_core {
-namespace xclbin_int {
+#include <set>
+
+// Provide access to xrt::xclbin data that is not directly exposed
+// to end users via xrt::xclbin.   These functions are used by
+// XRT core implementation.
+namespace xrt_core { namespace xclbin_int {
 
 // is_valid_or_error() - Throw if invalid handle
 void
@@ -40,11 +45,27 @@ get_xclbin(xrtXclbinHandle);
 std::pair<const char*, size_t>
 get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind);
 
+// get_axlf_sections() - Retrieve specified sections
+std::vector<std::pair<const char*, size_t>>
+get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
+
 // read_xclbin() - Read specified xclbin file 
 std::vector<char>
 read_xclbin(const std::string& fnm);
 
-} //xclbin_int
-}; // xrt_core
+// get_properties() - Get kernel properties
+const xrt_core::xclbin::kernel_properties&
+get_properties(const xrt::xclbin::kernel& kernel);
+
+// get_arginfo() - Get xclbin kernel argument metadata
+// Sorted by arg index, but appended with rtinfo args (if any)
+// which have no index
+const std::vector<xrt_core::xclbin::kernel_argument>&
+get_arginfo(const xrt::xclbin::kernel& kernel);
+
+const std::vector<size_t>&
+get_membank_encoding(const xrt::xclbin& xclbin);
+
+}} // xclbin_int, xrt_core
 
 #endif

@@ -24,7 +24,9 @@
 class XOSPIVER_Flasher
 {
 public:
+    /* Constructor of ospi_versal flash */
     XOSPIVER_Flasher(std::shared_ptr<xrt_core::device> dev);
+    /* API of flashing binStream via ospi_versal driver */
     int xclUpgradeFirmware(std::istream& binStream);
 
 private:

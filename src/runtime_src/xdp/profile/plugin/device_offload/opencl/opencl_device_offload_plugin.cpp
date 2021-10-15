@@ -166,23 +166,9 @@ namespace xdp {
       uint64_t deviceId = o.first ;
       if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end()) {
         deviceIdsToBeFlushed.erase(deviceId) ;
-
-        try {
-          auto offloader = std::get<0>(o.second) ;
-          if (offloader->continuous_offload()) {
-            offloader->stop_offload() ;
-            // To avoid a race condition, wait until the offloader has stopped
-            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-          }
-          else {
-            offloader->read_trace() ;
-            offloader->read_trace_end() ;
-          }
-          checkTraceBufferFullness(offloader, deviceId);
-	} catch (std::exception& /*e*/) {
-          // Reading the trace could throw an exception if ioctls fail.
-          //  We should continue to check other devices if they exist
-	}
+        auto offloader = std::get<0>(o.second) ;
+        flushTraceOffloader(offloader);
+        checkTraceBufferFullness(offloader, deviceId);
       }
     }
   }
@@ -210,25 +196,10 @@ namespace xdp {
     uint64_t deviceId = db->addDevice(path) ;
     deviceIdsToBeFlushed.erase(deviceId) ;
     
-    if (traceOffloadEnabled) {
-      try {
-        if (offloaders.find(deviceId) != offloaders.end()) {
-          auto offloader = std::get<0>(offloaders[deviceId]) ;
-          if (offloader->continuous_offload()) {
-            offloader->stop_offload() ;
-            // To avoid a race condition, wait until the offloader has stopped
-            while(offloader->get_status() != OffloadThreadStatus::STOPPED) ;
-          }
-          else {
-            offloader->read_trace() ;
-            offloader->read_trace_end() ;
-          }
-          checkTraceBufferFullness(offloader, deviceId);
-        }
-      } catch (std::exception& /*e*/) {
-        // Reading the trace could throw an exception if ioctls fail.
-        //  We should continue and try to read the counters as well
-      }
+    if (traceOffloadEnabled && offloaders.find(deviceId) != offloaders.end()) {
+      auto offloader = std::get<0>(offloaders[deviceId]) ;
+      flushTraceOffloader(offloader);
+      checkTraceBufferFullness(offloader, deviceId);
     }
     if (counterOffloadEnabled) {
       readCounters() ;

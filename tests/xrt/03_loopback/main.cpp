@@ -28,14 +28,15 @@
 # pragma warning ( disable : 4996 )
 #endif
 
-static const int DATA_SIZE = 1024;
+static constexpr int DATA_SIZE = 1024;
 
 /**
  * Trivial loopback example which runs OpenCL loopback kernel. Does not use OpenCL
  * runtime but directly exercises the XRT driver API.
  */
 
-static void usage()
+static void
+usage()
 {
     std::cout << "usage: %s [options] -k <xclbin>\n\n";
     std::cout << "  -k <bitstream>\n";
@@ -46,7 +47,8 @@ static void usage()
     std::cout << "* Bitstream is required\n";
 }
 
-int run(int argc, char** argv)
+static int
+run(int argc, char** argv)
 {
   if (argc < 3) {
     usage();
@@ -113,7 +115,8 @@ int run(int argc, char** argv)
 }
 
 
-int main(int argc, char** argv)
+int
+main(int argc, char** argv)
 {
   try {
     auto ret = run(argc, argv);

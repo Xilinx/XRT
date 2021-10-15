@@ -23,6 +23,7 @@
 
 #include "core/common/config.h"
 #include "core/common/xclbin_parser.h"
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include <bitset>
 #include <cstdint>
@@ -63,6 +64,13 @@ XRT_CORE_COMMON_EXPORT
 xrt::run
 clone(const xrt::run& run);
 
+// This API is provide to allow implementations such as OpenCL
+// to dictate what kernel CUs to use.  For example sub-device
+// may restrict CUs.
+XRT_CORE_COMMON_EXPORT
+void
+set_cus(xrt::run& run, const std::bitset<128>& mask);
+
 XRT_CORE_COMMON_EXPORT
 const std::bitset<128>&
 get_cumask(const xrt::run& run);
@@ -74,7 +82,7 @@ get_num_cus(const xrt::run& run)
 }
 
 XRT_CORE_COMMON_EXPORT
-IP_CONTROL
+xrt::xclbin::ip::control_type
 get_control_protocol(const xrt::run& run);
 
 XRT_CORE_COMMON_EXPORT

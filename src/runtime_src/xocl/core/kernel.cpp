@@ -158,7 +158,16 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
   // Construct kernel run object for each device
   for (auto device: prog->get_device_range()) {
     xrt::kernel xkernel(device->get_xrt_device(), prog->get_xclbin_uuid(device), name);
-    m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrt::run(xkernel)})); // {device, xrt::run(xkernel)});
+
+    // The run object must limit the CUs to those of the OpenCL device,
+    // which could be a sub-device.  Since kernel is not tied to a particular
+    // device, we have to construct a kernel, run pair per device
+    xrt::run xrun{xkernel};
+    std::bitset<128> cumask; // magic 128 for max_cus
+    for (auto& cu : device->get_cus())
+      cumask.set(cu->get_index());
+    xrt_core::kernel_int::set_cus(xrun, cumask);
+    m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
   }
 
   // Iterate all kernel args and process runtime infomational
@@ -291,7 +300,7 @@ get_xrt_run(const device* device) const
     throw std::runtime_error("No kernel run object for device");
   return (*itr).second.xrun;
 }
- 
+
 kernel::memidx_bitmask_type
 kernel::
 get_memidx(const device* device, unsigned int argidx) const
