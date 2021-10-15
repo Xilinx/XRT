@@ -1379,6 +1379,9 @@ static ssize_t p2p_enable_store(struct device *dev, struct device_attribute *da,
 	ulong range = 0;
 	u32 val = 0;
 
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
 	if (kstrtou32(buf, 10, &val) == -EINVAL)
 		return -EINVAL;
 

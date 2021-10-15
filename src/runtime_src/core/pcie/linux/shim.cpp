@@ -1192,10 +1192,15 @@ int shim::cmaEnable(bool enable, uint64_t size)
          * 21 = 0x15
          * Let's find how many 1GB huge page we have to allocate
          */
+        std::string errmsg;
         uint64_t hugepage_flag = 0x1e;
-        uint64_t page_sz = 1 << 30;
+        uint64_t page_sz = 1 << 30, allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+
+        mDev->sysfs_get<uint64_t>("", "host_mem_size", errmsg, allocated_size, 0);
+        if (allocated_size == size)
+            return ret;
 
         cma_info.total_size = size;
         cma_info.entry_num = page_num;
