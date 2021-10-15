@@ -22,6 +22,7 @@
 namespace XBU = XBUtilities;
 
 #include "core/include/xrt.h"
+#include "core/common/query_requests.h"
 
 #include "core/common/system.h"
 #include "core/common/utils.h"
@@ -83,6 +84,7 @@ class DebugIpStatusCollector
 {
 
   xclDeviceHandle handle;
+  const xrt_core::device* device;
 
   std::string infoMessage ;
   std::vector<char> map;
@@ -101,7 +103,7 @@ class DebugIpStatusCollector
   xclAccelDeadlockDetectorResults  accelDeadlockResults;
 
 public :
-  DebugIpStatusCollector(xclDeviceHandle h, bool jsonFormat, std::ostream& _output = std::cout);
+  DebugIpStatusCollector(xclDeviceHandle h, bool jsonFormat, const xrt_core::device* d, std::ostream& _output = std::cout);
   ~DebugIpStatusCollector() {}
 
   inline std::string getInfoMessage() { return infoMessage ; }
@@ -140,9 +142,11 @@ private :
 
 
 DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
-					       bool jsonFormat,
-					       std::ostream& _output)
+                                               bool /*jsonFormat*/,
+                                               const xrt_core::device* d,
+                                               std::ostream& /*_output*/)
     : handle(h)
+    , device(d)
     , infoMessage("")
     , debugIpNum{0}
     , debugIpOpt{false}
@@ -156,6 +160,9 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
   // By default, enable status collection for all Debug IP types
   std::fill(debugIpOpt, debugIpOpt + DEBUG_IP_TYPE_MAX, true);
 
+  map = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(device);
+
+#if 0
 #ifdef _WIN32
   size_t sz1 = 0, sectionSz = 0;
   // Get the size of full debug_ip_layout
@@ -205,6 +212,7 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
     }
   }
 
+#endif
 #endif
 }
 
@@ -1802,7 +1810,7 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   pt.put("description","Status of Debug IPs present in xclbin loaded on device");
   auto handle = _pDevice->get_device_handle();
 
-  DebugIpStatusCollector collector(handle, true);
+  DebugIpStatusCollector collector(handle, true, _pDevice);
   if (collector.getInfoMessage() != "") {
     pt.put("info", collector.getInfoMessage().c_str()) ;
   } else {
