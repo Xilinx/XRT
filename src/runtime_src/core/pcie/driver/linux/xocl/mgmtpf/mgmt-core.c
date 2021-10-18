@@ -932,17 +932,17 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		/*
+		 * On versal, there is no icap mgmt;
+		 * On VMR system, there is no icap mgmt and clock subdev;
+		 */
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
-		if (ret == -ENODEV) {
-			if (XGQ_CB(lro))
-				ret = xocl_xgq_freq_scaling(lro,
-					clk->ocl_target_freq,
-					ARRAY_SIZE(clk->ocl_target_freq), 1);
-			else
-				ret = xocl_clock_freq_scaling_by_request(lro,
-					clk->ocl_target_freq,
-					ARRAY_SIZE(clk->ocl_target_freq), 1);
-		}
+		if (ret == -ENODEV)
+			ret = xocl_clock_freq_scaling_by_request(lro,
+				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
+		if (ret == -ENODEV)
+			ret = xocl_xgq_freq_scaling(lro,
+				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
