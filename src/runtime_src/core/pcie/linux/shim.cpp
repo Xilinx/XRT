@@ -1194,9 +1194,15 @@ int shim::cmaEnable(bool enable, uint64_t size)
          */
         std::string errmsg;
         uint64_t hugepage_flag = 0x1e;
-        uint64_t page_sz = 1 << 30, allocated_size = 0;
+        uint64_t page_sz = 1 << 30;
+        uint64_t allocated_size = 0;
         uint32_t page_num = size >> 30;
         drm_xocl_alloc_cma_info cma_info = {0};
+
+        /* We check the sysfs node host_mem_size first before going forward
+         * If the same size of host memory chunk is allocated
+         * then return 0 as SUCCESS
+         */
 
         mDev->sysfs_get<uint64_t>("", "host_mem_size", errmsg, allocated_size, 0);
         if (allocated_size == size)
