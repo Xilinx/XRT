@@ -40,7 +40,6 @@ public:
   using compute_unit_range = compute_unit_vector_type;
   using compute_unit_iterator = compute_unit_vector_type::const_iterator;
   using memidx_type = xclbin::memidx_type;
-  using connidx_type = xclbin::connidx_type;
 
   /**
    * Construct an xocl::device.
@@ -420,33 +419,6 @@ public:
   void
   read_image(memory* image,const size_t* origin,const size_t* region,size_t row_pitch,size_t slice_pitch,void *ptr);
 
-  int
-  get_stream(xrt_xocl::device::stream_flags flags, xrt_xocl::device::stream_attrs attrs, const cl_mem_ext_ptr_t* ext, xrt_xocl::device::stream_handle* stream, int32_t& m_conn);
-
-  int
-  close_stream(xrt_xocl::device::stream_handle stream, int connidx);
-
-  ssize_t
-  write_stream(xrt_xocl::device::stream_handle stream, const void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req);
-
-  ssize_t
-  read_stream(xrt_xocl::device::stream_handle stream, void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req);
-
-  xrt_xocl::device::stream_buf
-  alloc_stream_buf(size_t size, xrt_xocl::device::stream_buf_handle* handle);
-
-  int
-  free_stream_buf(xrt_xocl::device::stream_buf_handle handle);
-
-  int
-  set_stream_opt(xrt_xocl::device::stream_handle stream, int type, uint32_t val);
-
-  int
-  poll_stream(xrt_xocl::device::stream_handle stream, xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
-
-  int
-  poll_streams(xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout);
-
   /**
    * Read a device register at specified offset
    *
@@ -684,9 +656,6 @@ public:
    */
   size_t
   get_num_cdmas() const;
-
-  void
-  clear_connection(connidx_type conn);
 
 private:
 

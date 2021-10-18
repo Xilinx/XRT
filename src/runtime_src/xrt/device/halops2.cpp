@@ -69,16 +69,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mCountTrace(0)
   ,mReadTrace(0)
   ,mDebugReadIPStatus(0)
-  ,mCreateWriteQueue(0)
-  ,mCreateReadQueue(0)
-  ,mDestroyQueue(0)
-  ,mAllocQDMABuf(0)
-  ,mFreeQDMABuf(0)
-  ,mWriteQueue(0)
-  ,mReadQueue(0)
-  ,mPollQueues(0)
-  ,mPollQueue(0)
-  ,mSetQueueOpt(0)
   ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
@@ -117,17 +107,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mLockDevice = (lockDeviceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclLockDevice");
   mUnlockDevice = (unlockDeviceFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclUnlockDevice");
   mGetDeviceInfo = (getDeviceInfoFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceInfo2");
-
-  mCreateWriteQueue = (createWriteQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCreateWriteQueue");
-  mCreateReadQueue = (createReadQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclCreateReadQueue");
-  mDestroyQueue = (destroyQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclDestroyQueue");
-  mAllocQDMABuf = (allocQDMABufFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclAllocQDMABuf");
-  mFreeQDMABuf = (freeQDMABufFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclFreeQDMABuf");
-  mWriteQueue = (writeQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclWriteQueue");
-  mReadQueue = (readQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclReadQueue");
-  mPollQueues = (pollQueuesFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollCompletion");
-  mPollQueue = (pollQueueFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclPollQueue");
-  mSetQueueOpt = (setQueueOptFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclSetQueueOpt");
 
   // Profiling Functions
   mGetDeviceTime = (getDeviceTimeFuncType)xrt_core::dlsym(const_cast<void *>(mDriverHandle), "xclGetDeviceTimestamp");

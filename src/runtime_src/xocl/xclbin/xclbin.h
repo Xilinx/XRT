@@ -42,7 +42,6 @@ public:
   // of mem_topology.m_count.  Unfortunately it is a compile time constant.
   // A better solution must be found (boost::dynamic_bitset<>???)
   using memidx_type = int32_t;
-  using connidx_type = int32_t;
   static constexpr memidx_type max_banks = 256;
   using memidx_bitmask_type = std::bitset<max_banks>;
 
@@ -223,24 +222,6 @@ public:
   XRT_XOCL_EXPORT
   std::string
   memidx_to_banktag(memidx_type memidx) const;
-
-  /**
-   * Get the memory index for a given kernel name for specific arg.
-   *
-   * @param kernel_name
-       Kernel name to  retrieve the memory index for
-   * @param arg
-       Index of arg to retrieve the memory index for
-   * @param conn
-   *   Index into the connectivity section allocated.
-   * @return
-   *   Memory idx
-   */
-  memidx_type
-  get_memidx_from_arg(const std::string& kernel_name, int32_t arg, connidx_type& conn);
-
-  void
-  clear_connection(connidx_type index);
 
   /**
    * Get the memory index with the specified tag.

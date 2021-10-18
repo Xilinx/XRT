@@ -68,16 +68,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   ,mCountTrace(0)
   ,mReadTrace(0)
   ,mDebugReadIPStatus(0)
-  ,mCreateWriteQueue(0)
-  ,mCreateReadQueue(0)
-  ,mDestroyQueue(0)
-  ,mAllocQDMABuf(0)
-  ,mFreeQDMABuf(0)
-  ,mWriteQueue(0)
-  ,mReadQueue(0)
-  ,mPollQueues(0)
-  ,mPollQueue(0)
-  ,mSetQueueOpt(0)
   ,mGetDebugIpLayout(0)
   ,mGetNumLiveProcesses(0)
   ,mGetSysfsPath(0)
@@ -120,17 +110,6 @@ operations(const std::string &fileName, void *fileHandle, unsigned int count)
   mLockDevice = &xclLockDevice;
   mUnlockDevice = &xclUnlockDevice;
   mGetDeviceInfo = &xclGetDeviceInfo2;
-
-  mCreateWriteQueue = &xclCreateWriteQueue;
-  mCreateReadQueue = &xclCreateReadQueue;
-  mDestroyQueue = &xclDestroyQueue;
-  mAllocQDMABuf = &xclAllocQDMABuf;
-  mFreeQDMABuf = &xclFreeQDMABuf;
-  mWriteQueue = &xclWriteQueue;
-  mReadQueue = &xclReadQueue;
-  mPollQueues = &xclPollCompletion;
-  mPollQueue = &xclPollQueue;
-  mSetQueueOpt = &xclSetQueueOpt;
 
 #if 0
   // Profiling Functions

@@ -114,12 +114,5 @@ EXPORTS
   xclGetMemObjDeviceAddress
   xclGetMemObjectFd
   xclGetMemObjectFromFd
-  clCreateStream
-  clReleaseStream
-  clWriteStream
-  clReadStream
-  clCreateStreamBuffer
-  clReleaseStreamBuffer
-  clPollStreams
   xclGetXrtDevice
   xclGetComputeUnitInfo

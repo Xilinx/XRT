@@ -259,14 +259,6 @@ get_mem_domain(const memory* mem)
   return xrt_xocl::device::memoryDomain::XRT_DEVICE_RAM;
 }
 
-void
-device::
-clear_connection(connidx_type conn)
-{
-  assert(conn!=-1);
-  m_metadata.clear_connection(conn);
-}
-
 device::buffer_object_handle
 device::
 alloc(memory* mem, memidx_type memidx)
@@ -303,122 +295,6 @@ alloc(memory* mem, memidx_type memidx)
     m_xdevice->unmap(boh);
   }
   return boh;
-}
-
-int
-device::
-get_stream(xrt_xocl::device::stream_flags flags, xrt_xocl::device::stream_attrs attrs,
-           const cl_mem_ext_ptr_t* ext, xrt_xocl::device::stream_handle* stream, int32_t& conn)
-{
-  uint64_t route = std::numeric_limits<uint64_t>::max();
-  uint64_t flow = std::numeric_limits<uint64_t>::max();
-
-  if(ext && ext->param) {
-    auto kernel = xocl::xocl(ext->kernel);
-
-    auto& kernel_name = kernel->get_name();
-    auto memidx = m_metadata.get_memidx_from_arg(kernel_name,ext->flags,conn);
-    auto mems = m_metadata.get_mem_topology();
-
-    if (!mems)
-      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section does not exist");
-
-    if(memidx<0 || (memidx+1)>mems->m_count)
-      throw xocl::error(CL_INVALID_OPERATION,"Mem topology section count is less than memidex");
-
-    auto& mem = mems->m_mem_data[memidx];
-    route = mem.route_id;
-    flow = mem.flow_id;
-
-    auto read = strstr((const char*)mem.m_tag, "_r");
-    auto write = strstr((const char*)mem.m_tag, "_w");
-
-    //TODO: Put an assert/throw if both read and write are not set, but currently that check will break as full m_tag not yet available
-
-    if(read && !(flags & XCL_STREAM_WRITE_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,
-                        "Connecting a kernel write only stream to non-user-read stream, argument " + std::to_string(ext->flags));
-
-    if(write &&  !(flags & XCL_STREAM_READ_ONLY))
-      throw xocl::error(CL_INVALID_OPERATION,
-                        "Connecting a kernel read stream to non-user-write stream, argument " + std::to_string(ext->flags));
-
-    if(mem.m_type != MEM_STREAMING)
-      throw xocl::error(CL_INVALID_OPERATION,
-           "Connecting a streaming argument to non-streaming bank");
-
-    xocl(kernel)->set_argument(ext->flags,sizeof(cl_mem),nullptr);
-  }
-
-  int rc = 0;
-  if (flags & XCL_STREAM_WRITE_ONLY)  // kernel writes, user reads
-    rc = m_xdevice->createReadStream(flags, attrs, route, flow, stream);
-  else if (flags & XCL_STREAM_READ_ONLY) // kernel reads, user writes
-    rc = m_xdevice->createWriteStream(flags, attrs, route, flow, stream);
-  else
-    throw xocl::error(CL_INVALID_OPERATION,"Unknown stream type specified");
-
-  if(rc)
-    throw xocl::error(CL_INVALID_OPERATION,"Create stream failed");
-  return rc;
-}
-
-int
-device::
-close_stream(xrt_xocl::device::stream_handle stream, int connidx)
-{
-  assert(connidx!=-1);
-  clear_connection(connidx);
-  return m_xdevice->closeStream(stream);
-}
-
-ssize_t
-device::
-write_stream(xrt_xocl::device::stream_handle stream, const void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req)
-{
-  return m_xdevice->writeStream(stream, ptr, size, req);
-}
-
-ssize_t
-device::
-read_stream(xrt_xocl::device::stream_handle stream, void* ptr, size_t size, xrt_xocl::device::stream_xfer_req* req)
-{
-  return m_xdevice->readStream(stream, ptr, size, req);
-}
-
-xrt_xocl::device::stream_buf
-device::
-alloc_stream_buf(size_t size, xrt_xocl::device::stream_buf_handle* handle)
-{
-  return m_xdevice->allocStreamBuf(size,handle);
-}
-
-int
-device::
-free_stream_buf(xrt_xocl::device::stream_buf_handle handle)
-{
-  return m_xdevice->freeStreamBuf(handle);
-}
-
-int
-device::
-poll_streams(xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
-{
-  return m_xdevice->pollStreams(comps, min,max,actual,timeout);
-}
-
-int
-device::
-poll_stream(xrt_xocl::device::stream_handle stream, xrt_xocl::device::stream_xfer_completions* comps, int min, int max, int* actual, int timeout)
-{
-  return m_xdevice->pollStream(stream, comps, min,max,actual,timeout);
-}
-
-int
-device::
-set_stream_opt(xrt_xocl::device::stream_handle stream, int type, uint32_t val)
-{
-  return m_xdevice->setStreamOpt(stream, type, val);
 }
 
 device::
