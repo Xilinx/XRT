@@ -324,8 +324,13 @@ public:
       auto kargimpl = std::make_shared<arg_impl>();
 
       // Populate argument with union of compute units arguments at argidx
-      for (const auto& cu : m_cus) {
+      for (const auto& cu : m_cus) { // xclbin::ip
         auto cuimpl = cu.get_handle();
+
+        // set the address range size, which is a property of the kernel
+        // when it should be a proeprty of the compute unit (ip_layout)
+        cuimpl->set_size(m_properties.address_range);
+        
         // get cu argument at argidx, create if necessary when
         // argument at index is a scalar not part of connectivity
         auto cuarg = cuimpl->create_arg_if_new(argidx);  // xclbin::arg
