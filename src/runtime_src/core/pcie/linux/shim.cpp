@@ -1464,25 +1464,25 @@ int shim::xclLoadAxlf(const axlf *buffer)
     axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
 
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    if(ret && errno == EAGAIN) {
+    if (ret && errno == EAGAIN) {
         //special case for aws
-        //if EGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
         //wait and reload 2nd time -- this time the there will be no device id
         //change, hence no pcie removal&rescan, anymore
-        int dev_offline = -1;
+        int dev_hotplug_done = 0;
         std::string err;
         dev_fini();
         std::this_thread::sleep_for(std::chrono::seconds(5));
-        while (dev_offline) {
+        while (!dev_hotplug_done) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
-                "dev_offline", err, dev_offline, -1);
+                "dev_hotplug_done", err, dev_hotplug_done, 0);
         }
         dev_init();
         ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     }
     
-    if(ret)
+    if (ret)
         return -errno;
 
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN

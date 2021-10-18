@@ -26,6 +26,7 @@
 #include "core/pcie/driver/linux/include/mailbox_proto.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/pcie/linux/scan.h"
+#include "core/pcie/linux/shim.h"
 #include "../mpd_plugin.h"
 #include "../common.h"
 #include "../sw_msg.h"
@@ -126,6 +127,7 @@ private:
 #else
     int sleepUntilLoaded( const std::string &afi, fpga_mgmt_image_info* new_afi );
     char* get_afi_from_axlf(const axlf * buffer);
+    int index;
 #endif
 };
 

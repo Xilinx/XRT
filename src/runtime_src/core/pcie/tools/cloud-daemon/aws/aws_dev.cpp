@@ -457,8 +457,44 @@ int awsReadP2pBarAddr(size_t index, const xcl_mailbox_p2p_bar_addr *addr, int *r
 #ifndef INTERNAL_TESTING_FOR_AWS
 static void awsPciRescan(int index)
 {
+    std::string sysfs_name = pcidev::get_dev(index, true)->sysfs_name;
+    int mBoardNumber = index_map[sysfs_name];
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    fpga_pci_rescan_slot_app_pfs(index);
+    int dev_offline = -1;
+    std::string err;
+    xclDeviceHandle handle;
+    uint64_t hostmem_size;
+    int ret;
+    
+    // removal & rescan will make the host mem configed lost. so if there is host mem config
+    // save the info and reconfig it after the removal & rescan
+    pcidev::get_dev(index)->sysfs_get("", "host_mem_size", err, hostmem_size, static_cast<uint64_t>(0));
+    if (hostmem_size)
+        std::cout << "host mem config information saved: " << hostmem_size << std::endl;
+    
+    fpga_pci_rescan_slot_app_pfs(mBoardNumber);
+    while (dev_offline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        pcidev::get_dev(index)->sysfs_get<int>("", "dev_offline", err, dev_offline, -1);
+    }
+    if (!hostmem_size)
+        goto done;
+    
+    handle = xclOpen(index, nullptr, XCL_QUIET);
+    // there is no way to return this failure, if any, to user
+    // so just save log in case there is failure here
+    if (!handle) {
+        std::cerr << "host mem config not recovered" << std::endl;
+        goto done;
+    }
+    std::cout << "host mem reconfig (size: " << hostmem_size << ")..." << std::endl;
+    ret = xclCmaEnable(handle, true, hostmem_size);
+    std::cout << "host mem reconfig: " << ret << std::endl;
+    xclClose(handle);
+    
+done:
+    //tell the user xclbin load ioctl can be re-issued now
+    pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
 }
 #endif
 
@@ -529,10 +565,12 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     std::cout << "shell version after load: 0x" <<  imageInfoNew.sh_version << std::dec << std::endl;
     if (imageInfoOld.spec.map[FPGA_APP_PF].device_id != imageInfoNew.ids.afi_device_ids.device_id ||
         imageInfoOld.sh_version != imageInfoNew.sh_version) {
-            std::cout << "pci removal & rescan..." << std::endl;
-            if (rescan_thread[mBoardNumber].joinable())
-                    rescan_thread[mBoardNumber].join();
-            rescan_thread[mBoardNumber]  = std::thread(awsPciRescan, mBoardNumber);
+        std::cout << "pci removal & rescan..." << std::endl;
+        pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", errmsg, 0);
+	    
+        if (rescan_thread[mBoardNumber].joinable())
+                rescan_thread[mBoardNumber].join();
+        rescan_thread[mBoardNumber]  = std::thread(awsPciRescan, index);
         return -EAGAIN;
     }
     
@@ -709,6 +747,7 @@ AwsDev::AwsDev(size_t index, const char *logfileName)
 #else
     fpga_mgmt_init(); // aws-fpga version newer than 09/2019 need this
     mBoardNumber = index_map[sysfs_name];
+    this->index = index;
     //bar0 is mapped already. seems other 2 bars are not required.
 #endif
 }
