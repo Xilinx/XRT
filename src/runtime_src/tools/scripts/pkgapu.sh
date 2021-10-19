@@ -1,4 +1,19 @@
 #!/bin/bash
+#
+# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+#
+
+# This script creates rpm and deb packages for Versal APU firmware.
+# The firmware file (.xsabin) is installed to /lib/firmware/xilinx
+#
+# The script is assumed to run on a host or docker that has all the
+# necessary tools is accessible.
+#     mkimage
+#     xclbinutil
+#     bootgen
+#     rpmbuild
+#     dpkg-deb 
+#
 
 error()
 {
@@ -12,7 +27,7 @@ usage()
 	echo "  options:"
 	echo "          -help                           Print this usage"
 	echo "          -images                         Versal images path"
-	echo "          -setup                          Setup file to use"
+	echo "          -petalinux                      Petalinux path"
 	echo "          -clean                          Remove build files"
         echo "          -output                         output path"
 	echo ""
@@ -88,16 +103,6 @@ EOF
 	cp $dir/RPMS/noarch/*.rpm $PACKAGE_DIR
 }
 
-SETTINGS_FILE="petalinux.build"
-
-THIS_SCRIPT=`readlink -f ${BASH_SOURCE[0]}`
-THIS_SCRIPT_DIR="$( cd "$( dirname "${THIS_SCRIPT}" )" >/dev/null 2>&1 && pwd )"
-BUILD_DIR="$THIS_SCRIPT_DIR/apu_build"
-PACKAGE_DIR="$BUILD_DIR"
-FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
-INSTALL_ROOT="$BUILD_DIR/lib"
-PKG_NAME="xrt-apu"
-
 SYSTEM_DTB_ADDR="0x1000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
@@ -111,10 +116,6 @@ while [ $# -gt 0 ]; do
 		-images )
 			shift
 			IMAGES_DIR=$1
-			;;
-		-setup )
-			shift
-			SETTINGS_FILE=$1
 			;;
                 -output )
 			shift
@@ -130,6 +131,20 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
+if [[ ! -d $IMAGES_DIR ]]; then
+	error "Please specify the valid path of APU images by -images"
+fi
+
+if [[ ! -d $OUTPUT_DIR ]]; then
+	error "Please specify the valid output path by -output"
+fi
+
+BUILD_DIR="$OUTPUT_DIR/apu_build"
+PACKAGE_DIR="$BUILD_DIR"
+FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
+INSTALL_ROOT="$BUILD_DIR/lib"
+PKG_NAME="xrt-apu"
+
 if [[ $clean == 1 ]]; then
 	echo $PWD
 	echo "/bin/rm -rf $BUILD_DIR"
@@ -139,10 +154,6 @@ fi
 
 if [ -f $SETTINGS_FILE ]; then
 	source $SETTINGS_FILE
-fi
-MKIMAGE="$PETALINUX/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage"
-if [ ! -f $MKIMAGE ]; then
-	error "Can not find mkimage(1) at $MKIMAGE"
 fi
 
 PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
@@ -154,7 +165,11 @@ echo VERSION "$PKG_VER"
 if [ -d $BUILD_DIR ]; then
 	rm -rf $BUILD_DIR
 fi
+
 mkdir -p $BUILD_DIR
+if [[ ! -d $BUILD_DIR ]]; then
+	error "failed to create dir $BUILD_DIR"
+fi
 
 #
 # Generate Linux PDI
@@ -184,7 +199,7 @@ UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
-$MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
+mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
 if [[ ! -e $UBOOT_SCRIPT ]]; then
 	error "failed to generate uboot script"
 fi
@@ -195,7 +210,7 @@ fi
 IMAGE="$IMAGES_DIR/Image"
 IMAGE_UB="$BUILD_DIR/Image.ub"
 IMAGE_ELF_START="0x80000"
-$MKIMAGE -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
+mkimage -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
 if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
@@ -218,7 +233,6 @@ fi
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
 
-if [[ "X$OUTPUT_DIR" != "X" ]]; then
-	cp $BUILD_DIR/*.rpm $OUTPUT_DIR
-	cp $BUILD_DIR/*.deb $OUTPUT_DIR
-fi 
+cp $BUILD_DIR/*.rpm $OUTPUT_DIR
+cp $BUILD_DIR/*.deb $OUTPUT_DIR
+rm -rf $BUILD_DIR
