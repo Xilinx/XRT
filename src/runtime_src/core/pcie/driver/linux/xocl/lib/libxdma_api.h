@@ -172,6 +172,8 @@ int xdma_user_isr_disable(void *dev_hndl, unsigned int mask);
 ssize_t xdma_xfer_submit(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			struct sg_table *sgt, bool dma_mapped, int timeout_ms,
 		       	struct xdma_io_cb *cb);
+ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
+			struct sg_table *sgt, bool dma_mapped, int timeout_ms);
 			
 /*
  * xdma_device_online - bring device offline
