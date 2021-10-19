@@ -95,26 +95,6 @@ std::vector<unsigned char> read_binary_file(const std::string& xclbin_file_name)
 bool is_emulation();
 bool is_hw_emulation();
 bool is_xpr_device(const char* device_name);
-class Stream {
-   public:
-    static decltype(&clCreateStream) createStream;
-    static decltype(&clReleaseStream) releaseStream;
-    static decltype(&clReadStream) readStream;
-    static decltype(&clWriteStream) writeStream;
-    static decltype(&clPollStreams) pollStreams;
-    static void init(const cl_platform_id& platform) {
-        void* bar = clGetExtensionFunctionAddressForPlatform(platform, "clCreateStream");
-        createStream = (decltype(&clCreateStream))bar;
-        bar = clGetExtensionFunctionAddressForPlatform(platform, "clReleaseStream");
-        releaseStream = (decltype(&clReleaseStream))bar;
-        bar = clGetExtensionFunctionAddressForPlatform(platform, "clReadStream");
-        readStream = (decltype(&clReadStream))bar;
-        bar = clGetExtensionFunctionAddressForPlatform(platform, "clWriteStream");
-        writeStream = (decltype(&clWriteStream))bar;
-        bar = clGetExtensionFunctionAddressForPlatform(platform, "clPollStreams");
-        pollStreams = (decltype(&clPollStreams))bar;
-    }
-};
 class P2P {
    public:
     static decltype(&xclGetMemObjectFd) getMemObjectFd;

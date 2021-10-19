@@ -53,15 +53,6 @@ public:
   using direction = hal::device::direction;
   using memoryDomain = hal::device::Domain;
   using queue_type = hal::queue_type;
-  using stream_handle = hal::StreamHandle;
-  using stream_flags = hal::StreamFlags;
-  using stream_attrs = hal::StreamAttributes;
-  using stream_xfer_flags = hal::StreamXferFlags;
-  using stream_buf = hal::StreamBuf;
-  using stream_buf_handle = hal::StreamBufHandle;
-
-  using stream_xfer_req = hal::StreamXferReq;
-  using stream_xfer_completions = hal::StreamXferCompletions;
   using device_handle = hal::device_handle;
 
   explicit
@@ -478,67 +469,6 @@ public:
   void
   write_cache(const buffer_object_handle& bo,void* user);
 #endif
-
-//Streaming APIs
-  int
-  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
-  {
-    return m_hal->createWriteStream(flags, attr, route, flow, stream);
-  }
-
-  int
-  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream)
-  {
-    return m_hal->createReadStream(flags, attr, route, flow, stream);
-  };
-
-  int
-  closeStream(hal::StreamHandle stream)
-  {
-    return m_hal->closeStream(stream);
-  };
-
-  int
-  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val)
-  {
-    return m_hal->setStreamOpt(stream, type, val);
-  }
-
-  int
-  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
-  {
-    return m_hal->pollStream(stream, comps, min,max,actual,timeout);
-  };
-
-  hal::StreamBuf
-  allocStreamBuf(size_t size, hal::StreamBufHandle *buf)
-  {
-    return m_hal->allocStreamBuf(size, buf);
-  };
-
-  int
-  freeStreamBuf(hal::StreamBufHandle buf)
-  {
-    return m_hal->freeStreamBuf(buf);
-  };
-
-  ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req)
-  {
-    return m_hal->writeStream(stream, ptr, size, req);
-  };
-
-  ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req)
-  {
-    return m_hal->readStream(stream, ptr, size, req);
-  };
-
-  int
-  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout)
-  {
-    return m_hal->pollStreams(comps, min,max,actual,timeout);
-  };
 
 private:
   void retain(const buffer_object_handle& bo)
