@@ -975,15 +975,21 @@ static int icap_download_boot_firmware(struct platform_device *pdev)
 		 * under /lib/firmware/xilinx regardless there is an ert fw 
 		 * in partition.xsabin or not
 		 */
-		mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
-				PARTITION_METADATA);
-		if (mbHeader) {
-			const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
-				fw_buf + mbHeader->m_sectionOffset);
-			if (ert_ver) {
-				snprintf(bin, sizeof(bin), 
-					"xilinx/sched_%s.bin", ert_ver);
-				sched_bin = bin;
+
+		if (!sched_bin) {
+			mbHeader = xrt_xclbin_get_section_hdr(bin_obj_axlf,
+					PARTITION_METADATA);
+			if (mbHeader) {
+				const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+					fw_buf + mbHeader->m_sectionOffset);
+
+				if (ert_ver && !strncmp(ert_ver, "legacy", 6)) {
+					sched_bin = "xilinx/sched.bin";
+				} else if (ert_ver) {
+					snprintf(bin, sizeof(bin),
+						"xilinx/sched_%s.bin", ert_ver);
+					sched_bin = bin;
+				}
 			}
 		}
 
@@ -4329,14 +4335,18 @@ static ssize_t icap_write_rp(struct file *filp, const char __user *data,
 	 * under /lib/firmware/xilinx regardless there is an ert fw 
 	 * in partition.xsabin or not
 	 */
-	section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
-	if (section) {
-		const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
-			(char *)axlf + section->m_sectionOffset);
-		if (ert_ver) {
-			snprintf(bin, sizeof(bin), 
-				"xilinx/sched_%s.bin", ert_ver);
-			sched_bin = bin;
+	if (!sched_bin) {
+		section = xrt_xclbin_get_section_hdr(axlf, PARTITION_METADATA);
+		if (section) {
+			const char *ert_ver = xocl_fdt_get_ert_fw_ver(xdev,
+				(char *)axlf + section->m_sectionOffset);
+			if (ert_ver && !strncmp(ert_ver, "legacy", 6)) {
+				sched_bin = "xilinx/sched.bin";
+			} else if (ert_ver) {
+				snprintf(bin, sizeof(bin),
+					"xilinx/sched_%s.bin", ert_ver);
+				sched_bin = bin;
+			}
 		}
 	}
 
