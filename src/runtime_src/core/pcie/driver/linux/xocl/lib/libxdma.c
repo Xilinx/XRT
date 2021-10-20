@@ -3336,6 +3336,15 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		}
 		fastpath_desc_clear_last(engine, engine->f_submitted_desc_cnt);
 		val = read_register(&engine->regs->status_rc);
+		if (((engine->dir == DMA_FROM_DEVICE) &&
+		    (val & XDMA_STAT_C2H_ERR_MASK)) ||
+		    ((engine->dir == DMA_TO_DEVICE) &&
+		    (val & XDMA_STAT_H2C_ERR_MASK))) {
+			pr_err("engine %s, status error 0x%x.\n", engine->name,
+			        engine->status);
+			engine_status_dump(engine);
+			engine_reg_dump(engine);
+		}
 		write_register(XDMA_CTRL_RUN_STOP, &engine->regs->control_w1c,
 			       (unsigned long)(&engine->regs->control_w1c) -
 			       (unsigned long)(&engine->regs));

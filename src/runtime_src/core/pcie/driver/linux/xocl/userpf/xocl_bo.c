@@ -1078,8 +1078,10 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 		import_offset = ert_copybo_dst_offset(cmd);
 		dir = 0;
 	} else {
-		/* dst is local */
-		DRM_ERROR("reading from remote BO, performance degraded");
+		/*
+		 * dst is local
+		 * reading from remote BO, performance degraded"
+		 */
 		local_xobj = dst_xobj;
 		local_offset = ert_copybo_dst_offset(cmd);
 		import_xobj = src_xobj;
