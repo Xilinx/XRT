@@ -3324,6 +3324,7 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 						 msecs_to_jiffies(10000))) {
 			pr_err("Wait for request timed out");
 			engine_reg_dump(engine);
+			check_nonzero_interrupt_status(engine->xdev);
 			ret = -EIO;
 		} else {
 			val = read_register(&engine->regs->completed_desc_count);
