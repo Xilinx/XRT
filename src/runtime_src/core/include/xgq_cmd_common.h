@@ -87,26 +87,26 @@ enum xgq_cmd_opcode {
 
 	XGQ_CMD_OP_DOWNLOAD_PDI		= 0xa,
 	XGQ_CMD_OP_CLOCK		= 0xb,
-	XGQ_CMD_OP_VMC			= 0xc,
+	XGQ_CMD_OP_SENSOR		= 0xc,
 
 	/* User command type */
-	XGQ_CMD_OP_START_CUIDX	            = 0x100,
-	XGQ_CMD_OP_START_CUIDX_INDIR	    = 0x101,
-	XGQ_CMD_OP_START_CUIDX_KV	        = 0x102,
-	XGQ_CMD_OP_START_CUIDX_KV_INDIR	    = 0x103,
-	XGQ_CMD_OP_INIT_CUIDX	            = 0x104,
-	XGQ_CMD_OP_INIT_CUIDX_INDIR         = 0x105,
-	XGQ_CMD_OP_INIT_CUIDX_KV	        = 0x106,
-	XGQ_CMD_OP_INIT_CUIDX_KV_INDIR	    = 0x107,
-	XGQ_CMD_OP_CFG_START	            = 0x108,
-	XGQ_CMD_OP_CFG_END	                = 0x109,
-	XGQ_CMD_OP_CFG_CU	                = 0x10a,
-	XGQ_CMD_OP_QUERY_CU	                = 0x10b,
+	XGQ_CMD_OP_START_CUIDX	        = 0x100,
+	XGQ_CMD_OP_START_CUIDX_INDIR	= 0x101,
+	XGQ_CMD_OP_START_CUIDX_KV	= 0x102,
+	XGQ_CMD_OP_START_CUIDX_KV_INDIR	= 0x103,
+	XGQ_CMD_OP_INIT_CUIDX	        = 0x104,
+	XGQ_CMD_OP_INIT_CUIDX_INDIR     = 0x105,
+	XGQ_CMD_OP_INIT_CUIDX_KV	= 0x106,
+	XGQ_CMD_OP_INIT_CUIDX_KV_INDIR	= 0x107,
+	XGQ_CMD_OP_CFG_START	        = 0x108,
+	XGQ_CMD_OP_CFG_END	        = 0x109,
+	XGQ_CMD_OP_CFG_CU	        = 0x10a,
+	XGQ_CMD_OP_QUERY_CU	        = 0x10b,
 
 	/* Common command type */
-	XGQ_CMD_OP_BARRIER					= 0x200,
-	XGQ_CMD_OP_EXIT_ERT					= 0x201,
-	XGQ_CMD_OP_IDENTIFY					= 0x202,
+	XGQ_CMD_OP_BARRIER		= 0x200,
+	XGQ_CMD_OP_EXIT_ERT		= 0x201,
+	XGQ_CMD_OP_IDENTIFY		= 0x202,
 };
 
 enum xgq_cmd_addr_type {
@@ -317,38 +317,6 @@ struct xgq_cmd_resp_identify {
 
 struct xgq_cmd_exit_ert {
 	struct xgq_cmd_sq_hdr  hdr;
-};
-
-struct xgq_cmd_log_payload {
-	uint64_t address;
-	uint32_t size;
-	uint32_t pid:16;
-	uint32_t addr_type:4;
-	uint32_t rsvd1:12;
-};
-
-struct xgq_cmd_clock_payload {
-	uint32_t ocl_region;
-	uint32_t num_clock;
-	uint8_t  ocl_target_freq[4];
-};
-
-struct xgq_cmd_data_payload {
-	uint64_t address;
-	uint32_t size;
-	uint32_t addr_type:4;
-	uint32_t rsvd1:28;
-	uint32_t pad1;
-};
-
-struct xgq_cmd_sq {
-	struct xgq_cmd_sq_hdr hdr;
-	union {
-		struct xgq_cmd_log_payload 	log_payload;
-		struct xgq_cmd_clock_payload 	clock_payload;
-		struct xgq_cmd_data_payload 	pdi_payload;
-		struct xgq_cmd_data_payload 	xclbin_payload;
-	};
 };
 
 #endif

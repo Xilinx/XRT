@@ -9,7 +9,7 @@
 
 #include "xrt_xclbin.h"
 #include "../xocl_drv.h"
-#include "xgq_cmd_common.h"
+#include "xgq_cmd_vmr.h"
 #include "../xgq_xocl_plat.h"
 #include <linux/time.h>
 
@@ -118,6 +118,8 @@ struct xocl_xgq {
 	bool			xgq_halted;
 	bool			xgq_data_transfer_inuse;
 	int 			xgq_cmd_id;
+	void			*sensor_data;
+	u32			sensor_data_length;
 };
 
 /*
@@ -152,9 +154,10 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xgq_com_queue_entry *ccmd)
 void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
 {
 	u32 i = 0;
+	u32 *buffer = (u32 *)ccmd;
 
 	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / 4; i++)
-		ccmd->data[i] = xgq_reg_read32(0, addr + i * 4);
+		buffer[i] = xgq_reg_read32(0, addr + i * 4);
 
 	// Write 0 to first word to make sure the cmd state is not NEW
 	xgq_reg_write32(0, addr, 0x0);
@@ -450,6 +453,13 @@ static u64 memcpy_to_devices(struct xocl_xgq *xgq, const void *xclbin_data,
 	return XOCL_XGQ_DATA_OFFSET;
 }
 
+static void memcpy_from_devices(struct xocl_xgq *xgq, void *dst,
+	size_t count)
+{
+	void __iomem *src = xgq->xgq_ring_base + XOCL_XGQ_DATA_OFFSET;
+	memcpy_fromio(dst, src, count);
+}
+
 static inline int get_xgq_cid(struct xocl_xgq *xgq)
 {
 	int id = 0;
@@ -541,6 +551,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	} else {
 		ret = xclbin_len;
 	}
+	ret = xclbin_len;
 done:
 	if (cmd) {
 		remove_xgq_cid(xgq, id);
@@ -634,6 +645,146 @@ done:
 		remove_xgq_cid(xgq, id);
 		kfree(cmd);
 	}
+	return ret;
+}
+
+/* On versal, verify is enforced. */
+static int xgq_freq_scaling(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs, int verify)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_clock_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+	int i = 0;
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	payload = &(cmd->xgq_cmd_entry.clock_payload);
+	/*TODO check num_freqs boundry */
+	payload->num_clock = num_freqs;
+	for (i = 0; i < num_freqs; i++)
+		payload->ocl_target_freq[i] = freqs[i];
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_CLOCK;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+	} 
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
+
+	return ret;
+}
+
+static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
+{
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	/* reset to all 0 first */
+	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
+	payload = &(cmd->xgq_cmd_entry.sensor_payload);
+	/* set address offset, so that device will write data start from this offset */
+	payload->address = memcpy_to_devices(xgq,
+		xgq->sensor_data, xgq->sensor_data_length);
+	payload->size = xgq->sensor_data_length;
+	payload->pid = XGQ_CMD_SENSOR_PID_BDINFO;
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_SENSOR;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+	} else {
+		memcpy_from_devices(xgq, xgq->sensor_data,
+			xgq->sensor_data_length);
+	}
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
 
 	return ret;
 }
@@ -674,8 +825,50 @@ static struct attribute *xgq_attrs[] = {
 	NULL,
 };
 
+static ssize_t sensor_data_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq *xgq =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+
+	/* if off == 0, read data */
+	if (off == 0)
+		xgq_collect_sensor_data(xgq);
+
+	if (xgq->sensor_data == NULL)
+		goto bail;
+
+	if (off >= xgq->sensor_data_length)
+		goto bail;
+
+	if (off + count > xgq->sensor_data_length)
+		count = xgq->sensor_data_length - off;
+
+	memcpy(buf, xgq->sensor_data + off, count);
+
+	ret = count;
+bail:
+	return ret;
+}
+
+static struct bin_attribute bin_attr_sensor_data = {
+	.attr = {
+		.name = "sensor_data",
+		.mode = 0444
+	},
+	.read = sensor_data_read,
+	.size = 0
+};
+
+static struct bin_attribute *xgq_bin_attrs[] = {
+	&bin_attr_sensor_data,
+	NULL,
+};
+
 static struct attribute_group xgq_attr_group = {
 	.attrs = xgq_attrs,
+	.bin_attrs = xgq_bin_attrs,
 };
 
 static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
@@ -803,6 +996,9 @@ static int xgq_probe(struct platform_device *pdev)
 
 	mutex_init(&xgq->xgq_lock);
 
+	xgq->sensor_data_length = 8 * 512;
+	xgq->sensor_data = kmalloc(xgq->sensor_data_length, GFP_KERNEL);
+
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
 		XGQ_INFO(xgq, "res : %s %pR", res->name, res);
@@ -915,6 +1111,7 @@ attach_failed:
 static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_load_xclbin = xgq_load_xclbin,
 	.xgq_check_firewall = xgq_check_firewall,
+	.xgq_freq_scaling = xgq_freq_scaling,
 };
 
 static const struct file_operations xgq_fops = {
