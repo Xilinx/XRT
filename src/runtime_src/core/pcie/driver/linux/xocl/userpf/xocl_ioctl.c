@@ -668,6 +668,9 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err = 0;
 
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
 	mutex_lock(&xdev->dev_lock);
 
 	if (xocl_xclbin_in_use(xdev)) {
@@ -687,6 +690,9 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err = 0;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
 
 	mutex_lock(&xdev->dev_lock);
 
