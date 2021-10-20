@@ -1080,7 +1080,7 @@ int xocl_copy_import_bo(struct drm_device *dev, struct drm_file *filp,
 	} else {
 		/*
 		 * dst is local
-		 * reading from remote BO, performance degraded"
+		 * reading from remote BO, performance degraded
 		 */
 		local_xobj = dst_xobj;
 		local_offset = ert_copybo_dst_offset(cmd);

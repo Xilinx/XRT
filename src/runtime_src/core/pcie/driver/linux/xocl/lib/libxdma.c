@@ -3341,7 +3341,7 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		    ((engine->dir == DMA_TO_DEVICE) &&
 		    (val & XDMA_STAT_H2C_ERR_MASK))) {
 			pr_err("engine %s, status error 0x%x.\n", engine->name,
-			        engine->status);
+			        val);
 			engine_status_dump(engine);
 			engine_reg_dump(engine);
 		}
