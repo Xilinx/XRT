@@ -19,8 +19,8 @@
 #define XDP_PROFILE_DEVICE_TRACE_S2MM_H
 
 #include <stdexcept>
+#include <vector>
 #include "profile_ip_access.h"
-#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 

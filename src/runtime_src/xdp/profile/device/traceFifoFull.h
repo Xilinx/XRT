@@ -21,9 +21,9 @@
 #include <stdexcept>
 #include <fstream>
 #include <iostream>
+#include <vector>
 #include "profile_ip_access.h"
 #include "core/include/xclperf.h"
-#include "xdp/profile/device/device_trace_logger.h"
 
 namespace xdp {
 
