@@ -387,7 +387,7 @@ device::
 allocate_buffer_object(memory* mem, memidx_type memidx)
 {
   if (memidx==-1)
-    throw std::runtime_error("Unexpected error memidx == -1");
+    throw std::runtime_error("Cannot create buffer at unknown memory index");
 
   if (mem->get_flags() & CL_MEM_REGISTER_MAP)
     throw std::runtime_error("Cannot allocate register map buffer on bank");
