@@ -523,6 +523,14 @@ struct xclbin
       return data;
     }
 
+    if (key == key_type::debug_ip_layout_raw) {
+      size_t size_ret = 0;
+      userpf::get_debug_ip_layout(uhdl, nullptr, 0, &size_ret);
+      std::vector<char> data(size_ret);
+      userpf::get_debug_ip_layout(uhdl, data.data(), size_ret, nullptr);
+      return data;
+    }
+
     if (key == key_type::temp_by_mem_topology) {
       size_t size_ret = 0;
       userpf::get_temp_by_mem_topology(uhdl, nullptr, 0, &size_ret);
@@ -1344,6 +1352,7 @@ initialize_query_table()
   emplace_function0_getter<query::rom_time_since_epoch,      rom>();
   emplace_function0_getter<query::mem_topology_raw,          xclbin>();
   emplace_function0_getter<query::ip_layout_raw,             xclbin>();
+  emplace_function0_getter<query::debug_ip_layout_raw,       xclbin>();
   emplace_function0_getter<query::temp_by_mem_topology,      xclbin>();
   emplace_function0_getter<query::clock_freqs_mhz,           icap>();
   emplace_function0_getter<query::idcode,                    icap>();

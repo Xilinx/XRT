@@ -577,6 +577,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
+  emplace_sysfs_get<query::debug_ip_layout_raw>       ("debug_ip_layout");
   emplace_sysfs_get<query::aie_metadata>              ("aie_metadata");
   emplace_sysfs_get<query::graph_status>              ("graph_status");
   emplace_sysfs_get<query::memstat>                   ("memstat");
