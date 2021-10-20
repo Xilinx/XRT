@@ -373,7 +373,6 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#dma-buf-apis">DMA-BUF APIs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#stream-or-qdma-platform-related-apis">Stream or QDMA Platform Related APIs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#miscellaneous-other-apis-and-parameter-extension">Miscellaneous other APIs and Parameter extension</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#api-to-get-compute-units-information">API to get Compute Units Information</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#parameter-extension-of-the-api-clgetkernelinfo">Parameter extension of the API <code class="docutils literal notranslate"><span class="pre">clGetKernelInfo</span></code></a></li>
@@ -586,11 +585,7 @@ clCreateBuffer(context,CL_MEM_EXT_PTR_XILINX,size,&amp;ext,&amp;error);
 <li><code class="docutils literal notranslate"><span class="pre">xclGetMemObjectFromFd</span></code>: To obtain OpenCL memory object from FD</li>
 </ul>
 </div></blockquote>
-<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <span class="xref std std-ref">p2p.rst</span></p>
-</div>
-<div class="section" id="stream-or-qdma-platform-related-apis">
-<h2>Stream or QDMA Platform Related APIs<a class="headerlink" href="#stream-or-qdma-platform-related-apis" title="Permalink to this headline">¶</a></h2>
-<p>For description of Stream or QDMA related APIs are described in OpenCL Streaming documentation <span class="xref std std-ref">streaming_data_support.rst</span></p>
+<p>The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation <a class="reference internal" href="p2p.html"><span class="doc">PCIe Peer-to-Peer (P2P)</span></a></p>
 </div>
 <div class="section" id="miscellaneous-other-apis-and-parameter-extension">
 <h2>Miscellaneous other APIs and Parameter extension<a class="headerlink" href="#miscellaneous-other-apis-and-parameter-extension" title="Permalink to this headline">¶</a></h2>
@@ -703,7 +698,7 @@ clGetDeviceInfo(device, CL_DEVICE_PCIE_BDF, sizeof(bdf), &amp;bdf, nullptr);
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 06, 2021.
+        Last updated on October 20, 2021.
       </span>
 
     </p>

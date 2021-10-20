@@ -494,7 +494,7 @@
   <span class="target" id="platform-partitions-rst"></span><div class="section" id="alveo-platform-loading-overview">
 <h1>Alveo™ Platform Loading Overview<a class="headerlink" href="#alveo-platform-loading-overview" title="Permalink to this headline">¶</a></h1>
 <p>Alveo platforms are architected as two physical FPGA partitions: <em>Shell</em> and <em>User</em>. Shell provides basic infrastructure
-for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. <span class="xref std std-ref">security.rst</span>
+for the platform like PCIe connectivity, board management, DFX support, sensors, clocking, reset, etc. <a class="reference internal" href="security.html"><span class="doc">Security of Alveo Platform</span></a>
 enumerates the shell functionality in detail. User partition contains user compiled binary called xclbin which is loaded by XRT using
 DFX technology.</p>
 <p>There is a variation of Alveo platform called two stage platform here where the Shell is further split into two partitions: a
@@ -540,7 +540,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 <p>User partition contains user compiled components like acceleration engines/compute kernels etc. It is loaded by xclmgmt driver on request by user. XRT provides API <code class="docutils literal notranslate"><span class="pre">xclLoadXclBin()</span></code> and command line utility <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">program</span></code> to help load xclbins. This allows users to dynamically swap the image running on User parition to meet their workload requirements.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Refer to <span class="xref std std-ref">mailbox.main.rst</span> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
+<p class="last">Refer to <a class="reference internal" href="mailbox.main.html"><span class="doc">Mailbox Subdevice Driver</span></a> for detailed protocol used by xocl and xclmgmt drivers for loading Shell xsabin and User xclbin.</p>
 </div>
 </div>
 </div>
@@ -574,7 +574,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 06, 2021.
+        Last updated on October 20, 2021.
       </span>
 
     </p>

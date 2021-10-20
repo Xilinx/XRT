@@ -66,6 +66,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classxrt_1_1xclbin_1_1ip-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -96,6 +97,15 @@ Collaboration diagram for xrt::xclbin::ip:</div>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a075ba9da9ca0076d04968e462f17132a"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">control_type</a> : uint8_t { <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa789406d01073ca1782d86293dcfc0764">control_type::hs</a> = 0, 
+<a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c">control_type::chain</a> = 1, 
+<a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8">control_type::none</a> = 2, 
+<a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65">control_type::fa</a> = 5
+ }</td></tr>
+<tr class="separator:a075ba9da9ca0076d04968e462f17132a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ad06915d471c3b2cfea96fed6fe271f41"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#ad06915d471c3b2cfea96fed6fe271f41">ip</a> ()=default</td></tr>
@@ -104,6 +114,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a63654d4fbfef294c3df0d219be16ec0b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a54a875884cecc8d34deac6ba6abee23b"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a54a875884cecc8d34deac6ba6abee23b">get_name</a> () const</td></tr>
 <tr class="separator:a54a875884cecc8d34deac6ba6abee23b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a8a7d78c14b94660c5f8bb2c9bda932"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">control_type</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a7a8a7d78c14b94660c5f8bb2c9bda932">get_control_type</a> () const</td></tr>
+<tr class="separator:a7a8a7d78c14b94660c5f8bb2c9bda932"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a13e867a001c6b0ff50ff586cd8635955"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a13e867a001c6b0ff50ff586cd8635955">get_num_args</a> () const</td></tr>
 <tr class="separator:a13e867a001c6b0ff50ff586cd8635955"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a14a9fec0ed940e1afbb81ff2dcdbd96e"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1arg.html">arg</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a14a9fec0ed940e1afbb81ff2dcdbd96e">get_args</a> () const</td></tr>
@@ -112,11 +124,46 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a62bf76c1246a4face6174aebd9d11e86"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abb83f977227c8dd3a212b721df5980ab"><td class="memItemLeft" align="right" valign="top">uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#abb83f977227c8dd3a212b721df5980ab">get_base_address</a> () const</td></tr>
 <tr class="separator:abb83f977227c8dd3a212b721df5980ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a94ddcf3220830a8215d25198eec106c5"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a94ddcf3220830a8215d25198eec106c5">get_size</a> () const</td></tr>
+<tr class="separator:a94ddcf3220830a8215d25198eec106c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> represents a IP in an xclbin. </p>
 <p>The ip corresponds to an entry in the IP_LAYOUT section of the xclbin. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a075ba9da9ca0076d04968e462f17132a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a075ba9da9ca0076d04968e462f17132a">&#9670;&nbsp;</a></span>control_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">xrt::xclbin::ip::control_type</a> : uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<ul>
+<li></li>
+</ul>
+<p>See <code>xclbin.h</code> </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a075ba9da9ca0076d04968e462f17132aa789406d01073ca1782d86293dcfc0764"></a>hs&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a075ba9da9ca0076d04968e462f17132aa9951112f8dd2b0e52597c27197f1121c"></a>chain&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a075ba9da9ca0076d04968e462f17132aa334c4a4c42fdb79d7ebc3e73b517e6f8"></a>none&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a075ba9da9ca0076d04968e462f17132aa89e6d2b383471fc370d828e552c19e65"></a>fa&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ad06915d471c3b2cfea96fed6fe271f41"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad06915d471c3b2cfea96fed6fe271f41">&#9670;&nbsp;</a></span>ip() <span class="overload">[1/2]</span></h2>
 
@@ -229,6 +276,25 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a7a8a7d78c14b94660c5f8bb2c9bda932"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7a8a7d78c14b94660c5f8bb2c9bda932">&#9670;&nbsp;</a></span>get_control_type()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a075ba9da9ca0076d04968e462f17132a">control_type</a> xrt::xclbin::ip::get_control_type </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a7a8a7d78c14b94660c5f8bb2c9bda932">get_control_type()</a> - Get the IP control protocol</p>
+<dl class="section return"><dt>Returns</dt><dd>Control type </dd></dl>
+
+</div>
+</div>
 <a id="a54a875884cecc8d34deac6ba6abee23b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a54a875884cecc8d34deac6ba6abee23b">&#9670;&nbsp;</a></span>get_name()</h2>
 
@@ -264,6 +330,27 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a13e867a001c6b0ff50ff586cd8635955">get_num_args()</a> - Number of arguments</p>
 <dl class="section return"><dt>Returns</dt><dd>Number of arguments for this IP per CONNECTIVITY section </dd></dl>
+
+</div>
+</div>
+<a id="a94ddcf3220830a8215d25198eec106c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a94ddcf3220830a8215d25198eec106c5">&#9670;&nbsp;</a></span>get_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">size_t xrt::xclbin::ip::get_size </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin_1_1ip.html#a94ddcf3220830a8215d25198eec106c5">get_size()</a> - Get the address range size of this IP.</p>
+<dl class="section return"><dt>Returns</dt><dd>The size of this IP</dd></dl>
+<p>The address range is a property of the kernel and as such only valid for for kernel compute units.</p>
+<p>For IPs that are not associated with a kernel, the size return is 0. </p>
 
 </div>
 </div>

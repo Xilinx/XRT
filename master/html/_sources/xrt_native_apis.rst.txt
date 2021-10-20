@@ -21,7 +21,7 @@ Example g++ command
     g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 
 
-The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in `<./xrt_native.main.rst>`_.
+The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: `xrt_native.main`.
 
 
 The C++ Class objects used for the APIs are 
@@ -247,7 +247,7 @@ Code example of transferring data from the host to the device by this approach
 III. Data transfer between the buffers by copy API
 **************************************************
 
-XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in :ref:`m2m.rst`). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host). 
+XRT provides ``xrt::bo::copy()`` API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in :doc:`m2m`). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host). 
 
 .. code:: c++
       :number-lines: 25
@@ -265,13 +265,13 @@ This section describes a few other specific use-cases using buffers.
 DMA-BUF API
 ***********
 
-XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. 
+XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. The buffer handle obtained from ``xrt::bo::export_buffer()`` is essentially a file descriptor, hence sending across the processes requires a suitable IPC mechanism (example, UDS or Unix Domain Socket) to translate the file descriptor of one process into another process.
 
 - ``xrt::bo::export_buffer()``: Export the buffer to an exported buffer handle
 - ``xrt::bo()`` constructor: Allocate a BO imported from exported buffer handle
 
 
-Consider the situation of exporting buffer from device 1 to device 2. 
+Consider the situation of exporting buffer from device 1 to device 2 (inside same host process). 
 
 .. code:: c++
       :number-lines: 18

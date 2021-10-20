@@ -466,8 +466,7 @@ Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
-<p>The exported buffer handle is acquired by using the export() method and can be passed to another process. <br  />
- </p>
+<p>If the exported buffer handle acquired by using the export() method is from another process, then it must be transferred through proper IPC mechanism translating the underlying file-descriptor asscociated with the buffer </p>
 
 </div>
 </div>
@@ -689,7 +688,7 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p>buffer_export() - Export this buffer</p>
 <dl class="section return"><dt>Returns</dt><dd>Exported buffer handle</dd></dl>
-<p>An exported buffer can be imported on another device by this process or another process. </p>
+<p>An exported buffer can be imported on another device by this process or another process. For multiprocess transfer, the exported buffer must be transferred through a proper IPC facility to translate the underlying file-descriptor properly into another process. </p>
 
 </div>
 </div>
