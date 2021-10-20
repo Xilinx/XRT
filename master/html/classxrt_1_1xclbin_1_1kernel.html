@@ -103,6 +103,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa5af8049e3ffc3131575b2b2830d7f3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a613a09678d939532288ad7876b9bb13d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d">get_cus</a> () const</td></tr>
 <tr class="separator:a613a09678d939532288ad7876b9bb13d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ade77bf9add2ae200eecac1299e94abac"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#ade77bf9add2ae200eecac1299e94abac">get_cus</a> (const std::string &amp;kname) const</td></tr>
+<tr class="separator:ade77bf9add2ae200eecac1299e94abac"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac008331e7c7d85f0abeb13bbc6db725a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#ac008331e7c7d85f0abeb13bbc6db725a">get_cu</a> (const std::string &amp;name) const</td></tr>
 <tr class="separator:ac008331e7c7d85f0abeb13bbc6db725a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaffa94e74e6e990284931305e9adb987"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#aaffa94e74e6e990284931305e9adb987">get_num_args</a> () const</td></tr>
@@ -227,7 +229,7 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <a id="a613a09678d939532288ad7876b9bb13d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a613a09678d939532288ad7876b9bb13d">&#9670;&nbsp;</a></span>get_cus()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a613a09678d939532288ad7876b9bb13d">&#9670;&nbsp;</a></span>get_cus() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -242,6 +244,33 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d">get_cus()</a> - Get list of cu from kernel.</p>
 <dl class="section return"><dt>Returns</dt><dd>A list of <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects corresponding the compute units for this kernel object. </dd></dl>
+
+</div>
+</div>
+<a id="ade77bf9add2ae200eecac1299e94abac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ade77bf9add2ae200eecac1299e94abac">&#9670;&nbsp;</a></span>get_cus() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="classxrt_1_1xclbin_1_1ip.html">ip</a>&gt; xrt::xclbin::kernel::get_cus </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>kname</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d">get_cus()</a> - Get list of compute units that matches name</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">name</td><td>Name to match against, prefixed with kernel name </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>A list of <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects that are compute units of this kernel object and matches the specified name.</dd></dl>
+<p>The kernel name can optionally specify which kernel instance(s) to match "kernel:{cu1,cu2,...} syntax. </p>
 
 </div>
 </div>

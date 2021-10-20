@@ -539,7 +539,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>g++ -g -std<span class="o">=</span>c++14 -I<span class="nv">$XILINX_XRT</span>/include -L<span class="nv">$XILINX_XRT</span>/lib -o host.exe host.cpp -lxrt_coreutil -pthread
 </pre></div>
 </div>
-<p>The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in <a class="reference external" href="./xrt_native.main.rst">./xrt_native.main.rst</a>.</p>
+<p>The XRT native API supports both the C and C++ flavor of APIs. For general host code development, C++-based APIs are recommended, hence this document only describes the C++-based API interfaces. The full Doxygen generated C and C++ API documentation can be found in :doc: <cite>xrt_native.main</cite>.</p>
 <p>The C++ Class objects used for the APIs are</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -741,7 +741,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 </div>
 <div class="section" id="iii-data-transfer-between-the-buffers-by-copy-api">
 <h4>III. Data transfer between the buffers by copy API<a class="headerlink" href="#iii-data-transfer-between-the-buffers-by-copy-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <span class="xref std std-ref">m2m.rst</span>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
+<p>XRT provides <code class="docutils literal notranslate"><span class="pre">xrt::bo::copy()</span></code> API for deep copy between the two buffer objects if the platform supports a deep-copy (for detail refer M2M feature described in <a class="reference internal" href="m2m.html"><span class="doc">Memory-to-Memory (M2M)</span></a>). If deep copy is not supported by the platform the data transfer happens by shallow copy (the data transfer happens via host).</p>
 <pre class="code c++ literal-block">
 <span class="ln">25 </span>     <span class="name">dst_buffer</span><span class="punctuation">.</span><span class="name">copy</span><span class="punctuation">(</span><span class="name">src_buffer</span><span class="punctuation">,</span> <span class="name">copy_size_in_bytes</span><span class="punctuation">);</span>
 </pre>
@@ -753,12 +753,12 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
 <p>This section describes a few other specific use-cases using buffers.</p>
 <div class="section" id="dma-buf-api">
 <h4>DMA-BUF API<a class="headerlink" href="#dma-buf-api" title="Permalink to this headline">¶</a></h4>
-<p>XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes.</p>
+<p>XRT provides Buffer export and import APIs primarily used for sharing buffer across devices (P2P application) and processes. The buffer handle obtained from <code class="docutils literal notranslate"><span class="pre">xrt::bo::export_buffer()</span></code> is essentially a file descriptor, hence sending across the processes requires a suitable IPC mechanism (example, UDS or Unix Domain Socket) to translate the file descriptor of one process into another process.</p>
 <ul class="simple">
 <li><code class="docutils literal notranslate"><span class="pre">xrt::bo::export_buffer()</span></code>: Export the buffer to an exported buffer handle</li>
 <li><code class="docutils literal notranslate"><span class="pre">xrt::bo()</span></code> constructor: Allocate a BO imported from exported buffer handle</li>
 </ul>
-<p>Consider the situation of exporting buffer from device 1 to device 2.</p>
+<p>Consider the situation of exporting buffer from device 1 to device 2 (inside same host process).</p>
 <pre class="code c++ literal-block">
 <span class="ln">18 </span>     <span class="keyword">auto</span> <span class="name">buffer_exported</span> <span class="operator">=</span> <span class="name">buffer_device_1</span><span class="punctuation">.</span><span class="name">export_buffer</span><span class="punctuation">();</span>
 <span class="ln">19 </span>     <span class="keyword">auto</span> <span class="name">buffer_device_2</span> <span class="operator">=</span> <span class="name">xrt</span><span class="operator">::</span><span class="name">bo</span><span class="punctuation">(</span><span class="name">device_2</span><span class="punctuation">,</span> <span class="name">buffer_exported</span><span class="punctuation">);</span>
@@ -1228,7 +1228,7 @@ On GCC version older than 4.9.0, please use -std=c++1y instead because -std=c++1
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 06, 2021.
+        Last updated on October 20, 2021.
       </span>
 
     </p>

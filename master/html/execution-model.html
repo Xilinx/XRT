@@ -495,20 +495,20 @@
 <h1>Execution Model Overview<a class="headerlink" href="#execution-model-overview" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
-<p>Xilinx® FPGA based acceleration platform architecture are described in the <span class="xref std std-ref">platforms.rst</span> document. On <em>Alveo PCIe</em> platforms <em>xocl</em> driver binds to user physical function and <em>xclmgmt</em> driver binds to management physical function. The ioctls exported by xocl are described in <span class="xref std std-ref">xocl_ioctl.main.rst</span> document and ioctls exported by xclmgmt are described in <span class="xref std std-ref">mgmt-ioctl.main.rst</span> document. On <em>Zynq Ultrascale+ MPSoC</em> platforms <em>zocl</em> driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.</p>
+<p>Xilinx® FPGA based acceleration platform architecture are described in the <a class="reference internal" href="platforms.html"><span class="doc">XRT and Vitis™ Platform Overview</span></a> document. On <em>Alveo PCIe</em> platforms <em>xocl</em> driver binds to user physical function and <em>xclmgmt</em> driver binds to management physical function. The ioctls exported by xocl are described in <a class="reference internal" href="xocl_ioctl.main.html"><span class="doc">XOCL (PCIe User Physical Function) Driver Interfaces</span></a> document and ioctls exported by xclmgmt are described in <a class="reference internal" href="mgmt-ioctl.main.html"><span class="doc">XCLMGMT (PCIe Management Physical Function) Driver Interfaces</span></a> document. On <em>Zynq Ultrascale+ MPSoC</em> platforms <em>zocl</em> driver binds to the accelerator. The ioctls exported by zocl are listed here TODO.</p>
 </div>
 <div class="section" id="image-download">
 <h2>Image Download<a class="headerlink" href="#image-download" title="Permalink to this headline">¶</a></h2>
-<p>Xilinx® Vitis compiler, v++ compiles user’s device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in <span class="xref std std-ref">formats.rst</span> document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides a similar ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user’s compute units programmed into the FPGA fabric.</p>
+<p>Xilinx® Vitis compiler, v++ compiles user’s device code into xclbin file which contains FPGA bitstream and collection of metadata like memory topology, IP instantiations, etc. xclbin format is defined in <a class="reference internal" href="formats.html"><span class="doc">Binary Formats</span></a> document. For Alveo platforms xclmgmt driver provides an ioctl for xclbin download. For Zynq Ultrascale+ MPSoC zocl provides a similar ioctl for xclbin download. Both drivers support FPGA Manager integration. The drivers walk the xclbin sections, program the FPGA fabric, discover the memory topology, initialize the memory managers for the provided memory topology and discover user’s compute units programmed into the FPGA fabric.</p>
 </div>
 <div class="section" id="memory-management">
 <h2>Memory Management<a class="headerlink" href="#memory-management" title="Permalink to this headline">¶</a></h2>
-<p>Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in <span class="xref std std-ref">xrt.main.rst</span> document.</p>
+<p>Both PCIe based and embedded platforms use a unified multi-thread/process capable memory management API defined in <a class="reference internal" href="xrt.main.html"><span class="doc">XRT Core Library</span></a> document.</p>
 <p>For both class of platforms, memory management is performed inside Linux kernel driver. Both drivers use DRM GEM for memory management which includes buffer allocator, buffer mmap support, reference counting of buffers and DMA-BUF export/import. These operations are made available via ioctls exported by the drivers.</p>
 <div class="section" id="xocl">
 <h3>xocl<a class="headerlink" href="#xocl" title="Permalink to this headline">¶</a></h3>
 <p>Xilinx® PCIe platforms like Alveo PCIe cards support various memory topologies which can be dynamically loaded as part of FPGA image loading step. This means from one FPGA image to another the device may expose one or more memory controllers where each memory controller has its own memory address range. We use Linux <em>drm_mm</em> for allocation of memory and Linux <em>drm_gem</em> framework for mmap handling. Since ordinarily our device memory is not exposed to host CPU (except when we enable PCIe peer-to-peer feature) we use host memory pages to back device memory for mmap support. For syncing between device memory and host memory pages XDMA/QDMA PCIe memory mapped DMA engine is used. Users call sync ioctl to effect DMA in requested direction.</p>
-<p>xocl also supports PCIe Host Memory Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section <span class="xref std std-ref">hm.rst</span> provides more information.</p>
+<p>xocl also supports PCIe Host Memory Bridge where it handles pinning of host memory and programming the Address Remapper tables. Section <a class="reference internal" href="hm.html"><span class="doc">Host Memory Access</span></a> provides more information.</p>
 </div>
 <div class="section" id="zocl">
 <h3>zocl<a class="headerlink" href="#zocl" title="Permalink to this headline">¶</a></h3>
@@ -518,7 +518,7 @@
 <div class="section" id="execution-management">
 <h2>Execution Management<a class="headerlink" href="#execution-management" title="Permalink to this headline">¶</a></h2>
 <p>Both xocl and zocl support structured execution framework. After xclbin has been loaded by the driver compute units defined by the xclbin are live and ready for execution. The compute units are controlled by driver component called Kernel Domain Scheduler (KDS). KDS queues up execution tasks from client processes via ioctls and then schedules them on available compute units. Both drivers export an ioctl for queuing up execution tasks.</p>
-<p>User space submits execution commands to KDS in well defined command packets. The commands are defined in <span class="xref std std-ref">ert.main.rst</span></p>
+<p>User space submits execution commands to KDS in well defined command packets. The commands are defined in <a class="reference internal" href="ert.main.html"><span class="doc">Embedded Runtime Library</span></a></p>
 <p>KDS notifies user process of a submitted execution task completion asynchronously via POSIX poll mechanism. On PCIe platforms KDS leverages hardware scheduler running on Microblaze soft processor for fine control of compute units. Compute units use interrupts to notify xocl/zocl when they are done. KDS also supports polling mode where KDS actively polls the compute units for completion instead of relying on interrupts from compute units.</p>
 <p>On PCIe platforms hardware scheduler (referred to above) runs firmware called Embedded Runtime (ERT). ERT receives requests from KDS on hardware out-of-order Command Queue with upto 128 command slots. ERT notifies KDS of work completion by using bits in Status Register and MSI-X interrupts. ERT source code is also included with XRT source on GitHub.</p>
 </div>
@@ -572,7 +572,7 @@
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 06, 2021.
+        Last updated on October 20, 2021.
       </span>
 
     </p>
