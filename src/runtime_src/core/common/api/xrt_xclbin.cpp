@@ -41,6 +41,7 @@
 #include <regex>
 #include <set>
 #include <vector>
+#include <mutex>
 
 #ifdef _WIN32
 # include "windows/uuid.h"
@@ -541,6 +542,8 @@ class xclbin_impl
   const xclbin_info*
   get_xclbin_info() const
   {
+    static std::mutex m;
+    std::lock_guard<std::mutex> lk(m);
     if (!m_info)
       m_info = std::make_unique<xclbin_info>(this);
     return m_info.get();
