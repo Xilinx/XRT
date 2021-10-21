@@ -1,6 +1,15 @@
 XRT ChangeLog
 -------------
 
+2.13.0 (202210.2.13.x)
+~~~~~~~~~~~~~~~~~~~~~~
+Added
+.....
+
+Removed
+.......
+* Removed deprecated streaming APIs from OpenCL
+
 2.12.0 (202120.2.12.x)
 ~~~~~~~~~~~~~~~~~~~~~~
 

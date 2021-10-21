@@ -120,20 +120,6 @@ private:
                                       bool shared);
   typedef int (* closeContextFuncType)(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex);
 
-
-  //Streaming
-  typedef int     (*createWriteQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
-  typedef int     (*createReadQueueFuncType)(xclDeviceHandle handle,xclQueueContext *q_ctx, uint64_t *q_hdl);
-  typedef int     (*destroyQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl);
-  typedef void*   (*allocQDMABufFuncType)(xclDeviceHandle handle,size_t size, uint64_t *buf_hdl);
-  typedef int     (*freeQDMABufFuncType)(xclDeviceHandle handle,uint64_t buf_hdl);
-  typedef ssize_t (*writeQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
-  typedef ssize_t (*readQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, xclQueueRequest *wr);
-  typedef int     (*setQueueOptFuncType)(xclDeviceHandle handle,uint64_t q_hdl, int type, uint32_t val);
-  typedef int     (*pollQueueFuncType)(xclDeviceHandle handle,uint64_t q_hdl, int min, int max, xclReqCompletion* completions, int* actual, int timeout);
-  typedef int     (*pollQueuesFuncType)(xclDeviceHandle handle,int min, int max, xclReqCompletion* completions, int* actual, int timeout);
-//End Streaming
-
   typedef void (*getDebugIpLayoutType)(xclDeviceHandle hdl, char* buffer, size_t size, size_t* size_ret);
 
   //APIs using sysfs
@@ -203,18 +189,6 @@ public:
   countTraceFuncType mCountTrace;
   readTraceFuncType mReadTrace;
   debugReadIPStatusFuncType mDebugReadIPStatus;
-//Streaming
-  createWriteQueueFuncType mCreateWriteQueue;
-  createReadQueueFuncType mCreateReadQueue;
-  destroyQueueFuncType mDestroyQueue;
-  allocQDMABufFuncType mAllocQDMABuf;
-  freeQDMABufFuncType mFreeQDMABuf;
-  writeQueueFuncType mWriteQueue;
-  readQueueFuncType mReadQueue;
-  pollQueuesFuncType mPollQueues;
-  pollQueueFuncType mPollQueue;
-  setQueueOptFuncType mSetQueueOpt;
-//End Streaming
 
   getDebugIpLayoutType mGetDebugIpLayout;
 

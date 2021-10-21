@@ -108,11 +108,6 @@ For some use-cases, for example p2p, multiprocess it may required to use buffer 
 The example of API usage in the p2p context can be found in OpenCL example code in P2P documentation :doc:`p2p`
 
 
-Stream or QDMA Platform Related APIs
-====================================
-
-For description of Stream or QDMA related APIs are described in OpenCL Streaming documentation :doc:`streaming_data_support`
-
 
 
 Miscellaneous other APIs and Parameter extension

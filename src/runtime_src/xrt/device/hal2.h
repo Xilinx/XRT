@@ -306,38 +306,6 @@ public:
   exec_wait(int timeout_ms) const;
 
 public:
-
-  virtual int
-  createWriteStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
-
-  virtual int
-  createReadStream(hal::StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream);
-
-  virtual int
-  closeStream(hal::StreamHandle stream);
-
-  virtual hal::StreamBuf
-  allocStreamBuf(size_t size, hal::StreamBufHandle *buf);
-
-  virtual int
-  freeStreamBuf(hal::StreamBufHandle buf);
-
-  virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req);
-
-  virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req);
-
-  virtual int
-  pollStreams(hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
-
-  virtual int
-  pollStream(hal::StreamHandle stream, hal::StreamXferCompletions* comps, int min, int max, int* actual, int timeout);
-
-  virtual int
-  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val);
-
-public:
   virtual bool
   is_imported(const buffer_object_handle& boh) const;
 

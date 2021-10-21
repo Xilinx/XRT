@@ -44,7 +44,6 @@ class memory : public refcount, public _cl_mem
   using memory_flags_type  = property_object<cl_mem_flags>;
   using memory_extension_flags_type = property_object<unsigned int>;
   using memidx_bitmask_type = xclbin::memidx_bitmask_type;
-  using connidx_type = xclbin::connidx_type;
   using memidx_type = xclbin::memidx_type;
 
 protected:
@@ -501,7 +500,6 @@ private:
   mutable std::mutex m_boh_mutex;
   bomap_type m_bomap;
   std::vector<const device*> m_resident;
-  connidx_type m_connidx = -1;
 };
 
 class buffer : public memory

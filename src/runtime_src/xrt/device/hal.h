@@ -28,7 +28,6 @@
 
 #include "xclperf.h"
 #include "xcl_app_debug.h"
-#include "xstream.h"
 #include "ert.h"
 
 #include <memory>
@@ -71,16 +70,6 @@ enum class queue_type : unsigned short
  ,max=3
 };
 
-typedef uint64_t StreamHandle;
-typedef void*    StreamBuf;
-typedef uint64_t StreamBufHandle;
-typedef uint32_t StreamAttributes;
-typedef uint32_t StreamXferFlags;
-typedef uint64_t StreamFlags;
-
-using StreamXferReq = stream_xfer_req;
-using StreamXferCompletions = streams_poll_req_completions;
-using StreamOptType = stream_opt_type;
 /**
  * Helper class to encapsulate return values from HAL operations.
  *
@@ -286,38 +275,6 @@ public:
   {
     throw std::runtime_error("exec_wait not supported");
   }
-
-public:
-  virtual int
-  createWriteStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
-
-  virtual int
-  createReadStream(StreamFlags flags, hal::StreamAttributes attr, uint64_t route, uint64_t flow, hal::StreamHandle *stream) = 0;
-
-  virtual int
-  closeStream(hal::StreamHandle stream) = 0;
-
-  virtual StreamBuf
-  allocStreamBuf(size_t size, hal::StreamBufHandle *buf) = 0;
-
-  virtual int
-  freeStreamBuf(hal::StreamBufHandle buf) = 0;
-
-  virtual ssize_t
-  writeStream(hal::StreamHandle stream, const void* ptr, size_t size, hal::StreamXferReq* req ) = 0;
-
-  virtual ssize_t
-  readStream(hal::StreamHandle stream, void* ptr, size_t size, hal::StreamXferReq* req) = 0;
-
-  virtual int
-  pollStreams(StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
-
-  virtual int
-  pollStream(hal::StreamHandle stream, StreamXferCompletions* comps, int min, int max, int* actual, int timeout) = 0;
-
-  virtual int
-  setStreamOpt(hal::StreamHandle stream, int type, uint32_t val) = 0;
-
 
 public:
   /**

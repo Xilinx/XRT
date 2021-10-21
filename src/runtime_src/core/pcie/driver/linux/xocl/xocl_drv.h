@@ -2122,6 +2122,8 @@ struct xocl_xgq_funcs {
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
+	int (*xgq_freq_scaling)(struct platform_device *pdev,
+		unsigned short *freqs, int num_freqs, int verify);
 };
 #define	XGQ_DEV(xdev)					\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
@@ -2133,9 +2135,12 @@ struct xocl_xgq_funcs {
 #define	xocl_xgq_download_axlf(xdev, xclbin)		\
 	(XGQ_CB(xdev) ?					\
 	XGQ_OPS(xdev)->xgq_load_xclbin(XGQ_DEV(xdev), xclbin) : -ENODEV)
-#define	xocl_xgq_check_firewall(xdev)		\
+#define	xocl_xgq_check_firewall(xdev)			\
 	(XGQ_CB(xdev) ?					\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
+#define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
+	(XGQ_CB(xdev) ?						\
+	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
