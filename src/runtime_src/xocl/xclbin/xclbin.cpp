@@ -21,6 +21,8 @@
 #include "xocl/core/debug.h"
 #include "xocl/core/error.h"
 
+#include "core/common/api/xclbin_int.h"
+
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
@@ -135,113 +137,19 @@ private:
   class core_wrapper
   {
     using xml_core_type = pt::ptree;
-    using xml_connection_type = pt::ptree;
-    using xml_corememinst_type = pt::ptree;
 
     const platform_wrapper* m_platform;
     const device_wrapper* m_device;
     const xml_core_type& xml_core;
 
-  private:
-    void
-    valid_or_throw() const
-    {
-      type();   // throws on error
-      auto t = target(); // throws on error
-      // additional checks that were asserted in old code
-      if (t!=target_type::bin && t!=target_type::csim && t!=target_type::hwem)
-        throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target");
-    }
-
   public:
-    enum class core_type { cpu, clc, c, invalid};
-
     core_wrapper(const platform_wrapper* p, const device_wrapper* d, const xml_core_type& c)
       : m_platform(p), m_device(d), xml_core(c)
-    {
-      valid_or_throw();
-    }
+    {}
 
     const xml_core_type&
     xml() const
     { return xml_core; }
-
-    const xml_connection_type&
-    get_connection_or_error(const std::string& src, const std::string& port) const
-    {
-      for (auto& xml_connection : xml_core ) {
-        if (xml_connection.first != "connection")
-          continue;
-        auto srcinst = xml_connection.second.get<std::string>("<xmlattr>.srcInst");
-        if (srcinst!=src)
-          continue;
-        std::string srcport = xml_connection.second.get<std::string>("<xmlattr>.srcPort");
-        if (srcport==port)
-          return xml_connection.second;
-      }
-
-      throw xocl::error
-        (CL_INVALID_BINARY,
-         "No connection matching srcinst='" + src +
-         "' and srcport='" + port + "'");
-    }
-
-    const xml_corememinst_type&
-    get_meminst_or_error(const std::string& nm) const
-    {
-      for (auto& xml_memories : xml_core) {
-        if (xml_memories.first != "memories")
-          continue;
-        for (auto& xml_meminst : xml_memories.second) {
-          if (xml_meminst.first != "instance")
-            continue;
-          auto meminst = xml_meminst.second.get<std::string>("<xmlattr>.name");
-          if (meminst==nm)
-            return xml_meminst.second;
-        }
-      }
-
-      throw xocl::error(CL_INVALID_BINARY,"No meminstance with name='" + nm + "'");
-    }
-
-    core_type
-    type() const
-    {
-      auto t = xml_core.get<std::string>("<xmlattr>.type");
-      if (t=="clc_region")
-        return core_type::clc;
-      else if (t=="c_region")
-        return core_type::c;
-      else if (t=="cpu")
-        return core_type::cpu;
-      throw xocl::error(CL_INVALID_BINARY,"invalid xclbin core type: " + t);
-    }
-
-    target_type
-    target() const
-    {
-      auto t = xml_core.get<std::string>("<xmlattr>.target");
-      if (t=="bitstream")
-        return target_type::bin;
-      else if (t=="csim")
-        return target_type::csim;
-      else if (t=="cosim")
-        return target_type::cosim;
-      else if (t=="hw_em")
-        return target_type::hwem;
-      else if (t=="x86_64")
-        return target_type::x86;
-      else if (t=="zynq-ps7")
-        return target_type::zynqps7;
-      throw xocl::error(CL_INVALID_BINARY,"invalid xclbin region target " + t);
-    }
-
-    std::string
-    name() const
-    {
-      return xml_core.get<std::string>("<xmlattr>.name");
-    }
-
   }; // class core
 
 
@@ -285,12 +193,6 @@ private:
     name() const
     {
       return m_name;
-    }
-
-    std::string
-    hash() const
-    {
-      return xml_kernel.get<std::string>("<xmlattr>.hash","");
     }
 
     void
@@ -348,7 +250,6 @@ private:
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostOffset"))
             ,convert(xml_arg.second.get<std::string>("<xmlattr>.hostSize"))
             ,xml_arg.second.get<std::string>("<xmlattr>.type","")
-            ,convert(xml_arg.second.get<std::string>("<xmlattr>.memSize",""))
             ,type
             ,&m_symbol
            });
@@ -452,9 +353,6 @@ private:
 
       m_symbol.name = m_name;
       m_symbol.attributes = xml_kernel.get<std::string>("<xmlattr>.attributes","");
-      m_symbol.hash = hash();
-
-      m_symbol.target = m_core->target();
     }
 
     kernel_wrapper(const platform_wrapper* p, const device_wrapper* d, const core_wrapper* c,const xml_kernel_type& k)
@@ -467,15 +365,6 @@ private:
     symbol() const
     {
       return m_symbol;
-    }
-
-    std::string
-    conformance_rename()
-    {
-      std::string name = m_name;
-      m_name = name.substr(0,name.find_last_of("_"));
-      m_symbol.name = m_name;
-      return name;
     }
 
     size_t
@@ -553,21 +442,6 @@ public:
     }
   }
 
-  unsigned int
-  num_kernels() const
-  {
-    return m_kernels.size();
-  }
-
-  std::vector<std::string>
-  kernel_names() const
-  {
-    std::vector<std::string> names;
-    for (auto& kernel : m_kernels)
-      names.emplace_back(kernel->name());
-    return names;
-  }
-
   std::vector<const xocl::xclbin::symbol*>
   kernel_symbols() const
   {
@@ -585,40 +459,6 @@ public:
         return kernel->symbol();
     }
     throw xocl::error(CL_INVALID_KERNEL_NAME,"No kernel with name '" + kernel_name + "' found in program");
-  }
-
-  std::string
-  project_name() const
-  {
-    return xml_project.get<std::string>("project.<xmlattr>.name","");
-  }
-
-  target_type
-  target() const
-  {
-    return m_cores[0]->target();
-  }
-
-  unsigned int
-  conformance_rename_kernel(const std::string& hash)
-  {
-    unsigned int retval = 0;
-    for (auto& kernel : m_kernels) {
-      if (kernel->hash()==hash)  {
-        kernel->conformance_rename();
-        ++retval;
-      }
-    }
-    return retval;
-  }
-
-  std::vector<std::string>
-  conformance_kernel_hashes() const
-  {
-    std::vector<std::string> retval;
-    for (auto& kernel : m_kernels)
-      retval.push_back(kernel->hash());
-    return retval;
   }
 }; // metadata
 
@@ -706,12 +546,6 @@ public:
   is_valid() const
   {
     return (m_con && m_mem && m_ip);
-  }
-
-  const mem_topology*
-  get_mem_topology() const
-  {
-    return m_mem;
   }
 
   xocl::xclbin::memidx_bitmask_type
@@ -832,30 +666,17 @@ struct xclbin::impl
 {
   metadata m_xml;
   xclbin_data_sections m_sections;
-  xrt_core::uuid m_uuid;
+  xrt::xclbin m_xclbin;
 
   impl(const xrt_core::device* device, const xrt_core::uuid& uuid)
     : m_xml(device, uuid)
     , m_sections(device, uuid)
-    , m_uuid(uuid)
+    , m_xclbin(device->get_xclbin(uuid))
   {}
 
   static std::shared_ptr<impl>
   get_impl(const xrt_core::device* device, const xrt_core::uuid& uuid)
   {
-#if 0
-    static std::mutex mutex;
-    static std::map<xrt_core::uuid, std::weak_ptr<impl>> xclbins;  
-
-    std::lock_guard<std::mutex> lk(mutex);
-    auto xbin = xclbins[uuid].lock();
-    if (!xbin) {
-      xbin = std::shared_ptr<impl>(new impl(device, uuid));
-      xclbins[uuid] = xbin;
-    }
-
-    return xbin;
-#endif
     return std::make_shared<impl>(device, uuid);
   }
 };
@@ -882,35 +703,43 @@ xrt_core::uuid
 xclbin::
 uuid() const
 {
-  return impl_or_error()->m_uuid;
+  return impl_or_error()->m_xclbin.get_uuid();
 }
 
 std::string
 xclbin::
 project_name() const
 {
-  return impl_or_error()->m_xml.project_name();
+  return xrt_core::xclbin_int::get_project_name(impl_or_error()->m_xclbin);
 }
 
 xclbin::target_type
 xclbin::
 target() const
 {
-  return impl_or_error()->m_xml.target();
+  return impl_or_error()->m_xclbin.get_target_type();
 }
 
 unsigned int
 xclbin::
 num_kernels() const
 {
-  return impl_or_error()->m_xml.num_kernels();
+  return impl_or_error()->m_xclbin.get_kernels().size();
 }
 
 std::vector<std::string>
 xclbin::
 kernel_names() const
 {
-  return impl_or_error()->m_xml.kernel_names();
+  const auto& kernels = impl_or_error()->m_xclbin.get_kernels();
+  if (kernels.empty())
+    return {};
+
+  std::vector<std::string> names;
+  names.reserve(kernels.size());
+  for (const auto& k : impl_or_error()->m_xclbin.get_kernels())
+    names.push_back(k.get_name());
+  return names;
 }
 
 std::vector<const xclbin::symbol*>
@@ -925,13 +754,6 @@ xclbin::
 lookup_kernel(const std::string& name) const
 {
   return impl_or_error()->m_xml.lookup_kernel(name);
-}
-
-const mem_topology*
-xclbin::
-get_mem_topology() const
-{
-  return impl_or_error()->m_sections.get_mem_topology();
 }
 
 xclbin::memidx_bitmask_type

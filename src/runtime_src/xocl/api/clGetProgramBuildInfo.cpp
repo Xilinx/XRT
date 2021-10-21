@@ -69,12 +69,17 @@ clGetProgramBuildInfo(cl_program            program,
     {
       auto type = CL_PROGRAM_TARGET_TYPE_NONE;
       auto target = xocl::xocl(program)->get_target();
-      if (target==xocl::xclbin::target_type::bin)
+      switch (target) {
+      case xrt::xclbin::target_type::hw :
         type = CL_PROGRAM_TARGET_TYPE_HW;
-      else if (target==xocl::xclbin::target_type::csim)
-        type = CL_PROGRAM_TARGET_TYPE_SW_EMU;
-      else if (target==xocl::xclbin::target_type::hwem)
+        break;
+      case xrt::xclbin::target_type::hw_emu :
         type = CL_PROGRAM_TARGET_TYPE_HW_EMU;
+        break;
+      case xrt::xclbin::target_type::sw_emu :
+        type = CL_PROGRAM_TARGET_TYPE_SW_EMU;
+        break;
+      }
       buffer.as<cl_program_target_type>() = type;
     }
     break;

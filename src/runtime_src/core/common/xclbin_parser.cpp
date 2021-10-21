@@ -858,4 +858,27 @@ get_vbnv(const axlf* top)
   return {vbnv, strnlen(vbnv, vbnv_length)};
 }
 
+std::string
+get_project_name(const char* xml_data, size_t xml_size)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  return xml_project.get<std::string>("project.<xmlattr>.name","");
+}
+
+std::string
+get_project_name(const axlf* top)
+{
+  try {
+    auto xml = get_xml_section(top);
+    return get_project_name(xml.first, xml.second);
+  }
+  catch (const std::exception&) {
+    return "";
+  }
+}
+
 }} // xclbin, xrt_core
