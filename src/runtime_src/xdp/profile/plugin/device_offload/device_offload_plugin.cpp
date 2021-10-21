@@ -25,7 +25,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/device_trace/device_trace_writer.h"
-#include "xdp/profile/database/events/creator/device_event_trace_logger.h"
+#include "xdp/profile/device/device_trace_logger.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -203,8 +203,7 @@ namespace xdp {
       }
     }
 
-    TraceLoggerCreatingDeviceEvents* logger = 
-      new TraceLoggerCreatingDeviceEvents(deviceId) ;
+    DeviceTraceLogger* logger = new DeviceTraceLogger(deviceId) ;
 
     // We start the thread manually because of race conditions
     DeviceTraceOffload* offloader = 

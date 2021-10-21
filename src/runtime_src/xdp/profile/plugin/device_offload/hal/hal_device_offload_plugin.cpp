@@ -32,7 +32,6 @@
 
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "xdp/profile/database/events/creator/device_event_trace_logger.h"
 
 #include "core/common/system.h"
 #include "core/common/message.h"
