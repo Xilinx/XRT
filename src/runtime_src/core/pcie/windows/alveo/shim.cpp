@@ -36,7 +36,7 @@
 
 
 // To be simplified
-#include "core/pcie/driver/windows/include/XoclUser_INTF.h"
+#include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 
 #include <cstring>
 #include <cstdio>
