@@ -379,6 +379,49 @@ namespace xdp {
     return tiles;
   }
 
+  uint64_t AieTracePlugin::getTraceStartDelayCycles(void* handle)
+  {
+    auto device = xrt_core::get_userpf_device(handle);
+    auto freqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
+
+    std::smatch pieces_match;
+    uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
+    const uint64_t max_cycles = 0xffffffff;
+    std::string size_str = xrt_core::config::get_aie_trace_start_delay();
+
+    // Catch cases like "1Ms" "1NS"
+    std::transform(size_str.begin(), size_str.end(), size_str.begin(),
+      [](unsigned char c){ return std::tolower(c); });
+
+    // Default is 0 cycles
+    uint64_t cycles = 0;
+    // Regex can parse values like : "1s" "1ms" "1ns"
+    const std::regex size_regex("\\s*([0-9]+)\\s*(s|ms|us|ns|)\\s*");
+    if (std::regex_match(size_str, pieces_match, size_regex)) {
+      try {
+        if (pieces_match[2] == "s") {
+          cycles = std::stoull(pieces_match[1]) * cycles_per_sec;
+        } else if (pieces_match[2] == "ms") {
+          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e3;
+        } else if (pieces_match[2] == "us") {
+          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e6;
+        } else if (pieces_match[2] == "ns") {
+          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e9;
+        } else {
+          cycles = std::stoull(pieces_match[1]);
+        }
+      } catch (const std::exception& ) {
+        // User specified number cannot be parsed
+        std::string msg("Unable to parse aie_trace_delay. Setting delay to 0.");
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+      }
+    }
+    if (cycles > max_cycles)
+      cycles = max_cycles;
+
+    return cycles;
+  }
+
   // Configure all resources necessary for trace control and events
   bool AieTracePlugin::setMetrics(uint64_t deviceId, void* handle)
   {
@@ -396,6 +439,9 @@ namespace xdp {
     if (metricSet.empty())
       return false;
     auto tiles = getTilesForTracing(handle);
+
+    // getTraceStartDelayCycles is 32 bit for now
+    uint32_t delay_cycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -533,6 +579,27 @@ namespace xdp {
         XAie_ModuleType mod = XAIE_CORE_MOD;
         uint8_t phyEvent = 0;
         auto coreTrace = core.traceControl();
+
+        // Delay cycles and user control are not compatible with each other
+        if (xrt_core::config::get_aie_trace_user_control()) {
+          coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
+          coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
+        } else if (delay_cycles) {
+          auto perfCounter = core.perfCounter();
+          auto ret = perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
+                                             mod, XAIE_EVENT_DISABLED_CORE);
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) break;
+          perfCounter->changeThreshold(delay_cycles);
+          XAie_Events counterEvent;
+          perfCounter->getCounterEvent(mod, counterEvent);
+
+          // Set reset and trace start using this counter
+          perfCounter->changeRstEvent(mod, counterEvent);
+          coreTraceStartEvent = counterEvent;
+        }
+
         // Set overall start/end for trace capture
         // Wendy said this should be done first
         auto ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);

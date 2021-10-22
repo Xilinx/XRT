@@ -346,6 +346,20 @@ get_aie_profile_core_metrics()
 }
 
 inline std::string
+get_aie_trace_start_delay()
+{
+  static std::string value = detail::get_string_value("Debug.aie_trace_start_delay", "0");
+  return value;
+}
+
+inline bool
+get_aie_trace_user_control()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
+  return value;
+}
+
+inline std::string
 get_aie_profile_memory_metrics()
 {
   static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
