@@ -46,6 +46,12 @@ extern "C" {
 #endif
 #endif
 
+//#include "core/common/xrt_profiling.h"
+#include "core/include/xcl_perfmon_parameters.h"
+//#include "core/include/xcl_axi_checker_codes.h"
+//#include "core/include/experimental/xrt-next.h"
+
+
 namespace {
 
 namespace query = xrt_core::query;
@@ -60,6 +66,17 @@ get_edgedev(const xrt_core::device* device)
 {
   return zynq_device::get_dev();
 }
+
+void
+xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
+        uint64_t offset, void *hostbuf, size_t size)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  (void)xclRead(handle, space, offset, hostbuf, size);
+#pragma GCC diagnostic pop
+}
+
 
 struct bdf 
 {
@@ -442,6 +459,88 @@ struct aie_reg_read
   }
 };
 
+struct aim_counter
+{
+  using result_type = query::aim_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto baseAddr = boost::any_cast<query::aim_counter::base_addr_type>(arg1);
+
+    xclDeviceHandle handle = device->get_device_handle();
+
+  // read counter values
+  static const uint64_t aim_offsets[] = {
+    XAIM_SAMPLE_WRITE_BYTES_OFFSET,
+    XAIM_SAMPLE_WRITE_TRANX_OFFSET,
+    XAIM_SAMPLE_READ_BYTES_OFFSET,
+    XAIM_SAMPLE_READ_TRANX_OFFSET,
+    XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET,
+    XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET,
+    XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET,
+    XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET,
+    XAIM_SAMPLE_LAST_READ_DATA_OFFSET
+  };
+
+  static const uint64_t aim_upper_offsets[] = {
+    XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
+    XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
+    XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET,
+    XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET,
+    XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET,
+    XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET,
+    XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET,
+    XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET,
+    XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
+  };
+
+  result_type retvalBuf;
+
+  uint32_t currData[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+
+  uint32_t sampleInterval;
+  // Read sample interval register to latch the sampled metric counters
+  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
+                    baseAddr + XAIM_SAMPLE_OFFSET,
+                    &sampleInterval, sizeof(uint32_t));
+
+  // If applicable, read the upper 32-bits of the 64-bit debug counters
+  if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
+    for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
+      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
+                 baseAddr + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
+    }
+    retvalBuf.push_back(((uint64_t)(currData[0])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[1])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[2])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[3])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[4])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[5])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[6])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[7])) << 32 ;
+    retvalBuf.push_back(((uint64_t)(currData[8])) << 32 ;
+  }
+
+  for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
+    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, 
+                       baseAddr + aim_offsets[c], &currData[c], sizeof(uint32_t));
+  }
+
+  retvalBuf[0] |= currData[0];
+  retvalBuf[1] |= currData[1];
+  retvalBuf[2] |= currData[2];
+  retvalBuf[3] |= currData[3];
+  retvalBuf[4] |= currData[4];
+  retvalBuf[5] |= currData[5];
+  retvalBuf[6] |= currData[6];
+  retvalBuf[7] |= currData[7];
+  retvalBuf[8] |= currData[8];
+
+  return retvalBuf;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -533,6 +632,17 @@ struct function3_get : QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function4_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
 template <typename QueryRequestType>
 static void
 emplace_sysfs_get(const char* entry)
@@ -555,6 +665,14 @@ emplace_func3_request()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function3_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func4_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function4_get<QueryRequestType, Getter>>());
 }
 
 static void
@@ -591,6 +709,7 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
   emplace_func0_request<query::kds_cu_stat,             kds_cu_stat>();
   emplace_func0_request<query::instance,                instance>();
+  emplace_func4_request<query::aim_counter,             aim_counter>();
 }
 
 struct X { X() { initialize_query_table(); } };
