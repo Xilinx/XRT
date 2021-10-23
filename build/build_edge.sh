@@ -234,6 +234,29 @@ if [[ $full == 1 ]]; then
   sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
   sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
   sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_tcl.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_opencl-headers.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_resize-part.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_htop.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_iperf3.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_meson.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_imagefeature-package-management.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_dnf.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_python3.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_package-feed-uris.*//g' project-spec/configs/rootfs_config
+  sed -i 's/^CONFIG_package-feed-archs.*//g' project-spec/configs/rootfs_config
+
+  echo "[CMD]: petalinux-config -c kernel --silentconfig"
+  $PETA_BIN/petalinux-config -c kernel --silentconfig
+  echo "[CMD]: petalinux-config -c rootfs --silentconfig"
+  $PETA_BIN/petalinux-config -c rootfs --silentconfig
   echo "[CMD]: petalinux-build"
   $PETA_BIN/petalinux-build
 else
