@@ -17,6 +17,7 @@
 
 #include "device_linux.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
 #include "common/utils.h"
@@ -24,6 +25,7 @@
 #include "scan.h"
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <functional>
 #include <boost/format.hpp>
@@ -278,6 +280,75 @@ struct mac_addr_list
   }
 };
 
+struct aim_counter
+{
+  using result_type = query::aim_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto baseAddr = boost::any_cast<query::aim_counter::base_addr_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+    // read counter values
+//    xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//    if(xrt_core::system::monitor_access_type::ioctl == accessType)
+    std::string aimName("aximm_mon_");
+    aimName = aimName + std::to_string(baseAddr);
+
+    std::string namePath = pdev->get_sysfs_path(aimName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "counters";
+
+    result_type retvalBuf;
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+//      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
+      return retvalBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    result_type valBuf;
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    ifs.close();
+
+#if 0
+   if(valBuf.size() < 13) {
+      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
+      ifs.close();
+      return retvalBuf;
+    }
+#endif
+
+    retvalBuf.push_back(valBuf[0]);
+    retvalBuf.push_back(valBuf[1]);
+    retvalBuf.push_back(valBuf[4]);
+    retvalBuf.push_back(valBuf[5]);
+    retvalBuf.push_back(valBuf[8]);
+    retvalBuf.push_back(valBuf[9]);
+    retvalBuf.push_back(valBuf[10]);
+    retvalBuf.push_back(valBuf[11]);
+    retvalBuf.push_back(valBuf[12]);
+
+    return retvalBuf;
+  }
+
+};
+  
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -424,6 +495,17 @@ struct function0_get : virtual QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function4_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 template <typename QueryRequestType>
@@ -440,6 +522,14 @@ emplace_func0_request()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func4_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function4_get<QueryRequestType, Getter>>());
 }
 
 template <typename QueryRequestType>
@@ -487,6 +577,7 @@ initialize_query_table()
   emplace_sysfs_get<query::group_topology>                     ("icap", "group_topology");
   emplace_sysfs_get<query::ip_layout_raw>                      ("icap", "ip_layout");
   emplace_sysfs_get<query::debug_ip_layout_raw>                ("icap", "debug_ip_layout");
+  emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_sysfs_get<query::clock_freq_topology_raw>            ("icap", "clock_freq_topology");
   emplace_sysfs_get<query::clock_freqs_mhz>                    ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                             ("icap", "idcode");
