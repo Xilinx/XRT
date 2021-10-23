@@ -391,12 +391,13 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
     aimResults.WriteBytes[index]      = valBuf[0];
     aimResults.WriteTranx[index]      = valBuf[1];
     aimResults.ReadBytes[index]       = valBuf[2];
-//    aimResults.ReadTranx[index]       = valBuf[3];
+    aimResults.ReadTranx[index]       = valBuf[3];
     aimResults.OutStandCnts[index]    = valBuf[4];
     aimResults.LastWriteAddr[index]   = valBuf[5];
     aimResults.LastWriteData[index]   = valBuf[6];
     aimResults.LastReadAddr[index]    = valBuf[7];
     aimResults.LastReadData[index]    = valBuf[8];
+
 #if 0
 #ifndef _WIN32
   // read counter values
