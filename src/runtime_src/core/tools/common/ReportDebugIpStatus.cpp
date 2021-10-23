@@ -387,6 +387,17 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_MM_MONITOR];
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo->m_base_address);
+    aimResults.WriteBytes[index]      = valBuf[0];
+    aimResults.WriteTranx[index]      = valBuf[1];
+    aimResults.ReadBytes[index]       = valBuf[2];
+//    aimResults.ReadTranx[index]       = valBuf[3];
+    aimResults.OutStandCnts[index]    = valBuf[4];
+    aimResults.LastWriteAddr[index]   = valBuf[5];
+    aimResults.LastWriteData[index]   = valBuf[6];
+    aimResults.LastReadAddr[index]    = valBuf[7];
+    aimResults.LastReadData[index]    = valBuf[8];
+#if 0
 #ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
@@ -442,7 +453,9 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
     return;
   }
 #endif
+#endif
 
+#if 0
   // read counter values
   static const uint64_t aim_offsets[] = {
     XAIM_SAMPLE_WRITE_BYTES_OFFSET,
@@ -508,6 +521,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.LastWriteData[index] |= currData[6];
   aimResults.LastReadAddr[index]  |= currData[7];
   aimResults.LastReadData[index]  |= currData[8];
+#endif
 }
 
 
