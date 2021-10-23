@@ -77,7 +77,6 @@ xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
 #pragma GCC diagnostic pop
 }
 
-
 struct bdf 
 {
   using result_type = query::pcie_bdf::result_type;
@@ -506,20 +505,20 @@ struct aim_counter
                     &sampleInterval, sizeof(uint32_t));
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
+//  if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
       xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                  baseAddr + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
-    }
-    retvalBuf.push_back(((uint64_t)(currData[0])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[1])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[2])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[3])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[4])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[5])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[6])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[7])) << 32 ;
-    retvalBuf.push_back(((uint64_t)(currData[8])) << 32 ;
+//    }
+    retvalBuf.push_back(((uint64_t)(currData[0])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[1])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[2])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[3])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[4])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[5])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[6])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[7])) << 32 );
+    retvalBuf.push_back(((uint64_t)(currData[8])) << 32 );
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
