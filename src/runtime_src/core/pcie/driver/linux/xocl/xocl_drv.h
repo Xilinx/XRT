@@ -1428,7 +1428,7 @@ static inline int xocl_clock_w_ops_level(xdev_handle_t xdev)
 	int __idx = xocl_clock_w_ops_level(xdev);			\
 	(CLOCK_W_CB(xdev, __idx, get_data) ?				\
 	CLOCK_W_OPS(xdev, __idx)->get_data(CLOCK_W_DEV(xdev, __idx),	\
-		kind) : 0); 						\
+		kind) : -ENODEV); 						\
 })
 
 /* Not a real SC version to indicate that SC image does not exist. */
@@ -2106,6 +2106,7 @@ struct xocl_xfer_versal_funcs {
 	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
 
 struct xocl_pmc_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*enable_reset)(struct platform_device *pdev);
 };
 #define	PMC_DEV(xdev)	\
@@ -2119,28 +2120,35 @@ struct xocl_pmc_funcs {
 	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
 
 struct xocl_xgq_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
+	uint64_t (*xgq_get_data)(struct platform_device *pdev,
+		enum data_kind kind);
 };
-#define	XGQ_DEV(xdev)					\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+#define	XGQ_DEV(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
 	SUBDEV(xdev, XOCL_SUBDEV_XGQ)->pldev : NULL)
-#define	XGQ_OPS(xdev)					\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+#define	XGQ_OPS(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
 	(struct xocl_xgq_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XGQ)->ops : NULL)
-#define	XGQ_CB(xdev)	(XGQ_DEV(xdev) && XGQ_OPS(xdev))
-#define	xocl_xgq_download_axlf(xdev, xclbin)		\
-	(XGQ_CB(xdev) ?					\
+#define	XGQ_CB(xdev, cb)					\
+	(XGQ_DEV(xdev) && XGQ_OPS(xdev) && XGQ_OPS(xdev)->cb)
+#define	xocl_xgq_download_axlf(xdev, xclbin)			\
+	(XGQ_CB(xdev, xgq_load_xclbin) ?			\
 	XGQ_OPS(xdev)->xgq_load_xclbin(XGQ_DEV(xdev), xclbin) : -ENODEV)
-#define	xocl_xgq_check_firewall(xdev)			\
-	(XGQ_CB(xdev) ?					\
+#define	xocl_xgq_check_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
-	(XGQ_CB(xdev) ?						\
+	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
+#define	xocl_xgq_clock_get_data(xdev, kind) 			\
+	(XGQ_CB(xdev, xgq_get_data) ?				\
+	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1

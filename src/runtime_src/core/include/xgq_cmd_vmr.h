@@ -43,6 +43,8 @@
 
 /* This header file defines struct of mgmt command type opcode */
 
+#define CLOCK_MAX_RES           4
+
 enum xgq_cmd_sensor_page_id {
 	XGQ_CMD_SENSOR_PID_ALL		= 0x0,
 	XGQ_CMD_SENSOR_PID_BDINFO	= 0x1,
@@ -50,6 +52,12 @@ enum xgq_cmd_sensor_page_id {
 	XGQ_CMD_SENSOR_PID_VOLTAGE	= 0x3,
 	XGQ_CMD_SENSOR_PID_POWER	= 0x4,
 	XGQ_CMD_SENSOR_PID_QSFP		= 0x5,
+};
+
+enum xgq_cmd_clock_req_type {
+	XGQ_CMD_CLOCK_WIZARD 		= 0x0,
+	XGQ_CMD_CLOCK_COUNTER		= 0x1,
+	XGQ_CMD_CLOCK_SCALE		= 0x2,
 };
 
 struct xgq_cmd_log_payload {
@@ -62,8 +70,11 @@ struct xgq_cmd_log_payload {
 
 struct xgq_cmd_clock_payload {
 	uint32_t ocl_region;
-	uint32_t num_clock;
-	uint8_t  ocl_target_freq[4];
+	uint32_t ocl_req_type:8;
+	uint32_t ocl_req_id:2;
+	uint32_t ocl_req_num:4;
+	uint32_t rsvd1:18;
+	uint32_t ocl_req_freq[CLOCK_MAX_RES];
 };
 
 struct xgq_cmd_data_payload {
@@ -85,4 +96,29 @@ struct xgq_cmd_sq {
 	};
 };
 
+struct xgq_cmd_cq_default_payload {
+	uint32_t result;
+	uint32_t resvd;
+};
+
+struct xgq_cmd_cq_clock_payload {
+	uint32_t ocl_freq;
+	uint32_t resvd;
+};
+
+struct xgq_cmd_cq_sensor_payload {
+	uint32_t result;
+	uint32_t resvd;
+};
+
+struct xgq_cmd_cq {
+	struct xgq_cmd_cq_hdr hdr;
+	union {
+		struct xgq_cmd_cq_default_payload default_payload;
+		struct xgq_cmd_cq_clock_payload clock_payload;
+		struct xgq_cmd_cq_sensor_payload sensor_payload;
+	};
+	uint32_t rcode;
+};
+XGQ_STATIC_ASSERT(sizeof(struct xgq_cmd_cq) == 16, "xgq_cmd_cq has to be 16 bytes in size");
 #endif
