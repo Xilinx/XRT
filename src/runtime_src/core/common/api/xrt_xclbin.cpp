@@ -373,6 +373,7 @@ class xclbin_impl
   struct xclbin_info
   {
     const xclbin_impl* m_ximpl;
+    std::string m_project_name;           // <project name="foo">
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
@@ -455,6 +456,15 @@ class xclbin_impl
       return kernels;
     }
 
+    static std::string
+    init_project_name(const xclbin_impl* ximpl)
+    {
+      auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
+      return xml.first
+        ? xrt_core::xclbin::get_project_name(xml.first, xml.second)
+        : "";
+    }
+
     // init_mem_encoding() - compress memory indices
     // 
     // Mapping from memory index to encoded index.  The compressed
@@ -529,6 +539,7 @@ class xclbin_impl
     explicit
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
+      , m_project_name(init_project_name(m_ximpl))
       , m_mems(init_mems(m_ximpl))
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
@@ -592,6 +603,13 @@ public:
   virtual
   std::string
   get_xsa_name() const
+  {
+    throw std::runtime_error("not implemented");
+  }
+
+  virtual
+  xclbin::target_type
+  get_target_type() const
   {
     throw std::runtime_error("not implemented");
   }
@@ -669,6 +687,12 @@ public:
   {
     return get_xclbin_info()->m_membank_encoding;
   }
+
+  const std::string&
+  get_project_name() const
+  {
+    return get_xclbin_info()->m_project_name;
+  }
 };
 
 // class xclbin_full - Implementation of full xclbin
@@ -677,10 +701,29 @@ public:
 // binary images for file content
 class xclbin_full : public xclbin_impl
 {
-  std::vector<char> m_axlf;  // complete copy of xclbin raw data
-  const axlf* m_top = nullptr;
-  uuid m_uuid;
+  std::vector<char> m_axlf;    // complete copy of xclbin raw data
+  const axlf* m_top = nullptr; // axlf pointer to the raw data
+  uuid m_uuid;                 // uuid of xclbin
+
+  // sections within this xclbin
   std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
+
+  void
+  emplace_section(const axlf_section_header* hdr, axlf_section_kind kind)
+  {
+    auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+    m_axlf_sections.emplace(kind , std::move(data));
+  }
+
+  void
+  emplace_soft_kernel_sections(const axlf_section_header* hdr)
+  {
+    while (hdr != nullptr) {
+      emplace_section(hdr, SOFT_KERNEL);
+      hdr = ::xclbin::get_axlf_section_next(m_top, hdr, SOFT_KERNEL);
+    }
+  }
 
   void
   init_axlf()
@@ -692,8 +735,7 @@ class xclbin_full : public xclbin_impl
 
     m_uuid = uuid(m_top->m_header.uuid); 
     
-    XRT_CORE_UNUSED const ::ip_layout* ip_layout = nullptr;
-
+    const ::ip_layout* ip_layout = nullptr;
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
 
@@ -712,20 +754,18 @@ class xclbin_full : public xclbin_impl
       if (!hdr)
         continue;
 
-      if (kind == SOFT_KERNEL) {
-	while (hdr != nullptr) {
-	  auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-	  std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-	  m_axlf_sections.emplace(kind , std::move(data));
-	  hdr = ::xclbin::get_axlf_section_next(m_top, hdr, kind);
-	}
-      }
-      else {
-	auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-	std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-	m_axlf_sections.emplace(kind , std::move(data));
-      }
+      // account for multiple soft_kernel sections
+      if (kind == SOFT_KERNEL)
+        emplace_soft_kernel_sections(hdr);
+      else
+        emplace_section(hdr, kind);
     }
+  }
+
+  void
+  init()
+  {
+    init_axlf();
   }
   
 public:
@@ -733,21 +773,21 @@ public:
   xclbin_full(const std::string& filename)
     : m_axlf(read_xclbin(filename))
   {
-    init_axlf();
+    init();
   }
 
   explicit
   xclbin_full(std::vector<char> data)
     : m_axlf(std::move(data))
   {
-    init_axlf();
+    init();
   }
 
   explicit
   xclbin_full(const axlf* top)
     : m_axlf(copy_axlf(top))
   {
-    init_axlf();
+    init();
   }
 
   uuid
@@ -760,6 +800,25 @@ public:
   get_xsa_name() const override
   {
     return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+  }
+
+  xclbin::target_type
+  get_target_type() const
+  {
+    switch (m_top->m_header.m_mode) {
+    case XCLBIN_FLAT:
+    case XCLBIN_PR:
+    case XCLBIN_TANDEM_STAGE2:
+    case XCLBIN_TANDEM_STAGE2_WITH_PR:
+      return xclbin::target_type::hw;
+    case XCLBIN_HW_EMU:
+    case XCLBIN_HW_EMU_PR:
+      return xclbin::target_type::hw_emu;
+    case XCLBIN_SW_EMU:
+      return xclbin::target_type::sw_emu;
+    default:
+      throw std::runtime_error("Invalid target target");
+    }
   }
 
   std::pair<const char*, size_t>
@@ -870,6 +929,16 @@ xclbin::
 get_uuid() const
 {
   return handle ? handle->get_uuid() : uuid{};
+}
+
+xclbin::target_type
+xclbin::
+get_target_type() const
+{
+  if (!handle)
+    throw std::runtime_error("No xclbin");
+
+  return handle->get_target_type();
 }
 
 const axlf*
@@ -1229,6 +1298,12 @@ const std::vector<size_t>&
 get_membank_encoding(const xrt::xclbin& xclbin)
 {
   return xclbin.get_handle()->get_membank_encoding();
+}
+
+std::string
+get_project_name(const xrt::xclbin& xclbin)
+{
+  return xclbin.get_handle()->get_project_name();
 }
 
 }} // namespace xclbin_int, core_core

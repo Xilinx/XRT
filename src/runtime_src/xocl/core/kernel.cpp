@@ -166,8 +166,17 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     std::bitset<128> cumask; // magic 128 for max_cus
     for (auto& cu : device->get_cus())
       cumask.set(cu->get_index());
-    xrt_core::kernel_int::set_cus(xrun, cumask);
-    m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
+
+    // Limiting the CUs for this kernel object may fail if the device
+    // CUs are different from the kernel CUs. The kernel CUs could be
+    // constrained through the kernel name.  In this case set_cus
+    // throws and the kernel should be ignored
+    try {
+      xrt_core::kernel_int::set_cus(xrun, cumask);
+      m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
+    }
+    catch (const std::exception&) {
+    }
   }
 
   // Iterate all kernel args and process runtime infomational

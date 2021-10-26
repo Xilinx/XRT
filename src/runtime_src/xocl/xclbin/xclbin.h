@@ -22,6 +22,8 @@
 #include "core/common/device.h"
 #include "core/common/uuid.h"
 
+#include "core/include/experimental/xrt_xclbin.h"
+
 #include <map>
 #include <string>
 #include <memory>
@@ -45,7 +47,7 @@ public:
   static constexpr memidx_type max_banks = 256;
   using memidx_bitmask_type = std::bitset<max_banks>;
 
-  enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
+  using target_type = xrt::xclbin::target_type;
 
   // A symbol captures all data required to construct an xocl::kernel
   // object.  It is associated with all kernel objects in the xclbin.
@@ -65,7 +67,6 @@ public:
       size_t hostoffset;
       size_t hostsize;
       std::string type;
-      size_t memsize;
       argtype atype;        // optimization to avoid repeated string cmp
       symbol* host;
     };
@@ -81,13 +82,11 @@ public:
     std::string name;                // name of kernel
     unsigned int uid;                // unique id for this symbol, some symbols have same name??
     std::string attributes;          // attributes as per .cl file
-    std::string hash;                // kernel conformance hash
     size_t workgroupsize = 0;
     size_t compileworkgroupsize[3] = {0};   //
     size_t maxworkgroupsize[3] = {0};// xilinx extension
     std::vector<arg> arguments;      // the args of this kernel
     std::vector<instance> instances; // the kernel instances
-    target_type target;              // xclbin target
   };
 
 public:
@@ -160,12 +159,6 @@ public:
    */
   const symbol&
   lookup_kernel(const std::string& name) const;
-
-  /**
-   * Get the mem topology section in xclbin
-   */
-  const mem_topology*
-  get_mem_topology() const;
 
   /**
    * Get memory connection indeces for CU argument at specified index
