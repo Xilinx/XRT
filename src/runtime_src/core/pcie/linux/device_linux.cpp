@@ -287,14 +287,14 @@ struct aim_counter
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto baseAddr = boost::any_cast<query::aim_counter::base_addr_type>(arg1);
+    const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
     // read counter values
 //    xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
 //    if(xrt_core::system::monitor_access_type::ioctl == accessType)
     std::string aimName("aximm_mon_");
-    aimName = aimName + std::to_string(baseAddr);
+    aimName = aimName + std::to_string(dbgIpData->m_base_address);
 
     std::string namePath = pdev->get_sysfs_path(aimName.c_str(), "name");
 

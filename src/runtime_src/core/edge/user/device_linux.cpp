@@ -465,7 +465,7 @@ struct aim_counter
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto baseAddr = boost::any_cast<query::aim_counter::base_addr_type>(arg1);
+    const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
 
     xclDeviceHandle handle = device->get_device_handle();
 
@@ -501,15 +501,15 @@ struct aim_counter
   uint32_t sampleInterval;
   // Read sample interval register to latch the sampled metric counters
   xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    baseAddr + XAIM_SAMPLE_OFFSET,
+                    dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
                     &sampleInterval, sizeof(uint32_t));
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-//  if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
+  if (dbgIpData->m_properties & XAIM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
       xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                 baseAddr + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
-//    }
+                 dbgIpData->m_base_address + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
+    }
     retvalBuf.push_back(((uint64_t)(currData[0])) << 32 );
     retvalBuf.push_back(((uint64_t)(currData[1])) << 32 );
     retvalBuf.push_back(((uint64_t)(currData[2])) << 32 );
@@ -523,7 +523,7 @@ struct aim_counter
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
     xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                       baseAddr + aim_offsets[c], &currData[c], sizeof(uint32_t));
+                       dbgIpData->m_base_address + aim_offsets[c], &currData[c], sizeof(uint32_t));
   }
 
   retvalBuf[0] |= currData[0];

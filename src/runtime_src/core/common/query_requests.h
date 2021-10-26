@@ -18,6 +18,7 @@
 #define xrt_core_common_query_requests_h
 
 #include "core/include/xclerr_int.h"
+#include "core/include/xclbin.h"
 #include "query.h"
 #include "error.h"
 #include "uuid.h"
@@ -817,7 +818,7 @@ struct debug_ip_layout_raw : request
 struct aim_counter : request
 {
   using result_type = std::vector<uint64_t>;
-  using base_addr_type = uint64_t;
+  using debug_ip_data_type = debug_ip_data*;
   static const key_type key = key_type::aim_counter;
 
   virtual boost::any
