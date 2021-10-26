@@ -34,7 +34,7 @@
 #include <unistd.h>
 
 struct subCmd {
-    std::function<int(po::variables_map, int, char **)> handler;
+    std::function<int(po::variables_map)> handler;
     const char *description;
     const char *usage;
 };
@@ -85,8 +85,9 @@ void printSubCmdHelp(const std::string& subCmd)
       if (std::find(std::begin(basic_subCmd),
           std::end(basic_subCmd), subCmd) == basic_subCmd.end())
               std::cout << "Experts only sub-command, use at your own risk." << std::endl;
-          std::cout << "'" << subCmd << "' sub-command usage:" << std::endl;
-      std::cout << cmd->second.usage << std::endl;
+      std::cout << "'" << subCmd << "' command" << std::endl;
+      std::cout << "DESCRIPTION: " << cmd->second.description << std::endl;
+      std::cout << "USAGE:\n" << cmd->second.usage << std::endl;
     }
 }
 
@@ -94,7 +95,9 @@ void printHelp(bool printExpHelp)
 {
     std::stringstream expert_ostr;
 
-    std::cout << "Supported sub-commands are:" << std::endl;
+    std::cout << "DESCRIPTIONS: utility is available as a way to flash a custom image onto given device.\n" << std::endl;
+    std::cout << "USAGE: xbflash2 [--help] [command [commandArgs]] [-d arg] [--version] [--verbose] [--batch] [--force]\n" << std::endl;
+    std::cout << "AVAILABLE COMMANDS:" << std::endl;
     for (auto& c : subCmdList) {
       if(std::find(std::begin(basic_subCmd), std::end(basic_subCmd), c.first) == basic_subCmd.end()) {
         expert_ostr << "\t" << c.first << " - " << c.second.description << std::endl;
@@ -126,12 +129,16 @@ int main(int argc, char *argv[])
         return -EINVAL;
     }
 
+    if (argc < 3) {
+      printSubCmdHelp(subCmd);
+        return -EINVAL;
+    }
+
     po::options_description description("Usage");
 
     description.add_options()
     ("device",    po::value<std::string>(), "device in BDF format\n")
-    ("spi",      "For SPI Flash type")
-    ("qspips",      "For QSPIPS Flash type")
+    ("flash",      po::value<std::string>(), "Flash type - spi | qspips")
     ("flash-part",      po::value<std::string>(), "Flash Part")
     ("revert-to-golden", "Revert to Golden Image")
     ("erase", "Erase flash on device")
@@ -160,9 +167,7 @@ int main(int argc, char *argv[])
       printHelp(false);
     }
 
-    --argc;
-    ++argv;
-    int ret = cmd->second.handler(vm, argc, argv);
+    int ret = cmd->second.handler(vm);
     if (ret == -EINVAL)
       printSubCmdHelp(subCmd);
 

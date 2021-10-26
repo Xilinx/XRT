@@ -40,15 +40,15 @@ bool canProceed(void);
 void sudoOrDie(void);
 
 // Subcommand handlers
-int helpHandler(po::variables_map vm, int argc, char *argv[]);
+int helpHandler(po::variables_map vm);
 extern const char *subCmdHelpDesc;
 extern const char *subCmdHelpUsage;
 
-int programHandler(po::variables_map vm, int argc, char *argv[]);
+int programHandler(po::variables_map vm);
 extern const char *subCmdProgramDesc;
 extern const char *subCmdProgramUsage;
 
-int dumpHandler(po::variables_map vm, int argc, char *argv[]);
+int dumpHandler(po::variables_map vm);
 extern const char *subCmdDumpDesc;
 extern const char *subCmdDumpUsage;
 #endif
