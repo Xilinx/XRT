@@ -25,14 +25,15 @@
 // For backward compatibility
 const char *subCmdProgramDesc = "Updates the image(s) for a given device";
 const char *subCmdProgramUsage =
-    "--qspips --device <mgmt-bdf> --image <input-arg.BIN> [--offset <arg>] [--flash-part <arg>] [--bar <arg>] [--bar-offset <arg>]\n"
-    "--spi --device <mgmt-bdf> --image primary_mcs [--image arg] [--bar <arg>] [--bar-offset <arg>]\n"
-    "--spi --device <mgmt-bdf> --revert-to-golden [--dual-flash] [--bar <arg>] [--bar-offset <arg>] [--force, yes for prompt]\n"
+    "--flash qspips --device <mgmt-bdf> --image <input-arg.BIN> [--offset <arg>] [--flash-part <arg>] [--bar <arg>] [--bar-offset <arg>]\n"
+    "--flash qspips --device <mgmt-bdf> --erase [--offset <arg>] [--flash-part <arg>] [--bar <arg>] [--bar-offset <arg>]\n"
+    "--flash spi --device <mgmt-bdf> --image primary_mcs [--image arg] [--bar <arg>] [--bar-offset <arg>]\n"
+    "--flash spi --device <mgmt-bdf> --revert-to-golden [--dual-flash] [--bar <arg>] [--bar-offset <arg>] [--force, yes for prompt]\n"
     "\nOPTIONS:\n"
     "\t--device: The \"Bus:Device.Function\" (e.g., 0000:d8:00.0) device of interest.\n"
-    "\t--spi: Use it for SPI flash\n"
-    "\t--qspips: Use it for QSPIPS flash\n"
-    "\t--image: Specifies MCS or BOOT.BIN image path to update the persistent device. If it is a dual flash then use same option \"--image\" and specify the secondary MCS file path.\n"
+    "\t--flash: spi    - Use it for SPI flash\n"
+    "\t         qspips - Use it for QSPIPS flash\n"
+    "\t--image: Specifies MCS or BOOT.BIN image path to update the persistent device\n"
     "\t--revert-to-golden: Resets the FPGA PROM back to the factory image.\n"
     "\t--dual-flash: Specifies if the card is dual flash supported\n"
     "\t--offset: offset on flash to start, default is 0\n"
@@ -121,7 +122,7 @@ static int flash(po::variables_map vm, int bar, size_t baroff)
     return ret;
 }
 
-static int spiCommand(po::variables_map vm, int argc, char *argv[])
+static int spiCommand(po::variables_map vm)
 {
     std::string sBar, sBarOffset;
     size_t baroff = INVALID_OFFSET;
@@ -266,7 +267,7 @@ static int qspips_erase(po::variables_map vm, int bar, size_t baroff)
     return qspips.xclErase(offset, len);
 }
 
-static int qspipsCommand(po::variables_map vm, int argc, char *argv[])
+static int qspipsCommand(po::variables_map vm)
 {
     std::string sBar, sBarOffset;
     size_t baroff = INVALID_OFFSET;
@@ -295,25 +296,26 @@ static int qspipsCommand(po::variables_map vm, int argc, char *argv[])
     return err;
 }
 
-static const std::map<std::string, std::function<int(po::variables_map, int, char **)>> optList = {
-    { "--spi", spiCommand },
-    { "--qspips", qspipsCommand },
+static const std::map<std::string, std::function<int(po::variables_map)>> optList = {
+    { "spi", spiCommand },
+    { "qspips", qspipsCommand },
 };
 
-int programHandler(po::variables_map vm, int argc, char *argv[])
+int programHandler(po::variables_map vm)
 {
-    if (argc < 2)
-        return -EINVAL;
+    std::string subcmd;
 
     sudoOrDie();
 
-    std::string subcmd(argv[1]);
+    try {
+     subcmd = vm["flash"].as<std::string>();
+    } catch (...) {
+      return -EINVAL;
+    }
 
     auto cmd = optList.find(subcmd);
     if (cmd == optList.end())
         return -EINVAL;
 
-    argc--;
-    argv++;
-    return cmd->second(vm, argc, argv);
+    return cmd->second(vm);
 }

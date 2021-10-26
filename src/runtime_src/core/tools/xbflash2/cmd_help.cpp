@@ -20,13 +20,19 @@
 const char *subCmdHelpDesc = "Print out help message for a sub-command";
 const char *subCmdHelpUsage = "help [sub-command]";
 
-int helpHandler(po::variables_map vm, int argc, char *argv[])
+int helpHandler(po::variables_map vm)
 {
-    if (argc == 1) {
-        printHelp(false);
-        return 0;
+    std::string subcmd;
+
+    sudoOrDie();
+
+    try {
+      subcmd = vm["flash"].as<std::string>();
+    } catch (...) {
+      printHelp(false);
+      return 0;
     }
-    std::string subCmd(argv[1]);
-    printSubCmdHelp(subCmd);
+
+    printSubCmdHelp(subcmd);
     return 0;
 }
