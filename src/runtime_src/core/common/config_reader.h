@@ -193,6 +193,21 @@ get_aie_profile_interval_us()
   return value ;
 }
 
+inline std::string
+get_aie_debug()
+{
+  static std::string value = detail::get_string_value("Debug.aie_debug", "false");
+  return value;
+}
+
+inline unsigned int
+get_aie_debug_interval_us()
+{
+  // NOLINTNEXTLINE
+  static unsigned int value = detail::get_uint_value("Debug.aie_debug_interval_us", 1000) ;
+  return value ;
+}
+
 inline bool
 get_noc_profile()
 {

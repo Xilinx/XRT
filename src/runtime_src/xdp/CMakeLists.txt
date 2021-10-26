@@ -60,9 +60,11 @@ set(XRT_XDP_PROFILE_HAL_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/p
 set(XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/aie_trace")
 set(XRT_XDP_AIE_TRACE_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_trace")
 set(XRT_XDP_AIE_TRACE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie_trace")
-set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/power")
-set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
-set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
+set(XRT_XDP_AIE_DEBUG_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_debug")
+set(XRT_XDP_AIE_DEBUG_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie_debug")
+set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/power")
+set(XRT_XDP_POWER_PROFILE_WRITER_DIR     "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
+set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR   "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
 
 # Files for the new xdp core
 set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
@@ -249,6 +251,13 @@ file(GLOB XRT_XDP_AIE_TRACE_PLUGIN_FILES
   "${XRT_XDP_AIE_TRACE_WRITER_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_AIE_DEBUG_PLUGIN_FILES
+  "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_AIE_DEBUG_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_AIE_DEBUG_WRITER_DIR}/*.h"
+  "${XRT_XDP_AIE_DEBUG_WRITER_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.h"
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
@@ -364,6 +373,16 @@ set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSIO
 
 # AI Engine plugins are Edge only
 if (DEFINED XRT_AIE_BUILD)
+  # AIE Debug plugin
+  add_library(xdp_aie_debug_plugin MODULE ${XRT_XDP_AIE_DEBUG_PLUGIN_FILES})
+  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_core)
+  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_debug_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+
   # AIE Profile plugin
   add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)
