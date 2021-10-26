@@ -1,0 +1,238 @@
+#!/bin/bash
+#
+# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+#
+
+# This script creates rpm and deb packages for Versal APU firmware.
+# The firmware file (.xsabin) is installed to /lib/firmware/xilinx
+#
+# The script is assumed to run on a host or docker that has all the
+# necessary tools is accessible.
+#     mkimage
+#     xclbinutil
+#     bootgen
+#     rpmbuild
+#     dpkg-deb 
+#
+
+error()
+{
+	echo "ERROR: $1" 1>&2
+	usage_and_exit 1
+}
+
+usage()
+{
+	echo "Usage: $PROGRAM [options]"
+	echo "  options:"
+	echo "          -help                           Print this usage"
+	echo "          -images                         Versal images path"
+	echo "          -petalinux                      Petalinux path"
+	echo "          -clean                          Remove build files"
+        echo "          -output                         output path"
+	echo ""
+}
+
+usage_and_exit()
+{
+	usage
+	exit $1
+}
+
+dodeb()
+{
+	dir=$BUILD_DIR/debbuild/$PKG_NAME-$PKG_VER
+	mkdir -p $dir/DEBIAN
+
+cat <<EOF >$dir/DEBIAN/control
+
+Package: $PKG_NAME
+Architecture: all
+Version: $PKG_VER
+Priority: optional
+Description: Xilinx Versal firmware
+Maintainer: Xilinx Inc.
+
+EOF
+
+	app_root=$1
+	rsync -avz $app_root $dir
+	dpkg-deb --build $dir $PACKAGE_DIR
+}
+
+dorpm()
+{
+	app_root=$1
+	dir=$BUILD_DIR/rpmbuild/$PKG_NAME-$PKG_VER
+	mkdir -p $dir/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+
+	appfiles=(`find $app_root -type f`)
+	appdir=${app_root%/*}
+	appfiles=( "${appfiles[@]/$appdir/}" )
+
+cat <<EOF > $dir/SPECS/$PKG_NAME.spec
+
+buildroot: %{_topdir}
+summary: Xilinx Versal firmware
+name: $PKG_NAME
+version: $PKG_VER
+release: 0
+license: apache
+vendor: Xilinx Inc.
+
+%description
+Xilinx Versal firmware
+
+%prep
+
+%install
+rsync -avz $app_root %{buildroot}/
+
+%files
+%defattr(-,root,root,-)
+
+EOF
+
+	for f in "${appfiles[@]}"; do
+		echo $f >> $dir/SPECS/$PKG_NAME.spec
+	done
+
+	echo "rpmbuild --target=noarch --define '_topdir $dir' -bb $dir/SPECS/$PKG_NAME.spec"
+	rpmbuild --target=noarch --define '_topdir '"$dir" -bb $dir/SPECS/$PKG_NAME.spec
+
+	cp $dir/RPMS/noarch/*.rpm $PACKAGE_DIR
+}
+
+SYSTEM_DTB_ADDR="0x1000"
+KERNEL_ADDR="0x20100000"
+ROOTFS_ADDR="0x21000000"
+
+clean=0
+while [ $# -gt 0 ]; do
+	case $1 in
+		-help )
+			usage_and_exit 0
+			;;
+		-images )
+			shift
+			IMAGES_DIR=$1
+			;;
+                -output )
+			shift
+                        OUTPUT_DIR=$1
+			;;
+		-clean )
+			clean=1
+			;;
+		* )
+			error "Unrecognized option: $1"
+			;;
+	esac
+	shift
+done
+
+if [[ ! -d $IMAGES_DIR ]]; then
+	error "Please specify the valid path of APU images by -images"
+fi
+
+if [[ ! -d $OUTPUT_DIR ]]; then
+	error "Please specify the valid output path by -output"
+fi
+
+BUILD_DIR="$OUTPUT_DIR/apu_build"
+PACKAGE_DIR="$BUILD_DIR"
+FW_FILE="$BUILD_DIR/lib/firmware/xilinx/xrt-versal-apu.xsabin"
+INSTALL_ROOT="$BUILD_DIR/lib"
+PKG_NAME="xrt-apu"
+
+if [[ $clean == 1 ]]; then
+	echo $PWD
+	echo "/bin/rm -rf $BUILD_DIR"
+	/bin/rm -rf $BUILD_DIR
+	exit 0
+fi
+
+if [ -f $SETTINGS_FILE ]; then
+	source $SETTINGS_FILE
+fi
+
+PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
+if [[ "X$PKG_VER" == "X" ]]; then
+	error "Can not get package version"
+fi
+echo VERSION "$PKG_VER"
+
+if [ -d $BUILD_DIR ]; then
+	rm -rf $BUILD_DIR
+fi
+
+mkdir -p $BUILD_DIR
+if [[ ! -d $BUILD_DIR ]]; then
+	error "failed to create dir $BUILD_DIR"
+fi
+
+#
+# Generate Linux PDI
+#
+BIF_FILE="$BUILD_DIR/apu.bif"
+cat << EOF > $BIF_FILE
+all:
+{
+    id_code = 0x14ca8093
+    extended_id_code = 0x01
+    image {
+        id = 0x1c000000, name=apu_subsystem
+        { core=a72-0, exception_level=el-3, trustzone, file=$IMAGES_DIR/bl31.elf }
+        { core=a72-0, exception_level=el-2, file=$IMAGES_DIR/u-boot.elf }
+        { load=0x32000000, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
+        { load=0x30000000, file=$BUILD_DIR/Image.ub }
+        { load=0x20000000, file=$BUILD_DIR/boot.scr }
+    }
+}
+EOF
+
+#
+# Generate u-boot script
+#
+UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
+UBOOT_CMD="$BUILD_DIR/boot.cmd"
+cat << EOF > $UBOOT_CMD
+bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
+EOF
+mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
+if [[ ! -e $UBOOT_SCRIPT ]]; then
+	error "failed to generate uboot script"
+fi
+
+#
+# Generate kernel u-boot image
+#
+IMAGE="$IMAGES_DIR/Image"
+IMAGE_UB="$BUILD_DIR/Image.ub"
+IMAGE_ELF_START="0x80000"
+mkimage -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
+if [[ ! -e $IMAGE_UB ]]; then
+	error "failed to generate kernel image"
+fi
+
+
+#
+# Generate pdi
+#
+APU_PDI="$BUILD_DIR/apu.pdi"
+bootgen -arch versal -padimageheader=0 -log trace -w -o $APU_PDI -image $BIF_FILE
+if [[ ! -e $APU_PDI ]]; then
+	error "failed to generate APU pdi"
+fi
+
+mkdir -p `dirname $FW_FILE`
+xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
+if [[ ! -e $FW_FILE ]]; then
+	error "failed to generate XSABIN"
+fi
+dodeb $INSTALL_ROOT
+dorpm $INSTALL_ROOT
+
+cp $BUILD_DIR/*.rpm $OUTPUT_DIR
+cp $BUILD_DIR/*.deb $OUTPUT_DIR
+rm -rf $BUILD_DIR
