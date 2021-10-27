@@ -198,7 +198,7 @@ if [[ "X$PETALINUX" == "X" ]]; then
   echo " **ERROR: PETALINUX is empty, please source petalinux and rerun"
   exit 1;
 fi
-MKIMAGE=$PETALINUX/../../tool/petalinux-v2021.2-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage
+MKIMAGE=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage
 
 #
 # Generate u-boot script
