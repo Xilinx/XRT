@@ -131,13 +131,10 @@ while [ $# -gt 0 ]; do
 	shift
 done
 
-if [[ ! -d $IMAGES_DIR ]]; then
-	error "Please specify the valid path of APU images by -images"
-fi
-
 if [[ ! -d $OUTPUT_DIR ]]; then
 	error "Please specify the valid output path by -output"
 fi
+OUTPUT_DIR=`realpath $OUTPUT_DIR`
 
 BUILD_DIR="$OUTPUT_DIR/apu_build"
 PACKAGE_DIR="$BUILD_DIR"
@@ -151,6 +148,11 @@ if [[ $clean == 1 ]]; then
 	/bin/rm -rf $BUILD_DIR
 	exit 0
 fi
+
+if [[ ! -d $IMAGES_DIR ]]; then
+	error "Please specify the valid path of APU images by -images"
+fi
+IMAGES_DIR=`realpath $IMAGES_DIR`
 
 if [ -f $SETTINGS_FILE ]; then
 	source $SETTINGS_FILE
@@ -191,6 +193,13 @@ all:
 }
 EOF
 
+# pick mkimage from petalinux
+if [[ "X$PETALINUX" == "X" ]]; then
+  echo " **ERROR: PETALINUX is empty, please source petalinux and rerun"
+  exit 1;
+fi
+MKIMAGE=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage
+
 #
 # Generate u-boot script
 #
@@ -199,9 +208,9 @@ UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
-mkimage -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
+$MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
 if [[ ! -e $UBOOT_SCRIPT ]]; then
-	error "failed to generate uboot script"
+  error "failed to generate uboot script"
 fi
 
 #
@@ -210,17 +219,23 @@ fi
 IMAGE="$IMAGES_DIR/Image"
 IMAGE_UB="$BUILD_DIR/Image.ub"
 IMAGE_ELF_START="0x80000"
-mkimage -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
+$MKIMAGE -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
 if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
 
+# pick bootgen from vitis
+if [[ "X$XILINX_VITIS" == "X" ]]; then
+  echo " **ERROR: XILINX_VITIS is empty, please source vitis and rerun"
+  exit 1;
+fi
+BOOTGEN=$XILINX_VITIS/bin/bootgen
 
 #
 # Generate pdi
 #
 APU_PDI="$BUILD_DIR/apu.pdi"
-bootgen -arch versal -padimageheader=0 -log trace -w -o $APU_PDI -image $BIF_FILE
+$BOOTGEN -arch versal -padimageheader=0 -log trace -w -o $APU_PDI -image $BIF_FILE
 if [[ ! -e $APU_PDI ]]; then
 	error "failed to generate APU pdi"
 fi
