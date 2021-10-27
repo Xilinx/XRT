@@ -253,7 +253,7 @@ public:
     if (has_reg_read_write())
       device->reg_read(idx, offset, &value);
     else
-      device->xread(ipctx.get_address() + offset, &value, 4);
+      device->xread(XCL_ADDR_KERNEL_CTRL, ipctx.get_address() + offset, &value, 4);
     return value;
   }
 

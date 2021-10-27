@@ -344,7 +344,7 @@ private:
     XRT_ASSERT(running_queue.size(),"cu wasn't started");
     ctrlreg = 0;
 
-    xdev->xread(addr,&ctrlreg,4);
+    xdev->xread(XCL_ADDR_KERNEL_CTRL,addr,&ctrlreg,4);
     XRT_DEBUGF("sws cu(%d) poll(0x%x) done(%d) run(%d)\n",cuidx,ctrlreg,done_cnt,run_cnt);
     if (ctrlreg & (AP_DONE | AP_IDLE))  { // AP_IDLE check in sw emulation
       ++done_cnt;
