@@ -264,7 +264,7 @@ public:
     if (has_reg_read_write())
       device->reg_write(idx, offset, data);
     else
-      device->xwrite(ipctx.get_address() + offset, &data, 4);
+      device->xwrite(XCL_ADDR_KERNEL_CTRL, ipctx.get_address() + offset, &data, 4);
   }
 
   std::shared_ptr<ip::interrupt_impl>

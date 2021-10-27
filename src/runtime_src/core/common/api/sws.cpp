@@ -352,7 +352,7 @@ private:
       XRT_ASSERT(done_cnt <= running_queue.size(),"too many dones");
       // acknowledge done
       value_type cont = AP_CONTINUE;
-      xdev->xwrite(addr,&cont,4);
+      xdev->xwrite(XCL_ADDR_KERNEL_CTRL,addr,&cont,4);
     }
   }
 
@@ -426,13 +426,13 @@ public:
       for (size_type idx = 6; idx < size - 1; idx+=2) {
         addr_type offset = *(regmap + idx);
         value_type value = *(regmap + idx + 1);
-        xdev->xwrite(addr + offset,&value,4);
+        xdev->xwrite(XCL_ADDR_KERNEL_CTRL,addr + offset,&value,4);
       }
     }
     else {
       // write register map consecutively from CU base
       regmap[0] = 0; // clear ctrl register stale data if cmd reuse
-      xdev->xwrite(addr,regmap,size*4);
+      xdev->xwrite(XCL_ADDR_KERNEL_CTRL,addr,regmap,size*4);
     }
 
     // invoke callback for starting cu
@@ -442,9 +442,9 @@ public:
     ctrlreg |= AP_START;
     const_cast<uint32_t*>(regmap)[0] = AP_START;
     if (is_emulation())
-      xdev->xwrite(addr,regmap,size*4);
+      xdev->xwrite(XCL_ADDR_KERNEL_CTRL,addr,regmap,size*4);
     else
-      xdev->xwrite(addr,regmap,4);
+      xdev->xwrite(XCL_ADDR_KERNEL_CTRL,addr,regmap,4);
 
     running_queue.push(xcmd);
     ++run_cnt;
