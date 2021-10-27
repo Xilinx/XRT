@@ -536,6 +536,7 @@ done:
 static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 {
 	struct pci_dev *pdev = lro->pci_dev;
+	u16 slot_ctrl_orig = 0, slot_ctrl;
 	struct pci_bus *bus;
 	u8 pci_bctl;
 	u16 pci_cmd, devctl;
@@ -550,6 +551,12 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	/* Reset secondary bus. */
 	bus = pdev->bus;
 
+	pcie_capability_read_word(bus->self, PCI_EXP_SLTCTL, &slot_ctrl);
+	if (slot_ctrl != (u16) ~0) {
+		slot_ctrl_orig = slot_ctrl;
+		slot_ctrl &= ~(PCI_EXP_SLTCTL_HPIE);
+		pcie_capability_write_word(bus->self, PCI_EXP_SLTCTL, slot_ctrl);
+	}
 	/*
 	 * When flipping the SBR bit, device can fall off the bus. This is usually
 	 * no problem at all so long as drivers are working properly after SBR.
@@ -569,6 +576,9 @@ static void xclmgmt_reset_pci(struct xclmgmt_dev *lro)
 	pci_read_config_byte(bus->self, PCI_BRIDGE_CONTROL, &pci_bctl);
 	pci_bctl |= PCI_BRIDGE_CTL_BUS_RESET;
 	pci_write_config_byte(bus->self, PCI_BRIDGE_CONTROL, pci_bctl);
+
+	if (!slot_ctrl_orig)
+		pcie_capability_write_word(bus->self, PCI_EXP_SLTCTL, slot_ctrl_orig);
 
 	msleep(100);
 	pci_bctl &= ~PCI_BRIDGE_CTL_BUS_RESET;
