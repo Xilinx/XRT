@@ -811,10 +811,6 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 
-	/* We do not need to reset kds core if xclbin_id is null */
-	if (!xclbin_id)
-		return 0;
-
 	kds_reset(&XDEV(xdev)->kds);
 	return 0;
 }
@@ -1216,18 +1212,19 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		goto out;
 	}
 
-	/* By default, use ERT */
-	XDEV(xdev)->kds.cu_intr = 0;
-	ret = kds_cfg_update(&XDEV(xdev)->kds);
+	/* Construct and send configure command */
+	xocl_ert_user_enable(xdev);
+	ret = xocl_config_ert(xdev, cfg);
 	if (ret) {
-		userpf_info(xdev, "KDS configure update failed, ret %d", ret);
+		userpf_info(xdev, "ERT configure failed, ret %d", ret);
 		goto out;
 	}
 
-	/* Construct and send configure command */
-	userpf_info(xdev, "enable ert user");
-	xocl_ert_user_enable(xdev);
-	ret = xocl_config_ert(xdev, cfg);
+	/* By default, use ERT */
+	XDEV(xdev)->kds.cu_intr = 0;
+	ret = kds_cfg_update(&XDEV(xdev)->kds);
+	if (ret)
+		userpf_err(xdev, "KDS configure update failed, ret %d", ret);
 
 out:
 	return ret;
