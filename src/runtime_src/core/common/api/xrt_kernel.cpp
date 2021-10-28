@@ -1514,7 +1514,7 @@ public:
     if (has_reg_read_write())
       device->core_device->reg_read(idx, offset, &value);
     else
-      device->core_device->xread(ipctxs.back()->get_address() + offset, &value, 4);
+      device->core_device->xread(XCL_ADDR_KERNEL_CTRL, ipctxs.back()->get_address() + offset, &value, 4);
     return value;
   }
 
@@ -1525,7 +1525,7 @@ public:
     if (has_reg_read_write())
       device->core_device->reg_write(idx, offset, data);
     else
-      device->core_device->xwrite(ipctxs.back()->get_address() + offset, &data, 4);
+      device->core_device->xwrite(XCL_ADDR_KERNEL_CTRL, ipctxs.back()->get_address() + offset, &data, 4);
   }
 
   // Read 'count' 4 byte registers starting at offset
