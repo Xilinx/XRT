@@ -154,6 +154,7 @@ static int kds_polling_thread(void *data)
 	struct xrt_cu **xcus = cu_mgmt->xcus;
 	int num_cus = cu_mgmt->num_cus;
 	int busy_cnt = 0;
+	int loop_cnt = 0;
 	int cu_idx;
 
 	while (!kds->polling_stop) {
@@ -169,6 +170,12 @@ static int kds_polling_thread(void *data)
 		 */
 		if (kds->interval > 0)
 			usleep_range(kds->interval, kds->interval + 3);
+
+		/* Avoid large num_rq leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
 
 		if (busy_cnt != 0)
 			continue;
