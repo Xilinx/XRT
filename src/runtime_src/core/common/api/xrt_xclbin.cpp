@@ -30,6 +30,7 @@
 
 #include "core/include/xclbin.h"
 
+#include "handle.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
 
@@ -1204,28 +1205,10 @@ get_index() const
 
 namespace {
 
-// C-API handles that must be explicitly freed. Corresponding managed
-// handles are inserted in this map.  When the unmanaged handle is
-// freed, it is removed from this map and underlying object is
-// deleted if no other shared ptrs exists for this xclbin object
+// C-API handles that must be explicitly closed but corresponding
+// implementation could be shared.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::map<xrtXclbinHandle, std::shared_ptr<xrt::xclbin_impl>> xclbins;
-
-static std::shared_ptr<xrt::xclbin_impl>
-get_xclbin(xrtXclbinHandle handle)
-{
-  auto itr = xclbins.find(handle);
-  if (itr == xclbins.end())
-    throw xrt_core::error(-EINVAL, "No such xclbin handle");
-  return itr->second;
-}
-
-static void
-free_xclbin(xrtXclbinHandle handle)
-{
-  if (xclbins.erase(handle) == 0)
-    throw xrt_core::error(-EINVAL, "No such xclbin handle");
-}
+static xrt_core::handle_map<xrtXclbinHandle, std::shared_ptr<xrt::xclbin_impl>> xclbins;
 
 inline void
 send_exception_message(const char* msg)
@@ -1244,24 +1227,17 @@ send_exception_message(const char* msg)
 ////////////////////////////////////////////////////////////////
 namespace xrt_core { namespace xclbin_int {
 
-void
-is_valid_or_error(xrtXclbinHandle handle)
-{
-  if ((xclbins.find(handle) == xclbins.end()))
-    throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
-}
-
 const axlf*
 get_axlf(xrtXclbinHandle handle)
 {
-  auto xclbin = ::get_xclbin(handle);
+  auto xclbin = xclbins.get_impl(handle);
   return xclbin->get_axlf();
 }
 
 xrt::xclbin
 get_xclbin(xrtXclbinHandle handle)
 {
-  return xrt::xclbin(::get_xclbin(handle));
+  return xrt::xclbin(xclbins.get_impl(handle));
 }
 
 std::pair<const char*, size_t>
@@ -1318,7 +1294,7 @@ xrtXclbinAllocFilename(const char* filename)
     return xdp::native::profiling_wrapper(__func__, [filename]{
       auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
       auto handle = xclbin.get();
-      xclbins.emplace(handle, std::move(xclbin));
+      xclbins.add(handle, std::move(xclbin));
       return handle;
     });
   }
@@ -1340,7 +1316,7 @@ xrtXclbinAllocRawData(const char* data, int size)
       std::vector<char> raw_data(data, data + size);
       auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
       auto handle = xclbin.get();
-      xclbins.emplace(handle, std::move(xclbin));
+      xclbins.add(handle, std::move(xclbin));
       return handle;
     });
   }
@@ -1359,7 +1335,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle]{
-      free_xclbin(handle);
+      xclbins.remove(handle);
       return 0;
     });
   }
@@ -1380,7 +1356,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, name, size, ret_size]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_impl(handle);
       const std::string& xsaname = xclbin->get_xsa_name();
       // populate ret_size if memory is allocated
       if (ret_size)
@@ -1406,7 +1382,7 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_impl(handle);
       auto result = xclbin->get_uuid();
       uuid_copy(ret_uuid, result.get());
       return 0;
@@ -1428,7 +1404,7 @@ xrtXclbinGetNumKernels(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_impl(handle);
       return xclbin->get_kernels().size();
     });
   }
@@ -1448,7 +1424,7 @@ xrtXclbinGetNumKernelComputeUnits(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_impl(handle);
       auto kernels = xclbin->get_kernels();
       return std::accumulate(kernels.begin(), kernels.end(), 0,
                              [](size_t sum, const auto& k) {
@@ -1472,7 +1448,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, data, size, ret_size]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_impl(handle);
       auto& result = xclbin->get_data();
       int result_size = result.size();
       // populate ret_size if memory is allocated
