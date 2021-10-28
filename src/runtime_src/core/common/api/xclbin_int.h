@@ -1,20 +1,7 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
  */
-
 #ifndef _XRT_COMMON_XCLBIN_INT_H_
 #define _XRT_COMMON_XCLBIN_INT_H_
 
@@ -23,10 +10,6 @@
 
 namespace xrt_core {
 namespace xclbin_int {
-
-// is_valid_or_error() - Throw if invalid handle
-void
-is_valid_or_error(xrtXclbinHandle handle);
 
 // get_axlf() - Retrieve complete axlf from handle
 const axlf*
