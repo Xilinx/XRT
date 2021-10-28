@@ -1008,6 +1008,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 */
 		write_unlock(&zdev->attr_rwlock);
 
+		(void) zocl_kds_reset(zdev);
 		ret = zocl_create_cu(zdev);
 		if (ret) {
 			write_lock(&zdev->attr_rwlock);

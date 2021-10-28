@@ -18,6 +18,7 @@
 #include <linux/pid.h>
 #include <linux/device.h>
 #include <linux/uuid.h>
+#include <linux/kthread.h>
 
 #include "kds_client.h"
 #include "kds_command.h"
@@ -125,6 +126,7 @@ struct cmdmem_info {
  * @cu_intr_cap: capbility of CU interrupt support
  * @cu_intr: CU or ERT interrupt. 1 for CU, 0 for ERT.
  * @anon_client: driver own kds client used with driver generated command
+ * @polling_thread: poll CUs when ERT is disabled
  */
 struct kds_sched {
 	struct list_head	clients;
@@ -141,6 +143,12 @@ struct kds_sched {
 	struct cmdmem_info	cmdmem;
 	struct completion	comp;
 	struct kds_client      *anon_client;
+
+	struct task_struct     *polling_thread;
+	wait_queue_head_t	wait_queue;
+	int			polling_start;
+	int			polling_stop;
+	u32			interval;
 };
 
 int kds_init_sched(struct kds_sched *kds);
