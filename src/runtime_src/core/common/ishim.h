@@ -150,7 +150,6 @@ struct ishim
   { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
   ////////////////////////////////////////////////////////////////
 
-#ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
   open_graph(const xuid_t, const char*, xrt::graph::access_mode am) = 0;
 
@@ -213,7 +212,6 @@ struct ishim
 
   virtual void
   load_axlf_meta(const axlf*) = 0;
-#endif
 };
 
 template <typename DeviceType>
@@ -452,7 +450,6 @@ struct shim : public DeviceType
       throw error(ret, "failed to reset device");
   }
 
-#ifdef XRT_ENABLE_AIE
   virtual xclGraphHandle
   open_graph(const xuid_t uuid, const char *gname, xrt::graph::access_mode am)
   {
@@ -596,7 +593,6 @@ struct shim : public DeviceType
     if (auto ret = xclLoadXclBinMeta(DeviceType::get_device_handle(), buffer))
       throw system_error(ret, "failed to load xclbin");
   }
-#endif
 };
 
 } // xrt_core
