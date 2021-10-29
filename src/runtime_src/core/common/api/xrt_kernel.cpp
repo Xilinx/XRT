@@ -27,9 +27,11 @@
 
 #include "bo.h"
 #include "command.h"
+#include "context_mgr.h"
 #include "device_int.h"
 #include "enqueue.h"
 #include "exec.h"
+#include "handle.h"
 #include "kernel_int.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
@@ -524,7 +526,7 @@ public:
   {
     if (access != access_mode::none)
       throw std::runtime_error("Cannot change current access mode");
-    device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
+    xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(am));
     access = am;
   }
 
@@ -575,7 +577,7 @@ public:
 
   ~ip_context()
   {
-    device->close_context(xid.get(), cuidx);
+    xrt_core::context_mgr::close_context(device, xid, cuidx);
   }
 
   ip_context(const ip_context&) = delete;
@@ -597,7 +599,7 @@ private:
     , access(am)
   {
     if (access != access_mode::none)
-      device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(am));
+      xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(access));
   }
 
   // virtual CU
@@ -609,7 +611,7 @@ private:
     , size(0)
     , access(access_mode::shared)
   {
-    device->open_context(xid.get(), cuidx, std::underlying_type<access_mode>::type(access));
+    xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(access));
   }
 
   xrt_core::device* device; //
@@ -1194,15 +1196,22 @@ namespace xrt {
 // An single object of kernel_type can be shared with multiple
 // run handles.   The kernel object defines all kernel specific
 // meta data used to create a launch a run object (command)
+//
+// The thread safe device compute unit context manager used by
+// ip_context is constructed by kernel_impl if necessary.  It is
+// shared ownership with other kernel impls, so while ctxmgr appears
+// unused by kernel_impl, the construction and ownership is vital.
 class kernel_impl
 {
   using ipctx = std::shared_ptr<ip_context>;
   using property_type = xrt_core::xclbin::kernel_properties;
   using mailbox_type = property_type::mailbox_type;
   using control_type = xrt::xclbin::ip::control_type;
+  using ctxmgr_type = xrt_core::context_mgr::device_context_mgr;
 
   std::string name;                    // kernel name
   std::shared_ptr<device_type> device; // shared ownership
+  std::shared_ptr<ctxmgr_type> ctxmgr; // device context mgr ownership
   xrt::xclbin xclbin;                  // xclbin with this kernel
   xrt::xclbin::kernel xkernel;         // kernel xclbin metadata
   std::vector<argument> args;          // kernel args sorted by argument index
@@ -1359,9 +1368,13 @@ public:
   // @uuid:    uuid of xclbin to mine for kernel meta data
   // @nm:      name identifying kernel and/or kernel and instances
   // @am:      access mode for underlying compute units
+  //
+  // The ctxmgr is not directly used by kernel_impl, but its
+  // construction and shared ownership must be tied to the kernel_impl
   kernel_impl(std::shared_ptr<device_type> dev, const xrt::uuid& xclbin_id, const std::string& nm, ip_context::access_mode am)
     : name(nm.substr(0,nm.find(":")))                          // filter instance names
     , device(std::move(dev))                                   // share ownership
+    , ctxmgr(xrt_core::context_mgr::create(device->core_device.get())) // owership tied to kernel_impl
     , xclbin(device->core_device->get_xclbin(xclbin_id))       // xclbin with kernel
     , xkernel(get_kernel_or_error(xclbin, name))               // kernel meta data managed by xclbin
     , properties(xrt_core::xclbin_int::get_properties(xkernel))// cache kernel properties
@@ -2372,27 +2385,7 @@ namespace {
 // destruction and long after application calls xclClose on the
 // xrtDeviceHandle.
 static std::map<xrtDeviceHandle, std::weak_ptr<device_type>> devices;
-
-// Active kernels per xrtKernelOpen/Close.  This is a mapping from
-// xrtKernelHandle to the corresponding kernel object.  The
-// xrtKernelHandle is the address of the kernel object.  This is
-// shared ownership as application can close a kernel handle before
-// closing an xrtRunHandle that references same kernel.
-static std::map<void*, std::shared_ptr<xrt::kernel_impl>> kernels;
-
-// Active runs.  This is a mapping from xrtRunHandle to corresponding
-// run object.  The xrtRunHandle is the address of the run object.
-// This is unique ownership as only the host application holds on to a
-// run object, e.g. the run object is desctructed immediately when it
-// is closed.
-static std::map<void*, std::unique_ptr<xrt::run_impl>> runs;
-
-// Run updates, if used are tied to existing runs and removed
-// when run is closed.
-static std::map<const xrt::run_impl*, std::unique_ptr<xrt::run_update_type>> run_updates;
-
-// Mutex to protect access to maps
-static std::mutex map_mutex;
+static std::mutex devices_mutex;
 
 // get_device() - get a device object from an xrtDeviceHandle
 //
@@ -2405,7 +2398,7 @@ static std::mutex map_mutex;
 static std::shared_ptr<device_type>
 get_device(xrtDeviceHandle dhdl)
 {
-  std::lock_guard<std::mutex> lk(map_mutex);
+  std::lock_guard<std::mutex> lk(devices_mutex);
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
     ? (*itr).second.lock()
@@ -2423,8 +2416,7 @@ static std::shared_ptr<device_type>
 get_device(const std::shared_ptr<xrt_core::device>& core_device)
 {
   auto dhdl = core_device.get();
-
-  std::lock_guard<std::mutex> lk(map_mutex);
+  std::lock_guard<std::mutex> lk(devices_mutex);
   auto itr = devices.find(dhdl);
   std::shared_ptr<device_type> device = (itr != devices.end())
     ? (*itr).second.lock()
@@ -2444,46 +2436,40 @@ get_device(const xrt::device& xdev)
   return get_device(xdev.get_handle());
 }
 
-// get_kernel() - get a kernel object from an xrtKernelHandle
-//
-// The lifetime of a kernel object is shared ownerhip. The object
-// is shared with host application and run objects.
-static const std::shared_ptr<xrt::kernel_impl>&
-get_kernel(xrtKernelHandle khdl)
-{
-  auto itr = kernels.find(khdl);
-  if (itr == kernels.end())
-    throw xrt_core::error(-EINVAL, "Unknown kernel handle");
-  return (*itr).second;
-}
+// Active kernels per xrtKernelOpen/Close.  This is a mapping from
+// xrtKernelHandle to the corresponding kernel object.  The
+// xrtKernelHandle is the address of the kernel object.  This is
+// shared ownership as application can close a kernel handle before
+// closing an xrtRunHandle that references same kernel.
+static xrt_core::handle_map<xrtKernelHandle, std::shared_ptr<xrt::kernel_impl>> kernels;
 
-// get_run() - get a run object from an xrtRunHandle
-//
-// The lifetime of a run object is unique to the host application.
-static xrt::run_impl*
-get_run(xrtRunHandle rhdl)
-{
-  auto itr = runs.find(rhdl);
-  if (itr == runs.end())
-    throw xrt_core::error(-EINVAL, "Unknown run handle");
-  return (*itr).second.get();
-}
+// Active runs.  This is a mapping from xrtRunHandle to corresponding
+// run object.  The xrtRunHandle is the address of the run object.
+// This is unique ownership as only the host application holds on to a
+// run object, e.g. the run object is desctructed immediately when it
+// is closed.
+static xrt_core::handle_map<xrtRunHandle, std::unique_ptr<xrt::run_impl>> runs;
+
+// Run updates, if used are tied to existing runs and removed
+// when run is closed.
+static xrt_core::handle_map<const xrt::run_impl*, std::unique_ptr<xrt::run_update_type>> run_updates;
 
 static xrt::run_update_type*
 get_run_update(xrt::run_impl* run)
 {
-  auto itr = run_updates.find(run);
-  if (itr == run_updates.end()) {
-    auto ret = run_updates.emplace(std::make_pair(run,std::make_unique<xrt::run_update_type>(run)));
-    itr = ret.first;
+  auto update = run_updates.get(run); // raw ptr
+  if (!update) {
+    auto val = std::make_unique<xrt::run_update_type>(run);
+    update = val.get();
+    run_updates.add(run, std::move(val));
   }
-  return (*itr).second.get();
+  return update;
 }
 
 static xrt::run_update_type*
 get_run_update(xrtRunHandle rhdl)
 {
-  auto run = get_run(rhdl);
+  auto run = runs.get_or_error(rhdl); // raw ptr
   return get_run_update(run);
 }
 
@@ -2525,52 +2511,45 @@ xrtKernelOpen(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char *name, 
   auto device = get_device(dhdl);
   auto kernel = std::make_shared<xrt::kernel_impl>(device, xclbin_uuid, name, am);
   auto handle = kernel.get();
-  kernels.emplace(std::make_pair(handle,std::move(kernel)));
+  kernels.add(handle, std::move(kernel));
   return handle;
 }
 
 void
 xrtKernelClose(xrtKernelHandle khdl)
 {
-  auto itr = kernels.find(khdl);
-  if (itr == kernels.end())
-    throw xrt_core::error(-EINVAL, "Unknown kernel handle");
-  kernels.erase(itr);
+  kernels.remove_or_error(khdl);
 }
 
 xrtRunHandle
 xrtRunOpen(xrtKernelHandle khdl)
 {
-  const auto& kernel = get_kernel(khdl);
+  const auto& kernel = kernels.get_or_error(khdl);
   auto run = alloc_run(kernel);
   auto handle = run.get();
-  runs.emplace(std::make_pair(handle,std::move(run)));
+  runs.add(handle, std::move(run));
   return handle;
 }
 
 void
 xrtRunClose(xrtRunHandle rhdl)
 {
-  auto run = get_run(rhdl);
-  {
-    auto itr = run_updates.find(run);
-    if (itr != run_updates.end())
-      run_updates.erase(itr);
-  }
-  runs.erase(run);
+  auto run = runs.get_or_error(rhdl);
+  run_updates.remove(run);
+  runs.remove_or_error(rhdl);
 }
 
 ert_cmd_state
 xrtRunState(xrtRunHandle rhdl)
 {
-  auto run = get_run(rhdl);
+  auto run = runs.get_or_error(rhdl);
   return run->state();
 }
 
 ert_cmd_state
 xrtRunWait(xrtRunHandle rhdl, unsigned int timeout_ms)
 {
-  auto run = get_run(rhdl);
+  auto run = runs.get_or_error(rhdl);
   return run->wait(timeout_ms * 1ms);
 }
 
@@ -2581,14 +2560,14 @@ xrtRunSetCallback(xrtRunHandle rhdl, ert_cmd_state state,
 {
   if (state != ERT_CMD_STATE_COMPLETED)
     throw xrt_core::error(-EINVAL, "xrtRunSetCallback state may only be ERT_CMD_STATE_COMPLETED");
-  auto run = get_run(rhdl);
+  auto run = runs.get_or_error(rhdl);
   run->add_callback([=](ert_cmd_state state) { pfn_state_notify(rhdl, state, data); });
 }
 
 void
 xrtRunStart(xrtRunHandle rhdl)
 {
-  auto run = get_run(rhdl);
+  auto run = runs.get_or_error(rhdl);
   run->start();
 }
 
@@ -3022,7 +3001,7 @@ xrtKernelArgGroupId(xrtKernelHandle khdl, int argno)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [khdl, argno]{
-      return get_kernel(khdl)->group_id(argno);
+      return kernels.get_or_error(khdl)->group_id(argno);
     });
   }
   catch (const xrt_core::error& ex) {
@@ -3040,7 +3019,7 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [khdl, argno]{
-      return get_kernel(khdl)->arg_offset(argno);
+      return kernels.get_or_error(khdl)->arg_offset(argno);
     });
   }
   catch (const xrt_core::error& ex) {
@@ -3059,7 +3038,7 @@ xrtKernelReadRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t* datap)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [khdl, offset, datap]{
-      *datap = get_kernel(khdl)->read_register(offset);
+      *datap = kernels.get_or_error(khdl)->read_register(offset);
       return 0;
     });
   }
@@ -3079,7 +3058,7 @@ xrtKernelWriteRegister(xrtKernelHandle khdl, uint32_t offset, uint32_t data)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [khdl, offset, data]{
-      get_kernel(khdl)->write_register(offset, data);
+      kernels.get_or_error(khdl)->write_register(offset, data);
       return 0;
     });
   }
@@ -3103,7 +3082,7 @@ xrtKernelRun(xrtKernelHandle khdl, ...)
     auto result = xdp::native::profiling_wrapper(__func__,
     [khdl, argptr]{
       auto handle = xrtRunOpen(khdl);
-      auto run = get_run(handle);
+      auto run = runs.get_or_error(handle);
       run->set_all_args(argptr);
       run->start();
       return handle;
@@ -3291,7 +3270,7 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...)
     va_start(args, index);  // NOLINT
     auto result = xdp::native::profiling_wrapper(__func__,
     [rhdl, index, argptr]{
-      auto run = get_run(rhdl);
+      auto run = runs.get_or_error(rhdl);
       run->set_arg_at_index(index, argptr);
       return 0;
     });
@@ -3314,7 +3293,7 @@ xrtRunSetArgV(xrtRunHandle rhdl, int index, const void* value, size_t bytes)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [rhdl, index, value, bytes]{
-      auto run = get_run(rhdl);
+      auto run = runs.get_or_error(rhdl);
       run->set_arg_at_index(index, value, bytes);
       return 0;
     });
@@ -3335,7 +3314,7 @@ xrtRunGetArgV(xrtRunHandle rhdl, int index, void* value, size_t bytes)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [rhdl, index, value, bytes]{
-      auto run = get_run(rhdl);
+      auto run = runs.get_or_error(rhdl);
       run->get_arg_at_index(index, static_cast<uint32_t*>(value), bytes);
       return 0;
     });
