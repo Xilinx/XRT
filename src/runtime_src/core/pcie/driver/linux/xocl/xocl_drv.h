@@ -2126,6 +2126,8 @@ struct xocl_xgq_funcs {
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
+	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
+		struct clock_freq_topology *top, int verify);
 	uint64_t (*xgq_get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 };
@@ -2146,6 +2148,9 @@ struct xocl_xgq_funcs {
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
 	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
+#define	xocl_xgq_freq_scaling_by_topo(xdev, topo, verify) 	\
+	(XGQ_CB(xdev, xgq_freq_scaling_by_topo) ?		\
+	XGQ_OPS(xdev)->xgq_freq_scaling_by_topo(XGQ_DEV(xdev), topo, verify) : -ENODEV)
 #define	xocl_xgq_clock_get_data(xdev, kind) 			\
 	(XGQ_CB(xdev, xgq_get_data) ?				\
 	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)

@@ -140,7 +140,20 @@ static int xgq_xclbin_download(xdev_handle_t xdev, void *args)
 
 static int xgq_xclbin_post_download(xdev_handle_t xdev, void *args)
 {
-	return 0;
+	struct xclbin_arg *arg = (struct xclbin_arg *)args;
+	const struct axlf_section_header *hdr =
+	    xrt_xclbin_get_section_hdr(arg->xclbin, CLOCK_FREQ_TOPOLOGY);
+	struct clock_freq_topology *topo;
+	int ret = 0;
+
+	if (hdr) {
+		/* after download, update clock freq */
+		topo = (struct clock_freq_topology *)
+		    (((char *)(arg->xclbin)) + hdr->m_sectionOffset);
+		ret = xocl_xgq_freq_scaling_by_topo(xdev, topo, 0);
+	}
+
+	return ret;
 }
 
 static struct xocl_xclbin_ops versal_ops = {
