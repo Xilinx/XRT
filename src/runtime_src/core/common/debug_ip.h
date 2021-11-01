@@ -1,0 +1,31 @@
+/*
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"). You may
+ * not use this file except in compliance with the License. A copy of the
+ * License is located at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ */
+
+#ifndef XRT_CORE_DEBUG_IP_H
+#define XRT_CORE_DEBUG_IP_H
+
+#include "core/include/xclbin.h"
+#include "core/include/xrt.h"
+
+#include<vector>
+
+namespace xrt_core {  namespace debug_ip {
+
+  std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* , debug_ip_data*);
+
+} } // namespace debug_ip, xrt_core
+
+#endif

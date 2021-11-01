@@ -46,11 +46,14 @@ extern "C" {
 #endif
 #endif
 
+#include "core/common/debug_ip.h"
+
+#if 0
 //#include "core/common/xrt_profiling.h"
 #include "core/include/xcl_perfmon_parameters.h"
 //#include "core/include/xcl_axi_checker_codes.h"
 //#include "core/include/experimental/xrt-next.h"
-
+#endif
 
 namespace {
 
@@ -67,6 +70,7 @@ get_edgedev(const xrt_core::device* device)
   return zynq_device::get_dev();
 }
 
+#if 0
 void
 xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
         uint64_t offset, void *hostbuf, size_t size)
@@ -76,6 +80,7 @@ xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
   (void)xclRead(handle, space, offset, hostbuf, size);
 #pragma GCC diagnostic pop
 }
+#endif
 
 struct bdf 
 {
@@ -467,6 +472,8 @@ struct aim_counter
   {
     const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
 
+    return xrt_core::debug_ip::getAIMCounterResult(device, dbgIpData);
+#if 0
     xclDeviceHandle handle = device->get_device_handle();
 
   // read counter values
@@ -499,7 +506,12 @@ struct aim_counter
   uint32_t currData[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
   uint32_t sampleInterval;
+
   // Read sample interval register to latch the sampled metric counters
+#if 0
+  device->xread(dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
+                    &sampleInterval, sizeof(uint32_t));
+#endif
   xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                     dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
                     &sampleInterval, sizeof(uint32_t));
@@ -537,6 +549,7 @@ struct aim_counter
   retvalBuf[8] |= currData[8];
 
   return retvalBuf;
+#endif
   }
 };
 

@@ -387,6 +387,13 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_MM_MONITOR];
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
+#if 0
+  uint32_t sampleInterval;
+  // Read sample interval register to latch the sampled metric counters
+  device->xread(dbgIpInfo->m_base_address + XAIM_SAMPLE_OFFSET,
+                    &sampleInterval, sizeof(uint32_t));
+#endif
+
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo->m_base_address);
     aimResults.WriteBytes[index]      = valBuf[0];
     aimResults.WriteTranx[index]      = valBuf[1];
