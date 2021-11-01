@@ -19,7 +19,6 @@
 #include "shim.h"
 #include "xrt_mem.h"
 #include "xclfeatures.h"
-#include "core/common/aie_stubs.h"
 #include "core/common/config_reader.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/message.h"

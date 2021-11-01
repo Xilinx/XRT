@@ -1,6 +1,3 @@
-#ifndef __AIE_STUBS_H__
-#define __AIE_STUBS_H__
-
 #include <sstream>
 
 #include "core/include/experimental/xrt_aie.h"
@@ -143,7 +140,5 @@ xclLoadXclBinMeta(xclDeviceHandle /*handle*/, const xclBin* /*buffer*/)
 {
   throw std::runtime_error(function_not_implemented(__func__));
 }
-
-#endif
 
 //////////// END OF XCL XRT AIE APIS///////////////////////////

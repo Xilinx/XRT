@@ -21,7 +21,6 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/aie_stubs.h"
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {

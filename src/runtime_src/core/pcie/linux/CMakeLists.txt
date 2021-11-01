@@ -16,6 +16,7 @@ file(GLOB XRT_PCIE_LINUX_PLUGIN_XDP_FILES
 file(GLOB XRT_PCIE_LINUX_FILES
   "*.h"
   "*.cpp"
+  "../common/aie_stubs.cpp"
   "../common/system_pcie.cpp"
   "../common/device_pcie.cpp"
   )
