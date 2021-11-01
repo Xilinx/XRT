@@ -11,158 +11,137 @@
 
 //////////// START OF XCL XRT AIE APIS ///////////////////////////
 
-void excepStr(const char* funcName) {
+static std::string function_not_implemented(const char* funcName) {
   std::stringstream excepStreamMsg;
   excepStreamMsg << funcName << " is not supported for hw and hw_emu PCIe targets";
-  std::string excepStr(excepStreamMsg.str());
-  throw std::runtime_error(excepStr);
+  std::string exceptionStr(excepStreamMsg.str());
+  return exceptionStr;
 }
 
 void*
 xclGraphOpen(xclDeviceHandle /*handle*/, const uuid_t /*xclbin_uuid*/, const char* /*graph*/, xrt::graph::access_mode /*am*/)
 {
-  excepStr(__func__);
-  return XRT_NULL_HANDLE;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 void
 xclGraphClose(xclGraphHandle /*ghl*/)
 {
-  excepStr(__func__);  
-  return;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphReset(xclGraphHandle /*ghl*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 uint64_t
 xclGraphTimeStamp(xclGraphHandle /*ghl*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphRun(xclGraphHandle /*gh*/, int /*iterations*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphWaitDone(xclGraphHandle /*gh*/, int /*timeoutMilliSec*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphWait(xclGraphHandle /*gh*/, uint64_t /*cycle*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphSuspend(xclGraphHandle /*gh*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphResume(xclGraphHandle /*gh*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphEnd(xclGraphHandle /*gh*/, uint64_t /*cycle*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphUpdateRTP(xclGraphHandle /*ghdl*/, const char* /*port*/, const char* /*buffer*/, size_t /*size*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGraphReadRTP(xclGraphHandle /*ghdl*/, const char* /*port*/, char* /*buffer*/, size_t /*size*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclAIEOpenContext(xclDeviceHandle /*handle*/, xrt::aie::access_mode /*am*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclSyncBOAIE(xclDeviceHandle /*handle*/, xrt::bo& /*bo*/, const char* /*gmioName*/, enum xclBOSyncDirection /*dir*/, size_t /*size*/, size_t /*offset*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclResetAIEArray(xclDeviceHandle /*handle*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclSyncBOAIENB(xclDeviceHandle /*handle*/, xrt::bo& /*bo*/, const char* /*gmioName*/, enum xclBOSyncDirection /*dir*/, size_t /*size*/, size_t /*offset*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclGMIOWait(xclDeviceHandle /*handle*/, const char* /*gmioName*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclStartProfiling(xclDeviceHandle /*handle*/, int /*option*/, const char* /*port1Name*/, const char* /*port2Name*/, uint32_t /*value*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 uint64_t
 xclReadProfiling(xclDeviceHandle /*handle*/, int /*phdl*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclStopProfiling(xclDeviceHandle /*handle*/, int /*phdl*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 int
 xclLoadXclBinMeta(xclDeviceHandle /*handle*/, const xclBin* /*buffer*/)
 {
-  excepStr(__func__);
-  return 0;
+  throw std::runtime_error(function_not_implemented(__func__));
 }
 
 #endif
