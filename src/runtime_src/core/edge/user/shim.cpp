@@ -125,6 +125,7 @@ shim::
 //  xdphal::finish_flush_device(handle) ;
   xdp::aie::finish_flush_device(this) ;
   xdp::aie::ctr::end_poll(this);
+  xdp::aie::dbg::end_poll(this);
 #endif
 
   // The BO cache unmaps and releases all execbo, but this must
@@ -1877,6 +1878,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::hal::update_device(handle) ;
     xdp::aie::update_device(handle);
     xdp::aie::ctr::update_device(handle);
+    xdp::aie::dbg::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif

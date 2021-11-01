@@ -39,6 +39,10 @@ bool load()
     xdp::hal::device_offload::load() ;
   }
 
+  if (xrt_core::config::get_aie_debug()) {
+    xdp::aie::debug::load() ;
+  }
+
   if (xrt_core::config::get_aie_profile()) {
     xdp::aie::profile::load() ;
   }

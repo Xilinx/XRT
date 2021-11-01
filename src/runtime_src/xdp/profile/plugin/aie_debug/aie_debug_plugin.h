@@ -32,6 +32,7 @@
 
 extern "C" {
 #include <xaiengine.h>
+#include "xaiengine/xaie_helper.h"
 }
 
 namespace xdp {
@@ -50,7 +51,7 @@ namespace xdp {
     void endPollforDevice(void* handle);
 
   private:
-    std::vector<tile_type> getTilesForDebug(void* handle);
+    void getTilesForDebug(void* handle);
     void getPollingInterval();
     void pollAIERegisters(uint32_t index, void* handle);
     void endPoll();
@@ -59,6 +60,7 @@ namespace xdp {
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
 
+    std::vector<tile_type> mTiles;
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
   };

@@ -16,6 +16,9 @@
 
 #define XDP_SOURCE
 
+#define AIE_OFFSET_CORE_STATUS     0x32004
+#define AIE_OFFSET_PROGRAM_COUNTER 0x30280
+
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
 
@@ -75,25 +78,26 @@ namespace xdp {
     // Stop the polling thread
     endPoll();
 
+    // Write out final version of file and unregister plugin
     if (VPDatabase::alive()) {
       for (auto w : writers) {
-        w->write(false);
+        w->write(true);
       }
 
       db->unregisterPlugin(this);
     }
   }
 
-  // Get polling interval (in usec; minimum is 100)
+  // Get polling interval (in usec; no minimum)
   void AIEDebugPlugin::getPollingInterval()
   {
     mPollingInterval = xrt_core::config::get_aie_debug_interval_us();
   }
 
-  // Get vector of tiles to debug
-  std::vector<tile_type> AIEDebugPlugin::getTilesForDebug(void* handle)
+  // Get tiles to debug
+  void AIEDebugPlugin::getTilesForDebug(void* handle)
   {
-    std::vector<tile_type> tiles;
+    mTiles.clear();
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Capture all tiles across all graphs
@@ -111,7 +115,8 @@ namespace xdp {
               return t1.row > t2.row;
         }
       );
-      std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(tiles),
+
+      std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(mTiles),
         [](tile_type t1, tile_type t2) {
             return ((t1.col == t2.col) && (t1.row == t2.row));
         }
@@ -122,13 +127,11 @@ namespace xdp {
     {
       std::stringstream msg;
       msg << "Tiles used for AIE debug: ";
-      for (auto& tile : tiles) {
+      for (auto& tile : mTiles) {
         msg << "(" << tile.col << "," << tile.row << "), ";
       }
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
-
-    return tiles;
   }
 
   void AIEDebugPlugin::pollAIERegisters(uint32_t index, void* handle)
@@ -136,6 +139,18 @@ namespace xdp {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
       return;
+
+    // Warning message if graph stall found
+    std::string warningMessage = "All active AI Engines had same state across multiple samples. "
+        "Your graph could be stalled.";
+
+    // Pre-populate core status and PC maps
+    std::map<tile_type, uint32_t> coreStatusMap;
+    std::map<tile_type, uint32_t> programCounterMap;
+    for (auto& tile : mTiles) {
+      coreStatusMap[tile] = 0xFFFFFFFF;
+      programCounterMap[tile] = 0xFFFFFFFF;
+    }
 
     auto& should_continue = it->second;
     while (should_continue) {
@@ -147,51 +162,37 @@ namespace xdp {
       if (!aieDevInst)
         continue;
 
-      uint32_t prevColumn = 0;
-      uint32_t prevRow = 0;
-      uint64_t timerValue = 0;
+      found foundStuckCores = true;
 
-      // Iterate over all AIE Counters & Timers
-      auto numCounters = db->getStaticInfo().getNumAIECounter(index);
-      for (uint64_t c=0; c < numCounters; c++) {
-        auto aie = db->getStaticInfo().getAIECounter(index, c);
-        if (!aie)
+      // Iterate over all tiles
+      for (auto& tile : mTiles) {
+        // Read core status and PC value
+        uint32_t coreStatus = 0;
+        uint32_t programCounter = 0;
+        auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+        XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
+        XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_PROGRAM_COUNTER, &programCounter);
+        
+        // Ignore if core is not enabled
+        if ((coreStatus & 0x1) == 0)
           continue;
 
-        std::vector<uint64_t> values;
-        values.push_back(aie->column);
-        values.push_back(aie->row);
-        values.push_back(aie->startEvent);
-        values.push_back(aie->endEvent);
-        values.push_back(aie->resetEvent);
+        if ((coreStatus != coreStatusMap.at(tile)) 
+            || (programCounter != programCounterMap.at(tile)))
+          foundStuckCores = false;
 
-        // Read counter value from device
-        uint32_t counterValue;
-        if (mPerfCounters.empty()) {
-          // Compiler-defined counters
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
-          XAie_PerfCounterGet(aieDevInst, tileLocation, XAIE_CORE_MOD, aie->counterNumber, &counterValue);
-        }
-        else {
-          // Runtime-defined counters
-          auto perfCounter = mPerfCounters.at(c);
-          perfCounter->readResult(counterValue);
-        }
-        values.push_back(counterValue);
-
-        // Read tile timer (once per tile to minimize overhead)
-        if ((aie->column != prevColumn) || (aie->row != prevRow)) {
-          prevColumn = aie->column;
-          prevRow = aie->row;
-          XAie_LocType tileLocation = XAie_TileLoc(aie->column, aie->row + 1);
-          XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
-        }
-        values.push_back(timerValue);
-
-        // Get timestamp in milliseconds
-        double timestamp = xrt_core::time_ns() / 1.0e6;
-        db->getDynamicInfo().addAIESample(index, timestamp, values);
+        coreStatusMap[tile] = coreStatus;
+        programCounterMap[tile] = programCounter;
       }
+
+      // Print out warning message if potential deadlock/graph stall found
+      if (foundStuckCores)
+        xrt_core::message::send(severity_level::warning, "XRT", warningMessage);
+
+      // Always write out latest debug/status file
+      for (auto w : writers) {
+        w->write(true);
+      }      
 
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
@@ -220,6 +221,9 @@ namespace xdp {
         }
       }
     }
+
+    // Update list of tiles to debug
+    getTilesForDebug(handle);
 
     // Open the writer for this device
     struct xclDeviceInfo2 info;

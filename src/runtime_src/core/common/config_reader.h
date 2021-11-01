@@ -193,10 +193,10 @@ get_aie_profile_interval_us()
   return value ;
 }
 
-inline std::string
+inline bool
 get_aie_debug()
 {
-  static std::string value = detail::get_string_value("Debug.aie_debug", "false");
+  static bool value = detail::get_string_value("Debug.aie_debug", false);
   return value;
 }
 
