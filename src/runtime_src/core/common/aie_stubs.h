@@ -19,147 +19,147 @@ void excepStr(const char* funcName) {
 }
 
 void*
-xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
+xclGraphOpen(xclDeviceHandle /*handle*/, const uuid_t /*xclbin_uuid*/, const char* /*graph*/, xrt::graph::access_mode /*am*/)
 {
   excepStr(__func__);
   return XRT_NULL_HANDLE;
 }
 
 void
-xclGraphClose(xclGraphHandle ghl)
+xclGraphClose(xclGraphHandle /*ghl*/)
 {
   excepStr(__func__);  
   return;
 }
 
 int
-xclGraphReset(xclGraphHandle ghl)
+xclGraphReset(xclGraphHandle /*ghl*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 uint64_t
-xclGraphTimeStamp(xclGraphHandle ghl)
+xclGraphTimeStamp(xclGraphHandle /*ghl*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphRun(xclGraphHandle gh, int iterations)
+xclGraphRun(xclGraphHandle /*gh*/, int /*iterations*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphWaitDone(xclGraphHandle gh, int timeoutMilliSec)
+xclGraphWaitDone(xclGraphHandle /*gh*/, int /*timeoutMilliSec*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphWait(xclGraphHandle gh, uint64_t cycle)
+xclGraphWait(xclGraphHandle /*gh*/, uint64_t /*cycle*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphSuspend(xclGraphHandle gh)
+xclGraphSuspend(xclGraphHandle /*gh*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphResume(xclGraphHandle gh)
+xclGraphResume(xclGraphHandle /*gh*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphEnd(xclGraphHandle gh, uint64_t cycle)
+xclGraphEnd(xclGraphHandle /*gh*/, uint64_t /*cycle*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+xclGraphUpdateRTP(xclGraphHandle /*ghdl*/, const char* /*port*/, const char* /*buffer*/, size_t /*size*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
+xclGraphReadRTP(xclGraphHandle /*ghdl*/, const char* /*port*/, char* /*buffer*/, size_t /*size*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
+xclAIEOpenContext(xclDeviceHandle /*handle*/, xrt::aie::access_mode /*am*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIE(xclDeviceHandle /*handle*/, xrt::bo& /*bo*/, const char* /*gmioName*/, enum xclBOSyncDirection /*dir*/, size_t /*size*/, size_t /*offset*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclResetAIEArray(xclDeviceHandle handle)
+xclResetAIEArray(xclDeviceHandle /*handle*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle /*handle*/, xrt::bo& /*bo*/, const char* /*gmioName*/, enum xclBOSyncDirection /*dir*/, size_t /*size*/, size_t /*offset*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
+xclGMIOWait(xclDeviceHandle /*handle*/, const char* /*gmioName*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value)
+xclStartProfiling(xclDeviceHandle /*handle*/, int /*option*/, const char* /*port1Name*/, const char* /*port2Name*/, uint32_t /*value*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 uint64_t
-xclReadProfiling(xclDeviceHandle handle, int phdl)
+xclReadProfiling(xclDeviceHandle /*handle*/, int /*phdl*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclStopProfiling(xclDeviceHandle handle, int phdl)
+xclStopProfiling(xclDeviceHandle /*handle*/, int /*phdl*/)
 {
   excepStr(__func__);
   return 0;
 }
 
 int
-xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+xclLoadXclBinMeta(xclDeviceHandle /*handle*/, const xclBin* /*buffer*/)
 {
   excepStr(__func__);
   return 0;
