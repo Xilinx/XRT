@@ -83,6 +83,15 @@ class xclbin_impl;
 class xclbin : public detail::pimpl<xclbin_impl>
 {
 public:
+  /**
+   * @enum taget_type - type of xclbin
+   *
+   * @details
+   * See `xclbin.h`
+   */
+  enum class target_type { hw, sw_emu, hw_emu };
+
+public:
   /*!
    * @class mem
    *
@@ -657,6 +666,16 @@ public:
   XCL_DRIVER_DLLESPEC
   uuid
   get_uuid() const;
+
+  /**
+   * get_target_type() - Get the type of this xclbin
+   *
+   * @return
+   *  Target type, which can be hw, sw_emu, or hw_emu
+   */
+  XCL_DRIVER_DLLESPEC
+  target_type
+  get_target_type() const;
 
   /// @cond
   /**

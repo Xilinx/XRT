@@ -634,6 +634,11 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_kds *cfg)
 	else
 		zdev->kds.cu_intr = 1;
 
-
 	return kds_cfg_update(&zdev->kds);
+}
+
+int zocl_kds_reset(struct drm_zocl_dev *zdev)
+{
+	kds_reset(&zdev->kds);
+	return 0;
 }

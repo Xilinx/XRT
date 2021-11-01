@@ -99,7 +99,7 @@ get_target() const
 {
   if (auto metadata = get_xclbin(nullptr))
     return metadata.target();
-  return xclbin::target_type::invalid;
+  throw std::runtime_error("No program metadata");
 }
 
 xclbin

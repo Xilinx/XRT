@@ -340,6 +340,20 @@ XRT_CORE_COMMON_EXPORT
 std::string
 get_vbnv(const axlf* top);
 
+/**
+ * get_project_name() - Get the project name from the XML
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_project_name(const char* xml_data, size_t xml_size);
+
+/**
+ * get_project_name() - Get the project name from the XML
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_project_name(const axlf* top);
+
 }} // xclbin, xrt_core
 
 #endif
