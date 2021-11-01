@@ -27,10 +27,12 @@ usage()
 	echo "  options:"
 	echo "          -help                           Print this usage"
 	echo "          -images                         Versal images path"
-	echo "          -petalinux                      Petalinux path"
 	echo "          -clean                          Remove build files"
         echo "          -output                         output path"
-	echo ""
+	echo "This script requires tools: mkimage, xclbinutil, bootgen, rpmbuild, dpkg-deb. "
+	echo "There is mkimage in petalinux build, e.g."
+	echo "/proj/petalinux/2021.2/petalinux-v2021.2_daily_latest/tool/petalinux-v2021.2-final/"
+	echo "components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage"
 }
 
 usage_and_exit()
@@ -154,10 +156,6 @@ if [[ ! -d $IMAGES_DIR ]]; then
 fi
 IMAGES_DIR=`realpath $IMAGES_DIR`
 
-if [ -f $SETTINGS_FILE ]; then
-	source $SETTINGS_FILE
-fi
-
 PKG_VER=`cat $IMAGES_DIR/rootfs.manifest | grep "^xrt " | sed s/.*\ //`
 if [[ "X$PKG_VER" == "X" ]]; then
 	error "Can not get package version"
@@ -193,12 +191,7 @@ all:
 }
 EOF
 
-# pick mkimage from petalinux
-if [[ "X$PETALINUX" == "X" ]]; then
-  echo " **ERROR: PETALINUX is empty, please source petalinux and rerun"
-  exit 1;
-fi
-MKIMAGE=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin/mkimage
+MKIMAGE=mkimage
 
 #
 # Generate u-boot script
