@@ -59,23 +59,16 @@ std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* device, debug_
   uint32_t sampleInterval;
 
   // Read sample interval register to latch the sampled metric counters
-  device->xread(dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
-                    &sampleInterval, sizeof(uint32_t));
-#if 0
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
+  device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, 
                     dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
                     &sampleInterval, sizeof(uint32_t));
-#endif
 
  // If applicable, read the upper 32-bits of the 64-bit debug counters
   if (dbgIpData->m_properties & XAIM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
-      device->xread(dbgIpData->m_base_address + aim_upper_offsets[c],
+      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                        dbgIpData->m_base_address + aim_upper_offsets[c],
                         &currData[c], sizeof(uint32_t));
-#if 0
-      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                 dbgIpData->m_base_address + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
-#endif
     }
     retvalBuf.push_back(((uint64_t)(currData[0])) << 32 );
     retvalBuf.push_back(((uint64_t)(currData[1])) << 32 );
@@ -89,12 +82,9 @@ std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* device, debug_
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
-    device->xread(dbgIpData->m_base_address + aim_offsets[c],
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                      dbgIpData->m_base_address + aim_offsets[c],
                       &currData[c], sizeof(uint32_t));
-#if 0
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                       dbgIpData->m_base_address + aim_offsets[c], &currData[c], sizeof(uint32_t));
-#endif
   }
 
   retvalBuf[0] |= currData[0];

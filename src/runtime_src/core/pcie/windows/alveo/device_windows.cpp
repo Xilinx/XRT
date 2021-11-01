@@ -1195,6 +1195,21 @@ struct mailbox
   }
 }; //end of struct mailbox
 
+
+struct aim_counter
+{
+  using result_type = query::aim_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
+
+    return xrt_core::debug_ip::getAIMCounterResult(device, dbgIpData);
+  }
+};
+
+
 template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
 {
@@ -1283,6 +1298,19 @@ struct function2_getter : QueryRequestType
   }
 };
 
+
+template <typename QueryRequestType, typename Getter>
+struct function4_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
 
 template <typename QueryRequestType, typename Getter>
@@ -1315,6 +1343,15 @@ emplace_function0_getput()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function0_getput<QueryRequestType, Getter>>());
+}
+
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func4_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function4_get<QueryRequestType, Getter>>());
 }
 
 static void
@@ -1437,6 +1474,8 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
+
+  emplace_func4_request<query::aim_counter,                  aim_counter>();
 }
 
 struct X { X() { initialize_query_table(); }};
