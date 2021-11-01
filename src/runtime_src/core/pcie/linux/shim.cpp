@@ -22,6 +22,7 @@
 #include "shim.h"
 #include "scan.h"
 #include "system_linux.h"
+#include "core/common/aie_stubs.h"
 #include "core/common/message.h"
 #include "core/common/xclbin_parser.h"
 #include "core/common/scheduler.h"

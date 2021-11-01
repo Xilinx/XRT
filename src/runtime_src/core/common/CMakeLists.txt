@@ -38,10 +38,14 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   "api/*.cpp"
   )
 
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  add_definitions (-DXRT_ENABLE_AIE -DXRT_AIE_BUILD)
+endif()
+
 if (DEFINED XRT_AIE_BUILD)
   file(GLOB XRT_CORE_COMMON_AIE_LIB_FILES
     "api/aie/*.cpp"
-    )
+  )
   list(APPEND XRT_CORE_COMMON_LIB_FILES ${XRT_CORE_COMMON_AIE_LIB_FILES})
 endif()
 

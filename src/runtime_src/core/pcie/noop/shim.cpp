@@ -17,6 +17,7 @@
 #define XRT_CORE_PCIE_NOOP_SOURCE
 #include "shim.h"
 #include "core/include/ert.h"
+#include "core/common/aie_stubs.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"

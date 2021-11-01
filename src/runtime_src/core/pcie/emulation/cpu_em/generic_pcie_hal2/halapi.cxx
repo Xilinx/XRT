@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/aie_stubs.h"
 #include "core/include/experimental/xrt_aie.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
