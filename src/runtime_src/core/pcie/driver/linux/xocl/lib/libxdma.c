@@ -2552,11 +2552,14 @@ static int irq_msix_user_setup(struct xdma_dev *xdev)
 	int i;
 	int j = xdev->h2c_channel_max + xdev->c2h_channel_max;
 	int rv = 0;
-	struct interrupt_regs *reg = (struct interrupt_regs *)
-		(xdev->bar[xdev->config_bar_idx] + XDMA_OFS_INT_CTRL);
 
-	if (xdev->no_dma)
-		j = read_register(&reg->user_msi_vector) & 0xf;
+	/*
+	 * hard-code the number of dma channels to 2 for no dma mode.
+	 * should not rely on the register to get the number of dma channels
+	 *
+	 * if (xdev->no_dma)
+	 *	j = read_register(&reg->user_msi_vector) & 0xf;
+	 */	
 
 	/* vectors set in probe_scan_for_msi() */
 	for (i = 0; i < xdev->user_max; i++, j++) {

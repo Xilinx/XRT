@@ -839,19 +839,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.max_level = XOCL_SUBDEV_LEVEL_URP,
 	},
 	{
-		.id = XOCL_SUBDEV_M2M,
-		.dev_name = XOCL_M2M,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_KDMA_NODMA_CTRL, .regmap_name = PROP_SHELL_KDMA},
-			{NULL},
-		},
-		.required_ip = 1,
-		.flags = 0,
-		.build_priv_data = NULL,
-		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_URP,
-	},
-	{
 		.id = XOCL_SUBDEV_PCIE_FIREWALL,
 		.dev_name = XOCL_PCIE_FIREWALL,
 		.res_array = (struct xocl_subdev_res[]) {

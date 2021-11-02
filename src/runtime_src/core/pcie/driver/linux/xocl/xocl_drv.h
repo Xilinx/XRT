@@ -2247,7 +2247,6 @@ struct xocl_m2m_funcs {
 		uint32_t size);
 	void (*get_host_bank)(struct platform_device *pdev, u64 *addr,
 		u64 *size, u8 *used);
-	bool (*is_nodma)(struct platform_device *pdev);
 };
 #define	M2M_DEV(xdev)	\
 	(SUBDEV(xdev, XOCL_SUBDEV_M2M) ? \
@@ -2262,8 +2261,6 @@ struct xocl_m2m_funcs {
 #define xocl_m2m_host_bank(xdev, addr, size, used)				\
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
 	addr, size, used) : -ENODEV)
-#define xocl_m2m_is_nodma(xdev)				\
-	(M2M_CB(xdev) ? M2M_OPS(xdev)->is_nodma(M2M_DEV(xdev)) : -ENODEV)
 
 struct xocl_pcie_firewall_funcs {
 	struct xocl_subdev_funcs common_funcs;

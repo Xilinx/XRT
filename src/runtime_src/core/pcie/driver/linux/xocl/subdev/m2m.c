@@ -53,14 +53,7 @@ struct xocl_m2m {
 	int 			m2m_polling;
 	u32			m2m_intr_base;
 	u32			m2m_intr_num;
-	bool			m2m_nodma;
 };
-
-static bool is_nodma(struct platform_device *pdev)
-{
-	struct xocl_m2m *m2m = platform_get_drvdata(pdev);
-	return m2m->m2m_nodma;
-}
 
 static void  get_host_bank(struct platform_device *pdev, u64 *addr, u64 *size, u8 *used)
 {
@@ -213,7 +206,6 @@ static struct attribute_group m2m_attr_group = {
 static struct xocl_m2m_funcs m2m_ops = {
 	.copy_bo = copy_bo,
 	.get_host_bank = get_host_bank,
-	.is_nodma = is_nodma,
 };
 
 struct xocl_drv_private m2m_priv = {
@@ -255,9 +247,9 @@ static int m2m_remove(struct platform_device *pdev)
 	mutex_destroy(&m2m->m2m_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, m2m);
 
 	M2M_INFO(m2m, "successfully removed M2M subdev");
+	devm_kfree(&pdev->dev, m2m);
 	return 0;
 }
 
@@ -286,17 +278,9 @@ static int m2m_probe(struct platform_device *pdev)
 		goto failed;
 	}
 	if (!strncmp(res->name, NODE_KDMA_CTRL, strlen(NODE_KDMA_CTRL))) {
-		if (!DMA_DEV(xdev))
-			m2m->m2m_nodma = true;
-	} else if (!strncmp(res->name, NODE_KDMA_NODMA_CTRL, strlen(NODE_KDMA_NODMA_CTRL))) {
-		m2m->m2m_nodma = true;
-	} else {
-		ret = -EINVAL;
-		M2M_ERR(m2m, "invalid resource name: %s", res->name);
-		goto failed;
+		M2M_INFO(m2m, "CU start 0x%llx\n", res->start);
+		m2m->m2m_cu.res[0] = res;
 	}
-	M2M_INFO(m2m, "CU start 0x%llx\n", res->start);
-	m2m->m2m_cu.res[0] = res;
 	xrt_cu_hls_init(&m2m->m2m_cu);
 
 	/* init condition veriable */

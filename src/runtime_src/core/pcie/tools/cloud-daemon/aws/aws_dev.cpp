@@ -566,7 +566,8 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     if (imageInfoOld.spec.map[FPGA_APP_PF].device_id != imageInfoNew.ids.afi_device_ids.device_id ||
         imageInfoOld.sh_version != imageInfoNew.sh_version) {
         std::cout << "pci removal & rescan..." << std::endl;
-        pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", errmsg, 0);
+        std::string err;
+        pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 0);
 	    
         if (rescan_thread[mBoardNumber].joinable())
                 rescan_thread[mBoardNumber].join();

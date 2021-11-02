@@ -714,8 +714,9 @@ static int get_header_from_iomem(struct feature_rom *rom)
 	if (val != MAGIC_NUM) {
 		vendor = XOCL_PL_TO_PCI_DEV(pdev)->vendor;
 		did = XOCL_PL_TO_PCI_DEV(pdev)->device;
-		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010)) { // MAGIC, we should define elsewhere
-#define AWS_F1_SHELL_NAME "xilinx_aws-vu9p-f1_shell-dynamic"
+		if (vendor == 0x1d0f && (did == 0x1042 || did == 0xf010 || did == 0xf011)) { // MAGIC, we should define elsewhere
+#define AWS_F1_XDMA_SHELL_NAME "xilinx_aws-vu9p-f1_shell-v04261818_201920_3"
+#define AWS_F1_NODMA_SHELL_NAME "xilinx_aws-vu9p-f1_shell-v09142114_202120_1"
 			xocl_dbg(&pdev->dev,
 				"Found AWS VU9P Device without featureROM");
 			/*
@@ -730,8 +731,12 @@ static int get_header_from_iomem(struct feature_rom *rom)
 			strncpy(rom->header.FPGAPartName, "AWS VU9P", 8);
 			memset(rom->header.VBNVName, 0,
 				sizeof(rom->header.VBNVName));
-			strncpy(rom->header.VBNVName,
-				AWS_F1_SHELL_NAME, strlen(AWS_F1_SHELL_NAME));
+			if (did == 0xf010)
+				strncpy(rom->header.VBNVName,
+					AWS_F1_XDMA_SHELL_NAME, strlen(AWS_F1_XDMA_SHELL_NAME));
+			else if (did == 0xf011)
+				strncpy(rom->header.VBNVName,
+					AWS_F1_NODMA_SHELL_NAME, strlen(AWS_F1_NODMA_SHELL_NAME));
 			rom->header.MajorVersion = 4;
 			rom->header.MinorVersion = 0;
 			rom->header.VivadoBuildID = 0xabcd;

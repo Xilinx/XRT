@@ -726,7 +726,7 @@ static ssize_t nodma_show(struct device *dev,
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 
 	/* A shell without dma subdev and with m2m subdev is nodma shell */
-	return sprintf(buf, "%d\n", (M2M_DEV(xdev)) && xocl_m2m_is_nodma(xdev));
+	return sprintf(buf, "%d\n", (!DMA_DEV(xdev) && M2M_DEV(xdev)));
 }
 static DEVICE_ATTR_RO(nodma);
 
