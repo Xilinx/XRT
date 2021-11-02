@@ -514,7 +514,7 @@ struct xclbin
 
     if (key == key_type::debug_ip_layout_raw) {
       size_t size_ret = 0;
-      userpf::debug_get_ip_layout(uhdl, nullptr, 0, &size_ret);
+      userpf::get_debug_ip_layout(uhdl, nullptr, 0, &size_ret);
       std::vector<char> data(size_ret);
       userpf::debug_get_ip_layout(uhdl, data.data(), size_ret, nullptr);
       return data;

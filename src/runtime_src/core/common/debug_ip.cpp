@@ -52,7 +52,7 @@ std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* device, debug_
     XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
   };
 
-  result_type retvalBuf;
+  std::vector<uint64_t> retvalBuf;
 
   uint32_t currData[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 

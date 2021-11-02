@@ -17,8 +17,10 @@
 #ifndef XRT_CORE_DEBUG_IP_H
 #define XRT_CORE_DEBUG_IP_H
 
-#include "core/include/xclbin.h"
+#include "core/common/device.h"
+
 #include "core/include/xrt.h"
+#include "core/include/xclbin.h"
 
 #include<vector>
 
