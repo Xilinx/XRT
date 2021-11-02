@@ -1469,6 +1469,8 @@ int shim::xclLoadAxlf(const axlf *buffer)
         //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
         //wait and reload 2nd time -- this time the there will be no device id
         //change, hence no pcie removal&rescan, anymore
+	//we need to close the device otherwise the removal&rescan (unload driver) will hang
+	//we also need to reopen the device once removal&rescan completes
         int dev_hotplug_done = 0;
         std::string err;
         dev_fini();

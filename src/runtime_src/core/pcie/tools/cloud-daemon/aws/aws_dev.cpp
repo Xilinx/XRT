@@ -477,22 +477,26 @@ static void awsPciRescan(int index)
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         pcidev::get_dev(index)->sysfs_get<int>("", "dev_offline", err, dev_offline, -1);
     }
-    if (!hostmem_size)
-        goto done;
+    if (!hostmem_size) {
+        //no need to reconfig host mem, just tell the user xclbin load ioctl can be re-issued now
+        pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
+        return;
+    }
     
     handle = xclOpen(index, nullptr, XCL_QUIET);
     // there is no way to return this failure, if any, to user
     // so just save log in case there is failure here
+    // still need to notify user to avoid hang
     if (!handle) {
         std::cerr << "host mem config not recovered" << std::endl;
-        goto done;
+        pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
+        return;
     }
     std::cout << "host mem reconfig (size: " << hostmem_size << ")..." << std::endl;
     ret = xclCmaEnable(handle, true, hostmem_size);
     std::cout << "host mem reconfig: " << ret << std::endl;
     xclClose(handle);
     
-done:
     //tell the user xclbin load ioctl can be re-issued now
     pcidev::get_dev(index)->sysfs_put("", "dev_hotplug_done", err, 1);
 }
@@ -549,13 +553,17 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
         retVal = fpga_mgmt_load_local_image(mBoardNumber, afi_id);
     }
     // check retVal from image load
-    if (retVal)
-        goto failed;
+    if (retVal) {
+        std::cerr << "Failed to load AFI, error: " << retVal << std::endl;
+        return -retVal;
+    }
 
     fpga_mgmt_image_info imageInfoNew;
     retVal = sleepUntilLoaded(std::string(afi_id), &imageInfoNew);
-    if (retVal)
-        goto failed;
+    if (retVal) {
+        std::cerr << "Failed to load AFI, error: " << retVal << std::endl;
+        return -retVal;
+    }
 
     // if there is device id change, or shell version change (2rp case), we do a rescan
     // at the same time, we ask the user (shim) to reload the 2nd time later
@@ -576,9 +584,6 @@ int AwsDev::awsLoadXclBin(const xclBin *buffer)
     }
     
     return 0;
-failed:
-    std::cerr << "Failed to load AFI, error: " << retVal << std::endl;
-    return -retVal;
 #endif
 }
 
