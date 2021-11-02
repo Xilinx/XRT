@@ -81,10 +81,6 @@ set(XRT_VERSION_STRING ${XRT_VERSION_MAJOR}.${XRT_VERSION_MINOR}.${XRT_VERSION_P
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMake/")
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_definitions (-DXRT_ENABLE_AIE -DXRT_AIE_BUILD)
-endif()
-
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   # Temporary native wrapper while Linux code is being ported to windows.
   # When completed the two build flows will once again be merged into one
   # common file
