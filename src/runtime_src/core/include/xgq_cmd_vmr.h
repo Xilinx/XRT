@@ -43,7 +43,8 @@
 
 /* This header file defines struct of mgmt command type opcode */
 
-#define CLOCK_MAX_RES           4
+/* The Clock IP use index 0 for data, 1 for kernel, 2 for sys, 3 for sys1 */ 
+#define XGQ_CLOCK_WIZ_MAX_RES           4
 
 enum xgq_cmd_sensor_page_id {
 	XGQ_CMD_SENSOR_PID_ALL		= 0x0,
@@ -74,7 +75,7 @@ struct xgq_cmd_clock_payload {
 	uint32_t ocl_req_id:2;
 	uint32_t ocl_req_num:4;
 	uint32_t rsvd1:18;
-	uint32_t ocl_req_freq[CLOCK_MAX_RES];
+	uint32_t ocl_req_freq[XGQ_CLOCK_WIZ_MAX_RES];
 };
 
 struct xgq_cmd_data_payload {

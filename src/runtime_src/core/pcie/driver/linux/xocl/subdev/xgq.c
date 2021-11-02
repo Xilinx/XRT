@@ -677,7 +677,7 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	int id = 0;
 	int i = 0;
 
-	if (num_freqs <= 0 || num_freqs > CLOCK_MAX_RES) {
+	if (num_freqs <= 0 || num_freqs > XGQ_CLOCK_WIZ_MAX_RES) {
 		XGQ_ERR(xgq, "num_freqs %d is out of range", num_freqs);
 		return -EINVAL;
 	}
@@ -823,7 +823,7 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq *xgq,
 	int id = 0;
 	uint32_t ret = 0;
 
-	if (req_id > CLOCK_MAX_RES) {
+	if (req_id > XGQ_CLOCK_WIZ_MAX_RES) {
 		XGQ_ERR(xgq, "req_id %d is out of range", id);
 		return 0;
 	}
