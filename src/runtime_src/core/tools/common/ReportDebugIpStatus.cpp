@@ -394,7 +394,7 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
                     &sampleInterval, sizeof(uint32_t));
 #endif
 
-  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo->m_base_address);
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
     aimResults.WriteBytes[index]      = valBuf[0];
     aimResults.WriteTranx[index]      = valBuf[1];
     aimResults.ReadBytes[index]       = valBuf[2];
@@ -558,6 +558,22 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
+
+    amResults.CuExecCount[index]        = valBuf[0];
+    amResults.CuStartCount[index]       = valBuf[1];
+    amResults.CuExecCycles[index]       = valBuf[2];
+
+    amResults.CuStallIntCycles[index]   = valBuf[3];
+    amResults.CuStallStrCycles[index]   = valBuf[4];
+    amResults.CuStallExtCycles[index]   = valBuf[5];
+
+    amResults.CuBusyCycles[index]       = valBuf[6];
+    amResults.CuMaxParallelIter[index]  = valBuf[7];
+    amResults.CuMaxExecCycles[index]    = valBuf[8];
+    amResults.CuMinExecCycles[index]    = valBuf[9];
+
+#if 0
 #ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
@@ -703,6 +719,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
     amResults.CuBusyCycles[index]      = amResults.CuExecCycles[index];
     amResults.CuMaxParallelIter[index] = 1;
   }
+#endif
 }
 
 

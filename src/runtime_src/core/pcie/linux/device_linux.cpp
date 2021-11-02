@@ -347,6 +347,74 @@ struct aim_counter
   }
 
 };
+
+struct am_counter
+{
+  using result_type = query::am_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+  // read counter values
+//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    std::string amName("accel_mon_");
+    amName = amName + std::to_string(dbgIpData->m_base_address);
+
+    std::string namePath = pdev->get_sysfs_path(amName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "counters";
+
+    result_type valBuf;
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return valBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 10) {
+//      std::cout << "\nERROR: Incomplete AM counter data in " << path << std::endl;
+    }
+
+#if 0
+    amResults.CuExecCount[index]        = valBuf[0];
+    amResults.CuStartCount[index]       = valBuf[1];
+    amResults.CuExecCycles[index]       = valBuf[2];
+
+    amResults.CuStallIntCycles[index]   = valBuf[3];
+    amResults.CuStallStrCycles[index]   = valBuf[4];
+    amResults.CuStallExtCycles[index]   = valBuf[5];
+
+    amResults.CuBusyCycles[index]       = valBuf[6];
+    amResults.CuMaxParallelIter[index]  = valBuf[7];
+    amResults.CuMaxExecCycles[index]    = valBuf[8];
+    amResults.CuMinExecCycles[index]    = valBuf[9];
+#endif
+
+    ifs.close();
+    return valBuf;
+
+
+  }
+
+};
   
 
 // Specialize for other value types.
@@ -577,7 +645,6 @@ initialize_query_table()
   emplace_sysfs_get<query::group_topology>                     ("icap", "group_topology");
   emplace_sysfs_get<query::ip_layout_raw>                      ("icap", "ip_layout");
   emplace_sysfs_get<query::debug_ip_layout_raw>                ("icap", "debug_ip_layout");
-  emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_sysfs_get<query::clock_freq_topology_raw>            ("icap", "clock_freq_topology");
   emplace_sysfs_get<query::clock_freqs_mhz>                    ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                             ("icap", "idcode");
@@ -730,6 +797,9 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
   emplace_func0_request<query::instance,                     instance>();
+
+  emplace_func4_request<query::aim_counter,                    aim_counter>();
+  emplace_func4_request<query::am_counter,                     am_counter>();
 }
 
 struct X { X() { initialize_query_table(); }};
