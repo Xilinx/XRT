@@ -13,6 +13,11 @@
 #include "../xgq_xocl_plat.h"
 #include <linux/time.h>
 
+#define	CLK_TYPE_DATA	0
+#define	CLK_TYPE_KERNEL	1
+#define	CLK_TYPE_SYSTEM	2
+#define	CLK_TYPE_MAX	4
+
 /*
  * XGQ Host management driver design.
  * XGQ resources:
@@ -71,9 +76,9 @@
 static DEFINE_IDR(xocl_xgq_cid_idr);
 
 /* cmd timeout in seconds */
-#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(10 * 60 * 1000) 
-#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(30 * 1000) 
-#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(10 * 1000) 
+#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
+#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000) 
+#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
 typedef void (*xocl_xgq_complete_cb)(void *arg, struct xgq_com_queue_entry *ccmd);
@@ -84,10 +89,12 @@ struct xocl_xgq_cmd {
 	struct completion	xgq_cmd_complete;
 	xocl_xgq_complete_cb    xgq_cmd_cb;
 	void			*xgq_cmd_arg;
-	int			xgq_cmd_rcode;
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq		*xgq;
 	u64			xgq_cmd_timeout_jiffies; /* timout till */
+	/*TODO: the xgq cq can have up-to 3 u32 payload, optimze the code later */
+	uint32_t		xgq_cmd_rcode;
+	uint32_t		xgq_cmd_rdata;
 };
 
 struct xocl_xgq;
@@ -156,8 +163,8 @@ void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
 	u32 i = 0;
 	u32 *buffer = (u32 *)ccmd;
 
-	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / 4; i++)
-		buffer[i] = xgq_reg_read32(0, addr + i * 4);
+	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / sizeof(u32); i++)
+		buffer[i] = xgq_reg_read32(0, addr + i * sizeof(u32));
 
 	// Write 0 to first word to make sure the cmd state is not NEW
 	xgq_reg_write32(0, addr, 0x0);
@@ -436,6 +443,17 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 	complete(&xgq_cmd->xgq_cmd_complete);
 }
 
+static void xgq_complete_clock_cb(void *arg, struct xgq_com_queue_entry *ccmd)
+{
+	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
+	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
+
+	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rdata = cmd_cq->clock_payload.ocl_freq;
+
+	complete(&xgq_cmd->xgq_cmd_complete);
+}
+
 /*
  * Write buffer into shared memory and 
  * return translate host based address to device based address.
@@ -551,7 +569,6 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	} else {
 		ret = xclbin_len;
 	}
-	ret = xclbin_len;
 done:
 	if (cmd) {
 		remove_xgq_cid(xgq, id);
@@ -660,6 +677,11 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	int id = 0;
 	int i = 0;
 
+	if (num_freqs <= 0 || num_freqs > XGQ_CLOCK_WIZ_MAX_RES) {
+		XGQ_ERR(xgq, "num_freqs %d is out of range", num_freqs);
+		return -EINVAL;
+	}
+
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -672,10 +694,11 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	cmd->xgq = xgq;
 
 	payload = &(cmd->xgq_cmd_entry.clock_payload);
-	/*TODO check num_freqs boundry */
-	payload->num_clock = num_freqs;
+	payload->ocl_region = 0;
+	payload->ocl_req_type = XGQ_CMD_CLOCK_SCALE;
+	payload->ocl_req_num = num_freqs;
 	for (i = 0; i < num_freqs; i++)
-		payload->ocl_target_freq[i] = freqs[i];
+		payload->ocl_req_freq[i] = freqs[i];
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_CLOCK;
@@ -715,6 +738,188 @@ done:
 	}
 
 	return ret;
+}
+
+static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
+	struct clock_freq_topology *topo, int verify)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct clock_freq *freq = NULL;
+	int data_clk_count = 0;
+	int kernel_clk_count = 0;
+	int system_clk_count = 0;
+	int clock_type_count = 0;
+	unsigned short target_freqs[4] = {0};
+	int i = 0;
+
+	if (!topo)
+		return -EINVAL;
+
+	if (topo->m_count > CLK_TYPE_MAX) {
+		XGQ_ERR(xgq, "More than 4 clocks found in clock topology");
+		return -EDOM;
+	}
+
+	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
+	 * at most 2 system clocks (optional/reqd for aws).
+	 * Data clk needs to be the first entry, followed by kernel clock
+	 * and then system clocks
+	 */
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			data_clk_count++;
+		if (freq->m_type == CT_KERNEL)
+			kernel_clk_count++;
+		if (freq->m_type == CT_SYSTEM)
+			system_clk_count++;
+	}
+	if (data_clk_count != 1) {
+		XGQ_ERR(xgq, "Data clock not found in clock topology");
+		return -EDOM;
+	}
+	if (kernel_clk_count != 1) {
+		XGQ_ERR(xgq, "Kernel clock not found in clock topology");
+		return -EDOM;
+	}
+	if (system_clk_count > 2) {
+		XGQ_ERR(xgq, "More than 2 system clocks found in clock topology");
+		return -EDOM;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			target_freqs[CLK_TYPE_DATA] = freq->m_freq_Mhz;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_KERNEL)
+			target_freqs[CLK_TYPE_KERNEL] = freq->m_freq_Mhz;
+	}
+
+	clock_type_count = CLK_TYPE_SYSTEM;
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_SYSTEM)
+			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
+	}
+
+	XGQ_INFO(xgq, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
+	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
+	    target_freqs[2], target_freqs[3]);
+
+	return xgq_freq_scaling(pdev, target_freqs, ARRAY_SIZE(target_freqs),
+		verify);
+}
+
+static uint32_t xgq_clock_get_data(struct xocl_xgq *xgq,
+	enum xgq_cmd_clock_req_type req_type, int req_id)
+{
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_clock_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int id = 0;
+	uint32_t ret = 0;
+
+	if (req_id > XGQ_CLOCK_WIZ_MAX_RES) {
+		XGQ_ERR(xgq, "req_id %d is out of range", id);
+		return 0;
+	}
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return 0;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_clock_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	payload = &(cmd->xgq_cmd_entry.clock_payload);
+	payload->ocl_region = 0;
+	payload->ocl_req_type = req_type;
+	payload->ocl_req_id = req_id;
+
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_CLOCK;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		ret = 0;
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		ret = 0;
+	} else {
+		/* freq result is in rdata */
+		ret = cmd->xgq_cmd_rdata;
+	}
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
+
+	return ret;
+}
+
+static uint64_t xgq_get_data(struct platform_device *pdev,
+	enum data_kind kind)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	uint64_t target = 0;
+
+	switch (kind) {
+	case CLOCK_FREQ_0:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 0);
+		break;
+	case CLOCK_FREQ_1:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 1);
+		break;
+	case CLOCK_FREQ_2:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 2);
+		break;
+	case FREQ_COUNTER_0:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 0);
+		break;
+	case FREQ_COUNTER_1:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 1);
+		break;
+	case FREQ_COUNTER_2:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 2);
+		break;
+	default:
+		break;
+	}
+
+	return target;
 }
 
 static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
@@ -996,6 +1201,7 @@ static int xgq_probe(struct platform_device *pdev)
 
 	mutex_init(&xgq->xgq_lock);
 
+	/*TODO: after real sensor data enabled, redefine this size */
 	xgq->sensor_data_length = 8 * 512;
 	xgq->sensor_data = kmalloc(xgq->sensor_data_length, GFP_KERNEL);
 
@@ -1112,6 +1318,8 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_load_xclbin = xgq_load_xclbin,
 	.xgq_check_firewall = xgq_check_firewall,
 	.xgq_freq_scaling = xgq_freq_scaling,
+	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
+	.xgq_get_data = xgq_get_data,
 };
 
 static const struct file_operations xgq_fops = {
