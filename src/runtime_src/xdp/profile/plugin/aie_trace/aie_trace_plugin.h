@@ -62,7 +62,7 @@ namespace xdp {
       uint64_t getTraceStartDelayCycles(void* handle);
 
       // Aie resource manager utility functions
-      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet);
+      bool tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet, bool useDelay);
       void printTileStats(xaiefal::XAieDev* aieDevice, const tile_type& tile);
 
       // Utility functions

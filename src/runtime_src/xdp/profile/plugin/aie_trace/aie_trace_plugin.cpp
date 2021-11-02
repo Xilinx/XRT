@@ -196,7 +196,7 @@ namespace xdp {
     return ((tile1.col == tile2.col) && (tile1.row == tile2.row));
   }
 
-  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet)
+  bool AieTracePlugin::tileHasFreeRsc(xaiefal::XAieDev* aieDevice, XAie_LocType& loc, const std::string& metricSet, bool useDelay)
   {
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
     uint32_t available = 0;
@@ -206,6 +206,8 @@ namespace xdp {
     // Core Module perf counters
     available = stats.getNumRsc(loc, XAIE_CORE_MOD, XAIE_PERFCNT_RSC);
     required = coreCounterStartEvents.size();
+    if (useDelay)
+      required += 1;
     if (available < required) {
       msg << "Available core module performance counters for aie trace : " << available << std::endl
           << "Required core module performance counters for aie trace : "  << required;
@@ -416,8 +418,12 @@ namespace xdp {
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
     }
-    if (cycles > max_cycles)
+
+    if (cycles > max_cycles) {
       cycles = max_cycles;
+      std::string msg("Setting aie_trace_delay to max supported of 0xffffffff cycles.");
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+    }
 
     return cycles;
   }
@@ -441,7 +447,8 @@ namespace xdp {
     auto tiles = getTilesForTracing(handle);
 
     // getTraceStartDelayCycles is 32 bit for now
-    uint32_t delay_cycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
+    uint32_t delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
+    bool useDelay = (delayCycles > 0) ? true : false;
 
     // Keep track of number of events reserved per tile
     int numTileCoreTraceEvents[NUM_CORE_TRACE_EVENTS+1] = {0};
@@ -467,7 +474,7 @@ namespace xdp {
 
       // Check Resource Availability
       // For now only counters are checked
-      if (!tileHasFreeRsc(aieDevice, loc, metricSet)) {
+      if (!tileHasFreeRsc(aieDevice, loc, metricSet, useDelay)) {
         xrt_core::message::send(severity_level::warning, "XRT", "Tile doesn't have enough free resources for trace. Aborting trace configuration.");
         printTileStats(aieDevice, tile);
         return false;
@@ -584,14 +591,14 @@ namespace xdp {
         if (xrt_core::config::get_aie_trace_user_control()) {
           coreTraceStartEvent = XAIE_EVENT_INSTR_EVENT_0_CORE;
           coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
-        } else if (delay_cycles) {
+        } else if (useDelay) {
           auto perfCounter = core.perfCounter();
           auto ret = perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
                                              mod, XAIE_EVENT_DISABLED_CORE);
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
-          perfCounter->changeThreshold(delay_cycles);
+          perfCounter->changeThreshold(delayCycles);
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
 
