@@ -12,6 +12,8 @@
 #include "core/include/xrt.h"
 #include "core/include/xclfeatures.h"
 
+#include "core/common/debug_ip.h"
+
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <type_traits>
