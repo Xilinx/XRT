@@ -414,7 +414,7 @@ xrtGraphTimeStamp(xrtGraphHandle graph_hdl)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return -1;
+  return 0;
 }
 
 int
@@ -777,7 +777,7 @@ xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return -1;
+  return 0;
 }
 
 /**
