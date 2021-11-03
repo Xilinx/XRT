@@ -196,7 +196,7 @@ get_aie_profile_interval_us()
 inline bool
 get_aie_debug()
 {
-  static bool value = detail::get_string_value("Debug.aie_debug", false);
+  static bool value = detail::get_bool_value("Debug.aie_debug", false);
   return value;
 }
 

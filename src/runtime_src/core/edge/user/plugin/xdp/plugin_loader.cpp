@@ -17,6 +17,7 @@
 #include "plugin_loader.h"
 #include "hal_profile.h"
 #include "hal_device_offload.h"
+#include "aie_debug.h"
 #include "aie_profile.h"
 #include "noc_profile.h"
 #include "aie_trace.h"

@@ -35,8 +35,16 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile)
   {
-    // TODO: call json writer from xbutil library
+    auto xrtDevice = xrt::device((int)mDeviceIndex);
+    //auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+    //auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aieshim>();
+    //fout << aieInfoStr << std::endl;
+    //fout << aieShimInfoStr << std::endl;
 
+    auto hostStr = xrtDevice.get_info<xrt::info::device::host>();
+    fout << hostStr << std::endl;
+
+    if (openNewFile) switchFiles();
     return true;
   }
 

@@ -21,6 +21,7 @@
 
 #include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+#include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
 #include "core/common/message.h"
 #include "core/common/system.h"
@@ -141,8 +142,7 @@ namespace xdp {
       return;
 
     // Warning message if graph stall found
-    std::string warningMessage = "All active AI Engines had same state across multiple samples. "
-        "Your graph could be stalled.";
+    std::string warningMessage = "Potential deadlock/hang found in AI Engines.";
 
     // Pre-populate core status and PC maps
     std::map<tile_type, uint32_t> coreStatusMap;
@@ -162,7 +162,7 @@ namespace xdp {
       if (!aieDevInst)
         continue;
 
-      found foundStuckCores = true;
+      bool foundStuckCores = true;
 
       // Iterate over all tiles
       for (auto& tile : mTiles) {

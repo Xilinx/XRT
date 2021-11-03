@@ -52,6 +52,7 @@
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/aie_debug.h"
 #endif
 
 namespace {
