@@ -98,38 +98,26 @@ namespace xdp {
   // Get tiles to debug
   void AIEDebugPlugin::getTilesForDebug(void* handle)
   {
-    mTiles.clear();
     std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
 
     // Capture all tiles across all graphs
     // Note: in the future, we could support user-defined tile sets
     auto graphs = xrt_core::edge::aie::get_graphs(device.get());
     for (auto& graph : graphs) {
-      auto coreTiles = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
+      mGraphCoreTilesMap[graph] = xrt_core::edge::aie::get_event_tiles(device.get(), graph,
           xrt_core::edge::aie::module_type::core);
-        
-      std::sort(coreTiles.begin(), coreTiles.end(),
-        [](tile_type t1, tile_type t2) {
-            if (t1.row == t2.row)
-              return t1.col > t2.col;
-            else
-              return t1.row > t2.row;
-        }
-      );
-
-      std::unique_copy(coreTiles.begin(), coreTiles.end(), back_inserter(mTiles),
-        [](tile_type t1, tile_type t2) {
-            return ((t1.col == t2.col) && (t1.row == t2.row));
-        }
-      );
     }
 
     // Report tiles (debug only)
     {
       std::stringstream msg;
       msg << "Tiles used for AIE debug: ";
-      for (auto& tile : mTiles) {
-        msg << "(" << tile.col << "," << tile.row << "), ";
+      for (const auto& kv : mGraphCoreTilesMap) {
+        msg << kv.first << " : ";
+        for (const auto& tile : kv.second) {
+          msg << "(" << tile.col << "," << tile.row << "), ";
+        }
+        msg << "\n";
       }
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
     }
@@ -141,15 +129,45 @@ namespace xdp {
     if (it == mThreadCtrlMap.end())
       return;
 
-    // Warning message if graph stall found
-    std::string warningMessage = "Potential deadlock/hang found in AI Engines.";
+    // This mask check for following states
+      // ECC_Scrubbing_Stall
+      // ECC_Error_Stall
+      // Debug_Halt
+      // Cascade_Stall_MCD
+      // Cascade_Stall_SCD
+      // Stream_Stall_MS1
+      // Stream_Stall_MS0
+      // Stream_Stall_SS1
+      // Stream_Stall_SS0
+      // Lock_Stall_E
+      // Lock_Stall_N
+      // Lock_Stall_W
+      // Lock_Stall_S
+      // Memory_Stall_E
+      // Memory_Stall_N
+      // Memory_Stall_W
+      // Memory_Stall_S
+      const uint32_t CORE_STALL_MASK = 0xFFFC;
+      // This mask check for following states
+      // Reset
+      // Done
+      const uint32_t CORE_INACTIVE_MASK = 0x100002;
+      // Count of samples before we say it's a hang
+      const unsigned int CORE_HANG_COUNT_THRESHOLD = 10;
+      // Reset values
+      const uint32_t CORE_RESET_STATUS  = 0x1;
+      const uint32_t CORE_RESET_PC = 0x0;
 
     // Pre-populate core status and PC maps
-    std::map<tile_type, uint32_t> coreStatusMap;
+    std::map<tile_type, std::pair<uint32_t, uint32_t>> coreStuckCountMap;
     std::map<tile_type, uint32_t> programCounterMap;
-    for (auto& tile : mTiles) {
-      coreStatusMap[tile] = 0xFFFFFFFF;
-      programCounterMap[tile] = 0xFFFFFFFF;
+    std::map<tile_type, uint32_t> coreStatusMap;
+    for (const auto& kv : mGraphCoreTilesMap) {
+        for (const auto& tile : kv.second) {
+          coreStuckCountMap[tile] = std::make_pair(0, 0);
+          programCounterMap[tile] = CORE_RESET_PC;
+          coreStatusMap[tile] = CORE_RESET_STATUS;
+        }
     }
 
     auto& should_continue = it->second;
@@ -162,37 +180,71 @@ namespace xdp {
       if (!aieDevInst)
         continue;
 
-      bool foundStuckCores = true;
+      bool foundStuckCores = false;
+      tile_type stuckTile;
+      uint32_t stuckCoreStatus = 0;
 
       // Iterate over all tiles
-      for (auto& tile : mTiles) {
-        // Read core status and PC value
-        uint32_t coreStatus = 0;
-        uint32_t programCounter = 0;
-        auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
-        XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
-        XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_PROGRAM_COUNTER, &programCounter);
-        
-        // Ignore if core is not enabled
-        if ((coreStatus & 0x1) == 0)
-          continue;
+      for (const auto& kv : mGraphCoreTilesMap) {
+        auto& graphName = kv.first;
+        for (const auto& tile : kv.second) {
+          // Read core status and PC value
+          uint32_t coreStatus = 0;
+          uint32_t programCounter = 0;
+          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+          XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
+          XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_PROGRAM_COUNTER, &programCounter);
 
-        if ((coreStatus != coreStatusMap.at(tile)) 
-            || (programCounter != programCounterMap.at(tile)))
-          foundStuckCores = false;
+          if (coreStatus & CORE_INACTIVE_MASK)
+            continue;
 
-        coreStatusMap[tile] = coreStatus;
-        programCounterMap[tile] = programCounter;
-      }
+          auto& stallCounter = std::get<0>(coreStuckCountMap[tile]);
+          auto& pcCounter = std::get<1>(coreStuckCountMap[tile]);
 
-      // Print out warning message if potential deadlock/graph stall found
-      if (foundStuckCores)
-        xrt_core::message::send(severity_level::warning, "XRT", warningMessage);
+          // Condition 1: If core is stalled and has same kind of stall as previous check
+          if ((coreStatus & CORE_STALL_MASK) && (coreStatus == coreStatusMap[tile]) ) {
+            stallCounter++;
+            if (stallCounter == CORE_HANG_COUNT_THRESHOLD) {
+              foundStuckCores = true;
+              stuckTile = tile;
+              stuckCoreStatus = coreStatus;
+            }
+          } else {
+            stallCounter = 0;
+          }
+
+          // Condition 2: If core PC is stuck
+          if ((programCounter == programCounterMap.at(tile)) && (programCounter != CORE_RESET_PC)) {
+            pcCounter++;
+            if (pcCounter == CORE_HANG_COUNT_THRESHOLD) {
+              foundStuckCores = true;
+              stuckTile = tile;
+              stuckCoreStatus = coreStatus;
+            }
+          } else {
+            pcCounter = 0;
+          }
+
+          programCounterMap[tile] = programCounter;
+          coreStatusMap[tile] = coreStatus;
+        } // For tiles in graph
+
+        if (foundStuckCores) {
+          std::stringstream warningMessage;
+
+          warningMessage
+          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName
+          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
+          << "Status " << stuckCoreStatus;
+
+          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+        }
+      } // For graphs
 
       // Always write out latest debug/status file
       for (auto w : writers) {
         w->write(true);
-      }      
+      }
 
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }

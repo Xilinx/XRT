@@ -60,9 +60,9 @@ namespace xdp {
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
 
-    std::vector<tile_type> mTiles;
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
+    std::map<std::string,std::vector<tile_type>> mGraphCoreTilesMap;
   };
 
 } // end namespace xdp
