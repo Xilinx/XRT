@@ -253,6 +253,7 @@ enum class key_type
 
   aim_counter,
   am_counter,
+  asm_counter,
 
   noop
 };
@@ -2736,6 +2737,16 @@ struct am_counter : request
   using result_type = std::vector<uint64_t>;
   using debug_ip_data_type = debug_ip_data*;
   static const key_type key = key_type::am_counter;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+};
+
+struct asm_counter : request
+{
+  using result_type = std::vector<uint64_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::asm_counter;
 
   virtual boost::any
   get(const xrt_core::device* device, const boost::any& arg1) const = 0;

@@ -558,7 +558,7 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_MONITOR];
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
-  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::am_counter>(device, dbgIpInfo);
 
     amResults.CuExecCount[index]        = valBuf[0];
     amResults.CuStartCount[index]       = valBuf[1];
@@ -749,6 +749,15 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_MONITOR];
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::asm_counter>(device, dbgIpInfo);
+
+    asmResults.StrNumTranx[index]     = valBuf[0];
+    asmResults.StrDataBytes[index]    = valBuf[1];
+    asmResults.StrBusyCycles[index]   = valBuf[2];
+    asmResults.StrStallCycles[index]  = valBuf[3];
+    asmResults.StrStarveCycles[index] = valBuf[4];
+
+#if 0
 #ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
@@ -830,6 +839,7 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   asmResults.StrBusyCycles[index] = currData[2] ;
   asmResults.StrStallCycles[index] = currData[3] ;
   asmResults.StrStarveCycles[index] = currData[4] ;
+#endif
 }
 
 

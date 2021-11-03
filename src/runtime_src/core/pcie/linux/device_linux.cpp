@@ -415,6 +415,62 @@ struct am_counter
   }
 
 };
+
+struct asm_counter
+{
+  using result_type = query::asm_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+  // read counter values
+//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    std::string asmName("axistream_mon_");
+    asmName = asmName + std::to_string(dbgIpData->m_base_address);
+
+    std::string namePath = pdev->get_sysfs_path(asmName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "counters";
+
+    std::vector<uint64_t> valBuf;
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return valBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 5) {
+//      std::cout << "\nERROR: Incomplete ASM counter data in " << path << std::endl;
+    }
+/*
+    asmResults.StrNumTranx[index]     = valBuf[0];
+    asmResults.StrDataBytes[index]    = valBuf[1];
+    asmResults.StrBusyCycles[index]   = valBuf[2];
+    asmResults.StrStallCycles[index]  = valBuf[3];
+    asmResults.StrStarveCycles[index] = valBuf[4];
+*/
+
+    ifs.close();
+    return valBuf;
+  }
+};
   
 
 // Specialize for other value types.
