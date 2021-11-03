@@ -22,7 +22,7 @@
 namespace xdp {
 
   AIEDebugWriter::AIEDebugWriter(const char* fileName,
-					     const char* deviceName, uint64_t deviceIndex) :
+               const char* deviceName, uint64_t deviceIndex) :
     VPWriter(fileName),
     mDeviceName(deviceName),
     mDeviceIndex(deviceIndex)
@@ -30,11 +30,13 @@ namespace xdp {
   }
 
   AIEDebugWriter::~AIEDebugWriter()
-  {    
+  {
   }
 
   bool AIEDebugWriter::write(bool openNewFile)
   {
+    refreshFile();
+
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     //auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
     //auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aieshim>();

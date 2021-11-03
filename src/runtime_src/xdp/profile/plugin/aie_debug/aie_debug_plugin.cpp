@@ -82,7 +82,7 @@ namespace xdp {
     // Write out final version of file and unregister plugin
     if (VPDatabase::alive()) {
       for (auto w : writers) {
-        w->write(true);
+        w->write(false);
       }
 
       db->unregisterPlugin(this);
@@ -233,17 +233,18 @@ namespace xdp {
           std::stringstream warningMessage;
 
           warningMessage
-          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName
+          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName << " "
           << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
-          << "Status " << stuckCoreStatus;
+          << "Status 0x" << std::hex << stuckCoreStatus << std::dec;
 
           xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          foundStuckCores = false;
         }
       } // For graphs
 
       // Always write out latest debug/status file
       for (auto w : writers) {
-        w->write(true);
+        w->write(false);
       }
 
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
