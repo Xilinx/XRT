@@ -267,4 +267,50 @@ std::vector<uint64_t> getAMCounterResult(const xrt_core::device* device, debug_i
 
 }
 
+std::vector<uint64_t> getASMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+{
+  static const uint64_t asm_offsets[] = {
+    XASM_NUM_TRANX_OFFSET,
+    XASM_DATA_BYTES_OFFSET,
+    XASM_BUSY_CYCLES_OFFSET,
+    XASM_STALL_CYCLES_OFFSET,
+    XASM_STARVE_CYCLES_OFFSET
+  };
+
+  std::vector<uint64_t> retvalBuf(5, 0);
+
+  uint32_t sampleInterval ;
+  // Read sample interval register to latch the sampled metric counters
+  device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
+             dbgIpData->m_base_address + XASM_SAMPLE_OFFSET,
+             &sampleInterval, sizeof(uint32_t));
+
+  // Then read all the individual 64-bit counters
+  unsigned long long int currData[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
+
+  for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j) {
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
+               dbgIpData->m_base_address + asm_offsets[j],
+               &currData[j], sizeof(unsigned long long int));
+  }
+
+  retvalBuf[0] = currData[0];
+  retvalBuf[1] = currData[1];
+  retvalBuf[2] = currData[2];
+  retvalBuf[3] = currData[3];
+  retvalBuf[4] = currData[4];
+
+#if 0
+  asmResults.StrNumTranx[index] = currData[0] ;
+  asmResults.StrDataBytes[index] = currData[1] ;
+  asmResults.StrBusyCycles[index] = currData[2] ;
+  asmResults.StrStallCycles[index] = currData[3] ;
+  asmResults.StrStarveCycles[index] = currData[4] ;
+#endif
+
+  return retvalBuf;
+
+}
+
+
 } }

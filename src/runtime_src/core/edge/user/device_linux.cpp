@@ -489,6 +489,19 @@ struct am_counter
   }
 };
 
+struct asm_counter
+{
+  using result_type = query::asm_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
+
+    return xrt_core::debug_ip::getASMCounterResult(device, dbgIpData);
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -657,8 +670,10 @@ initialize_query_table()
   emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
   emplace_func0_request<query::kds_cu_stat,             kds_cu_stat>();
   emplace_func0_request<query::instance,                instance>();
+
   emplace_func4_request<query::aim_counter,             aim_counter>();
   emplace_func4_request<query::am_counter,              am_counter>();
+  emplace_func4_request<query::asm_counter,             asm_counter>();
 }
 
 struct X { X() { initialize_query_table(); } };
