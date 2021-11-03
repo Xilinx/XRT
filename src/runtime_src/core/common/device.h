@@ -293,6 +293,7 @@ public:
   get_memory_type(size_t memidx) const;
 
   // get_cus() - Get list cu base addresses sorted by cu inidex
+  XRT_CORE_COMMON_EXPORT
   const std::vector<uint64_t>&
   get_cus(const uuid& xclbin_id = uuid()) const;
 

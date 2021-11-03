@@ -695,11 +695,13 @@ private:
 
   unsigned int m_uid = 0;
   program* m_active = nullptr;   // program loaded on to this device
-  xclbin m_metadata;             // cache xclbin that came from program
+  xrt::xclbin m_xclbin;          // the xclbin loaded on this device
+  xclbin m_metadata;             // cache parsed meta data from xclbin
   unsigned int m_locks = 0;      // number of locks on this device
 
   platform* m_platform = nullptr;
   xrt_xocl::device* m_xdevice = nullptr;
+  xrt_core::device* m_cdevice = nullptr;  // in transition to core xrt
 
   // Set for sub-device only
   ptr<device> m_parent = nullptr;
