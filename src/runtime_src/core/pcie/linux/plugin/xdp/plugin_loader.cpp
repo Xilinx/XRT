@@ -17,6 +17,7 @@
 #include "plugin/xdp/plugin_loader.h"
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_device_offload.h"
+#include "plugin/xdp/aie_debug.h"
 #include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/noc_profile.h"
 #include "plugin/xdp/power_profile.h"
