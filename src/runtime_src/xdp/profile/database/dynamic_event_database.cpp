@@ -90,10 +90,20 @@ namespace xdp {
 
   void VPDynamicDatabase::addDeviceEvent(uint64_t deviceId, VTFEvent* event)
   {
-    std::lock_guard<std::mutex> lock(deviceEventsLock) ;
+    bool overLimit = false ;
+    {
+      std::lock_guard<std::mutex> lock(deviceEventsLock) ;
 
-    event->setEventId(eventId++) ;
-    deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
+      event->setEventId(eventId++) ;
+      deviceEvents[deviceId].emplace(event->getTimestamp(), event) ;
+      if (deviceEvents[deviceId].size() > DeviceEventThreshold) {
+        overLimit = true ;
+      }
+    }
+    // Outside the lock guard, force a dump if we're over the threshold
+    if (overLimit) {
+      db->broadcast(VPDatabase::DUMP_TRACE) ;
+    }
   }
 
   void VPDynamicDatabase::addEvent(VTFEvent* event)

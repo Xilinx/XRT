@@ -42,7 +42,6 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/include/xclbin.h"
-#include "core/include/xclperf.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 

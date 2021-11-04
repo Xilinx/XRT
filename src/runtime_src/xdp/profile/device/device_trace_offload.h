@@ -29,7 +29,6 @@
 #include <atomic>
 
 #include "xdp/config.h"
-#include "core/include/xclperf.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/device_trace_logger.h"
@@ -120,7 +119,6 @@ protected:
     DeviceIntf* dev_intf;
 private:
     DeviceTraceLogger* deviceTraceLogger;
-    std::vector<xclTraceResults> m_trace_vector = {};
     std::function<void(bool)> m_read_trace;
     size_t m_trbuf = 0;
     uint64_t m_trbuf_sz = 0;

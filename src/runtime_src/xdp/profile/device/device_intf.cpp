@@ -501,19 +501,12 @@ DeviceIntf::~DeviceIntf()
   }
 
   // Read all values from APM trace AXI stream FIFOs
-  size_t DeviceIntf::readTrace(std::vector<xclTraceResults>& traceVector)
+  size_t DeviceIntf::readTrace(uint32_t*& traceData)
   {
-    if (mVerbose) {
-      std::cout << __func__ << ", " << std::this_thread::get_id()
-                << ", " << &traceVector
-                << ", Reading device trace stream..." << std::endl;
-    }
-
-    if (!mIsDeviceProfiling || !mFifoRead)
-   	  return 0;
+    if (!mIsDeviceProfiling || !mFifoRead) return 0 ;
 
     size_t size = 0;
-    size += mFifoRead->readTrace(traceVector, getTraceCount());
+    size += mFifoRead->readTrace(traceData, getTraceCount());
 
     return size;
   }

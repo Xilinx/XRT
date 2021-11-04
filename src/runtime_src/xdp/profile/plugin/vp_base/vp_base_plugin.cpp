@@ -149,4 +149,15 @@ namespace xdp {
     }
   }
 
-}
+  void XDPPlugin::forceWrite(bool openNewFiles)
+  {
+    if (is_write_thread_active) {
+      // Continuous offload will write shortly, so don't force the write
+      return ;
+    }
+    for (auto w : writers) {
+      w->write(openNewFiles) ;
+    }
+  }
+
+} // end namespace xdp
