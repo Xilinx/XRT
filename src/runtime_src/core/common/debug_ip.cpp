@@ -371,5 +371,16 @@ std::vector<uint64_t> getSPCStatus(const xrt_core::device* device, debug_ip_data
   return retvalBuf;
 }
 
+std::vector<uint64_t> getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+{
+  std::vector<uint64_t> retvalBuf(1, 0);
+
+  device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
+                  dbgIpData->m_base_address + 0x0,
+                  &retvalBuf[0], sizeof(uint32_t));
+
+  return retvalBuf;
+}
+
 
 } }

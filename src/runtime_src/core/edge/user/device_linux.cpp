@@ -528,6 +528,19 @@ struct spc_status
   }
 };
 
+struct accel_deadlock_status
+{
+  using result_type = query::accel_deadlock_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
+
+    return xrt_core::debug_ip::getAccelDeadlockStatus(device, dbgIpData);
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -702,6 +715,7 @@ initialize_query_table()
   emplace_func4_request<query::asm_counter,             asm_counter>();
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
+  emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
 }
 
 struct X { X() { initialize_query_table(); } };
