@@ -42,6 +42,10 @@ namespace XBU = XBUtilities;
 #include <sstream>
 #include <iomanip>
 
+#ifdef _WIN32
+#pragma warning (disable : 4244)
+/* 4244 : Disable warning for conversion to unsigned int */
+#endif
 
 namespace {
 
