@@ -191,7 +191,7 @@ std::string
 device::
 get_bdf() const
 {
-  if (!m_cdevice)
+  if (!m_xdevice)
     throw xocl::error(CL_INVALID_DEVICE, "No BDF");
 
   // logically const
