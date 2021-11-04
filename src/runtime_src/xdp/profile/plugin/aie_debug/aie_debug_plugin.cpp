@@ -111,7 +111,7 @@ namespace xdp {
     // Report tiles (debug only)
     {
       std::stringstream msg;
-      msg << "Tiles used for AIE debug: ";
+      msg << "Tiles used for AIE debug:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
         msg << kv.first << " : ";
         for (const auto& tile : kv.second) {
@@ -153,19 +153,16 @@ namespace xdp {
       // Done
       const uint32_t CORE_INACTIVE_MASK = 0x100002;
       // Count of samples before we say it's a hang
-      const unsigned int CORE_HANG_COUNT_THRESHOLD = 10;
+      const unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
       // Reset values
       const uint32_t CORE_RESET_STATUS  = 0x1;
-      const uint32_t CORE_RESET_PC = 0x0;
 
     // Pre-populate core status and PC maps
-    std::map<tile_type, std::pair<uint32_t, uint32_t>> coreStuckCountMap;
-    std::map<tile_type, uint32_t> programCounterMap;
+    std::map<tile_type, uint32_t> coreStuckCountMap;
     std::map<tile_type, uint32_t> coreStatusMap;
     for (const auto& kv : mGraphCoreTilesMap) {
         for (const auto& tile : kv.second) {
-          coreStuckCountMap[tile] = std::make_pair(0, 0);
-          programCounterMap[tile] = CORE_RESET_PC;
+          coreStuckCountMap[tile] = 0;
           coreStatusMap[tile] = CORE_RESET_STATUS;
         }
     }
@@ -190,18 +187,15 @@ namespace xdp {
         for (const auto& tile : kv.second) {
           // Read core status and PC value
           uint32_t coreStatus = 0;
-          uint32_t programCounter = 0;
           auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
-          XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_PROGRAM_COUNTER, &programCounter);
 
           if (coreStatus & CORE_INACTIVE_MASK)
             continue;
 
-          auto& stallCounter = std::get<0>(coreStuckCountMap[tile]);
-          auto& pcCounter = std::get<1>(coreStuckCountMap[tile]);
+          auto& stallCounter = coreStuckCountMap[tile];
 
-          // Condition 1: If core is stalled and has same kind of stall as previous check
+          // Condition : If core is stalled and has same kind of stall as previous check
           if ((coreStatus & CORE_STALL_MASK) && (coreStatus == coreStatusMap[tile]) ) {
             stallCounter++;
             if (stallCounter == CORE_HANG_COUNT_THRESHOLD) {
@@ -209,23 +203,11 @@ namespace xdp {
               stuckTile = tile;
               stuckCoreStatus = coreStatus;
             }
-          } else {
+          }
+          else {
             stallCounter = 0;
           }
 
-          // Condition 2: If core PC is stuck
-          if ((programCounter == programCounterMap.at(tile)) && (programCounter != CORE_RESET_PC)) {
-            pcCounter++;
-            if (pcCounter == CORE_HANG_COUNT_THRESHOLD) {
-              foundStuckCores = true;
-              stuckTile = tile;
-              stuckCoreStatus = coreStatus;
-            }
-          } else {
-            pcCounter = 0;
-          }
-
-          programCounterMap[tile] = programCounter;
           coreStatusMap[tile] = coreStatus;
         } // For tiles in graph
 
@@ -240,6 +222,19 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
           foundStuckCores = false;
         }
+
+        // Check Threshold status
+        /*{
+          std::stringstream msg;
+          for (const auto& tile : kv.second) {
+            if (coreStuckCountMap[tile])
+              msg << "T(" << tile.col <<"," << tile.row << ") : " << "< " << coreStuckCountMap[tile] << " : 0x" << std::hex << coreStatusMap[tile] << std::dec << " > " ;
+          }
+          auto msg_str = msg.str();
+          if (!msg_str.empty())
+            xrt_core::message::send(severity_level::debug, "XRT", msg_str);
+        }*/
+
       } // For graphs
 
       // Always write out latest debug/status file
