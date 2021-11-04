@@ -162,18 +162,6 @@ is_sw_emulation()
   return swem;
 }
 
-static std::vector<uint64_t>
-get_xclbin_cus(const xocl::device* d)
-{
-  if (is_sw_emulation()) {
-    auto xml = d->get_axlf_section(EMBEDDED_METADATA);
-    return xml.first ? xrt_core::xclbin::get_cus(xml.first, xml.second) : std::vector<uint64_t>{};
-  }
-
-  auto ip_layout = d->get_axlf_section<const ::ip_layout*>(axlf_section_kind::IP_LAYOUT);
-  return ip_layout ? xrt_core::xclbin::get_cus(ip_layout) : std::vector<uint64_t>{};
-}
-
 XOCL_UNUSED static bool
 is_emulation_mode()
 {
@@ -203,16 +191,14 @@ std::string
 device::
 get_bdf() const
 {
-  if (!m_xdevice)
+  if (!m_cdevice)
     throw xocl::error(CL_INVALID_DEVICE, "No BDF");
 
   // logically const
   auto lk = const_cast<device*>(this)->lock_guard();
 
-  auto core_device = m_xdevice->get_core_device();
-
   try {
-    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(core_device);
+    auto bdf = xrt_core::device_query<xrt_core::query::pcie_bdf>(m_cdevice);
     return xrt_core::query::pcie_bdf::to_string(bdf);
   }
   catch (const xrt_core::error&) {
@@ -220,21 +206,20 @@ get_bdf() const
 
   // Provides valid functionality for devices that are
   // not identified by bdf
-  return std::to_string(core_device->get_device_id());
+  return std::to_string(m_cdevice->get_device_id());
 }
 
 bool
 device::
 is_nodma() const
 {
-  if (!m_xdevice)
+  if (!m_cdevice)
     throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
 
   // logically const
   auto lk = const_cast<device*>(this)->lock_guard();
 
-  auto core_device = m_xdevice->get_core_device();
-  return core_device->is_nodma();
+  return m_cdevice->is_nodma();
 }
 
 void*
@@ -299,7 +284,7 @@ alloc(memory* mem, memidx_type memidx)
 
 device::
 device(platform* pltf, xrt_xocl::device* xdevice)
-  : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice)
+  : m_uid(uid_count++), m_platform(pltf), m_xdevice(xdevice), m_cdevice(nullptr)
 {
   XOCL_DEBUG(std::cout,"xocl::device::device(",m_uid,")\n");
 }
@@ -311,6 +296,7 @@ device(device* parent, const compute_unit_vector_type& cus)
   , m_metadata(parent->m_metadata)
   , m_platform(parent->m_platform)
   , m_xdevice(parent->m_xdevice)
+  , m_cdevice(parent->m_cdevice)
   , m_parent(parent)
   , m_computeunits(std::move(cus))
 {
@@ -355,8 +341,10 @@ lock()
     m_parent->lock();
 
   // Open the underlying device if not sub device
-  if (!m_parent.get())
+  if (!m_parent.get()) {
     m_xdevice->open();
+    m_cdevice = m_xdevice->get_core_device().get();
+  }
 
   // All good, return increment lock count
   return ++m_locks;
@@ -376,8 +364,10 @@ unlock()
     m_parent->unlock();
 
   // Close the underlying device
-  if (!m_parent.get())
+  if (!m_parent.get()) {
     m_xdevice->close();
+    m_cdevice = nullptr;
+  }
 
   return m_locks; // 0
 }
@@ -827,30 +817,29 @@ load_program(program* program)
   xocl::debug::reset(top);
 
   // programmming
-  if (xrt_xocl::config::get_xclbin_programing()) {
-    auto xbrv = m_xdevice->loadXclBin(top);
-    if (xbrv.valid() && xbrv.get()){
-      if(xbrv.get() == -EACCES)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
-      else if (xbrv.get() == -EBUSY)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
-      else if (xbrv.get() == -ETIMEDOUT)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Timeout, see dmesg for details");
-      else if (xbrv.get() == -ENOMEM)
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Out of Memory, see dmesg for details");
-      else
-        throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
-    }
-
-    if (!xbrv.valid()) {
+  auto xbrv = m_xdevice->loadXclBin(top);
+  if (xbrv.valid() && xbrv.get()){
+    if(xbrv.get() == -EACCES)
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Invalid DNA");
+    else if (xbrv.get() == -EBUSY)
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Device Busy, see dmesg for details");
+    else if (xbrv.get() == -ETIMEDOUT)
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Timeout, see dmesg for details");
+    else if (xbrv.get() == -ENOMEM)
+      throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin. Out of Memory, see dmesg for details");
+    else
       throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
-    }
+  }
+
+  if (!xbrv.valid()) {
+    throw xocl::error(CL_INVALID_PROGRAM,"Failed to load xclbin.");
   }
 
   // Initialize meta data based on sections cached in core device
   // These sections were cached when the xclbin was loaded onto the device
-  auto core_device = xrt_core::get_userpf_device(get_handle());
-  m_metadata = xclbin(core_device.get(), program->get_xclbin_uuid(this));
+  auto uuid = program->get_xclbin_uuid(this);
+  m_xclbin = m_cdevice->get_xclbin(uuid);
+  m_metadata = xclbin(m_cdevice, uuid); // to be eliminated
 
   // Add compute units for each kernel in the program.
   // Note, that conformance mode renames the kernels in the xclbin
@@ -858,10 +847,11 @@ load_program(program* program)
   // isn't possible, we *must* iterate symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
-  auto cu2addr = get_xclbin_cus(this);
-  for (auto symbol : m_metadata.kernel_symbols()) {
-    for (auto& inst : symbol->instances) {
-      if (auto cu = compute_unit::create(symbol,inst,this,cu2addr))
+  auto cu2addr = m_cdevice->get_cus(xrt::uuid{});
+  for (const auto& xkernel : m_xclbin.get_kernels()) {
+    auto symbol = &m_metadata.lookup_kernel(xkernel.get_name()); // to be removed
+    for (const auto& xcu : xkernel.get_cus()) {
+      if (auto cu = compute_unit::create(symbol, xkernel, xcu, this, cu2addr))
         add_cu(std::move(cu));
     }
   }
@@ -958,8 +948,8 @@ std::pair<const char*, size_t>
 device::
 get_axlf_section(axlf_section_kind kind) const
 {
-  if (auto core_device = xrt_core::get_userpf_device(get_handle()))
-    return core_device->get_axlf_section(kind);
+  if (m_cdevice)
+    return m_cdevice->get_axlf_section(kind);
   return {nullptr, 0};
 }
 

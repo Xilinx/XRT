@@ -36,7 +36,7 @@ get_axlf_section(const xrt::xclbin& xclbin, axlf_section_kind kind);
 std::vector<std::pair<const char*, size_t>>
 get_axlf_sections(const xrt::xclbin& xclbin, axlf_section_kind kind);
 
-// read_xclbin() - Read specified xclbin file 
+// read_xclbin() - Read specified xclbin file
 std::vector<char>
 read_xclbin(const std::string& fnm);
 
@@ -47,6 +47,7 @@ get_properties(const xrt::xclbin::kernel& kernel);
 // get_arginfo() - Get xclbin kernel argument metadata
 // Sorted by arg index, but appended with rtinfo args (if any)
 // which have no index
+XRT_CORE_COMMON_EXPORT
 const std::vector<xrt_core::xclbin::kernel_argument>&
 get_arginfo(const xrt::xclbin::kernel& kernel);
 
