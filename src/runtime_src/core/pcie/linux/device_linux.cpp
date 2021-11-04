@@ -535,6 +535,60 @@ struct lapc_status
 
   }
 };
+
+struct spc_status
+{
+  using result_type = query::spc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    std::string spcName("spc_");
+    spcName = spcName + std::to_string(dbgIpData->m_base_address);
+
+    std::string namePath = pdev->get_sysfs_path(spcName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::vector<uint64_t> valBuf;
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return valBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 3) {
+//      std::cout << "\nERROR: Incomplete SPC data in " << path << std::endl;
+    }
+
+#if 0
+    spcResults.PCAsserted[index] = valBuf[0];
+    spcResults.CurrentPC[index]  = valBuf[1];
+    spcResults.SnapshotPC[index] = valBuf[2];
+#endif
+
+    ifs.close();
+    return valBuf;
+  }
+};
   
 
 // Specialize for other value types.
@@ -918,10 +972,11 @@ initialize_query_table()
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
   emplace_func0_request<query::instance,                     instance>();
 
-  emplace_func4_request<query::aim_counter,                    aim_counter>();
-  emplace_func4_request<query::am_counter,                     am_counter>();
-  emplace_func4_request<query::asm_counter,                    asm_counter>();
-  emplace_func4_request<query::lapc_status,                    lapc_status>();
+  emplace_func4_request<query::aim_counter,                  aim_counter>();
+  emplace_func4_request<query::am_counter,                   am_counter>();
+  emplace_func4_request<query::asm_counter,                  asm_counter>();
+  emplace_func4_request<query::lapc_status,                  lapc_status>();
+  emplace_func4_request<query::spc_status,                   spc_status>();
 }
 
 struct X { X() { initialize_query_table(); }};

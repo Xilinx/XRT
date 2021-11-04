@@ -990,6 +990,14 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
   spcResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
+
+    spcResults.PCAsserted[index] = valBuf[0];
+    spcResults.CurrentPC[index]  = valBuf[1];
+    spcResults.SnapshotPC[index] = valBuf[2];
+
+
+#if 0
 #ifndef _WIN32
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
@@ -1055,6 +1063,8 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   spcResults.PCAsserted[index] = pc_asserted;
   spcResults.CurrentPC[index]  = current_pc;
   spcResults.SnapshotPC[index] = snapshot_pc;
+#endif
+
 }
 
 

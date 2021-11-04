@@ -255,6 +255,7 @@ enum class key_type
   am_counter,
   asm_counter,
   lapc_status,
+  spc_status,
 
   noop
 };
@@ -2758,6 +2759,16 @@ struct lapc_status : request
   using result_type = std::vector<uint64_t>;
   using debug_ip_data_type = debug_ip_data*;
   static const key_type key = key_type::lapc_status;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+};
+
+struct spc_status : request
+{
+  using result_type = std::vector<uint64_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::spc_status;
 
   virtual boost::any
   get(const xrt_core::device* device, const boost::any& arg1) const = 0;
