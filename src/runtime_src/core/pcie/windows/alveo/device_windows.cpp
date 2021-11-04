@@ -1237,6 +1237,19 @@ struct asm_counter
   }
 };
 
+struct lapc_status
+{
+  using result_type = query::lapc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
+
+    return xrt_core::debug_ip::getLAPCStatus(device, dbgIpData);
+  }
+};
+
 
 template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
@@ -1506,6 +1519,7 @@ initialize_query_table()
   emplace_func4_request<query::aim_counter,                  aim_counter>();
   emplace_func4_request<query::am_counter,                   am_counter>();
   emplace_func4_request<query::asm_counter,                  asm_counter>();
+  emplace_func4_request<query::lapc_status,                  lapc_status>();
 }
 
 struct X { X() { initialize_query_table(); }};
