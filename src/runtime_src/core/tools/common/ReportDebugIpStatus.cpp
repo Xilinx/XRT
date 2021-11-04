@@ -1079,6 +1079,11 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin 
   accelDeadlockResults.Num = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
+
+  accelDeadlockResults.DeadlockStatus = valBuf[0];
+
+#if 0
 #ifndef _WIN32
   // read counter values
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
@@ -1121,6 +1126,7 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
   xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbgIpInfo->m_base_address + 0x0,
                   &(accelDeadlockResults.DeadlockStatus), sizeof(uint32_t));
+#endif
 }
 
 

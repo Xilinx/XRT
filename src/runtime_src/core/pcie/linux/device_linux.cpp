@@ -589,7 +589,53 @@ struct spc_status
     return valBuf;
   }
 };
-  
+
+struct accel_deadlock_status
+{
+  using result_type = query::accel_deadlock_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+    result_type valBuf;
+
+  // read counter values
+//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    std::string monName("accel_deadlock_");
+    monName = monName + std::to_string(dbgIpInfo->m_base_address);
+
+    std::string namePath = pdev->get_sysfs_path(monName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return valBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    if(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));  
+//      accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
+    } else {
+//      std::cout << "\nERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
+    }
+    ifs.close();
+
+    return valBuf;
+
+  }
+};
 
 // Specialize for other value types.
 template <typename ValueType>
@@ -977,6 +1023,7 @@ initialize_query_table()
   emplace_func4_request<query::asm_counter,                  asm_counter>();
   emplace_func4_request<query::lapc_status,                  lapc_status>();
   emplace_func4_request<query::spc_status,                   spc_status>();
+  emplace_func4_request<query::accel_deadlock_status,        accel_deadlock_status>();
 }
 
 struct X { X() { initialize_query_table(); }};
