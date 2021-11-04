@@ -471,6 +471,70 @@ struct asm_counter
     return valBuf;
   }
 };
+
+struct lapc_status
+{
+  using result_type = query::lapc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  {
+    const auto dbgIpData = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
+    auto pdev = get_pcidev(device);
+
+//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
+//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    std::string lapcName("lapc_");
+    lapcName = lapcName + std::to_string(dbgIpData->m_base_address);
+
+    std::string namePath = pdev->get_sysfs_path(lapcName.c_str(), "name");
+
+    std::size_t pos = namePath.find_last_of('/');
+    std::string path = namePath.substr(0, pos+1);
+    path += "status";
+
+    std::vector<uint64_t> valBuf;
+
+    std::ifstream ifs(path.c_str());
+    if(!ifs) {
+      return valBuf;
+    }
+
+    const size_t sz = 256;
+    char buffer[sz];
+    std::memset(buffer, 0, sz);
+    ifs.getline(buffer, sz);
+
+    while(!ifs.eof()) {
+      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      std::memset(buffer, 0, sz);
+      ifs.getline(buffer, sz);
+    }
+
+    if(valBuf.size() < 9) {
+//      std::cout << "\nERROR: Incomplete LAPC data in " << path << std::endl;
+      ifs.close();
+      return valBuf;
+    }
+
+#if 0
+    lapcResults.OverallStatus[index]       = valBuf[0];
+
+    lapcResults.CumulativeStatus[index][0] = valBuf[1];
+    lapcResults.CumulativeStatus[index][1] = valBuf[2];
+    lapcResults.CumulativeStatus[index][2] = valBuf[3];
+    lapcResults.CumulativeStatus[index][3] = valBuf[4];
+
+    lapcResults.SnapshotStatus[index][0]   = valBuf[5];
+    lapcResults.SnapshotStatus[index][1]   = valBuf[6];
+    lapcResults.SnapshotStatus[index][2]   = valBuf[7];
+    lapcResults.SnapshotStatus[index][3]   = valBuf[8];
+#endif
+    ifs.close();
+    return valBuf;
+
+  }
+};
   
 
 // Specialize for other value types.
@@ -856,6 +920,8 @@ initialize_query_table()
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
   emplace_func4_request<query::am_counter,                     am_counter>();
+  emplace_func4_request<query::asm_counter,                    asm_counter>();
+  emplace_func4_request<query::lapc_status,                    lapc_status>();
 }
 
 struct X { X() { initialize_query_table(); }};

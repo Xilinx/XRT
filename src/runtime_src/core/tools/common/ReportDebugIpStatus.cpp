@@ -869,6 +869,21 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[LAPC];
   lapcResults.NumSlots = (unsigned int)debugIpNum[LAPC];
 
+  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::lapc_status>(device, dbgIpInfo);
+
+    lapcResults.OverallStatus[index]       = valBuf[0];
+
+    lapcResults.CumulativeStatus[index][0] = valBuf[1];
+    lapcResults.CumulativeStatus[index][1] = valBuf[2];
+    lapcResults.CumulativeStatus[index][2] = valBuf[3];
+    lapcResults.CumulativeStatus[index][3] = valBuf[4];
+
+    lapcResults.SnapshotStatus[index][0]   = valBuf[5];
+    lapcResults.SnapshotStatus[index][1]   = valBuf[6];
+    lapcResults.SnapshotStatus[index][2]   = valBuf[7];
+    lapcResults.SnapshotStatus[index][3]   = valBuf[8];
+
+#if 0
 #ifndef _WIN32
   xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
   if(xrt_core::system::monitor_access_type::ioctl == accessType) {
@@ -944,6 +959,8 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
   std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
   std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
+#endif
+
 }
 
 
