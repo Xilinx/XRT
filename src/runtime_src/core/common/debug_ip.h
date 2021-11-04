@@ -38,6 +38,9 @@ namespace xrt_core {  namespace debug_ip {
   XRT_CORE_COMMON_EXPORT
   std::vector<uint64_t> getLAPCStatus(const xrt_core::device* , debug_ip_data*);
 
+  XRT_CORE_COMMON_EXPORT
+  std::vector<uint64_t> getSPCStatus(const xrt_core::device* , debug_ip_data*);
+
 } } // namespace debug_ip, xrt_core
 
 #endif

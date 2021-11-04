@@ -354,5 +354,22 @@ std::vector<uint64_t> getLAPCStatus(const xrt_core::device* device, debug_ip_dat
   return retvalBuf;
 }
 
+std::vector<uint64_t> getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+{
+  std::vector<uint64_t> retvalBuf(3, 0);
+
+  device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
+              dbgIpData->m_base_address + XSPC_PC_ASSERTED_OFFSET,
+              &retvalBuf[0], sizeof(uint32_t));
+  device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
+              dbgIpData->m_base_address + XSPC_CURRENT_PC_OFFSET,
+              &retvalBuf[1], sizeof(uint32_t));
+  device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
+              dbgIpData->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
+              &retvalBuf[2], sizeof(uint32_t));
+
+  return retvalBuf;
+}
+
 
 } }
