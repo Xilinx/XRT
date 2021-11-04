@@ -312,5 +312,47 @@ std::vector<uint64_t> getASMCounterResult(const xrt_core::device* device, debug_
 
 }
 
+std::vector<uint64_t> getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+{
+  static const uint64_t statusRegisters[] = {
+    LAPC_OVERALL_STATUS_OFFSET,
+
+    LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
+    LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
+
+    LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
+    LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
+  };
+
+  std::vector<uint64_t> retvalBuf((1+(2*XLAPC_STATUS_REG_NUM)), 0);
+
+  uint32_t currData[XLAPC_STATUS_PER_SLOT];
+
+  for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++) {
+    device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpData->m_base_address+statusRegisters[c], &currData[c], sizeof(uint32_t));
+  }
+
+  retvalBuf[0] = currData[XLAPC_OVERALL_STATUS];
+  retvalBuf[1] = *(currData+XLAPC_CUMULATIVE_STATUS_0+0);
+  retvalBuf[2] = *(currData+XLAPC_CUMULATIVE_STATUS_0+1);
+  retvalBuf[3] = *(currData+XLAPC_CUMULATIVE_STATUS_0+2);
+  retvalBuf[4] = *(currData+XLAPC_CUMULATIVE_STATUS_0+3);
+  retvalBuf[5] = *(currData+XLAPC_SNAPSHOT_STATUS_0+0);
+  retvalBuf[6] = *(currData+XLAPC_SNAPSHOT_STATUS_0+1);
+  retvalBuf[7] = *(currData+XLAPC_SNAPSHOT_STATUS_0+2);
+  retvalBuf[8] = *(currData+XLAPC_SNAPSHOT_STATUS_0+3);
+  
+//  std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, retvalBuf[1]);
+//  std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, retvalBuf[1+XLAPC_STATUS_REG_NUM]);
+
+
+#if 0
+  lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
+  std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
+  std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
+#endif
+  return retvalBuf;
+}
+
 
 } }
