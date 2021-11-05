@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,13 +30,11 @@
 namespace xocl {
 
 compute_unit::
-compute_unit(const xclbin::symbol* s,
-             xrt::xclbin::kernel xkernel,
+compute_unit(xrt::xclbin::kernel xkernel,
              xrt::xclbin::ip xcu,
              size_t idx,
              const device* d)
-  : m_symbol(s)
-  , m_xkernel(std::move(xkernel))
+  : m_xkernel(std::move(xkernel))
   , m_xcu(std::move(xcu))
   , m_device(d)
   , m_address(m_xcu.get_base_address())
@@ -119,8 +117,7 @@ get_memidx_union() const
 
 std::unique_ptr<compute_unit>
 compute_unit::
-create(const xclbin::symbol* symbol,
-       const xrt::xclbin::kernel& xkernel,
+create(const xrt::xclbin::kernel& xkernel,
        const xrt::xclbin::ip& xcu,
        const device* device,
        const std::vector<uint64_t>& cu2addr)
@@ -137,6 +134,6 @@ create(const xclbin::symbol* symbol,
 
   // Unfortunately make_unique can't access private ctor
   // return std::make_unique<compute_unit>(symbol,inst.name,inst.base,idx,device);
-  return std::unique_ptr<compute_unit>(new compute_unit(symbol, xkernel, xcu, idx, device));
+  return std::unique_ptr<compute_unit>(new compute_unit(xkernel, xcu, idx, device));
 }
 } // xocl

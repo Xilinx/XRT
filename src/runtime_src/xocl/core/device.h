@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -481,10 +481,22 @@ public:
   /**
    * @return
    *  Current loaded xclbin
+   *
+   * Deprecated, to be removed when core xrt is used
    */
   XRT_XOCL_EXPORT
   xclbin
   get_xclbin() const;
+
+  /**
+   * @return 
+   *   Current loaded xrt::xclbin
+   */
+  const xrt::xclbin&
+  get_xrt_xclbin() const
+  {
+    return m_xclbin;
+  }
 
   /**
    * @return

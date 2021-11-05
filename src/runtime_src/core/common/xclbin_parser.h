@@ -19,7 +19,9 @@
 
 #include "core/common/config.h"
 #include "xclbin.h"
+#include <array>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -39,6 +41,7 @@ struct kernel_argument
   std::string name;
   std::string hosttype;
   std::string port;
+  size_t port_width = 0;
   size_t index = no_index;
   size_t offset = 0;
   size_t size = 0;
@@ -59,6 +62,12 @@ struct kernel_properties
   mailbox_type mailbox = mailbox_type::none;
   size_t address_range = 0;
   bool sw_reset = false;
+
+  // opencl specifics
+  size_t workgroupsize = 0;
+  std::array<size_t, 3> compileworkgroupsize {0};
+  std::array<size_t, 3> maxworkgroupsize {0};
+  std::map<uint32_t, std::string> stringtable;
 };
 
 struct kernel_object

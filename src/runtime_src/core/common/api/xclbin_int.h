@@ -41,6 +41,7 @@ std::vector<char>
 read_xclbin(const std::string& fnm);
 
 // get_properties() - Get kernel properties
+XRT_CORE_COMMON_EXPORT
 const xrt_core::xclbin::kernel_properties&
 get_properties(const xrt::xclbin::kernel& kernel);
 

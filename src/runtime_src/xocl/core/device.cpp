@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -842,16 +842,12 @@ load_program(program* program)
   m_metadata = xclbin(m_cdevice, uuid); // to be eliminated
 
   // Add compute units for each kernel in the program.
-  // Note, that conformance mode renames the kernels in the xclbin
-  // so iterating kernel names and looking up symbols from kernels
-  // isn't possible, we *must* iterate symbols explicitly
   clear_cus();
   m_cu_memidx = -2;
-  auto cu2addr = m_cdevice->get_cus(xrt::uuid{});
+  auto cu2addr = m_cdevice->get_cus(uuid);
   for (const auto& xkernel : m_xclbin.get_kernels()) {
-    auto symbol = &m_metadata.lookup_kernel(xkernel.get_name()); // to be removed
     for (const auto& xcu : xkernel.get_cus()) {
-      if (auto cu = compute_unit::create(symbol, xkernel, xcu, this, cu2addr))
+      if (auto cu = compute_unit::create(xkernel, xcu, this, cu2addr))
         add_cu(std::move(cu));
     }
   }
@@ -894,10 +890,10 @@ acquire_context(const compute_unit* cu) const
   if (cu->m_context_type != compute_unit::context_type::none)
     return true;
 
-  if (!m_metadata)
+  if (!m_xclbin)
     return false;
 
-  m_xdevice->acquire_cu_context(m_metadata.uuid(),cu->get_index(),shared);
+  m_xdevice->acquire_cu_context(m_xclbin.get_uuid(), cu->get_index(),shared);
   XOCL_DEBUG(std::cout,"acquired ",shared?"shared":"exclusive"," context for cu(",cu->get_uid(),")\n");
   cu->set_context_type(shared);
   return true;
@@ -910,10 +906,10 @@ release_context(const compute_unit* cu) const
   if (cu->get_context_type() == compute_unit::context_type::none)
     return true;
 
-  if (!m_metadata)
+  if (!m_xclbin)
     return false;
 
-  m_xdevice->release_cu_context(m_metadata.uuid(),cu->get_index());
+  m_xdevice->release_cu_context(m_xclbin.get_uuid(), cu->get_index());
   XOCL_DEBUG(std::cout,"released context for cu(",cu->get_uid(),")\n");
   cu->reset_context_type();
   return true;

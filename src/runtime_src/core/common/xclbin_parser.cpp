@@ -234,6 +234,60 @@ get_address_range(const pt::ptree& xml_kernel)
   return address_range;
 }
 
+static std::array<size_t, 3>
+get_xyz(const pt::ptree& xml_kernel, const std::string& element)
+{
+  for (auto& elem : xml_kernel) {
+    if (elem.first != element)
+      continue;
+
+    return {convert(elem.second.get<std::string>("<xmlattr>.x"))
+           ,convert(elem.second.get<std::string>("<xmlattr>.y"))
+           ,convert(elem.second.get<std::string>("<xmlattr>.z"))};
+  }
+
+  return {0,0,0};
+}
+
+static std::map<uint32_t, std::string>
+get_stringtable(const pt::ptree& xml_kernel)
+{
+  std::map<uint32_t, std::string> stbl;
+
+  for (auto& xml_stringtable : xml_kernel) {
+    if (xml_stringtable.first != "string_table")
+      continue;
+
+    for (auto& xml_format : xml_stringtable.second) {
+      if (xml_format.first != "format_string")
+        continue;
+
+      stbl.emplace
+        (xml_format.second.get<uint32_t>("<xmlattr>.id")
+        ,xml_format.second.get<std::string>("<xmlattr>.value"));
+    }
+  }
+
+  return stbl;
+}
+
+static std::map<std::string, size_t>
+get_portname_width_map(const pt::ptree& xml_kernel)
+{
+  std::map<std::string, size_t> pwmap;
+
+  for (const auto& xml_port : xml_kernel) {
+    if (xml_port.first != "port")
+      continue;
+
+    pwmap.emplace(
+      xml_port.second.get<std::string>("<xmlattr>.name")
+     ,convert(xml_port.second.get<std::string>("<xmlattr>.dataWidth")));
+  }
+  
+  return pwmap;
+}
+  
 } // namespace
 
 namespace xrt_core { namespace xclbin {
@@ -713,6 +767,8 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
     if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
       continue;
 
+    auto pwmap = get_portname_width_map(xml_kernel.second);
+
     for (auto& xml_arg : xml_kernel.second) {
       if (xml_arg.first != "arg")
         continue;
@@ -720,10 +776,15 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
       std::string id = xml_arg.second.get<std::string>("<xmlattr>.id");
       size_t index = id.empty() ? kernel_argument::no_index : convert(id);
 
+      std::string port = xml_arg.second.get<std::string>("<xmlattr>.port", "no-port");
+      auto itr = pwmap.find(port);
+      size_t pwidth = (itr != pwmap.end()) ? (*itr).second : 0;
+
       args.emplace_back(kernel_argument{
           xml_arg.second.get<std::string>("<xmlattr>.name")
          ,xml_arg.second.get<std::string>("<xmlattr>.type", "no-type")
-         ,xml_arg.second.get<std::string>("<xmlattr>.port", "no-port")
+         ,port
+         ,pwidth
          ,index
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.offset"))
          ,convert(xml_arg.second.get<std::string>("<xmlattr>.size"))
@@ -763,9 +824,6 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (xml_kernel.second.get<std::string>("<xmlattr>.name") != kname)
       continue;
 
-    // kernel address range
-    size_t address_range = get_address_range(xml_kernel.second);
-
     // Determine features
     auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
     if (mailbox == kernel_properties::mailbox_type::none)
@@ -777,7 +835,19 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 
-    return kernel_properties{kname, kernel_properties::kernel_type::pl, restart, mailbox, address_range, sw_reset};
+    return kernel_properties
+      { kname
+      , kernel_properties::kernel_type::pl
+      , restart
+      , mailbox
+      , get_address_range(xml_kernel.second)
+      , sw_reset
+          
+      , convert(xml_kernel.second.get<std::string>("<xmlattr>.workGroupSize", "0"))
+      , get_xyz(xml_kernel.second, "compileWorkGroupSize")
+      , get_xyz(xml_kernel.second, "maxWorkGroupSize")
+      , get_stringtable(xml_kernel.second) };
+
   }
 
   return kernel_properties{};
