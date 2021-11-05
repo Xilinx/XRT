@@ -57,12 +57,12 @@
  *	 synchronized operation, client always wait till server respond.
  */
 
-#define XGQ_SQ_TAIL_POINTER	0x0
-#define XGQ_SQ_INTR_REG		0x4
-#define XGQ_SQ_INTR_CTRL	0xC
-#define XGQ_CQ_TAIL_POINTER	0x100
-#define XGQ_CQ_INTR_REG		0x104
-#define XGQ_CQ_INTR_CTRL	0x10C
+#define XGQ_SQ_TAIL_POINTER     0x0
+#define XGQ_SQ_INTR_REG         0x4
+#define XGQ_SQ_INTR_CTRL        0xC
+#define XGQ_CQ_TAIL_POINTER     0x100
+#define XGQ_CQ_INTR_REG         0x104
+#define XGQ_CQ_INTR_CTRL        0x10C
 
 #define	XGQ_ERR(xgq, fmt, arg...)	\
 	xocl_err(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
