@@ -606,7 +606,7 @@ struct accel_deadlock_status
 //  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
 //  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
     std::string monName("accel_deadlock_");
-    monName = monName + std::to_string(dbgIpInfo->m_base_address);
+    monName = monName + std::to_string(dbgIpData->m_base_address);
 
     std::string namePath = pdev->get_sysfs_path(monName.c_str(), "name");
 

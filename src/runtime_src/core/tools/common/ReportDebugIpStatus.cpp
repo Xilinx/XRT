@@ -49,6 +49,7 @@ namespace XBU = XBUtilities;
 
 namespace {
 
+#if 0
 void
 xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
         uint64_t offset, void *hostbuf, size_t size)
@@ -62,6 +63,7 @@ xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
 #pragma GCC diagnostic pop
 #endif
 }
+#endif
 
 static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "unknown",
