@@ -55,6 +55,7 @@ namespace xdp {
     void getPollingInterval();
     void pollAIERegisters(uint32_t index, void* handle);
     void endPoll();
+    std::string getCoreStatusString(uint32_t status);
 
   private:
     uint32_t mIndex = 0;

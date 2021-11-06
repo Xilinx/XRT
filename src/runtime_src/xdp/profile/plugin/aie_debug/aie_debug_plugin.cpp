@@ -123,6 +123,51 @@ namespace xdp {
     }
   }
 
+  std::string AIEDebugPlugin::getCoreStatusString(uint32_t status) {
+    std::string statusStr;
+
+    if (status & 0x1)
+      statusStr += "Enable,";
+    if (status & 0x2)
+      statusStr += "Reset,";
+    if (status & 0x4)
+      statusStr += "Memory_Stall_S,";
+    if (status & 0x8)
+      statusStr += "Memory_Stall_W,";
+    if (status & 0x10)
+      statusStr += "Memory_Stall_N,";
+    if (status & 0x20)
+      statusStr += "Memory_Stall_E,";
+    if (status & 0x40)
+      statusStr += "Lock_Stall_S,";
+    if (status & 0x80)
+      statusStr += "Lock_Stall_W,";
+    if (status & 0x100)
+      statusStr += "Lock_Stall_N,";
+    if (status & 0x200)
+      statusStr += "Lock_Stall_E,";
+    if (status & 0x400)
+      statusStr += "Stream_Stall_SS0,";
+    if (status & 0x800)
+      statusStr += "Stream_Stall_SS1,";
+    if (status & 0x1000)
+      statusStr += "Stream_Stall_MS0,";
+    if (status & 0x2000)
+      statusStr += "Stream_Stall_MS1,";
+    if (status & 0x4000)
+      statusStr += "Cascade_Stall_SCD,";
+    if (status & 0x8000)
+      statusStr += "Cascade_Stall_MCD,";
+    if (status & 0x10000)
+      statusStr += "Debug_Halt,";
+    if (status & 0x20000)
+      statusStr += "ECC_Error_Stall,";
+    if (status & 0x40000)
+      statusStr += "ECC_Scrubbing_Stall,";
+
+    return statusStr;
+  }
+
   void AIEDebugPlugin::pollAIERegisters(uint32_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
@@ -155,7 +200,8 @@ namespace xdp {
       // Count of samples before we say it's a hang
       const unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
       // Reset values
-      const uint32_t CORE_RESET_STATUS  = 0x1;
+      const uint32_t CORE_RESET_STATUS  = 0x2;
+      const uint32_t CORE_ENABLE_MASK  = 0x1;
 
     // Pre-populate core status and PC maps
     std::map<tile_type, uint32_t> coreStuckCountMap;
@@ -190,13 +236,14 @@ namespace xdp {
           auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
-          if (coreStatus & CORE_INACTIVE_MASK)
-            continue;
-
           auto& stallCounter = coreStuckCountMap[tile];
 
-          // Condition : If core is stalled and has same kind of stall as previous check
-          if ((coreStatus & CORE_STALL_MASK) && (coreStatus == coreStatusMap[tile]) ) {
+          // Condition : Core is in reset/done state or not enabled
+          if (coreStatus & CORE_INACTIVE_MASK || !(coreStatus & CORE_ENABLE_MASK)) {
+            stallCounter = 0;
+          }
+          // Condition : If core is enabled + stalled and has same kind of stall as previous check
+          else if ((coreStatus & CORE_STALL_MASK) && (coreStatus == coreStatusMap[tile]) ) {
             stallCounter++;
             if (stallCounter == CORE_HANG_COUNT_THRESHOLD) {
               foundStuckCores = true;
@@ -204,6 +251,7 @@ namespace xdp {
               stuckCoreStatus = coreStatus;
             }
           }
+          // Core is running normally or has changed state
           else {
             stallCounter = 0;
           }
@@ -217,7 +265,8 @@ namespace xdp {
           warningMessage
           << "Potential deadlock/hang found in AI Engines. Graph : " << graphName << " "
           << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
-          << "Status 0x" << std::hex << stuckCoreStatus << std::dec;
+          << "Status 0x" << std::hex << stuckCoreStatus << std::dec
+          << " : " << getCoreStatusString(stuckCoreStatus);
 
           xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
           foundStuckCores = false;
