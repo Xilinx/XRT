@@ -506,8 +506,8 @@ static inline void remove_xgq_cid(struct xocl_xgq *xgq, int id)
 /*
  * Utilize shared memory between host and device to transfer data.
  */
-static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
-	u64 xclbin_len, enum xgq_cmd_opcode opcode, u32 timer)
+static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *buf,
+	u64 len, enum xgq_cmd_opcode opcode, u32 timer)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
 	struct xgq_cmd_data_payload *payload = NULL;
@@ -516,7 +516,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	int id = 0;
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
-	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI) {
+	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
+	    opcode != XGQ_CMD_OP_LOAD_APUBIN) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -538,8 +539,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		&(cmd->xgq_cmd_entry.pdi_payload) :
 		&(cmd->xgq_cmd_entry.xclbin_payload);
 
-	payload->address = memcpy_to_devices(xgq, u_xclbin, xclbin_len);
-	payload->size = xclbin_len;
+	payload->address = memcpy_to_devices(xgq, buf, len);
+	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
 
 	/* set up hdr */
@@ -574,7 +575,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
-		ret = xclbin_len;
+		ret = len;
 	}
 done:
 	if (cmd) {
@@ -596,7 +597,7 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	mutex_lock(&xgq->xgq_lock);
 	if (xgq->xgq_data_transfer_inuse) {
 		mutex_unlock(&xgq->xgq_lock);
-		XGQ_ERR(xgq, "XGQ OSPI device is busy");
+		XGQ_ERR(xgq, "XGQ data transfer is busy");
 		return -EBUSY;
 	}
 	xgq->xgq_data_transfer_inuse = true;
@@ -929,6 +930,51 @@ static uint64_t xgq_get_data(struct platform_device *pdev,
 	return target;
 }
 
+static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
+	size_t len)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	int ret = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	if (xgq->xgq_data_transfer_inuse) {
+		mutex_unlock(&xgq->xgq_lock);
+		XGQ_WARN(xgq, "XGQ data transfer is busy");
+		return -EBUSY;
+	}
+	xgq->xgq_data_transfer_inuse = true;
+	mutex_unlock(&xgq->xgq_lock);
+
+	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
+		XOCL_XGQ_DOWNLOAD_TIME);
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_data_transfer_inuse = false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	XGQ_DBG(xgq, "ret %d", ret);
+	return ret == len ? 0 : -EIO;
+}
+
+/* read firmware from /lib/firmware/xilinx, load via xgq */
+static int xgq_download_apu_firmware(struct platform_device *pdev)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
+	char *apu_bin = "xilinx/xrt-versal-apu.xsabin";
+	char *apu_bin_buf = NULL;
+	size_t apu_bin_len = 0;
+	int ret = 0;
+
+	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
+			&apu_bin_buf, &apu_bin_len);
+	if (ret)
+		return ret;
+	ret = xgq_download_apu_bin(pdev, apu_bin_buf, apu_bin_len);
+	vfree(apu_bin_buf);
+
+	return ret;
+}
+
 static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
@@ -1183,11 +1229,11 @@ static int xgq_remove(struct platform_device *pdev)
 
 static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
 {
-	int rval = 0;
+	u32 rval = 0;
 
 	rval = ioread32(xgq->xgq_ring_base + XOCL_XGQ_DEV_STAT_OFFSET);
 	
-	return rval > 0;
+	return rval != 0;
 }
 
 static int xgq_probe(struct platform_device *pdev)
@@ -1233,7 +1279,7 @@ static int xgq_probe(struct platform_device *pdev)
 	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
 
 	/* check device is ready */
-	if (xgq_device_is_ready(xgq)) {
+	if (!xgq_device_is_ready(xgq)) {
 		ret = -ENODEV;
 		XGQ_ERR(xgq, "device is not ready, please reset device.");
 		goto attach_failed;
@@ -1321,6 +1367,7 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_freq_scaling = xgq_freq_scaling,
 	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
 	.xgq_get_data = xgq_get_data,
+	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 };
 
 static const struct file_operations xgq_fops = {

@@ -801,7 +801,20 @@ static struct xocl_subdev_map subdev_map[] = {
 		.id = XOCL_SUBDEV_UARTLITE,
 		.dev_name = XOCL_UARTLITE,
 		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_ERT_UARTLITE},
+			{.res_name = NODE_ERT_UARTLITE_00},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = 0,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
+	{
+		.id = XOCL_SUBDEV_UARTLITE_01,
+		.dev_name = XOCL_UARTLITE,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_ERT_UARTLITE_01},
 			{NULL},
 		},
 		.required_ip = 1,
