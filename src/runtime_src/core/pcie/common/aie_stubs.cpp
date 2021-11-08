@@ -16,7 +16,7 @@ static std::string function_not_implemented(const char* funcName) {
 }
 
 void*
-xclGraphOpen(xclDeviceHandle /*handle*/, const uuid_t /*xclbin_uuid*/, const char* /*graph*/, xrt::graph::access_mode /*am*/)
+xclGraphOpen(xclDeviceHandle /*handle*/, const xuid_t /*xclbin_uuid*/, const char* /*graph*/, xrt::graph::access_mode /*am*/)
 {
   throw std::runtime_error(function_not_implemented(__func__));
 }
