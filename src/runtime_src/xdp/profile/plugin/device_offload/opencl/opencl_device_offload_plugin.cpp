@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 // Includes from xrt_coreutil
 #include "core/common/system.h"
 #include "core/common/message.h"
+#include "core/common/xclbin_parser.h"
 
 // Includes from xilinxopencl
 #include "xocl/core/platform.h"
@@ -38,11 +39,10 @@
 namespace {
   static std::string 
   getMemoryNameFromID(const std::shared_ptr<xocl::compute_unit> cu,
-                      const std::string& arg_id)
+                      const size_t index)
   {
     std::string memoryName = "" ;
     try {
-      unsigned int index = (unsigned int)(std::stoi(arg_id)) ;
       auto memidx_mask = cu->get_memidx(index) ;
       for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx)
       {
@@ -338,11 +338,15 @@ namespace xdp {
 
         // Construct the argument list of each port
         std::string arguments = "" ;
-        for (auto arg : matchingCU->get_symbol()->arguments)
+        for (const auto& arg : matchingCU->get_args())
         {
-          if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
-              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-            continue ;
+          if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+            continue;
+
+          if (arg.type != xrt_core::xclbin::kernel_argument::argtype::global
+              && arg.type != xrt_core::xclbin::kernel_argument::argtype::stream)
+            continue;
+
           // Is this particular argument attached to the right port?
           std::string lowerPort = arg.port ;
           std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
@@ -351,7 +355,7 @@ namespace xdp {
             continue ;
 
           // Is this particular argument heading to the right memory?
-          std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+          std::string memoryName = getMemoryNameFromID(matchingCU, arg.index) ;
           std::string convertedName = convertBankToDDR(memoryName) ;
           if (monitor->name.find(memoryName) == std::string::npos &&
               monitor->name.find(convertedName) == std::string::npos )
@@ -373,11 +377,15 @@ namespace xdp {
 
         // Construct the argument list of each port
         std::string arguments = "" ;
-        for (auto arg : matchingCU->get_symbol()->arguments)
+        for (auto arg : matchingCU->get_args())
         {
-          if ((arg.address_qualifier != 1 && arg.address_qualifier != 4) ||
-              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-            continue ;
+          if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+            continue;
+
+          if (arg.type != xrt_core::xclbin::kernel_argument::argtype::global
+              && arg.type != xrt_core::xclbin::kernel_argument::argtype::stream)
+            continue;
+
           // Is this particular argument attached to the right port?
           std::string lowerPort = arg.port ;
           std::transform(lowerPort.begin(), lowerPort.end(), lowerPort.begin(),
@@ -386,7 +394,7 @@ namespace xdp {
             continue ;
 
           // Is this particular argument heading to the right memory?
-          std::string memoryName = getMemoryNameFromID(matchingCU, arg.id) ;
+          std::string memoryName = getMemoryNameFromID(matchingCU, arg.index) ;
           std::string convertedName = convertBankToDDR(memoryName) ;
           if (monitor->name.find(memoryName) == std::string::npos &&
               monitor->name.find(convertedName) == std::string::npos) {
@@ -431,10 +439,14 @@ namespace xdp {
     std::set<std::string> bitWidthStrings ;
     for (auto device : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(device)->get_cus()) {
-        for (auto arg : cu->get_symbol()->arguments) {
-          if ((arg.address_qualifier != 1  && arg.address_qualifier != 4) ||
-              arg.atype != xocl::xclbin::symbol::arg::argtype::indexed)
-            continue ;
+        for (auto arg : cu->get_args()) {
+          if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+            continue;
+
+          if (arg.type != xrt_core::xclbin::kernel_argument::argtype::global
+              && arg.type != xrt_core::xclbin::kernel_argument::argtype::stream)
+            continue;
+
           std::string bitWidth = "" ;
           bitWidth += cu->get_name() ;
           bitWidth += "/" ;
@@ -447,8 +459,8 @@ namespace xdp {
         }
       }
     }
-    for (auto iter : bitWidthStrings) {
-      (db->getStaticInfo()).addSoftwareEmulationPortBitWidth(iter) ;
+    for (const auto& str : bitWidthStrings) {
+      (db->getStaticInfo()).addSoftwareEmulationPortBitWidth(str) ;
     }
 
   }
