@@ -88,6 +88,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_DOWNLOAD_PDI		= 0xa,
 	XGQ_CMD_OP_CLOCK		= 0xb,
 	XGQ_CMD_OP_SENSOR		= 0xc,
+	XGQ_CMD_OP_LOAD_APUBIN		= 0xd,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,

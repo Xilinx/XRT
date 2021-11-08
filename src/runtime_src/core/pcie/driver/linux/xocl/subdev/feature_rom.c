@@ -303,11 +303,7 @@ static bool verify_timestamp(struct platform_device *pdev, u64 timestamp)
 
 	if (strlen(rom->uuid) > 0) {
 		xocl_dbg(&pdev->dev, "2RP platform, skip timestamp check");
-		printk("DZ_ has uuid\n");
 		return true;
-	} else {
-		return true;
-		printk("DZ_ no uuid\n");
 	}
 
 	return (rom->header.TimeSinceEpoch == timestamp);

@@ -2131,6 +2131,7 @@ struct xocl_xgq_funcs {
 		struct clock_freq_topology *top, int verify);
 	uint64_t (*xgq_get_data)(struct platform_device *pdev,
 		enum data_kind kind);
+	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
@@ -2155,6 +2156,9 @@ struct xocl_xgq_funcs {
 #define	xocl_xgq_clock_get_data(xdev, kind) 			\
 	(XGQ_CB(xdev, xgq_get_data) ?				\
 	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)
+#define	xocl_download_apu_firmware(xdev) 			\
+	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
+	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
