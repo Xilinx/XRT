@@ -37,6 +37,7 @@ extern "C" {
 namespace xdp {
 
   using tile_type = xrt_core::edge::aie::tile_type;
+  using module_type = xrt_core::edge::aie::module_type;
 
   class AIEProfilingPlugin : public XDPPlugin
   {
@@ -53,21 +54,28 @@ namespace xdp {
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
 
-    std::string getMetricSet(bool isCore, const std::string& metricsStr);
-    std::vector<tile_type> getTilesForProfiling(bool isCore,
+    std::string getMetricSet(const XAie_ModuleType mod, 
+                             const std::string& metricsStr);
+    std::vector<tile_type> getTilesForProfiling(const XAie_ModuleType mod,
                                                 const std::string& metricsStr,
                                                 void* handle);
     // Find minimum number of counters that are available across all tiles
     uint32_t getNumFreeCtr(xaiefal::XAieDev* aieDevice,
-                            const std::vector<tile_type>& tiles,
-                            bool isCore,
-                            const std::string& metricSet);
-    void printTileModStats(xaiefal::XAieDev* aieDevice, const tile_type& tile, bool isCore);
-    void configGroupEvents( XAie_DevInst* aieDevInst,
-                            XAie_LocType& loc,
-                            XAie_ModuleType mod,
-                            XAie_Events event,
-                            std::string& metricSet);
+                           const std::vector<tile_type>& tiles,
+                           const XAie_ModuleType mod,
+                           const std::string& metricSet);
+    void printTileModStats(xaiefal::XAieDev* aieDevice, 
+                           const tile_type& tile, 
+                           const XAie_ModuleType mod);
+    void configGroupEvents(XAie_DevInst* aieDevInst,
+                           const XAie_LocType& loc,
+                           const XAie_ModuleType mod,
+                           const XAie_Events event,
+                           const std::string& metricSet);
+    void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
+                                 uint16_t col,
+                                 uint16_t row,
+                                 std::string& metricSet);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
@@ -75,6 +83,9 @@ namespace xdp {
   private:
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
+    std::string mCoreMetricSet;
+    std::string mMemoryMetricSet;
+    std::string mShimMetricSet;
 
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     std::map<void*,std::thread> mThreadMap;
@@ -86,12 +97,17 @@ namespace xdp {
     std::map<std::string, std::vector<XAie_Events>> mCoreEndEvents;
     std::map<std::string, std::vector<int>> broadcastCoreConfig;
 
-    std::map<std::string, std::vector<std::string>> mCoreEventStrings;
-    std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
-
     std::set<std::string> mMemoryMetricSets;
     std::map<std::string, std::vector<XAie_Events>> mMemoryStartEvents;
     std::map<std::string, std::vector<XAie_Events>> mMemoryEndEvents;
+
+    std::set<std::string> mShimMetricSets;
+    std::map<std::string, std::vector<XAie_Events>> mShimStartEvents;
+    std::map<std::string, std::vector<XAie_Events>> mShimEndEvents;
+
+    std::map<std::string, std::vector<std::string>> mCoreEventStrings;
+    std::map<std::string, std::vector<std::string>> mMemoryEventStrings;
+    std::map<std::string, std::vector<std::string>> mShimEventStrings;
   };
 
 } // end namespace xdp
