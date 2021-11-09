@@ -1053,8 +1053,7 @@ void
 bo::
 sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 {
-  const auto& handle = get_handle();
-  handle->sync(*this, port, dir, sz, offset);
+  get_handle()->sync(*this, port, dir, sz, offset);
 }
 
 }} // namespace aie, xrt
