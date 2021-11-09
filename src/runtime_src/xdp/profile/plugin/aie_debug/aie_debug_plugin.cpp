@@ -70,7 +70,7 @@ namespace xdp {
       : XDPPlugin()
   {
     db->registerPlugin(this);
-    db->registerInfo(info::aie_debug);
+    db->registerInfo(info::aie_status);
     getPollingInterval();
   }
 
@@ -92,7 +92,7 @@ namespace xdp {
   // Get polling interval (in usec; no minimum)
   void AIEDebugPlugin::getPollingInterval()
   {
-    mPollingInterval = xrt_core::config::get_aie_debug_interval_us();
+    mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
   // Get tiles to debug
@@ -253,8 +253,8 @@ namespace xdp {
 
   void AIEDebugPlugin::updateAIEDevice(void* handle)
   {
-    // Don't update if no debug is requested
-    if (!xrt_core::config::get_aie_debug())
+    // Don't update if no debug/status is requested
+    if (!xrt_core::config::get_aie_status())
       return;
 
     char pathBuf[512];
@@ -283,12 +283,12 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string outputFile = "aie_debug_" + deviceName + ".json";
+    std::string outputFile = "aie_status_" + deviceName + ".json";
 
     VPWriter* writer = new AIEDebugWriter(outputFile.c_str(),
                                           deviceName.c_str(), mIndex);
     writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_DEBUG");
+    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;

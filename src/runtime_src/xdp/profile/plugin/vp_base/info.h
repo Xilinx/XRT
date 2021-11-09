@@ -35,7 +35,7 @@ namespace info {
   const uint64_t system_compiler = 0x0400 ;
   const uint64_t user            = 0x0800 ;
   const uint64_t vart            = 0x1000 ;
-  const uint64_t aie_debug       = 0x2000 ;
+  const uint64_t aie_status      = 0x2000 ;
 
 } // end namespace info
 } // end namespace xdp ;

@@ -40,7 +40,7 @@ bool load()
     xdp::hal::device_offload::load() ;
   }
 
-  if (xrt_core::config::get_aie_debug()) {
+  if (xrt_core::config::get_aie_status()) {
     xdp::aie::debug::load() ;
   }
 
