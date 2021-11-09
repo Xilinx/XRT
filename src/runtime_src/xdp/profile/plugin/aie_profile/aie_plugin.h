@@ -73,8 +73,7 @@ namespace xdp {
                            const XAie_Events event,
                            const std::string& metricSet);
     void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                 uint16_t col,
-                                 uint16_t row,
+                                 const XAie_LocType& loc,
                                  std::string& metricSet);
 
     void pollAIECounters(uint32_t index, void* handle);
