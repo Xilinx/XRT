@@ -3098,8 +3098,8 @@ struct xocl_subdev_map {
 #define XOCL_RES_MAILBOX_VSEC				\
 	((struct resource []) {				\
 		{					\
-			.start	= 0x0,		\
-			.end	= 0x2F,		\
+			.start	= 0x0,			\
+			.end	= 0x2F,			\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
@@ -3113,6 +3113,33 @@ struct xocl_subdev_map {
 		.bar_idx = (char []){ 0 },		\
 		.override_idx = -1,			\
 	}
+
+#define XOCL_RES_XGQ_VSEC				\
+	((struct resource []) {				\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0x0,			\
+	 		.name   = NODE_XGQ_SQ_BASE,	\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+		{					\
+			.start	= 0x0,			\
+			.end	= 0x0,			\
+	 		.name   = NODE_XGQ_RING_BASE,	\
+			.flags  = IORESOURCE_MEM,	\
+		},					\
+	})
+
+#define XOCL_DEVINFO_XGQ_VSEC				\
+	{						\
+		XOCL_SUBDEV_XGQ,			\
+		XOCL_XGQ,				\
+		XOCL_RES_XGQ_VSEC,			\
+		ARRAY_SIZE(XOCL_RES_XGQ_VSEC),		\
+		.bar_idx = (char []){ 0, 0 },		\
+		.override_idx = -1,			\
+	}
+
 
 #define XOCL_RES_FLASH_BLP				\
 	((struct resource []) {				\

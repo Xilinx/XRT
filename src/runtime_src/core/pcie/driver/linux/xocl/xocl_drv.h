@@ -337,12 +337,13 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_XGQ               0x54
+#define XOCL_VSEC_XGQ_PAYLOAD       0x55
 
 #define XOCL_VSEC_FLASH_TYPE_SPI_IP		0x0
 #define XOCL_VSEC_FLASH_TYPE_SPI_REG		0x1
 #define XOCL_VSEC_FLASH_TYPE_QSPI		0x2
 #define XOCL_VSEC_FLASH_TYPE_XFER_VERSAL	0x3
-#define XOCL_VSEC_FLASH_TYPE_XGQ		0x4
 
 #define XOCL_VSEC_PLAT_RECOVERY     0x0
 #define XOCL_VSEC_PLAT_1RP          0x1

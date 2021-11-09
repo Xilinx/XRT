@@ -57,6 +57,13 @@
  *	 synchronized operation, client always wait till server respond.
  */
 
+#define XGQ_SQ_TAIL_POINTER     0x0
+#define XGQ_SQ_INTR_REG         0x4
+#define XGQ_SQ_INTR_CTRL        0xC
+#define XGQ_CQ_TAIL_POINTER     0x100
+#define XGQ_CQ_INTR_REG         0x104
+#define XGQ_CQ_INTR_CTRL        0x10C
+
 #define	XGQ_ERR(xgq, fmt, arg...)	\
 	xocl_err(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
 #define	XGQ_WARN(xgq, fmt, arg...)	\
@@ -1162,8 +1169,6 @@ static int xgq_remove(struct platform_device *pdev)
 		iounmap(xgq->xgq_ring_base);
 	if (xgq->xgq_sq_base)
 		iounmap(xgq->xgq_sq_base);
-	if (xgq->xgq_cq_base)
-		iounmap(xgq->xgq_cq_base);
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 	mutex_destroy(&xgq->xgq_lock);
@@ -1212,21 +1217,20 @@ static int xgq_probe(struct platform_device *pdev)
 			xgq->xgq_sq_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}
-		if (!strncmp(res->name, NODE_XGQ_CQ_BASE, strlen(NODE_XGQ_CQ_BASE))) {
-			xgq->xgq_cq_base = ioremap_nocache(res->start,
-				res->end - res->start + 1);
-		}
 		if (!strncmp(res->name, NODE_XGQ_RING_BASE, strlen(NODE_XGQ_RING_BASE))) {
 			xgq->xgq_ring_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}
 	}
 
-	if (!xgq->xgq_sq_base || !xgq->xgq_cq_base || !xgq->xgq_ring_base) {
+	if (!xgq->xgq_sq_base || !xgq->xgq_ring_base) {
 		ret = -EIO;
 		XGQ_ERR(xgq, "platform get resource failed");
 		goto attach_failed;
 	}
+
+	xgq->xgq_sq_base = xgq->xgq_sq_base + XGQ_SQ_TAIL_POINTER;
+	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
 
 	/* check device is ready */
 	if (xgq_device_is_ready(xgq)) {
@@ -1235,9 +1239,6 @@ static int xgq_probe(struct platform_device *pdev)
 		goto attach_failed;
 	}
 
-	/* server to reset SQ tail pointer status */
-	//iowrite32(0x0, xgq->xgq_sq_base);
-	
 	flags &= ~XGQ_SERVER;
 	ret = xgq_attach(&xgq->xgq_queue, flags, (u64)xgq->xgq_ring_base,
 		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);

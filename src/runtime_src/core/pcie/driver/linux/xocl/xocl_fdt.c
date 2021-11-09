@@ -733,21 +733,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
 	},
 	{
-		.id = XOCL_SUBDEV_XGQ,
-		.dev_name = XOCL_XGQ,
-		.res_array = (struct xocl_subdev_res[]) {
-			{.res_name = NODE_XGQ_SQ_BASE},
-			{.res_name = NODE_XGQ_CQ_BASE},
-			{.res_name = NODE_XGQ_RING_BASE},
-			{NULL},
-		},
-		.required_ip = 1,
-		.flags = 0,
-		.build_priv_data = NULL,
-		.devinfo_cb = NULL,
-		.max_level = XOCL_SUBDEV_LEVEL_PRP,
-	},
-	{
 		.id = XOCL_SUBDEV_XFER_VERSAL,
 		.dev_name = XOCL_XFER_VERSAL,
 		.res_array = (struct xocl_subdev_res[]) {
