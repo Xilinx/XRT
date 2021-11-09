@@ -5,6 +5,12 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   )
 
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  set(XRT_AIE_BUILD "yes")
+  set(XRT_ENABLE_AIE "yes")
+  add_definitions (-DXRT_ENABLE_AIE -DXRT_AIE_BUILD)
+endif()
+
 add_subdirectory(include)
 
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
