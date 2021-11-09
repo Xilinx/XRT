@@ -293,6 +293,13 @@ int sched_fini_exec(struct drm_device *drm);
 int sched_reset_exec(struct drm_device *drm);
 int sched_reset_scheduler(struct drm_device *drm);
 
+
+int zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+		                        struct sched_client_ctx *client);
+int sched_poll_client(struct file *filp, poll_table *wait);
+int sched_create_client(struct drm_device *dev, void **priv);
+void sched_destroy_client(struct drm_device *dev, void **priv);
+
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 void zocl_untrack_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv);
 

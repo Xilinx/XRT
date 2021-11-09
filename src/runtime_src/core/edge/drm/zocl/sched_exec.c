@@ -3745,6 +3745,266 @@ out:
 	return count;
 }
 
+int
+zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+	struct sched_client_ctx *client)
+{
+	struct sched_exec_core *exec = zdev->exec;
+	xuid_t *zdev_xuid, *ctx_xuid = NULL;
+	u32 cu_idx = ctx->cu_index;
+	bool shared;
+	int ret = 0;
+
+	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+
+	ctx_xuid = vmalloc(ctx->uuid_size);
+	if (!ctx_xuid)
+		return -ENOMEM;
+	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
+	    ctx->uuid_size);
+	if (ret) {
+		vfree(ctx_xuid);
+		return ret;
+	}
+
+	write_lock(&zdev->attr_rwlock);
+
+	/*
+	 * valid xclbin_id is the same.
+	 * Note: xclbin has been downloaded by read_axlf.
+	 *       user can only open/remove context with same loaded xclbin.
+	 */
+	zdev_xuid = (xuid_t *)zdev->zdev_xclbin->zx_uuid;
+
+	if (!zdev_xuid || !uuid_equal(zdev_xuid, ctx_xuid)) {
+		DRM_ERROR("try to add/remove CTX with wrong xclbin %pUB",
+		    ctx_xuid);
+		ret = -EBUSY;
+		goto out;
+	}
+
+	/* validate cu_idx */
+	if (!VIRTUAL_CU(cu_idx) && cu_idx >= zdev->ip->m_count) {
+		DRM_ERROR("CU Index(%u) >= numcus(%d)\n",
+		    cu_idx, zdev->ip->m_count);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* validate cu */
+	if (!VIRTUAL_CU(cu_idx) && !zocl_exec_valid_cu(exec, cu_idx)) {
+		DRM_ERROR("invalid CU(%d)", cu_idx);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/*
+	 * handle remove or add
+	 * each client ctx can lock bitstream once, multiple ctx will
+	 * lock bitstream n times. clien is responsible releasing the refcnt
+	 */
+	if (ctx->op == ZOCL_CTX_OP_FREE_CTX) {
+		if (zocl_xclbin_refcount(zdev) == 0) {
+			DRM_ERROR("can not remove unused xclbin");
+			ret = -EINVAL;
+			goto out;
+		}
+
+		if (cu_idx != ZOCL_CTX_VIRT_CU_INDEX) {
+			/* Try clear exclusive CU */
+			ret = test_and_clear_bit(cu_idx, client->excus);
+			if (!ret) {
+				/* Maybe it is shared CU */
+				ret = test_and_clear_bit(cu_idx, client->shcus);
+			}
+			if (!ret) {
+				DRM_ERROR("can not remove unreserved cu");
+        			ret = -EINVAL;
+				goto out;
+			}
+		}
+
+		/* revert the meaning of return value. 0 means succesfull */
+		ret = 0;
+
+		--client->num_cus;
+		if (CLIENT_NUM_CU_CTX(client) == 0)
+			ret = zocl_xclbin_release(zdev, ctx_xuid);
+		goto out;
+	}
+
+	if (ctx->op != ZOCL_CTX_OP_ALLOC_CTX) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (cu_idx != ZOCL_CTX_VIRT_CU_INDEX) {
+		shared = (ctx->flags == ZOCL_CTX_SHARED);
+
+		if (!shared)
+			ret = test_and_set_bit(cu_idx, client->excus);
+		else {
+			ret = test_bit(cu_idx, client->excus);
+			if (ret) {
+				DRM_ERROR("cannot share exclusived CU");
+				ret = -EINVAL;
+				goto out;
+			}
+			ret = test_and_set_bit(cu_idx, client->shcus);
+		}
+
+		if (ret) {
+			DRM_ERROR("CTX already added by this process");
+			ret = -EINVAL;
+			goto out;
+		}
+	}
+
+	/* Hold XCLBIN the first time alloc context */
+	if (CLIENT_NUM_CU_CTX(client) == 0) {
+		ret = zocl_xclbin_hold(zdev, zdev_xuid);
+		if (ret)
+			goto out;
+	}
+	++client->num_cus;
+out:
+	write_unlock(&zdev->attr_rwlock);
+	vfree(ctx_xuid);
+	return ret;
+}
+
+
+int sched_context_ioctl(struct drm_zocl_dev *zdev, void *data,
+		                              struct drm_file *filp)
+{
+        struct drm_zocl_ctx *args = data;
+        struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
+        int ret = 0;
+
+        switch (args->op) {
+        case ZOCL_CTX_OP_OPEN_GCU_FD:
+                return zocl_open_gcu(zdev, args, filp->driver_priv);
+
+        case ZOCL_CTX_OP_ALLOC_GRAPH_CTX:
+                return zocl_graph_alloc_ctx(zdev, args, filp->driver_priv);
+
+        case ZOCL_CTX_OP_FREE_GRAPH_CTX:
+                return zocl_graph_free_ctx(zdev, args, filp->driver_priv);
+
+        case ZOCL_CTX_OP_ALLOC_AIE_CTX:
+                return zocl_aie_alloc_ctx(zdev, args, filp->driver_priv);
+
+        case ZOCL_CTX_OP_FREE_AIE_CTX:
+                return zocl_aie_free_ctx(zdev, args, filp->driver_priv);
+
+        default:
+                break;
+        }
+
+        mutex_lock(&zdev->zdev_xclbin_lock);
+        ret = zocl_xclbin_ctx(zdev, args, filp->driver_priv);
+        mutex_unlock(&zdev->zdev_xclbin_lock);
+
+        return ret;
+}
+
+int sched_poll_client(struct file *filp, poll_table *wait)
+{
+        int counter;
+        struct drm_file *priv = filp->private_data;
+        struct drm_device *dev = priv->minor->dev;
+        struct drm_zocl_dev *zdev = dev->dev_private;
+        struct sched_client_ctx *fpriv = priv->driver_priv;
+        int ret = 0;
+
+	BUG_ON(!fpriv);
+
+        poll_wait(filp, &zdev->exec->poll_wait_queue, wait);
+
+        mutex_lock(&fpriv->lock);
+        counter = atomic_read(&fpriv->trigger);
+        if (counter > 0) {
+                atomic_dec(&fpriv->trigger);
+                ret = POLLIN;
+        }
+        mutex_unlock(&fpriv->lock);
+
+        return ret;
+}
+
+int sched_create_client(struct drm_device *dev, void **priv)
+{
+        struct sched_client_ctx *fpriv = kzalloc(sizeof(*fpriv), GFP_KERNEL);
+
+        if (!fpriv)
+                return -ENOMEM;
+
+        *priv = fpriv;
+        mutex_init(&fpriv->lock);
+        atomic_set(&fpriv->trigger, 0);
+        atomic_set(&fpriv->outstanding_execs, 0);
+        fpriv->abort = false;
+        fpriv->pid = get_pid(task_pid(current));
+        INIT_LIST_HEAD(&fpriv->graph_list);
+        spin_lock_init(&fpriv->graph_list_lock);
+        zocl_track_ctx(dev, fpriv);
+        DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
+
+        return 0;
+}
+
+void sched_destroy_client(struct drm_device *dev, void **priv)
+{
+        struct sched_client_ctx *client = *priv;
+        struct drm_zocl_dev *zdev = dev->dev_private;
+        int pid;
+        u32 outstanding = 0;
+        int retry = 20;
+        int i;
+
+        if (!client)
+                return;
+
+        pid = pid_nr(client->pid);
+
+        /* force scheduler to abort scheduled cmds for this client */
+        client->abort = true;
+        outstanding = atomic_read(&client->outstanding_execs);
+        while (retry-- && outstanding) {
+                DRM_INFO("pid(%d) waiting for outstanding %d cmds to finish",
+                         pid, outstanding);
+                msleep(500);
+                outstanding = atomic_read(&client->outstanding_execs);
+        }
+        outstanding = atomic_read(&client->outstanding_execs);
+        if (outstanding) {
+                DRM_ERROR("Please investigate stale cmds\n");
+                for (i = 0; i < zdev->exec->num_cus; i++) {
+                        zocl_cu_status_print(&zdev->exec->zcu[i]);
+                }
+        }
+
+        /* Release graph context */
+        zocl_aie_graph_free_context_all(zdev, client);
+
+        put_pid(client->pid);
+        client->pid = NULL;
+        if (CLIENT_NUM_CU_CTX(client) == 0)
+                goto done;
+
+        /*
+         * This happens when application exits without releasing the
+         * contexts. Give up contexts and release xclbin.
+         */
+        client->num_cus = 0;
+        (void) zocl_unlock_bitstream(zdev, &uuid_null);
+done:
+        zocl_untrack_ctx(dev, client);
+        kfree(client);
+
+        DRM_INFO("Pid %d closed device\n", pid_nr(task_tgid(current)));
+}
+
 void zocl_track_ctx(struct drm_device *dev, struct sched_client_ctx *fpriv)
 {
 	unsigned long flags;
