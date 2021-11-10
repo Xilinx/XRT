@@ -2368,6 +2368,14 @@ int mailbox_request(struct platform_device *pdev, void *req, size_t reqlen,
 		MBX_WARN(mbx, "mailbox is running in test mode");
 		return -EACCES;
 	}
+
+	/*
+	 * aws case, return early before mailbox is opened.
+	 * this makes xocl attach faster
+	 */
+	if (MB_SW_ONLY(mbx) && !mbx->mbx_opened)
+		return -EFAULT;
+
 	return _mailbox_request(pdev, req, reqlen, resp, resplen, cb, cbarg,
 		resp_ttl, tx_ttl);	
 }
