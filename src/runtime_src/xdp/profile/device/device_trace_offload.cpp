@@ -209,8 +209,7 @@ void DeviceTraceOffload::read_trace_fifo(bool)
   if (m_trbuf_full)
     return;
 
-  uint32_t num_packets = 0;
-
+  uint64_t num_packets = 0;
   uint64_t numBytes = 0 ;
 #ifndef _WIN32
   do {

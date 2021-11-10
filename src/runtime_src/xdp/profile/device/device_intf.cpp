@@ -81,7 +81,7 @@ namespace xdp {
 // Same as defined in vpl tcl
 // NOTE: This converts the property on the FIFO IP in debug_ip_layout
 //       to the corresponding FIFO depth.
-uint32_t GetDeviceTraceBufferSize(uint32_t property)
+uint64_t GetDeviceTraceBufferSize(uint32_t property)
 {
   switch(property) {
     case 0 : return 8192;
