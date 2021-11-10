@@ -20,8 +20,6 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-#define VIRTUAL_CU(id) (id == (u32)-1)
-
 extern int kds_mode;
 
 static int
@@ -1039,8 +1037,8 @@ zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev)
 	return zdev->zdev_xclbin->zx_uuid;
 }
 
-static int
-zocl_xclbin_hold(struct drm_zocl_dev *zdev, const xuid_t *id)
+int
+zocl_xclbin_hold(struct drm_zocl_dev *zdev, const uuid_t *id)
 {
 	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 
@@ -1080,8 +1078,8 @@ int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
 	return ret;
 }
 
-static int
-zocl_xclbin_release(struct drm_zocl_dev *zdev, const xuid_t *id)
+int
+zocl_xclbin_release(struct drm_zocl_dev *zdev, const uuid_t *id)
 {
 	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
 

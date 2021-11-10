@@ -24,6 +24,7 @@
 #include "zocl_sk.h"
 #include "zocl_xclbin.h"
 #include "zocl_watchdog.h"
+#include "zocl_generic_cu.h"
 #include "xclbin.h"
 
 #define SCHED_VERBOSE
@@ -53,6 +54,8 @@
 # define SCHED_DEBUG(format, ...)
 #endif
 
+#define VIRTUAL_CU(id) (id == (u32)-1)
+
 static int cq_check(void *data);
 static int watchdog_thread(void *data);
 static irqreturn_t sched_cq_isr(int irq, void *arg);
@@ -64,6 +67,15 @@ static int    sched_loop_cnt;
 static struct scheduler g_sched0;
 static struct sched_ops penguin_ops;
 static struct sched_ops ps_ert_ops;
+
+int zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
+int zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+        struct sched_client_ctx *client);
 
 /**
  * List of free sched_cmd objects.
@@ -3746,7 +3758,7 @@ out:
 }
 
 int
-zocl_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
+sched_xclbin_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
 	struct sched_client_ctx *client)
 {
 	struct sched_exec_core *exec = zdev->exec;
@@ -3878,7 +3890,6 @@ int sched_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		                              struct drm_file *filp)
 {
         struct drm_zocl_ctx *args = data;
-        struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
         int ret = 0;
 
         switch (args->op) {
@@ -3902,7 +3913,7 @@ int sched_context_ioctl(struct drm_zocl_dev *zdev, void *data,
         }
 
         mutex_lock(&zdev->zdev_xclbin_lock);
-        ret = zocl_xclbin_ctx(zdev, args, filp->driver_priv);
+        ret = sched_xclbin_ctx(zdev, args, filp->driver_priv);
         mutex_unlock(&zdev->zdev_xclbin_lock);
 
         return ret;
