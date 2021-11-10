@@ -212,14 +212,7 @@ inline std::string
 get_stall_trace()
 {
   static std::string data_transfer_enabled = get_data_transfer_trace();
-  static std::string value = (!get_profile() && (0 == data_transfer_enabled.compare("off")) ) ? "off" : detail::get_string_value("Debug.stall_trace","off");
-  return value;
-}
-
-inline bool
-get_timeline_trace()
-{
-  static bool value = detail::get_bool_value("Debug.timeline_trace",false);
+  static std::string value = ((0 == data_transfer_enabled.compare("off")) ) ? "off" : detail::get_string_value("Debug.stall_trace","off");
   return value;
 }
 
@@ -283,13 +276,6 @@ get_xrt_trace()
 }
 
 inline bool
-get_xrt_profile()
-{
-  static bool value = detail::get_bool_value("Debug.xrt_profile", false);
-  return value;
-}
-
-inline bool
 get_native_xrt_trace()
 {
   static bool value = detail::get_bool_value("Debug.native_xrt_trace", false);
@@ -313,7 +299,7 @@ get_opencl_summary()
 inline bool
 get_opencl_device_counter()
 {
-  static bool value = (get_profile()) ? true : detail::get_bool_value("Debug.opencl_device_counter", false);
+  static bool value = detail::get_bool_value("Debug.opencl_device_counter", false);
   return value;
 }
 
