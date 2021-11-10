@@ -125,7 +125,7 @@ namespace {
 static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
+open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
   auto handle = core_device->open_graph(xclbin_uuid, graph_name, am);
@@ -314,7 +314,7 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 ////////////////////////////////////////////////////////////////
 
 xrtGraphHandle
-xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::primary);
@@ -332,7 +332,7 @@ xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* g
 }
 
 xrtGraphHandle
-xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::exclusive);
@@ -350,7 +350,7 @@ xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, cons
 }
 
 xrtGraphHandle
-xrtGraphOpenShared(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpenShared(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::shared);
@@ -414,7 +414,7 @@ xrtGraphTimeStamp(xrtGraphHandle graph_hdl)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return 0;
+  return -1;
 }
 
 int
@@ -777,7 +777,7 @@ xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return 0;
+  return -1;
 }
 
 /**

@@ -10,14 +10,12 @@ include_directories(
 file(GLOB XRT_PCIE_WINDOWS_FILES
   "*.h"
   "*.cpp"
-  "../../common/aie_stubs.cpp"
   "../../common/system_pcie.cpp"
   "../../common/device_pcie.cpp"
   )
 
 file(GLOB XRT_PCIE_WINDOWS_STATIC_FILES
   "device_windows.*"
-  "../../common/aie_stubs.cpp"
   "../../common/system_pcie.cpp"
   "../../common/device_pcie.cpp"
   )
@@ -27,7 +25,6 @@ file(GLOB XRT_PCIE_WINDOWS_SHARED_FILES
   "mgmt.cpp"
   "perf.cpp"
   "system_windows.cpp"
-  "../../common/aie_stubs.cpp"
   "../../common/system_pcie.cpp"
   "device_windows.cpp"
   "../../common/device_pcie.cpp"

@@ -28,7 +28,5 @@ get_filename_component(full_path_system_pcie_cpp ${CMAKE_CURRENT_SOURCE_DIR}/sys
 list(REMOVE_ITEM XRT_CORE_PCIE_COMMON_FILES "${full_path_system_pcie_cpp}")
 get_filename_component(full_path_system_pcie_h ${CMAKE_CURRENT_SOURCE_DIR}/system_pcie.h ABSOLUTE)
 list(REMOVE_ITEM XRT_CORE_PCIE_COMMON_FILES "${full_path_system_pcie_h}")
-get_filename_component(full_path_aie_stubs_cpp ${CMAKE_CURRENT_SOURCE_DIR}/aie_stubs.cpp ABSOLUTE)
-list(REMOVE_ITEM XRT_CORE_PCIE_COMMON_FILES "${full_path_aie_stubs_cpp}")
 
 add_library(core_pciecommon_objects OBJECT ${XRT_CORE_PCIE_COMMON_FILES})
