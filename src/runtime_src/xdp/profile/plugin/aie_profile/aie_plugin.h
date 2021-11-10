@@ -68,13 +68,16 @@ namespace xdp {
                            const tile_type& tile, 
                            const XAie_ModuleType mod);
     void configGroupEvents(XAie_DevInst* aieDevInst,
-                           const XAie_LocType& loc,
+                           const XAie_LocType loc,
                            const XAie_ModuleType mod,
                            const XAie_Events event,
-                           const std::string& metricSet);
+                           const std::string metricSet);
     void configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                 const XAie_LocType& loc,
-                                 std::string& metricSet);
+                                 const tile_type& tile,
+                                 xaiefal::XAieTile& xaieTile,
+                                 const XAie_LocType loc,
+                                 const XAie_Events event,
+                                 const std::string metricSet);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();

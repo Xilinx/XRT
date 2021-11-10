@@ -398,6 +398,11 @@ namespace xdp {
             auto& t = tempTiles.at(plioCount++);
             t.col = plio.second.shimColumn;
             t.row = 0;
+
+            // Grab stream ID and slave/master (used in configStreamSwitchPorts() below)
+            // TODO: this is kludgy; find better way to store this info
+            t.itr_mem_row = plio.second.streamId;
+            t.itr_mem_col = plio.second.slaveOrMaster;
           }
         }
 
@@ -465,10 +470,10 @@ namespace xdp {
   }
 
   void AIEProfilingPlugin::configGroupEvents(XAie_DevInst* aieDevInst,
-                                             const XAie_LocType& loc,
+                                             const XAie_LocType loc,
                                              const XAie_ModuleType mod,
                                              const XAie_Events event,
-                                             const std::string& metricSet)
+                                             const std::string metricSet)
   {
     // Set masks for group events
     // NOTE: Writing to group error enable register is blocked, so ignoring
@@ -484,17 +489,53 @@ namespace xdp {
       XAie_EventGroupControl(aieDevInst, loc, mod, event, GROUP_CORE_STALL_MASK);
   }
 
+  // Configure stream switch ports for monitoring purposes
   void AIEProfilingPlugin::configStreamSwitchPorts(XAie_DevInst* aieDevInst,
-                                                   const XAie_LocType& loc,
-                                                   std::string& metricSet)
+                                                   const tile_type& tile,
+                                                   xaiefal::XAieTile& xaieTile,
+                                                   const XAie_LocType loc,
+                                                   const XAie_Events event,
+                                                   const std::string metricSet)
   {
-    // For now, only used by aie_trace set
-    if (metricSet != "aie_trace")
+    // Currently only used to monitor trace and PL stream
+    if ((metricSet != "aie_trace") && (metricSet != "bandwidths"))
       return;
 
-    // Define stream switch ports 0-1 to monitor core and memory trace
-    XAie_EventSelectStrmPort(aieDevInst, loc, 0, XAIE_STRMSW_SLAVE, TRACE, 0);
-    XAie_EventSelectStrmPort(aieDevInst, loc, 1, XAIE_STRMSW_SLAVE, TRACE, 1);
+    if (metricSet == "aie_trace") {
+      auto switchPortRsc = xaieTile.sswitchPort();
+      auto ret = switchPortRsc->reserve();
+      if (ret != AieRC::XAIE_OK)
+        return;
+
+      uint32_t rscId;
+      XAie_LocType tmpLoc;
+      XAie_ModuleType tmpMod;
+      switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
+      uint8_t traceSelect = (event == XAIE_EVENT_PORT_RUNNING_0_CORE) ? 0 : 1;
+      
+      // Define stream switch port to monitor core or memory trace
+      XAie_EventSelectStrmPort(aieDevInst, loc, rscId, XAIE_STRMSW_SLAVE, TRACE, traceSelect);
+      return;
+    }
+
+    // Rest is support for PL/shim tiles
+    auto switchPortRsc = xaieTile.sswitchPort();
+    auto ret = switchPortRsc->reserve();
+    if (ret != AieRC::XAIE_OK)
+      return;
+
+    uint32_t rscId;
+    XAie_LocType tmpLoc;
+    XAie_ModuleType tmpMod;
+    switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
+
+    // Grab stream ID and slave/master
+    // NOTE: stored in getTilesForProfiling() above
+    auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
+    auto streamPortId  = (uint8_t)tile.itr_mem_row;
+
+    // Define stream switch port to monitor PLIO 
+    XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
   }
 
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
@@ -552,11 +593,11 @@ namespace xdp {
         auto row = tile.row;
         auto loc = XAie_TileLoc(col, row + 1);
         // NOTE: resource manager requires absolute row number
-        auto& core   = aieDevice->tile(col, row + 1).core();
-        auto& memory = aieDevice->tile(col, row + 1).mem();
-        auto& shim   = aieDevice->tile(col, 0).pl();
-
-        configStreamSwitchPorts(aieDevInst, loc, metricSet);
+        auto& xaieTile = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
+            : aieDevice->tile(col, row + 1);
+        auto& core     = xaieTile.core();
+        auto& memory   = xaieTile.mem();
+        auto& shim     = xaieTile.pl();
 
         for (int i=0; i < numFreeCounters; ++i) {
           // Request counter from resource manager
@@ -568,6 +609,7 @@ namespace xdp {
           if (ret != XAIE_OK) break;
           
           configGroupEvents(aieDevInst, loc, mod, startEvents.at(i), metricSet);
+          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvents.at(i), metricSet);
           
           // Start the counters after group events have been configured
           ret = perfCounter->start();
