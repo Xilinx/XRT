@@ -58,6 +58,8 @@ namespace xdp {
   {
   private:
     VPDatabase* db ;
+    // Number of events to store before flushing to disk
+    const uint64_t DeviceEventThreshold = 10000000 ;
 
   public:
     // Define a public typedef for all plugins that get information

@@ -24,7 +24,6 @@
 #include <string>
 #include "xclhal2.h"
 #include "xclbin.h"
-#include "core/include/xclperf.h"
 #include "xdp_base_device.h"
 
 #define PROFILE_IP_SZ 0x1000
