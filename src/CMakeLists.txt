@@ -49,6 +49,15 @@ if (${XRT_NATIVE_BUILD} STREQUAL "no")
   set (CMAKE_INSTALL_PREFIX "/usr")
 endif()
 
+# Enable AIE even on x86.  This is POC, once
+# complete we will remove the need for these
+# macros and defines.
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  set(XRT_AIE_BUILD "yes")
+  set(XRT_ENABLE_AIE "yes")
+  add_definitions (-DXRT_ENABLE_AIE -DXRT_AIE_BUILD)
+endif()
+
 # Default component name for any install() command without the COMPONENT argument
 # The default component is the xrt run-time component, if XRT_DEV_COMPONENT is
 # set to something different then a development component will be created with
