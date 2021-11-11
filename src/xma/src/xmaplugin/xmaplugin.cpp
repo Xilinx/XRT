@@ -377,7 +377,7 @@ xma_plg_buffer_write(XmaSession s_handle,
 
     rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     if (rc != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. dev_index: %d. xclSyncBO failed. Error: %d", b_obj_priv->dev_index, rc);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. dev_index: %d. xclSyncBO failed. Check device logs for more info. Error: %d", b_obj_priv->dev_index, rc);
         return XMA_ERROR;
     }
 
@@ -416,7 +416,7 @@ xma_plg_buffer_read(XmaSession s_handle,
                    size, offset);
     if (rc != 0)
     {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. dev_index: %d. xclSyncBO failed. Check device status with \"xbutil/awssak query\" cmmand. Error: %d", b_obj_priv->dev_index, rc);
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. dev_index: %d. xclSyncBO failed. Check device logs for more info. Error: %d", b_obj_priv->dev_index, rc);
         return XMA_ERROR;
     }
 
