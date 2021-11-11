@@ -397,7 +397,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
 
   // -- Some DRCs (Design Rule Checks) --
   // Is the SC present
-  if (current.bmc_ver().empty()) {
+  if (current.bmc_ver().empty() || candidate.bmc_ver().empty()) {
      std::cout << "INFO: Satellite controller is not present.\n";
      return false;
   }
@@ -505,6 +505,14 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
       throw xrt_core::error(std::errc::operation_canceled);
     }
     image_path = available_shells.front().second.get<std::string>("file");
+  }
+  else if(boost::filesystem::exists(boost::filesystem::path(image))) {
+    update_shell(workingDevice->get_device_id(), image, std::string(""));
+    std::cout <<boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n") % getBDF(workingDevice->get_device_id());
+    std::cout << "****************************************************\n";
+    std::cout << "Cold reboot machine to load the new image on device.\n";
+    std::cout << "****************************************************\n";
+    return;
   }
   else {
     //iterate over installed shells
