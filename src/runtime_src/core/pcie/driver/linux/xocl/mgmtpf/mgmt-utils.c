@@ -378,6 +378,8 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
 
+	(void) xocl_reinit_vmr(lro);
+
 done:
 	return err;
 }
