@@ -17,224 +17,26 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportAieShim.h"
-#include "core/common/query_requests.h"
-#include "core/common/device.h"
+#include "core/common/info_aie.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/split.hpp>
-#include <boost/optional/optional.hpp>
-#include <boost/property_tree/json_parser.hpp>
 
 #define fmt4(x) boost::format("%4s%-22s: " x "\n") % " "
 #define fmt8(x) boost::format("%8s%-22s: " x "\n") % " "
 #define fmt12(x) boost::format("%12s%-22s: " x "\n") % " "
 #define fmt16(x) boost::format("%16s%-22s: " x "\n") % " "
 
-
-namespace qr = xrt_core::query;
-
-static void
-addnodelist(std::string search_str, std::string node_str,boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
-{
-  boost::property_tree::ptree pt_array;
-  for (auto& node: input_pt.get_child(search_str)) {
-    boost::property_tree::ptree pt;
-    std::string val;
-    for (auto& value: node.second)
-      val +=(val.empty()?"":", ")+ value.second.data();
-
-    pt.put("name", node.first);
-    pt.put("value", val);
-    pt_array.push_back(std::make_pair("", pt));
-  }
-  output_pt.add_child(node_str, pt_array);
-}
-
-/*
-{
-    "aie_shim": {
-        "0_0": {
-            "col": "0",
-            "row": "0",
-            "dma": {
-                "channel_status": {
-                    "mm2s": [
-                        "Running"
-                    ],
-                    "s2mm": [
-                        "Stalled_on_lock"
-                    ]
-                },
-                "queue_size": {
-                    "mm2s": [
-                        "2"
-                    ],
-                    "s2mm": [
-                        "3"
-                    ]
-                },
-                "queue_status": {
-                    "mm2s": [
-                        "channel0_overflow"
-                    ],
-                    "s2mm": [
-                        "channel0_overflow"
-                    ]
-                },
-                "current_bd": {
-                    "mm2s": [
-                        "3"
-                    ],
-                    "s2mm": [
-                        "2"
-                    ]
-                }
-            },
-            "lock": {
-                "lock0": [
-                    "Acquired_for_read"
-                ],
-                "lock1": [
-                    "Acquired_for_write"
-                ]
-            },
-            "errors": {
-                "core": {
-                    "Bus": [
-                        "AXI-MM_slave_error"
-                    ]
-                },
-                "memory": {
-                    "ECC": [
-                        "DM_ECC_error_scrub_2-bit",
-                        "DM_ECC_error_2-bit"
-                    ]
-                },
-                "pl": {
-                    "DMA": [
-                        "DMA_S2MM_0_error",
-                        "DMA_MM2S_1_error"
-                    ]
-                }
-            },
-            "event": {
-                "core": [
-                    "Perf_Cnt0",
-                    "PC_0",
-                    "Memory_Stall"
-                ],
-                "memory": [
-                    "Lock_0_Acquired",
-                    "DMA_S2MM_0_go_to_idle"
-                ],
-                "pl": [
-                    "DMA_S2MM_0_Error",
-                    "Lock_0_Acquired"
-                ]
-            }
-        },
-        ....
-*/
 void
-populate_aie_shim(const xrt_core::device * device, const std::string& desc, boost::property_tree::ptree& pt)
+populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc, boost::property_tree::ptree& pt)
 {
-  pt.put("description", desc);
-  boost::property_tree::ptree _pt;
+  xrt::device device(_pDevice->get_device_id());
+  boost::property_tree::ptree pt_shim;
+  std::stringstream ss;
+  ss << device.get_info<xrt::info::device::aie_shim>();
+  boost::property_tree::read_json(ss, pt_shim);
 
-  try {
-  std::string aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
-    std::stringstream ss(aie_data);
-    boost::property_tree::read_json(ss, _pt);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", ex.what());
-    return;
-  }
-
-  try {
-    boost::property_tree::ptree tile_array;
-    for (auto& as: _pt.get_child("aie_shim")) {
-      boost::property_tree::ptree& oshim = as.second;
-      boost::property_tree::ptree ishim;
-      int col = oshim.get<uint32_t>("col");
-      int row = oshim.get<uint32_t>("row");
-      
-      ishim.put("column", col);
-      ishim.put("row", row);
-
-      std::string mode;
-      boost::property_tree::ptree empty_pt;
-
-      if(oshim.find("dma") != oshim.not_found()) {
-        boost::property_tree::ptree mm2s_array;
-        auto queue_size = oshim.get_child("dma.queue_size.mm2s").begin();
-        auto queue_status = oshim.get_child("dma.queue_status.mm2s").begin();
-        auto current_bd = oshim.get_child("dma.current_bd.mm2s").begin();
-        int id = 0;
-        for (auto& node : oshim.get_child("dma.channel_status.mm2s")) {
-          boost::property_tree::ptree channel;
-          channel.put("id", id++);
-          channel.put("channel_status", node.second.data());
-          channel.put("queue_size", queue_size->second.data());
-          channel.put("queue_status", queue_status->second.data());
-          channel.put("current_bd", current_bd->second.data());
-          queue_size++;
-          queue_status++;
-          current_bd++;
-          mm2s_array.push_back(std::make_pair("", channel));
-        }
-        ishim.add_child("dma.mm2s.channel", mm2s_array);
-
-        boost::property_tree::ptree s2mm_array;
-        queue_size = oshim.get_child("dma.queue_size.s2mm").begin();
-        queue_status = oshim.get_child("dma.queue_status.s2mm").begin();
-        current_bd = oshim.get_child("dma.current_bd.s2mm").begin();
-        id = 0;
-        for (auto& node : oshim.get_child("dma.channel_status.s2mm")) {
-          boost::property_tree::ptree channel;
-          channel.put("id", id++);
-          channel.put("channel_status", node.second.data());
-          channel.put("queue_size", queue_size->second.data());
-          channel.put("queue_status", queue_status->second.data());
-          channel.put("current_bd", current_bd->second.data());
-          queue_size++;
-          queue_status++;
-          current_bd++;
-          s2mm_array.push_back(std::make_pair("", channel));
-        }
-        ishim.add_child("dma.s2mm.channel", s2mm_array);
-      }
-
-      if(oshim.find("lock") != oshim.not_found())
-        addnodelist("lock", "locks", oshim, ishim);
-
-      boost::property_tree::ptree module_array;
-      for (auto& node : oshim.get_child("errors", empty_pt)) {
-        boost::property_tree::ptree module;
-        module.put("module",node.first);
-        boost::property_tree::ptree type_array;
-        for (auto& type : node.second) {
-          boost::property_tree::ptree enode;
-          enode.put("name",type.first);
-          std::string val;
-          for (auto& value: type.second)
-            val +=(val.empty()?"":", ")+ value.second.data();
-          enode.put("value", val);
-          type_array.push_back(std::make_pair("", enode));
-        }
-        module.add_child("error", type_array);
-        module_array.push_back(std::make_pair("", module));
-      }
-
-      if(oshim.find("errors") != oshim.not_found())
-        ishim.add_child("errors", module_array);
-
-      addnodelist("event", "events", oshim, ishim);
-      tile_array.push_back(std::make_pair("tile"+std::to_string(col),ishim));
-    }
-    pt.add_child("tiles",tile_array);
-  } catch (const std::exception& ex){
-    pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE shim"));
-  }
-
+  // There can only be 1 root node
+  pt.add_child("electrical", pt_shim);
 }
 
 void
