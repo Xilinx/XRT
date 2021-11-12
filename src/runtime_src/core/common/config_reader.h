@@ -101,13 +101,6 @@ set(const std::string& key, const std::string& value);
  * file
  */
 inline bool
-get_debug()
-{
-  static bool value  = detail::get_bool_value("Debug.debug",false);
-  return value;
-}
-
-inline bool
 get_app_debug()
 {
   static bool value  = detail::get_bool_value("Debug.app_debug",false);
@@ -220,14 +213,6 @@ inline bool
 get_continuous_trace()
 {
   static bool value = detail::get_bool_value("Debug.continuous_trace",false);
-  return value;
-}
-
-inline unsigned int
-get_continuous_trace_interval_ms()
-{
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.continuous_trace_interval_ms",10);
   return value;
 }
 

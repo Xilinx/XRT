@@ -98,11 +98,8 @@ namespace xdp {
     if (getFlowMode() == HW) {
       continuous_trace = xrt_core::config::get_continuous_trace() ;
 
-    // Use new flag if specified
-      trace_buffer_offload_interval_ms = xrt_core::config::get_continuous_trace_interval_ms() ;
-      auto newInt = xrt_core::config::get_trace_buffer_offload_interval_ms();
-        if (newInt != DEFAULT_TRACE_OFFLOAD_INTERVAL_MS)
-          trace_buffer_offload_interval_ms = newInt;
+      trace_buffer_offload_interval_ms =
+        xrt_core::config::get_trace_buffer_offload_interval_ms();
 
       m_enable_circular_buffer = continuous_trace;
     }

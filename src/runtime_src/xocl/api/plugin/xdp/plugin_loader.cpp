@@ -52,11 +52,6 @@ namespace plugins {
     }
 
     // Deprecation warnings specific to the .ini flags
-    if (xrt_core::config::get_continuous_trace_interval_ms() != 10) {
-      std::string message = "\"continuous_trace_interval_ms\" configuration in xrt.ini will be deprecated in the next release.  Please use \"trace_buffer_offload_interval_ms\" to control trace offload interval." ;
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                              message) ;
-    }
 
     return true ;
   }

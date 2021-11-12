@@ -51,9 +51,6 @@ namespace xdp {
                  "Verbosity level");
     addParameter("continuous_trace", xrt_core::config::get_continuous_trace(),
                  "Continuous offloading of trace from memory to host");
-    addParameter("continuous_trace_interval_ms",
-                 xrt_core::config::get_continuous_trace_interval_ms(),
-                 "Interval for offloading trace (in ms; deprecated)");
     addParameter("trace_buffer_offload_interval_ms",
                  xrt_core::config::get_trace_buffer_offload_interval_ms(),
                  "Interval for reading of device data to host (in ms)");
