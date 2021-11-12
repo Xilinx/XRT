@@ -24,7 +24,7 @@ namespace xdp {
   IniParameters::IniParameters()
   {
     addParameter("opencl_summary", xrt_core::config::get_opencl_summary(),
-                 "Generation of OpenCL summary report");
+                 "Generation of OpenCL summary report (deprecated)");
     addParameter("opencl_trace", xrt_core::config::get_opencl_trace(),
                  "Generation of trace of OpenCL APIs and memory transfers");
     addParameter("opencl_device_counter",

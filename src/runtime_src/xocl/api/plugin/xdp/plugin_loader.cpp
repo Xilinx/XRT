@@ -44,6 +44,7 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_opencl_trace()) {
+      xocl::profile::load_xdp_opencl_counters() ;
       xdp::opencl_trace::load() ;
     }
 
@@ -52,6 +53,11 @@ namespace plugins {
     }
 
     // Deprecation warnings specific to the .ini flags
+    if (xrt_core::config::get_opencl_summary()) {
+      std::string msg = "The xrt.ini flag \"opencl_summary\" is deprecated and will be removed in a future release.  A summary file is generated when when any profiling is enabled, so please use the appropriate settings from \"opencl_trace=true\", \"device_counters=true\", and \"device_trace=true.\"" ;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              msg) ;
+    }
 
     return true ;
   }
