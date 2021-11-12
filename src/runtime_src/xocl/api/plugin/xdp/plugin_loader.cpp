@@ -35,6 +35,7 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_opencl_device_counter()) {
       xdp::device_offload::load() ;
     }
@@ -55,6 +56,12 @@ namespace plugins {
     // Deprecation warnings specific to the .ini flags
     if (xrt_core::config::get_opencl_summary()) {
       std::string msg = "The xrt.ini flag \"opencl_summary\" is deprecated and will be removed in a future release.  A summary file is generated when when any profiling is enabled, so please use the appropriate settings from \"opencl_trace=true\", \"device_counters=true\", and \"device_trace=true.\"" ;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              msg) ;
+    }
+
+    if (xrt_core::config::get_data_transfer_trace() != "off") {
+      std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                               msg) ;
     }

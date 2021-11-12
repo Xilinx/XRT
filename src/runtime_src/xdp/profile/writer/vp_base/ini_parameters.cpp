@@ -36,6 +36,9 @@ namespace xdp {
                  "Generation of hardware SHIM function trace");
     addParameter("data_transfer_trace",
                  xrt_core::config::get_data_transfer_trace(),
+                 "Collection of data from PL monitors and added to summary and trace (deprecated)");
+    addParameter("device_trace",
+                 xrt_core::config::get_device_trace(),
                  "Collection of data from PL monitors and added to summary and trace");
     addParameter("power_profile", xrt_core::config::get_power_profile(),
                  "Polling of power data during execution of application");

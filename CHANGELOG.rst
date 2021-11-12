@@ -11,6 +11,7 @@ Removed
 * Removed deprecated streaming APIs from OpenCL
 * xrt.ini flags "profile," "timeline_trace," and "xrt_profile" no longer load xdp profiling functionality and no longer issue deprecation warning
 * Deprecating the xrt.ini flag "opencl_summary"
+* Deprecating the xrt.ini flag "data_transfer_trace"
 
 2.12.0 (202120.2.12.x)
 ~~~~~~~~~~~~~~~~~~~~~~

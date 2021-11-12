@@ -150,6 +150,13 @@ get_data_transfer_trace()
 }
 
 inline std::string
+get_device_trace()
+{
+  static std::string value = detail::get_string_value("Debug.device_trace", "off");
+  return value;
+}
+
+inline std::string
 get_profiling_directory()
 {
   static std::string value = detail::get_string_value("Debug.profiling_directory", "") ;
@@ -204,8 +211,7 @@ get_noc_profile_interval_ms()
 inline std::string
 get_stall_trace()
 {
-  static std::string data_transfer_enabled = get_data_transfer_trace();
-  static std::string value = ((0 == data_transfer_enabled.compare("off")) ) ? "off" : detail::get_string_value("Debug.stall_trace","off");
+  static std::string value = detail::get_string_value("Debug.stall_trace", "off");
   return value;
 }
 

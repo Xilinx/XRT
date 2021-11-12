@@ -25,6 +25,7 @@
 #include "plugin/xdp/sc_profile.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 namespace xdp {
 namespace hal_hw_plugins {
@@ -36,7 +37,8 @@ bool load()
     xdp::hal::load() ;
   }
 
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
+  if (xrt_core::config::get_data_transfer_trace() != "off" ||
+      xrt_core::config::get_device_trace() != "off") {
     xdp::hal::device_offload::load() ;
   }
 
@@ -62,6 +64,13 @@ bool load()
 
   if (xrt_core::config::get_vitis_ai_profile()) {
     xdp::vart::profile::load() ;
+  }
+
+  // Deprecation messages
+  if (xrt_core::config::get_data_transfer_trace() != "off") {
+    std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                            msg) ;
   }
 
   return true ;

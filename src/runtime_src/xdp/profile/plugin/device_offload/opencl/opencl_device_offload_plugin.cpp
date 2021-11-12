@@ -122,6 +122,7 @@ namespace xdp {
       counterOffloadEnabled = true ;
     }
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_stall_trace() != "off") {
       counterOffloadEnabled = true ;
       traceOffloadEnabled = true ;
