@@ -409,10 +409,12 @@ namespace xdp {
       {
         readTrace() ;
       }
+      break ;
     case VPDatabase::DUMP_TRACE:
       {
 	XDPPlugin::forceWrite(true) ;
       }
+      break ;
     default:
       break ;
     }
