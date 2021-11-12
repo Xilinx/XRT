@@ -29,7 +29,10 @@ namespace xdp {
                  "Generation of trace of OpenCL APIs and memory transfers");
     addParameter("opencl_device_counter",
                  xrt_core::config::get_opencl_device_counter(),
-                 "Hardware counters added to OpenCL summary file");
+                 "Hardware counters added to OpenCL summary file (deprecated)");
+    addParameter("device_counter",
+                 xrt_core::config::get_device_counter(),
+                 "Hardware counters added to summary file");
     addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
                  "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
