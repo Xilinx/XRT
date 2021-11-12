@@ -69,9 +69,11 @@ bool load()
 
   // Deprecation messages
   if (xrt_core::config::get_data_transfer_trace() != "off") {
-    std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
-    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                            msg) ;
+    std::string msg = xrt_core::config::get_data_transfer_trace_dep_message();
+    if (msg != "") {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              msg) ;
+    }
   }
 
   return true ;

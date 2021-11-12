@@ -150,6 +150,16 @@ get_data_transfer_trace()
 }
 
 inline std::string
+get_data_transfer_trace_dep_message()
+{
+  static bool emitted = false ;
+  if (!emitted) {
+    return "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
+  }
+  return "" ;
+}
+
+inline std::string
 get_device_trace()
 {
   static std::string value = detail::get_string_value("Debug.device_trace", "off");
