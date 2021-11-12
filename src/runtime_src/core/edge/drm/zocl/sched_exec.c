@@ -3921,26 +3921,26 @@ int sched_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 
 int sched_poll_client(struct file *filp, poll_table *wait)
 {
-        int counter;
-        struct drm_file *priv = filp->private_data;
-        struct drm_device *dev = priv->minor->dev;
-        struct drm_zocl_dev *zdev = dev->dev_private;
-        struct sched_client_ctx *fpriv = priv->driver_priv;
-        int ret = 0;
+	int counter;
+	struct drm_file *priv = filp->private_data;
+	struct drm_device *dev = priv->minor->dev;
+	struct drm_zocl_dev *zdev = dev->dev_private;
+	struct sched_client_ctx *fpriv = priv->driver_priv;
+	int ret = 0;
 
 	BUG_ON(!fpriv);
 
-        poll_wait(filp, &zdev->exec->poll_wait_queue, wait);
+	poll_wait(filp, &zdev->exec->poll_wait_queue, wait);
 
-        mutex_lock(&fpriv->lock);
-        counter = atomic_read(&fpriv->trigger);
-        if (counter > 0) {
-                atomic_dec(&fpriv->trigger);
-                ret = POLLIN;
-        }
-        mutex_unlock(&fpriv->lock);
+	mutex_lock(&fpriv->lock);
+	counter = atomic_read(&fpriv->trigger);
+	if (counter > 0) {
+		atomic_dec(&fpriv->trigger);
+		ret = POLLIN;
+	}
+	mutex_unlock(&fpriv->lock);
 
-        return ret;
+	return ret;
 }
 
 int sched_create_client(struct drm_device *dev, void **priv)
