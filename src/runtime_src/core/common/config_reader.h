@@ -154,6 +154,7 @@ get_data_transfer_trace_dep_message()
 {
   static bool emitted = false ;
   if (!emitted) {
+    emitted = true ;
     return "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;
   }
   return "" ;
