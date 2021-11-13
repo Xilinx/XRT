@@ -105,7 +105,7 @@ EOF
 	cp $dir/RPMS/noarch/*.rpm $PACKAGE_DIR
 }
 
-SYSTEM_DTB_ADDR="0x1000"
+SYSTEM_DTB_ADDR="0x40000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
 
@@ -178,6 +178,7 @@ fi
 #
 # Generate Linux PDI
 #
+IMAGE_UB="$BUILD_DIR/Image.gz.u-boot"
 BIF_FILE="$BUILD_DIR/apu.bif"
 cat << EOF > $BIF_FILE
 all:
@@ -188,8 +189,8 @@ all:
         id = 0x1c000000, name=apu_subsystem
         { core=a72-0, exception_level=el-3, trustzone, file=$IMAGES_DIR/bl31.elf }
         { core=a72-0, exception_level=el-2, file=$IMAGES_DIR/u-boot.elf }
-        { load=0x32000000, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
-        { load=0x30000000, file=$BUILD_DIR/Image.ub }
+        { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
+        { load=$KERNEL_ADDR, file=$IMAGE_UB }
         { load=0x20000000, file=$BUILD_DIR/boot.scr }
     }
 }
@@ -214,9 +215,11 @@ fi
 # Generate kernel u-boot image
 #
 IMAGE="$IMAGES_DIR/Image"
-IMAGE_UB="$BUILD_DIR/Image.ub"
 IMAGE_ELF_START="0x80000"
-$MKIMAGE -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $IMAGE $IMAGE_UB
+
+cp $IMAGE $BUILD_DIR/Image
+yes| gzip $BUILD_DIR/Image
+$MKIMAGE -n 'Kernel Image' -A arm64 -O linux -C none -T kernel -C gzip -a $IMAGE_ELF_START -e $IMAGE_ELF_START -d $BUILD_DIR/Image.gz $IMAGE_UB
 if [[ ! -e $IMAGE_UB ]]; then
 	error "failed to generate kernel image"
 fi
