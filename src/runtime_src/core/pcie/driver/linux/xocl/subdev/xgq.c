@@ -130,10 +130,10 @@ struct xocl_xgq {
 	struct xgq_worker	xgq_complete_worker;
 	struct xgq_worker	xgq_health_worker;
 	bool			xgq_halted;
-	bool			xgq_data_transfer_inuse;
 	int 			xgq_cmd_id;
 	void			*sensor_data;
 	u32			sensor_data_length;
+	struct semaphore 	xgq_data_sema;
 };
 
 /*
@@ -594,21 +594,15 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	u64 xclbin_len = xclbin->m_header.m_length;
 	int ret = 0;
 	
-	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_data_transfer_inuse) {
-		mutex_unlock(&xgq->xgq_lock);
-		XGQ_ERR(xgq, "XGQ data transfer is busy");
-		return -EBUSY;
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		return -EIO;
 	}
-	xgq->xgq_data_transfer_inuse = true;
-	mutex_unlock(&xgq->xgq_lock);
-	
+
 	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
-	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_data_transfer_inuse = false;
-	mutex_unlock(&xgq->xgq_lock);
+	up(&xgq->xgq_data_sema);
 
 	return ret == xclbin_len ? 0 : -EIO;
 }
@@ -936,21 +930,16 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
 	int ret = 0;
 
-	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_data_transfer_inuse) {
-		mutex_unlock(&xgq->xgq_lock);
-		XGQ_WARN(xgq, "XGQ data transfer is busy");
-		return -EBUSY;
+
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		return -EIO;
 	}
-	xgq->xgq_data_transfer_inuse = true;
-	mutex_unlock(&xgq->xgq_lock);
 
 	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
 		XOCL_XGQ_DOWNLOAD_TIME);
 
-	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_data_transfer_inuse = false;
-	mutex_unlock(&xgq->xgq_lock);
+	up(&xgq->xgq_data_sema);
 
 	XGQ_DBG(xgq, "ret %d", ret);
 	return ret == len ? 0 : -EIO;
@@ -1141,15 +1130,6 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		return -EINVAL;
 	}
 
-	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_data_transfer_inuse) {
-		mutex_unlock(&xgq->xgq_lock);
-		XGQ_ERR(xgq, "OSPI device is busy");
-		return -EBUSY;
-	}
-	xgq->xgq_data_transfer_inuse = true;
-	mutex_unlock(&xgq->xgq_lock);
-
 	kdata = vmalloc(data_len);
 	if (!kdata) {
 		XGQ_ERR(xgq, "Cannot create xgq transfer buffer");
@@ -1162,14 +1142,18 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		XGQ_ERR(xgq, "copy data failed %ld", ret);
 		goto done;
 	}
-	
+
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		return -EIO;
+	}
+
 	ret = xgq_transfer_data(xgq, kdata, data_len,
 		XGQ_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
 
+	up(&xgq->xgq_data_sema);
+
 done:
-	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_data_transfer_inuse = false;
-	mutex_unlock(&xgq->xgq_lock);
 	vfree(kdata);
 
 	return ret;
@@ -1251,6 +1235,7 @@ static int xgq_probe(struct platform_device *pdev)
 	xgq->xgq_cmd_id = 0;
 
 	mutex_init(&xgq->xgq_lock);
+	sema_init(&xgq->xgq_data_sema, 1); /*TODO: improve to n based on availabity */
 
 	/*TODO: after real sensor data enabled, redefine this size */
 	xgq->sensor_data_length = 8 * 512;
