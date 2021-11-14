@@ -1145,7 +1145,8 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 
 	if (down_interruptible(&xgq->xgq_data_sema)) {
 		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
-		return -EIO;
+		ret = -EIO;
+		goto done;
 	}
 
 	ret = xgq_transfer_data(xgq, kdata, data_len,
