@@ -15,13 +15,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 // This file implements XRT APIs as declared in
 // core/include/experimental/xrt_aie.h -- end user APIs
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
-#include "core/include/experimental/xrt_aie.h"
-#include "core/include/experimental/xrt_bo.h"
+#define XCL_DRIVER_DLL_EXPORT  // exporting xrt_graph.h
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#include "core/include/xrt/xrt_graph.h"
+#include "core/include/xrt/xrt_aie.h"
+#include "core/include/xrt/xrt_bo.h"
 #include "core/include/xcl_graph.h"
 
 #include "core/include/experimental/xrt_device.h"
