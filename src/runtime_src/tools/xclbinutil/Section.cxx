@@ -302,6 +302,9 @@ Section::readJSONSectionImage(const boost::property_tree::ptree& _ptSection)
   std::ostringstream buffer;
   marshalFromJSON(_ptSection, buffer);
 
+  // Release the buffer memory and reset the size to zero
+  purgeBuffers();
+
   // -- Read contents into memory buffer --
   m_bufferSize = (unsigned int) buffer.tellp();
 

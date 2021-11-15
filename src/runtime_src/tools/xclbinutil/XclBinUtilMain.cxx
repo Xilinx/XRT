@@ -211,6 +211,7 @@ int main_(int argc, const char** argv) {
 
   // hidden options
   std::vector<std::string> addPsKernels;
+  std::vector<std::string> addKernels;
   std::vector<std::string> badOptions;
   boost::program_options::options_description hidden("Hidden options");
 
@@ -222,6 +223,7 @@ int main_(int argc, const char** argv) {
     ("dump-signature", boost::program_options::value<decltype(sSignatureOutputFile)>(&sSignatureOutputFile), "Dumps a sign xclbin image's signature.")
     ("skip-bank-grouping", boost::program_options::bool_switch(&bSkipBankGrouping), "Disables creating the memory bank grouping section(s).")
     ("add-ps-kernel", boost::program_options::value<decltype(addPsKernels)>(&addPsKernels)->multitoken(), "Helper option to add PS kernels.  Format: <symbol_name>:<instances>:<path_to_shared_library>")
+    ("add-kernel", boost::program_options::value<decltype(addKernels)>(&addKernels)->multitoken(), "Helper option to add fixed kernels.  Format: <path_to_json>")
     ("BAD-DATA", boost::program_options::value<decltype(badOptions)>(&badOptions)->multitoken(), "Dummy Data." )
   ;
 
@@ -540,6 +542,10 @@ int main_(int argc, const char** argv) {
   for (auto psKernel : addPsKernels) 
     xclBin.addPsKernel(psKernel);
   
+  // -- Add Fixed Kernels files
+  for (auto kernel : addKernels) 
+    xclBin.addKernels(kernel);
+
   // -- Post Section Processing --
   // Auto add GROUP_TOPOLOGY and/or GROUP_CONNECTIVITY
   if ((bSkipBankGrouping == false) &&

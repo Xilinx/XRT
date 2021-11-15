@@ -1,0 +1,173 @@
+Trace: Verbosity enabled
+Trace: Quiet disabled
+XRT Build Version: 2.13.0 (WIP)
+       Build Date: 2021-11-09 11:02:07
+          Hash ID: 5bc228796207c587a8980045b26a010030a214cf
+------------------------------------------------------------------------------
+Warning: The option '--output' has not been specified. All operations will    
+         be done in memory with the exception of the '--dump-section' command.
+------------------------------------------------------------------------------
+Creating a default 'in-memory' xclbin image.
+Trace: Found 'fixed-metadata'
+Trace: Reading xml file: ./embedded_metadata.xml
+Trace: Writing XML
+
+<?xml version="1.0" encoding="utf-8"?>
+<project name="vadd.link">
+    
+  
+
+    <platform vendor="xilinx" boardid="v1" name="ipu" featureRomTime="0">
+        
+    
+    
+    
+    
+    
+    
+  
+        <version major="0" minor="0"/>
+        <description/>
+        <board name="" vendor="" fpga="">
+            
+      
+      
+      
+    
+            <interfaces/>
+            <images>
+                
+        
+        
+        
+      
+                <image name="" type="HDPI"/>
+                <image name="" type="MDPI"/>
+                <image name="" type="LDPI"/>
+            </images>
+            <id>
+                
+        
+        
+        
+      
+                <vendor/>
+                <device/>
+                <subsystem/>
+            </id>
+        </board>
+        <build_flow/>
+        <host architecture="unknown"/>
+        <device name="fpga0" fpgaDevice="virtex7:xc7vx485t:ffg1157:-1" addrWidth="0">
+            
+      
+    
+            <core name="OCL_REGION_0" target="hw_em" type="clc_region" clockFreq="0MHz" numComputeUnits="60">
+                
+        
+        
+        
+        
+      
+                <kernelClocks>
+                    
+          
+        
+                    <clock port="DATA_CLK" frequency="500.000000MHz"/>
+                </kernelClocks>
+                <kernel name="vadd" language="c" vlnv="xilinx.com:hls:vadd:1.0" preferredWorkGroupSizeMultiple="0" workGroupSize="1" debug="true" interrupt="true" hwControlProtocol="ap_ctrl_chain">
+                    
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+        
+                    <module name="vadd">
+                        
+            
+            
+            
+            
+          
+                        <module name="vadd_Pipeline_read1" instName="grp_vadd_Pipeline_read1_fu_167" type="NonDataflowHS">
+                            
+              
+              
+              
+              
+            
+                            <rtlPort name="m_axi_gmem_AWVALID" object="gmem" protocol="m_axi"/>
+                            <rtlPort name="sext_ln67" object="sext_ln67" protocol="ap_none"/>
+                            <rtlPort name="trunc_ln67_1" object="trunc_ln67_1" protocol="ap_none"/>
+                            <rtlPort name="v1_buffer_d0" object="v1_buffer" protocol="ap_memory"/>
+                        </module>
+                        <module name="vadd_Pipeline_read2" instName="grp_vadd_Pipeline_read2_fu_176" type="NonDataflowHS">
+                            
+              
+              
+              
+              
+            
+                            <rtlPort name="m_axi_gmem_AWVALID" object="gmem" protocol="m_axi"/>
+                            <rtlPort name="sext_ln74" object="sext_ln74" protocol="ap_none"/>
+                            <rtlPort name="trunc_ln67_1" object="trunc_ln67_1" protocol="ap_none"/>
+                            <rtlPort name="v2_buffer_d0" object="v2_buffer" protocol="ap_memory"/>
+                        </module>
+                        <module name="vadd_Pipeline_vadd" instName="grp_vadd_Pipeline_vadd_fu_185" type="NonDataflowHS">
+                            
+              
+              
+              
+              
+            
+                            <rtlPort name="trunc_ln67_1" object="trunc_ln67_1" protocol="ap_none"/>
+                            <rtlPort name="v1_buffer_q0" object="v1_buffer" protocol="ap_memory"/>
+                            <rtlPort name="v2_buffer_q0" object="v2_buffer" protocol="ap_memory"/>
+                            <rtlPort name="vout_buffer_d0" object="vout_buffer" protocol="ap_memory"/>
+                        </module>
+                        <module name="vadd_Pipeline_write" instName="grp_vadd_Pipeline_write_fu_193" type="NonDataflowHS">
+                            
+              
+              
+              
+              
+            
+                            <rtlPort name="m_axi_gmem_AWVALID" object="gmem" protocol="m_axi"/>
+                            <rtlPort name="sext_ln92" object="sext_ln92" protocol="ap_none"/>
+                            <rtlPort name="trunc_ln67_1" object="trunc_ln67_1" protocol="ap_none"/>
+                            <rtlPort name="vout_buffer_q0" object="vout_buffer" protocol="ap_memory"/>
+                        </module>
+                    </module>
+                    <port name="M_AXI_GMEM" mode="master" range="0xFFFFFFFF" dataWidth="32" portType="addressable" base="0x0"/>
+                    <port name="S_AXI_CONTROL" mode="slave" range="0x1000" dataWidth="32" portType="addressable" base="0x0"/>
+                    <arg name="in1" addressQualifier="1" id="0" port="M_AXI_GMEM" size="0x8" offset="0x10" hostOffset="0x0" hostSize="0x8" type="void*"/>
+                    <arg name="in2" addressQualifier="1" id="1" port="M_AXI_GMEM" size="0x8" offset="0x1C" hostOffset="0x0" hostSize="0x8" type="void*"/>
+                    <arg name="out_r" addressQualifier="1" id="2" port="M_AXI_GMEM" size="0x8" offset="0x28" hostOffset="0x0" hostSize="0x8" type="void*"/>
+                    <arg name="size" addressQualifier="0" id="3" port="S_AXI_CONTROL" size="0x4" offset="0x34" hostOffset="0x0" hostSize="0x4" type="unsigned int"/>
+                    <compileWorkGroupSize x="1" y="1" z="1"/>
+                    <maxWorkGroupSize x="1" y="1" z="1"/>
+                    <string_table/>
+                    <instance name="vadd_1">
+                        
+            
+          
+                        <addrRemap base="0x00080000" range="0x10000" port="S_AXI_CONTROL"/>
+                    </instance>
+                    <FIFOInformation/>
+                </kernel>
+                <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_32_0_M13_AXI" dstType="kernel" dstInst="vadd_1" dstPort="S_AXI_CONTROL"/>
+                <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_64_0_S02_AXI" dstType="kernel" dstInst="vadd_1" dstPort="M_AXI_GMEM"/>
+            </core>
+        </device>
+    </platform>
+</project>
+Trace: DONE
+Leaving xclbinutil.

@@ -1,0 +1,32 @@
+{
+    "connectivity": {
+        "m_count": "5",
+        "m_connection": [
+            {
+                "arg_index": "0",
+                "m_ip_layout_index": "0",
+                "mem_data_index": "0"
+            },
+            {
+                "arg_index": "1",
+                "m_ip_layout_index": "0",
+                "mem_data_index": "0"
+            },
+            {
+                "arg_index": "2",
+                "m_ip_layout_index": "0",
+                "mem_data_index": "0"
+            },
+            {
+                "arg_index": "0",
+                "m_ip_layout_index": "1",
+                "mem_data_index": "0"
+            },
+            {
+                "arg_index": "1",
+                "m_ip_layout_index": "1",
+                "mem_data_index": "0"
+            }
+        ]
+    }
+}
