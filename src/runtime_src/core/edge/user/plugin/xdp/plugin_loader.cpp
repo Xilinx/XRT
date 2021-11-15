@@ -24,6 +24,7 @@
 #include "sc_profile.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 namespace xdp {
 namespace hal_hw_plugins {
