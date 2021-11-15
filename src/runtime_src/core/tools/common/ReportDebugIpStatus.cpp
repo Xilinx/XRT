@@ -42,28 +42,14 @@ namespace XBU = XBUtilities;
 #include <sstream>
 #include <iomanip>
 
+#if 0
 #ifdef _WIN32
 #pragma warning (disable : 4244)
 /* 4244 : Disable warning for conversion to unsigned int */
 #endif
+#endif
 
 namespace {
-
-#if 0
-void
-xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
-        uint64_t offset, void *hostbuf, size_t size)
-{
-#ifndef _WIN32
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-  (void)xclRead(handle, space, offset, hostbuf, size);
-#ifndef _WIN32
-#pragma GCC diagnostic pop
-#endif
-}
-#endif
 
 static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
   "unknown",
@@ -168,58 +154,6 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
 
   map = xrt_core::device_query<xrt_core::query::debug_ip_layout_raw>(device);
 
-#if 0
-#ifdef _WIN32
-  size_t sz1 = 0, sectionSz = 0;
-  // Get the size of full debug_ip_layout
-  xclGetDebugIpLayout(handle, nullptr, sz1, &sectionSz);
-  if(sectionSz == 0) {
-    if (jsonFormat) {
-      infoMessage = "Failed to find any Debug IP Layout section in the bitstream loaded on device. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded." ;
-    } else {
-      _output << "  INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
-		          << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-		          << std::endl;
-    }
-   return;
-  }
-  // Allocate buffer to retrieve debug_ip_layout information from loaded xclbin
-  map.resize(sectionSz);
-  xclGetDebugIpLayout(handle, map.data(), sectionSz, &sz1);
-#else
-  std::vector<char> layoutPath;
-  layoutPath.resize(512);
-  xclGetDebugIPlayoutPath(handle, layoutPath.data(), 512);
-  std::string path(layoutPath.data());
-
-  if(path.empty()) {
-    _output << "  INFO: Failed to find path to Debug IP Layout. "
-            << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-            << std::endl;
-    return;
-  }
-
-  std::ifstream ifs(path.c_str(), std::ifstream::binary);
-  if(!ifs) {
-    return;
-  }
-
-  // debug_ip_layout max size is 65536
-  map.resize(65536);
-  ifs.read(map.data(), 65536);
-
-  if (ifs.gcount() <= 0) {
-    if (jsonFormat) {
-      infoMessage = "Failed to find any Debug IP Layout section in the bitstream loaded on device. Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded." ;
-    } else {
-      _output << "INFO: Failed to find any Debug IP Layout section in the bitstream loaded on device. "
-              << "Ensure that a valid bitstream with debug IPs (AIM, LAPC) is successfully downloaded. \n"
-              << std::endl;
-    }
-  }
-
-#endif
-#endif
 }
 
 
@@ -232,7 +166,7 @@ DebugIpStatusCollector::getDebugIpLayout()
   }
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
   if(0 == dbgIpLayout->m_count) {
-    //std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
+    std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
     return nullptr;
   }
   return dbgIpLayout;
@@ -393,149 +327,17 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_MM_MONITOR];
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
-#if 0
-  uint32_t sampleInterval;
-  // Read sample interval register to latch the sampled metric counters
-  device->xread(dbgIpInfo->m_base_address + XAIM_SAMPLE_OFFSET,
-                    &sampleInterval, sizeof(uint32_t));
-#endif
-
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
-    aimResults.WriteBytes[index]      = valBuf[0];
-    aimResults.WriteTranx[index]      = valBuf[1];
-    aimResults.ReadBytes[index]       = valBuf[2];
-    aimResults.ReadTranx[index]       = valBuf[3];
-    aimResults.OutStandCnts[index]    = valBuf[4];
-    aimResults.LastWriteAddr[index]   = valBuf[5];
-    aimResults.LastWriteData[index]   = valBuf[6];
-    aimResults.LastReadAddr[index]    = valBuf[7];
-    aimResults.LastReadData[index]    = valBuf[8];
+  aimResults.WriteBytes[index]    = valBuf[0];
+  aimResults.WriteTranx[index]    = valBuf[1];
+  aimResults.ReadBytes[index]     = valBuf[2];
+  aimResults.ReadTranx[index]     = valBuf[3];
+  aimResults.OutStandCnts[index]  = valBuf[4];
+  aimResults.LastWriteAddr[index] = valBuf[5];
+  aimResults.LastWriteData[index] = valBuf[6];
+  aimResults.LastReadAddr[index]  = valBuf[7];
+  aimResults.LastReadData[index]  = valBuf[8];
 
-#if 0
-#ifndef _WIN32
-  // read counter values
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string aimName("aximm_mon_");
-    aimName = aimName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, aimName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "counters";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return;
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    std::vector<uint64_t> valBuf;
-
-    while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
-    }
-
-    if(valBuf.size() < 13) {
-      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
-      ifs.close();
-      return;
-    }
-
-    aimResults.WriteBytes[index]      = valBuf[0];
-    aimResults.WriteTranx[index]      = valBuf[1];
-    aimResults.ReadBytes[index]       = valBuf[4];
-    aimResults.ReadTranx[index]       = valBuf[5];
-    aimResults.OutStandCnts[index]    = valBuf[8];
-    aimResults.LastWriteAddr[index]   = valBuf[9];
-    aimResults.LastWriteData[index]   = valBuf[10];
-    aimResults.LastReadAddr[index]    = valBuf[11];
-    aimResults.LastReadData[index]    = valBuf[12];
-
-    ifs.close();
-
-    return;
-  }
-#endif
-#endif
-
-#if 0
-  // read counter values
-  static const uint64_t aim_offsets[] = {
-    XAIM_SAMPLE_WRITE_BYTES_OFFSET,
-    XAIM_SAMPLE_WRITE_TRANX_OFFSET,
-    XAIM_SAMPLE_READ_BYTES_OFFSET,
-    XAIM_SAMPLE_READ_TRANX_OFFSET,
-    XAIM_SAMPLE_OUTSTANDING_COUNTS_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_ADDRESS_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_DATA_OFFSET,
-    XAIM_SAMPLE_LAST_READ_ADDRESS_OFFSET,
-    XAIM_SAMPLE_LAST_READ_DATA_OFFSET
-  };
-
-  static const uint64_t aim_upper_offsets[] = {
-    XAIM_SAMPLE_WRITE_BYTES_UPPER_OFFSET,
-    XAIM_SAMPLE_WRITE_TRANX_UPPER_OFFSET,
-    XAIM_SAMPLE_READ_BYTES_UPPER_OFFSET,
-    XAIM_SAMPLE_READ_TRANX_UPPER_OFFSET,
-    XAIM_SAMPLE_OUTSTANDING_COUNTS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_ADDRESS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_WRITE_DATA_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_READ_ADDRESS_UPPER_OFFSET,
-    XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
-  };
-
-
-  uint32_t currData[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
-
-  uint32_t sampleInterval;
-  // Read sample interval register to latch the sampled metric counters
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                    dbgIpInfo->m_base_address + XAIM_SAMPLE_OFFSET,
-                    &sampleInterval, sizeof(uint32_t));
-
-  // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbgIpInfo->m_properties & XAIM_64BIT_PROPERTY_MASK) {
-    for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
-      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                 dbgIpInfo->m_base_address + aim_upper_offsets[c], &currData[c], sizeof(uint32_t));
-    }
-    aimResults.WriteBytes[index]    = ((uint64_t)(currData[0])) << 32 ;
-    aimResults.WriteTranx[index]    = ((uint64_t)(currData[1])) << 32 ;
-    aimResults.ReadBytes[index]     = ((uint64_t)(currData[2])) << 32 ;
-    aimResults.ReadTranx[index]     = ((uint64_t)(currData[3])) << 32 ;
-    aimResults.OutStandCnts[index]  = ((uint64_t)(currData[4])) << 32 ;
-    aimResults.LastWriteAddr[index] = ((uint64_t)(currData[5])) << 32 ;
-    aimResults.LastWriteData[index] = ((uint64_t)(currData[6])) << 32 ;
-    aimResults.LastReadAddr[index]  = ((uint64_t)(currData[7])) << 32 ;
-    aimResults.LastReadData[index]  = ((uint64_t)(currData[8])) << 32 ;
-  }
-
-  for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                       dbgIpInfo->m_base_address + aim_offsets[c], &currData[c], sizeof(uint32_t));
-  }
-
-  aimResults.WriteBytes[index]    |= currData[0];
-  aimResults.WriteTranx[index]    |= currData[1];
-  aimResults.ReadBytes[index]     |= currData[2];
-  aimResults.ReadTranx[index]     |= currData[3];
-  aimResults.OutStandCnts[index]  |= currData[4];
-  aimResults.LastWriteAddr[index] |= currData[5];
-  aimResults.LastWriteData[index] |= currData[6];
-  aimResults.LastReadAddr[index]  |= currData[7];
-  aimResults.LastReadData[index]  |= currData[8];
-#endif
 }
 
 
@@ -565,167 +367,19 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::am_counter>(device, dbgIpInfo);
+  amResults.CuExecCount[index]       = valBuf[0];
+  amResults.CuStartCount[index]      = valBuf[1];
+  amResults.CuExecCycles[index]      = valBuf[2];
 
-    amResults.CuExecCount[index]        = valBuf[0];
-    amResults.CuStartCount[index]       = valBuf[1];
-    amResults.CuExecCycles[index]       = valBuf[2];
+  amResults.CuStallIntCycles[index]  = valBuf[3];
+  amResults.CuStallStrCycles[index]  = valBuf[4];
+  amResults.CuStallExtCycles[index]  = valBuf[5];
 
-    amResults.CuStallIntCycles[index]   = valBuf[3];
-    amResults.CuStallStrCycles[index]   = valBuf[4];
-    amResults.CuStallExtCycles[index]   = valBuf[5];
+  amResults.CuBusyCycles[index]      = valBuf[6];
+  amResults.CuMaxParallelIter[index] = valBuf[7];
+  amResults.CuMaxExecCycles[index]   = valBuf[8];
+  amResults.CuMinExecCycles[index]   = valBuf[9];
 
-    amResults.CuBusyCycles[index]       = valBuf[6];
-    amResults.CuMaxParallelIter[index]  = valBuf[7];
-    amResults.CuMaxExecCycles[index]    = valBuf[8];
-    amResults.CuMinExecCycles[index]    = valBuf[9];
-
-#if 0
-#ifndef _WIN32
-  // read counter values
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string amName("accel_mon_");
-    amName = amName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, amName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "counters";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return; 
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    std::vector<uint64_t> valBuf;
-
-    while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
-    }
-
-    if(valBuf.size() < 10) {
-      std::cout << "\nERROR: Incomplete AM counter data in " << path << std::endl;
-      ifs.close();
-      return; 
-    }
-
-    amResults.CuExecCount[index]        = valBuf[0];
-    amResults.CuStartCount[index]       = valBuf[1];
-    amResults.CuExecCycles[index]       = valBuf[2];
-
-    amResults.CuStallIntCycles[index]   = valBuf[3];
-    amResults.CuStallStrCycles[index]   = valBuf[4];
-    amResults.CuStallExtCycles[index]   = valBuf[5];
-
-    amResults.CuBusyCycles[index]       = valBuf[6];
-    amResults.CuMaxParallelIter[index]  = valBuf[7];
-    amResults.CuMaxExecCycles[index]    = valBuf[8];
-    amResults.CuMinExecCycles[index]    = valBuf[9];
-
-    ifs.close();
-    return; 
-  } 
-#endif
-
- // read counter values
-  static const uint64_t am_offsets[] = {
-    XAM_ACCEL_EXECUTION_COUNT_OFFSET,
-    XAM_ACCEL_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_STALL_INT_OFFSET,
-    XAM_ACCEL_STALL_STR_OFFSET,
-    XAM_ACCEL_STALL_EXT_OFFSET,
-    XAM_ACCEL_MIN_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_MAX_EXECUTION_CYCLES_OFFSET,
-    XAM_ACCEL_TOTAL_CU_START_OFFSET
-  };
-
-  static const uint64_t am_upper_offsets[] = {
-    XAM_ACCEL_EXECUTION_COUNT_UPPER_OFFSET,
-    XAM_ACCEL_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_STALL_INT_UPPER_OFFSET,
-    XAM_ACCEL_STALL_STR_UPPER_OFFSET,
-    XAM_ACCEL_STALL_EXT_UPPER_OFFSET,
-    XAM_ACCEL_MIN_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_MAX_EXECUTION_CYCLES_UPPER_OFFSET,
-    XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
-  };
-
-  // Read all metric counters
-  uint32_t currData[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
-
-  uint32_t sampleInterval;
-  // Read sample interval register to latch the sampled metric counters
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                  dbgIpInfo->m_base_address + XAM_SAMPLE_OFFSET,
-                  &sampleInterval, sizeof(uint32_t));
-
-  auto dbgIpVersion = std::make_pair(dbgIpInfo->m_major, dbgIpInfo->m_minor);
-  auto refVersion   = std::make_pair((uint8_t)1, (uint8_t)1);
-
-  bool hasDataflow = (dbgIpVersion > refVersion) ? true : false;
-
-  // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbgIpInfo->m_properties & XAM_64BIT_PROPERTY_MASK) {
-    for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
-      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-            dbgIpInfo->m_base_address + am_upper_offsets[c],
-            &currData[c], sizeof(uint32_t));
-    }
-    amResults.CuExecCount[index]      = ((uint64_t)(currData[0])) << 32;
-    amResults.CuExecCycles[index]     = ((uint64_t)(currData[1])) << 32;
-    amResults.CuStallExtCycles[index] = ((uint64_t)(currData[2])) << 32;
-    amResults.CuStallIntCycles[index] = ((uint64_t)(currData[3])) << 32;
-    amResults.CuStallStrCycles[index] = ((uint64_t)(currData[4])) << 32;
-    amResults.CuMinExecCycles[index]  = ((uint64_t)(currData[5])) << 32;
-    amResults.CuMaxExecCycles[index]  = ((uint64_t)(currData[6])) << 32;
-    amResults.CuStartCount[index]     = ((uint64_t)(currData[7])) << 32;
-
-    if(hasDataflow) {
-      uint64_t dfTmp[2] = {0};
-      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], sizeof(uint32_t));
-      xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], sizeof(uint32_t));
-
-      amResults.CuBusyCycles[index]      = dfTmp[0] << 32;
-      amResults.CuMaxParallelIter[index] = dfTmp[1] << 32;
-    }
-  }
-
-  for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address+am_offsets[c], &currData[c], sizeof(uint32_t));
-  }
-
-  amResults.CuExecCount[index]      |= currData[0];
-  amResults.CuExecCycles[index]     |= currData[1];
-  amResults.CuStallExtCycles[index] |= currData[2];
-  amResults.CuStallIntCycles[index] |= currData[3];
-  amResults.CuStallStrCycles[index] |= currData[4];
-  amResults.CuMinExecCycles[index]  |= currData[5];
-  amResults.CuMaxExecCycles[index]  |= currData[6];
-  amResults.CuStartCount[index]     |= currData[7];
-
-  if(hasDataflow) {
-    uint64_t dfTmp[2] = {0};
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], sizeof(uint32_t));
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpInfo->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], sizeof(uint32_t));
-
-    amResults.CuBusyCycles[index]      |= dfTmp[0] << 32;
-    amResults.CuMaxParallelIter[index] |= dfTmp[1] << 32;
-  } else {
-    amResults.CuBusyCycles[index]      = amResults.CuExecCycles[index];
-    amResults.CuMaxParallelIter[index] = 1;
-  }
-#endif
 }
 
 
@@ -756,96 +410,12 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::asm_counter>(device, dbgIpInfo);
+  asmResults.StrNumTranx[index]     = valBuf[0];
+  asmResults.StrDataBytes[index]    = valBuf[1];
+  asmResults.StrBusyCycles[index]   = valBuf[2];
+  asmResults.StrStallCycles[index]  = valBuf[3];
+  asmResults.StrStarveCycles[index] = valBuf[4];
 
-    asmResults.StrNumTranx[index]     = valBuf[0];
-    asmResults.StrDataBytes[index]    = valBuf[1];
-    asmResults.StrBusyCycles[index]   = valBuf[2];
-    asmResults.StrStallCycles[index]  = valBuf[3];
-    asmResults.StrStarveCycles[index] = valBuf[4];
-
-#if 0
-#ifndef _WIN32
-  // read counter values
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string asmName("axistream_mon_");
-    asmName = asmName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, asmName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "counters";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return;
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    std::vector<uint64_t> valBuf;
-
-    while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
-    }
-
-    if(valBuf.size() < 5) {
-      std::cout << "\nERROR: Incomplete ASM counter data in " << path << std::endl;
-      ifs.close();
-      return;
-    }
-
-    asmResults.StrNumTranx[index]     = valBuf[0];
-    asmResults.StrDataBytes[index]    = valBuf[1];
-    asmResults.StrBusyCycles[index]   = valBuf[2];
-    asmResults.StrStallCycles[index]  = valBuf[3];
-    asmResults.StrStarveCycles[index] = valBuf[4];
-
-    ifs.close();
-    return;
-  }
-#endif
-
-  // Fill up the portions of the return struct that are known by the runtime
-
-  // Fill up the return structure with the values read from the hardware
-  static const uint64_t asm_offsets[] = {
-    XASM_NUM_TRANX_OFFSET,
-    XASM_DATA_BYTES_OFFSET,
-    XASM_BUSY_CYCLES_OFFSET,
-    XASM_STALL_CYCLES_OFFSET,
-    XASM_STARVE_CYCLES_OFFSET
-  };
-
-  uint32_t sampleInterval ;
-  // Read sample interval register to latch the sampled metric counters
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-             dbgIpInfo->m_base_address + XASM_SAMPLE_OFFSET,
-             &sampleInterval, sizeof(uint32_t));
-
-  // Then read all the individual 64-bit counters
-  unsigned long long int currData[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
-
-  for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j) {
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-               dbgIpInfo->m_base_address + asm_offsets[j],
-               &currData[j], sizeof(unsigned long long int));
-  }
-  asmResults.StrNumTranx[index] = currData[0] ;
-  asmResults.StrDataBytes[index] = currData[1] ;
-  asmResults.StrBusyCycles[index] = currData[2] ;
-  asmResults.StrStallCycles[index] = currData[3] ;
-  asmResults.StrStarveCycles[index] = currData[4] ;
-#endif
 }
 
 
@@ -875,97 +445,18 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[LAPC];
   lapcResults.NumSlots = (unsigned int)debugIpNum[LAPC];
 
-  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::lapc_status>(device, dbgIpInfo);
+  std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::lapc_status>(device, dbgIpInfo);
+  lapcResults.OverallStatus[index]       = valBuf[0];
 
-    lapcResults.OverallStatus[index]       = valBuf[0];
+  lapcResults.CumulativeStatus[index][0] = valBuf[1];
+  lapcResults.CumulativeStatus[index][1] = valBuf[2];
+  lapcResults.CumulativeStatus[index][2] = valBuf[3];
+  lapcResults.CumulativeStatus[index][3] = valBuf[4];
 
-    lapcResults.CumulativeStatus[index][0] = valBuf[1];
-    lapcResults.CumulativeStatus[index][1] = valBuf[2];
-    lapcResults.CumulativeStatus[index][2] = valBuf[3];
-    lapcResults.CumulativeStatus[index][3] = valBuf[4];
-
-    lapcResults.SnapshotStatus[index][0]   = valBuf[5];
-    lapcResults.SnapshotStatus[index][1]   = valBuf[6];
-    lapcResults.SnapshotStatus[index][2]   = valBuf[7];
-    lapcResults.SnapshotStatus[index][3]   = valBuf[8];
-
-#if 0
-#ifndef _WIN32
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string lapcName("lapc_");
-    lapcName = lapcName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, lapcName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "status";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return;
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    std::vector<uint64_t> valBuf;
-
-    while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
-    }
-
-    if(valBuf.size() < 9) {
-      std::cout << "\nERROR: Incomplete LAPC data in " << path << std::endl;
-      ifs.close();
-      return;
-    }
-
-    lapcResults.OverallStatus[index]       = valBuf[0];
-
-    lapcResults.CumulativeStatus[index][0] = valBuf[1];
-    lapcResults.CumulativeStatus[index][1] = valBuf[2];
-    lapcResults.CumulativeStatus[index][2] = valBuf[3];
-    lapcResults.CumulativeStatus[index][3] = valBuf[4];
-
-    lapcResults.SnapshotStatus[index][0]   = valBuf[5];
-    lapcResults.SnapshotStatus[index][1]   = valBuf[6];
-    lapcResults.SnapshotStatus[index][2]   = valBuf[7];
-    lapcResults.SnapshotStatus[index][3]   = valBuf[8];
-
-    ifs.close();
-    return;
-  }
-#endif
-
-  static const uint64_t statusRegisters[] = {
-    LAPC_OVERALL_STATUS_OFFSET,
-
-    LAPC_CUMULATIVE_STATUS_0_OFFSET, LAPC_CUMULATIVE_STATUS_1_OFFSET,
-    LAPC_CUMULATIVE_STATUS_2_OFFSET, LAPC_CUMULATIVE_STATUS_3_OFFSET,
-
-    LAPC_SNAPSHOT_STATUS_0_OFFSET, LAPC_SNAPSHOT_STATUS_1_OFFSET,
-    LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
-  };
-
-  uint32_t currData[XLAPC_STATUS_PER_SLOT];
-  
-  for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++) {
-    xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpInfo->m_base_address+statusRegisters[c], &currData[c], sizeof(uint32_t));
-  }
-
-  lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
-  std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
-  std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
-#endif
+  lapcResults.SnapshotStatus[index][0]   = valBuf[5];
+  lapcResults.SnapshotStatus[index][1]   = valBuf[6];
+  lapcResults.SnapshotStatus[index][2]   = valBuf[7];
+  lapcResults.SnapshotStatus[index][3]   = valBuf[8];
 
 }
 
@@ -996,80 +487,11 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
   ++debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
   spcResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_PROTOCOL_CHECKER];
 
-  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
+  std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
 
-    spcResults.PCAsserted[index] = valBuf[0];
-    spcResults.CurrentPC[index]  = valBuf[1];
-    spcResults.SnapshotPC[index] = valBuf[2];
-
-
-#if 0
-#ifndef _WIN32
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string spcName("spc_");
-    spcName = spcName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, spcName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "status";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return;
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    std::vector<uint64_t> valBuf;
-
-    while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
-    }
-
-    if(valBuf.size() < 3) {
-      std::cout << "\nERROR: Incomplete SPC data in " << path << std::endl;
-      ifs.close();
-      return;
-    }
-
-    spcResults.PCAsserted[index] = valBuf[0];
-    spcResults.CurrentPC[index]  = valBuf[1];
-    spcResults.SnapshotPC[index] = valBuf[2];
-
-    ifs.close();
-    return;
-  }
-#endif
-
-  uint32_t pc_asserted ;
-  uint32_t current_pc ;
-  uint32_t snapshot_pc ;
-
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpInfo->m_base_address + XSPC_PC_ASSERTED_OFFSET,
-              &pc_asserted, sizeof(uint32_t));
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpInfo->m_base_address + XSPC_CURRENT_PC_OFFSET,
-              &current_pc, sizeof(uint32_t));
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpInfo->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
-              &snapshot_pc, sizeof(uint32_t));
-
-  spcResults.PCAsserted[index] = pc_asserted;
-  spcResults.CurrentPC[index]  = current_pc;
-  spcResults.SnapshotPC[index] = snapshot_pc;
-#endif
+  spcResults.PCAsserted[index] = valBuf[0];
+  spcResults.CurrentPC[index]  = valBuf[1];
+  spcResults.SnapshotPC[index] = valBuf[2];
 
 }
 
@@ -1081,54 +503,8 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
   ++debugIpNum[ACCEL_DEADLOCK_DETECTOR];    // only 1 per xclbin 
   accelDeadlockResults.Num = (unsigned int)debugIpNum[ACCEL_DEADLOCK_DETECTOR];
 
-  std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
+  accelDeadlockResults.DeadlockStatus = xrt_core::device_query<xrt_core::query::accel_deadlock_status>(device, dbgIpInfo);
 
-  accelDeadlockResults.DeadlockStatus = valBuf[0];
-
-#if 0
-#ifndef _WIN32
-  // read counter values
-  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-  if(xrt_core::system::monitor_access_type::ioctl == accessType) {
-    std::string monName("accel_deadlock_");
-    monName = monName + std::to_string(dbgIpInfo->m_base_address);
-
-    std::vector<char> nameSysfsPath;
-    nameSysfsPath.resize(512);
-    xclGetSysfsPath(handle, monName.c_str(), "name", nameSysfsPath.data(), 512);
-    std::string namePath(nameSysfsPath.data());
-
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
-    path += "status";
-
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
-      return;
-    }
-
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
-
-    if(!ifs.eof()) {
-      accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
-    } else {
-      std::cout << "\nERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
-      ifs.close();
-      return;
-    }
-    ifs.close();
-
-    return;
-  }
-#endif
-
-  xclReadWrapper(handle, XCL_ADDR_SPACE_DEVICE_PERFMON,
-                  dbgIpInfo->m_base_address + 0x0,
-                  &(accelDeadlockResults.DeadlockStatus), sizeof(uint32_t));
-#endif
 }
 
 

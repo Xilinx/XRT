@@ -482,8 +482,6 @@ struct lapc_status
     const auto dbgIpData = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
     std::string lapcName("lapc_");
     lapcName = lapcName + std::to_string(dbgIpData->m_base_address);
 
@@ -493,7 +491,7 @@ struct lapc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint64_t> valBuf;
+    std::vector<uint32_t> valBuf;
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
@@ -506,30 +504,18 @@ struct lapc_status
     ifs.getline(buffer, sz);
 
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      valBuf.push_back(std::stoi((const char*)(&buffer), NULL, 10));
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
     if(valBuf.size() < 9) {
-//      std::cout << "\nERROR: Incomplete LAPC data in " << path << std::endl;
-      ifs.close();
-      return valBuf;
+      std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
+      while(valBuf.size() < 9) {
+        valBuf.push_back(0);
+      }
     }
 
-#if 0
-    lapcResults.OverallStatus[index]       = valBuf[0];
-
-    lapcResults.CumulativeStatus[index][0] = valBuf[1];
-    lapcResults.CumulativeStatus[index][1] = valBuf[2];
-    lapcResults.CumulativeStatus[index][2] = valBuf[3];
-    lapcResults.CumulativeStatus[index][3] = valBuf[4];
-
-    lapcResults.SnapshotStatus[index][0]   = valBuf[5];
-    lapcResults.SnapshotStatus[index][1]   = valBuf[6];
-    lapcResults.SnapshotStatus[index][2]   = valBuf[7];
-    lapcResults.SnapshotStatus[index][3]   = valBuf[8];
-#endif
     ifs.close();
     return valBuf;
 
@@ -546,8 +532,6 @@ struct spc_status
     const auto dbgIpData = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
     std::string spcName("spc_");
     spcName = spcName + std::to_string(dbgIpData->m_base_address);
 
@@ -557,7 +541,7 @@ struct spc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint64_t> valBuf;
+    std::vector<uint32_t> valBuf;
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
@@ -570,20 +554,17 @@ struct spc_status
     ifs.getline(buffer, sz);
 
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      valBuf.push_back(std::stoi((const char*)(&buffer), NULL, 10));
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
     if(valBuf.size() < 3) {
-//      std::cout << "\nERROR: Incomplete SPC data in " << path << std::endl;
+      std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
+      while(valBuf.size() < 3) {
+        valBuf.push_back(0);
+      }
     }
-
-#if 0
-    spcResults.PCAsserted[index] = valBuf[0];
-    spcResults.CurrentPC[index]  = valBuf[1];
-    spcResults.SnapshotPC[index] = valBuf[2];
-#endif
 
     ifs.close();
     return valBuf;
@@ -600,11 +581,9 @@ struct accel_deadlock_status
     const auto dbgIpData = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-    result_type valBuf;
+    result_type valBuf = 0;
 
-  // read counter values
-//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    // read counter values
     std::string monName("accel_deadlock_");
     monName = monName + std::to_string(dbgIpData->m_base_address);
 
@@ -625,10 +604,9 @@ struct accel_deadlock_status
     ifs.getline(buffer, sz);
 
     if(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));  
-//      accelDeadlockResults.DeadlockStatus = strtoull((const char*)(&buffer), NULL, 10);
+      valBuf = strtoull((const char*)(&buffer), NULL, 10);  
     } else {
-//      std::cout << "\nERROR: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
+      std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
     ifs.close();
 

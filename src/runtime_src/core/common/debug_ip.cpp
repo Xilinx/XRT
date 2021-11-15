@@ -312,7 +312,7 @@ std::vector<uint64_t> getASMCounterResult(const xrt_core::device* device, debug_
 
 }
 
-std::vector<uint64_t> getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint32_t> getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
@@ -324,7 +324,7 @@ std::vector<uint64_t> getLAPCStatus(const xrt_core::device* device, debug_ip_dat
     LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
   };
 
-  std::vector<uint64_t> retvalBuf((1+(2*XLAPC_STATUS_REG_NUM)), 0);
+  std::vector<uint32_t> retvalBuf((1+(2*XLAPC_STATUS_REG_NUM)), 0);
 
   uint32_t currData[XLAPC_STATUS_PER_SLOT];
 
@@ -342,21 +342,12 @@ std::vector<uint64_t> getLAPCStatus(const xrt_core::device* device, debug_ip_dat
   retvalBuf[7] = *(currData+XLAPC_SNAPSHOT_STATUS_0+2);
   retvalBuf[8] = *(currData+XLAPC_SNAPSHOT_STATUS_0+3);
   
-//  std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, retvalBuf[1]);
-//  std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, retvalBuf[1+XLAPC_STATUS_REG_NUM]);
-
-
-#if 0
-  lapcResults.OverallStatus[index]      = currData[XLAPC_OVERALL_STATUS];
-  std::copy(currData+XLAPC_CUMULATIVE_STATUS_0, currData+XLAPC_SNAPSHOT_STATUS_0, lapcResults.CumulativeStatus[index]);
-  std::copy(currData+XLAPC_SNAPSHOT_STATUS_0, currData+XLAPC_STATUS_PER_SLOT, lapcResults.SnapshotStatus[index]);
-#endif
   return retvalBuf;
 }
 
-std::vector<uint64_t> getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint32_t> getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
-  std::vector<uint64_t> retvalBuf(3, 0);
+  std::vector<uint32_t> retvalBuf(3, 0);
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbgIpData->m_base_address + XSPC_PC_ASSERTED_OFFSET,
@@ -371,13 +362,13 @@ std::vector<uint64_t> getSPCStatus(const xrt_core::device* device, debug_ip_data
   return retvalBuf;
 }
 
-std::vector<uint64_t> getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+uint64_t getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
-  std::vector<uint64_t> retvalBuf(1, 0);
+  uint64_t retvalBuf;
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbgIpData->m_base_address + 0x0,
-                  &retvalBuf[0], sizeof(uint32_t));
+                  &retvalBuf, sizeof(uint32_t));
 
   return retvalBuf;
 }
