@@ -267,7 +267,7 @@ namespace xdp {
             graphStallCounter++;
           }
 
-          // Is this core stuck for long time
+          // Is this core stuck for long time?
           if (coreStallCounter == CORE_HANG_COUNT_THRESHOLD) {
             foundStuckCores = true;
             stuckTile = tile;
@@ -290,7 +290,7 @@ namespace xdp {
           // We have a stuck core within this graph
           warningMessage
           << "Potential deadlock/hang found in AI Engines. Graph : " << graphName << " "
-          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
+          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
           << "Status 0x" << std::hex << stuckCoreStatus << std::dec
           << " : " << getCoreStatusString(stuckCoreStatus);
 
@@ -298,21 +298,21 @@ namespace xdp {
           foundStuckCores = false;
         }
 
-        {
+        // Print status for debug
+        if (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(severity_level::debug)) {
           std::stringstream msg;
           for (const auto& tile : graphTilesVec) {
             if (coreStuckCountMap[tile]) {
               msg
-                << "T(" << tile.col <<"," << tile.row << "):" << "<" << coreStuckCountMap[tile]
+                << "T(" << tile.col <<"," << tile.row + 1 << "):" << "<" << coreStuckCountMap[tile]
                 << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
             }
           }
-          msg << std::endl << "Graph Counter : " << graphStallCounter << " #Tiles : " << graphTilesVec.size();
-          auto msg_str = msg.str();
-          if (!msg_str.empty())
-            xrt_core::message::send(severity_level::debug, "XRT", msg_str);
+          if (!msg.str().empty()) {
+            msg << std::endl << "Graph " << graphName << " #Cur : " << graphStallCounter << " #Thr : " << graphTilesVec.size();
+            xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          }
         }
-
       } // For graphs
 
       // Always write out latest debug/status file
