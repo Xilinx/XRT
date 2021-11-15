@@ -211,10 +211,10 @@ namespace xdp {
     std::map<tile_type, uint32_t> coreStatusMap;
     // Pre-populate core status and PC maps
     for (const auto& kv : mGraphCoreTilesMap) {
-        for (const auto& tile : kv.second) {
-          coreStuckCountMap[tile] = 0;
-          coreStatusMap[tile] = CORE_RESET_STATUS;
-        }
+      for (const auto& tile : kv.second) {
+        coreStuckCountMap[tile] = 0;
+        coreStatusMap[tile] = CORE_RESET_STATUS;
+      }
     }
 
     auto& should_continue = it->second;
@@ -240,7 +240,7 @@ namespace xdp {
           // Read core status and PC value
           bool coreUnstalled = false;
           uint32_t coreStatus = 0;
-          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + 1, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
           auto& coreStallCounter = coreStuckCountMap[tile];
@@ -261,7 +261,7 @@ namespace xdp {
           }
 
           // Is this core contributing to entire graph hang?
-          if (coreUnstalled) {
+          if (coreUnstalled && graphStallCounter) {
             graphStallCounter--;
           } else if (coreStallCounter == GRAPH_HANG_COUNT_THRESHOLD) {
             graphStallCounter++;
@@ -284,6 +284,7 @@ namespace xdp {
           << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
 
           xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          // Send next warning if all tiles come out of hang & reach threshold again
           graphStallCounter = 0;
         } else if (foundStuckCores) {
           // We have a stuck core within this graph
@@ -300,8 +301,11 @@ namespace xdp {
         {
           std::stringstream msg;
           for (const auto& tile : graphTilesVec) {
-            if (coreStuckCountMap[tile])
-              msg << "T(" << tile.col <<"," << tile.row << ") : " << "< " << coreStuckCountMap[tile] << " : 0x" << std::hex << coreStatusMap[tile] << std::dec << " > " ;
+            if (coreStuckCountMap[tile]) {
+              msg
+                << "T(" << tile.col <<"," << tile.row << "):" << "<" << coreStuckCountMap[tile]
+                << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
+            }
           }
           msg << std::endl << "Graph Counter : " << graphStallCounter << " #Tiles : " << graphTilesVec.size();
           auto msg_str = msg.str();
