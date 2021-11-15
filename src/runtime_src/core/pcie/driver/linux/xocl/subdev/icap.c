@@ -2409,14 +2409,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	xocl_subdev_destroy_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 
-	/* TODO: link this comment to specific function in xocl_ioctl.c */
-	/* has to create mem topology even with failure case
-	 * please refer the comment in xocl_ioctl.c
-	 * without creating mem topo, memory corruption could happen
-	 */
-	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
-	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
-
 	err = __icap_peer_xclbin_download(icap, xclbin);
 
 	/* TODO: Remove this after new KDS replace the legacy one */
@@ -2441,14 +2433,22 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_create_subdev_cu(pdev);
 	icap_create_subdev_debugip(pdev);
 
-	icap_cache_max_host_mem_aperture(icap);
-
 	/* Initialize Group Topology and Group Connectivity */
 	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_CONNECTIVITY);
 
 	icap_probe_urpdev_all(pdev, xclbin);
 	xocl_subdev_create_by_level(xdev, XOCL_SUBDEV_LEVEL_URP);
 done:
+	/* TODO: link this comment to specific function in xocl_ioctl.c */
+	/* has to create mem topology even with failure case
+	 * please refer the comment in xocl_ioctl.c
+	 * without creating mem topo, memory corruption could happen
+	 */
+	icap_cache_bitstream_axlf_section(pdev, xclbin, MEM_TOPOLOGY);
+	icap_cache_bitstream_axlf_section(pdev, xclbin, ASK_GROUP_TOPOLOGY);
+
+	icap_cache_max_host_mem_aperture(icap);
+
 	if (err) {
 		uuid_copy(&icap->icap_bitstream_uuid, &uuid_null);
 	} else {
@@ -2588,11 +2588,6 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 */
 	if (header && xrt_xclbin_get_section_hdr(xclbin, BITSTREAM)) {
 		ICAP_INFO(icap, "check interface uuid");
-		if (!XDEV(xdev)->fdt_blob) {
-			ICAP_ERR(icap, "did not find platform dtb");
-			err = -EINVAL;
-			goto done;
-		}
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char *)xclbin +
@@ -2923,7 +2918,6 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 
 	if (kind == MEM_TOPOLOGY || kind == ASK_GROUP_TOPOLOGY) {
 		struct mem_topology *mem_topo = *target;
-		u64 hbase, hsz;
 		int i;
 
 		for (i = 0; i< mem_topo->m_count; ++i) {
@@ -2931,11 +2925,10 @@ static int icap_cache_bitstream_axlf_section(struct platform_device *pdev,
 			    mem_topo->m_mem_data[i].m_used)
 				continue;
 
-			if (!xocl_m2m_host_bank(xdev, &hbase, &hsz)) {
-				mem_topo->m_mem_data[i].m_used = 1;
-				mem_topo->m_mem_data[i].m_base_address = hbase;
-				mem_topo->m_mem_data[i].m_size = (hsz >> 10);
-			}
+			xocl_m2m_host_bank(xdev,
+				&(mem_topo->m_mem_data[i].m_base_address),
+				&(mem_topo->m_mem_data[i].m_size),
+				&(mem_topo->m_mem_data[i].m_used));
 		}
 		/* Xclbin binary has been adjusted as a workaround of Bios Limitation of some machine 
 		 * We won't be able to retain the device memory because of the limitation

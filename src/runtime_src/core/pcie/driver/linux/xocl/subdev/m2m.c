@@ -55,11 +55,34 @@ struct xocl_m2m {
 	u32			m2m_intr_num;
 };
 
-static int get_host_bank(struct platform_device *pdev, u64 *addr, u64 *size)
+static void  get_host_bank(struct platform_device *pdev, u64 *addr, u64 *size, u8 *used)
 {
 	struct xocl_dev *xdev = xocl_get_xdev(pdev);
-
-	return xocl_fdt_get_hostmem(xdev, XDEV(xdev)->fdt_blob, addr, size);
+	struct xocl_m2m *m2m = platform_get_drvdata(pdev);
+	
+	if (!XDEV(xdev)->fdt_blob) {
+		/*
+		 * This is for aws case where the shell is not raptor, but
+		 * xclbin is.
+		 * In this case, the host mem info (addr, size) should be
+		 * available in memory topology, although they may be not
+		 * used.
+		 * We have to changed the 'used' to True so that slavebridge
+		 * can help program the host mem and m2m can help to copy the
+		 * BO  
+		 */
+		if (!*addr || !*size) {
+			M2M_ERR(m2m, "invalid host mem info in mem topology");
+			return;
+		}
+		*used = 1;
+	} else {
+		int ret = xocl_fdt_get_hostmem(xdev, XDEV(xdev)->fdt_blob, addr, size);
+		if (!ret) {
+			*used = 1;
+			*size = *size >> 10;
+		}
+	}
 }
 
 static int copy_bo(struct platform_device *pdev, uint64_t src_paddr,
@@ -224,9 +247,9 @@ static int m2m_remove(struct platform_device *pdev)
 	mutex_destroy(&m2m->m2m_lock);
 
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, m2m);
 
 	M2M_INFO(m2m, "successfully removed M2M subdev");
+	devm_kfree(&pdev->dev, m2m);
 	return 0;
 }
 
@@ -248,13 +271,15 @@ static int m2m_probe(struct platform_device *pdev)
 	/* init m2m cu based on iores of kdma */
 	m2m->m2m_cu.dev = XDEV2DEV(xdev);
 	m2m->m2m_cu.res = vzalloc(sizeof (struct resource *) * 1);
-	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
-	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
-		if (!strncmp(res->name, NODE_KDMA_CTRL, strlen(NODE_KDMA_CTRL))) {
-			M2M_INFO(m2m, "CU start 0x%llx\n", res->start);
-			m2m->m2m_cu.res[0] = res;
-			break;
-		}
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		ret = -EINVAL;
+		M2M_ERR(m2m, "no IO resource");
+		goto failed;
+	}
+	if (!strncmp(res->name, NODE_KDMA_CTRL, strlen(NODE_KDMA_CTRL))) {
+		M2M_INFO(m2m, "CU start 0x%llx\n", res->start);
+		m2m->m2m_cu.res[0] = res;
 	}
 	xrt_cu_hls_init(&m2m->m2m_cu);
 
