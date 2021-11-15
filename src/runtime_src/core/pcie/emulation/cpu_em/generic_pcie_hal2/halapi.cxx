@@ -21,7 +21,7 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/include/experimental/xrt_aie.h"
+#include "xcl_graph.h"
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
@@ -567,8 +567,6 @@ int xclReadTraceData(xclDeviceHandle handle, void* traceBuf, uint32_t traceBufSz
   return -1;
 }
 
-
-
 int xclLogMsg(xclDeviceHandle handle, xrtLogMsgLevel level, const char* tag, const char* format, ...)
 {
   va_list args;
@@ -676,28 +674,27 @@ int xclIPName2Index(xclDeviceHandle handle, const char *name)
   return drv ? drv->xclIPName2Index(name) : -ENODEV;
 }
 
-////////////////////////////////////////////////////////////////
-// xrt_aie API implementations (xrt_aie.h)
-////////////////////////////////////////////////////////////////
-xrtGraphHandle
-xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph)
+//////////// XCL XRT AIE APIS ///////////////////////////
+
+void*
+xclGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph, xrt::graph::access_mode am)
 {
   try {
-  xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
-  xrtGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
-  if (graphHandle) {
-    auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
-    auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+    xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+    xclGraphHandle graphHandle = new xclcpuemhal2::GraphType(drv, graph);
+    if (graphHandle) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)graphHandle;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
       if (drv) {
-      drv->xrtGraphInit(graphHandle);
+        drv->xrtGraphInit(graphHandle);
       }
       else {
         delete ghPtr;
         ghPtr = nullptr;
-      return XRT_NULL_HANDLE;
+        return XRT_NULL_HANDLE;
       }
-  }
-  return graphHandle; 
+    }
+    return graphHandle;
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -705,49 +702,42 @@ xrtGraphOpen(xclDeviceHandle handle, const uuid_t xclbin_uuid, const char* graph
   }
 }
 
+/////////////////////// END OF THE XCL_GRAPH_OPEN ////////////////
+
 void
-xrtGraphClose(xrtGraphHandle ghdl)
+xclGraphClose(xclGraphHandle ghl)
 {
-  try {  
-    if (ghdl) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+  try {
+    if (ghl) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)ghl;
       delete ghPtr;
-    } 
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-  }
-}
-
-int
-xrtGraphRun(xrtGraphHandle ghdl, int iterations)
-{
-  try {
-    if (ghdl) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
-      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphRun(ghdl, iterations) : -1;
     }
-    return -1;      
-  }
-  catch (const xrt_core::error& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return ex.get();
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
-    return -1;
   }
 }
 
 int
-xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
+xclGraphReset(xclGraphHandle ghl)
+{
+  return 0;
+}
+
+uint64_t
+xclGraphTimeStamp(xclGraphHandle ghl)
+{
+  return 0;
+}
+
+int
+xclGraphRun(xclGraphHandle gh, int iterations)
 {
   try {
-    if (ghdl) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
       auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphWait(ghdl) : -1;
+      return drv ? drv->xrtGraphRun(gh, iterations) : -1;
     }
     return -1;
   }
@@ -762,13 +752,13 @@ xrtGraphWaitDone(xrtGraphHandle ghdl, int timeout_ms)
 }
 
 int
-xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphWaitDone(xclGraphHandle gh, int timeoutMilliSec)
 {
   try {
-    if (ghdl) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
       auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphWait(ghdl) : -1;
+      return drv ? drv->xrtGraphWait(gh) : -1;
     }
     return -1;
   }
@@ -783,13 +773,13 @@ xrtGraphWait(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 int
-xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
+xclGraphWait(xclGraphHandle gh, uint64_t cycle)
 {
   try {
-    if (ghdl) {
-      auto ghPtr = (xclcpuemhal2::GraphType*)ghdl;
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
       auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
-      return drv ? drv->xrtGraphEnd(ghdl) : -1;
+      return drv ? (cycle ? drv->xrtGraphTimedWait(gh,cycle) : drv->xrtGraphWait(gh) ): -1;
     }
     return -1;
   }
@@ -804,7 +794,55 @@ xrtGraphEnd(xrtGraphHandle ghdl, uint64_t cycle)
 }
 
 int
-xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, size_t size)
+xclGraphSuspend(xclGraphHandle gh)
+{
+  return 0;
+}
+
+int
+xclGraphResume(xclGraphHandle gh)
+{
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? drv->xrtGraphResume(gh) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xclGraphEnd(xclGraphHandle gh, uint64_t cycle)
+{
+  try {
+    if (gh) {
+      auto ghPtr = (xclcpuemhal2::GraphType*)gh;
+      auto drv = (ghPtr) ? ghPtr->getDeviceHandle() : nullptr;
+      return drv ? (cycle ? drv->xrtGraphTimedEnd(gh, cycle) : drv->xrtGraphEnd(gh) ) : -1;
+    }
+    return -1;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -1;
+  }
+}
+
+int
+xclGraphUpdateRTP(xclGraphHandle ghdl, const char* port, const char* buffer, size_t size)
 {
   try {
     if (ghdl) {
@@ -825,7 +863,7 @@ xrtGraphUpdateRTP(xrtGraphHandle ghdl, const char* port, const char* buffer, siz
 }
 
 int
-xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size)
+xclGraphReadRTP(xclGraphHandle ghdl, const char *port, char *buffer, size_t size)
 {
   try {
     if (ghdl) {
@@ -845,85 +883,33 @@ xrtGraphReadRTP(xrtGraphHandle ghdl, const char *port, char *buffer, size_t size
   }
 }
 
-//Not supported for sw emu
 int
-xrtGraphSuspend(xrtGraphHandle ghdl)
+xclAIEOpenContext(xclDeviceHandle handle, xrt::aie::access_mode am)
 {
   return 0;
-  /*try {
-  api::xrtGraphSuspend(ghdl);
-  return 0;
-  }
-  catch (const xrt_core::error& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return ex.get();
-  }
-  catch (const std::exception& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return -1;
-  }*/
 }
 
-//Not supported for sw emu
 int
-xrtGraphResume(xrtGraphHandle ghdl)
+xclSyncBOAIE(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
   return 0;
-  /*try {
-  api::xrtGraphResume(ghdl);
-  return 0;
-  }
-  catch (const xrt_core::error& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return ex.get();
-  }
-  catch (const std::exception& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return -1;
-  }*/
 }
 
-//Not supported for sw emu
 int
-xrtGraphReset(xrtGraphHandle ghdl)
+xclResetAIEArray(xclDeviceHandle handle)
 {
   return 0;
-  /*try {
-  api::xrtGraphReset(ghdl);
-  return 0;
-  }
-  catch (const xrt_core::error& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return ex.get();
-  }
-  catch (const std::exception& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return -1;
-  }*/
 }
 
-//Not supported for sw emu
-uint64_t
-xrtGraphTimeStamp(xrtGraphHandle ghdl)
-{
-  return 0;
-  /*try {
-  return api::xrtGraphTimeStamp(ghdl);
-  }
-  catch (const std::exception& ex) {
-  xrt_core::send_exception_message(ex.what());
-  return -1;
-  }*/
-}
-
-//Not supported for sw emu
 int
-xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBOSyncDirection dir, size_t size, size_t offset)
+xclSyncBOAIENB(xclDeviceHandle handle, xrt::bo& bo, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
 {
-  return 0;
- /* try {
-    api::xrtSyncBOAIE(ghdl, bo, dmaID, dir, size, offset);
-    return 0;
+  try { 
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtSyncBOAIENB(bo, gmioName, dir, size, offset) : -1;
+    }
+    return -1;
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
@@ -932,172 +918,51 @@ xrtSyncBOAIE(xrtGraphHandle ghdl, unsigned int bo, const char *dmaID, enum xclBO
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
     return -1;
-  }*/
-}
-
-//Not supported for sw emu
-int
-xrtResetAIEArray(xclDeviceHandle handle)
-{
-  return 0;
-  /*try {
-    api::xrtResetAieArray(handle);
-    return 0;
   }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
+  return -1;
+}
+
+int
+xclGMIOWait(xclDeviceHandle handle, const char *gmioName)
+{
+  try {
+    if (handle) {
+      xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);
+      return drv ? drv->xrtGMIOWait(gmioName) : -1;
+    }
     return -1;
-  }*/
-}
-
-////////////////////////////////////////////////////////////////
-// Exposed for Cardano as extensions to xrt_aie.h
-////////////////////////////////////////////////////////////////
-/**
-* xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
-*
-* @handle:          Handle to the device
-* @bohdl:           BO handle.
-* @gmioName:        GMIO port name
-* @dir:             GM to AIE or AIE to GM
-* @size:            Size of data to synchronize
-* @offset:          Offset within the BO
-*
-* Return:          0 on success, or appropriate error number.
-*
-* Synchronize the buffer contents between GMIO and AIE.
-* Note: Upon return, the synchronization is submitted or error out
-*/
-int
-xrtSyncBOAIENB(xrtDeviceHandle handle, xrtBufferHandle bohdl, const char *gmioName, enum xclBOSyncDirection dir, size_t size, size_t offset)
-{
-  //try {
-  //  sync_aie_bo_nb(handle, bohdl, gmioName, dir, size, offset);
-  //  return 0;
-  //}
-  //catch (const xrt_core::error& ex) {
-  //  xrt_core::send_exception_message(ex.what());
-  //  return ex.get();
-  //}
-  //catch (const std::exception& ex) {
-  //  send_exception_message(ex.what());
-  //  return -1;
-  //}
-  return 0;
-}
-
-/**
-* xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
-*
-* @handle:          Handle to the device
-* @gmioName:        GMIO port name
-*
-* Return:          0 on success, or appropriate error number.
-*/
-int
-xrtGMIOWait(xrtDeviceHandle handle, const char *gmioName)
-{
-  //try {
-  //  wait_gmio(handle, gmioName);
-  //  return 0;
-  //}
-  //catch (const xrt_core::error& ex) {
-  //  xrt_core::send_exception_message(ex.what());
-  //  return ex.get();
-  //}
-  //catch (const std::exception& ex) {
-  //  send_exception_message(ex.what());
-  //  return -1;
-  //}
-  return 0;
-}
-
-/**
-* xrtAIEStartProfiling() - Start AIE performance profiling
-*
-* @handle:          Handle to the device
-* @option:          Profiling option.
-* @port1Name:       Profiling port 1 name
-* @port2Name:       Profiling port 2 name
-* @value:           The number of bytes to trigger the profiling event
-*
-* Return:         An integer profiling handle on success,
-*                 or appropriate error number.
-*
-* This function configures the performance counters in AI Engine by given
-* port names and value. The port names and value will have different
-* meanings on different options.
-*
-* Note: Currently, the only supported io profiling option is
-*       io_stream_running_event_count (GMIO and PLIO)
-*/
-int
-xrtAIEStartProfiling(xrtDeviceHandle handle, int option, const char *port1Name, const char *port2Name, uint32_t value)
-{
-  //try {
-  //  return start_profiling(handle, option, port1Name, port2Name, value);
-  //}
-  //catch (const xrt_core::error& ex) {
-  //  xrt_core::send_exception_message(ex.what());
-  //  return ex.get();
-  //}
-  //catch (const std::exception& ex) {
-  //  send_exception_message(ex.what());
-  //  return -1;
-  //}
-  return 0;
-}
-
-/**
-* xrtAIEReadProfiling() - Read the current performance counter value
-*                         associated with the profiling handle.
-*
-* @handle:          Handle to the device
-* @pHandle:         Profiling handle.
-*
-* Return:         The performance counter value, or appropriate error number.
-*/
-uint64_t
-xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
-{
-/*  try {
-    return read_profiling(handle, pHandle);
   }
   catch (const xrt_core::error& ex) {
     xrt_core::send_exception_message(ex.what());
     return ex.get();
   }
   catch (const std::exception& ex) {
-    send_exception_message(ex.what());
+    xrt_core::send_exception_message(ex.what());
     return -1;
-  }*/
- return 0;
+  }
+  return -1;
 }
 
-/**
-* xrtAIEStopProfiling() - Stop the current performance profiling
-*                         associated with the profiling handle and
-*                         release the corresponding hardware resources.
-*
-* @handle:          Handle to the device
-* @pHandle:         Profiling handle.
-*
-* Return:         0 on success, or appropriate error number.
-*/
 int
-xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
+xclStartProfiling(xclDeviceHandle handle, int option, const char* port1Name, const char* port2Nmae, uint32_t value)
 {
-  //try {
-  //  stop_profiling(handle, pHandle);
-  //  return 0;
-  //}
-  //catch (const xrt_core::error& ex) {
-  //  xrt_core::send_exception_message(ex.what());
-  //  return ex.get();
-  //}
-  //catch (const std::exception& ex) {
-  //  send_exception_message(ex.what());
-  //  return -1;
-  //}
+  return 0;
+}
+
+uint64_t
+xclReadProfiling(xclDeviceHandle handle, int phdl)
+{
+  return 0;
+}
+
+int
+xclStopProfiling(xclDeviceHandle handle, int phdl)
+{
+  return 0;
+}
+
+int
+xclLoadXclBinMeta(xclDeviceHandle handle, const xclBin *buffer)
+{
   return 0;
 }
