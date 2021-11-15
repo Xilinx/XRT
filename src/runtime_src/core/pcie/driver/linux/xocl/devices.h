@@ -1608,6 +1608,15 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
+#define	XOCL_DEVINFO_MSIX_XDMA				\
+	{						\
+		XOCL_SUBDEV_MSIX,			\
+		XOCL_MSIX_XDMA,				\
+		NULL,					\
+		0,					\
+		.override_idx = -1,			\
+	}
+
 #define	XOCL_DEVINFO_DMA_MSIX				\
 	{						\
 		.id = XOCL_SUBDEV_DMA,			\
@@ -1992,14 +2001,20 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_INTC_VERSAL,				\
 		})
 
-#define USER_RES_AWS							\
+#define USER_RES_AWS_XDMA						\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
 			XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_INTC,				\
+		})
+
+#define USER_RES_AWS_NODMA						\
+		((struct xocl_subdev_info []) {				\
+			XOCL_DEVINFO_FEATURE_ROM,			\
+			XOCL_DEVINFO_MSIX_XDMA,				\
+			XOCL_DEVINFO_MAILBOX_USER_SOFTWARE,		\
+			XOCL_DEVINFO_ICAP_USER,				\
 		})
 
 #define	USER_RES_DSA52							\
@@ -2069,11 +2084,18 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(USER_RES_XDMA),		\
 	}
 
-#define XOCL_BOARD_USER_AWS						\
+#define XOCL_BOARD_USER_AWS_XDMA					\
 	(struct xocl_board_private){					\
 		.flags		= 0,					\
-		.subdev_info	= USER_RES_AWS,				\
-		.subdev_num = ARRAY_SIZE(USER_RES_AWS),			\
+		.subdev_info	= USER_RES_AWS_XDMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_AWS_XDMA),		\
+	}
+
+#define XOCL_BOARD_USER_AWS_NODMA					\
+	(struct xocl_board_private){					\
+		.flags		= 0,					\
+		.subdev_info	= USER_RES_AWS_NODMA,			\
+		.subdev_num = ARRAY_SIZE(USER_RES_AWS_NODMA),		\
 	}
 
 #define	XOCL_BOARD_USER_DSA52_U2				\
@@ -3609,9 +3631,9 @@ struct xocl_subdev_map {
 	{ XOCL_PCI_DEVID(0x10EE, 0x5075, PCI_ANY_ID, X3522PV_USER_RAPTOR2) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0065, PCI_ANY_ID, USER_XDMA) },	\
 	{ XOCL_PCI_DEVID(0x13FE, 0x0077, PCI_ANY_ID, USER_DSA52) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF000, PCI_ANY_ID, USER_AWS) },	\
-	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS) },	\
+	{ XOCL_PCI_DEVID(0x1D0F, 0x1042, PCI_ANY_ID, USER_AWS_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x1D0F, 0xF010, PCI_ANY_ID, USER_AWS_XDMA) },	\
+	{ XOCL_PCI_DEVID(0x1D0F, 0xF011, PCI_ANY_ID, USER_AWS_NODMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x6AA0, 0x4360, USER_QDMA) },		\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5011, PCI_ANY_ID, USER_QDMA) },	\
 	{ XOCL_PCI_DEVID(0x10EE, 0x5015, PCI_ANY_ID, USER_QDMA) },	\
