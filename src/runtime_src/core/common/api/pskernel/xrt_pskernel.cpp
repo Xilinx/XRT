@@ -65,6 +65,7 @@ namespace {
 
 constexpr size_t max_cus = 128;
 constexpr size_t cus_per_word = 32;
+constexpr uint32_t scu_domain = 0x10000;
 
 XRT_CORE_UNUSED // debug enabled function
 std::string
@@ -439,7 +440,7 @@ public:
   {
     if (access != access_mode::none)
       throw std::runtime_error("Cannot change current access mode");
-    device->open_context(xid.get(), cuidx+max_cus, std::underlying_type<access_mode>::type(am));
+    device->open_context(xid.get(), cuidx | scu_domain, std::underlying_type<access_mode>::type(am));
     access = am;
   }
 
@@ -481,7 +482,7 @@ public:
     if(cuidx==virtual_cu_idx) 
       device->close_context(xid.get(), cuidx);
     else
-      device->close_context(xid.get(), cuidx+max_cus);
+      device->close_context(xid.get(), cuidx | scu_domain);
   }
 
   psip_context(const psip_context&) = delete;
@@ -500,7 +501,7 @@ private:
     , access(am)
   {
     if (access != access_mode::none)
-      device->open_context(xid.get(), cuidx+max_cus, std::underlying_type<access_mode>::type(am));
+      device->open_context(xid.get(), cuidx | scu_domain, std::underlying_type<access_mode>::type(am));
   }
 
   // virtual CU

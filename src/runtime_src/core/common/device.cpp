@@ -167,12 +167,24 @@ register_axlf(const axlf* top)
   // For emulation old xclbin_parser::get_cus is used.
   m_cus.clear();
   try {
+    // Regular CUs
     auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_stat>(this);
     std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
     std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
+    for (const auto& d : cudata)
+      m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+
+    // Soft kernels
+    auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_stat>(this);
+    for (const auto& d : scudata)
+      m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+
+    // Validate softkernel instances against IP_LAYOUT, which 
   }
   catch (const query::no_such_key&) {
-    m_cus = xclbin::get_cus(get_axlf_section<const ::ip_layout*>(IP_LAYOUT));
+    auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
+    m_cus = xclbin::get_cus(ip_layout);
+    m_cu2idx = xclbin::get_cu_indices(ip_layout);
   }
 }
 
@@ -248,6 +260,19 @@ get_cus(const uuid& xclbin_id) const
     throw error(EINVAL, "xclbin id mismatch");
 
   return m_cus;
+}
+
+cuidx_type
+device::
+get_cuidx(const std::string& cuname, const uuid& xclbin_id) const
+{
+  if (xclbin_id && xclbin_id != m_xclbin.get_uuid())
+    throw error(EINVAL, "xclbin id mismatch");
+
+  auto itr = m_cu2idx.find(cuname);
+  if (itr == m_cu2idx.end())
+    throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  return (*itr).second;
 }
 
 std::pair<size_t, size_t>
