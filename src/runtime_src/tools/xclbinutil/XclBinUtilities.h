@@ -37,17 +37,6 @@ typedef enum {
   XET_MISSING_SECTION = 100, // Section is missing
 } XclBinExceptionType;
 
-//---------------------------------------------------------------------------
-// TODO: Make the TODO more friendly:
-//       1. Add an environment variable to enable / disable it
-//       2. Remove the extra "note:" output
-//       3. Refactor the code to be like a method instead (e.g., TODO("Do something"))
-#define Stringize( L )     #L 
-#define MakeString( M, L ) M(L)
-#define $Line MakeString( Stringize, __LINE__ )
-#define TODO __FILE__ "(" $Line ") : TODO: "
-// Use-case example: #pragma message(TODO "Fix this TODO macro")
-
 namespace XclBinUtilities {
 
 template<typename ... Args>

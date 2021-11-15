@@ -409,7 +409,7 @@ int main_(int argc, const char** argv) {
       }
     }
 
-    for (auto section : sectionsToDump ) {
+    for (const auto &section : sectionsToDump ) {
       ParameterSectionData psd(section);
       outputFiles.push_back(psd.getFile());
     }
@@ -494,23 +494,23 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Remove Sections --
-  for (auto section : sectionsToRemove) 
+  for (const auto &section : sectionsToRemove) 
     xclBin.removeSection(section);
 
   // -- Add or Replace Sections --
-  for (auto section : sectionsToAddReplace) {
+  for (const auto &section : sectionsToAddReplace) {
     ParameterSectionData psd(section);
     xclBin.addReplaceSection( psd );
   }
 
   // -- Replace Sections --
-  for (auto section : sectionsToReplace) {
+  for (const auto &section : sectionsToReplace) {
     ParameterSectionData psd(section);
     xclBin.replaceSection( psd );
   }
 
   // -- Add Sections --
-  for (auto section : sectionsToAdd) {
+  for (const auto &section : sectionsToAdd) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
         psd.getFormatType() == Section::FT_JSON) {
@@ -521,13 +521,13 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Add or Merge Sections --
-  for (auto section : sectionsToAddMerge) {
+  for (const auto &section : sectionsToAddMerge) {
     ParameterSectionData psd(section);
     xclBin.addMergeSection( psd );
   }
 
   // -- Append to Sections --
-  for (auto section : sectionsToAppend) {
+  for (const auto &section : sectionsToAppend) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
         psd.getFormatType() == Section::FT_JSON) {
@@ -539,11 +539,11 @@ int main_(int argc, const char** argv) {
   }
 
   // -- Add PS Kernels
-  for (auto psKernel : addPsKernels) 
+  for (const auto &psKernel : addPsKernels) 
     xclBin.addPsKernel(psKernel);
   
   // -- Add Fixed Kernels files
-  for (auto kernel : addKernels) 
+  for (const auto &kernel : addKernels) 
     xclBin.addKernels(kernel);
 
   // -- Post Section Processing --
@@ -557,17 +557,17 @@ int main_(int argc, const char** argv) {
   } 
 
   // -- Remove Keys --
-  for (auto key : keysToRemove) {
+  for (const auto &key : keysToRemove) {
     xclBin.removeKey(key);
   }
 
   // -- Add / Set Keys --
-  for (auto keyValue : keyValuePairs) {
+  for (const auto &keyValue : keyValuePairs) {
     xclBin.setKeyValue(keyValue);
   }
 
   // -- Dump Sections --
-  for (auto section : sectionsToDump) {
+  for (const auto &section : sectionsToDump) {
     ParameterSectionData psd(section);
     if (psd.getSectionName().empty() &&
         psd.getFormatType() == Section::FT_JSON) {

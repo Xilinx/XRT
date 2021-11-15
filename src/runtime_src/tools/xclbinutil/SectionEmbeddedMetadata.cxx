@@ -45,16 +45,23 @@ SectionEmbeddedMetadata::marshalToJSON(char* _pDataSection,
     return;
 
   std::stringstream ss;
-  ss.write((char*) _pDataSection, _sectionSize);
+  ss.write(_pDataSection, _sectionSize);
   boost::property_tree::read_xml(ss, _ptree, boost::property_tree::xml_parser::trim_whitespace);
 }
+
+#include <boost/version.hpp>
 
 void
 SectionEmbeddedMetadata::marshalFromJSON(const boost::property_tree::ptree& _ptSection,
                                          std::ostringstream& _buf) const {
 
   XUtil::TRACE("Writing XML\n");
-  boost::property_tree::xml_writer_settings<std::string> settings(' ', 2);
+  #if (BOOST_VERSION >= 105600)
+    boost::property_tree::xml_writer_settings<std::string> settings(' ', 2);
+  #else
+    boost::property_tree::xml_writer_settings<char> settings(' ', 2);
+  #endif
+
   boost::property_tree::write_xml(_buf, _ptSection, settings);
 }
 

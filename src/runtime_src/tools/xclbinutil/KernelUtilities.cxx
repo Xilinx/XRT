@@ -43,9 +43,9 @@ int addressQualifierStrToInt(const std::string& addressQualifier) {
 }
 
 
-unsigned int getTypeSize(std::string typeStr) {
+std::size_t getTypeSize(std::string typeStr) {
   #define TYPESIZE(VAR) {#VAR, sizeof(VAR)}
-  static std::vector<std::pair<std::string, unsigned int>> nameAndSize = {
+  static std::vector<std::pair<std::string, std::size_t>> nameAndSize = {
     TYPESIZE(int8_t), TYPESIZE(uint8_t),
     TYPESIZE(int16_t), TYPESIZE(uint16_t),
     TYPESIZE(int32_t), TYPESIZE(uint32_t),
@@ -219,14 +219,16 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
 
     if (!memoryConnection.empty()) {
       for (unsigned int memIndex = 0; memIndex < memTopology.size(); memIndex++ ){
-        if (memTopology[memIndex].get<std::string>("m_tag","") == memoryConnection) {
-          boost::property_tree::ptree ptEntry;
-          ptEntry.put("arg_index", std::to_string(argIndexID));
-          ptEntry.put("m_ip_layout_index", std::to_string(ipLayoutIndexID));
-          ptEntry.put("mem_data_index", std::to_string(memIndex));
-          connectivity.push_back(ptEntry);
-          break;
-        }
+        if (memTopology[memIndex].get<std::string>("m_tag","") != memoryConnection)
+          continue;
+
+        // We have a match
+        boost::property_tree::ptree ptEntry;
+        ptEntry.put("arg_index", std::to_string(argIndexID));
+        ptEntry.put("m_ip_layout_index", std::to_string(ipLayoutIndexID));
+        ptEntry.put("mem_data_index", std::to_string(memIndex));
+        connectivity.push_back(ptEntry);
+        break;
       }
     }
     ++argIndexID;
