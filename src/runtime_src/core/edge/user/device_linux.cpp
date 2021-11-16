@@ -48,13 +48,6 @@ extern "C" {
 
 #include "core/common/debug_ip.h"
 
-#if 0
-//#include "core/common/xrt_profiling.h"
-#include "core/include/xcl_perfmon_parameters.h"
-//#include "core/include/xcl_axi_checker_codes.h"
-//#include "core/include/experimental/xrt-next.h"
-#endif
-
 namespace {
 
 namespace query = xrt_core::query;
@@ -69,18 +62,6 @@ get_edgedev(const xrt_core::device* device)
 {
   return zynq_device::get_dev();
 }
-
-#if 0
-void
-xclReadWrapper(xclDeviceHandle handle, enum xclAddressSpace space,
-        uint64_t offset, void *hostbuf, size_t size)
-{
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  (void)xclRead(handle, space, offset, hostbuf, size);
-#pragma GCC diagnostic pop
-}
-#endif
 
 struct bdf 
 {
