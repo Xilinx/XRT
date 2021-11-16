@@ -76,8 +76,8 @@ def main():
 
   # Validate the contents of the various sections
   textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
-  textFileCompare(outputIpLayout, expectedIpLayout)
-  textFileCompare(outputConnectivity, expectedConnectivity)
+  jsonFileCompare(outputIpLayout, expectedIpLayout)
+  jsonFileCompare(outputConnectivity, expectedConnectivity)
   # ---------------------------------------------------------------------------
 
 

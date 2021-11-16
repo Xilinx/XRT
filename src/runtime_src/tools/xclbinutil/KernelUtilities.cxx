@@ -42,16 +42,25 @@ int addressQualifierStrToInt(const std::string& addressQualifier) {
   throw std::runtime_error("Unknown address-qualifier value: '" + addressQualifier + "'");
 }
 
+#define TYPESIZE(VAR) {#VAR, sizeof(VAR)}
+static std::vector<std::pair<std::string, std::size_t>> scalarTypes = {
+  TYPESIZE(char), TYPESIZE(unsigned char),
+  TYPESIZE(int8_t), TYPESIZE(uint8_t),
+  TYPESIZE(int16_t), TYPESIZE(uint16_t),
+  TYPESIZE(int32_t), TYPESIZE(uint32_t),
+  TYPESIZE(int64_t), TYPESIZE(uint64_t)
+};
+
+static std::vector<std::pair<std::string, std::size_t>> globalTypes = {
+  TYPESIZE(void*), 
+  TYPESIZE(char*), TYPESIZE(unsigned char*), 
+  TYPESIZE(int8_t*), TYPESIZE(uint8_t*),
+  TYPESIZE(int16_t*), TYPESIZE(uint16_t*),
+  TYPESIZE(int32_t*), TYPESIZE(uint32_t*),
+  TYPESIZE(int64_t*), TYPESIZE(uint64_t*)
+};
 
 std::size_t getTypeSize(std::string typeStr) {
-  #define TYPESIZE(VAR) {#VAR, sizeof(VAR)}
-  static std::vector<std::pair<std::string, std::size_t>> nameAndSize = {
-    TYPESIZE(int8_t), TYPESIZE(uint8_t),
-    TYPESIZE(int16_t), TYPESIZE(uint16_t),
-    TYPESIZE(int32_t), TYPESIZE(uint32_t),
-    TYPESIZE(int64_t), TYPESIZE(uint64_t)
-  };
-
   // Remove all spaces
   std::string::iterator end_pos = std::remove(typeStr.begin(), typeStr.end(), ' ');
   typeStr.erase(end_pos, typeStr.end());
@@ -59,15 +68,22 @@ std::size_t getTypeSize(std::string typeStr) {
   if (typeStr.empty())
     throw std::runtime_error("The given type value is empty");
 
-  // Is this a pointer, if so it is 8 bytes in size
-  if (typeStr[typeStr.size()-1] == '*')
-    return 8;
-
-  // Search for the given type
-  for (const auto& entry : nameAndSize) {
-    if (entry.first == typeStr)
-      return entry.second;
+  // Is this a pointer, if so then it is 8 Bytes in size (as defined by the HW)
+  {
+    const auto &iter = std::find_if( globalTypes.begin(), globalTypes.end(),
+      [&typeStr](const std::pair<std::string, std::size_t>& element){ return element.first == typeStr;} );
+    if (iter != globalTypes.end())
+      return 8;
   }
+
+  // Is this a scalar type
+  {
+    const auto &iter = std::find_if( scalarTypes.begin(), scalarTypes.end(),
+      [&typeStr](const std::pair<std::string, std::size_t>& element){ return element.first == typeStr;} );
+    if (iter != globalTypes.end())
+      return iter->second;
+  }
+
 
   throw std::runtime_error("Unknown argument type: '" + typeStr + "'");
 }
