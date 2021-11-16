@@ -2778,7 +2778,7 @@ struct spc_status : request
 
 struct accel_deadlock_status : request
 {
-  using result_type = uint64_t;
+  using result_type = uint32_t;
   using debug_ip_data_type = debug_ip_data*;
   static const key_type key = key_type::accel_deadlock_status;
 

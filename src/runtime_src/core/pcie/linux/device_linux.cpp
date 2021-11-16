@@ -595,7 +595,7 @@ struct accel_deadlock_status
     ifs.getline(buffer.data(), sz);
 
     if (!ifs.eof()) {
-      valBuf = strtoull((const char*)(&buffer), nullptr, 10);  
+      valBuf = std::stoi((const char*)(&buffer), nullptr, 10);
     } else {
       std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
