@@ -22,7 +22,8 @@
 
 namespace xrt_core { namespace debug_ip {
 
-std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint64_t> 
+getAIMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   // read counter values
   static const uint64_t aim_offsets[] = {
@@ -98,7 +99,8 @@ std::vector<uint64_t> getAIMCounterResult(const xrt_core::device* device, debug_
 
 }
 
-std::vector<uint64_t> getAMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint64_t> 
+getAMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   // read counter values
   static const uint64_t am_offsets[] = {
@@ -197,7 +199,8 @@ std::vector<uint64_t> getAMCounterResult(const xrt_core::device* device, debug_i
 
 }
 
-std::vector<uint64_t> getASMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint64_t> 
+getASMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   static const uint64_t asm_offsets[] = {
     XASM_NUM_TRANX_OFFSET,
@@ -234,7 +237,8 @@ std::vector<uint64_t> getASMCounterResult(const xrt_core::device* device, debug_
 
 }
 
-std::vector<uint32_t> getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint32_t> 
+getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
@@ -267,7 +271,8 @@ std::vector<uint32_t> getLAPCStatus(const xrt_core::device* device, debug_ip_dat
   return retvalBuf;
 }
 
-std::vector<uint32_t> getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+std::vector<uint32_t> 
+getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   std::vector<uint32_t> retvalBuf(3, 0);
 
@@ -284,7 +289,8 @@ std::vector<uint32_t> getSPCStatus(const xrt_core::device* device, debug_ip_data
   return retvalBuf;
 }
 
-uint64_t getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+uint64_t 
+getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   uint64_t retvalBuf;
 
