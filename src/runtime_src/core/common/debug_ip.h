@@ -17,14 +17,18 @@
 #ifndef XRT_CORE_DEBUG_IP_H
 #define XRT_CORE_DEBUG_IP_H
 
-#include "core/common/device.h"
-
-#include "core/include/xrt.h"
-#include "core/include/xclbin.h"
+#include "core/common/config.h"
 
 #include<vector>
+#include<cstdint>
 
-namespace xrt_core {  namespace debug_ip {
+struct debug_ip_data;
+
+namespace xrt_core {
+
+class device;
+
+namespace debug_ip {
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint64_t> 

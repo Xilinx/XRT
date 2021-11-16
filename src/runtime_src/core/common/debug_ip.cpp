@@ -18,6 +18,8 @@
 
 #include "debug_ip.h"
 
+#include "core/common/device.h"
+#include "core/include/xclbin.h"
 #include "core/include/xcl_perfmon_parameters.h"
 
 namespace xrt_core { namespace debug_ip {
