@@ -24,6 +24,7 @@
 
 namespace xrt_core { namespace debug_ip {
 
+// Read AIM counter values using "xread" for Edge and Windows PCIe 
 std::vector<uint64_t> 
 get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
@@ -101,6 +102,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
 
 }
 
+// Read AM counter values using "xread" for Edge and Windows PCIe 
 std::vector<uint64_t> 
 get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
@@ -201,6 +203,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
 }
 
+// Read ASM counter values using "xread" for Edge and Windows PCIe 
 std::vector<uint64_t> 
 get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
@@ -239,6 +242,7 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
 
 }
 
+// Read LAPC status using "xread" for Edge and Windows PCIe 
 std::vector<uint32_t> 
 get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
@@ -273,6 +277,7 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
   return ret_val;
 }
 
+// Read SPC status using "xread" for Edge and Windows PCIe 
 std::vector<uint32_t> 
 get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
@@ -291,6 +296,7 @@ get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
   return ret_val;
 }
 
+// Read Accelerator Deadlock Detector Status values using "xread" for Edge and Windows PCIe 
 uint64_t 
 get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
