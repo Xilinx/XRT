@@ -25,6 +25,8 @@
 #ifdef __cplusplus
 # include <cstdint>
 # include <string>
+# include <chrono>
+# include <functional>
 #endif
 
 #ifdef __cplusplus
@@ -108,6 +110,18 @@ public:
     XCL_DRIVER_DLLESPEC
     void
     wait();
+
+    /**
+     * wait() - Wait for interrupt
+     *
+     * Wait for interrupt from IP. On interrupt,
+     * interrupt is re-enabled and returns.
+     * On timeout, exception is thrown
+     */
+    XCL_DRIVER_DLLESPEC
+    void
+    wait(const std::chrono::milliseconds& timeout = std::chrono::milliseconds{0}) const;
+
   };
  
 public:
@@ -181,6 +195,31 @@ public:
   XCL_DRIVER_DLLESPEC
   interrupt
   create_interrupt_notify();  
+
+  /**
+   * add_callback() - Add a callback function for an interrupt bit
+   *
+   * @param interrupt_bit   Interrupt bit to invoke callback on
+   * @param callback        Callback function
+   * @param data            User data to pass to callback function
+   *
+   * The function is called when interrupt is raised for the chosen interrupt bit
+   * Upto 16 interrupt bits are supported.
+   *
+   * The function object's first parameter is a unique 'key'
+   * for this xrt::ip object implmentation on which the callback
+   * was added. This 'key' can be used to identify an actual ip
+   * object that refers to the implementaion that is maybe shared
+   * by multiple xrt::ip objects.
+   *
+   * Only one callback per interrupt bit is supported
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  add_callback(unsigned int interrupt_bit,
+    std::function<void(const void*, unsigned int, void*)> callback,
+    void* data);
+
 };
 
 } // xrt

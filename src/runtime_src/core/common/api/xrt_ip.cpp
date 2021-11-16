@@ -33,6 +33,9 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <thread>
+#include <condition_variable>
+#include <mutex>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4996)
@@ -110,6 +113,12 @@ public:
     // Waits for interrupt, upon return interrupt is disabled.
     device->wait_ip_interrupt(handle);
     enable(); // re-enable interrupts
+  }
+
+  void
+  wait(const std::chrono::milliseconds& timeout_ms) const
+  {
+    throw std::runtime_error("Not supported. Use wait()");
   }
 };
 
@@ -221,6 +230,13 @@ private:
   ip_context ipctx;
   uint32_t uid;                                  // internal unique id for debug
 
+  //callback thread: To run callback functions on receiving an async interrupt
+  //Upto 16 interrupts/callbacks; async interrupts (eg for always running kernels)
+  std::thread cb_thread;
+  mutable std::mutex m_mutex;
+  mutable std::condition_variable m_int_cb;
+  //std::unique_ptr<callback_list> m_callbacks;
+
 public:
   // ip_impl - constructor
   //
@@ -323,6 +339,15 @@ ip::
 create_interrupt_notify()
 {
   return xrt::ip::interrupt{handle->get_interrupt()};
+}
+
+void
+ip::
+add_callback(unsigned int interrupt_bit,
+             std::function<void(const void*, unsigned int, void*)> callback,
+             void* data)
+{
+  throw std::runtime_error("Not supported.");
 }
 
 ////////////////////////////////////////////////////////////////
