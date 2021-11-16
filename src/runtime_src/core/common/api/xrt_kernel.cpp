@@ -38,6 +38,7 @@
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/cuidx_type.h"
 #include "core/common/device.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
@@ -476,25 +477,34 @@ public:
   // @device:    Device on which context should opened
   // @xclbin:    xclbin containeing the IP definition
   // @ip:        The ip_data defintion for this IP from the xclbin
-  // @cuidx:     Sorted index of CU used when populating cmd pkt
+  // @cuidx:     Index of CU used when opening context and populating cmd pkt
   // @am:        Access mode, how this CU should be opened
   static std::shared_ptr<ip_context>
   open(xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip,
-       unsigned int cuidx, access_mode am)
+       xrt_core::cuidx_type cuidx, access_mode am)
   {
+    // Slightly complicated handling of shared ownership of ip_context objects.
+    // Contexts are managed per device.
+    // Within a device, a CU is opened in a domain.
+    // The CU index is unique within its domain.
+    // This function manages the ip_context objects per device and domain.
+    using domain_type = xrt_core::cuidx_type::domain_type;
+    using domain_ips = std::array<std::weak_ptr<ip_context>, max_cus>;
+    using domain_to_ips = std::map<domain_type, domain_ips>;
     static std::mutex mutex;
-    static std::map<xrt_core::device*, std::array<std::weak_ptr<ip_context>, max_cus>> dev2ips;
+    static std::map<xrt_core::device*, domain_to_ips> dev2ips;
     std::lock_guard<std::mutex> lk(mutex);
-    auto& ips = dev2ips[device];
-    auto ipctx = ips[cuidx].lock();
+    auto& dom2ips = dev2ips[device]; // domain -> ip_context_list
+    auto& ips = dom2ips[cuidx.domain];
+    auto ipctx = ips[cuidx.domain_index].lock();
     if (!ipctx) {
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
       ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin, ip, cuidx, am));
-      ips[cuidx] = ipctx;
+      ips[cuidx.domain_index] = ipctx;
     }
 
     if (ipctx->access != am)
-      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(cuidx) + ")");
+      throw std::runtime_error("Conflicting access mode for IP(" + std::to_string(cuidx.index) + ")");
 
     return ipctx;
   }
@@ -526,7 +536,7 @@ public:
   {
     if (access != access_mode::none)
       throw std::runtime_error("Cannot change current access mode");
-    xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(am));
+    xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(am));
     access = am;
   }
 
@@ -556,7 +566,7 @@ public:
   unsigned int
   get_cuidx() const
   {
-    return cuidx;
+    return idx.domain_index; // index used for execution cumask
   }
 
   // Check if arg is connected to specified memory bank
@@ -577,7 +587,7 @@ public:
 
   ~ip_context()
   {
-    xrt_core::context_mgr::close_context(device, xid, cuidx);
+    xrt_core::context_mgr::close_context(device, xid, idx);
   }
 
   ip_context(const ip_context&) = delete;
@@ -588,37 +598,37 @@ public:
 private:
   // regular CU
   ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, xrt::xclbin::ip xip,
-             unsigned int cuindex, access_mode am)
+             xrt_core::cuidx_type cuidx, access_mode am)
     : device(dev)
     , xid(xclbin.get_uuid())
     , ip(std::move(xip))
     , args(dev, xclbin, ip)
-    , cuidx(cuindex)
+    , idx(cuidx)
     , address(ip.get_base_address())
     , size(ip.get_size())
     , access(am)
   {
     if (access != access_mode::none)
-      xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(access));
+      xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(access));
   }
 
   // virtual CU
   ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin)
     : device(dev)
     , xid(xclbin.get_uuid())
-    , cuidx(virtual_cu_idx)
+    , idx{virtual_cu_idx}   // virtual CU is in default (0) domain
     , address(0)
     , size(0)
     , access(access_mode::shared)
   {
-    xrt_core::context_mgr::open_context(device, xid, cuidx, std::underlying_type<access_mode>::type(access));
+    xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(access));
   }
 
   xrt_core::device* device; //
   xrt::uuid xid;            // xclbin uuid
   xrt::xclbin::ip ip;       // the xclbin ip object
   connectivity args;        // argument memory connections
-  unsigned int cuidx;       // cu index for execution
+  xrt_core::cuidx_type idx; // cu domain and index
   uint64_t address;         // cache base address for programming
   size_t size;              // cache address space size
   access_mode access;       // compute unit access mode
@@ -1394,20 +1404,16 @@ public:
     if (kernel_cus.empty())
       throw std::runtime_error("No compute units matching '" + nm + "'");
 
-    const auto& all_cus = device->core_device->get_cus(xclbin_id); // sort order
-    for (const auto& cu : kernel_cus) {  // xrt::xclbin::ip
+    for (const auto& cu : kernel_cus) {
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
-      auto itr = std::find(all_cus.begin(), all_cus.end(), cu.get_base_address());
-      if (itr == all_cus.end())
-        throw std::runtime_error("unexpected error");
-      auto cuidx = std::distance(all_cus.begin(), itr);     // sort order index
+      auto cuidx = device->core_device->get_cuidx(cu.get_name(), xclbin_id);
       ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin, cu, cuidx, am));
-      cumask.set(cuidx);
-      num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
+      cumask.set(cuidx.domain_index);
+      num_cumasks = std::max<size_t>(num_cumasks, (cuidx.domain_index / cus_per_word) + 1);
     }
-    
+
     // set kernel protocol
     protocol = get_ip_control(kernel_cus);
 

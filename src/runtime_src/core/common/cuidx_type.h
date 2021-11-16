@@ -30,6 +30,10 @@ struct cuidx_type {
       std::uint16_t domain;       // [31-16]
     };
   };
+
+  // Ensure consistent use of domain and index types
+  using domain_type = uint16_t;
+  using domain_index_type = uint16_t;
 };
 
 } // xrt_core
