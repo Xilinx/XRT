@@ -324,8 +324,6 @@ struct aim_counter
       ifs.getline(buffer.data(), sz);
     }
 
-    ifs.close();
-
     if (valBuf.size() < 13) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
       while(valBuf.size() < 13) {
@@ -398,7 +396,6 @@ struct am_counter
     if (idx < 10)
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
 
-    ifs.close();
     return valBuf;
   }
 
@@ -451,7 +448,6 @@ struct asm_counter
     if (idx < 5)
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
 
-    ifs.close();
     return valBuf;
   }
 };
@@ -502,7 +498,6 @@ struct lapc_status
     if (idx < 9)
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
 
-    ifs.close();
     return valBuf;
 
   }
@@ -554,7 +549,6 @@ struct spc_status
     if (idx < 3)
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
 
-    ifs.close();
     return valBuf;
   }
 };
@@ -599,7 +593,6 @@ struct accel_deadlock_status
     } else {
       std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
-    ifs.close();
 
     return valBuf;
 
