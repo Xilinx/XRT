@@ -27,6 +27,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <array>
 #include <functional>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
@@ -280,6 +281,9 @@ struct mac_addr_list
   }
 };
 
+/* AIM counter values 
+ * In PCIe Linux, access the sysfs file for AIM to retrieve the AIM counter values
+ */ 
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -302,34 +306,36 @@ struct aim_counter
 
     result_type retvalBuf(9, 0);
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
       return retvalBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
     result_type valBuf;
 
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
+      valBuf.push_back(strtoull((const char*)(&buffer), nullptr, 10));
+      buffer = {0};
+      ifs.getline(buffer.data(), sz);
     }
 
     ifs.close();
 
-    if(valBuf.size() < 13) {
+    if (valBuf.size() < 13) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
       while(valBuf.size() < 13) {
         valBuf.push_back(0);
       }
     }
 
+    /* Note that required return values are NOT in contiguous sequential order 
+     * in AIM subdevice file. So, need to read only a few isolated indices in valBuf.
+     */
     retvalBuf[0] = valBuf[0];
     retvalBuf[1] = valBuf[1];
     retvalBuf[2] = valBuf[4];
@@ -345,6 +351,10 @@ struct aim_counter
 
 };
 
+
+/* AM counter values 
+ * In PCIe Linux, access the sysfs file for AM to retrieve the AM counter values
+ */ 
 struct am_counter
 {
   using result_type = query::am_counter::result_type;
@@ -367,28 +377,26 @@ struct am_counter
 
     result_type valBuf(10, 0);
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
       return valBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = strtoull((const char*)(&buffer), NULL, 10);
+      valBuf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
       idx++;
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
+      buffer = {0};
+      ifs.getline(buffer.data(), sz);
     }
 
-    if(idx < 10) {
+    if (idx < 10)
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
-    }
 
     ifs.close();
     return valBuf;
@@ -396,6 +404,10 @@ struct am_counter
 
 };
 
+
+/* ASM counter values 
+ * In PCIe Linux, access the sysfs file for ASM to retrieve the ASM counter values
+ */ 
 struct asm_counter
 {
   using result_type = query::asm_counter::result_type;
@@ -418,34 +430,36 @@ struct asm_counter
 
     std::vector<uint64_t> valBuf(5, 0);
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
       return valBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = strtoull((const char*)(&buffer), NULL, 10);
+      valBuf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
       idx++;
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
+      buffer = {0};
+      ifs.getline(buffer.data(), sz);
     }
 
-    if(idx < 5) {
+    if (idx < 5)
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
-    }
 
     ifs.close();
     return valBuf;
   }
 };
 
+
+/* LAPC status 
+ * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status 
+ */ 
 struct lapc_status
 {
   using result_type = query::lapc_status::result_type;
@@ -467,28 +481,26 @@ struct lapc_status
 
     std::vector<uint32_t> valBuf(9, 0);
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
       return valBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = std::stoi((const char*)(&buffer), NULL, 10);
+      valBuf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
       idx++;
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
+      buffer = {0};
+      ifs.getline(buffer.data(), sz);
     }
 
-    if(idx < 9) {
+    if (idx < 9)
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
-    }
 
     ifs.close();
     return valBuf;
@@ -496,6 +508,10 @@ struct lapc_status
   }
 };
 
+
+/* SPC status 
+ * In PCIe Linux, access the sysfs file for SPC to retrieve the SPC status
+ */ 
 struct spc_status
 {
   using result_type = query::spc_status::result_type;
@@ -517,34 +533,36 @@ struct spc_status
 
     std::vector<uint32_t> valBuf(3,0);
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
       return valBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = std::stoi((const char*)(&buffer), NULL, 10);
+      valBuf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
       idx++;
-      std::memset(buffer, 0, sz);
-      ifs.getline(buffer, sz);
+      buffer = {0};
+      ifs.getline(buffer.data(), sz);
     }
 
-    if(idx < 3) {
+    if (idx < 3)
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
-    }
 
     ifs.close();
     return valBuf;
   }
 };
 
+
+/* Accelerator Deadlock Detector status 
+ * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
+ */ 
 struct accel_deadlock_status
 {
   using result_type = query::accel_deadlock_status::result_type;
@@ -567,18 +585,17 @@ struct accel_deadlock_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::ifstream ifs(path.c_str());
-    if(!ifs) {
+    std::ifstream ifs(path);
+    if (!ifs) {
       return valBuf;
     }
 
-    const size_t sz = 256;
-    char buffer[sz];
-    std::memset(buffer, 0, sz);
-    ifs.getline(buffer, sz);
+    constexpr size_t sz = 256;
+    std::array<char, sz> buffer = {0};
+    ifs.getline(buffer.data(), sz);
 
-    if(!ifs.eof()) {
-      valBuf = strtoull((const char*)(&buffer), NULL, 10);  
+    if (!ifs.eof()) {
+      valBuf = strtoull((const char*)(&buffer), nullptr, 10);  
     } else {
       std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
