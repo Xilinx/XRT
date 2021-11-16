@@ -18,7 +18,6 @@
 #define xrt_core_common_query_requests_h
 
 #include "core/include/xclerr_int.h"
-#include "core/include/xclbin.h"
 #include "query.h"
 #include "error.h"
 #include "uuid.h"
@@ -29,6 +28,8 @@
 #include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
+
+struct debug_ip_data;
 
 namespace xrt_core {
 
