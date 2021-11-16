@@ -70,7 +70,38 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
+config_project()
+{
+    # remove following unused packages from rootfs sothat its size would fit in QSPI
 
+    sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_tcl.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-headers.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_resize-part.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_htop.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_iperf3.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_meson.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-package-management.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_dnf.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_python3.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_package-feed-uris.*//g' project-spec/configs/rootfs_config
+
+    # Configure u-boot to pick dtb from address 0x40000
+    UBOOT_USER_SCRIPT=u-boot_custom.cfg
+    echo "CONFIG_XILINX_OF_BOARD_DTB_ADDR=0x40000" > project-spec/meta-user/recipes-bsp/u-boot/files/$UBOOT_USER_SCRIPT
+    echo "SRC_URI += \"file://${UBOOT_USER_SCRIPT}\"" >> project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
+
+}
 
 # --- End internal functions
 
@@ -229,29 +260,8 @@ fi
 echo " * Performing PetaLinux Build (from: ${PWD})"
 #Run a full build if -full option is provided
 if [[ $full == 1 ]]; then
-  # remove following unused packages from rootfs sothat its size would fit in QSPI
-  sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_tcl.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_opencl-headers.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_resize-part.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_htop.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_iperf3.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_meson.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_imagefeature-package-management.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_dnf.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_python3.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_package-feed-uris.*//g' project-spec/configs/rootfs_config
-  sed -i 's/^CONFIG_package-feed-archs.*//g' project-spec/configs/rootfs_config
+  # configure the project with appropriate options
+  config_project
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
   $PETA_BIN/petalinux-config -c kernel --silentconfig
