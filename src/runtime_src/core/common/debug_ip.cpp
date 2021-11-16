@@ -25,7 +25,7 @@
 namespace xrt_core { namespace debug_ip {
 
 std::vector<uint64_t> 
-getAIMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   // read counter values
   static const uint64_t aim_offsets[] = {
@@ -102,7 +102,7 @@ getAIMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 }
 
 std::vector<uint64_t> 
-getAMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   // read counter values
   static const uint64_t am_offsets[] = {
@@ -202,7 +202,7 @@ getAMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 }
 
 std::vector<uint64_t> 
-getASMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   static const uint64_t asm_offsets[] = {
     XASM_NUM_TRANX_OFFSET,
@@ -240,7 +240,7 @@ getASMCounterResult(const xrt_core::device* device, debug_ip_data* dbgIpData)
 }
 
 std::vector<uint32_t> 
-getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_lapc_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
@@ -274,7 +274,7 @@ getLAPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 }
 
 std::vector<uint32_t> 
-getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_spc_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   std::vector<uint32_t> retvalBuf(3, 0);
 
@@ -292,7 +292,7 @@ getSPCStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
 }
 
 uint64_t 
-getAccelDeadlockStatus(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
 {
   uint64_t retvalBuf;
 

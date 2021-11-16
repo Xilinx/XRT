@@ -32,27 +32,27 @@ namespace debug_ip {
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint64_t> 
-  getAIMCounterResult(const xrt_core::device* , debug_ip_data*);
+  get_aim_counter_result(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint64_t> 
-  getAMCounterResult(const xrt_core::device* , debug_ip_data*);
+  get_am_counter_result(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint64_t> 
-  getASMCounterResult(const xrt_core::device* , debug_ip_data*);
+  get_asm_counter_result(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint32_t> 
-  getLAPCStatus(const xrt_core::device* , debug_ip_data*);
+  get_lapc_status(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
   std::vector<uint32_t> 
-  getSPCStatus(const xrt_core::device* , debug_ip_data*);
+  get_spc_status(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
   uint64_t 
-  getAccelDeadlockStatus(const xrt_core::device* , debug_ip_data*);
+  get_accel_deadlock_status(const xrt_core::device* , debug_ip_data*);
 
 } } // namespace debug_ip, xrt_core
 

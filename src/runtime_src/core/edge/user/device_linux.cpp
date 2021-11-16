@@ -453,7 +453,7 @@ struct aim_counter
   {
     const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getAIMCounterResult(device, dbgIpData);
+    return xrt_core::debug_ip::get_aim_counter_result(device, dbgIpData);
   }
 };
 
@@ -466,7 +466,7 @@ struct am_counter
   {
     const auto dbgIpData = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getAMCounterResult(device, dbgIpData);
+    return xrt_core::debug_ip::get_am_counter_result(device, dbgIpData);
   }
 };
 
@@ -479,7 +479,7 @@ struct asm_counter
   {
     const auto dbgIpData = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getASMCounterResult(device, dbgIpData);
+    return xrt_core::debug_ip::get_asm_counter_result(device, dbgIpData);
   }
 };
 
@@ -492,7 +492,7 @@ struct lapc_status
   {
     const auto dbgIpData = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getLAPCStatus(device, dbgIpData);
+    return xrt_core::debug_ip::get_lapc_status(device, dbgIpData);
   }
 };
 
@@ -505,7 +505,7 @@ struct spc_status
   {
     const auto dbgIpData = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getSPCStatus(device, dbgIpData);
+    return xrt_core::debug_ip::get_spc_status(device, dbgIpData);
   }
 };
 
@@ -518,7 +518,7 @@ struct accel_deadlock_status
   {
     const auto dbgIpData = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
 
-    return xrt_core::debug_ip::getAccelDeadlockStatus(device, dbgIpData);
+    return xrt_core::debug_ip::get_accel_deadlock_status(device, dbgIpData);
   }
 };
 
