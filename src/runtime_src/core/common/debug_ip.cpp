@@ -25,7 +25,7 @@
 namespace xrt_core { namespace debug_ip {
 
 std::vector<uint64_t> 
-get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   // read counter values
   static const uint64_t aim_offsets[] = {
@@ -52,57 +52,57 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
     XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> retvalBuf(9, 0);
+  std::vector<uint64_t> ret_val(9, 0);
 
-  uint32_t currData[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
+  uint32_t curr_data[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
-  uint32_t sampleInterval;
+  uint32_t sample_interval;
 
   // Read sample interval register to latch the sampled metric counters
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, 
-                    dbgIpData->m_base_address + XAIM_SAMPLE_OFFSET,
-                    &sampleInterval, sizeof(uint32_t));
+                    dbg_ip_data->m_base_address + XAIM_SAMPLE_OFFSET,
+                    &sample_interval, sizeof(uint32_t));
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbgIpData->m_properties & XAIM_64BIT_PROPERTY_MASK) {
+  if (dbg_ip_data->m_properties & XAIM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                        dbgIpData->m_base_address + aim_upper_offsets[c],
-                        &currData[c], sizeof(uint32_t));
+                        dbg_ip_data->m_base_address + aim_upper_offsets[c],
+                        &curr_data[c], sizeof(uint32_t));
     }
-    retvalBuf[0] = (((uint64_t)(currData[0])) << 32 );
-    retvalBuf[1] = (((uint64_t)(currData[1])) << 32 );
-    retvalBuf[2] = (((uint64_t)(currData[2])) << 32 );
-    retvalBuf[3] = (((uint64_t)(currData[3])) << 32 );
-    retvalBuf[4] = (((uint64_t)(currData[4])) << 32 );
-    retvalBuf[5] = (((uint64_t)(currData[5])) << 32 );
-    retvalBuf[6] = (((uint64_t)(currData[6])) << 32 );
-    retvalBuf[7] = (((uint64_t)(currData[7])) << 32 );
-    retvalBuf[8] = (((uint64_t)(currData[8])) << 32 );
+    ret_val[0] = (((uint64_t)(curr_data[0])) << 32 );
+    ret_val[1] = (((uint64_t)(curr_data[1])) << 32 );
+    ret_val[2] = (((uint64_t)(curr_data[2])) << 32 );
+    ret_val[3] = (((uint64_t)(curr_data[3])) << 32 );
+    ret_val[4] = (((uint64_t)(curr_data[4])) << 32 );
+    ret_val[5] = (((uint64_t)(curr_data[5])) << 32 );
+    ret_val[6] = (((uint64_t)(curr_data[6])) << 32 );
+    ret_val[7] = (((uint64_t)(curr_data[7])) << 32 );
+    ret_val[8] = (((uint64_t)(curr_data[8])) << 32 );
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                      dbgIpData->m_base_address + aim_offsets[c],
-                      &currData[c], sizeof(uint32_t));
+                      dbg_ip_data->m_base_address + aim_offsets[c],
+                      &curr_data[c], sizeof(uint32_t));
   }
 
-  retvalBuf[0] |= currData[0];
-  retvalBuf[1] |= currData[1];
-  retvalBuf[2] |= currData[2];
-  retvalBuf[3] |= currData[3];
-  retvalBuf[4] |= currData[4];
-  retvalBuf[5] |= currData[5];
-  retvalBuf[6] |= currData[6];
-  retvalBuf[7] |= currData[7];
-  retvalBuf[8] |= currData[8];
+  ret_val[0] |= curr_data[0];
+  ret_val[1] |= curr_data[1];
+  ret_val[2] |= curr_data[2];
+  ret_val[3] |= curr_data[3];
+  ret_val[4] |= curr_data[4];
+  ret_val[5] |= curr_data[5];
+  ret_val[6] |= curr_data[6];
+  ret_val[7] |= curr_data[7];
+  ret_val[8] |= curr_data[8];
 
-  return retvalBuf;
+  return ret_val;
 
 }
 
 std::vector<uint64_t> 
-get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   // read counter values
   static const uint64_t am_offsets[] = {
@@ -127,82 +127,82 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
     XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> retvalBuf(10, 0);
+  std::vector<uint64_t> ret_val(10, 0);
 
   // Read all metric counters
-  uint32_t currData[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
+  uint32_t curr_data[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
 
-  uint32_t sampleInterval;
+  uint32_t sample_interval;
   // Read sample interval register to latch the sampled metric counters
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                  dbgIpData->m_base_address + XAM_SAMPLE_OFFSET,
-                  &sampleInterval, sizeof(uint32_t));
+                  dbg_ip_data->m_base_address + XAM_SAMPLE_OFFSET,
+                  &sample_interval, sizeof(uint32_t));
 
-  auto dbgIpVersion = std::make_pair(dbgIpData->m_major, dbgIpData->m_minor);
-  auto refVersion   = std::make_pair((uint8_t)1, (uint8_t)1);
+  auto dbg_ip_version = std::make_pair(dbg_ip_data->m_major, dbg_ip_data->m_minor);
+  auto ref_version   = std::make_pair((uint8_t)1, (uint8_t)1);
 
-  bool hasDataflow = (dbgIpVersion > refVersion) ? true : false;
+  bool has_dataflow = (dbg_ip_version > ref_version) ? true : false;
 
   // If applicable, read the upper 32-bits of the 64-bit debug counters
-  if (dbgIpData->m_properties & XAM_64BIT_PROPERTY_MASK) {
+  if (dbg_ip_data->m_properties & XAM_64BIT_PROPERTY_MASK) {
     for (int c = 0 ; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT ; ++c) {
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-            dbgIpData->m_base_address + am_upper_offsets[c],
-            &currData[c], sizeof(uint32_t));
+            dbg_ip_data->m_base_address + am_upper_offsets[c],
+            &curr_data[c], sizeof(uint32_t));
     }
-    retvalBuf[0] = ((uint64_t)(currData[0])) << 32;
-    retvalBuf[2] = ((uint64_t)(currData[1])) << 32;
-    retvalBuf[5] = ((uint64_t)(currData[2])) << 32;
-    retvalBuf[3] = ((uint64_t)(currData[3])) << 32;
-    retvalBuf[4] = ((uint64_t)(currData[4])) << 32;
-    retvalBuf[9] = ((uint64_t)(currData[5])) << 32;
-    retvalBuf[8] = ((uint64_t)(currData[6])) << 32;
-    retvalBuf[1] = ((uint64_t)(currData[7])) << 32;
+    ret_val[0] = ((uint64_t)(curr_data[0])) << 32;
+    ret_val[2] = ((uint64_t)(curr_data[1])) << 32;
+    ret_val[5] = ((uint64_t)(curr_data[2])) << 32;
+    ret_val[3] = ((uint64_t)(curr_data[3])) << 32;
+    ret_val[4] = ((uint64_t)(curr_data[4])) << 32;
+    ret_val[9] = ((uint64_t)(curr_data[5])) << 32;
+    ret_val[8] = ((uint64_t)(curr_data[6])) << 32;
+    ret_val[1] = ((uint64_t)(curr_data[7])) << 32;
     
-    if(hasDataflow) {
-      uint64_t dfTmp[2] = {0};
-      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpData->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &dfTmp[0], sizeof(uint32_t));
-      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpData->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &dfTmp[1], sizeof(uint32_t));
+    if(has_dataflow) {
+      uint64_t df_tmp[2] = {0};
+      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &df_tmp[0], sizeof(uint32_t));
+      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &df_tmp[1], sizeof(uint32_t));
 
 
-     retvalBuf[6] = dfTmp[0] << 32;
-     retvalBuf[7] = dfTmp[1] << 32;
+     ret_val[6] = df_tmp[0] << 32;
+     ret_val[7] = df_tmp[1] << 32;
 
     }
   }
 
   for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
-    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpData->m_base_address+am_offsets[c], &currData[c], sizeof(uint32_t));
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address+am_offsets[c], &curr_data[c], sizeof(uint32_t));
   }
-  retvalBuf[0] |= currData[0];
-  retvalBuf[2] |= currData[1];
-  retvalBuf[5] |= currData[2];
-  retvalBuf[3] |= currData[3];
-  retvalBuf[4] |= currData[4];
-  retvalBuf[9] |= currData[5];
-  retvalBuf[8] |= currData[6];
-  retvalBuf[1] |= currData[7];
+  ret_val[0] |= curr_data[0];
+  ret_val[2] |= curr_data[1];
+  ret_val[5] |= curr_data[2];
+  ret_val[3] |= curr_data[3];
+  ret_val[4] |= curr_data[4];
+  ret_val[9] |= curr_data[5];
+  ret_val[8] |= curr_data[6];
+  ret_val[1] |= curr_data[7];
     
-  if(hasDataflow) {
-    uint64_t dfTmp[2] = {0};
-    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpData->m_base_address + XAM_BUSY_CYCLES_OFFSET, &dfTmp[0], sizeof(uint32_t));
-    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbgIpData->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &dfTmp[1], sizeof(uint32_t));
+  if(has_dataflow) {
+    uint64_t df_tmp[2] = {0};
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &df_tmp[0], sizeof(uint32_t));
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &df_tmp[1], sizeof(uint32_t));
 
-    retvalBuf[6] |= dfTmp[0] << 32;
-    retvalBuf[7] |= dfTmp[1] << 32;
+    ret_val[6] |= df_tmp[0] << 32;
+    ret_val[7] |= df_tmp[1] << 32;
 
   } else {
 
-     retvalBuf[6] = retvalBuf[8];
-     retvalBuf[7] = 1;
+     ret_val[6] = ret_val[8];
+     ret_val[7] = 1;
   }
-  return retvalBuf;
+  return ret_val;
 
 
 }
 
 std::vector<uint64_t> 
-get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   static const uint64_t asm_offsets[] = {
     XASM_NUM_TRANX_OFFSET,
@@ -212,35 +212,35 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbgIpData)
     XASM_STARVE_CYCLES_OFFSET
   };
 
-  std::vector<uint64_t> retvalBuf(5, 0);
+  std::vector<uint64_t> ret_val(5, 0);
 
-  uint32_t sampleInterval ;
+  uint32_t sample_interval ;
   // Read sample interval register to latch the sampled metric counters
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-             dbgIpData->m_base_address + XASM_SAMPLE_OFFSET,
-             &sampleInterval, sizeof(uint32_t));
+             dbg_ip_data->m_base_address + XASM_SAMPLE_OFFSET,
+             &sample_interval, sizeof(uint32_t));
 
   // Then read all the individual 64-bit counters
-  unsigned long long int currData[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
+  unsigned long long int curr_data[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
 
   for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-               dbgIpData->m_base_address + asm_offsets[j],
-               &currData[j], sizeof(unsigned long long int));
+               dbg_ip_data->m_base_address + asm_offsets[j],
+               &curr_data[j], sizeof(unsigned long long int));
   }
 
-  retvalBuf[0] = currData[0];
-  retvalBuf[1] = currData[1];
-  retvalBuf[2] = currData[2];
-  retvalBuf[3] = currData[3];
-  retvalBuf[4] = currData[4];
+  ret_val[0] = curr_data[0];
+  ret_val[1] = curr_data[1];
+  ret_val[2] = curr_data[2];
+  ret_val[3] = curr_data[3];
+  ret_val[4] = curr_data[4];
 
-  return retvalBuf;
+  return ret_val;
 
 }
 
 std::vector<uint32_t> 
-get_lapc_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   static const uint64_t statusRegisters[] = {
     LAPC_OVERALL_STATUS_OFFSET,
@@ -252,55 +252,55 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
     LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
   };
 
-  std::vector<uint32_t> retvalBuf((1+(2*XLAPC_STATUS_REG_NUM)), 0);
+  std::vector<uint32_t> ret_val((1+(2*XLAPC_STATUS_REG_NUM)), 0);
 
-  uint32_t currData[XLAPC_STATUS_PER_SLOT];
+  uint32_t curr_data[XLAPC_STATUS_PER_SLOT];
 
   for (int c=0; c < XLAPC_STATUS_PER_SLOT; c++) {
-    device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, dbgIpData->m_base_address+statusRegisters[c], &currData[c], sizeof(uint32_t));
+    device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, dbg_ip_data->m_base_address+statusRegisters[c], &curr_data[c], sizeof(uint32_t));
   }
 
-  retvalBuf[0] = currData[XLAPC_OVERALL_STATUS];
-  retvalBuf[1] = *(currData+XLAPC_CUMULATIVE_STATUS_0+0);
-  retvalBuf[2] = *(currData+XLAPC_CUMULATIVE_STATUS_0+1);
-  retvalBuf[3] = *(currData+XLAPC_CUMULATIVE_STATUS_0+2);
-  retvalBuf[4] = *(currData+XLAPC_CUMULATIVE_STATUS_0+3);
-  retvalBuf[5] = *(currData+XLAPC_SNAPSHOT_STATUS_0+0);
-  retvalBuf[6] = *(currData+XLAPC_SNAPSHOT_STATUS_0+1);
-  retvalBuf[7] = *(currData+XLAPC_SNAPSHOT_STATUS_0+2);
-  retvalBuf[8] = *(currData+XLAPC_SNAPSHOT_STATUS_0+3);
+  ret_val[0] = curr_data[XLAPC_OVERALL_STATUS];
+  ret_val[1] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+0);
+  ret_val[2] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+1);
+  ret_val[3] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+2);
+  ret_val[4] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+3);
+  ret_val[5] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+0);
+  ret_val[6] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+1);
+  ret_val[7] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+2);
+  ret_val[8] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+3);
   
-  return retvalBuf;
+  return ret_val;
 }
 
 std::vector<uint32_t> 
-get_spc_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  std::vector<uint32_t> retvalBuf(3, 0);
+  std::vector<uint32_t> ret_val(3, 0);
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpData->m_base_address + XSPC_PC_ASSERTED_OFFSET,
-              &retvalBuf[0], sizeof(uint32_t));
+              dbg_ip_data->m_base_address + XSPC_PC_ASSERTED_OFFSET,
+              &ret_val[0], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpData->m_base_address + XSPC_CURRENT_PC_OFFSET,
-              &retvalBuf[1], sizeof(uint32_t));
+              dbg_ip_data->m_base_address + XSPC_CURRENT_PC_OFFSET,
+              &ret_val[1], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
-              dbgIpData->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
-              &retvalBuf[2], sizeof(uint32_t));
+              dbg_ip_data->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
+              &ret_val[2], sizeof(uint32_t));
 
-  return retvalBuf;
+  return ret_val;
 }
 
 uint64_t 
-get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbgIpData)
+get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  uint64_t retvalBuf;
+  uint64_t ret_val;
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                  dbgIpData->m_base_address + 0x0,
-                  &retvalBuf, sizeof(uint32_t));
+                  dbg_ip_data->m_base_address + 0x0,
+                  &ret_val, sizeof(uint32_t));
 
-  return retvalBuf;
+  return ret_val;
 }
 
 
