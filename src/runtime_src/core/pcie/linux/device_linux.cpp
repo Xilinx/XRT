@@ -291,8 +291,6 @@ struct aim_counter
     auto pdev = get_pcidev(device);
 
     // read counter values
-//    xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//    if(xrt_core::system::monitor_access_type::ioctl == accessType)
     std::string aimName("aximm_mon_");
     aimName = aimName + std::to_string(dbgIpData->m_base_address);
 
@@ -302,11 +300,11 @@ struct aim_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    result_type retvalBuf;
+    result_type retvalBuf(9, 0);
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
-//      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
+      std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
       return retvalBuf;
     }
 
@@ -325,23 +323,22 @@ struct aim_counter
 
     ifs.close();
 
-#if 0
-   if(valBuf.size() < 13) {
-      std::cout << "\nERROR: Incomplete AIM counter data in " << path << std::endl;
-      ifs.close();
-      return retvalBuf;
+    if(valBuf.size() < 13) {
+      std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
+      while(valBuf.size() < 13) {
+        valBuf.push_back(0);
+      }
     }
-#endif
 
-    retvalBuf.push_back(valBuf[0]);
-    retvalBuf.push_back(valBuf[1]);
-    retvalBuf.push_back(valBuf[4]);
-    retvalBuf.push_back(valBuf[5]);
-    retvalBuf.push_back(valBuf[8]);
-    retvalBuf.push_back(valBuf[9]);
-    retvalBuf.push_back(valBuf[10]);
-    retvalBuf.push_back(valBuf[11]);
-    retvalBuf.push_back(valBuf[12]);
+    retvalBuf[0] = valBuf[0];
+    retvalBuf[1] = valBuf[1];
+    retvalBuf[2] = valBuf[4];
+    retvalBuf[3] = valBuf[5];
+    retvalBuf[4] = valBuf[8];
+    retvalBuf[5] = valBuf[9];
+    retvalBuf[6] = valBuf[10];
+    retvalBuf[7] = valBuf[11];
+    retvalBuf[8] = valBuf[12];
 
     return retvalBuf;
   }
@@ -358,9 +355,7 @@ struct am_counter
     const auto dbgIpData = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-  // read counter values
-//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    // read counter values
     std::string amName("accel_mon_");
     amName = amName + std::to_string(dbgIpData->m_base_address);
 
@@ -370,10 +365,11 @@ struct am_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    result_type valBuf;
+    result_type valBuf(10, 0);
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
+      std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
       return valBuf;
     }
 
@@ -382,36 +378,20 @@ struct am_counter
     std::memset(buffer, 0, sz);
     ifs.getline(buffer, sz);
 
-
+    size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      valBuf[idx] = strtoull((const char*)(&buffer), NULL, 10);
+      idx++;
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
-    if(valBuf.size() < 10) {
-//      std::cout << "\nERROR: Incomplete AM counter data in " << path << std::endl;
+    if(idx < 10) {
+      std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
     }
-
-#if 0
-    amResults.CuExecCount[index]        = valBuf[0];
-    amResults.CuStartCount[index]       = valBuf[1];
-    amResults.CuExecCycles[index]       = valBuf[2];
-
-    amResults.CuStallIntCycles[index]   = valBuf[3];
-    amResults.CuStallStrCycles[index]   = valBuf[4];
-    amResults.CuStallExtCycles[index]   = valBuf[5];
-
-    amResults.CuBusyCycles[index]       = valBuf[6];
-    amResults.CuMaxParallelIter[index]  = valBuf[7];
-    amResults.CuMaxExecCycles[index]    = valBuf[8];
-    amResults.CuMinExecCycles[index]    = valBuf[9];
-#endif
 
     ifs.close();
     return valBuf;
-
-
   }
 
 };
@@ -426,9 +406,7 @@ struct asm_counter
     const auto dbgIpData = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-  // read counter values
-//  xrt_core::system::monitor_access_type accessType = xrt_core::get_monitor_access_type();
-//  if(xrt_core::system::monitor_access_type::ioctl == accessType) 
+    // read counter values
     std::string asmName("axistream_mon_");
     asmName = asmName + std::to_string(dbgIpData->m_base_address);
 
@@ -438,10 +416,11 @@ struct asm_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    std::vector<uint64_t> valBuf;
+    std::vector<uint64_t> valBuf(5, 0);
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
+      std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
       return valBuf;
     }
 
@@ -450,22 +429,17 @@ struct asm_counter
     std::memset(buffer, 0, sz);
     ifs.getline(buffer, sz);
 
+    size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), NULL, 10));
+      valBuf[idx] = strtoull((const char*)(&buffer), NULL, 10);
+      idx++;
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
-    if(valBuf.size() < 5) {
-//      std::cout << "\nERROR: Incomplete ASM counter data in " << path << std::endl;
+    if(idx < 5) {
+      std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
     }
-/*
-    asmResults.StrNumTranx[index]     = valBuf[0];
-    asmResults.StrDataBytes[index]    = valBuf[1];
-    asmResults.StrBusyCycles[index]   = valBuf[2];
-    asmResults.StrStallCycles[index]  = valBuf[3];
-    asmResults.StrStarveCycles[index] = valBuf[4];
-*/
 
     ifs.close();
     return valBuf;
@@ -491,10 +465,11 @@ struct lapc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf;
+    std::vector<uint32_t> valBuf(9, 0);
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
+      std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
       return valBuf;
     }
 
@@ -503,17 +478,16 @@ struct lapc_status
     std::memset(buffer, 0, sz);
     ifs.getline(buffer, sz);
 
+    size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf.push_back(std::stoi((const char*)(&buffer), NULL, 10));
+      valBuf[idx] = std::stoi((const char*)(&buffer), NULL, 10);
+      idx++;
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
-    if(valBuf.size() < 9) {
+    if(idx < 9) {
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
-      while(valBuf.size() < 9) {
-        valBuf.push_back(0);
-      }
     }
 
     ifs.close();
@@ -541,10 +515,11 @@ struct spc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf;
+    std::vector<uint32_t> valBuf(3,0);
 
     std::ifstream ifs(path.c_str());
     if(!ifs) {
+      std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
       return valBuf;
     }
 
@@ -553,17 +528,16 @@ struct spc_status
     std::memset(buffer, 0, sz);
     ifs.getline(buffer, sz);
 
+    size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf.push_back(std::stoi((const char*)(&buffer), NULL, 10));
+      valBuf[idx] = std::stoi((const char*)(&buffer), NULL, 10);
+      idx++;
       std::memset(buffer, 0, sz);
       ifs.getline(buffer, sz);
     }
 
-    if(valBuf.size() < 3) {
+    if(idx < 3) {
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
-      while(valBuf.size() < 3) {
-        valBuf.push_back(0);
-      }
     }
 
     ifs.close();

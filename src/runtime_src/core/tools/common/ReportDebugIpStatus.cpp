@@ -42,13 +42,6 @@ namespace XBU = XBUtilities;
 #include <sstream>
 #include <iomanip>
 
-#if 0
-#ifdef _WIN32
-#pragma warning (disable : 4244)
-/* 4244 : Disable warning for conversion to unsigned int */
-#endif
-#endif
-
 namespace {
 
 static const char* debugIpNames[DEBUG_IP_TYPE_MAX] = {
