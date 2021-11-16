@@ -126,7 +126,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    unsigned int argSize = getTypeSize(argType);
+    size_t argSize = getTypeSize(argType);
 
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
@@ -314,13 +314,14 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
     // Create the new PS kernel instance and add it to the vector
     boost::property_tree::ptree ptIPEntry;
-    ptIPEntry.put("m_type", "IP_PS_KERNEL");
+    ptIPEntry.put("m_type", "IP_KERNEL");
     ptIPEntry.put("m_base_address", "not_used");
     ptIPEntry.put("m_name", ipLayoutName);
     ipLayout.push_back(ptIPEntry);
+    const unsigned int ipLayoutIndex = static_cast<unsigned int>(ipLayout.size()) - 1;
 
     // -- For each PS Kernel Instance, connect any argument to its memory
-    addArgsToMemoryConnections(ipLayout.size()-1, ptKernel.get_child("arguments", ptEmpty), memTopology,  connectivity);
+    addArgsToMemoryConnections(ipLayoutIndex, ptKernel.get_child("arguments", ptEmpty), memTopology,  connectivity);
   }
 
   // Replace the original property tree
