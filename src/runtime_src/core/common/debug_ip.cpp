@@ -190,8 +190,8 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &df_tmp[0], sizeof(uint32_t));
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &df_tmp[1], sizeof(uint32_t));
 
-    ret_val[6] |= df_tmp[0] << 32;
-    ret_val[7] |= df_tmp[1] << 32;
+    ret_val[6] |= df_tmp[0];
+    ret_val[7] |= df_tmp[1];
 
   } else {
 
