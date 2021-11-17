@@ -445,6 +445,7 @@ namespace xdp {
     if (metricSet.empty())
       return false;
     auto tiles = getTilesForTracing(handle);
+    auto useCounters = xrt_core::config::get_aie_trace_use_counters();
 
     // getTraceStartDelayCycles is 32 bit for now
     uint32_t delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
@@ -484,88 +485,92 @@ namespace xdp {
       // 1. Reserve and start core module counters
       //
       int numCoreCounters = 0;
-      XAie_ModuleType mod = XAIE_CORE_MOD;
-      for (int i=0; i < coreCounterStartEvents.size(); ++i) {
-        auto perfCounter = core.perfCounter();
-        auto ret = perfCounter->initialize(mod, coreCounterStartEvents.at(i),
-                                           mod, coreCounterEndEvents.at(i));
-        if (ret != XAIE_OK) break;
-        ret = perfCounter->reserve();
-        if (ret != XAIE_OK) break;
+      if (useCounters) {
+        XAie_ModuleType mod = XAIE_CORE_MOD;
+        for (int i=0; i < coreCounterStartEvents.size(); ++i) {
+          auto perfCounter = core.perfCounter();
+          auto ret = perfCounter->initialize(mod, coreCounterStartEvents.at(i),
+                                            mod, coreCounterEndEvents.at(i));
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) break;
 
-        // NOTE: store events for later use in trace
-        XAie_Events counterEvent;
-        perfCounter->getCounterEvent(mod, counterEvent);
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
-        perfCounter->changeThreshold(coreCounterEventValues.at(i));
+          // NOTE: store events for later use in trace
+          XAie_Events counterEvent;
+          perfCounter->getCounterEvent(mod, counterEvent);
+          int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_CORE);
+          perfCounter->changeThreshold(coreCounterEventValues.at(i));
 
-        // Set reset event based on counter number
-        perfCounter->changeRstEvent(mod, counterEvent);
-        coreEvents.push_back(counterEvent);
+          // Set reset event based on counter number
+          perfCounter->changeRstEvent(mod, counterEvent);
+          coreEvents.push_back(counterEvent);
 
-        ret = perfCounter->start();
-        if (ret != XAIE_OK) break;
+          ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
 
-        mCoreCounterTiles.push_back(tile);
-        mCoreCounters.push_back(perfCounter);
-        numCoreCounters++;
+          mCoreCounterTiles.push_back(tile);
+          mCoreCounters.push_back(perfCounter);
+          numCoreCounters++;
 
-        // Update config file
-        uint8_t phyEvent = 0;
-        auto& cfg = cfgTile->core_trace_config.pc[idx];
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
-        cfg.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterEndEvents[i], &phyEvent);
-        cfg.stop_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
-        cfg.reset_event = phyEvent;
-        cfg.event_value = coreCounterEventValues[i];
+          // Update config file
+          uint8_t phyEvent = 0;
+          auto& cfg = cfgTile->core_trace_config.pc[idx];
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterStartEvents[i], &phyEvent);
+          cfg.start_event = phyEvent;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, coreCounterEndEvents[i], &phyEvent);
+          cfg.stop_event = phyEvent;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          cfg.reset_event = phyEvent;
+          cfg.event_value = coreCounterEventValues[i];
+        }
       }
 
       //
       // 2. Reserve and start memory module counters
       //
       int numMemoryCounters = 0;
-      for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
-        auto perfCounter = memory.perfCounter();
-        XAie_ModuleType mod = XAIE_MEM_MOD;
-        auto ret = perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
-                                           mod, memoryCounterEndEvents.at(i));
-        if (ret != XAIE_OK) break;
-        ret = perfCounter->reserve();
-        if (ret != XAIE_OK) break;
+      if (useCounters) {
+        for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
+          auto perfCounter = memory.perfCounter();
+          XAie_ModuleType mod = XAIE_MEM_MOD;
+          auto ret = perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
+                                            mod, memoryCounterEndEvents.at(i));
+          if (ret != XAIE_OK) break;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) break;
 
-        // Set reset event based on counter number
-        XAie_Events counterEvent;
-        perfCounter->getCounterEvent(mod, counterEvent);
-        int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
-        perfCounter->changeThreshold(memoryCounterEventValues.at(i));
+          // Set reset event based on counter number
+          XAie_Events counterEvent;
+          perfCounter->getCounterEvent(mod, counterEvent);
+          int idx = static_cast<int>(counterEvent) - static_cast<int>(XAIE_EVENT_PERF_CNT_0_MEM);
+          perfCounter->changeThreshold(memoryCounterEventValues.at(i));
 
-        perfCounter->changeRstEvent(mod, counterEvent);
-        memoryEvents.push_back(counterEvent);
+          perfCounter->changeRstEvent(mod, counterEvent);
+          memoryEvents.push_back(counterEvent);
 
-        ret = perfCounter->start();
-        if (ret != XAIE_OK) break;
+          ret = perfCounter->start();
+          if (ret != XAIE_OK) break;
 
-        mMemoryCounters.push_back(perfCounter);
-        numMemoryCounters++;
+          mMemoryCounters.push_back(perfCounter);
+          numMemoryCounters++;
 
-        // Update config file
-        uint8_t phyEvent = 0;
-        auto& cfg = cfgTile->memory_trace_config.pc[idx];
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
-        cfg.start_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
-        cfg.stop_event = phyEvent;
-        XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
-        cfg.reset_event = phyEvent;
-        cfg.event_value = memoryCounterEventValues[i];
-        cfgTile->memory_trace_config.packet_type=1;
+          // Update config file
+          uint8_t phyEvent = 0;
+          auto& cfg = cfgTile->memory_trace_config.pc[idx];
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterStartEvents[i], &phyEvent);
+          cfg.start_event = phyEvent;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, memoryCounterEndEvents[i], &phyEvent);
+          cfg.stop_event = phyEvent;
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
+          cfg.reset_event = phyEvent;
+          cfg.event_value = memoryCounterEventValues[i];
+          cfgTile->memory_trace_config.packet_type=1;
+        }
       }
 
       // Catch when counters cannot be reserved: report, release, and return
-      if ((numCoreCounters < coreCounterStartEvents.size())
-          || (numMemoryCounters < memoryCounterStartEvents.size())) {
+      if (useCounters && ((numCoreCounters < coreCounterStartEvents.size())
+          || (numMemoryCounters < memoryCounterStartEvents.size()))) {
         std::stringstream msg;
         msg << "Unable to reserve " << coreCounterStartEvents.size() << " core counters"
             << " and " << memoryCounterStartEvents.size() << " memory counters"

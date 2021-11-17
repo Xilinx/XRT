@@ -317,17 +317,17 @@ get_aie_trace_flush()
   return value;
 }
 
-inline std::string
-get_aie_trace_metrics()
+inline bool
+get_aie_trace_use_counters()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
+  static bool value = detail::get_bool_value("Debug.aie_trace_use_counters", true);
   return value;
 }
 
 inline std::string
-get_aie_profile_core_metrics()
+get_aie_trace_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
   return value;
 }
 
@@ -342,6 +342,13 @@ inline bool
 get_aie_trace_user_control()
 {
   static bool value = detail::get_bool_value("Debug.aie_trace_user_control", false);
+  return value;
+}
+
+inline std::string
+get_aie_profile_core_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
   return value;
 }
 
