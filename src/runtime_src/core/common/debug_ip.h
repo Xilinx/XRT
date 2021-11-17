@@ -51,7 +51,7 @@ namespace debug_ip {
   get_spc_status(const xrt_core::device* , debug_ip_data*);
 
   XRT_CORE_COMMON_EXPORT
-  uint64_t 
+  uint32_t 
   get_accel_deadlock_status(const xrt_core::device* , debug_ip_data*);
 
 } } // namespace debug_ip, xrt_core

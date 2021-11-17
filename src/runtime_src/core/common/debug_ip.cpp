@@ -297,7 +297,7 @@ get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 }
 
 // Read Accelerator Deadlock Detector Status values using "xread" for Edge and Windows PCIe 
-uint64_t 
+uint32_t 
 get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
   uint64_t ret_val;
