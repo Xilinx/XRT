@@ -43,10 +43,12 @@ extern "C" {
 #endif
 
 /************************ AIM Debug Counters ********************************/
-#define XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
+#define XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT           9
+#define XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT     13
 
 /************************ AM Debug Counters ********************************/
 #define XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     8
+#define XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT      10
 
 /************************ ASM Debug Counters ********************************/
 #define XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT    5
@@ -73,6 +75,7 @@ extern "C" {
  * AXI Streaming Protocol Checker related defs here
  */
 #define XSPC_MAX_NUMBER_SLOTS 31
+#define XSPC_STATUS_PER_SLOT  3
 
 /********************** Definitions: Enums, Structs ***************************/
 enum xclDebugReadType {

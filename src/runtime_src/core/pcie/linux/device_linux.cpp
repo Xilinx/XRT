@@ -19,6 +19,7 @@
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
+#include "core/include/xcl_app_debug.h"
 
 #include "common/utils.h"
 #include "xrt.h"
@@ -304,7 +305,7 @@ struct aim_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    result_type retvalBuf(9, 0);
+    result_type retvalBuf(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
@@ -324,9 +325,9 @@ struct aim_counter
       ifs.getline(buffer.data(), sz);
     }
 
-    if (valBuf.size() < 13) {
+    if (valBuf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
-      while(valBuf.size() < 13) {
+      while(valBuf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
         valBuf.push_back(0);
       }
     }
@@ -373,7 +374,7 @@ struct am_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    result_type valBuf(10, 0);
+    result_type valBuf(XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
@@ -393,7 +394,7 @@ struct am_counter
       ifs.getline(buffer.data(), sz);
     }
 
-    if (idx < 10)
+    if (idx < XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT)
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
 
     return valBuf;
@@ -425,7 +426,7 @@ struct asm_counter
     std::string path = namePath.substr(0, pos+1);
     path += "counters";
 
-    std::vector<uint64_t> valBuf(5, 0);
+    std::vector<uint64_t> valBuf(XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
@@ -445,7 +446,7 @@ struct asm_counter
       ifs.getline(buffer.data(), sz);
     }
 
-    if (idx < 5)
+    if (idx < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT)
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
 
     return valBuf;
@@ -475,7 +476,7 @@ struct lapc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf(9, 0);
+    std::vector<uint32_t> valBuf(XLAPC_STATUS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
@@ -495,7 +496,7 @@ struct lapc_status
       ifs.getline(buffer.data(), sz);
     }
 
-    if (idx < 9)
+    if (idx < XLAPC_STATUS_PER_SLOT)
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
 
     return valBuf;
@@ -526,7 +527,7 @@ struct spc_status
     std::string path = namePath.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf(3,0);
+    std::vector<uint32_t> valBuf(XLAPC_STATUS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
@@ -546,7 +547,7 @@ struct spc_status
       ifs.getline(buffer.data(), sz);
     }
 
-    if (idx < 3)
+    if (idx < XLAPC_STATUS_PER_SLOT)
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
 
     return valBuf;

@@ -53,7 +53,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     XAIM_SAMPLE_LAST_READ_DATA_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(9, 0);
+  std::vector<uint64_t> ret_val(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
   uint32_t curr_data[XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT];
 
@@ -129,7 +129,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
     XAM_ACCEL_TOTAL_CU_START_UPPER_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(10, 0);
+  std::vector<uint64_t> ret_val(XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, 0);
 
   // Read all metric counters
   uint32_t curr_data[XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] = {0};
@@ -215,7 +215,7 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     XASM_STARVE_CYCLES_OFFSET
   };
 
-  std::vector<uint64_t> ret_val(5, 0);
+  std::vector<uint64_t> ret_val(XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
   uint32_t sample_interval ;
   // Read sample interval register to latch the sampled metric counters
@@ -256,7 +256,7 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
     LAPC_SNAPSHOT_STATUS_2_OFFSET, LAPC_SNAPSHOT_STATUS_3_OFFSET
   };
 
-  std::vector<uint32_t> ret_val((1+(2*XLAPC_STATUS_REG_NUM)), 0);
+  std::vector<uint32_t> ret_val(XLAPC_STATUS_PER_SLOT, 0);
 
   uint32_t curr_data[XLAPC_STATUS_PER_SLOT];
 
@@ -281,7 +281,7 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 std::vector<uint32_t> 
 get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  std::vector<uint32_t> ret_val(3, 0);
+  std::vector<uint32_t> ret_val(XSPC_STATUS_PER_SLOT, 0);
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbg_ip_data->m_base_address + XSPC_PC_ASSERTED_OFFSET,
@@ -300,7 +300,7 @@ get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 uint32_t 
 get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 {
-  uint64_t ret_val;
+  uint32_t ret_val;
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbg_ip_data->m_base_address + 0x0,
