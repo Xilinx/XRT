@@ -38,6 +38,7 @@
 namespace {
 
 namespace pt = boost::property_tree;
+using kernel_type = xrt_core::xclbin::kernel_properties::kernel_type;
 
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
@@ -46,6 +47,19 @@ static size_t
 convert(const std::string& str)
 {
   return str.empty() ? 0 : std::stoul(str,nullptr,0);
+}
+
+static kernel_type
+to_kernel_type(const std::string& str)
+{
+  if (str == "pl")
+    return kernel_type::pl;
+  else if (str == "ps")
+    return kernel_type::ps;
+  else if (str == "dpu")
+    return kernel_type::dpu;
+
+  return kernel_type::none;
 }
 
 static bool
@@ -866,19 +880,19 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       continue;
 
     // Determine features
-    auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
+    auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox", "none"));
     if (mailbox == kernel_properties::mailbox_type::none)
       mailbox = get_mailbox_from_ini(kname);
-    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.countedAutoRestart","0"));
+    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.countedAutoRestart", "0"));
     if (restart == 0)
       restart = get_restart_from_ini(kname);
-    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.swReset","false"));
+    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.swReset", "false"));
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 
     return kernel_properties
       { kname
-      , kernel_properties::kernel_type::pl
+      , to_kernel_type(xml_kernel.second.get<std::string>("<xmlattr>.type", "pl"))
       , restart
       , mailbox
       , get_address_range(xml_kernel.second)

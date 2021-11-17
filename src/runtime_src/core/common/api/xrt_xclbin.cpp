@@ -298,7 +298,7 @@ public: // purposely not a struct to match decl in xrt_xclbin.h
   std::vector<xclbin::ip> m_cus;
   std::vector<xclbin::arg> m_args;
   std::vector<xrt_core::xclbin::kernel_argument> m_arginfo;
-  
+
 public:
   kernel_impl(std::string&& nm,
               xrt_core::xclbin::kernel_properties&& props,

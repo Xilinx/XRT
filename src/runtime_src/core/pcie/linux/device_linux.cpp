@@ -150,6 +150,7 @@ struct kds_scu_stat
 {
   using result_type = query::kds_scu_stat::result_type;
   using data_type = query::kds_scu_stat::data_type;
+  static constexpr uint32_t scu_domain = 0x10000;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -183,7 +184,7 @@ struct kds_scu_stat
       data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages = std::stoul(std::string(*tok_it++));
       // TODO: Let's avoid this special handling for PS kernel name
-      data.name = data.name + ":scu_" + std::to_string(data.index);
+      data.name = data.name + ":scu_" + std::to_string(data.index & ~(scu_domain));
 
       cuStats.push_back(data);
     }
