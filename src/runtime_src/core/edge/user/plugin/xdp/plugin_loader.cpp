@@ -38,7 +38,7 @@ bool load()
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
       xrt_core::config::get_device_trace() != "off" ||
-      xrt_core::config::get_device_counter()) {
+      xrt_core::config::get_device_counters()) {
     xdp::hal::device_offload::load() ;
   }
 

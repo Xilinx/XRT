@@ -30,8 +30,8 @@ namespace xdp {
     addParameter("opencl_device_counter",
                  xrt_core::config::get_opencl_device_counter(),
                  "Hardware counters added to OpenCL summary file (deprecated)");
-    addParameter("device_counter",
-                 xrt_core::config::get_device_counter(),
+    addParameter("device_counters",
+                 xrt_core::config::get_device_counters(),
                  "Hardware counters added to summary file");
     addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
                  "Generation of Native XRT API function trace");
