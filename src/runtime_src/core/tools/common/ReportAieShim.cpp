@@ -26,17 +26,17 @@
 #define fmt12(x) boost::format("%12s%-22s: " x "\n") % " "
 #define fmt16(x) boost::format("%16s%-22s: " x "\n") % " "
 
-void
-populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc, boost::property_tree::ptree& pt)
+boost::property_tree::ptree
+populate_aie_shim(const xrt_core::device * _pDevice, const std::string& desc)
 {
   xrt::device device(_pDevice->get_device_id());
   boost::property_tree::ptree pt_shim;
+  pt_shim.put("description", desc);
   std::stringstream ss;
   ss << device.get_info<xrt::info::device::aie_shim>();
   boost::property_tree::read_json(ss, pt_shim);
 
-  // There can only be 1 root node
-  pt.add_child("electrical", pt_shim);
+  return pt_shim;
 }
 
 void
@@ -52,9 +52,7 @@ void
 ReportAieShim::getPropertyTree20202(const xrt_core::device * _pDevice, 
                                 boost::property_tree::ptree &_pt) const
 {
-  boost::property_tree::ptree pt;
-  populate_aie_shim(_pDevice, "Aie_Shim_Status", pt);
-  _pt.add_child("aie_shim_status", pt);
+  _pt.add_child("aie_shim_status", populate_aie_shim(_pDevice, "Aie_Shim_Status"));
 }
 
 void 
@@ -92,8 +90,8 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
 
     for (auto &tile : ptShimTiles) {
       int curr_tile = count++;
-      if(std::find(aieTileList.begin(), aieTileList.end(),
-				std::to_string(curr_tile)) == aieTileList.end())
+      if(aieTileList.size() && (std::find(aieTileList.begin(), aieTileList.end(),
+	                       std::to_string(curr_tile)) == aieTileList.end()))
         continue;
 
       _output << boost::format("Tile[%2d]\n") % curr_tile;
@@ -124,7 +122,7 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
           _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
           _output << std::endl;
         }
-      } 
+      }
 
       if(tile.second.find("locks") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "Locks";
