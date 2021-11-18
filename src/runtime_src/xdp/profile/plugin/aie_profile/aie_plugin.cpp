@@ -160,12 +160,12 @@ namespace xdp {
 
     // **** PL/Shim Counters ****
     mShimStartEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL,
-	                               XAIE_EVENT_PORT_TLAST_0_PL}}
+      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
     mShimEndEvents = {
-      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL,
-	                               XAIE_EVENT_PORT_TLAST_0_PL}}
+      {"bandwidths",            {XAIE_EVENT_PORT_RUNNING_0_PL, XAIE_EVENT_PORT_TLAST_0_PL}},
+      {"stalls_idle",           {XAIE_EVENT_PORT_IDLE_0_PL,    XAIE_EVENT_PORT_STALLED_0_PL}}
     };
 
     // String event values for guidance and output
@@ -498,7 +498,8 @@ namespace xdp {
                                                    const std::string metricSet)
   {
     // Currently only used to monitor trace and PL stream
-    if ((metricSet != "aie_trace") && (metricSet != "bandwidths"))
+    if ((metricSet != "aie_trace") && (metricSet != "bandwidths")
+        && (metricSet != "stalls_idle"))
       return;
 
     if (metricSet == "aie_trace") {
