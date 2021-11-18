@@ -506,8 +506,8 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
     }
     image_path = available_shells.front().second.get<std::string>("file");
   }
-  else if(boost::filesystem::exists(boost::filesystem::path(image))) {
-    update_shell(workingDevice->get_device_id(), image, std::string(""));
+  else if (boost::filesystem::exists(image)) {
+    update_shell(workingDevice->get_device_id(), image, {});
     std::cout <<boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n") % getBDF(workingDevice->get_device_id());
     std::cout << "****************************************************\n";
     std::cout << "Cold reboot machine to load the new image on device.\n";
