@@ -172,6 +172,7 @@ for device in working_devices:
   print("=====================================================================")
   print("%d / %d [%s] : %s" % (device_count, len(working_devices), device["bdf"], device["vbnv"]))
   cmd = "${XRT_BIN_DIR}/${xrt_app} --device " + device["bdf"] + " $prog_args"
+  cmd = "${XRT_BIN_DIR}/${xrt_app} $prog_args --device " + device["bdf"]
   print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
   print("Command: %s\n" % cmd)
   exit_code = os.system(cmd)
