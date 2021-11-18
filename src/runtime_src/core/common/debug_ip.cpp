@@ -200,7 +200,6 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   }
   return ret_val;
 
-
 }
 
 // Read ASM counter values using "xread" for Edge and Windows PCIe 
@@ -224,19 +223,11 @@ get_asm_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
              &sample_interval, sizeof(uint32_t));
 
   // Then read all the individual 64-bit counters
-  unsigned long long int curr_data[XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT] ;
-
   for (unsigned int j = 0 ; j < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; ++j) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                dbg_ip_data->m_base_address + asm_offsets[j],
-               &curr_data[j], sizeof(unsigned long long int));
+               &ret_val[j], sizeof(uint64_t));
   }
-
-  ret_val[0] = curr_data[0];
-  ret_val[1] = curr_data[1];
-  ret_val[2] = curr_data[2];
-  ret_val[3] = curr_data[3];
-  ret_val[4] = curr_data[4];
 
   return ret_val;
 
@@ -303,7 +294,7 @@ get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_
   uint32_t ret_val;
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
-                  dbg_ip_data->m_base_address + 0x0,
+                  dbg_ip_data->m_base_address + XACCEL_DEADLOCK_STATUS_OFFSET,
                   &ret_val, sizeof(uint32_t));
 
   return ret_val;
