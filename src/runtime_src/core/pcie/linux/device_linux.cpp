@@ -765,7 +765,7 @@ emplace_sysfs_get(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
   query_tbl.emplace(x, std::make_unique<sysfs_get<QueryRequestType>>(subdev, entry));
-val_buf
+}
 
 template <typename QueryRequestType, typename Getter>
 static void
