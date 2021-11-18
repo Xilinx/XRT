@@ -141,7 +141,8 @@ public:
   void
   set_profile_counter_action(event::action_profile_type&& action)
   {
-    if (xrt_xocl::config::get_opencl_summary())
+    if (xrt_xocl::config::get_opencl_summary() ||
+        xrt_xocl::config::get_opencl_trace())
       m_profile_counter_action = std::move(action) ;
   }
 

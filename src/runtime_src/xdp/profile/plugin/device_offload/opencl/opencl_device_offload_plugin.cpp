@@ -118,10 +118,12 @@ namespace xdp {
 
     // Based on the xrt.ini flags we will support either offload of
     //  either counters only or counters and trace.
-    if (xrt_core::config::get_opencl_device_counter()) {
+    if (xrt_core::config::get_opencl_device_counter() ||
+        xrt_core::config::get_device_counters()) {
       counterOffloadEnabled = true ;
     }
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_stall_trace() != "off") {
       counterOffloadEnabled = true ;
       traceOffloadEnabled = true ;

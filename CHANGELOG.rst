@@ -6,10 +6,13 @@ XRT ChangeLog
 Added
 .....
 
+* Added the xrt.ini profiling flags "device_counter" and "device_trace" 
+
 Removed
 .......
 * Removed deprecated streaming APIs from OpenCL
 * xrt.ini flags "profile," "timeline_trace," and "xrt_profile" no longer load xdp profiling functionality and no longer issue deprecation warning
+* Deprecating the xrt.ini profiling flags "opencl_summary," "data_transfer_trace," and "opencl_device_counter"
 
 2.12.0 (202120.2.12.x)
 ~~~~~~~~~~~~~~~~~~~~~~

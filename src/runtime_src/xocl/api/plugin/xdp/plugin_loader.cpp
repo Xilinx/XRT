@@ -35,7 +35,9 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_opencl_device_counter()) {
+        xrt_core::config::get_device_trace() != "off" ||
+        xrt_core::config::get_opencl_device_counter() ||
+        xrt_core::config::get_device_counters()) {
       xdp::device_offload::load() ;
     }
 
@@ -44,6 +46,7 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_opencl_trace()) {
+      xocl::profile::load_xdp_opencl_counters() ;
       xdp::opencl_trace::load() ;
     }
 
@@ -52,10 +55,25 @@ namespace plugins {
     }
 
     // Deprecation warnings specific to the .ini flags
-    if (xrt_core::config::get_continuous_trace_interval_ms() != 10) {
-      std::string message = "\"continuous_trace_interval_ms\" configuration in xrt.ini will be deprecated in the next release.  Please use \"trace_buffer_offload_interval_ms\" to control trace offload interval." ;
+    if (xrt_core::config::get_opencl_summary()) {
+      std::string msg = "The xrt.ini flag \"opencl_summary\" is deprecated and will be removed in a future release.  A summary file is generated when when any profiling is enabled, so please use the appropriate settings from \"opencl_trace=true\", \"device_counter=true\", and \"device_trace=true.\"" ;
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
-                              message) ;
+                              msg) ;
+    }
+
+    if (xrt_core::config::get_data_transfer_trace() != "off") {
+      std::string msg = xrt_core::config::get_data_transfer_trace_dep_message();
+      if (msg != "") {
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT",
+                                msg) ;
+      }
+    }
+
+    if (xrt_core::config::get_opencl_device_counter()) {
+      std::string msg = "The xrt.ini flag \"opencl_device_counter\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_counter.\"";
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              msg) ;
     }
 
     return true ;
