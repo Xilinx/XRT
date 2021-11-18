@@ -88,7 +88,7 @@ class DebugIpStatusCollector
   xclAccelDeadlockDetectorResults  accelDeadlockResults;
 
 public :
-  DebugIpStatusCollector(xclDeviceHandle h, bool jsonFormat, const xrt_core::device* d, std::ostream& _output = std::cout);
+  DebugIpStatusCollector(xclDeviceHandle h, const xrt_core::device* d);
   ~DebugIpStatusCollector() {}
 
   inline std::string getInfoMessage() { return infoMessage ; }
@@ -127,9 +127,7 @@ private :
 
 
 DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
-                                               bool /*jsonFormat*/,
-                                               const xrt_core::device* d,
-                                               std::ostream& /*_output*/)
+                                               const xrt_core::device* d)
     : handle(h)
     , device(d)
     , infoMessage("")
@@ -1267,7 +1265,7 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   pt.put("description","Status of Debug IPs present in xclbin loaded on device");
   auto handle = _pDevice->get_device_handle();
 
-  DebugIpStatusCollector collector(handle, true, _pDevice);
+  DebugIpStatusCollector collector(handle, _pDevice);
   if (collector.getInfoMessage() != "") {
     pt.put("info", collector.getInfoMessage().c_str()) ;
   } else {

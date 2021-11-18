@@ -292,60 +292,60 @@ struct aim_counter
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
     // read counter values
-    std::string aimName("aximm_mon_");
-    aimName = aimName + std::to_string(dbgIpData->m_base_address);
+    std::string aim_name("aximm_mon_");
+    aim_name = aim_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(aimName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(aim_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "counters";
 
-    result_type retvalBuf(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
+    result_type retval_buf(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
-      return retvalBuf;
+      return retval_buf;
     }
 
     constexpr size_t sz = 256;
     std::array<char, sz> buffer = {0};
     ifs.getline(buffer.data(), sz);
 
-    result_type valBuf;
+    result_type val_buf;
 
     while(!ifs.eof()) {
-      valBuf.push_back(strtoull((const char*)(&buffer), nullptr, 10));
+      val_buf.push_back(strtoull((const char*)(&buffer), nullptr, 10));
       buffer = {0};
       ifs.getline(buffer.data(), sz);
     }
 
-    if (valBuf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
+    if (val_buf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
       std::cout << "\nINFO: Incomplete AIM counter data in " << path << std::endl;
-      while(valBuf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
-        valBuf.push_back(0);
+      while(val_buf.size() < XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT) {
+        val_buf.push_back(0);
       }
     }
 
     /* Note that required return values are NOT in contiguous sequential order 
-     * in AIM subdevice file. So, need to read only a few isolated indices in valBuf.
+     * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
-    retvalBuf[0] = valBuf[0];
-    retvalBuf[1] = valBuf[1];
-    retvalBuf[2] = valBuf[4];
-    retvalBuf[3] = valBuf[5];
-    retvalBuf[4] = valBuf[8];
-    retvalBuf[5] = valBuf[9];
-    retvalBuf[6] = valBuf[10];
-    retvalBuf[7] = valBuf[11];
-    retvalBuf[8] = valBuf[12];
+    retval_buf[0] = val_buf[0];
+    retval_buf[1] = val_buf[1];
+    retval_buf[2] = val_buf[4];
+    retval_buf[3] = val_buf[5];
+    retval_buf[4] = val_buf[8];
+    retval_buf[5] = val_buf[9];
+    retval_buf[6] = val_buf[10];
+    retval_buf[7] = val_buf[11];
+    retval_buf[8] = val_buf[12];
 
-    return retvalBuf;
+    return retval_buf;
   }
 
 };
@@ -361,25 +361,25 @@ struct am_counter
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
     // read counter values
-    std::string amName("accel_mon_");
-    amName = amName + std::to_string(dbgIpData->m_base_address);
+    std::string am_name("accel_mon_");
+    am_name = am_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(amName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(am_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "counters";
 
-    result_type valBuf(XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, 0);
+    result_type val_buf(XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
-      return valBuf;
+      return val_buf;
     }
 
     constexpr size_t sz = 256;
@@ -388,7 +388,7 @@ struct am_counter
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -397,7 +397,7 @@ struct am_counter
     if (idx < XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT)
       std::cout << "\nINFO: Incomplete AM counter data in " << path << std::endl;
 
-    return valBuf;
+    return val_buf;
   }
 
 };
@@ -413,25 +413,25 @@ struct asm_counter
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
     // read counter values
-    std::string asmName("axistream_mon_");
-    asmName = asmName + std::to_string(dbgIpData->m_base_address);
+    std::string asm_name("axistream_mon_");
+    asm_name = asm_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(asmName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(asm_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "counters";
 
-    std::vector<uint64_t> valBuf(XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
+    std::vector<uint64_t> val_buf(XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
-      return valBuf;
+      return val_buf;
     }
 
     constexpr size_t sz = 256;
@@ -440,7 +440,7 @@ struct asm_counter
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = strtoull((const char*)(&buffer), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -449,7 +449,7 @@ struct asm_counter
     if (idx < XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT)
       std::cout << "\nINFO: Incomplete ASM counter data in " << path << std::endl;
 
-    return valBuf;
+    return val_buf;
   }
 };
 
@@ -464,24 +464,24 @@ struct lapc_status
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-    std::string lapcName("lapc_");
-    lapcName = lapcName + std::to_string(dbgIpData->m_base_address);
+    std::string lapc_name("lapc_");
+    lapc_name = lapc_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(lapcName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(lapc_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf(XLAPC_STATUS_PER_SLOT, 0);
+    std::vector<uint32_t> val_buf(XLAPC_STATUS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
-      return valBuf;
+      return val_buf;
     }
 
     constexpr size_t sz = 256;
@@ -490,7 +490,7 @@ struct lapc_status
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -499,7 +499,7 @@ struct lapc_status
     if (idx < XLAPC_STATUS_PER_SLOT)
       std::cout << "\nINFO: Incomplete LAPC data in " << path << std::endl;
 
-    return valBuf;
+    return val_buf;
 
   }
 };
@@ -515,24 +515,24 @@ struct spc_status
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-    std::string spcName("spc_");
-    spcName = spcName + std::to_string(dbgIpData->m_base_address);
+    std::string spc_name("spc_");
+    spc_name = spc_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(spcName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(spc_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "status";
 
-    std::vector<uint32_t> valBuf(XLAPC_STATUS_PER_SLOT, 0);
+    std::vector<uint32_t> val_buf(XLAPC_STATUS_PER_SLOT, 0);
 
     std::ifstream ifs(path);
     if (!ifs) {
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
-      return valBuf;
+      return val_buf;
     }
 
     constexpr size_t sz = 256;
@@ -541,7 +541,7 @@ struct spc_status
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      valBuf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -550,7 +550,7 @@ struct spc_status
     if (idx < XLAPC_STATUS_PER_SLOT)
       std::cout << "\nINFO: Incomplete SPC data in " << path << std::endl;
 
-    return valBuf;
+    return val_buf;
   }
 };
 
@@ -565,24 +565,24 @@ struct accel_deadlock_status
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& arg1)
   {
-    const auto dbgIpData = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
     auto pdev = get_pcidev(device);
 
-    result_type valBuf = 0;
+    result_type val_buf = 0;
 
     // read counter values
-    std::string monName("accel_deadlock_");
-    monName = monName + std::to_string(dbgIpData->m_base_address);
+    std::string mon_name("accel_deadlock_");
+    mon_name = mon_name + std::to_string(dbg_ip_data->m_base_address);
 
-    std::string namePath = pdev->get_sysfs_path(monName.c_str(), "name");
+    std::string name_path = pdev->get_sysfs_path(mon_name.c_str(), "name");
 
-    std::size_t pos = namePath.find_last_of('/');
-    std::string path = namePath.substr(0, pos+1);
+    std::size_t pos = name_path.find_last_of('/');
+    std::string path = name_path.substr(0, pos+1);
     path += "status";
 
     std::ifstream ifs(path);
     if (!ifs) {
-      return valBuf;
+      return val_buf;
     }
 
     constexpr size_t sz = 256;
@@ -590,12 +590,12 @@ struct accel_deadlock_status
     ifs.getline(buffer.data(), sz);
 
     if (!ifs.eof()) {
-      valBuf = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf = std::stoi((const char*)(&buffer), nullptr, 10);
     } else {
       std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
 
-    return valBuf;
+    return val_buf;
 
   }
 };
@@ -765,7 +765,7 @@ emplace_sysfs_get(const char* subdev, const char* entry)
 {
   auto x = QueryRequestType::key;
   query_tbl.emplace(x, std::make_unique<sysfs_get<QueryRequestType>>(subdev, entry));
-}
+val_buf
 
 template <typename QueryRequestType, typename Getter>
 static void
