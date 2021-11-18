@@ -421,5 +421,11 @@
 #define LAPC_SNAPSHOT_STATUS_2_OFFSET     0x208
 #define LAPC_SNAPSHOT_STATUS_3_OFFSET     0x20c
 
+
+/******************* Accelerator Deadlock Detector ***********************/
+
+/* Address offset */
+#define XACCEL_DEADLOCK_STATUS_OFFSET    0x0
+
 #endif /* _PERFMON_PARAMETERS_H_ */
 
