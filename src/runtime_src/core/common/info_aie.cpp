@@ -24,35 +24,45 @@
 namespace qr = xrt_core::query;
 using ptree_type = boost::property_tree::ptree;
 
-const uint32_t major = 1;
-const uint32_t minor = 0;
-const uint32_t patch = 0;
+#define MAJOR_VERSION_NUMBER 1
+#define MINOR_VERSION_NUMBER 0
+#define PATCH_VERSION_NUMBER 0
+
+enum class graph_state {
+  STOP		= 0,
+  RESET		= 1,
+  RUNNING	= 2,
+  SUSPEND	= 3,
+  END		= 4
+};
 
 namespace {
 inline std::string
 graph_status_to_string(int status) {
-  switch(status)
+  switch(static_cast<graph_state>(status))
   {
-    case 0:	return "stop";
-    case 1:	return "reset";
-    case 2:	return "running";
-    case 3:	return "suspend";
-    case 4:     return "end";
-    default:	return "idle";
+    case graph_state::STOP:	return "stop";
+    case graph_state::RESET:	return "reset";
+    case graph_state::RUNNING:	return "running";
+    case graph_state::SUSPEND:	return "suspend";
+    case graph_state::END:	return "end";
+    default:			return "idle";
   }
 }
 
 // Add the node to the ouput list
 static void
-addnodelist(std::string search_str, std::string node_str, boost::property_tree::ptree& input_pt,
-	    boost::property_tree::ptree& output_pt)
+addnodelist(const std::string search_str, const std::string node_str,
+	    const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
 {
   boost::property_tree::ptree pt_array;
-  for (auto& node : input_pt.get_child(search_str)) {
+  for (const auto& node : input_pt.get_child(search_str)) {
     boost::property_tree::ptree pt;
     std::string val;
-    for (auto& value : node.second)
-      val += (val.empty() ? "" : ", ") + value.second.data();
+    for (const auto& value : node.second) {
+      val += val.empty() ? "" : ", ";
+      val += value.second.data();
+    }
 
     pt.put("name", node.first);
     pt.put("value", val);
@@ -63,17 +73,18 @@ addnodelist(std::string search_str, std::string node_str, boost::property_tree::
 
 // This function extract DMA information for both AIE core and tiles
 static void
-populate_aie_dma(boost::property_tree::ptree pt, boost::property_tree::ptree& pt_dma)
+populate_aie_dma(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_dma)
 {
   boost::property_tree::ptree mm2s_array;
   boost::property_tree::ptree s2mm_array;
+  boost::property_tree::ptree empty_pt;
 
-  auto queue_size = pt.get_child("dma.queue_size.mm2s").begin();
-  auto queue_status = pt.get_child("dma.queue_status.mm2s").begin();
-  auto current_bd = pt.get_child("dma.current_bd.mm2s").begin();
+  auto queue_size = pt.get_child("dma.queue_size.mm2s", empty_pt).begin();
+  auto queue_status = pt.get_child("dma.queue_status.mm2s", empty_pt).begin();
+  auto current_bd = pt.get_child("dma.current_bd.mm2s", empty_pt).begin();
   int id = 0;
 
-  for (auto& node : pt.get_child("dma.channel_status.mm2s")) {
+  for (const auto& node : pt.get_child("dma.channel_status.mm2s", empty_pt)) {
     boost::property_tree::ptree channel;
     channel.put("id", id++);
     channel.put("channel_status", node.second.data());
@@ -88,11 +99,11 @@ populate_aie_dma(boost::property_tree::ptree pt, boost::property_tree::ptree& pt
 
   pt_dma.add_child("dma.mm2s.channel", mm2s_array);
 
-  queue_size = pt.get_child("dma.queue_size.s2mm").begin();
-  queue_status = pt.get_child("dma.queue_status.s2mm").begin();
-  current_bd = pt.get_child("dma.current_bd.s2mm").begin();
+  queue_size = pt.get_child("dma.queue_size.s2mm", empty_pt).begin();
+  queue_status = pt.get_child("dma.queue_status.s2mm", empty_pt).begin();
+  current_bd = pt.get_child("dma.current_bd.s2mm", empty_pt).begin();
   id = 0;
-  for (auto& node : pt.get_child("dma.channel_status.s2mm")) {
+  for (const auto& node : pt.get_child("dma.channel_status.s2mm", empty_pt)) {
     boost::property_tree::ptree channel;
     channel.put("id", id++);
     channel.put("channel_status", node.second.data());
@@ -112,21 +123,23 @@ populate_aie_dma(boost::property_tree::ptree pt, boost::property_tree::ptree& pt
 
 // This function extract ERRORs information for both AIE core and tiles
 static void
-populate_aie_errors(boost::property_tree::ptree pt, boost::property_tree::ptree& pt_err)
+populate_aie_errors(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_err)
 {
   boost::property_tree::ptree module_array;
   boost::property_tree::ptree empty_pt;
 
-  for (auto& node : pt.get_child("errors", empty_pt)) {
+  for (const auto& node : pt.get_child("errors", empty_pt)) {
     boost::property_tree::ptree module;
     module.put("module",node.first);
     boost::property_tree::ptree type_array;
-    for (auto& type : node.second) {
+    for (const auto& type : node.second) {
       boost::property_tree::ptree enode;
-      enode.put("name",type.first);
+      enode.put("name", type.first);
       std::string val;
-      for (auto& value: type.second)
-        val += (val.empty() ? "" : ", ") + value.second.data();
+      for (const auto& value: type.second) {
+        val += val.empty() ? "" : ", ";
+	val += value.second.data();
+      }
 
       enode.put("value", val);
       type_array.push_back(std::make_pair("", enode));
@@ -235,13 +248,13 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
   pt.put("description", desc);
-  boost::property_tree::ptree _pt;
+  boost::property_tree::ptree pt_shim;
 
   try {
     // Read AIE Shim information from te sysfs entry of the device
     std::string aie_data = xrt_core::device_query<qr::aie_shim_info>(device);
     std::stringstream ss(aie_data);
-    boost::property_tree::read_json(ss, _pt);
+    boost::property_tree::read_json(ss, pt_shim);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
@@ -252,8 +265,8 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
     // Populate the shim information such as dma, lock, error, events
     // for each tiles.
-    for (auto& as: _pt.get_child("aie_shim")) {
-      boost::property_tree::ptree& oshim = as.second;
+    for (const auto& as: pt_shim.get_child("aie_shim")) {
+      const boost::property_tree::ptree& oshim = as.second;
       boost::property_tree::ptree ishim;
       int col = oshim.get<uint32_t>("col");
       int row = oshim.get<uint32_t>("row");
@@ -262,19 +275,19 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
       ishim.put("row", row);
 
       // Populate DMA information
-      if(oshim.find("dma") != oshim.not_found())
+      if (oshim.find("dma") != oshim.not_found())
         populate_aie_dma(oshim, ishim);
 
       // Populate ERROR information
-      if(oshim.find("errors") != oshim.not_found())
+      if (oshim.find("errors") != oshim.not_found())
         populate_aie_errors(oshim, ishim);
 
       // Populate LOCK information
-      if(oshim.find("lock") != oshim.not_found())
+      if (oshim.find("lock") != oshim.not_found())
         addnodelist("lock", "locks", oshim, ishim);
 
       // Populate EVENT information
-      if(oshim.find("event") != oshim.not_found())
+      if (oshim.find("event") != oshim.not_found())
         addnodelist("event", "events", oshim, ishim);
 
       tile_array.push_back(std::make_pair("tile" + std::to_string(col), ishim));
@@ -393,45 +406,46 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
 // This funtion populate a specific AIE core given as an input of [row:col]
 void
-populate_aie_core(boost::property_tree::ptree pt_core, boost::property_tree::ptree& tile,
+populate_aie_core(const boost::property_tree::ptree pt_core, boost::property_tree::ptree& tile,
 		  int row, int col)
 {
   try {
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
-    pt =  pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
+    pt = pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
 
     std::string status;
-    for (auto& node: pt.get_child("core.status", empty_pt)) {
-      status += (status.empty() ? "" : ", ") + node.second.data();
+    for (const auto& node: pt.get_child("core.status", empty_pt)) {
+      status += status.empty() ? "" : ", ";
+      status += node.second.data();
     }
 
-    if(!status.empty())
+    if (!status.empty())
       tile.put("core.status", status);
 
-    for (auto& node: pt.get_child("core.pc", empty_pt))
+    for (const auto& node: pt.get_child("core.pc", empty_pt))
       tile.put("core.program_counter", node.second.data());
 
-    for (auto& node: pt.get_child("core.lr", empty_pt))
+    for (const auto& node: pt.get_child("core.lr", empty_pt))
       tile.put("core.link_register", node.second.data());
 
-    for (auto& node: pt.get_child("core.sp", empty_pt))
+    for (const auto& node: pt.get_child("core.sp", empty_pt))
       tile.put("core.stack_pointer", node.second.data());
 
     // Add DMA information to the tiles
-    if(pt.find("dma") != pt.not_found())
+    if (pt.find("dma") != pt.not_found())
       populate_aie_dma(pt, tile);
 
     // Add ERROR information to the tiles
-    if(pt.find("errors") != pt.not_found())
+    if (pt.find("errors") != pt.not_found())
       populate_aie_errors(pt, tile);
 
     // Add LOCK information to the tiles
-    if(pt.find("lock") != pt.not_found())
+    if (pt.find("lock") != pt.not_found())
       addnodelist("lock", "locks", pt, tile);
 
     // Add EVENT information to the tiles
-    if(pt.find("event") != pt.not_found())
+    if (pt.find("event") != pt.not_found())
       addnodelist("event", "events", pt, tile);
 
   } catch (const std::exception& ex){
@@ -441,11 +455,12 @@ populate_aie_core(boost::property_tree::ptree pt_core, boost::property_tree::ptr
 
 // Populate RTPs for AIE Cores
 void
-populate_aie_core_rtp(boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
+populate_aie_core_rtp(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
 {
   boost::property_tree::ptree rtp_array;
+  boost::property_tree::ptree empty_pt;
 
-  for (auto& rtp_node : pt.get_child("aie_metadata.RTPs")) {
+  for (const auto& rtp_node : pt.get_child("aie_metadata.RTPs", empty_pt)) {
     boost::property_tree::ptree rtp;
 
     rtp.put("port_name", rtp_node.second.get<std::string>("port_name"));
@@ -477,10 +492,12 @@ populate_aie_core_rtp(boost::property_tree::ptree pt, boost::property_tree::ptre
 
 // Populate GMIOs for AIE Cores
 void
-populate_aie_core_gmio(boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
+populate_aie_core_gmio(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
 {
   boost::property_tree::ptree gmio_array;
-  for (auto& gmio_node : pt.get_child("aie_metadata.GMIOs")) {
+  boost::property_tree::ptree empty_pt;
+
+  for (const auto& gmio_node : pt.get_child("aie_metadata.GMIOs", empty_pt)) {
     boost::property_tree::ptree gmio;
     gmio.put("id", gmio_node.second.get<std::string>("id"));
     gmio.put("name", gmio_node.second.get<std::string>("name"));
@@ -507,14 +524,15 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   std::vector<std::string> graph_status;
   pt.put("description", desc);
   boost::property_tree::ptree graph_array;
-  boost::property_tree::ptree _pt;
-  boost::property_tree::ptree _gh_status;
-  boost::property_tree::ptree _core_info;
+  boost::property_tree::ptree pt_aie;
+  boost::property_tree::ptree gh_status;
+  boost::property_tree::ptree core_info;
+  boost::property_tree::ptree empty_pt;
 
   try {
     aie_data = xrt_core::device_query<qr::aie_metadata>(device);
     std::stringstream ss(aie_data);
-    boost::property_tree::read_json(ss, _pt);
+    boost::property_tree::read_json(ss, pt_aie);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
@@ -523,7 +541,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   try {
     aie_core_data = xrt_core::device_query<qr::aie_core_info>(device);
     std::stringstream ss(aie_core_data);
-    boost::property_tree::read_json(ss, _core_info);
+    boost::property_tree::read_json(ss, core_info);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
     return pt;
@@ -533,25 +551,25 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
     graph_status = xrt_core::device_query<qr::graph_status>(device);
     std::stringstream ss;
     std::copy(graph_status.begin(), graph_status.end(), std::ostream_iterator<std::string>(ss));
-    boost::property_tree::read_json(ss, _gh_status);
+    boost::property_tree::read_json(ss, gh_status);
   } catch (const std::exception& ex){
     pt.put("error_msg", ex.what());
   }
 
   try {
-    if(_pt.get<uint32_t>("schema_version.major") != major ||
-         _pt.get<uint32_t>("schema_version.minor") != minor ||
-         _pt.get<uint32_t>("schema_version.patch") != patch ) {
+    if (pt_aie.get<uint32_t>("schema_version.major") != MAJOR_VERSION_NUMBER ||
+         pt_aie.get<uint32_t>("schema_version.minor") != MINOR_VERSION_NUMBER ||
+         pt_aie.get<uint32_t>("schema_version.patch") != PATCH_VERSION_NUMBER ) {
       pt.put("error_msg", (boost::format("major:minor:patch [%d:%d:%d] version are not matching")
-          % _pt.get<uint32_t>("schema_version.major")
-          % _pt.get<uint32_t>("schema_version.minor")
-          % _pt.get<uint32_t>("schema_version.patch")));
+          % pt_aie.get<uint32_t>("schema_version.major")
+          % pt_aie.get<uint32_t>("schema_version.minor")
+          % pt_aie.get<uint32_t>("schema_version.patch")));
       return pt;
     }
 
-    pt.put("schema_version.major", major);
-    pt.put("schema_version.minor", minor);
-    pt.put("schema_version.patch", patch);
+    pt.put("schema_version.major", MAJOR_VERSION_NUMBER);
+    pt.put("schema_version.minor", MINOR_VERSION_NUMBER);
+    pt.put("schema_version.patch", PATCH_VERSION_NUMBER);
 
     /*
      * sample AIE json which can be parsed
@@ -625,19 +643,19 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
     */
 
     // Extract Graphs from aie_metadata and populate the aie
-    for (auto& gr: _pt.get_child("aie_metadata.graphs")) {
+    for (auto& gr: pt_aie.get_child("aie_metadata.graphs", empty_pt)) {
       boost::property_tree::ptree& ograph = gr.second;
       boost::property_tree::ptree igraph;
       boost::property_tree::ptree tile_array;
       boost::property_tree::ptree core_array;
       igraph.put("id", ograph.get<std::string>("id"));
       igraph.put("name", ograph.get<std::string>("name"));
-      igraph.put("status", graph_status_to_string(_gh_status.get<int>("graphs." + ograph.get<std::string>("name"), -1)));
+      igraph.put("status", graph_status_to_string(gh_status.get<int>("graphs." + ograph.get<std::string>("name"), -1)));
       auto row_it = gr.second.get_child("core_rows").begin();
       auto memcol_it = gr.second.get_child("iteration_memory_columns").begin();
       auto memrow_it = gr.second.get_child("iteration_memory_rows").begin();
       auto memaddr_it = gr.second.get_child("iteration_memory_addresses").begin();
-      for (auto& node : gr.second.get_child("core_columns")) {
+      for (const auto& node : gr.second.get_child("core_columns", empty_pt)) {
         boost::property_tree::ptree tile;
         boost::property_tree::ptree core_tile;
         tile.put("column", node.second.data());
@@ -647,7 +665,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
         tile.put("memory_address", memaddr_it->second.data());
         int row = tile.get<int>("row");
         int col = tile.get<int>("column");
-        populate_aie_core(_core_info, tile, row, col);
+        populate_aie_core(core_info, tile, row, col);
         row_it++;
         memcol_it++;
         memrow_it++;
@@ -657,7 +675,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
 
       boost::property_tree::ptree plkernel_array;
       // Get the name of the kernls available for this graph
-      for (auto& node : gr.second.get_child("pl_kernel_instance_names")) {
+      for (const auto& node : gr.second.get_child("pl_kernel_instance_names", empty_pt)) {
         boost::property_tree::ptree plkernel;
         plkernel.put("", node.second.data());
         plkernel_array.push_back(std::make_pair("", plkernel));
@@ -670,10 +688,10 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
     pt.add_child("graphs", graph_array);
 
     // Extract RTPs from aie_metadata and populate the aie_core
-    populate_aie_core_rtp(_pt, pt);
+    populate_aie_core_rtp(pt_aie, pt);
 
     // Extract GMIOs from aie_metadata and populate the aie_core
-    populate_aie_core_gmio(_pt, pt);
+    populate_aie_core_gmio(pt_aie, pt);
 
   } catch (const std::exception& ex){
     pt.put("error_msg", (boost::format("%s %s") % ex.what() % "found in the AIE Metadata"));

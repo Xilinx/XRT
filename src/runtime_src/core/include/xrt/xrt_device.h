@@ -85,9 +85,9 @@ namespace info {
  * @var host
  *  Host information (std::string)
  * @var aie
- *  AIE Core information of the device (std::string)
+ *  AIE core information of the device (std::string)
  * @var aie_shim
- *  AIE Shim information of the device (std::string)
+ *  AIE shim information of the device (std::string)
  * @var dynamic_regions
  *  Information about xclbin on the device (std::string)
  */

@@ -27,10 +27,10 @@
 #include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/sensor.h"
+#include "core/common/info_aie.h"
 #include "core/common/info_memory.h"
 #include "core/common/info_platform.h"
 #include "core/common/query_requests.h"
-#include "core/common/info_aie.h"
 
 #include "handle.h"
 #include "native_profile.h"
