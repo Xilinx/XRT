@@ -101,6 +101,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   boost::property_tree::ptree ptKernelAttributes;
   ptKernelAttributes.put("name", kernelName);
   ptKernelAttributes.put("language", "c");
+  ptKernelAttributes.put("type", "dpu");
   ptKernelXML.add_child("<xmlattr>", ptKernelAttributes);
 
   // -- Build kernel arguments

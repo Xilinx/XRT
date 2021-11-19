@@ -16,7 +16,7 @@
                 "m_interrupt_id": "0",
                 "m_ip_control": "AP_CTRL_HS",
                 "m_base_address": "not_used",
-                "m_name": "MyKernel:IPUV1CNN"
+                "m_name": "DPU:IPUV1CNN"
             }
         ]
     }
