@@ -84,9 +84,9 @@ namespace xdp {
         column(col),
         row(r),
         counterNumber(num),
+        resetEvent(reset),
         startEvent(start),
         endEvent(end),
-        resetEvent(reset),
         clockFreqMhz(freq),
         module(mod),
         name(aieName)
