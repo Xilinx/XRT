@@ -11,3 +11,10 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 endif()
 
 install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  if (NOT WIN32)
+    # Use PROGRAMGS to allow for execution. This is recommended in the CMake documentation
+    # https://cmake.org/cmake/help/latest/command/install.html#files
+    install (PROGRAMS "./xbutil2/bash-completion/xbutil" DESTINATION "/usr/share/bash-completion/completions")
+  endif()
+endif()
