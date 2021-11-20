@@ -70,7 +70,9 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
       device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                         dbg_ip_data->m_base_address + aim_upper_offsets[c],
                         &curr_data[c], sizeof(uint32_t));
+      ret_val[c] = (((uint64_t)(curr_data[c])) << 32 );
     }
+#if 0
     ret_val[0] = (((uint64_t)(curr_data[0])) << 32 );
     ret_val[1] = (((uint64_t)(curr_data[1])) << 32 );
     ret_val[2] = (((uint64_t)(curr_data[2])) << 32 );
@@ -80,14 +82,17 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
     ret_val[6] = (((uint64_t)(curr_data[6])) << 32 );
     ret_val[7] = (((uint64_t)(curr_data[7])) << 32 );
     ret_val[8] = (((uint64_t)(curr_data[8])) << 32 );
+#endif
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                       dbg_ip_data->m_base_address + aim_offsets[c],
                       &curr_data[c], sizeof(uint32_t));
+    ret_val[c] |= curr_data[c];
   }
 
+#if 0
   ret_val[0] |= curr_data[0];
   ret_val[1] |= curr_data[1];
   ret_val[2] |= curr_data[2];
@@ -97,6 +102,7 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
   ret_val[6] |= curr_data[6];
   ret_val[7] |= curr_data[7];
   ret_val[8] |= curr_data[8];
+#endif
 
   return ret_val;
 
@@ -264,7 +270,19 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
   ret_val[6] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+1);
   ret_val[7] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+2);
   ret_val[8] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+3);
-  
+
+#if 0
+  ret_val[0] = curr_data[XLAPC_OVERALL_STATUS];
+  ret_val[1] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+0);
+  ret_val[2] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+1);
+  ret_val[3] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+2);
+  ret_val[4] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+3);
+  ret_val[5] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+0);
+  ret_val[6] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+1);
+  ret_val[7] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+2);
+  ret_val[8] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+3);
+#endif
+ 
   return ret_val;
 }
 
@@ -295,7 +313,7 @@ get_accel_deadlock_status(const xrt_core::device* device, debug_ip_data* dbg_ip_
 
   device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON,
                   dbg_ip_data->m_base_address + XACCEL_DEADLOCK_STATUS_OFFSET,
-                  &ret_val, sizeof(uint32_t));
+                  &ret_val, sizeof(ret_val));
 
   return ret_val;
 }
