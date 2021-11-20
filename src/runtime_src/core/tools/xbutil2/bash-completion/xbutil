@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+# bash completion for xbutil                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
@@ -104,3 +104,5 @@ _xbutil_completion()
 }
 
 complete -F _xbutil_completion xbutil
+
+# ex: filetype=sh
