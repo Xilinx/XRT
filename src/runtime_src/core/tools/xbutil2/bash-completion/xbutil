@@ -1,0 +1,106 @@
+#/usr/bin/env bash
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+#
+
+# Generates the command word options dependant on the previous word
+# using COMPREPLY
+# If an option requires an argument, it will not provide a list through
+# COMPREPLY
+# 
+# Parameters:
+# 1: The complete list of options for the previous word
+_command_word_xbutil_completion()
+{
+  # Get the righthand most word on the command line
+  currentWord=${COMP_WORDS[COMP_CWORD]}
+  # The previous word is used 
+  previousWord=${COMP_WORDS[COMP_CWORD-1]}
+  # Each defined case requires an argument so no reply is given
+  # All other cases default to using `compgen` output to format COMPREPLY
+  case ${previousWord} in
+    --device)
+      ;;
+    -d)
+      ;;
+    --user)
+      ;;
+    -u)
+      ;;
+    --run)
+      ;;
+    --format)
+      ;;
+    -f)
+      ;;
+    --output)
+      ;;
+    -o)
+      ;;
+    --report)
+      ;;
+    --type)
+      ;;
+    -t)
+      ;;
+    # -r shorthand applies to multiple commands under xbutil and requires additional processing
+    # Assuming we want to add something here one day
+    -r)
+      ;;
+    *)
+      # The format of the compgen commands options is seperated from the current word using a --.
+      # The -- character signifies the end of command options. All following arguments are positional.
+      COMPREPLY=($(compgen -W "$1" -- ${currentWord}))
+      ;;
+  esac
+}
+
+# The main function populating the COMPREPLY
+_xbutil_completion()
+{
+  # COMP_CWORD is the current index of the cursor in the command line
+  # 0 is the first argument (xbutil), 1 is the desired command for xbutil,
+  # 2 is an option for the command, etc.
+  case ${COMP_CWORD} in
+    # Case for command after xbutil
+    1)
+      commandWordOptions="program validate examine configure reset"
+      _command_word_xbutil_completion "${commandWordOptions}"
+      ;;
+    # Case for options after the above command is entered
+    *)
+      # Command word is used to specify further options as the command expands
+      commandWord=${COMP_WORDS[1]}
+      # Options that appear for all commands
+      commonSubCommands="--verbose --batch --force --help -h --version --device -d"
+      # Once a command is identified the options will always be the same
+      case ${commandWord} in
+        "program")
+          programOptions="${commonSubCommands} --user -u"
+          _command_word_xbutil_completion "${programOptions}"
+          ;;
+        "validate")
+          validateOptions="${commonSubCommands} --run -r --format -f --output -o"
+          _command_word_xbutil_completion "${validateOptions}"
+          ;;
+        "examine")
+          examineOptions="${commonSubCommands} --report -r --format -f --output -o"
+          _command_word_xbutil_completion "${examineOptions}"
+          ;;
+        "configure")
+          configureOptions="${commonSubCommands} --host-mem --p2p --size"
+          _command_word_xbutil_completion "${configureOptions}"
+          ;;
+        "reset")
+          resetOptions="${commonSubCommands} --type -t"
+          _command_word_xbutil_completion "${resetOptions}"
+          ;;
+        # Return an empty reply if an invalid command is entered
+        *)
+          ;;
+      esac
+      ;;
+  esac
+}
+
+complete -F _xbutil_completion xbutil
