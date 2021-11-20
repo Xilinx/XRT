@@ -490,7 +490,7 @@ struct lapc_status
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      val_buf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = std::stoi(buffer.data(), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -541,7 +541,7 @@ struct spc_status
 
     size_t idx = 0;
     while(!ifs.eof()) {
-      val_buf[idx] = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf[idx] = std::stoi(buffer.data(), nullptr, 10);
       idx++;
       buffer = {0};
       ifs.getline(buffer.data(), sz);
@@ -590,13 +590,12 @@ struct accel_deadlock_status
     ifs.getline(buffer.data(), sz);
 
     if (!ifs.eof()) {
-      val_buf = std::stoi((const char*)(&buffer), nullptr, 10);
+      val_buf = std::stoi(buffer.data(), nullptr, 10);
     } else {
       std::cout << "\nINFO: Incomplete Accelerator Deadlock detector status in " << path << std::endl;
     }
 
     return val_buf;
-
   }
 };
 
