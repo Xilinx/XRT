@@ -297,7 +297,7 @@ struct aim_counter
 
     // read counter values
     std::string aim_name("aximm_mon_");
-    aim_name = aim_name + std::to_string(dbg_ip_data->m_base_address);
+    aim_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(aim_name.c_str(), "name");
 
@@ -366,7 +366,7 @@ struct am_counter
 
     // read counter values
     std::string am_name("accel_mon_");
-    am_name = am_name + std::to_string(dbg_ip_data->m_base_address);
+    am_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(am_name.c_str(), "name");
 
@@ -418,7 +418,7 @@ struct asm_counter
 
     // read counter values
     std::string asm_name("axistream_mon_");
-    asm_name = asm_name + std::to_string(dbg_ip_data->m_base_address);
+    asm_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(asm_name.c_str(), "name");
 
@@ -468,7 +468,7 @@ struct lapc_status
     auto pdev = get_pcidev(device);
 
     std::string lapc_name("lapc_");
-    lapc_name = lapc_name + std::to_string(dbg_ip_data->m_base_address);
+    lapc_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(lapc_name.c_str(), "name");
 
@@ -519,7 +519,7 @@ struct spc_status
     auto pdev = get_pcidev(device);
 
     std::string spc_name("spc_");
-    spc_name = spc_name + std::to_string(dbg_ip_data->m_base_address);
+    spc_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(spc_name.c_str(), "name");
 
@@ -572,7 +572,7 @@ struct accel_deadlock_status
 
     // read counter values
     std::string mon_name("accel_deadlock_");
-    mon_name = mon_name + std::to_string(dbg_ip_data->m_base_address);
+    mon_name += std::to_string(dbg_ip_data->m_base_address);
 
     std::string name_path = pdev->get_sysfs_path(mon_name.c_str(), "name");
 
