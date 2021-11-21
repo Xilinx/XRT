@@ -965,6 +965,13 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 		goto done;
 	}
 
+	drm_p->bo_usage_stat = vzalloc(XOCL_BO_USAGE_TOTAL * sizeof(struct drm_xocl_mm_stat));
+	if (!drm_p->bo_usage_stat) {
+		err = -ENOMEM;
+		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		goto done;
+	}
+
 	drm_p->cma_bank_idx = -1;
 	for (i = 0; i < group_topo->m_count; i++) {
 		mem_data = &group_topo->m_mem_data[i];
