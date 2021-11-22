@@ -1271,8 +1271,7 @@ static int xgq_probe(struct platform_device *pdev)
 		goto attach_failed;
 	}
 
-	flags &= ~XGQ_SERVER;
-	ret = xgq_attach(&xgq->xgq_queue, flags, (u64)xgq->xgq_ring_base,
+	ret = xgq_attach(&xgq->xgq_queue, flags, 0, (u64)xgq->xgq_ring_base,
 		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);
 	if (ret != 0) {
 		XGQ_ERR(xgq, "xgq_attache failed: %d, please reset device", ret);
