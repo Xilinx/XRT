@@ -53,7 +53,7 @@ struct kernel_argument
 // struct kernel_properties - kernel property metadata
 struct kernel_properties
 {
-  enum class kernel_type { none, pl, ps };
+  enum class kernel_type { none, pl, ps, dpu };
   enum class mailbox_type { none, in , out, inout };
   using restart_type = size_t;
   std::string name;
