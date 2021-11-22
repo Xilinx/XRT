@@ -230,7 +230,8 @@ namespace xdp {
     auto row = tile.row + 1;
     auto loc = XAie_TileLoc(col, row);
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "Core" 
-        : ((mod == XAIE_MEM_MOD) ? "Memory" : "Shim");
+                           : ((mod == XAIE_MEM_MOD) ? "Memory" 
+                           : "Shim");
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
       XAIEDEV_DEFAULT_GROUP_STATIC,
@@ -262,8 +263,8 @@ namespace xdp {
     uint32_t numFreeCtr = 0;
     uint32_t tileId = 0;
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-        : ((mod == XAIE_MEM_MOD) ? "memory" : "shim");
-    
+                           : ((mod == XAIE_MEM_MOD) ? "memory" 
+                           : "shim");
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
     // Calculate number of free counters based on minimum available across tiles
@@ -282,9 +283,11 @@ namespace xdp {
     }
 
     auto requestedEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
-          : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] : mShimStartEvents[metricSet]);
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
+                         : mShimStartEvents[metricSet]);
     auto eventStrings    = (mod == XAIE_CORE_MOD) ? mCoreEventStrings[metricSet]
-          : ((mod == XAIE_MEM_MOD) ? mMemoryEventStrings[metricSet] : mShimEventStrings[metricSet]);
+                         : ((mod == XAIE_MEM_MOD) ? mMemoryEventStrings[metricSet] 
+                         : mShimEventStrings[metricSet]);
 
     auto numTotalEvents = requestedEvents.size();
     if (numFreeCtr < numTotalEvents) {
@@ -335,13 +338,16 @@ namespace xdp {
     //     * aie_profile_memory_metrics = {<mincolumn,<minrow>}:{<maxcolumn>,<maxrow>}:<dma_locks|conflicts>
     std::string metricSet  = vec.at( vec.size()-1 );
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-        : ((mod == XAIE_MEM_MOD) ? "memory" : "shim");
+                           : ((mod == XAIE_MEM_MOD) ? "memory" 
+                           : "shim");
     
     // Ensure requested metric set is supported (if not, use default)
     if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
         || ((mod == XAIE_MEM_MOD) && (mMemoryStartEvents.find(metricSet) == mMemoryStartEvents.end()))
         || ((mod == XAIE_PL_MOD) && (mShimStartEvents.find(metricSet) == mShimStartEvents.end()))) {
-      std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" : ((mod == XAIE_MEM_MOD) ? "conflicts" : "bandwidths");
+      std::string defaultSet = (mod == XAIE_CORE_MOD) ? "heat_map" 
+                             : ((mod == XAIE_MEM_MOD) ? "conflicts" 
+                             : "bandwidths");
       std::stringstream msg;
       msg << "Unable to find " << moduleName << " metric set " << metricSet
           << ". Using default of " << defaultSet << ".";
@@ -458,7 +464,8 @@ namespace xdp {
     // Report tiles (debug only)
     {
       std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
-          : ((mod == XAIE_MEM_MOD) ? "memory" : "shim");
+                             : ((mod == XAIE_MEM_MOD) ? "memory" 
+                             : "shim");
       std::stringstream msg;
       msg << "Tiles used for AIE " << moduleName << " profile counters: ";
       for (auto& tile : tiles) {
@@ -509,7 +516,7 @@ namespace xdp {
       if (ret != AieRC::XAIE_OK)
         return;
 
-      uint32_t rscId;
+      uint32_t rscId = 0;
       XAie_LocType tmpLoc;
       XAie_ModuleType tmpMod;
       switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
@@ -526,7 +533,7 @@ namespace xdp {
     if (ret != AieRC::XAIE_OK)
       return;
 
-    uint32_t rscId;
+    uint32_t rscId = 0;
     XAie_LocType tmpLoc;
     XAie_ModuleType tmpMod;
     switchPortRsc->getRscId(tmpLoc, tmpMod, rscId);
@@ -534,7 +541,7 @@ namespace xdp {
     // Grab slave/master and stream ID
     // NOTE: stored in getTilesForProfiling() above
     auto slaveOrMaster = (tile.itr_mem_col == 0) ? XAIE_STRMSW_SLAVE : XAIE_STRMSW_MASTER;
-    auto streamPortId  = (uint8_t)(tile.itr_mem_row);
+    auto streamPortId  = static_cast<uint8_t>(tile.itr_mem_row);
 
     // Define stream switch port to monitor PLIO 
     XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
@@ -554,20 +561,24 @@ namespace xdp {
 
     int counterId = 0;
     bool runtimeCounters = false;
+    constexpr int NUM_MODULES = 3;
 
     // Get AIE clock frequency
 	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
-    int numCounters[3]                = {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
-    XAie_ModuleType falModuleTypes[3] = {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
-    std::string moduleNames[3]        = {"core", "memory", "shim"};
-    std::string metricSettings[3]     = {xrt_core::config::get_aie_profile_core_metrics(),
-                                         xrt_core::config::get_aie_profile_memory_metrics(),
-                                         xrt_core::config::get_aie_profile_shim_metrics()};
+    int numCounters[NUM_MODULES] =
+        {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
+    XAie_ModuleType falModuleTypes[NUM_MODULES] = 
+        {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
+    std::string moduleNames[NUM_MODULES] = {"core", "memory", "shim"};
+    std::string metricSettings[NUM_MODULES] = 
+        {xrt_core::config::get_aie_profile_core_metrics(),
+         xrt_core::config::get_aie_profile_memory_metrics(),
+         xrt_core::config::get_aie_profile_shim_metrics()};
 
     // Configure core, memory, and shim counters
-    for (int module=0; module < 3; ++module) {
+    for (int module=0; module < NUM_MODULES; ++module) {
       std::string metricsStr = metricSettings[module];
       if (metricsStr.empty())
         continue;
@@ -575,20 +586,22 @@ namespace xdp {
       int NUM_COUNTERS       = numCounters[module];
       XAie_ModuleType mod    = falModuleTypes[module];
       std::string moduleName = moduleNames[module];
-      auto metricSet = getMetricSet(mod, metricsStr);
-      auto tiles = getTilesForProfiling(mod, metricsStr, handle);
+      auto metricSet         = getMetricSet(mod, metricsStr);
+      auto tiles             = getTilesForProfiling(mod, metricsStr, handle);
 
       // Ask Resource manager for resource availability
-      auto numFreeCounters  = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
+      auto numFreeCounters   = getNumFreeCtr(aieDevice, tiles, mod, metricSet);
       if (numFreeCounters == 0)
         continue;
 
       // Get vector of pre-defined metrics for this set
       uint8_t resetEvent = 0;
       auto startEvents = (mod == XAIE_CORE_MOD) ? mCoreStartEvents[metricSet]
-          : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] : mShimStartEvents[metricSet]);
+                       : ((mod == XAIE_MEM_MOD) ? mMemoryStartEvents[metricSet] 
+                       : mShimStartEvents[metricSet]);
       auto endEvents   = (mod == XAIE_CORE_MOD) ? mCoreEndEvents[metricSet]
-          : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] : mShimEndEvents[metricSet]);
+                       : ((mod == XAIE_MEM_MOD) ? mMemoryEndEvents[metricSet] 
+                       : mShimEndEvents[metricSet]);
 
       int numTileCounters[NUM_COUNTERS+1] = {0};
       
@@ -599,11 +612,13 @@ namespace xdp {
         auto row = tile.row;
         
         // NOTE: resource manager requires absolute row number
-        auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) : XAie_TileLoc(col, row + 1);
+        auto loc        = (mod == XAIE_PL_MOD) ? XAie_TileLoc(col, 0) 
+                        : XAie_TileLoc(col, row + 1);
         auto& xaieTile  = (mod == XAIE_PL_MOD) ? aieDevice->tile(col, 0) 
-            : aieDevice->tile(col, row + 1);
+                        : aieDevice->tile(col, row + 1);
         auto xaieModule = (mod == XAIE_CORE_MOD) ? xaieTile.core()
-            : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() : xaieTile.pl());
+                        : ((mod == XAIE_MEM_MOD) ? xaieTile.mem() 
+                        : xaieTile.pl());
         
         for (int i=0; i < numFreeCounters; ++i) {
           // Request counter from resource manager
@@ -627,11 +642,11 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &tmpStart);
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &tmpEnd);
           uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
-              : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
-              : (tmpStart + BASE_SHIM_COUNTER));
-          uint16_t phyEndEvent = (mod == XAIE_CORE_MOD) ? tmpEnd
-              : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
-              : (tmpEnd + BASE_SHIM_COUNTER));
+                                 : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
+                                 : (tmpStart + BASE_SHIM_COUNTER));
+          uint16_t phyEndEvent   = (mod == XAIE_CORE_MOD) ? tmpEnd
+                                 : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
+                                 : (tmpEnd + BASE_SHIM_COUNTER));
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
