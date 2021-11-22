@@ -786,6 +786,10 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
+	if (drm_p->bo_usage_stat) {
+		vfree(drm_p->bo_usage_stat);
+		drm_p->bo_usage_stat = NULL;
+	}
 	err = xocl_check_topology(drm_p);
 	if (err)
 		return err;
@@ -885,10 +889,6 @@ int xocl_cleanup_mem(struct xocl_drm *drm_p)
 	int ret;
 	mutex_lock(&drm_p->mm_lock);
 	ret = xocl_cleanup_mem_nolock(drm_p);
-	if (drm_p->bo_usage_stat) {
-		vfree(drm_p->bo_usage_stat);
-		drm_p->bo_usage_stat = NULL;
-	}
 	mutex_unlock(&drm_p->mm_lock);
 	return ret;
 }
