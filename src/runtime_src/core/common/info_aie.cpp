@@ -24,29 +24,24 @@
 namespace qr = xrt_core::query;
 using ptree_type = boost::property_tree::ptree;
 
-#define MAJOR_VERSION_NUMBER 1
-#define MINOR_VERSION_NUMBER 0
-#define PATCH_VERSION_NUMBER 0
-
-enum class graph_state {
-  STOP		= 0,
-  RESET		= 1,
-  RUNNING	= 2,
-  SUSPEND	= 3,
-  END		= 4
-};
+// major, minor and patch version of the schema of AIE metadata.
+const uint32_t sc_major = 1;
+const uint32_t sc_minor = 0;
+const uint32_t sc_patch = 0;
 
 namespace {
+// Convert graph status from integer to a human readable
+// string format for better understanding.
 inline std::string
 graph_status_to_string(int status) {
-  switch(static_cast<graph_state>(status))
+  switch(status)
   {
-    case graph_state::STOP:	return "stop";
-    case graph_state::RESET:	return "reset";
-    case graph_state::RUNNING:	return "running";
-    case graph_state::SUSPEND:	return "suspend";
-    case graph_state::END:	return "end";
-    default:			return "idle";
+    case 0:	return "stop";
+    case 1:	return "reset";
+    case 2:	return "running";
+    case 3:	return "suspend";
+    case 4:	return "end";
+    default:	return "idle";
   }
 }
 
@@ -66,14 +61,14 @@ addnodelist(const std::string search_str, const std::string node_str,
 
     pt.put("name", node.first);
     pt.put("value", val);
-    pt_array.push_back(std::make_pair("", pt));
+    pt_array.emplace_back("", pt);
   }
   output_pt.add_child(node_str, pt_array);
 }
 
 // This function extract DMA information for both AIE core and tiles
 static void
-populate_aie_dma(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_dma)
+populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_dma)
 {
   boost::property_tree::ptree mm2s_array;
   boost::property_tree::ptree s2mm_array;
@@ -94,7 +89,7 @@ populate_aie_dma(const boost::property_tree::ptree pt, boost::property_tree::ptr
     queue_size++;
     queue_status++;
     current_bd++;
-    mm2s_array.push_back(std::make_pair("", channel));
+    mm2s_array.emplace_back("", channel);
   }
 
   pt_dma.add_child("dma.mm2s.channel", mm2s_array);
@@ -113,7 +108,7 @@ populate_aie_dma(const boost::property_tree::ptree pt, boost::property_tree::ptr
     queue_size++;
     queue_status++;
     current_bd++;
-    s2mm_array.push_back(std::make_pair("", channel));
+    s2mm_array.emplace_back("", channel);
   }
 
   pt_dma.add_child("dma.s2mm.channel", s2mm_array);
@@ -142,11 +137,11 @@ populate_aie_errors(const boost::property_tree::ptree pt, boost::property_tree::
       }
 
       enode.put("value", val);
-      type_array.push_back(std::make_pair("", enode));
+      type_array.emplace_back("", enode);
     }
 
     module.add_child("error", type_array);
-    module_array.push_back(std::make_pair("", module));
+    module_array.emplace_back("", module);
   }
 
   pt_err.add_child("errors", module_array);
@@ -557,9 +552,9 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   }
 
   try {
-    if (pt_aie.get<uint32_t>("schema_version.major") != MAJOR_VERSION_NUMBER ||
-         pt_aie.get<uint32_t>("schema_version.minor") != MINOR_VERSION_NUMBER ||
-         pt_aie.get<uint32_t>("schema_version.patch") != PATCH_VERSION_NUMBER ) {
+    if (pt_aie.get<uint32_t>("schema_version.major") != sc_major ||
+         pt_aie.get<uint32_t>("schema_version.minor") != sc_minor ||
+         pt_aie.get<uint32_t>("schema_version.patch") != sc_patch ) {
       pt.put("error_msg", (boost::format("major:minor:patch [%d:%d:%d] version are not matching")
           % pt_aie.get<uint32_t>("schema_version.major")
           % pt_aie.get<uint32_t>("schema_version.minor")
@@ -567,9 +562,9 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
       return pt;
     }
 
-    pt.put("schema_version.major", MAJOR_VERSION_NUMBER);
-    pt.put("schema_version.minor", MINOR_VERSION_NUMBER);
-    pt.put("schema_version.patch", PATCH_VERSION_NUMBER);
+    pt.put("schema_version.major", sc_major);
+    pt.put("schema_version.minor", sc_minor);
+    pt.put("schema_version.patch", sc_patch);
 
     /*
      * sample AIE json which can be parsed
@@ -670,7 +665,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
         memcol_it++;
         memrow_it++;
         memaddr_it++;
-        tile_array.push_back(std::make_pair("", tile));
+        tile_array.emplace_back("", tile);
       }
 
       boost::property_tree::ptree plkernel_array;
@@ -678,12 +673,12 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
       for (const auto& node : gr.second.get_child("pl_kernel_instance_names", empty_pt)) {
         boost::property_tree::ptree plkernel;
         plkernel.put("", node.second.data());
-        plkernel_array.push_back(std::make_pair("", plkernel));
+        plkernel_array.emplace_back("", plkernel);
       }
 
       igraph.add_child("tile", tile_array);
       igraph.add_child("pl_kernel", plkernel_array);
-      graph_array.push_back(std::make_pair("", igraph));
+      graph_array.emplace_back("", igraph);
     }
     pt.add_child("graphs", graph_array);
 
