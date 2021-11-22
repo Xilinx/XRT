@@ -61,7 +61,7 @@ addnodelist(const std::string search_str, const std::string node_str,
 
     pt.put("name", node.first);
     pt.put("value", val);
-    pt_array.emplace_back("", pt);
+    pt_array.push_back(std::make_pair("", pt));
   }
   output_pt.add_child(node_str, pt_array);
 }
@@ -89,7 +89,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
     queue_size++;
     queue_status++;
     current_bd++;
-    mm2s_array.emplace_back("", channel);
+    mm2s_array.push_back(std::make_pair("", channel));
   }
 
   pt_dma.add_child("dma.mm2s.channel", mm2s_array);
@@ -108,7 +108,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
     queue_size++;
     queue_status++;
     current_bd++;
-    s2mm_array.emplace_back("", channel);
+    s2mm_array.push_back(std::make_pair("", channel));
   }
 
   pt_dma.add_child("dma.s2mm.channel", s2mm_array);
@@ -137,11 +137,11 @@ populate_aie_errors(const boost::property_tree::ptree pt, boost::property_tree::
       }
 
       enode.put("value", val);
-      type_array.emplace_back("", enode);
+      type_array.push_back(std::make_pair("", enode));
     }
 
     module.add_child("error", type_array);
-    module_array.emplace_back("", module);
+    module_array.push_back(std::make_pair("", module));
   }
 
   pt_err.add_child("errors", module_array);
@@ -665,7 +665,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
         memcol_it++;
         memrow_it++;
         memaddr_it++;
-        tile_array.emplace_back("", tile);
+        tile_array.push_back(std::make_pair("", tile));
       }
 
       boost::property_tree::ptree plkernel_array;
@@ -673,12 +673,12 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
       for (const auto& node : gr.second.get_child("pl_kernel_instance_names", empty_pt)) {
         boost::property_tree::ptree plkernel;
         plkernel.put("", node.second.data());
-        plkernel_array.emplace_back("", plkernel);
+        plkernel_array.push_back(std::make_pair("", plkernel));
       }
 
       igraph.add_child("tile", tile_array);
       igraph.add_child("pl_kernel", plkernel_array);
-      graph_array.emplace_back("", igraph);
+      graph_array.push_back(std::make_pair("", igraph));
     }
     pt.add_child("graphs", graph_array);
 
