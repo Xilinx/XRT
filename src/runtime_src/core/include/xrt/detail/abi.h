@@ -4,7 +4,9 @@
 #ifndef XRT_DETAIL_ABI_H
 #define XRT_DETAIL_ABI_H
 
-#include "version.h"
+#ifndef DISABLE_ABI_CHECK
+# include "version.h"
+#endif
 
 #ifdef __cplusplus
 
@@ -20,9 +22,15 @@ namespace xrt { namespace detail {
 // The struct is used to guarantee schema compability between old
 // version of XRT and new version.
 struct abi {
+#ifndef DISABLE_ABI_CHECK
   const unsigned int major {XRT_MAJOR(XRT_VERSION_CODE)};
   const unsigned int minor {XRT_MINOR(XRT_VERSION_CODE)};
   const unsigned int code  {XRT_VERSION_CODE};
+#else
+  const unsigned int major {0};
+  const unsigned int minor {0};
+  const unsigned int code  {0};
+#endif
 };
 
 }} // detail, xrt
