@@ -72,17 +72,6 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
                         &curr_data[c], sizeof(uint32_t));
       ret_val[c] = (((uint64_t)(curr_data[c])) << 32 );
     }
-#if 0
-    ret_val[0] = (((uint64_t)(curr_data[0])) << 32 );
-    ret_val[1] = (((uint64_t)(curr_data[1])) << 32 );
-    ret_val[2] = (((uint64_t)(curr_data[2])) << 32 );
-    ret_val[3] = (((uint64_t)(curr_data[3])) << 32 );
-    ret_val[4] = (((uint64_t)(curr_data[4])) << 32 );
-    ret_val[5] = (((uint64_t)(curr_data[5])) << 32 );
-    ret_val[6] = (((uint64_t)(curr_data[6])) << 32 );
-    ret_val[7] = (((uint64_t)(curr_data[7])) << 32 );
-    ret_val[8] = (((uint64_t)(curr_data[8])) << 32 );
-#endif
   }
 
   for (int c=0; c < XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
@@ -91,18 +80,6 @@ get_aim_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_dat
                       &curr_data[c], sizeof(uint32_t));
     ret_val[c] |= curr_data[c];
   }
-
-#if 0
-  ret_val[0] |= curr_data[0];
-  ret_val[1] |= curr_data[1];
-  ret_val[2] |= curr_data[2];
-  ret_val[3] |= curr_data[3];
-  ret_val[4] |= curr_data[4];
-  ret_val[5] |= curr_data[5];
-  ret_val[6] |= curr_data[6];
-  ret_val[7] |= curr_data[7];
-  ret_val[8] |= curr_data[8];
-#endif
 
   return ret_val;
 
@@ -158,23 +135,24 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
             dbg_ip_data->m_base_address + am_upper_offsets[c],
             &curr_data[c], sizeof(uint32_t));
     }
-    ret_val[0] = ((uint64_t)(curr_data[0])) << 32;
-    ret_val[2] = ((uint64_t)(curr_data[1])) << 32;
-    ret_val[5] = ((uint64_t)(curr_data[2])) << 32;
-    ret_val[3] = ((uint64_t)(curr_data[3])) << 32;
-    ret_val[4] = ((uint64_t)(curr_data[4])) << 32;
-    ret_val[9] = ((uint64_t)(curr_data[5])) << 32;
-    ret_val[8] = ((uint64_t)(curr_data[6])) << 32;
-    ret_val[1] = ((uint64_t)(curr_data[7])) << 32;
+
+    ret_val[XAM_IOCTL_EXECUTION_COUNT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_EXECUTION_COUNT_INDEX])) << 32;
+    ret_val[XAM_IOCTL_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_EXECUTION_CYCLES_INDEX])) << 32;
+    ret_val[XAM_IOCTL_STALL_INT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_INT_INDEX])) << 32;
+    ret_val[XAM_IOCTL_STALL_STR_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_STR_INDEX])) << 32;
+    ret_val[XAM_IOCTL_STALL_EXT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_EXT_INDEX])) << 32;
+    ret_val[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX])) << 32;
+    ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX])) << 32;
+    ret_val[XAM_IOCTL_START_COUNT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_TOTAL_CU_START_INDEX])) << 32;
     
     if(has_dataflow) {
-      uint64_t df_tmp[2] = {0};
-      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &df_tmp[0], sizeof(uint32_t));
-      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &df_tmp[1], sizeof(uint32_t));
+      uint64_t busy_cycles = 0, max_parallel = 0;
+      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_UPPER_OFFSET, &busy_cycles, sizeof(uint32_t));
+      device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_UPPER_OFFSET, &max_parallel, sizeof(uint32_t));
 
 
-     ret_val[6] = df_tmp[0] << 32;
-     ret_val[7] = df_tmp[1] << 32;
+     ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] = busy_cycles << 32;
+     ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] = max_parallel << 32;
 
     }
   }
@@ -182,27 +160,27 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   for (int c=0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address+am_offsets[c], &curr_data[c], sizeof(uint32_t));
   }
-  ret_val[0] |= curr_data[0];
-  ret_val[2] |= curr_data[1];
-  ret_val[5] |= curr_data[2];
-  ret_val[3] |= curr_data[3];
-  ret_val[4] |= curr_data[4];
-  ret_val[9] |= curr_data[5];
-  ret_val[8] |= curr_data[6];
-  ret_val[1] |= curr_data[7];
+  ret_val[XAM_IOCTL_EXECUTION_COUNT_INDEX] |= curr_data[XAM_ACCEL_EXECUTION_COUNT_INDEX];
+  ret_val[XAM_IOCTL_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_EXECUTION_CYCLES_INDEX];
+  ret_val[XAM_IOCTL_STALL_INT_INDEX] |= curr_data[XAM_ACCEL_STALL_INT_INDEX];
+  ret_val[XAM_IOCTL_STALL_STR_INDEX] |= curr_data[XAM_ACCEL_STALL_STR_INDEX];
+  ret_val[XAM_IOCTL_STALL_EXT_INDEX] |= curr_data[XAM_ACCEL_STALL_EXT_INDEX];
+  ret_val[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX];
+  ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX];
+  ret_val[XAM_IOCTL_START_COUNT_INDEX] |= curr_data[XAM_ACCEL_TOTAL_CU_START_INDEX];
     
   if(has_dataflow) {
-    uint64_t df_tmp[2] = {0};
-    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &df_tmp[0], sizeof(uint32_t));
-    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &df_tmp[1], sizeof(uint32_t));
+    uint64_t busy_cycles = 0, max_parallel = 0;
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &busy_cycles, sizeof(uint32_t));
+    device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_MAX_PARALLEL_ITER_OFFSET, &max_parallel, sizeof(uint32_t));
 
-    ret_val[6] |= df_tmp[0];
-    ret_val[7] |= df_tmp[1];
+    ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] |= busy_cycles;
+    ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] |= max_parallel;
 
   } else {
 
-     ret_val[6] = ret_val[8];
-     ret_val[7] = 1;
+     ret_val[XAM_IOCTL_BUSY_CYCLES_INDEX] = ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX];
+     ret_val[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX] = 1;
   }
   return ret_val;
 
@@ -262,27 +240,15 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
   }
 
   ret_val[0] = curr_data[XLAPC_OVERALL_STATUS];
-  ret_val[1] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+0);
-  ret_val[2] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+1);
-  ret_val[3] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+2);
-  ret_val[4] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+3);
-  ret_val[5] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+0);
-  ret_val[6] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+1);
-  ret_val[7] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+2);
-  ret_val[8] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+3);
+  ret_val[1] = curr_data[XLAPC_CUMULATIVE_STATUS_0+0];
+  ret_val[2] = curr_data[XLAPC_CUMULATIVE_STATUS_0+1];
+  ret_val[3] = curr_data[XLAPC_CUMULATIVE_STATUS_0+2];
+  ret_val[4] = curr_data[XLAPC_CUMULATIVE_STATUS_0+3];
+  ret_val[5] = curr_data[XLAPC_SNAPSHOT_STATUS_0+0];
+  ret_val[6] = curr_data[XLAPC_SNAPSHOT_STATUS_0+1];
+  ret_val[7] = curr_data[XLAPC_SNAPSHOT_STATUS_0+2];
+  ret_val[8] = curr_data[XLAPC_SNAPSHOT_STATUS_0+3];
 
-#if 0
-  ret_val[0] = curr_data[XLAPC_OVERALL_STATUS];
-  ret_val[1] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+0);
-  ret_val[2] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+1);
-  ret_val[3] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+2);
-  ret_val[4] = *(curr_data+XLAPC_CUMULATIVE_STATUS_0+3);
-  ret_val[5] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+0);
-  ret_val[6] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+1);
-  ret_val[7] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+2);
-  ret_val[8] = *(curr_data+XLAPC_SNAPSHOT_STATUS_0+3);
-#endif
- 
   return ret_val;
 }
 
