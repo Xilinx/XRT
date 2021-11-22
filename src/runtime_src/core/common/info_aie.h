@@ -25,13 +25,12 @@
 namespace xrt_core {
 namespace aie {
 
-XRT_CORE_COMMON_EXPORT
 boost::property_tree::ptree
 aie_core(const xrt_core::device * device);
 
 boost::property_tree::ptree
 aie_shim(const xrt_core::device * device);
 
-}} // aie, xrt
+}} // aie, xrt_core
 
 #endif

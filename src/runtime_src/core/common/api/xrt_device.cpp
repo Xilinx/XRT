@@ -288,9 +288,9 @@ get_info(info::device param, const xrt::detail::abi& abi) const
     return query::json_str(xrt_core::platform::pcie_info(handle.get()), abi);
   case info::device::dynamic_regions :         // std::string
     return query::json_str(xrt_core::memory::xclbin_info(handle.get()), abi);
-  case info::device::aie :         // std::string
+  case info::device::aie :			// std::string
     return query::json_str(xrt_core::aie::aie_core(handle.get()), abi);
-  case info::device::aie_shim :         // std::string
+  case info::device::aie_shim :			// std::string
     return query::json_str(xrt_core::aie::aie_shim(handle.get()), abi);
   case info::device::host :                   // std::string
     boost::property_tree::ptree pt;

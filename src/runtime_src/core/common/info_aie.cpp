@@ -47,7 +47,7 @@ graph_status_to_string(int status) {
 
 // Add the node to the ouput list
 static void
-addnodelist(const std::string search_str, const std::string node_str,
+addnodelist(const std::string& search_str, const std::string& node_str,
 	    const boost::property_tree::ptree& input_pt, boost::property_tree::ptree& output_pt)
 {
   boost::property_tree::ptree pt_array;
@@ -118,7 +118,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
 
 // This function extract ERRORs information for both AIE core and tiles
 static void
-populate_aie_errors(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_err)
+populate_aie_errors(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_err)
 {
   boost::property_tree::ptree module_array;
   boost::property_tree::ptree empty_pt;
@@ -401,7 +401,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
 
 // This funtion populate a specific AIE core given as an input of [row:col]
 void
-populate_aie_core(const boost::property_tree::ptree pt_core, boost::property_tree::ptree& tile,
+populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile,
 		  int row, int col)
 {
   try {
@@ -450,7 +450,7 @@ populate_aie_core(const boost::property_tree::ptree pt_core, boost::property_tre
 
 // Populate RTPs for AIE Cores
 void
-populate_aie_core_rtp(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
+populate_aie_core_rtp(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_array)
 {
   boost::property_tree::ptree rtp_array;
   boost::property_tree::ptree empty_pt;
@@ -487,7 +487,7 @@ populate_aie_core_rtp(const boost::property_tree::ptree pt, boost::property_tree
 
 // Populate GMIOs for AIE Cores
 void
-populate_aie_core_gmio(const boost::property_tree::ptree pt, boost::property_tree::ptree& pt_array)
+populate_aie_core_gmio(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_array)
 {
   boost::property_tree::ptree gmio_array;
   boost::property_tree::ptree empty_pt;
@@ -510,21 +510,19 @@ populate_aie_core_gmio(const boost::property_tree::ptree pt, boost::property_tre
   pt_array.add_child("gmios",gmio_array);
 }
 
+// Populate AIE core information from aie metadata
 boost::property_tree::ptree
 populate_aie(const xrt_core::device *device, const std::string& desc)
 {
   boost::property_tree::ptree pt;
-  std::string aie_data;
-  std::string aie_core_data;
-  std::vector<std::string> graph_status;
-  pt.put("description", desc);
-  boost::property_tree::ptree graph_array;
   boost::property_tree::ptree pt_aie;
   boost::property_tree::ptree gh_status;
   boost::property_tree::ptree core_info;
   boost::property_tree::ptree empty_pt;
 
+  pt.put("description", desc);
   try {
+    std::string aie_data;
     aie_data = xrt_core::device_query<qr::aie_metadata>(device);
     std::stringstream ss(aie_data);
     boost::property_tree::read_json(ss, pt_aie);
@@ -534,6 +532,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   }
 
   try {
+    std::string aie_core_data;
     aie_core_data = xrt_core::device_query<qr::aie_core_info>(device);
     std::stringstream ss(aie_core_data);
     boost::property_tree::read_json(ss, core_info);
@@ -543,6 +542,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   }
 
   try {
+    std::vector<std::string> graph_status;
     graph_status = xrt_core::device_query<qr::graph_status>(device);
     std::stringstream ss;
     std::copy(graph_status.begin(), graph_status.end(), std::ostream_iterator<std::string>(ss));
@@ -552,6 +552,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
   }
 
   try {
+    boost::property_tree::ptree graph_array;
     if (pt_aie.get<uint32_t>("schema_version.major") != sc_major ||
          pt_aie.get<uint32_t>("schema_version.minor") != sc_minor ||
          pt_aie.get<uint32_t>("schema_version.patch") != sc_patch ) {
@@ -699,14 +700,16 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
 
 namespace xrt_core { namespace aie {
 
+// Get AIE core information for this device
 ptree_type
 aie_core(const xrt_core::device* device)
 {
   return populate_aie(device, "Aie_Metadata");
 }
 
+// Get AIE shim information for this device
 ptree_type
-aie_shim(const xrt_core::device * device)
+aie_shim(const xrt_core::device* device)
 {
   return populate_aie_shim(device, "Aie_Shim_Status");
 }
