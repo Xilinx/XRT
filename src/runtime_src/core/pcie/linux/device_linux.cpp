@@ -335,15 +335,15 @@ struct aim_counter
     /* Note that required return values are NOT in contiguous sequential order 
      * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
      */
-    retval_buf[0] = val_buf[0];
-    retval_buf[1] = val_buf[1];
-    retval_buf[2] = val_buf[4];
-    retval_buf[3] = val_buf[5];
-    retval_buf[4] = val_buf[8];
-    retval_buf[5] = val_buf[9];
-    retval_buf[6] = val_buf[10];
-    retval_buf[7] = val_buf[11];
-    retval_buf[8] = val_buf[12];
+    retval_buf[XAIM_WRITE_BYTES_INDEX]        = val_buf[XAIM_IOCTL_WRITE_BYTES_INDEX];
+    retval_buf[XAIM_WRITE_TRANX_INDEX]        = val_buf[XAIM_IOCTL_WRITE_TRANX_INDEX];
+    retval_buf[XAIM_READ_BYTES_INDEX]         = val_buf[XAIM_IOCTL_READ_BYTES_INDEX];
+    retval_buf[XAIM_READ_TRANX_INDEX]         = val_buf[XAIM_IOCTL_READ_TRANX_INDEX];
+    retval_buf[XAIM_OUTSTANDING_COUNT_INDEX]  = val_buf[XAIM_IOCTL_OUTSTANDING_COUNT_INDEX];
+    retval_buf[XAIM_WRITE_LAST_ADDRESS_INDEX] = val_buf[XAIM_IOCTL_WRITE_LAST_ADDRESS_INDEX];
+    retval_buf[XAIM_WRITE_LAST_DATA_INDEX]    = val_buf[XAIM_IOCTL_WRITE_LAST_DATA_INDEX];
+    retval_buf[XAIM_READ_LAST_ADDRESS_INDEX]  = val_buf[XAIM_IOCTL_READ_LAST_ADDRESS_INDEX];
+    retval_buf[XAIM_READ_LAST_DATA_INDEX]     = val_buf[XAIM_IOCTL_READ_LAST_DATA_INDEX];
 
     return retval_buf;
   }

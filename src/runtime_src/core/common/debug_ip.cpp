@@ -239,15 +239,15 @@ get_lapc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
     device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER, dbg_ip_data->m_base_address+statusRegisters[c], &curr_data[c], sizeof(uint32_t));
   }
 
-  ret_val[0] = curr_data[XLAPC_OVERALL_STATUS];
-  ret_val[1] = curr_data[XLAPC_CUMULATIVE_STATUS_0+0];
-  ret_val[2] = curr_data[XLAPC_CUMULATIVE_STATUS_0+1];
-  ret_val[3] = curr_data[XLAPC_CUMULATIVE_STATUS_0+2];
-  ret_val[4] = curr_data[XLAPC_CUMULATIVE_STATUS_0+3];
-  ret_val[5] = curr_data[XLAPC_SNAPSHOT_STATUS_0+0];
-  ret_val[6] = curr_data[XLAPC_SNAPSHOT_STATUS_0+1];
-  ret_val[7] = curr_data[XLAPC_SNAPSHOT_STATUS_0+2];
-  ret_val[8] = curr_data[XLAPC_SNAPSHOT_STATUS_0+3];
+  ret_val[XLAPC_OVERALL_STATUS] = curr_data[XLAPC_OVERALL_STATUS];
+  ret_val[XLAPC_CUMULATIVE_STATUS_0] = curr_data[XLAPC_CUMULATIVE_STATUS_0+0];
+  ret_val[XLAPC_CUMULATIVE_STATUS_1] = curr_data[XLAPC_CUMULATIVE_STATUS_0+1];
+  ret_val[XLAPC_CUMULATIVE_STATUS_2] = curr_data[XLAPC_CUMULATIVE_STATUS_0+2];
+  ret_val[XLAPC_CUMULATIVE_STATUS_3] = curr_data[XLAPC_CUMULATIVE_STATUS_0+3];
+  ret_val[XLAPC_SNAPSHOT_STATUS_0] = curr_data[XLAPC_SNAPSHOT_STATUS_0+0];
+  ret_val[XLAPC_SNAPSHOT_STATUS_1] = curr_data[XLAPC_SNAPSHOT_STATUS_0+1];
+  ret_val[XLAPC_SNAPSHOT_STATUS_2] = curr_data[XLAPC_SNAPSHOT_STATUS_0+2];
+  ret_val[XLAPC_SNAPSHOT_STATUS_3] = curr_data[XLAPC_SNAPSHOT_STATUS_0+3];
 
   return ret_val;
 }
@@ -260,13 +260,13 @@ get_spc_status(const xrt_core::device* device, debug_ip_data* dbg_ip_data)
 
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbg_ip_data->m_base_address + XSPC_PC_ASSERTED_OFFSET,
-              &ret_val[0], sizeof(uint32_t));
+              &ret_val[XSPC_PC_ASSERTED], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbg_ip_data->m_base_address + XSPC_CURRENT_PC_OFFSET,
-              &ret_val[1], sizeof(uint32_t));
+              &ret_val[XSPC_CURRENT_PC], sizeof(uint32_t));
   device->xread(XCL_ADDR_SPACE_DEVICE_CHECKER,
               dbg_ip_data->m_base_address + XSPC_SNAPSHOT_PC_OFFSET,
-              &ret_val[2], sizeof(uint32_t));
+              &ret_val[XSPC_SNAPSHOT_PC], sizeof(uint32_t));
 
   return ret_val;
 }

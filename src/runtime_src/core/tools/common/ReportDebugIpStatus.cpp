@@ -319,15 +319,15 @@ DebugIpStatusCollector::readAIMCounter(debug_ip_data* dbgIpInfo)
   aimResults.NumSlots = (unsigned int)debugIpNum[AXI_MM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::aim_counter>(device, dbgIpInfo);
-  aimResults.WriteBytes[index]    = valBuf[0];
-  aimResults.WriteTranx[index]    = valBuf[1];
-  aimResults.ReadBytes[index]     = valBuf[2];
-  aimResults.ReadTranx[index]     = valBuf[3];
-  aimResults.OutStandCnts[index]  = valBuf[4];
-  aimResults.LastWriteAddr[index] = valBuf[5];
-  aimResults.LastWriteData[index] = valBuf[6];
-  aimResults.LastReadAddr[index]  = valBuf[7];
-  aimResults.LastReadData[index]  = valBuf[8];
+  aimResults.WriteBytes[index]    = valBuf[XAIM_WRITE_BYTES_INDEX];
+  aimResults.WriteTranx[index]    = valBuf[XAIM_WRITE_TRANX_INDEX];
+  aimResults.ReadBytes[index]     = valBuf[XAIM_READ_BYTES_INDEX];
+  aimResults.ReadTranx[index]     = valBuf[XAIM_READ_TRANX_INDEX];
+  aimResults.OutStandCnts[index]  = valBuf[XAIM_OUTSTANDING_COUNT_INDEX];
+  aimResults.LastWriteAddr[index] = valBuf[XAIM_WRITE_LAST_ADDRESS_INDEX];
+  aimResults.LastWriteData[index] = valBuf[XAIM_WRITE_LAST_DATA_INDEX];
+  aimResults.LastReadAddr[index]  = valBuf[XAIM_READ_LAST_ADDRESS_INDEX];
+  aimResults.LastReadData[index]  = valBuf[XAIM_READ_LAST_DATA_INDEX];
 
 }
 
@@ -358,18 +358,18 @@ DebugIpStatusCollector::readAMCounter(debug_ip_data* dbgIpInfo)
   amResults.NumSlots = (unsigned int)debugIpNum[ACCEL_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::am_counter>(device, dbgIpInfo);
-  amResults.CuExecCount[index]       = valBuf[0];
-  amResults.CuStartCount[index]      = valBuf[1];
-  amResults.CuExecCycles[index]      = valBuf[2];
+  amResults.CuExecCount[index]       = valBuf[XAM_IOCTL_EXECUTION_COUNT_INDEX];
+  amResults.CuStartCount[index]      = valBuf[XAM_IOCTL_START_COUNT_INDEX];
+  amResults.CuExecCycles[index]      = valBuf[XAM_IOCTL_EXECUTION_CYCLES_INDEX];
 
-  amResults.CuStallIntCycles[index]  = valBuf[3];
-  amResults.CuStallStrCycles[index]  = valBuf[4];
-  amResults.CuStallExtCycles[index]  = valBuf[5];
+  amResults.CuStallIntCycles[index]  = valBuf[XAM_IOCTL_STALL_INT_INDEX];
+  amResults.CuStallStrCycles[index]  = valBuf[XAM_IOCTL_STALL_STR_INDEX];
+  amResults.CuStallExtCycles[index]  = valBuf[XAM_IOCTL_STALL_EXT_INDEX];
 
-  amResults.CuBusyCycles[index]      = valBuf[6];
-  amResults.CuMaxParallelIter[index] = valBuf[7];
-  amResults.CuMaxExecCycles[index]   = valBuf[8];
-  amResults.CuMinExecCycles[index]   = valBuf[9];
+  amResults.CuBusyCycles[index]      = valBuf[XAM_IOCTL_BUSY_CYCLES_INDEX];
+  amResults.CuMaxParallelIter[index] = valBuf[XAM_IOCTL_MAX_PARALLEL_ITR_INDEX];
+  amResults.CuMaxExecCycles[index]   = valBuf[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX];
+  amResults.CuMinExecCycles[index]   = valBuf[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX];
 
 }
 
@@ -401,11 +401,11 @@ DebugIpStatusCollector::readASMCounter(debug_ip_data* dbgIpInfo)
   asmResults.NumSlots = (unsigned int)debugIpNum[AXI_STREAM_MONITOR];
 
   std::vector<uint64_t> valBuf = xrt_core::device_query<xrt_core::query::asm_counter>(device, dbgIpInfo);
-  asmResults.StrNumTranx[index]     = valBuf[0];
-  asmResults.StrDataBytes[index]    = valBuf[1];
-  asmResults.StrBusyCycles[index]   = valBuf[2];
-  asmResults.StrStallCycles[index]  = valBuf[3];
-  asmResults.StrStarveCycles[index] = valBuf[4];
+  asmResults.StrNumTranx[index]     = valBuf[XASM_NUM_TRANX_INDEX];
+  asmResults.StrDataBytes[index]    = valBuf[XASM_DATA_BYTES_INDEX];
+  asmResults.StrBusyCycles[index]   = valBuf[XASM_BUSY_CYCLES_INDEX];
+  asmResults.StrStallCycles[index]  = valBuf[XASM_STALL_CYCLES_INDEX];
+  asmResults.StrStarveCycles[index] = valBuf[XASM_STARVE_CYCLES_INDEX];
 
 }
 
@@ -437,17 +437,17 @@ DebugIpStatusCollector::readLAPChecker(debug_ip_data* dbgIpInfo)
   lapcResults.NumSlots = (unsigned int)debugIpNum[LAPC];
 
   std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::lapc_status>(device, dbgIpInfo);
-  lapcResults.OverallStatus[index]       = valBuf[0];
+  lapcResults.OverallStatus[index]       = valBuf[XLAPC_OVERALL_STATUS];
 
-  lapcResults.CumulativeStatus[index][0] = valBuf[1];
-  lapcResults.CumulativeStatus[index][1] = valBuf[2];
-  lapcResults.CumulativeStatus[index][2] = valBuf[3];
-  lapcResults.CumulativeStatus[index][3] = valBuf[4];
+  lapcResults.CumulativeStatus[index][0] = valBuf[XLAPC_CUMULATIVE_STATUS_0];
+  lapcResults.CumulativeStatus[index][1] = valBuf[XLAPC_CUMULATIVE_STATUS_1];
+  lapcResults.CumulativeStatus[index][2] = valBuf[XLAPC_CUMULATIVE_STATUS_2];
+  lapcResults.CumulativeStatus[index][3] = valBuf[XLAPC_CUMULATIVE_STATUS_3];
 
-  lapcResults.SnapshotStatus[index][0]   = valBuf[5];
-  lapcResults.SnapshotStatus[index][1]   = valBuf[6];
-  lapcResults.SnapshotStatus[index][2]   = valBuf[7];
-  lapcResults.SnapshotStatus[index][3]   = valBuf[8];
+  lapcResults.SnapshotStatus[index][0]   = valBuf[XLAPC_SNAPSHOT_STATUS_0];
+  lapcResults.SnapshotStatus[index][1]   = valBuf[XLAPC_SNAPSHOT_STATUS_1];
+  lapcResults.SnapshotStatus[index][2]   = valBuf[XLAPC_SNAPSHOT_STATUS_2];
+  lapcResults.SnapshotStatus[index][3]   = valBuf[XLAPC_SNAPSHOT_STATUS_3];
 
 }
 
@@ -480,9 +480,9 @@ DebugIpStatusCollector::readSPChecker(debug_ip_data* dbgIpInfo)
 
   std::vector<uint32_t> valBuf = xrt_core::device_query<xrt_core::query::spc_status>(device, dbgIpInfo);
 
-  spcResults.PCAsserted[index] = valBuf[0];
-  spcResults.CurrentPC[index]  = valBuf[1];
-  spcResults.SnapshotPC[index] = valBuf[2];
+  spcResults.PCAsserted[index] = valBuf[XSPC_PC_ASSERTED];
+  spcResults.CurrentPC[index]  = valBuf[XSPC_CURRENT_PC];
+  spcResults.SnapshotPC[index] = valBuf[XSPC_SNAPSHOT_PC];
 
 }
 
