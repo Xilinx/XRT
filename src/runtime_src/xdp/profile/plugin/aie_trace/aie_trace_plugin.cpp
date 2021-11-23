@@ -529,7 +529,7 @@ namespace xdp {
       // 2. Reserve and start memory module counters
       //
       int numMemoryCounters = 0;
-      if (useCounters) {
+     if (useCounters) {
         for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
           auto perfCounter = memory.perfCounter();
           XAie_ModuleType mod = XAIE_MEM_MOD;
@@ -564,7 +564,6 @@ namespace xdp {
           XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, counterEvent, &phyEvent);
           cfg.reset_event = phyEvent;
           cfg.event_value = memoryCounterEventValues[i];
-          cfgTile->memory_trace_config.packet_type=1;
         }
       }
 
@@ -793,6 +792,9 @@ namespace xdp {
         if (ret != XAIE_OK) break;
         ret = memoryTrace->start();
         if (ret != XAIE_OK) break;
+
+        // Update memory packet type in config file
+        cfgTile->memory_trace_config.packet_type=1;
       }
 
       std::stringstream msg;
@@ -1071,6 +1073,46 @@ namespace xdp {
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
+
+    // 0. Ensure we have counters, whether or not requested previously
+    std::cout << "Before requesting counters: size = " << mCoreCounters.size() << std::endl;
+    if (mCoreCounters.size() == 0) {
+      XAie_ModuleType mod = XAIE_CORE_MOD;
+      auto tiles = getTilesForTracing(handle);
+      
+      for (auto& tile : tiles) {
+        auto& core = aieDevice->tile(tile.col, tile.row + 1).core();
+
+        // We need two counters to flush out the trace
+        for (int c=0; c < 2; ++c) {
+          auto perfCounter = core.perfCounter();
+          auto ret = perfCounter->initialize(mod, XAIE_EVENT_NONE_CORE,
+                                             mod, XAIE_EVENT_NONE_CORE);
+          if (ret != XAIE_OK) continue;
+          ret = perfCounter->reserve();
+          if (ret != XAIE_OK) continue;
+
+          // Configure threshold and reset of counter
+          XAie_Events counterEvent;
+          perfCounter->getCounterEvent(mod, counterEvent);
+          perfCounter->changeThreshold(coreCounterEventValues.at(c));
+          perfCounter->changeRstEvent(mod, counterEvent);
+
+          // Add the counter event to trace so it forces the flush
+          auto coreTrace = core.traceControl();
+          coreTrace->stop();
+          uint8_t slot = 0;
+          ret = coreTrace->reserveTraceSlot(slot);
+          if (ret != XAIE_OK) break;
+          ret = coreTrace->setTraceEvent(slot, counterEvent);
+          if (ret != XAIE_OK) break;
+
+          mCoreCounters.push_back(perfCounter);
+          mCoreCounterTiles.push_back(tile);
+        }
+      }
+    }
+    std::cout << "After requesting counters: size = " << mCoreCounters.size() << std::endl;
 
     // Reconfigure profile counters
     for (int i=0; i < mCoreCounters.size(); ++i) {
