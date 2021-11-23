@@ -25,9 +25,11 @@
 namespace xrt_core {
 namespace aie {
 
+// Get AIE core information for this device
 boost::property_tree::ptree
 aie_core(const xrt_core::device * device);
 
+// Get AIE shim information for this device
 boost::property_tree::ptree
 aie_shim(const xrt_core::device * device);
 
