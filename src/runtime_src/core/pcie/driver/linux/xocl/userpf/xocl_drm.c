@@ -786,6 +786,10 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
+	if (drm_p->bo_usage_stat) {
+		vfree(drm_p->bo_usage_stat);
+		drm_p->bo_usage_stat = NULL;
+	}
 	err = xocl_check_topology(drm_p);
 	if (err)
 		return err;
@@ -960,6 +964,13 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	size = group_topo->m_count * sizeof(void *);
 	drm_p->mm_usage_stat = vzalloc(size);
 	if (!drm_p->mm_usage_stat) {
+		err = -ENOMEM;
+		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		goto done;
+	}
+
+	drm_p->bo_usage_stat = vzalloc(XOCL_BO_USAGE_TOTAL * sizeof(struct drm_xocl_mm_stat));
+	if (!drm_p->bo_usage_stat) {
 		err = -ENOMEM;
 		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 		goto done;
