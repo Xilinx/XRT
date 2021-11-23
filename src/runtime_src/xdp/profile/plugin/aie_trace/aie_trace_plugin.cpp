@@ -1075,7 +1075,6 @@ namespace xdp {
     uint32_t prevRow = 0;
 
     // 0. Ensure we have counters, whether or not requested previously
-    std::cout << "Before requesting counters: size = " << mCoreCounters.size() << std::endl;
     if (mCoreCounters.size() == 0) {
       XAie_ModuleType mod = XAIE_CORE_MOD;
       auto tiles = getTilesForTracing(handle);
@@ -1112,8 +1111,7 @@ namespace xdp {
         }
       }
     }
-    std::cout << "After requesting counters: size = " << mCoreCounters.size() << std::endl;
-
+    
     // Reconfigure profile counters
     for (int i=0; i < mCoreCounters.size(); ++i) {
       // 1. For every tile, stop trace & change trace start/stop and timer
