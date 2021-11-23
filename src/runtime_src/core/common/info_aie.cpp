@@ -41,7 +41,7 @@ graph_status_to_string(int status) {
     case 2:	return "running";
     case 3:	return "suspend";
     case 4:	return "end";
-    default:	return "idle";
+    default:	return "idle"; // Consider graph status as "idle" for all the default cases
   }
 }
 
