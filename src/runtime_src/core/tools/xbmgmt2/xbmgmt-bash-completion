@@ -1,4 +1,4 @@
-# bash completion for xbutil                              -*- shell-script -*-
+# bash completion for xbmgmt                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
@@ -10,7 +10,7 @@
 # 
 # Parameters:
 # 1: The complete list of options for the previous word
-_command_word_xbutil_completion()
+_command_word_xbmgmt_completion()
 {
   # Get the righthand most word on the command line
   currentWord=${COMP_WORDS[COMP_CWORD]}
@@ -39,13 +39,9 @@ _command_word_xbutil_completion()
       ;;
     --report)
       ;;
-    --type)
-      ;;
-    -t)
-      ;;
-    # -r shorthand applies to multiple commands under xbutil and requires additional processing
-    # Assuming we want to add something here one day
     -r)
+      ;;
+    --shell)
       ;;
     *)
       # The format of the compgen commands options is seperated from the current word using a --.
@@ -56,17 +52,17 @@ _command_word_xbutil_completion()
 }
 
 # The main function populating the COMPREPLY
-_xbutil_completion()
+_xbmgmt_completion()
 {
   commonSubCommands="--verbose --batch --force --help -h --version"
   # COMP_CWORD is the current index of the cursor in the command line
-  # 0 is the first argument (xbutil), 1 is the desired command for xbutil,
+  # 0 is the first argument (xbmgmt), 1 is the desired command for xbmgmt,
   # 2 is an option for the command, etc.
   case ${COMP_CWORD} in
     # Case for command after xbutil
     1)
-      commandWordOptions="program validate examine configure reset ${commonSubCommands}"
-      _command_word_xbutil_completion "${commandWordOptions}"
+      commandWordOptions="dump examine program reset ${commonSubCommands}"
+      _command_word_xbmgmt_completion "${commandWordOptions}"
       ;;
     # Case for options after the above command is entered
     *)
@@ -76,25 +72,21 @@ _xbutil_completion()
       commonSubCommands="${commonSubCommands} --device -d"
       # Once a command is identified the options will always be the same
       case ${commandWord} in
-        "program")
-          programOptions="${commonSubCommands} --user -u"
-          _command_word_xbutil_completion "${programOptions}"
-          ;;
-        "validate")
-          validateOptions="${commonSubCommands} --run -r --format -f --output -o"
-          _command_word_xbutil_completion "${validateOptions}"
+        "dump")
+          dumpOptions="${commonSubCommands} --flash -f --config -c --output -o"
+          _command_word_xbmgmt_completion "${dumpOptions}"
           ;;
         "examine")
           examineOptions="${commonSubCommands} --report -r --format -f --output -o"
-          _command_word_xbutil_completion "${examineOptions}"
+          _command_word_xbmgmt_completion "${examineOptions}"
           ;;
-        "configure")
-          configureOptions="${commonSubCommands} --host-mem --p2p --size"
-          _command_word_xbutil_completion "${configureOptions}"
+        "program")
+          programOptions="${commonSubCommands} --base --image --shell --user -u --revert-to-golden"
+          _command_word_xbmgmt_completion "${programOptions}"
           ;;
         "reset")
-          resetOptions="${commonSubCommands} --type -t"
-          _command_word_xbutil_completion "${resetOptions}"
+          resetOptions="${commonSubCommands}"
+          _command_word_xbmgmt_completion "${resetOptions}"
           ;;
         # Return an empty reply if an invalid command is entered
         *)
@@ -104,6 +96,6 @@ _xbutil_completion()
   esac
 }
 
-complete -o nosort -F _xbutil_completion xbutil
+complete  -o nosort -F _xbmgmt_completion xbmgmt
 
 # ex: filetype=sh

@@ -17,9 +17,11 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     # https://cmake.org/cmake/help/latest/command/install.html#files
     # This will only work using apt install/reinstall not during the build process
     # Allows for bash completion without the setup script to be sourced
+    install (PROGRAMS "./xbmgmt2/xbmgmt-bash-completion" DESTINATION "/usr/share/bash-completion/completions" RENAME "xbmgmt")
     install (PROGRAMS "./xbutil2/xbutil-bash-completion" DESTINATION "/usr/share/bash-completion/completions" RENAME "xbutil")
     # Use second install command to store copy in installation directory during the build process
     # This is used for the setup script
+    install (PROGRAMS "./xbmgmt2/xbmgmt-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/bash-completion/completions" RENAME "xbmgmt")
     install (PROGRAMS "./xbutil2/xbutil-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/bash-completion/completions" RENAME "xbutil")
   endif()
 endif()

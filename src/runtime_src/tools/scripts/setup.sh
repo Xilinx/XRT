@@ -48,3 +48,4 @@ echo "LD_LIBRARY_PATH   : $LD_LIBRARY_PATH"
 echo "PYTHONPATH        : $PYTHONPATH"
 
 source $XILINX_XRT/share/bash-completion/completions/xbutil
+source $XILINX_XRT/share/bash-completion/completions/xbmgmt
