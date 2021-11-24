@@ -330,10 +330,10 @@ get_aie_trace_flush()
   return value;
 }
 
-inline bool
-get_aie_trace_use_counters()
+inline std::string
+get_aie_trace_counter_type()
 {
-  static bool value = detail::get_bool_value("Debug.aie_trace_use_counters", true);
+  static std::string value = detail::get_string_value("Debug.aie_trace_counter_type", "es1");
   return value;
 }
 

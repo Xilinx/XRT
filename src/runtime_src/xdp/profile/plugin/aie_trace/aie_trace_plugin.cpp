@@ -137,18 +137,33 @@ namespace xdp {
 
     // **** Core Module Counters ****
     // NOTE: reset events are dependent on actual profile counter reserved
-    coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_ACTIVE_CORE};
-    coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,             XAIE_EVENT_DISABLED_CORE};
-    coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,           XAIE_EVENT_PERF_CNT_1_CORE,
-                                XAIE_EVENT_PERF_CNT_2_CORE,           XAIE_EVENT_PERF_CNT_3_CORE};
-    coreCounterEventValues   = {1020, 1040400};
+    if (xrt_core::config::get_aie_trace_counter_type() == "es1") {
+      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
+      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
+      coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,         XAIE_EVENT_PERF_CNT_1_CORE,
+                                  XAIE_EVENT_PERF_CNT_2_CORE,         XAIE_EVENT_PERF_CNT_3_CORE};
+      coreCounterEventValues   = {1020, 1040400};
+    }
+    else {
+      coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
+      coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
+      coreCounterResetEvents   = {XAIE_EVENT_PERF_CNT_0_CORE,         XAIE_EVENT_PERF_CNT_1_CORE,
+                                  XAIE_EVENT_PERF_CNT_2_CORE,         XAIE_EVENT_PERF_CNT_3_CORE};
+      coreCounterEventValues   = {0x3FFF0};
+    }
 
     // **** Memory Module Counters ****
     // NOTE: reset events are dependent on actual profile counter reserved
-    memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                  XAIE_EVENT_TRUE_MEM};
-    memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                  XAIE_EVENT_NONE_MEM};
-    memoryCounterEventValues = {1020, 1040400};
-  }
+    if (xrt_core::config::get_aie_trace_counter_type() == "es1") {
+      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
+      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
+      memoryCounterEventValues = {1020, 1040400};
+    }
+    else {
+      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
+      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
+      memoryCounterEventValues = {0x3FFF0};
+    }
 
   AieTracePlugin::~AieTracePlugin()
   {
@@ -445,8 +460,7 @@ namespace xdp {
     if (metricSet.empty())
       return false;
     auto tiles = getTilesForTracing(handle);
-    auto useCounters = xrt_core::config::get_aie_trace_use_counters();
-
+    
     // getTraceStartDelayCycles is 32 bit for now
     uint32_t delayCycles = static_cast<uint32_t>(getTraceStartDelayCycles(handle));
     bool useDelay = (delayCycles > 0) ? true : false;
