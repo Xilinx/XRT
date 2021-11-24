@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 - 2019 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,7 +33,11 @@ class SectionEmbeddedMetadata : public Section {
   SectionEmbeddedMetadata();
   virtual ~SectionEmbeddedMetadata();
 
- private:
+  protected:
+     virtual void marshalToJSON(char* _DataSection, unsigned int _sectionSize, boost::property_tree::ptree& _ptree) const;
+     virtual void marshalFromJSON(const boost::property_tree::ptree& _ptSection, std::ostringstream& _buf) const;
+
+  private:
   // Purposefully private and undefined ctors...
   SectionEmbeddedMetadata(const SectionEmbeddedMetadata& obj);
   SectionEmbeddedMetadata& operator=(const SectionEmbeddedMetadata& obj);

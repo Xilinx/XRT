@@ -389,7 +389,10 @@ namespace xdp {
     writeDependencies() ;
     fout << std::endl ;
 
-    if (openNewFile) switchFiles() ;
+    if (openNewFile) {
+      switchFiles() ;
+      db->getStaticInfo().addOpenedFile(getcurrentFileName(), "VP_TRACE") ;
+    }
     return true;
   }
 

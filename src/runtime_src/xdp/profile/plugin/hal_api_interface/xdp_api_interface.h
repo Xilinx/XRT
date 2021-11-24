@@ -69,10 +69,6 @@ namespace xdp {
      void startCounters();
      void stopCounters();
      void readCounters();
-     
-     void startTrace();
-     void stopTrace();
-     void readTrace();
   } ;
 
 }

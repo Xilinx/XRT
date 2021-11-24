@@ -50,6 +50,8 @@ SectionIPLayout::getIPTypeStr(enum IP_TYPE _ipType) const {
       return "IP_MEM_HBM";
     case IP_MEM_HBM_ECC:
       return "IP_MEM_HBM_ECC";
+    case IP_PS_KERNEL:
+      return "IP_PS_KERNEL";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_ipType);
@@ -64,6 +66,7 @@ SectionIPLayout::getIPType(std::string& _sIPType) const {
   if (_sIPType == "IP_MEM_DDR4") return IP_MEM_DDR4;
   if (_sIPType == "IP_MEM_HBM") return IP_MEM_HBM;
   if (_sIPType == "IP_MEM_HBM_ECC") return IP_MEM_HBM_ECC;
+  if (_sIPType == "IP_PS_KERNEL") return IP_PS_KERNEL;
 
   std::string errMsg = "ERROR: Unknown IP type: '" + _sIPType + "'";
   throw std::runtime_error(errMsg);

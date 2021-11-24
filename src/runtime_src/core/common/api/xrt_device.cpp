@@ -31,8 +31,9 @@
 #include "core/common/info_platform.h"
 #include "core/common/query_requests.h"
 
-#include "xclbin_int.h" // Non public xclbin APIs
+#include "handle.h"
 #include "native_profile.h"
+#include "xclbin_int.h" // Non public xclbin APIs
 
 #include <boost/property_tree/json_parser.hpp>
 
@@ -46,28 +47,10 @@
 
 namespace {
 
-// C-API handles that must be explicitly closed. Corresponding managed
-// handles are inserted in this map.  When the unmanaged handle is
-// closed, it is removed from this map and underlying buffer is
-// deleted if no other shared ptrs exists for this buffer
-static std::map<xrtDeviceHandle, std::shared_ptr<xrt_core::device>> device_cache;
-
-static std::shared_ptr<xrt_core::device>
-get_device(xrtDeviceHandle dhdl)
-{
-  auto itr = device_cache.find(dhdl);
-  if (itr == device_cache.end())
-    throw xrt_core::error(-EINVAL, "No such device handle");
-  return (*itr).second;
-}
-
-
-static void
-free_device(xrtDeviceHandle dhdl)
-{
-  if (device_cache.erase(dhdl) == 0)
-    throw xrt_core::error(-EINVAL, "No such device handle");
-}
+// C-API handles that must be explicitly closed but corresponding
+// implementation could be shared.
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+static xrt_core::handle_map<xrtDeviceHandle, std::shared_ptr<xrt_core::device>> device_cache;
 
 inline void
 send_exception_message(const char* msg)
@@ -149,13 +132,13 @@ namespace xrt_core { namespace device_int {
 std::shared_ptr<xrt_core::device>
 get_core_device(xrtDeviceHandle dhdl)
 {
-  return get_device(dhdl); // handle check
+  return device_cache.get_or_error(dhdl);
 }
 
 xclDeviceHandle
 get_xcl_device_handle(xrtDeviceHandle dhdl)
 {
-  auto device = get_device(dhdl); // handle check
+  auto device = device_cache.get_or_error(dhdl);
   return device->get_device_handle();  // shim handle
 }
 
@@ -360,8 +343,9 @@ xrtDeviceOpen(unsigned int index)
   try {
     return xdp::native::profiling_wrapper(__func__, [index]{
       auto device = xrt_core::get_userpf_device(index);
-      device_cache[device.get()] = device;
-      return device.get();
+      auto handle = device.get();
+      device_cache.add(handle, std::move(device));
+      return handle;
     });
   }
   catch (const xrt_core::error& ex) {
@@ -397,7 +381,7 @@ xrtDeviceClose(xrtDeviceHandle dhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl]{
-      free_device(dhdl);
+      device_cache.remove_or_error(dhdl);
       return 0;
     });
   }
@@ -417,7 +401,7 @@ xrtDeviceLoadXclbin(xrtDeviceHandle dhdl, const axlf* top)
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, top]{
       xrt::xclbin xclbin{top};
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       device->load_xclbin(xclbin);
       return 0;
     });
@@ -438,7 +422,7 @@ xrtDeviceLoadXclbinFile(xrtDeviceHandle dhdl, const char* fnm)
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, fnm]{
       xrt::xclbin xclbin{fnm};
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       device->load_xclbin(xclbin);
       return 0;
     });
@@ -458,7 +442,7 @@ xrtDeviceLoadXclbinHandle(xrtDeviceHandle dhdl, xrtXclbinHandle xhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl]{
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       device->load_xclbin(xrt_core::xclbin_int::get_xclbin(xhdl));
       return 0;
     });
@@ -478,7 +462,7 @@ xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, uuid]{
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       device->load_xclbin(uuid);
       return 0;
     });
@@ -498,7 +482,7 @@ xrtDeviceGetXclbinUUID(xrtDeviceHandle dhdl, xuid_t out)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, out]{
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       auto uuid = device->get_xclbin_uuid();
       uuid_copy(out, uuid.get());
       return 0;
@@ -519,7 +503,7 @@ xrtDeviceToXclDevice(xrtDeviceHandle dhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl]{
-      auto device = get_device(dhdl);
+      auto device = device_cache.get_or_error(dhdl);
       return device->get_device_handle();
     });
   }
@@ -544,8 +528,10 @@ xrtDeviceOpenFromXcl(xclDeviceHandle dhdl)
       // xrtDeviceClose removes the handle from the cache
       if (device_cache.count(device.get()))
         throw xrt_core::error(EINVAL, "Handle is already in use");
-      device_cache[device.get()] = device;
-      return device.get();
+
+      auto handle = device.get();
+      device_cache.add(handle, std::move(device));
+      return handle;
     });
   }
   catch (const xrt_core::error& ex) {

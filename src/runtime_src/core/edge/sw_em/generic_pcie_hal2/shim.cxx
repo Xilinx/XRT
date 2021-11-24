@@ -155,8 +155,8 @@ namespace xclcpuemhal2 {
       }
     }
     xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
-    //check for Versal,zynqmp Platforms
-    if (fpgaDevice != "" && (fpgaDevice.find("versal:") != std::string::npos || fpgaDevice.find("zynquplus:") != std::string::npos)) {
+    // check for versal,zynqmp and zynq platforms. Enabling to run the device process in x86 instead of QEMU for all the Zynq, ZynqMP and Versal platforms
+    if (fpgaDevice != "" && (fpgaDevice.find("versal:") != std::string::npos || fpgaDevice.find("zynq") != std::string::npos)) {
       deviceProcessInQemu = false;
     }
     return true;

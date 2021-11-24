@@ -906,6 +906,7 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
+  _ptTest.put("status", "skipped");
   if(!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
@@ -921,7 +922,6 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   } catch(...){}
 
   if (dma_thr.size() == 0){
-    _ptTest.put("status", "skipped");
     return ;
   }
 

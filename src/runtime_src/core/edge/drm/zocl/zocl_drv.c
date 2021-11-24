@@ -567,113 +567,31 @@ static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 
 static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
-	struct sched_client_ctx *fpriv = kzalloc(sizeof(*fpriv), GFP_KERNEL);
-	int ret = 0;
-
-	if (!fpriv)
-		return -ENOMEM;
-
 	if (kds_mode == 1) {
-		kfree(fpriv);
-		ret = zocl_create_client(dev->dev_private, &filp->driver_priv);
+		return zocl_create_client(dev->dev_private, &filp->driver_priv);
 	} else {
-		filp->driver_priv = fpriv;
-		mutex_init(&fpriv->lock);
-		atomic_set(&fpriv->trigger, 0);
-		atomic_set(&fpriv->outstanding_execs, 0);
-		fpriv->abort = false;
-		fpriv->pid = get_pid(task_pid(current));
-		INIT_LIST_HEAD(&fpriv->graph_list);
-		spin_lock_init(&fpriv->graph_list_lock);
-		zocl_track_ctx(dev, fpriv);
-		DRM_INFO("Pid %d opened device\n", pid_nr(task_tgid(current)));
+		return sched_create_client(dev, &filp->driver_priv);
 	}
-
-	return ret;
 }
 
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	struct sched_client_ctx *client = filp->driver_priv;
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	int pid;
-	u32 outstanding = 0;
-	int retry = 20;
-	int i;
-
 	if (kds_mode == 1) {
 		zocl_destroy_client(dev->dev_private, &filp->driver_priv);
 		return;
 	}
-
-	if (!client)
+	else {
+		sched_destroy_client(dev, &filp->driver_priv);
 		return;
-
-	pid = pid_nr(client->pid);
-
-	/* force scheduler to abort scheduled cmds for this client */
-	client->abort = true;
-	outstanding = atomic_read(&client->outstanding_execs);
-	while (retry-- && outstanding) {
-		DRM_INFO("pid(%d) waiting for outstanding %d cmds to finish",
-		    pid, outstanding);
-		msleep(500);
-		outstanding = atomic_read(&client->outstanding_execs);
 	}
-	outstanding = atomic_read(&client->outstanding_execs);
-	if (outstanding) {
-		DRM_ERROR("Please investigate stale cmds\n");
-		for (i = 0; i < zdev->exec->num_cus; i++) {
-			zocl_cu_status_print(&zdev->exec->zcu[i]);
-		}
-	}
-
-	/* Release graph context */
-	zocl_aie_graph_free_context_all(zdev, client);
-
-	put_pid(client->pid);
-	client->pid = NULL;
-	if (CLIENT_NUM_CU_CTX(client) == 0)
-		goto done;
-
-	/*
-	 * This happens when application exits without releasing the
-	 * contexts. Give up contexts and release xclbin.
-	 */
-	client->num_cus = 0;
-	(void) zocl_unlock_bitstream(zdev, &uuid_null);
-done:
-	zocl_untrack_ctx(dev, client);
-	kfree(client);
-
-	DRM_INFO("Pid %d closed device\n", pid_nr(task_tgid(current)));
 }
 
 static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 {
-	int counter;
-	struct drm_file *priv = filp->private_data;
-	struct drm_device *dev = priv->minor->dev;
-	struct drm_zocl_dev *zdev = dev->dev_private;
-	struct sched_client_ctx *fpriv = priv->driver_priv;
-	int ret = 0;
-
-	BUG_ON(!fpriv);
-
 	if (kds_mode == 1)
 		return zocl_poll_client(filp, wait);
-
-	poll_wait(filp, &zdev->exec->poll_wait_queue, wait);
-
-	mutex_lock(&fpriv->lock);
-	counter = atomic_read(&fpriv->trigger);
-	if (counter > 0) {
-		atomic_dec(&fpriv->trigger);
-		ret = POLLIN;
-	}
-	mutex_unlock(&fpriv->lock);
-
-	return ret;
+	else
+		return sched_poll_client(filp, wait);
 }
 
 static int zocl_iommu_init(struct drm_zocl_dev *zdev,

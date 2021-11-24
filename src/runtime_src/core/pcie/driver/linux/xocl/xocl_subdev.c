@@ -1455,6 +1455,8 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  * |rsvd                        |
  * +----+-----------------------|
  *  ... next entry ...
+ *
+ * TODO: refactor this code to use struct bit field and memcpy_fromio
  */
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
@@ -1674,30 +1676,53 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			if (ret)
 				return ret;
 			break;
-		case XOCL_VSEC_FLASH_TYPE_XGQ:
-			/*TODO: VSEC definition is TBD, we now get res from metadata */
-			xocl_xdev_dbg(xdev,
-			    "VSEC XGQ FLASH RES Start 0x%llx, bar %d",
-			    offset, bar);
-
-			/* set devinfo to xfer versal */
-			subdev_info.id = XOCL_SUBDEV_XGQ;
-			subdev_info.name = XOCL_XGQ;
-			subdev_info.res[0].name = XOCL_XGQ;
-			memcpy(((struct xocl_flash_privdata *)
-			    (subdev_info.priv_data))->flash_type,
-			    FLASH_TYPE_OSPI_XGQ, strlen(FLASH_TYPE_OSPI_XGQ));
-
-			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
-				offset, bar);
-
-			if (ret)
-				return ret;
-			break;
 		default:
 			xocl_xdev_err(xdev, "Unsupport flash type 0x%x", vtype);
 			break;
 		}
+	}
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ, &bar, &offset, NULL);
+	if (!ret) {
+		int bar_payload = 0; 
+		u64 offset_payload = 0;
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VSEC;
+
+		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_PAYLOAD,
+			&bar_payload, &offset_payload, NULL);
+		if (ret) {
+			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_PAYLOAD");
+			goto done;
+		}
+
+		subdev_info.bar_idx[0] = bar;
+		subdev_info.bar_idx[1] = bar_payload;
+
+		/*
+		 * TODO: update the payload actual size from device later.
+		 * all end_points from VSEC should just have 0x1000(4k) size.
+		 * For now, just hardcode the size which will be reported by
+		 * the device.
+		 */
+		subdev_info.res[0].start = offset;
+		subdev_info.res[0].end = offset + 0xfff;
+		subdev_info.res[0].name = NODE_XGQ_SQ_BASE;
+
+		subdev_info.res[1].start = offset_payload;
+		subdev_info.res[1].end = offset_payload + 0x7ffffff;
+		subdev_info.res[1].name = NODE_XGQ_RING_BASE;
+
+		xocl_xdev_dbg(xdev,
+		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",
+		    offset, bar, offset_payload, bar_payload);
+
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret) {
+			xocl_xdev_err(xdev, "Create XGQ subdev failed. %d", ret);
+			goto done;
+		}
+
+		xocl_xdev_dbg(xdev, "VSEC XGQ created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
@@ -1714,6 +1739,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			return ret;
 	}
 
+done:
 	return 0;
 }
 

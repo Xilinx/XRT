@@ -629,9 +629,21 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
+	int ret = 0;
 
 	hwicap = (struct xcl_pr_region *)buf;
-	hwicap->freq_0 = xocl_clock_get_data(lro, CLOCK_FREQ_0);
+	ret = xocl_clock_get_data(lro, CLOCK_FREQ_0);
+	if (ret == -ENODEV) {
+		hwicap->freq_0 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_0);
+		hwicap->freq_1 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_1);
+		hwicap->freq_2 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_2);
+		hwicap->freq_cntr_0 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_0);
+		hwicap->freq_cntr_1 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_1);
+		hwicap->freq_cntr_2 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_2);
+		return;
+	}
+
+	hwicap->freq_0 = ret;
 	hwicap->freq_1 = xocl_clock_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_clock_get_data(lro, CLOCK_FREQ_2);
 	hwicap->freq_cntr_0 = xocl_clock_get_data(lro, FREQ_COUNTER_0);
@@ -932,10 +944,17 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 			break;
 		}
 
+		/*
+		 * On versal, there is no icap mgmt;
+		 * On VMR system, there is no icap mgmt and clock subdev;
+		 */
 		ret = xocl_icap_ocl_update_clock_freq_topology(lro, clk);
 		if (ret == -ENODEV)
 			ret = xocl_clock_freq_scaling_by_request(lro,
-			    clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
+				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
+		if (ret == -ENODEV)
+			ret = xocl_xgq_freq_scaling(lro,
+				clk->ocl_target_freq, ARRAY_SIZE(clk->ocl_target_freq), 1);
 
 		(void) xocl_peer_response(lro, req->req, msgid, &ret,
 			sizeof(ret));
@@ -1363,7 +1382,8 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	xocl_pmc_enable_reset(lro);
+	(void) xocl_pmc_enable_reset(lro);
+	(void) xocl_download_apu_firmware(lro);
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we

@@ -505,11 +505,6 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		 */
 		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
 			xocl_xdev_info(xdev, "check interface uuid");
-			if (!XDEV(xdev)->fdt_blob) {
-				userpf_err(xdev, "did not find platform dtb");
-				err = -EINVAL;
-				goto done;
-			}
 			err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char*)xdev->ulp_blob));
@@ -536,7 +531,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	/* To support fast adapter kind of CU, KDS would create a bo to
 	 * reserve plram. Needs to release it before cleanup mem.
 	 */
-	xocl_kds_reset(xdev, NULL);
+	xocl_kds_reset(xdev, &uuid_null);
 
 	/* Switching the xclbin, make sure none of the buffers are used. */
 	if (!preserve_mem) {
@@ -675,6 +670,9 @@ int xocl_alloc_cma_ioctl(struct drm_device *dev, void *data,
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err = 0;
 
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
+
 	mutex_lock(&xdev->dev_lock);
 
 	if (xocl_xclbin_in_use(xdev)) {
@@ -694,6 +692,9 @@ int xocl_free_cma_ioctl(struct drm_device *dev, void *data,
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
 	int err = 0;
+
+	if (!capable(CAP_SYS_ADMIN))
+		return -EACCES;
 
 	mutex_lock(&xdev->dev_lock);
 

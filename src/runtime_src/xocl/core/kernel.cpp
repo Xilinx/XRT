@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include "compute_unit.h"
 
 #include "core/common/api/kernel_int.h"
+#include "core/common/api/xclbin_int.h"
 #include "core/common/xclbin_parser.h"
 
 #include <sstream>
@@ -147,8 +148,11 @@ set(const void* cvalue, size_t sz)
 }
 
 kernel::
-kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
-  : m_program(prog), m_name(kernel_utils::normalize_kernel_name(name)), m_symbol(symbol)
+kernel(program* prog, const std::string& name, xrt::xclbin::kernel xk)
+  : m_program(prog)
+  , m_name(kernel_utils::normalize_kernel_name(name))
+  , m_xkernel(std::move(xk))
+  , m_properties(xrt_core::xclbin_int::get_properties(m_xkernel))
 {
   static unsigned int uid_count = 0;
   m_uid = uid_count++;
@@ -166,8 +170,17 @@ kernel(program* prog, const std::string& name, const xclbin::symbol& symbol)
     std::bitset<128> cumask; // magic 128 for max_cus
     for (auto& cu : device->get_cus())
       cumask.set(cu->get_index());
-    xrt_core::kernel_int::set_cus(xrun, cumask);
-    m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
+
+    // Limiting the CUs for this kernel object may fail if the device
+    // CUs are different from the kernel CUs. The kernel CUs could be
+    // constrained through the kernel name.  In this case set_cus
+    // throws and the kernel should be ignored
+    try {
+      xrt_core::kernel_int::set_cus(xrun, cumask);
+      m_xruns.emplace(std::make_pair(device, xkr{xkernel, xrun}));
+    }
+    catch (const std::exception&) {
+    }
   }
 
   // Iterate all kernel args and process runtime infomational

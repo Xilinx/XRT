@@ -54,10 +54,6 @@ std::function<void (bool, bool, const char*, unsigned long long int,
   // The warning function
   void warning_callbacks()
   {
-    if(xrt_core::config::get_xrt_profile()) {
-      std::string message = "\"xrt_profile\" configuration in xrt.ini will be deprecated in the next release.  Please use \"xrt_trace=true\" to enable trace for XRT HAL APIs.";
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", message);
-    }
   }
 
   int error_function()

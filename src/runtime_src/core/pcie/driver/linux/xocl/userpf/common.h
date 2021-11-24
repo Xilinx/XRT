@@ -114,6 +114,7 @@ struct xocl_dev	{
 	u32			flags;
 	struct xocl_cma_bank  *cma_bank;
 	struct xocl_pci_info pci_stat;
+	atomic_t		dev_hotplug_done;
 };
 
 /**

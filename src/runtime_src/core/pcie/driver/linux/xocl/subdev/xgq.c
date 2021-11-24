@@ -9,9 +9,14 @@
 
 #include "xrt_xclbin.h"
 #include "../xocl_drv.h"
-#include "xgq_cmd_common.h"
+#include "xgq_cmd_vmr.h"
 #include "../xgq_xocl_plat.h"
 #include <linux/time.h>
+
+#define	CLK_TYPE_DATA	0
+#define	CLK_TYPE_KERNEL	1
+#define	CLK_TYPE_SYSTEM	2
+#define	CLK_TYPE_MAX	4
 
 /*
  * XGQ Host management driver design.
@@ -52,6 +57,13 @@
  *	 synchronized operation, client always wait till server respond.
  */
 
+#define XGQ_SQ_TAIL_POINTER     0x0
+#define XGQ_SQ_INTR_REG         0x4
+#define XGQ_SQ_INTR_CTRL        0xC
+#define XGQ_CQ_TAIL_POINTER     0x100
+#define XGQ_CQ_INTR_REG         0x104
+#define XGQ_CQ_INTR_CTRL        0x10C
+
 #define	XGQ_ERR(xgq, fmt, arg...)	\
 	xocl_err(&(xgq)->xgq_pdev->dev, fmt "\n", ##arg)
 #define	XGQ_WARN(xgq, fmt, arg...)	\
@@ -71,9 +83,9 @@
 static DEFINE_IDR(xocl_xgq_cid_idr);
 
 /* cmd timeout in seconds */
-#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(10 * 60 * 1000) 
-#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(30 * 1000) 
-#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(10 * 1000) 
+#define XOCL_XGQ_FLASH_TIME	msecs_to_jiffies(600 * 1000) 
+#define XOCL_XGQ_DOWNLOAD_TIME	msecs_to_jiffies(300 * 1000) 
+#define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
 typedef void (*xocl_xgq_complete_cb)(void *arg, struct xgq_com_queue_entry *ccmd);
@@ -84,10 +96,12 @@ struct xocl_xgq_cmd {
 	struct completion	xgq_cmd_complete;
 	xocl_xgq_complete_cb    xgq_cmd_cb;
 	void			*xgq_cmd_arg;
-	int			xgq_cmd_rcode;
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq		*xgq;
 	u64			xgq_cmd_timeout_jiffies; /* timout till */
+	/*TODO: the xgq cq can have up-to 3 u32 payload, optimze the code later */
+	uint32_t		xgq_cmd_rcode;
+	uint32_t		xgq_cmd_rdata;
 };
 
 struct xocl_xgq;
@@ -116,8 +130,10 @@ struct xocl_xgq {
 	struct xgq_worker	xgq_complete_worker;
 	struct xgq_worker	xgq_health_worker;
 	bool			xgq_halted;
-	bool			xgq_data_transfer_inuse;
 	int 			xgq_cmd_id;
+	void			*sensor_data;
+	u32			sensor_data_length;
+	struct semaphore 	xgq_data_sema;
 };
 
 /*
@@ -152,9 +168,10 @@ static void cmd_complete(struct xocl_xgq *xgq, struct xgq_com_queue_entry *ccmd)
 void read_completion(struct xgq_com_queue_entry *ccmd, u64 addr)
 {
 	u32 i = 0;
+	u32 *buffer = (u32 *)ccmd;
 
-	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / 4; i++)
-		ccmd->data[i] = xgq_reg_read32(0, addr + i * 4);
+	for (i = 0; i < XGQ_COM_Q1_SLOT_SIZE / sizeof(u32); i++)
+		buffer[i] = xgq_reg_read32(0, addr + i * sizeof(u32));
 
 	// Write 0 to first word to make sure the cmd state is not NEW
 	xgq_reg_write32(0, addr, 0x0);
@@ -433,6 +450,17 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 	complete(&xgq_cmd->xgq_cmd_complete);
 }
 
+static void xgq_complete_clock_cb(void *arg, struct xgq_com_queue_entry *ccmd)
+{
+	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
+	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
+
+	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rdata = cmd_cq->clock_payload.ocl_freq;
+
+	complete(&xgq_cmd->xgq_cmd_complete);
+}
+
 /*
  * Write buffer into shared memory and 
  * return translate host based address to device based address.
@@ -448,6 +476,13 @@ static u64 memcpy_to_devices(struct xocl_xgq *xgq, const void *xclbin_data,
 
 	/* This is the offset that device start reading data */
 	return XOCL_XGQ_DATA_OFFSET;
+}
+
+static void memcpy_from_devices(struct xocl_xgq *xgq, void *dst,
+	size_t count)
+{
+	void __iomem *src = xgq->xgq_ring_base + XOCL_XGQ_DATA_OFFSET;
+	memcpy_fromio(dst, src, count);
 }
 
 static inline int get_xgq_cid(struct xocl_xgq *xgq)
@@ -471,8 +506,8 @@ static inline void remove_xgq_cid(struct xocl_xgq *xgq, int id)
 /*
  * Utilize shared memory between host and device to transfer data.
  */
-static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
-	u64 xclbin_len, enum xgq_cmd_opcode opcode, u32 timer)
+static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *buf,
+	u64 len, enum xgq_cmd_opcode opcode, u32 timer)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
 	struct xgq_cmd_data_payload *payload = NULL;
@@ -481,7 +516,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 	int id = 0;
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
-	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI) {
+	    opcode != XGQ_CMD_OP_DOWNLOAD_PDI &&
+	    opcode != XGQ_CMD_OP_LOAD_APUBIN) {
 		XGQ_WARN(xgq, "unsupported opcode %d", opcode);
 		return -EINVAL;
 	}
@@ -503,8 +539,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		&(cmd->xgq_cmd_entry.pdi_payload) :
 		&(cmd->xgq_cmd_entry.xclbin_payload);
 
-	payload->address = memcpy_to_devices(xgq, u_xclbin, xclbin_len);
-	payload->size = xclbin_len;
+	payload->address = memcpy_to_devices(xgq, buf, len);
+	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
 
 	/* set up hdr */
@@ -539,7 +575,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *u_xclbin,
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
-		ret = xclbin_len;
+		ret = len;
 	}
 done:
 	if (cmd) {
@@ -558,21 +594,15 @@ static int xgq_load_xclbin(struct platform_device *pdev,
 	u64 xclbin_len = xclbin->m_header.m_length;
 	int ret = 0;
 	
-	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_data_transfer_inuse) {
-		mutex_unlock(&xgq->xgq_lock);
-		XGQ_ERR(xgq, "XGQ OSPI device is busy");
-		return -EBUSY;
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		return -EIO;
 	}
-	xgq->xgq_data_transfer_inuse = true;
-	mutex_unlock(&xgq->xgq_lock);
-	
+
 	ret = xgq_transfer_data(xgq, u_xclbin, xclbin_len,
 		XGQ_CMD_OP_LOAD_XCLBIN, XOCL_XGQ_DOWNLOAD_TIME);
 
-	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_data_transfer_inuse = false;
-	mutex_unlock(&xgq->xgq_lock);
+	up(&xgq->xgq_data_sema);
 
 	return ret == xclbin_len ? 0 : -EIO;
 }
@@ -634,6 +664,374 @@ done:
 		remove_xgq_cid(xgq, id);
 		kfree(cmd);
 	}
+	return ret;
+}
+
+/* On versal, verify is enforced. */
+static int xgq_freq_scaling(struct platform_device *pdev,
+	unsigned short *freqs, int num_freqs, int verify)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_clock_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+	int i = 0;
+
+	if (num_freqs <= 0 || num_freqs > XGQ_CLOCK_WIZ_MAX_RES) {
+		XGQ_ERR(xgq, "num_freqs %d is out of range", num_freqs);
+		return -EINVAL;
+	}
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	payload = &(cmd->xgq_cmd_entry.clock_payload);
+	payload->ocl_region = 0;
+	payload->ocl_req_type = XGQ_CMD_CLOCK_SCALE;
+	payload->ocl_req_num = num_freqs;
+	for (i = 0; i < num_freqs; i++)
+		payload->ocl_req_freq[i] = freqs[i];
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_CLOCK;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+	} 
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
+
+	return ret;
+}
+
+static int xgq_freq_scaling_by_topo(struct platform_device *pdev,
+	struct clock_freq_topology *topo, int verify)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct clock_freq *freq = NULL;
+	int data_clk_count = 0;
+	int kernel_clk_count = 0;
+	int system_clk_count = 0;
+	int clock_type_count = 0;
+	unsigned short target_freqs[4] = {0};
+	int i = 0;
+
+	if (!topo)
+		return -EINVAL;
+
+	if (topo->m_count > CLK_TYPE_MAX) {
+		XGQ_ERR(xgq, "More than 4 clocks found in clock topology");
+		return -EDOM;
+	}
+
+	/* Error checks - we support 1 data clk (reqd), 1 kernel clock(reqd) and
+	 * at most 2 system clocks (optional/reqd for aws).
+	 * Data clk needs to be the first entry, followed by kernel clock
+	 * and then system clocks
+	 */
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			data_clk_count++;
+		if (freq->m_type == CT_KERNEL)
+			kernel_clk_count++;
+		if (freq->m_type == CT_SYSTEM)
+			system_clk_count++;
+	}
+	if (data_clk_count != 1) {
+		XGQ_ERR(xgq, "Data clock not found in clock topology");
+		return -EDOM;
+	}
+	if (kernel_clk_count != 1) {
+		XGQ_ERR(xgq, "Kernel clock not found in clock topology");
+		return -EDOM;
+	}
+	if (system_clk_count > 2) {
+		XGQ_ERR(xgq, "More than 2 system clocks found in clock topology");
+		return -EDOM;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_DATA)
+			target_freqs[CLK_TYPE_DATA] = freq->m_freq_Mhz;
+	}
+
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_KERNEL)
+			target_freqs[CLK_TYPE_KERNEL] = freq->m_freq_Mhz;
+	}
+
+	clock_type_count = CLK_TYPE_SYSTEM;
+	for (i = 0; i < topo->m_count; i++) {
+		freq = &(topo->m_clock_freq[i]);
+		if (freq->m_type == CT_SYSTEM)
+			target_freqs[clock_type_count++] = freq->m_freq_Mhz;
+	}
+
+	XGQ_INFO(xgq, "set %lu freq, data: %d, kernel: %d, sys: %d, sys1: %d",
+	    ARRAY_SIZE(target_freqs), target_freqs[0], target_freqs[1],
+	    target_freqs[2], target_freqs[3]);
+
+	return xgq_freq_scaling(pdev, target_freqs, ARRAY_SIZE(target_freqs),
+		verify);
+}
+
+static uint32_t xgq_clock_get_data(struct xocl_xgq *xgq,
+	enum xgq_cmd_clock_req_type req_type, int req_id)
+{
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_clock_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int id = 0;
+	uint32_t ret = 0;
+
+	if (req_id > XGQ_CLOCK_WIZ_MAX_RES) {
+		XGQ_ERR(xgq, "req_id %d is out of range", id);
+		return 0;
+	}
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return 0;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_clock_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	payload = &(cmd->xgq_cmd_entry.clock_payload);
+	payload->ocl_region = 0;
+	payload->ocl_req_type = req_type;
+	payload->ocl_req_id = req_id;
+
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_CLOCK;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		ret = 0;
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		ret = 0;
+	} else {
+		/* freq result is in rdata */
+		ret = cmd->xgq_cmd_rdata;
+	}
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
+
+	return ret;
+}
+
+static uint64_t xgq_get_data(struct platform_device *pdev,
+	enum data_kind kind)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	uint64_t target = 0;
+
+	switch (kind) {
+	case CLOCK_FREQ_0:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 0);
+		break;
+	case CLOCK_FREQ_1:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 1);
+		break;
+	case CLOCK_FREQ_2:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_WIZARD, 2);
+		break;
+	case FREQ_COUNTER_0:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 0);
+		break;
+	case FREQ_COUNTER_1:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 1);
+		break;
+	case FREQ_COUNTER_2:
+		target = xgq_clock_get_data(xgq, XGQ_CMD_CLOCK_COUNTER, 2);
+		break;
+	default:
+		break;
+	}
+
+	return target;
+}
+
+static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
+	size_t len)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	int ret = 0;
+
+
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		return -EIO;
+	}
+
+	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
+		XOCL_XGQ_DOWNLOAD_TIME);
+
+	up(&xgq->xgq_data_sema);
+
+	XGQ_DBG(xgq, "ret %d", ret);
+	return ret == len ? 0 : -EIO;
+}
+
+/* read firmware from /lib/firmware/xilinx, load via xgq */
+static int xgq_download_apu_firmware(struct platform_device *pdev)
+{
+	struct pci_dev *pcidev = XOCL_PL_TO_PCI_DEV(pdev);
+	char *apu_bin = "xilinx/xrt-versal-apu.xsabin";
+	char *apu_bin_buf = NULL;
+	size_t apu_bin_len = 0;
+	int ret = 0;
+
+	ret = xocl_request_firmware(&pcidev->dev, apu_bin,
+			&apu_bin_buf, &apu_bin_len);
+	if (ret)
+		return ret;
+	ret = xgq_download_apu_bin(pdev, apu_bin_buf, apu_bin_len);
+	vfree(apu_bin_buf);
+
+	return ret;
+}
+
+static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
+{
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	/* reset to all 0 first */
+	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
+	payload = &(cmd->xgq_cmd_entry.sensor_payload);
+	/* set address offset, so that device will write data start from this offset */
+	payload->address = memcpy_to_devices(xgq,
+		xgq->sensor_data, xgq->sensor_data_length);
+	payload->size = xgq->sensor_data_length;
+	payload->pid = XGQ_CMD_SENSOR_PID_BDINFO;
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_SENSOR;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+	} else {
+		memcpy_from_devices(xgq, xgq->sensor_data,
+			xgq->sensor_data_length);
+	}
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
 
 	return ret;
 }
@@ -674,8 +1072,50 @@ static struct attribute *xgq_attrs[] = {
 	NULL,
 };
 
+static ssize_t sensor_data_read(struct file *filp, struct kobject *kobj,
+	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
+{
+	struct xocl_xgq *xgq =
+		dev_get_drvdata(container_of(kobj, struct device, kobj));
+	ssize_t ret = 0;
+
+	/* if off == 0, read data */
+	if (off == 0)
+		xgq_collect_sensor_data(xgq);
+
+	if (xgq->sensor_data == NULL)
+		goto bail;
+
+	if (off >= xgq->sensor_data_length)
+		goto bail;
+
+	if (off + count > xgq->sensor_data_length)
+		count = xgq->sensor_data_length - off;
+
+	memcpy(buf, xgq->sensor_data + off, count);
+
+	ret = count;
+bail:
+	return ret;
+}
+
+static struct bin_attribute bin_attr_sensor_data = {
+	.attr = {
+		.name = "sensor_data",
+		.mode = 0444
+	},
+	.read = sensor_data_read,
+	.size = 0
+};
+
+static struct bin_attribute *xgq_bin_attrs[] = {
+	&bin_attr_sensor_data,
+	NULL,
+};
+
 static struct attribute_group xgq_attr_group = {
 	.attrs = xgq_attrs,
+	.bin_attrs = xgq_bin_attrs,
 };
 
 static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
@@ -690,15 +1130,6 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		return -EINVAL;
 	}
 
-	mutex_lock(&xgq->xgq_lock);
-	if (xgq->xgq_data_transfer_inuse) {
-		mutex_unlock(&xgq->xgq_lock);
-		XGQ_ERR(xgq, "OSPI device is busy");
-		return -EBUSY;
-	}
-	xgq->xgq_data_transfer_inuse = true;
-	mutex_unlock(&xgq->xgq_lock);
-
 	kdata = vmalloc(data_len);
 	if (!kdata) {
 		XGQ_ERR(xgq, "Cannot create xgq transfer buffer");
@@ -711,14 +1142,19 @@ static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
 		XGQ_ERR(xgq, "copy data failed %ld", ret);
 		goto done;
 	}
-	
+
+	if (down_interruptible(&xgq->xgq_data_sema)) {
+		XGQ_ERR(xgq, "XGQ data transfer is interrupted");
+		ret = -EIO;
+		goto done;
+	}
+
 	ret = xgq_transfer_data(xgq, kdata, data_len,
 		XGQ_CMD_OP_DOWNLOAD_PDI, XOCL_XGQ_FLASH_TIME);
 
+	up(&xgq->xgq_data_sema);
+
 done:
-	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_data_transfer_inuse = false;
-	mutex_unlock(&xgq->xgq_lock);
 	vfree(kdata);
 
 	return ret;
@@ -764,8 +1200,6 @@ static int xgq_remove(struct platform_device *pdev)
 		iounmap(xgq->xgq_ring_base);
 	if (xgq->xgq_sq_base)
 		iounmap(xgq->xgq_sq_base);
-	if (xgq->xgq_cq_base)
-		iounmap(xgq->xgq_cq_base);
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 	mutex_destroy(&xgq->xgq_lock);
@@ -780,11 +1214,11 @@ static int xgq_remove(struct platform_device *pdev)
 
 static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
 {
-	int rval = 0;
+	u32 rval = 0;
 
 	rval = ioread32(xgq->xgq_ring_base + XOCL_XGQ_DEV_STAT_OFFSET);
 	
-	return rval > 0;
+	return rval != 0;
 }
 
 static int xgq_probe(struct platform_device *pdev)
@@ -802,6 +1236,11 @@ static int xgq_probe(struct platform_device *pdev)
 	xgq->xgq_cmd_id = 0;
 
 	mutex_init(&xgq->xgq_lock);
+	sema_init(&xgq->xgq_data_sema, 1); /*TODO: improve to n based on availabity */
+
+	/*TODO: after real sensor data enabled, redefine this size */
+	xgq->sensor_data_length = 8 * 512;
+	xgq->sensor_data = kmalloc(xgq->sensor_data_length, GFP_KERNEL);
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
@@ -810,34 +1249,29 @@ static int xgq_probe(struct platform_device *pdev)
 			xgq->xgq_sq_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}
-		if (!strncmp(res->name, NODE_XGQ_CQ_BASE, strlen(NODE_XGQ_CQ_BASE))) {
-			xgq->xgq_cq_base = ioremap_nocache(res->start,
-				res->end - res->start + 1);
-		}
 		if (!strncmp(res->name, NODE_XGQ_RING_BASE, strlen(NODE_XGQ_RING_BASE))) {
 			xgq->xgq_ring_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}
 	}
 
-	if (!xgq->xgq_sq_base || !xgq->xgq_cq_base || !xgq->xgq_ring_base) {
+	if (!xgq->xgq_sq_base || !xgq->xgq_ring_base) {
 		ret = -EIO;
 		XGQ_ERR(xgq, "platform get resource failed");
 		goto attach_failed;
 	}
 
+	xgq->xgq_sq_base = xgq->xgq_sq_base + XGQ_SQ_TAIL_POINTER;
+	xgq->xgq_cq_base = xgq->xgq_sq_base + XGQ_CQ_TAIL_POINTER;
+
 	/* check device is ready */
-	if (xgq_device_is_ready(xgq)) {
+	if (!xgq_device_is_ready(xgq)) {
 		ret = -ENODEV;
 		XGQ_ERR(xgq, "device is not ready, please reset device.");
 		goto attach_failed;
 	}
 
-	/* server to reset SQ tail pointer status */
-	//iowrite32(0x0, xgq->xgq_sq_base);
-	
-	flags &= ~XGQ_SERVER;
-	ret = xgq_attach(&xgq->xgq_queue, flags, (u64)xgq->xgq_ring_base,
+	ret = xgq_attach(&xgq->xgq_queue, flags, 0, (u64)xgq->xgq_ring_base,
 		(u64)xgq->xgq_sq_base, (u64)xgq->xgq_cq_base);
 	if (ret != 0) {
 		XGQ_ERR(xgq, "xgq_attache failed: %d, please reset device", ret);
@@ -915,6 +1349,10 @@ attach_failed:
 static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_load_xclbin = xgq_load_xclbin,
 	.xgq_check_firewall = xgq_check_firewall,
+	.xgq_freq_scaling = xgq_freq_scaling,
+	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
+	.xgq_get_data = xgq_get_data,
+	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 };
 
 static const struct file_operations xgq_fops = {

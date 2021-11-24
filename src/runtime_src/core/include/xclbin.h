@@ -196,6 +196,7 @@ extern "C" {
         IP_MEM_DDR4,
         IP_MEM_HBM,
         IP_MEM_HBM_ECC,
+        IP_PS_KERNEL,
     };
 
     enum ACTION_MASK {

@@ -136,10 +136,8 @@ void DeviceTraceOffload::process_trace()
     // Processing takes a lot more time compared to everything else
     if (q_read) {
       debug_stream << "Process " << size << " bytes of trace" << std::endl;
-      dev_intf->parseTraceData(buf.get(), size, m_trace_vector);
+      deviceTraceLogger->processTraceData(buf.get(), size) ;
       buf.reset();
-      deviceTraceLogger->processTraceData(m_trace_vector);
-      m_trace_vector.clear();
     }
   } while (!q_empty);
 }
@@ -211,17 +209,19 @@ void DeviceTraceOffload::read_trace_fifo(bool)
   if (m_trbuf_full)
     return;
 
-  uint32_t num_packets = 0;
-
+  uint64_t num_packets = 0;
+  uint64_t numBytes = 0 ;
 #ifndef _WIN32
   do {
 #endif
-    m_trace_vector.clear();
-    dev_intf->readTrace(m_trace_vector);
-    deviceTraceLogger->processTraceData(m_trace_vector);
-    num_packets += static_cast<uint32_t>(m_trace_vector.size());
+    uint32_t* buf = nullptr ;
+    numBytes = dev_intf->readTrace(buf) ; // Should allocate buf
+    deviceTraceLogger->processTraceData(buf, numBytes) ;
+    num_packets += numBytes / sizeof(uint64_t) ;
+    if (buf)
+      delete [] buf ;
 #ifndef _WIN32
-  } while (m_trace_vector.size() != 0);
+  } while (numBytes != 0);
 #endif
 
   // Check if fifo is full
@@ -267,7 +267,6 @@ void DeviceTraceOffload::read_trace_end()
 {
   // Trace logger will clear it's state and add approximations 
   // for pending events
-  m_trace_vector.clear();
   deviceTraceLogger->endProcessTraceData();
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();

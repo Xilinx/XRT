@@ -91,10 +91,14 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	 * So, this separate kds_scustat_raw is better.
 	 *
 	 * But in the worst case, this is still not good enough.
+	 *
+	 * Soft kernels are namespaced with a domain identifer that
+	 * is or'ed into the scu index.	 For soft kernels the 
+	 * domain is SCU_DOMAIN.
 	 */
 	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scu_mgmt->num_cus; ++i) {
-		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, (i | SCU_DOMAIN),
 				scu_mgmt->name[i], scu_mgmt->status[i],
 				cu_stat_read(scu_mgmt,usage[i]));
 	}
@@ -132,6 +136,59 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 	return sz;
 }
 /* sysfs end */
+
+static int
+kds_wake_up_poll(struct kds_sched *kds)
+{
+	if (kds->polling_start) {
+		kds->polling_start = 0;
+		return 1;
+	}
+
+	if (kds->polling_stop)
+		return 1;
+
+	return 0;
+}
+
+static int kds_polling_thread(void *data)
+{
+	struct kds_sched *kds = (struct kds_sched *)data;
+	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
+	struct xrt_cu **xcus = cu_mgmt->xcus;
+	int num_cus = cu_mgmt->num_cus;
+	int busy_cnt = 0;
+	int loop_cnt = 0;
+	int cu_idx;
+
+	while (!kds->polling_stop) {
+		busy_cnt = 0;
+		for (cu_idx = 0; cu_idx < num_cus; cu_idx++) {
+			if (xrt_cu_process_queues(xcus[cu_idx]) == XCU_BUSY)
+				busy_cnt += 1;
+		}
+
+		/* If kds->interval is 0, keep poling CU without sleeping.
+		 * If kds->interval is greater than 0, this thread will sleep
+		 * interval to interval + 3 microseconds.
+		 */
+		if (kds->interval > 0)
+			usleep_range(kds->interval, kds->interval + 3);
+
+		/* Avoid large num_rq leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
+
+		if (busy_cnt != 0)
+			continue;
+
+		wait_event_interruptible(kds->wait_queue, kds_wake_up_poll(kds));
+	}
+
+	return 0;
+}
 
 /**
  * get_cu_by_addr -Get CU index by address
@@ -322,13 +379,17 @@ kds_cu_abort_cmd(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 }
 
 static int
-kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
+kds_submit_cu(struct kds_sched *kds, struct kds_command *xcmd)
 {
 	int ret = 0;
 
 	switch (xcmd->opcode) {
 	case OP_START:
-		ret = kds_cu_dispatch(cu_mgmt, xcmd);
+		ret = kds_cu_dispatch(&kds->cu_mgmt, xcmd);
+		if (!ret && kds->ert_disable) {
+			kds->polling_start = 1;
+			wake_up_interruptible(&kds->wait_queue);
+		}
 		break;
 	case OP_CONFIG:
 		/* No need to config for KDS mode */
@@ -337,7 +398,7 @@ kds_submit_cu(struct kds_cu_mgmt *cu_mgmt, struct kds_command *xcmd)
 		xcmd->cb.free(xcmd);
 		break;
 	case OP_ABORT:
-		kds_cu_abort_cmd(cu_mgmt, xcmd);
+		kds_cu_abort_cmd(&kds->cu_mgmt, xcmd);
 		break;
 	default:
 		ret = -EINVAL;
@@ -554,12 +615,12 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 	bool shared;
 	int ret = 0;
 
-        if (info->cu_idx < MAX_CUS) {
+	if (info->cu_idx < MAX_CUS) {
 		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
-        } else {
-                cu_idx = info->cu_idx - MAX_CUS;
-        }
+	} else {
+		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
+	}
 
 	if (cu_idx >= scu_mgmt->num_cus) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -613,12 +674,12 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
 
-        if (info->cu_idx < MAX_CUS) {
+	if (info->cu_idx < MAX_CUS) {
 		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
-        } else {
-                cu_idx = info->cu_idx - MAX_CUS;
-        }
+	} else {
+		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
+	}
 
 	if (cu_idx >= scu_mgmt->num_cus) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -794,6 +855,7 @@ int kds_init_sched(struct kds_sched *kds)
 	kds->ert_disable = true;
 	kds->ini_disable = false;
 	init_completion(&kds->comp);
+	init_waitqueue_head(&kds->wait_queue);
 
 	return 0;
 }
@@ -852,7 +914,7 @@ int kds_add_command(struct kds_sched *kds, struct kds_command *xcmd)
 	/* Command is good to submit */
 	switch (xcmd->type) {
 	case KDS_CU:
-		err = kds_submit_cu(&kds->cu_mgmt, xcmd);
+		err = kds_submit_cu(kds, xcmd);
 		break;
 	case KDS_ERT:
 		err = kds_submit_ert(kds, xcmd);
@@ -1308,8 +1370,17 @@ int kds_fini_ert(struct kds_sched *kds)
 void kds_reset(struct kds_sched *kds)
 {
 	kds->bad_state = 0;
-	kds->ert_disable = true;
 	kds->ini_disable = false;
+
+	if (!kds->ert)
+		kds->ert_disable = true;
+
+	if (kds->polling_thread && !IS_ERR(kds->polling_thread)) {
+		kds->polling_stop = 1;
+		wake_up_interruptible(&kds->wait_queue);
+		(void) kthread_stop(kds->polling_thread);
+		kds->polling_thread = NULL;
+	}
 }
 
 static int kds_fa_assign_cmdmem(struct kds_sched *kds)
@@ -1393,6 +1464,15 @@ int kds_cfg_update(struct kds_sched *kds)
 				cu_mgmt->cu_intr[i] = 0;
 				ret = 0;
 			}
+		}
+	}
+
+	if (kds->ert_disable && !kds->cu_intr) {
+		kds->polling_stop = 0;
+		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
+		if (IS_ERR(kds->polling_thread)) {
+			ret = IS_ERR(kds->polling_thread);
+			kds->polling_thread = NULL;
 		}
 	}
 
@@ -1647,3 +1727,4 @@ cu_mask_to_cu_idx(struct kds_command *xcmd, uint8_t *cus)
 
 	return num_cu;
 }
+

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -99,7 +99,7 @@ get_target() const
 {
   if (auto metadata = get_xclbin(nullptr))
     return metadata.target();
-  return xclbin::target_type::invalid;
+  throw std::runtime_error("No program metadata");
 }
 
 xclbin
@@ -195,15 +195,24 @@ create_kernel(const std::string& kernel_name)
 {
   auto deleter = [](kernel* k) { k->release(); };
 
-  // Look up kernel symbol from arbitrary (first) xclbin
+  // Look up kernel symbol from first matching xclbin
   if (m_binaries.empty())
     throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"No binary for program");
 
-  auto symbol_name = kernel_utils::normalize_kernel_name(kernel_name);
-  auto metadata = get_xclbin(nullptr);
-  auto& symbol = metadata.lookup_kernel(symbol_name);
-  auto k = std::make_unique<kernel>(this,kernel_name,symbol);
-  return std::unique_ptr<kernel,decltype(deleter)>(k.release(),deleter);
+  // Find first matching kernel in any device program
+  auto normalized_kernel_name = kernel_utils::normalize_kernel_name(kernel_name);
+  for (const auto& device : m_devices) {
+    const auto& xclbin = device->get_xrt_xclbin();
+    auto xk = xclbin.get_kernel(normalized_kernel_name);
+    if (!xk)
+      continue;
+
+    auto k = std::make_unique<kernel>(this, kernel_name, xk);
+    return std::unique_ptr<kernel,decltype(deleter)>(k.release(), deleter);
+  }
+
+  throw xocl::error(CL_INVALID_PROGRAM_EXECUTABLE,"Kernel not found");
+
 }
 
 program::creation_type

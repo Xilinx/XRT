@@ -2552,11 +2552,14 @@ static int irq_msix_user_setup(struct xdma_dev *xdev)
 	int i;
 	int j = xdev->h2c_channel_max + xdev->c2h_channel_max;
 	int rv = 0;
-	struct interrupt_regs *reg = (struct interrupt_regs *)
-		(xdev->bar[xdev->config_bar_idx] + XDMA_OFS_INT_CTRL);
 
-	if (xdev->no_dma)
-		j = read_register(&reg->user_msi_vector) & 0xf;
+	/*
+	 * hard-code the number of dma channels to 2 for no dma mode.
+	 * should not rely on the register to get the number of dma channels
+	 *
+	 * if (xdev->no_dma)
+	 *	j = read_register(&reg->user_msi_vector) & 0xf;
+	 */	
 
 	/* vectors set in probe_scan_for_msi() */
 	for (i = 0; i < xdev->user_max; i++, j++) {
@@ -3324,6 +3327,7 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 						 msecs_to_jiffies(10000))) {
 			pr_err("Wait for request timed out");
 			engine_reg_dump(engine);
+			check_nonzero_interrupt_status(engine->xdev);
 			ret = -EIO;
 		} else {
 			val = read_register(&engine->regs->completed_desc_count);
@@ -3335,6 +3339,15 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 		}
 		fastpath_desc_clear_last(engine, engine->f_submitted_desc_cnt);
 		val = read_register(&engine->regs->status_rc);
+		if (((engine->dir == DMA_FROM_DEVICE) &&
+		    (val & XDMA_STAT_C2H_ERR_MASK)) ||
+		    ((engine->dir == DMA_TO_DEVICE) &&
+		    (val & XDMA_STAT_H2C_ERR_MASK))) {
+			pr_err("engine %s, status error 0x%x.\n", engine->name,
+			        val);
+			engine_status_dump(engine);
+			engine_reg_dump(engine);
+		}
 		write_register(XDMA_CTRL_RUN_STOP, &engine->regs->control_w1c,
 			       (unsigned long)(&engine->regs->control_w1c) -
 			       (unsigned long)(&engine->regs));

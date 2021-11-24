@@ -371,18 +371,11 @@ set_target_properties(xdp_appdebug_plugin PROPERTIES VERSION ${XRT_VERSION_STRIN
 set_target_properties(xdp_power_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
-# AI Engine plugins are Edge only
-if (DEFINED XRT_AIE_BUILD)
-  # AIE Debug plugin
-  add_library(xdp_aie_debug_plugin MODULE ${XRT_XDP_AIE_DEBUG_PLUGIN_FILES})
-  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_core)
-  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_core metal xaiengine)
-  set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
-
-  install (TARGETS xdp_aie_debug_plugin
-    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
-  )
-
+# AI Engine plugins are Edge only.
+# With x86 sw_emu support of AIE, XRT_AIE_BUILD is defined even on x86
+# so the condition is strengthen to include native build not defined,
+# which is same condition that compiles edge.
+if (DEFINED XRT_AIE_BUILD AND NOT DEFINED XRT_NATIVE_BUILD)
   # AIE Profile plugin
   add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)
@@ -400,6 +393,16 @@ if (DEFINED XRT_AIE_BUILD)
   set_target_properties(xdp_aie_trace_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
   install (TARGETS xdp_aie_trace_plugin
+    LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
+  )
+
+  # AIE Debug plugin
+  add_library(xdp_aie_debug_plugin MODULE ${XRT_XDP_AIE_DEBUG_PLUGIN_FILES})
+  add_dependencies(xdp_aie_debug_plugin xdp_core xrt_core)
+  target_link_libraries(xdp_aie_debug_plugin PRIVATE xdp_core xrt_core metal xaiengine)
+  set_target_properties(xdp_aie_debug_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+
+  install (TARGETS xdp_aie_debug_plugin
     LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
   )
 endif()

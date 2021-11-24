@@ -221,7 +221,7 @@ pskernel_parse(char *so_file, size_t size, const char *func_name)
     dwarf_end(dw);
   }
 
-  if (!args.empty())
+  if (args.empty())
     throw std::runtime_error("No PS kernel arguments found!");
  
   return args;

@@ -99,7 +99,8 @@
 #define NODE_MAILBOX_USER_TO_ERT "ep_mailbox_user_to_ert_00"
 #define NODE_PMC_INTR	"ep_pmc_intr_00"
 #define NODE_PMC_MUX	"ep_pmc_mux_00"
-#define NODE_ERT_UARTLITE "ep_ert_debug_uart_00"
+#define NODE_ERT_UARTLITE_00 "ep_ert_debug_uart_00"
+#define NODE_ERT_UARTLITE_01 "ep_ert_debug_uart_01"
 #define NODE_ERT_CFG_GPIO "ep_ert_config_00"
 #define NODE_INTC_CU_00 "ep_intc_cu_00"
 #define NODE_INTC_CU_01 "ep_intc_cu_01"
@@ -112,7 +113,6 @@
 #define NODE_PCIE "pcie"
 #define NODE_BARS "bars"
 #define NODE_XGQ_SQ_BASE "ep_xgq_mgmt_to_rpu_sq_pi_00"
-#define NODE_XGQ_CQ_BASE "ep_xgq_mgmt_to_rpu_cq_ci_00"
 #define NODE_XGQ_RING_BASE "ep_xgq_payload_mgmt_00"
 
 #define PROP_BARM_CTRL "axi_bram_ctrl"
