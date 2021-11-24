@@ -451,7 +451,7 @@ get_cu_indices(const ip_layout* ip_layout)
       cuidx.domain_index = ps_kernel_idx++;
     }
     else {
-      auto itr = std::find(cus.begin(), cus.end(), ip_data.m_base_address);
+      auto itr = std::find(cus.begin(), cus.end(), get_base_addr(ip_data));
       if (itr == cus.end())
         throw std::runtime_error("Internal error: cu not found");
 
