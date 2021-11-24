@@ -175,42 +175,46 @@ namespace xdp {
       return;
 
     // This mask check for following states
-      // ECC_Scrubbing_Stall
-      // ECC_Error_Stall
-      // Debug_Halt
-      // Cascade_Stall_MCD
-      // Cascade_Stall_SCD
-      // Stream_Stall_MS1
-      // Stream_Stall_MS0
-      // Stream_Stall_SS1
-      // Stream_Stall_SS0
-      // Lock_Stall_E
-      // Lock_Stall_N
-      // Lock_Stall_W
-      // Lock_Stall_S
-      // Memory_Stall_E
-      // Memory_Stall_N
-      // Memory_Stall_W
-      // Memory_Stall_S
-      const uint32_t CORE_STALL_MASK = 0xFFFC;
-      // This mask check for following states
-      // Reset
-      // Done
-      const uint32_t CORE_INACTIVE_MASK = 0x100002;
-      // Count of samples before we say it's a hang
-      const unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
-      // Reset values
-      const uint32_t CORE_RESET_STATUS  = 0x2;
-      const uint32_t CORE_ENABLE_MASK  = 0x1;
-
-    // Pre-populate core status and PC maps
+    // ECC_Scrubbing_Stall
+    // ECC_Error_Stall
+    // Debug_Halt
+    // Cascade_Stall_MCD
+    // Cascade_Stall_SCD
+    // Stream_Stall_MS1
+    // Stream_Stall_MS0
+    // Stream_Stall_SS1
+    // Stream_Stall_SS0
+    // Lock_Stall_E
+    // Lock_Stall_N
+    // Lock_Stall_W
+    // Lock_Stall_S
+    // Memory_Stall_E
+    // Memory_Stall_N
+    // Memory_Stall_W
+    // Memory_Stall_S
+    const uint32_t CORE_STALL_MASK = 0xFFFC;
+    // This mask check for following states
+    // Reset
+    // Done
+    const uint32_t CORE_INACTIVE_MASK = 0x100002;
+    // Count of samples before we say it's a hang
+    const unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
+    const unsigned int GRAPH_HANG_COUNT_THRESHOLD = 50;
+    // Reset values
+    const uint32_t CORE_RESET_STATUS  = 0x2;
+    const uint32_t CORE_ENABLE_MASK  = 0x1;
+    // Graph -> total stuck core cycles
+    std::map<std::string, uint64_t> graphStallTotalMap;
+    // Core -> total stall cycles
     std::map<tile_type, uint32_t> coreStuckCountMap;
+    // Core -> last checked status
     std::map<tile_type, uint32_t> coreStatusMap;
+    // Pre-populate core status and PC maps
     for (const auto& kv : mGraphCoreTilesMap) {
-        for (const auto& tile : kv.second) {
-          coreStuckCountMap[tile] = 0;
-          coreStatusMap[tile] = CORE_RESET_STATUS;
-        }
+      for (const auto& tile : kv.second) {
+        coreStuckCountMap[tile] = 0;
+        coreStatusMap[tile] = CORE_RESET_STATUS;
+      }
     }
 
     auto& should_continue = it->second;
@@ -230,41 +234,63 @@ namespace xdp {
       // Iterate over all tiles
       for (const auto& kv : mGraphCoreTilesMap) {
         auto& graphName = kv.first;
-        for (const auto& tile : kv.second) {
+        auto& graphTilesVec = kv.second;
+        auto& graphStallCounter = graphStallTotalMap[graphName];
+        for (const auto& tile : graphTilesVec) {
           // Read core status and PC value
+          bool coreUnstalled = false;
           uint32_t coreStatus = 0;
-          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row, tile.col);
+          auto tileOffset = _XAie_GetTileAddr(aieDevInst, tile.row + 1, tile.col);
           XAie_Read32(aieDevInst, tileOffset + AIE_OFFSET_CORE_STATUS, &coreStatus);
 
-          auto& stallCounter = coreStuckCountMap[tile];
+          auto& coreStallCounter = coreStuckCountMap[tile];
 
           // Condition : Core is in reset/done state or not enabled
           if (coreStatus & CORE_INACTIVE_MASK || !(coreStatus & CORE_ENABLE_MASK)) {
-            stallCounter = 0;
+            coreUnstalled = (coreStallCounter >= GRAPH_HANG_COUNT_THRESHOLD);
+            coreStallCounter = 0;
           }
           // Condition : If core is enabled + stalled and has same kind of stall as previous check
           else if ((coreStatus & CORE_STALL_MASK) && (coreStatus == coreStatusMap[tile]) ) {
-            stallCounter++;
-            if (stallCounter == CORE_HANG_COUNT_THRESHOLD) {
-              foundStuckCores = true;
-              stuckTile = tile;
-              stuckCoreStatus = coreStatus;
-            }
+            coreStallCounter++;
           }
           // Core is running normally or has changed state
           else {
-            stallCounter = 0;
+            coreUnstalled = (coreStallCounter >= GRAPH_HANG_COUNT_THRESHOLD);
+            coreStallCounter = 0;
+          }
+
+          // Is this core contributing to entire graph hang?
+          if (coreUnstalled && graphStallCounter) {
+            graphStallCounter--;
+          } else if (coreStallCounter == GRAPH_HANG_COUNT_THRESHOLD) {
+            graphStallCounter++;
+          }
+
+          // Is this core stuck for long time?
+          if (coreStallCounter == CORE_HANG_COUNT_THRESHOLD) {
+            foundStuckCores = true;
+            stuckTile = tile;
+            stuckCoreStatus = coreStatus;
           }
 
           coreStatusMap[tile] = coreStatus;
         } // For tiles in graph
 
-        if (foundStuckCores) {
-          std::stringstream warningMessage;
+        std::stringstream warningMessage;
+        if (graphStallCounter == graphTilesVec.size()) {
+          // We have a stuck graph
+          warningMessage
+          << "Potential deadlock/hang found in AI Engines. Graph : " << graphName;
 
+          xrt_core::message::send(severity_level::warning, "XRT", warningMessage.str());
+          // Send next warning if all tiles come out of hang & reach threshold again
+          graphStallCounter = 0;
+        } else if (foundStuckCores) {
+          // We have a stuck core within this graph
           warningMessage
           << "Potential deadlock/hang found in AI Engines. Graph : " << graphName << " "
-          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row << ") "
+          << "Tile : " << "(" << stuckTile.col << "," << stuckTile.row + 1 << ") "
           << "Status 0x" << std::hex << stuckCoreStatus << std::dec
           << " : " << getCoreStatusString(stuckCoreStatus);
 
@@ -272,18 +298,21 @@ namespace xdp {
           foundStuckCores = false;
         }
 
-        // Check Threshold status
-        /*{
+        // Print status for debug
+        if (xrt_core::config::get_verbosity() >= static_cast<unsigned int>(severity_level::debug)) {
           std::stringstream msg;
-          for (const auto& tile : kv.second) {
-            if (coreStuckCountMap[tile])
-              msg << "T(" << tile.col <<"," << tile.row << ") : " << "< " << coreStuckCountMap[tile] << " : 0x" << std::hex << coreStatusMap[tile] << std::dec << " > " ;
+          for (const auto& tile : graphTilesVec) {
+            if (coreStuckCountMap[tile]) {
+              msg
+                << "T(" << tile.col <<"," << tile.row + 1 << "):" << "<" << coreStuckCountMap[tile]
+                << ":0x" << std::hex << coreStatusMap[tile] << std::dec << "> ";
+            }
           }
-          auto msg_str = msg.str();
-          if (!msg_str.empty())
-            xrt_core::message::send(severity_level::debug, "XRT", msg_str);
-        }*/
-
+          if (!msg.str().empty()) {
+            msg << std::endl << "Graph " << graphName << " #Cur : " << graphStallCounter << " #Thr : " << graphTilesVec.size();
+            xrt_core::message::send(severity_level::debug, "XRT", msg.str());
+          }
+        }
       } // For graphs
 
       // Always write out latest debug/status file
