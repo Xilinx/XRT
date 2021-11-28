@@ -149,6 +149,32 @@ static inline unsigned xocl_bo_type(unsigned user_flags)
 	return bo_type;
 }
 
+static inline int xocl_bo_usage_idx(unsigned bo_flag)
+{
+	int idx = -1;
+
+	switch (bo_flag) {
+	case XOCL_BO_NORMAL:
+		idx = XOCL_BO_USAGE_NORMAL;
+	case XOCL_BO_USERPTR:
+		idx = XOCL_BO_USAGE_USERPTR;
+	case XOCL_BO_P2P:
+		idx = XOCL_BO_USAGE_P2P;
+	case XOCL_BO_DEV_ONLY:
+		idx = XOCL_BO_USAGE_DEV_ONLY;
+	case XOCL_BO_IMPORT:
+		idx = XOCL_BO_USAGE_IMPORT;
+	case XOCL_BO_EXECBUF:
+		idx = XOCL_BO_USAGE_EXECBUF;
+	case XOCL_BO_CMA:
+		idx = XOCL_BO_USAGE_CMA;
+	default:
+		idx = -1;
+	}
+
+	return idx;
+}
+
 static inline bool xocl_bo_sync_able(unsigned bo_flags)
 {
 	return ((bo_flags & XOCL_DEVICE_MEM) && (bo_flags & XOCL_HOST_MEM)) 

@@ -658,6 +658,19 @@ void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 	drm_p->mm_usage_stat[ddr]->bo_count += count;
 }
 
+int xocl_bo_update_usage_stat(struct xocl_drm *drm_p, int bo_idx,
+	u64 size, int count)
+{
+	if (!drm_p->bo_usage_stat)
+		return -EINVAL;
+	if (bo_idx < 0)
+		return -EINVAL;
+
+	drm_p->bo_usage_stat[bo_idx].memory_usage += (count > 0) ? size : -size;
+	drm_p->bo_usage_stat[bo_idx].bo_count += count;
+	return 0;
+}
+
 int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
 			      struct drm_mm_node *node, u64 size)
 {

@@ -92,6 +92,7 @@ static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
 	struct drm_device *ddev = xobj->base.dev;
 	struct xocl_drm *drm_p = ddev->dev_private;
 	unsigned ddr = xobj->mem_idx;
+	int bo_usage_idx = xocl_bo_usage_idx(xobj->flags);
 
 	mutex_lock(&drm_p->mm_lock);
 	BO_ENTER("xobj %p, mm_node %p", xobj, xobj->mm_node);
@@ -99,6 +100,7 @@ static void xocl_free_mm_node(struct drm_xocl_bo *xobj)
 		goto end;
 
 	xocl_mm_update_usage_stat(drm_p, ddr, xobj->base.size, -1);
+	xocl_bo_update_usage_stat(drm_p, bo_usage_idx, xobj->base.size, -1);
 	BO_DEBUG("remove mm_node:%p, start:%llx size: %llx", xobj->mm_node,
 		xobj->mm_node->start, xobj->mm_node->size);
 	drm_mm_remove_node(xobj->mm_node);
@@ -308,6 +310,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	struct xocl_dev *xdev = drm_p->xdev;
 	struct drm_gem_object *obj;
 	unsigned memidx = xocl_bo_ddr_idx(user_flags);
+	int bo_usage_idx = -1;
 	bool xobj_inited = false;
 	int err = 0;
 
@@ -392,6 +395,8 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);
 	xocl_mm_update_usage_stat(drm_p, memidx, xobj->base.size, 1);
+	bo_usage_idx = xocl_bo_usage_idx(xobj->flags);
+	xocl_bo_update_usage_stat(drm_p, bo_usage_idx, xobj->base.size, 1);
 	/* Record the DDR we allocated the buffer on */
 	xobj->mem_idx = memidx;
 
