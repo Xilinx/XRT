@@ -24,7 +24,9 @@ void zocl_xclbin_fini(struct drm_zocl_dev *zdev);
 
 int zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid);
 void *zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev);
+int zocl_xclbin_hold(struct drm_zocl_dev *zdev, const uuid_t *id);
 int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
+int zocl_xclbin_release(struct drm_zocl_dev *zdev, const uuid_t *id);
 int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
 
 int zocl_xclbin_refcount(struct drm_zocl_dev *zdev);

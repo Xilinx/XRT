@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,7 @@
 #include "core/common/dlfcn.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/api/xclbin_int.h"
 
 #include "xocl/core/command_queue.h"
 #include "xocl/core/program.h"
@@ -583,11 +584,11 @@ namespace xocl {
       auto xcontext = xevent->get_execution_context() ;
       auto workGroupSize = xkernel->get_wg_size() ;
       auto device = xevent->get_command_queue()->get_device() ;
-      auto xclbin = xkernel->get_program()->get_xclbin(device) ;
+      auto xclbin = device->get_xrt_xclbin();
       
       std::string deviceName = device->get_name() ;
       std::string kernelName = xkernel->get_name() ;
-      std::string binaryName = xclbin.project_name() ;
+      std::string binaryName = xrt_core::xclbin_int::get_project_name(xclbin);
 
       size_t localWorkDim[3] = {0, 0, 0} ;
       range_copy(xkernel->get_compile_wg_size_range(), localWorkDim) ;

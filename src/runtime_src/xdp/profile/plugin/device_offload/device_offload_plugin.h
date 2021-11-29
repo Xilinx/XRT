@@ -28,7 +28,7 @@
 namespace xdp {
 
   // Forward declarations
-  class TraceLoggerCreatingDeviceEvents ;
+  class DeviceTraceLogger ;
 
   // This plugin should be completely agnostic of what the host code profiling
   //  plugin is.  So, this should work with HAL profiling, OpenCL profiling, 
@@ -58,7 +58,7 @@ namespace xdp {
     //  information from all devices.  This holds all the objects
     //  responsible for offloading data from all devices.
     typedef std::tuple<DeviceTraceOffload*, 
-                       TraceLoggerCreatingDeviceEvents*,
+                       DeviceTraceLogger*,
                        DeviceIntf*> DeviceData ;
 
     std::map<uint64_t, DeviceData> offloaders;

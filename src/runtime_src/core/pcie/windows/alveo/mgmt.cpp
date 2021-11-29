@@ -27,7 +27,7 @@
 #include <iostream>
 
 // To be simplified
-#include "core/pcie/driver/windows/include/XoclMgmt_INTF.h"
+#include "core/pcie/driver/windows/alveo/include/XoclMgmt_INTF.h"
 
 #include <limits>
 #include <cassert>

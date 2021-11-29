@@ -259,6 +259,144 @@ namespace xclcpuemhal2 {
       int
         xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
 
+      /**
+      * xrtSyncBOAIENB() - Transfer data between DDR and Shim DMA channel
+      *
+      * @bo:           BO obj.
+      * @gmioName:        GMIO port name
+      * @dir:             GM to AIE or AIE to GM
+      * @size:            Size of data to synchronize
+      * @offset:          Offset within the BO
+      *
+      * Return:          0 on success, or appropriate error number.
+      *
+      * Synchronize the buffer contents between GMIO and AIE.
+      * Note: Upon return, the synchronization is submitted or error out
+      */
+      int
+        xrtSyncBOAIENB(xrt::bo& bo, const char *gmioname, enum xclBOSyncDirection dir, size_t size, size_t offset);
+
+      /**
+      * xrtGMIOWait() - Wait a shim DMA channel to be idle for a given GMIO port
+      *
+      * @gmioName:        GMIO port name
+      *
+      * Return:          0 on success, or appropriate error number.
+      */
+      int
+        xrtGMIOWait(const char *gmioname);
+
+      /**
+      * xrtGraphResume() - Resume a suspended graph.
+      *
+      * Resume graph execution which was paused by suspend() or wait(cycles) APIs
+      */
+      int
+        xrtGraphResume(void * gh);
+
+      /**
+      * xrtGraphTimedEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+      *                 then end the graph. If cycle is 0, busy wait until graph
+      *                 is done before end the graph. If graph already run more
+      *                 than the given cycle, stop the graph immediately and end it.
+      */
+      int
+        xrtGraphTimedEnd(void * gh, uint64_t cycle);
+
+      /**
+      * xrtGraphTimedWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+      *                   then stop the graph. If cycle is 0, busy wait until graph
+      *                   is done. If graph already run more than the given
+      *                   cycle, stop the graph immediateley.
+      */
+      int
+        xrtGraphTimedWait(void * gh, uint64_t cycle);
+
+      // //******************************* XRT Graph API's **************************************************//
+      // /**
+      // * xrtGraphInit() - Initialize graph 
+      // *
+      // * @gh:             Handle to graph previously opened with xrtGraphOpen.
+      // * Return:          0 on success, -1 on error
+      // *
+      // * Note: Run by enable tiles and disable tile reset
+      // */
+      // int
+      //   xrtGraphInit(void * gh);
+      // 
+      // /**
+      // * xrtGraphRun() - Start a graph execution
+      // *
+      // * @gh:             Handle to graph previously opened with xrtGraphOpen.
+      // * @iterations:     The run iteration to update to graph. 0 for infinite.
+      // * Return:          0 on success, -1 on error
+      // *
+      // * Note: Run by enable tiles and disable tile reset
+      // */
+      // int
+      //   xrtGraphRun(void * gh, uint32_t iterations);
+      // 
+      // /**
+      // * xrtGraphWait() -  Wait a given AIE cycle since the last xrtGraphRun and
+      // *                   then stop the graph. If cycle is 0, busy wait until graph
+      // *                   is done. If graph already run more than the given
+      // *                   cycle, stop the graph immediateley.
+      // *
+      // * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      // *
+      // * Return:          0 on success, -1 on error.
+      // *
+      // * Note: This API with non-zero AIE cycle is for graph that is running
+      // * forever or graph that has multi-rate core(s).
+      // */
+      // int
+      //   xrtGraphWait(void * gh);          
+      // 
+      // /**
+      // * xrtGraphEnd() - Wait a given AIE cycle since the last xrtGraphRun and
+      // *                 then end the graph. busy wait until graph
+      // *                 is done before end the graph. If graph already run more
+      // *                 than the given cycle, stop the graph immediately and end it.
+      // *
+      // * @gh:              Handle to graph previously opened with xrtGraphOpen.      
+      // *
+      // * Return:          0 on success, -1 on timeout.
+      // *
+      // * Note: This API with non-zero AIE cycle is for graph that is running
+      // * forever or graph that has multi-rate core(s).
+      // */
+      // int
+      //   xrtGraphEnd(void * gh);
+      // 
+      // /**
+      // * xrtGraphUpdateRTP() - Update RTP value of port with hierarchical name
+      // *
+      // * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      // * @hierPathPort:    hierarchial name of RTP port.
+      // * @buffer:          pointer to the RTP value.
+      // * @size:            size in bytes of the RTP value.
+      // *
+      // * Return:          0 on success, -1 on error.
+      // */
+      // int
+      //   xrtGraphUpdateRTP(void * gh, const char *hierPathPort, const char *buffer, size_t size);
+      // 
+      // /**
+      // * xrtGraphUpdateRTP() - Read RTP value of port with hierarchical name
+      // *
+      // * @gh:              Handle to graph previously opened with xrtGraphOpen.
+      // * @hierPathPort:    hierarchial name of RTP port.
+      // * @buffer:          pointer to the buffer that RTP value is copied to.
+      // * @size:            size in bytes of the RTP value.
+      // *
+      // * Return:          0 on success, -1 on error.
+      // *
+      // * Note: Caller is reponsible for allocating enough memory for RTP value
+      // *       being copied to.
+      // */
+      // int
+      //   xrtGraphReadRTP(void * gh, const char *hierPathPort, char *buffer, size_t size);
+
     private:
       std::shared_ptr<xrt_core::device> mCoreDevice;
       std::mutex mMemManagerMutex;

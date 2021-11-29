@@ -13,22 +13,23 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #ifndef xclbin_parser_h_
 #define xclbin_parser_h_
 
-#include "core/common/config.h"
-#include "xclbin.h"
+#include "config.h"
+#include "cuidx_type.h"
+#include "core/include/xclbin.h"
+
+#include <array>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 namespace xrt_core { namespace xclbin {
 
-/**
- * struct kernel_argument -
- */
+// struct kernel_argument - kernel argument meta data
 struct kernel_argument
 {
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
@@ -39,6 +40,7 @@ struct kernel_argument
   std::string name;
   std::string hosttype;
   std::string port;
+  size_t port_width = 0;
   size_t index = no_index;
   size_t offset = 0;
   size_t size = 0;
@@ -48,9 +50,10 @@ struct kernel_argument
   direction dir;
 };
 
+// struct kernel_properties - kernel property metadata
 struct kernel_properties
 {
-  enum class kernel_type { none, pl, ps };
+  enum class kernel_type { none, pl, ps, dpu };
   enum class mailbox_type { none, in , out, inout };
   using restart_type = size_t;
   std::string name;
@@ -59,6 +62,12 @@ struct kernel_properties
   mailbox_type mailbox = mailbox_type::none;
   size_t address_range = 0;
   bool sw_reset = false;
+
+  // opencl specifics
+  size_t workgroupsize = 0;
+  std::array<size_t, 3> compileworkgroupsize {0};
+  std::array<size_t, 3> maxworkgroupsize {0};
+  std::map<uint32_t, std::string> stringtable;
 };
 
 struct kernel_object
@@ -69,14 +78,12 @@ struct kernel_object
   bool sw_reset;
 };
 
-/**
- * struct softkernel_object - wrapper for a soft kernel object
- *
- * @ninst: number of instances
- * @symbol_name: soft kernel symbol name
- * @size: size of soft kernel image
- * @sk_buf: pointer to the soft kernel buffer
- */
+// struct softkernel_object - wrapper for a soft kernel object
+//
+// @ninst: number of instances
+// @symbol_name: soft kernel symbol name
+// @size: size of soft kernel image
+// @sk_buf: pointer to the soft kernel buffer
 struct softkernel_object
 {
   uint32_t ninst;
@@ -140,6 +147,15 @@ get_first_used_mem(const axlf* top);
  */
 int32_t
 address_to_memidx(const mem_topology* mem, uint64_t address);
+
+// get_cu_indices() - mapping from cu name to its index type
+//
+// Compute index type for all controllable IPs in IP_LAYOUT Normally
+// indexing is determined by KDS in driver via kds_cu_stat query
+// request, but in emulation mode that query request is not not
+// implemented
+std::map<std::string, cuidx_type>
+get_cu_indices(const ip_layout* ip_layout);
 
 /**
  * get_max_cu_size() - Compute max register map size of CUs in xclbin
@@ -339,6 +355,20 @@ is_pdi_only(const axlf* top);
 XRT_CORE_COMMON_EXPORT
 std::string
 get_vbnv(const axlf* top);
+
+/**
+ * get_project_name() - Get the project name from the XML
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_project_name(const char* xml_data, size_t xml_size);
+
+/**
+ * get_project_name() - Get the project name from the XML
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_project_name(const axlf* top);
 
 }} // xclbin, xrt_core
 

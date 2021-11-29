@@ -30,6 +30,7 @@
 #include <boost/format.hpp>
 
 #include "XclBinUtilities.h"
+#include "KernelUtilities.h"
 namespace XUtil = XclBinUtilities;
 
 #include "FormattedOutput.h"
@@ -1754,5 +1755,87 @@ XclBin::addPsKernel(const std::string& encodedString) {
   XUtil::QUIET("");
   XUtil::QUIET(XUtil::format("Section: SOFT_KERNEL (PS KERNEL), SubName: '%s' was successfully added.", symbolic_name.c_str()));
 }
+
+void getSectionPayload(const XclBin *pXclBin,
+                       axlf_section_kind kind, 
+                       boost::property_tree::ptree & ptPayLoad)
+{
+  ptPayLoad.clear();
+  Section *pSection = pXclBin->findSection(kind);
+
+  if (pSection != nullptr) 
+    pSection->getPayload(ptPayLoad);
+}
+
+void putSectionPayload(XclBin *pXclBin,
+                       axlf_section_kind kind, 
+                       const boost::property_tree::ptree & ptPayLoad)
+{
+  // Is there anything to update, if not then exit early
+  if (ptPayLoad.empty())
+    return;
+
+  Section *pSection = pXclBin->findSection(kind);
+
+  if (pSection == nullptr) {
+    pSection = Section::createSectionObjectOfKind(kind);
+    pXclBin->addSection(pSection);
+  }
+
+  pSection->readJSONSectionImage(ptPayLoad);
+}
+
+
+void
+XclBin::addKernels(const std::string& jsonFile) {
+  XUtil::TRACE("Adding fixed kernel");
+  const boost::property_tree::ptree ptEmpty;    // Empty ptree
+
+  // -- Read in the Fixed Kernel Metadata
+  XUtil::TRACE("Reading given JSON file: " + jsonFile);
+  std::fstream ifFixedKernels;
+  ifFixedKernels.open(jsonFile, std::ifstream::in | std::ifstream::binary);
+  if (!ifFixedKernels.is_open()) {
+    std::string errMsg = "ERROR: Unable to open the file for reading: " + jsonFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  boost::property_tree::ptree ptFixKernels;
+  boost::property_tree::read_json(ifFixedKernels, ptFixKernels);
+  XUtil::TRACE_PrintTree("Fixed Kernels Metadata", ptFixKernels);
+
+  // Iterate over the kernels getting their names and arguments
+  const boost::property_tree::ptree & ptKernels = ptFixKernels.get_child("ps-kernels.kernels", ptEmpty);
+  if (ptKernels.empty()) {
+    std::string errMsg = "ERROR: No kernels found in the JSON file: " + jsonFile;
+    throw std::runtime_error(errMsg);
+  }
+
+  for (const auto &kernel : ptKernels) {
+    boost::property_tree::ptree ptEmbedded;
+    boost::property_tree::ptree ptIPLayout;
+    boost::property_tree::ptree ptConnectivity;
+    boost::property_tree::ptree ptMemTopology;
+
+    // -- Get the various sections
+    getSectionPayload(this, axlf_section_kind::EMBEDDED_METADATA, ptEmbedded);
+    getSectionPayload(this, axlf_section_kind::IP_LAYOUT, ptIPLayout);
+    getSectionPayload(this, axlf_section_kind::CONNECTIVITY, ptConnectivity);
+    getSectionPayload(this, axlf_section_kind::MEM_TOPOLOGY, ptMemTopology);
+
+    // -- Update these sections with the kernel information
+    XUtil::addKernel(kernel.second, ptEmbedded);
+    XUtil::addKernel(kernel.second, ptMemTopology, ptIPLayout, ptConnectivity);
+
+    // -- Update the sections and if necessary create a new section
+    putSectionPayload(this, axlf_section_kind::EMBEDDED_METADATA, ptEmbedded);
+    putSectionPayload(this, axlf_section_kind::IP_LAYOUT, ptIPLayout);
+    putSectionPayload(this, axlf_section_kind::CONNECTIVITY, ptConnectivity);
+  }
+}
+
+
+
+
 
 

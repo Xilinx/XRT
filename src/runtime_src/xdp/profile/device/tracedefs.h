@@ -53,7 +53,7 @@
 
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
 1. Use larger FIFO size or DDR/HBM bank as 'trace_memory' in linking options.\n\
-2. Use 'coarse' option for data_transfer_trace and/or turn off stall_trace in runtime settings."
+2. Use 'coarse' option for device_trace and/or turn off stall_trace in runtime settings."
 
 #define CONTINUOUS_OFFLOAD_WARN_MSG_FIFO   "Continuous offload is currently not supported in FIFO trace offload. Disabling this option."
 
@@ -62,7 +62,7 @@
 #define TS2MM_WARN_MSG_BUFSIZE_DEF    "Trace Buffer size could not be parsed. The default size of 1M will be used."
 #define TS2MM_WARN_MSG_ALLOC_FAIL     "Trace Buffer could not be allocated on device. Device trace will be missing."
 #define TS2MM_WARN_MSG_BUF_FULL       "Trace Buffer is full. Device trace could be incomplete. \
-Please increase trace_buffer_size or use 'coarse' option for data_transfer_trace or turn on continuous_trace."
+Please increase trace_buffer_size or use 'coarse' option for device_trace or turn on continuous_trace."
 #define TS2MM_WARN_MSG_CIRC_BUF       "Device trace will be limited to trace buffer size due to insufficient trace offload rate. Please increase trace \
 buffer size and/or reduce trace_buffer_offload_interval."
 #define TS2MM_WARN_MSG_CIRC_BUF_OVERWRITE   "Circular buffer overwrite was detected in device trace. Timeline trace could be incomplete."
@@ -74,7 +74,7 @@ buffer size and/or reduce trace_buffer_offload_interval."
 #define MIN_TRACE_DUMP_INTERVAL_S 1
 #define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
-#define TRACE_DUMP_FILE_COUNT_WARN_MSG "Contunous Trace might create a large number of trace files. Please use trace_file_dump_interval \
+#define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."
 
 #endif

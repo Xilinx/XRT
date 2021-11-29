@@ -17,6 +17,7 @@ file(GLOB XRT_PCIE_NOOP_FILES
 file(GLOB XRT_PCIE_NOOP_SHARED_FILES
   "shim.cpp"
   "system_noop.cpp"
+  "../common/aie_stubs.cpp"
   "../common/system_pcie.cpp"
   "device_noop.cpp"
   "../common/device_pcie.cpp"

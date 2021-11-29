@@ -97,7 +97,7 @@ OO_MemRead::execute(const SubCmdOptions& _options) const
     device = deviceCollection.front();
 
     //-- Output file
-    if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile)) 
+    if (!m_outputFile.empty() && boost::filesystem::exists(m_outputFile) && !XBU::getForce())
       throw xrt_core::error((boost::format("Output file already exists: '%s'") % m_outputFile).str());
 
   } catch (const xrt_core::error& e) {

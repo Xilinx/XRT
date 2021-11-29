@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,8 @@
 #include "core/include/xclbin.h" // definition of binary structs
 #include "core/common/device.h"
 #include "core/common/uuid.h"
+
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include <map>
 #include <string>
@@ -45,50 +47,7 @@ public:
   static constexpr memidx_type max_banks = 256;
   using memidx_bitmask_type = std::bitset<max_banks>;
 
-  enum class target_type{ bin,x86,zynqps7,csim,cosim,hwem,invalid};
-
-  // A symbol captures all data required to construct an xocl::kernel
-  // object.  It is associated with all kernel objects in the xclbin.
-  // The symbol is returned up stream via xclbin::lookup_kernel(name).
-  struct symbol
-  {
-    // Wrap data associated with a kernel argument
-    struct arg {
-      enum class argtype { indexed, printf, rtinfo };
-      std::string name;
-      size_t address_qualifier;
-      std::string id;
-      std::string port;
-      size_t port_width;
-      size_t size;
-      size_t offset;
-      size_t hostoffset;
-      size_t hostsize;
-      std::string type;
-      size_t memsize;
-      argtype atype;        // optimization to avoid repeated string cmp
-      symbol* host;
-    };
-
-    // Wrap data associated with kernel instances
-    struct instance {
-      std::string name;   // inst name
-      size_t base;        // base addr
-    };
-
-    std::map<uint32_t,std::string> stringtable;
-
-    std::string name;                // name of kernel
-    unsigned int uid;                // unique id for this symbol, some symbols have same name??
-    std::string attributes;          // attributes as per .cl file
-    std::string hash;                // kernel conformance hash
-    size_t workgroupsize = 0;
-    size_t compileworkgroupsize[3] = {0};   //
-    size_t maxworkgroupsize[3] = {0};// xilinx extension
-    std::vector<arg> arguments;      // the args of this kernel
-    std::vector<instance> instances; // the kernel instances
-    target_type target;              // xclbin target
-  };
+  using target_type = xrt::xclbin::target_type;
 
 public:
   xclbin();
@@ -110,19 +69,6 @@ public:
   }
 
   /**
-   * Get uuid of xclbin
-   */
-  xrt_core::uuid
-  uuid() const;
-
-  /**
-   * Access the project name per xml meta data
-   */
-  XRT_XOCL_EXPORT
-  std::string
-  project_name() const;
-
-  /**
    * What target is this xclbin compiled for
    */
   target_type
@@ -142,30 +88,6 @@ public:
    */
   std::vector<std::string>
   kernel_names() const;
-
-  /**
-   * Get list of kernel symbols in this xclbin
-   */
-  std::vector<const symbol*>
-  kernel_symbols() const;
-
-  /**
-   * Get kernel with specified name.
-   *
-   * The lifetime of the returned object is tied to the lifetime
-   * of this xclbin object, which is tied to the lifetime of the
-   * xocl::program that constructs this object.
-   *
-   * This function is analogous to dlsym.
-   */
-  const symbol&
-  lookup_kernel(const std::string& name) const;
-
-  /**
-   * Get the mem topology section in xclbin
-   */
-  const mem_topology*
-  get_mem_topology() const;
 
   /**
    * Get memory connection indeces for CU argument at specified index

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2020 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,7 +16,7 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/database/events/creator/device_event_from_trace.h"
+#include "xdp/profile/device/device_trace_logger.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/common/message.h"
@@ -28,12 +28,12 @@
 
 namespace xdp {
 
-  DeviceEventCreatorFromTrace::DeviceEventCreatorFromTrace(uint64_t devId)
+  DeviceTraceLogger::DeviceTraceLogger(uint64_t devId)
     : deviceId(devId),
       db(VPDatabase::Instance()),
       clockTrainOffset(0),
       traceClockRateMHz(0),
-      clockTrainSlope(0) 
+      clockTrainSlope(0)
   {
     traceClockRateMHz = db->getStaticInfo().getClockRateMHz(deviceId);
     clockTrainSlope = 1000.0/traceClockRateMHz;
@@ -49,7 +49,11 @@ namespace xdp {
     asmLastTrans.resize((db->getStaticInfo()).getNumASMWithTrace(deviceId, xclbin)) ;
   }
 
-  void DeviceEventCreatorFromTrace::addCUEndEvent(double hostTimestamp,
+  DeviceTraceLogger::~DeviceTraceLogger()
+  {
+  }
+
+  void DeviceTraceLogger::addCUEndEvent(double hostTimestamp,
                                                   uint64_t deviceTimestamp,
                                                   uint32_t s,
                                                   int32_t cuId)
@@ -80,91 +84,98 @@ namespace xdp {
                                              executionTime);
   }
 
-  void DeviceEventCreatorFromTrace::addCUEvent(xclTraceResults& trace,
-                                               double hostTimestamp,
-                                               uint32_t s,
-                                               uint64_t monTraceID,
-                                               int32_t cuId)
+  void DeviceTraceLogger::addCUEvent(uint64_t trace,
+                                     double hostTimestamp,
+                                     uint32_t slot,
+                                     uint64_t monTraceId,
+                                     int32_t cuId)
   {
-    KernelEvent* event = nullptr;
+    KernelEvent* event = nullptr ;
+    uint64_t eventFlags = getEventFlags(trace) ;
+    uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    if (!(trace.EventFlags & XAM_TRACE_CU_MASK)) {
+    if (!(eventFlags & XAM_TRACE_CU_MASK)) {
       // End event
       std::tuple<VTFEventType, uint64_t, double, uint64_t> e =
-        db->getDynamicInfo().matchingDeviceEventStart(monTraceID, KERNEL);
+        db->getDynamicInfo().matchingDeviceEventStart(monTraceId, KERNEL);
       if(std::get<0>(e) == UNKNOWN_EVENT) {
         return ;
       }
-      if (cuStarts[s].empty()) {
+      if (cuStarts[slot].empty()) {
         return ;
       }
 
-      addCUEndEvent(hostTimestamp, trace.Timestamp, s, cuId) ;
+      addCUEndEvent(hostTimestamp, deviceTimestamp, slot, cuId) ;
     }
     else {
       // start event
-      event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, s, cuId);
-      event->setDeviceTimestamp(trace.Timestamp);
+      event = new KernelEvent(0, hostTimestamp, KERNEL, deviceId, slot, cuId);
+      event->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(event);
       std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
       std::get<0>(info) = event->getEventType() ;
       std::get<1>(info) = event->getEventId() ;
       std::get<2>(info) = event->getTimestamp() ;
-      std::get<3>(info) = trace.Timestamp ;
-      db->getDynamicInfo().markDeviceEventStart(monTraceID, info);
+      std::get<3>(info) = deviceTimestamp ;
+      db->getDynamicInfo().markDeviceEventStart(monTraceId, info);
 
-      cuStarts[s].push_back(std::make_pair(event->getEventId(), trace.Timestamp));
-      if(1 == cuStarts[s].size()) {
-        traceIDs[s] = 0; // When current CU starts, reset stall status
+      cuStarts[slot].push_back(std::make_pair(event->getEventId(),
+                                              deviceTimestamp));
+      if(1 == cuStarts[slot].size()) {
+        traceIDs[slot] = 0; // When current CU starts, reset stall status
       }
       if (db->getStats().getFirstKernelStartTime() == 0.0)
         (db->getStats()).setFirstKernelStartTime(hostTimestamp) ;
-      }
+    }
   }
 
-  void DeviceEventCreatorFromTrace::addStallEvent(xclTraceResults& trace,
-                                                  double hostTimestamp,
-                                                  uint32_t s,
-                                                  uint64_t monTraceID,
-                                                  int32_t cuId,
-                                                  VTFEventType type,
-                                                  uint64_t mask)
+  void DeviceTraceLogger::addStallEvent(uint64_t trace,
+                                        double hostTimestamp,
+                                        uint32_t slot,
+                                        uint64_t monTraceId,
+                                        int32_t cuId,
+                                        VTFEventType type,
+                                        uint64_t mask)
   {
+    uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
+
     KernelStall* event = nullptr;
-    if (traceIDs[s] & mask) {
+    if (traceIDs[slot] & mask) {
       // End event
       std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent =
-        db->getDynamicInfo().matchingDeviceEventStart(monTraceID, type) ;
+        db->getDynamicInfo().matchingDeviceEventStart(monTraceId, type) ;
       event = new KernelStall(std::get<1>(startEvent),
                               hostTimestamp,
                               type,
                               deviceId,
-                              s,
+                              slot,
                               cuId) ;
-      event->setDeviceTimestamp(trace.Timestamp);
+      event->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(event);
     }
     else {
       // Start event
-      event = new KernelStall(0, hostTimestamp, type, deviceId, s, cuId);
-      event->setDeviceTimestamp(trace.Timestamp);
+      event = new KernelStall(0, hostTimestamp, type, deviceId, slot, cuId);
+      event->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(event);
       std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
       std::get<0>(info) = event->getEventType() ;
       std::get<1>(info) = event->getEventId() ;
       std::get<2>(info) = event->getTimestamp() ;
-      std::get<3>(info) = trace.Timestamp ;
-      db->getDynamicInfo().markDeviceEventStart(monTraceID, info);
+      std::get<3>(info) = deviceTimestamp ;
+      db->getDynamicInfo().markDeviceEventStart(monTraceId, info);
     }
   }
 
-  void DeviceEventCreatorFromTrace::addAMEvent(xclTraceResults& trace,
-                                               double hostTimestamp)
+  void DeviceTraceLogger::addAMEvent(uint64_t trace, double hostTimestamp)
   {
-    uint32_t s = ((trace.TraceID - MIN_TRACE_ID_AM) / 16);
-    uint64_t monTraceID = s*16 + MIN_TRACE_ID_AM;
+    uint64_t traceID = getTraceId(trace) ;
+    uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
 
-    Monitor* mon  = db->getStaticInfo().getAMonitor(deviceId, xclbin, s);
+    uint32_t slot = (traceID - MIN_TRACE_ID_AM) / 16 ;
+    uint64_t monTraceID = slot * 16 + MIN_TRACE_ID_AM ;
+
+    Monitor* mon = db->getStaticInfo().getAMonitor(deviceId, xclbin, slot) ;
     if (!mon) {
       // In hardware emulation, there might be monitors inserted
       //  that don't show up in the debug ip layout.  These are added
@@ -175,38 +186,41 @@ namespace xdp {
 
     int32_t cuId = mon->cuIndex;
 
-    if (trace.TraceID & XAM_TRACE_CU_MASK) {
-      addCUEvent(trace, hostTimestamp, s, monTraceID, cuId);
+    // A single trace packet could have multiple events happening simultaneously
+
+    if (traceID & XAM_TRACE_CU_MASK) {
+      addCUEvent(trace, hostTimestamp, slot, monTraceID, cuId);
     }
-    if (trace.TraceID & XAM_TRACE_STALL_INT_MASK) {
-      addStallEvent(trace, hostTimestamp, s, monTraceID, cuId,
+    if (traceID & XAM_TRACE_STALL_INT_MASK) {
+      addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
                     KERNEL_STALL_DATAFLOW, XAM_TRACE_STALL_INT_MASK);
     }
-    if (trace.TraceID & XAM_TRACE_STALL_STR_MASK) {
-      addStallEvent(trace, hostTimestamp, s, monTraceID, cuId,
+    if (traceID & XAM_TRACE_STALL_STR_MASK) {
+      addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
                     KERNEL_STALL_PIPE, XAM_TRACE_STALL_STR_MASK);
     }
-    if (trace.TraceID & XAM_TRACE_STALL_EXT_MASK) {
-      addStallEvent(trace, hostTimestamp, s, monTraceID, cuId,
+    if (traceID & XAM_TRACE_STALL_EXT_MASK) {
+      addStallEvent(trace, hostTimestamp, slot, monTraceID, cuId,
                     KERNEL_STALL_EXT_MEM, XAM_TRACE_STALL_EXT_MASK);
     }
 
-    traceIDs[s] ^= (trace.TraceID & 0xf);
-    amLastTrans[s] = trace.Timestamp;
+    traceIDs[slot] ^= (traceID & 0xf);
+    amLastTrans[slot] = deviceTimestamp;
 
     // If a CU just ended completely, we need to tie off any hanging
     //  reads, writes, and stalls
-    if ((trace.TraceID & XAM_TRACE_CU_MASK) && cuStarts[s].empty()) {
+    if ((traceID & XAM_TRACE_CU_MASK) && cuStarts[slot].empty()) {
       addApproximateDataTransferEndEvents(cuId);
-      addApproximateStallEndEvents(trace, hostTimestamp, s, monTraceID, cuId);
+      addApproximateStallEndEvents(trace, hostTimestamp, slot, monTraceID, cuId);
     }
   }
 
-  void DeviceEventCreatorFromTrace::addAIMEvent(xclTraceResults& trace,
-                                                double hostTimestamp)
+  void DeviceTraceLogger::addAIMEvent(uint64_t trace, double hostTimestamp)
   {
-    uint32_t slot = trace.TraceID / 2 ;
-    Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, xclbin, slot);
+    uint64_t traceID = getTraceId(trace) ;
+
+    uint32_t slot = traceID / 2 ;
+    Monitor* mon = db->getStaticInfo().getAIMonitor(deviceId, xclbin, slot) ;
     if (!mon) {
       // In hardware emulation, there might be monitors inserted that
       //  don't show up in the debug ip layout.  These are added for
@@ -214,65 +228,139 @@ namespace xdp {
       //  we see from them
       return ;
     }
+
     int32_t cuId = mon->cuIndex ;
-    VTFEventType ty = (trace.TraceID & 1) ? KERNEL_WRITE : KERNEL_READ ;
+    VTFEventType ty = (traceID & 0x1) ? KERNEL_WRITE : KERNEL_READ ;
 
     addKernelDataTransferEvent(ty, trace, slot, cuId, hostTimestamp);
   }
 
-  void
-  DeviceEventCreatorFromTrace::
+  void DeviceTraceLogger::addASMEvent(uint64_t trace, double hostTimestamp)
+  {
+    auto traceId = getTraceId(trace) ;
+    auto eventFlags = getEventFlags(trace) ;
+    auto deviceTimestamp = getDeviceTimestamp(trace) ;
+    auto slot = traceId - MIN_TRACE_ID_ASM ;
+
+    Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, slot);
+    if (!mon) {
+      // In hardware emulation, there might be monitors inserted
+      //  that don't show up in the debug ip layout.  These are added
+      //  for their own debugging purposes and we should ignore any
+      //  packets we see from them.
+      return ;
+    }
+    int32_t cuId = mon->cuIndex;
+
+    bool isSingle    = eventFlags & 0x10;
+    bool txEvent     = eventFlags & 0x8;
+    bool stallEvent  = eventFlags & 0x4;
+    bool starveEvent = eventFlags & 0x2;
+    bool isStart     = eventFlags & 0x1;
+
+    VTFEventType streamEventType = KERNEL_STREAM_WRITE;
+    if(txEvent) {
+      streamEventType =
+        (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
+    } else if(starveEvent) {
+      streamEventType =
+        (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
+    } else if(stallEvent) {
+      streamEventType =
+        (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
+    }
+
+    DeviceStreamAccess* strmEvent = nullptr;
+    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+
+    if(isStart) {
+      // start event
+      strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, slot, cuId);
+      strmEvent->setDeviceTimestamp(deviceTimestamp);
+      db->getDynamicInfo().addEvent(strmEvent);
+      std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
+      std::get<0>(info) = strmEvent->getEventType() ;
+      std::get<1>(info) = strmEvent->getEventId() ;
+      std::get<2>(info) = strmEvent->getTimestamp() ;
+      std::get<3>(info) = deviceTimestamp ;
+      db->getDynamicInfo().markDeviceEventStart(traceId, info);
+    } else {
+      std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
+        db->getDynamicInfo().matchingDeviceEventStart(traceId, streamEventType);
+      if(isSingle || std::get<0>(matchingStart) == UNKNOWN_EVENT) {
+        // add dummy start event
+        strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, slot, cuId);
+        strmEvent->setDeviceTimestamp(deviceTimestamp); 
+        db->getDynamicInfo().addEvent(strmEvent);
+        std::get<0>(matchingStart) = strmEvent->getEventType() ;
+        std::get<1>(matchingStart) = strmEvent->getEventId(); 
+	std::get<2>(matchingStart) = hostTimestamp ;
+	std::get<3>(matchingStart) = deviceTimestamp ;
+        hostTimestamp += halfCycleTimeInMs;
+      }
+      // add end event
+      strmEvent = new DeviceStreamAccess(std::get<1>(matchingStart), hostTimestamp, streamEventType, deviceId, slot, cuId);
+      strmEvent->setDeviceTimestamp(deviceTimestamp); 
+      db->getDynamicInfo().addEvent(strmEvent);
+      asmLastTrans[slot] = deviceTimestamp;
+    }
+  }
+
+  void DeviceTraceLogger::
   addKernelDataTransferEvent(VTFEventType ty,
-                             xclTraceResults& trace,
+                             uint64_t trace,
                              uint32_t slot,
                              int32_t cuId,
                              double hostTimestamp)
   {
     DeviceMemoryAccess* memEvent = nullptr;
     double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
+    uint64_t traceId = getTraceId(trace) ;
+    uint64_t deviceTimestamp = getDeviceTimestamp(trace) ;
+    uint64_t reserved = getReserved(trace) ;
 
-    if (trace.EventType == XCL_PERF_MON_START_EVENT) {
+    if (isDeviceEventTypeStart(trace)) {
       // If we see two starts in a row of the same type on the same slot,
       //  then we must have dropped an end packet.  Add a dummy end packet
       //  here.
-      if (db->getDynamicInfo().hasMatchingDeviceEventStart(trace.TraceID, ty)){
+      if (db->getDynamicInfo().hasMatchingDeviceEventStart(traceId, ty)){
 	std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
-          db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, ty);
+          db->getDynamicInfo().matchingDeviceEventStart(traceId, ty);
         memEvent =
           new DeviceMemoryAccess(std::get<1>(matchingStart),
                                  hostTimestamp - halfCycleTimeInMs,
                                  ty, deviceId, slot, cuId);
-        memEvent->setDeviceTimestamp(trace.Timestamp);
+        memEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(memEvent);
-        aimLastTrans[slot] = trace.Timestamp;
+        aimLastTrans[slot] = deviceTimestamp;
       }
 
       memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId) ;
-      memEvent->setDeviceTimestamp(trace.Timestamp) ;
+      memEvent->setDeviceTimestamp(deviceTimestamp) ;
       db->getDynamicInfo().addEvent(memEvent) ;
       std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
       std::get<0>(info) = memEvent->getEventType() ;
       std::get<1>(info) = memEvent->getEventId() ;
       std::get<2>(info) = memEvent->getTimestamp() ;
-      std::get<3>(info) = trace.Timestamp ;
-      db->getDynamicInfo().markDeviceEventStart(trace.TraceID, info);
-    } else if (trace.EventType == XCL_PERF_MON_END_EVENT) {
+      std::get<3>(info) = deviceTimestamp ;
+      db->getDynamicInfo().markDeviceEventStart(traceId, info);
+    }
+    else {
       std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart = 
-        db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, ty);
+        db->getDynamicInfo().matchingDeviceEventStart(traceId, ty);
       if (std::get<0>(matchingStart) == UNKNOWN_EVENT) {
         // We need to add a dummy start event for this observed end event
         memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
-        memEvent->setDeviceTimestamp(trace.Timestamp);
+        memEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(memEvent);
 	std::get<0>(matchingStart) = memEvent->getEventType() ;
 	std::get<1>(matchingStart) = memEvent->getEventId() ;
 	std::get<2>(matchingStart) = hostTimestamp ;
-	std::get<3>(matchingStart) = trace.Timestamp ;
-        //matchingStart = memEvent;
+	std::get<3>(matchingStart) = deviceTimestamp ;
 
         // Also, progress time so the end is after the start
         hostTimestamp += halfCycleTimeInMs;
-      } else if (trace.Reserved == 1) {
+      } else if (reserved == 1) {
         // We have a matching start, so we need to end it
         if (std::get<2>(matchingStart) == hostTimestamp) {
           // All we have to do is push time forward and let this end event
@@ -282,18 +370,17 @@ namespace xdp {
           // The times are different, so we need to end the matching start
           //  and then create an additional pulse
           memEvent = new DeviceMemoryAccess(std::get<1>(matchingStart), hostTimestamp, ty, deviceId, slot, cuId);
-          memEvent->setDeviceTimestamp(trace.Timestamp) ;
+          memEvent->setDeviceTimestamp(deviceTimestamp) ;
           db->getDynamicInfo().addEvent(memEvent);
 
           // Now create the dummy start
           memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
-          memEvent->setDeviceTimestamp(trace.Timestamp);
+          memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
 	  std::get<0>(matchingStart) = memEvent->getEventType() ;
 	  std::get<1>(matchingStart) = memEvent->getEventId() ;
 	  std::get<2>(matchingStart) = hostTimestamp ;
-	  std::get<3>(matchingStart) = trace.Timestamp ;
-          //matchingStart = memEvent;
+	  std::get<3>(matchingStart) = deviceTimestamp ;
           // Also, progress time so the end is after the start
           hostTimestamp += halfCycleTimeInMs;
         }
@@ -301,114 +388,13 @@ namespace xdp {
 
       // The true end event we observed
       memEvent = new DeviceMemoryAccess(std::get<1>(matchingStart), hostTimestamp, ty, deviceId, slot, cuId);
-      memEvent->setDeviceTimestamp(trace.Timestamp);
+      memEvent->setDeviceTimestamp(deviceTimestamp);
       db->getDynamicInfo().addEvent(memEvent);
-      aimLastTrans[slot] = trace.Timestamp;
+      aimLastTrans[slot] = deviceTimestamp;
     }
   }
 
-  void DeviceEventCreatorFromTrace::createDeviceEvents(std::vector<xclTraceResults>& traceVector)
-  {
-    // Create Device Events and log them : do what is done in TraceParser::logTrace
-    if(traceVector.size() == 0)
-      return;
-
-    if(!VPDatabase::alive()) {
-      return;
-    }
-
-    uint64_t timestamp = 0;
-    double halfCycleTimeInMs = (0.5/traceClockRateMHz)/1000.0;
-
-    for (auto& trace : traceVector) {
-      timestamp = trace.Timestamp;
-
-      if (trace.isClockTrain) {
-        trainDeviceHostTimestamps(timestamp, trace.HostTimestamp);
-        continue;
-      }
-
-      uint32_t s = 0;
-      bool AMPacket  = (trace.TraceID >= MIN_TRACE_ID_AM && trace.TraceID <= MAX_TRACE_ID_AM);
-      bool AIMPacket = (trace.TraceID >= MIN_TRACE_ID_AIM && trace.TraceID <= MAX_TRACE_ID_AIM);
-      bool ASMPacket = (trace.TraceID >= MIN_TRACE_ID_ASM && trace.TraceID < MAX_TRACE_ID_ASM);
-      if (!AMPacket && !AIMPacket && !ASMPacket) {
-        continue;
-      }
-      double hostTimestamp = convertDeviceToHostTimestamp(timestamp);
-      if (AMPacket) {
-        addAMEvent(trace, hostTimestamp);
-      }
-      else if(AIMPacket) {
-        addAIMEvent(trace, hostTimestamp) ;
-      }
-      else if(ASMPacket) {
-        s = trace.TraceID - MIN_TRACE_ID_ASM;
-
-        Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, s);
-        if (!mon) {
-          // In hardware emulation, there might be monitors inserted
-          //  that don't show up in the debug ip layout.  These are added
-          //  for their own debugging purposes and we should ignore any
-          //  packets we see from them.
-          continue ;
-        }
-        int32_t  cuId = mon->cuIndex;
-
-        bool isSingle    = trace.EventFlags & 0x10;
-        bool txEvent     = trace.EventFlags & 0x8;
-        bool stallEvent  = trace.EventFlags & 0x4;
-        bool starveEvent = trace.EventFlags & 0x2;
-        bool isStart     = trace.EventFlags & 0x1;
-
-        VTFEventType streamEventType = KERNEL_STREAM_WRITE;
-        if(txEvent) {
-          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
-        } else if(starveEvent) {
-          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
-        } else if(stallEvent) {
-          streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
-        }
-
-        DeviceStreamAccess* strmEvent = nullptr;
-        if(isStart) {
-          // start event
-          strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, s, cuId);
-          strmEvent->setDeviceTimestamp(timestamp);
-          db->getDynamicInfo().addEvent(strmEvent);
-          std::tuple<VTFEventType, uint64_t, double, uint64_t> info ;
-	  std::get<0>(info) = strmEvent->getEventType() ;
-	  std::get<1>(info) = strmEvent->getEventId() ;
-	  std::get<2>(info) = strmEvent->getTimestamp() ;
-	  std::get<3>(info) = timestamp ;
-          db->getDynamicInfo().markDeviceEventStart(trace.TraceID, info);
-        } else {
-	  std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
-            db->getDynamicInfo().matchingDeviceEventStart(trace.TraceID, streamEventType);
-          if(isSingle || std::get<0>(matchingStart) == UNKNOWN_EVENT) {
-            // add dummy start event
-            strmEvent = new DeviceStreamAccess(0, hostTimestamp, streamEventType, deviceId, s, cuId);
-            strmEvent->setDeviceTimestamp(timestamp); 
-            db->getDynamicInfo().addEvent(strmEvent);
-	    std::get<0>(matchingStart) = strmEvent->getEventType() ;
-	    std::get<1>(matchingStart) = strmEvent->getEventId(); 
-	    std::get<2>(matchingStart) = hostTimestamp ;
-	    std::get<3>(matchingStart) = timestamp ;
-            //matchingStart = strmEvent;
-            hostTimestamp += halfCycleTimeInMs;
-          }
-          // add end event
-          strmEvent = new DeviceStreamAccess(std::get<1>(matchingStart), hostTimestamp, streamEventType, deviceId, s, cuId);
-          strmEvent->setDeviceTimestamp(timestamp); 
-          db->getDynamicInfo().addEvent(strmEvent);
-          asmLastTrans[s] = timestamp;
-        }
-      } // ASMPacket
-      else {}
-    }
-  }
-
-  void DeviceEventCreatorFromTrace::addApproximateCUEndEvents()
+ void DeviceTraceLogger::addApproximateCUEndEvents()
   {
     for(uint32_t amIndex = 0; amIndex < cuStarts.size(); ++amIndex) {
       if(cuStarts[amIndex].empty()) {
@@ -427,10 +413,10 @@ namespace xdp {
 
       // Check if any memory port on current CU had a trace packet
       for(uint64_t aimIndex = 0; aimIndex < aimLastTrans.size(); ++aimIndex) {
-        /* To reduce overhead, first check the timestamp.
-         * If last activity timestamp on CU is earlier than current AIM, then only check
-         * whether the current AIM is attached to the same CU.
-         */
+        // To reduce overhead, first check the timestamp.
+        // If last activity timestamp on CU is earlier than current AIM, then only check
+        // whether the current AIM is attached to the same CU.
+        //
         if(cuLastTimestamp >= aimLastTrans[aimIndex]) {
           continue;
         }
@@ -445,10 +431,10 @@ namespace xdp {
       }
       // Check if any streaming port on current CU had a trace packet
       for(uint64_t asmIndex = 0; asmIndex < asmLastTrans.size(); ++asmIndex) {
-        /* To reduce overhead, first check the timestamp.
-         * If last activity timestamp on CU is earlier than current ASM, then only check
-         * whether the current ASM is attached to the same CU.
-         */
+        // To reduce overhead, first check the timestamp.
+        // If last activity timestamp on CU is earlier than current ASM, then only check
+        // whether the current ASM is attached to the same CU.
+        ///
         if(cuLastTimestamp >= asmLastTrans[asmIndex]) {
           continue;
         }
@@ -476,7 +462,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId)
+  void DeviceTraceLogger::addApproximateDataTransferEvent(VTFEventType type, uint64_t aimTraceID, int32_t amId, int32_t cuId)
   {
     std::tuple<VTFEventType, uint64_t, double, uint64_t> startEvent =
       db->getDynamicInfo().matchingDeviceEventStart(aimTraceID, type);
@@ -519,7 +505,7 @@ namespace xdp {
     db->getDynamicInfo().addEvent(endEvent);
   }
 
-  void DeviceEventCreatorFromTrace::addApproximateDataTransferEndEvents()
+  void DeviceTraceLogger::addApproximateDataTransferEndEvents()
   {
     // Go through all of our AIMs that have trace enabled.  If any of them
     //  have any outstanding reads or writes, then finish them based off of
@@ -550,7 +536,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::addApproximateDataTransferEndEvents(int32_t cuId)
+  void DeviceTraceLogger::addApproximateDataTransferEndEvents(int32_t cuId)
   {
     if (cuId == -1)
       return ;
@@ -576,7 +562,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::addApproximateStreamEndEvents()
+  void DeviceTraceLogger::addApproximateStreamEndEvents()
   {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
@@ -617,7 +603,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::addApproximateStallEndEvents(xclTraceResults& trace, double hostTimestamp, uint32_t s, uint64_t monTraceID, int32_t cuId)
+  void DeviceTraceLogger::addApproximateStallEndEvents(uint64_t trace, double hostTimestamp, uint32_t s, uint64_t monTraceID, int32_t cuId)
   {
     if (traceIDs[s] == 0)
       return ;
@@ -638,14 +624,7 @@ namespace xdp {
     }
   }
 
-  void DeviceEventCreatorFromTrace::end()
-  {
-    addApproximateCUEndEvents();
-    addApproximateDataTransferEndEvents();
-    addApproximateStreamEndEvents();
-  }
-
-  void DeviceEventCreatorFromTrace::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
+  void DeviceTraceLogger::addApproximateStreamEndEvent(uint64_t asmIndex, uint64_t asmTraceID, VTFEventType streamEventType, 
                                                                  int32_t cuId, int32_t  amId, uint64_t cuLastTimestamp,
                                                                  uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents)
   {
@@ -682,7 +661,7 @@ namespace xdp {
   // NOTE: see description of PTP @ http://en.wikipedia.org/wiki/Precision_Time_Protocol
   // clock training relation is linear within small durations (1 sec)
   // x, y coordinates are used for clock training
-  void DeviceEventCreatorFromTrace::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
+  void DeviceTraceLogger::trainDeviceHostTimestamps(uint64_t deviceTimestamp, uint64_t hostTimestamp)
   {
     static double y1 = 0.0;
     static double y2 = 0.0;
@@ -708,11 +687,106 @@ namespace xdp {
   }
 
   // Convert device timestamp to host time domain (in msec)
-  double DeviceEventCreatorFromTrace::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
+  double DeviceTraceLogger::convertDeviceToHostTimestamp(uint64_t deviceTimestamp)
   {
     return ((clockTrainSlope * (double)deviceTimestamp) + clockTrainOffset)/1e6;
   }
 
+  void DeviceTraceLogger::processTraceData(void* data, uint64_t numBytes)
+  {
+    if (numBytes == 0)      return ;
+    if (!VPDatabase::alive()) return ;
 
+    uint32_t modulus = 0 ;
+    uint64_t clockTrainingHostTimestamp = 0 ;
+    uint64_t numPackets = numBytes / sizeof(uint64_t) ;
 
-}
+    uint64_t start = 0 ;
+
+    // Try to find 8 contiguous clock training packets.  Anything before that
+    //  is garbage from the previous run
+    
+    bool found = false ;
+    for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
+      for (uint64_t j = i ; j < i + 8 ; ++j) {
+        uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
+        if (!isClockTraining(packet)) {
+          break ;
+        }
+        if (j == (i + 7)) {
+          start = i ;
+          found = true ;
+        }
+      }
+      if (found) break ;
+    }
+    
+    for (uint64_t i = start ; i < numPackets ; ++i) {
+      uint64_t packet = (static_cast<uint64_t*>(data))[i] ;
+      auto deviceTimestamp = getDeviceTimestamp(packet) ;
+      auto traceId = getTraceId(packet) ;
+      auto clockTrainingDeviceTimestamp = deviceTimestamp ;
+
+      /*
+      if (i == start && firstTimestamp == 0) {
+        firstTimestamp = deviceTimestamp ;
+      }
+      */
+
+      if (isClockTraining(packet)) {
+        if (modulus == 0) {
+          if (clockTrainingDeviceTimestamp >= firstTimestamp) {
+            clockTrainingDeviceTimestamp =
+              clockTrainingDeviceTimestamp - firstTimestamp ;
+          }
+          else {
+            clockTrainingDeviceTimestamp =
+              clockTrainingDeviceTimestamp + (0x1FFFFFFFFFFF - firstTimestamp) ;
+          }
+        }
+        clockTrainingHostTimestamp |= ((packet >> 45) & 0xFFFF) << (16 * modulus) ;
+        ++modulus ;
+        if (modulus == 4) {
+          // It requires four complete clock training packets before
+          //  we can perform the clock training algorithm
+          trainDeviceHostTimestamps(clockTrainingDeviceTimestamp,
+                                    clockTrainingHostTimestamp);
+          clockTrainingHostTimestamp = 0 ;
+          clockTrainingDeviceTimestamp = 0 ;
+          modulus = 0 ;
+        }
+        continue;
+      }
+
+      bool AMPacket  = (traceId >= MIN_TRACE_ID_AM &&
+                        traceId <= MAX_TRACE_ID_AM);
+      bool AIMPacket = (traceId <= MAX_TRACE_ID_AIM); // MIN TRACE ID AIM == 0
+      bool ASMPacket = (traceId >= MIN_TRACE_ID_ASM &&
+                        traceId < MAX_TRACE_ID_ASM);
+      if (!AMPacket && !AIMPacket && !ASMPacket) {
+        continue;
+      }
+
+      double hostTimestamp = convertDeviceToHostTimestamp(deviceTimestamp);
+      if (AMPacket) {
+        addAMEvent(packet, hostTimestamp);
+      }
+      if (AIMPacket) {
+        addAIMEvent(packet, hostTimestamp) ;
+      }
+      if (ASMPacket) {
+        addASMEvent(packet, hostTimestamp) ;
+      }
+    }
+
+  }
+
+  void DeviceTraceLogger::endProcessTraceData()
+  {
+    addApproximateCUEndEvents() ;
+    addApproximateDataTransferEndEvents() ;
+    addApproximateStreamEndEvents() ;
+  }
+
+} // end namespace xdp
+

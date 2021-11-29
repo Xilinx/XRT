@@ -19,7 +19,7 @@ INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
 
 endif (NOT WIN32)
 
-file(GLOB XRT_CORE_COMMON_LIB_FILES
+file(GLOB XRT_CORE_COMMON_SRC_SHARED
   "config_reader.cpp"
   "debug.cpp"
   "device.cpp"
@@ -39,26 +39,29 @@ file(GLOB XRT_CORE_COMMON_LIB_FILES
   )
 
 if (DEFINED XRT_AIE_BUILD)
-  file(GLOB XRT_CORE_COMMON_AIE_LIB_FILES
-    "api/aie/*.cpp"
-    )
-  list(APPEND XRT_CORE_COMMON_LIB_FILES ${XRT_CORE_COMMON_AIE_LIB_FILES})
+  message("-- enabling api aie build")
+  list(APPEND XRT_CORE_COMMON_SRC_SHARED "api/aie/xrt_graph.cpp")
 endif()
 
+# The static library files may not contain dependencies on dwarf/elf/ffi
+# so can't include ps kernel sources
+set(XRT_CORE_COMMON_SRC_STATIC ${XRT_CORE_COMMON_SRC_SHARED})
+
 if (DEFINED XRT_PSKERNEL_BUILD)
-  list(APPEND XRT_CORE_COMMON_LIB_FILES "pskernel_parse.cpp")
-  list(APPEND XRT_CORE_COMMON_LIB_FILES "api/pskernel/xrt_pskernel.cpp")
+  message("-- enabling api ps build")
+  list(APPEND XRT_CORE_COMMON_SRC_SHARED "pskernel_parse.cpp")
+  list(APPEND XRT_CORE_COMMON_SRC_SHARED "api/pskernel/xrt_pskernel.cpp")
 endif()
 
 # Files to include in object list
-file(GLOB XRT_CORE_COMMON_OBJ_FILES
-  "scheduler.*"
+file(GLOB XRT_CORE_COMMON_SRC_OBJ
+  "scheduler.cpp"
   )
 
 add_compile_options("-DXRT_VERSION_MAJOR=\"${XRT_VERSION_MAJOR}\"")
 
-add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_LIB_FILES})
-add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_LIB_FILES})
+add_library(xrt_coreutil SHARED ${XRT_CORE_COMMON_SRC_SHARED})
+add_library(xrt_coreutil_static STATIC ${XRT_CORE_COMMON_SRC_STATIC})
 
 set_target_properties(xrt_coreutil PROPERTIES
   VERSION ${XRT_VERSION_STRING}
@@ -83,11 +86,16 @@ target_link_libraries(xrt_coreutil_static
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil
   # xrt_uuid.h depends on uuid
-  target_link_libraries(xrt_coreutil PRIVATE pthread dl ${LIBDW_LDFLAGS} ${LIBELF_LDFLAGS} ${LIBFFI_LDFLAGS} PUBLIC uuid)
+  target_link_libraries(xrt_coreutil PRIVATE pthread dl PUBLIC uuid)
 
   # Targets of xrt_coreutil_static must link with these additional
   # system libraries
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
+
+  if (DEFINED XRT_PSKERNEL_BUILD)
+    target_link_libraries(xrt_coreutil PRIVATE ${LIBDW_LDFLAGS} ${LIBELF_LDFLAGS} ${LIBFFI_LDFLAGS})
+  endif()
+  
 endif()
 
 install(TARGETS xrt_coreutil
@@ -106,4 +114,4 @@ install(TARGETS xrt_coreutil xrt_coreutil_static
 # files reference xrt_core symbols, hence are excluded from
 # xrt_corecommon shared library and instead linked explicitly into
 # client (core) libraries
-add_library(core_common_objects OBJECT ${XRT_CORE_COMMON_OBJ_FILES})
+add_library(core_common_objects OBJECT ${XRT_CORE_COMMON_SRC_OBJ})

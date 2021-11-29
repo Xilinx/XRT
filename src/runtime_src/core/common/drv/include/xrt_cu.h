@@ -29,6 +29,12 @@
 
 #define MAX_CUS 128
 
+/* Soft kernel indices are numbered from 0 to some MAX_CUS
+ * but are in a distinct domain which is indiciated by the
+ * first 16 bit of the index used to identify the soft kernel
+ */
+#define SCU_DOMAIN 0x10000
+
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
  * m2m CU is at the end of the CU, which is compatible with
@@ -75,6 +81,11 @@ enum xcu_model {
 enum xcu_config_type {
 	CONSECUTIVE_T,
 	PAIRS_T,
+};
+
+enum xcu_process_result {
+	XCU_IDLE = 0,
+	XCU_BUSY,
 };
 
 /* Let's use HLS style status bits in new_status
@@ -445,6 +456,8 @@ ssize_t show_formatted_cu_stat(struct xrt_cu *xcu, char *buf);
 
 void xrt_cu_circ_produce(struct xrt_cu *xcu, u32 stage, uintptr_t cmd);
 ssize_t xrt_cu_circ_consume_all(struct xrt_cu *xcu, char *buf, size_t size);
+
+int xrt_cu_process_queues(struct xrt_cu *xcu);
 
 /* CU Implementations */
 #define to_cu_hls(core) ((struct xrt_cu_hls *)(core))

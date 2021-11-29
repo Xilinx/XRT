@@ -48,7 +48,7 @@ namespace xdp {
 // Helper methods
 
 XDP_EXPORT
-uint32_t GetDeviceTraceBufferSize(uint32_t property);
+uint64_t GetDeviceTraceBufferSize(uint32_t property);
 
 XDP_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
@@ -126,7 +126,7 @@ class DeviceIntf {
     XDP_EXPORT
     size_t stopTrace();
     XDP_EXPORT
-    size_t readTrace(std::vector<xclTraceResults>& traceVector);
+    size_t readTrace(uint32_t*& traceData) ;
 
     /** Trace S2MM Management
      */

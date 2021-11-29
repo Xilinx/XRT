@@ -30,6 +30,7 @@
 
 #include "core/include/xclbin.h"
 
+#include "handle.h"
 #include "native_profile.h"
 #include "xclbin_int.h"
 
@@ -297,7 +298,7 @@ public: // purposely not a struct to match decl in xrt_xclbin.h
   std::vector<xclbin::ip> m_cus;
   std::vector<xclbin::arg> m_args;
   std::vector<xrt_core::xclbin::kernel_argument> m_arginfo;
-  
+
 public:
   kernel_impl(std::string&& nm,
               xrt_core::xclbin::kernel_properties&& props,
@@ -373,6 +374,7 @@ class xclbin_impl
   struct xclbin_info
   {
     const xclbin_impl* m_ximpl;
+    std::string m_project_name;           // <project name="foo">
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
@@ -455,6 +457,15 @@ class xclbin_impl
       return kernels;
     }
 
+    static std::string
+    init_project_name(const xclbin_impl* ximpl)
+    {
+      auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
+      return xml.first
+        ? xrt_core::xclbin::get_project_name(xml.first, xml.second)
+        : "";
+    }
+
     // init_mem_encoding() - compress memory indices
     // 
     // Mapping from memory index to encoded index.  The compressed
@@ -529,6 +540,7 @@ class xclbin_impl
     explicit
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
+      , m_project_name(init_project_name(m_ximpl))
       , m_mems(init_mems(m_ximpl))
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
@@ -592,6 +604,13 @@ public:
   virtual
   std::string
   get_xsa_name() const
+  {
+    throw std::runtime_error("not implemented");
+  }
+
+  virtual
+  xclbin::target_type
+  get_target_type() const
   {
     throw std::runtime_error("not implemented");
   }
@@ -669,6 +688,12 @@ public:
   {
     return get_xclbin_info()->m_membank_encoding;
   }
+
+  const std::string&
+  get_project_name() const
+  {
+    return get_xclbin_info()->m_project_name;
+  }
 };
 
 // class xclbin_full - Implementation of full xclbin
@@ -677,10 +702,29 @@ public:
 // binary images for file content
 class xclbin_full : public xclbin_impl
 {
-  std::vector<char> m_axlf;  // complete copy of xclbin raw data
-  const axlf* m_top = nullptr;
-  uuid m_uuid;
+  std::vector<char> m_axlf;    // complete copy of xclbin raw data
+  const axlf* m_top = nullptr; // axlf pointer to the raw data
+  uuid m_uuid;                 // uuid of xclbin
+
+  // sections within this xclbin
   std::multimap<axlf_section_kind, std::vector<char>> m_axlf_sections;
+
+  void
+  emplace_section(const axlf_section_header* hdr, axlf_section_kind kind)
+  {
+    auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
+    std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
+    m_axlf_sections.emplace(kind , std::move(data));
+  }
+
+  void
+  emplace_soft_kernel_sections(const axlf_section_header* hdr)
+  {
+    while (hdr != nullptr) {
+      emplace_section(hdr, SOFT_KERNEL);
+      hdr = ::xclbin::get_axlf_section_next(m_top, hdr, SOFT_KERNEL);
+    }
+  }
 
   void
   init_axlf()
@@ -692,8 +736,7 @@ class xclbin_full : public xclbin_impl
 
     m_uuid = uuid(m_top->m_header.uuid); 
     
-    XRT_CORE_UNUSED const ::ip_layout* ip_layout = nullptr;
-
+    const ::ip_layout* ip_layout = nullptr;
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
 
@@ -712,20 +755,18 @@ class xclbin_full : public xclbin_impl
       if (!hdr)
         continue;
 
-      if (kind == SOFT_KERNEL) {
-	while (hdr != nullptr) {
-	  auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-	  std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-	  m_axlf_sections.emplace(kind , std::move(data));
-	  hdr = ::xclbin::get_axlf_section_next(m_top, hdr, kind);
-	}
-      }
-      else {
-	auto section_data = reinterpret_cast<const char*>(m_top) + hdr->m_sectionOffset;
-	std::vector<char> data{section_data, section_data + hdr->m_sectionSize};
-	m_axlf_sections.emplace(kind , std::move(data));
-      }
+      // account for multiple soft_kernel sections
+      if (kind == SOFT_KERNEL)
+        emplace_soft_kernel_sections(hdr);
+      else
+        emplace_section(hdr, kind);
     }
+  }
+
+  void
+  init()
+  {
+    init_axlf();
   }
   
 public:
@@ -733,21 +774,21 @@ public:
   xclbin_full(const std::string& filename)
     : m_axlf(read_xclbin(filename))
   {
-    init_axlf();
+    init();
   }
 
   explicit
   xclbin_full(std::vector<char> data)
     : m_axlf(std::move(data))
   {
-    init_axlf();
+    init();
   }
 
   explicit
   xclbin_full(const axlf* top)
     : m_axlf(copy_axlf(top))
   {
-    init_axlf();
+    init();
   }
 
   uuid
@@ -760,6 +801,25 @@ public:
   get_xsa_name() const override
   {
     return reinterpret_cast<const char*>(m_top->m_header.m_platformVBNV);
+  }
+
+  xclbin::target_type
+  get_target_type() const
+  {
+    switch (m_top->m_header.m_mode) {
+    case XCLBIN_FLAT:
+    case XCLBIN_PR:
+    case XCLBIN_TANDEM_STAGE2:
+    case XCLBIN_TANDEM_STAGE2_WITH_PR:
+      return xclbin::target_type::hw;
+    case XCLBIN_HW_EMU:
+    case XCLBIN_HW_EMU_PR:
+      return xclbin::target_type::hw_emu;
+    case XCLBIN_SW_EMU:
+      return xclbin::target_type::sw_emu;
+    default:
+      throw std::runtime_error("Invalid target target");
+    }
   }
 
   std::pair<const char*, size_t>
@@ -870,6 +930,16 @@ xclbin::
 get_uuid() const
 {
   return handle ? handle->get_uuid() : uuid{};
+}
+
+xclbin::target_type
+xclbin::
+get_target_type() const
+{
+  if (!handle)
+    throw std::runtime_error("No xclbin");
+
+  return handle->get_target_type();
 }
 
 const axlf*
@@ -1135,28 +1205,10 @@ get_index() const
 
 namespace {
 
-// C-API handles that must be explicitly freed. Corresponding managed
-// handles are inserted in this map.  When the unmanaged handle is
-// freed, it is removed from this map and underlying object is
-// deleted if no other shared ptrs exists for this xclbin object
+// C-API handles that must be explicitly closed but corresponding
+// implementation could be shared.
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-static std::map<xrtXclbinHandle, std::shared_ptr<xrt::xclbin_impl>> xclbins;
-
-static std::shared_ptr<xrt::xclbin_impl>
-get_xclbin(xrtXclbinHandle handle)
-{
-  auto itr = xclbins.find(handle);
-  if (itr == xclbins.end())
-    throw xrt_core::error(-EINVAL, "No such xclbin handle");
-  return itr->second;
-}
-
-static void
-free_xclbin(xrtXclbinHandle handle)
-{
-  if (xclbins.erase(handle) == 0)
-    throw xrt_core::error(-EINVAL, "No such xclbin handle");
-}
+static xrt_core::handle_map<xrtXclbinHandle, std::shared_ptr<xrt::xclbin_impl>> xclbins;
 
 inline void
 send_exception_message(const char* msg)
@@ -1175,24 +1227,17 @@ send_exception_message(const char* msg)
 ////////////////////////////////////////////////////////////////
 namespace xrt_core { namespace xclbin_int {
 
-void
-is_valid_or_error(xrtXclbinHandle handle)
-{
-  if ((xclbins.find(handle) == xclbins.end()))
-    throw xrt_core::error(-EINVAL, "Invalid xclbin handle");
-}
-
 const axlf*
 get_axlf(xrtXclbinHandle handle)
 {
-  auto xclbin = ::get_xclbin(handle);
+  auto xclbin = xclbins.get_or_error(handle);
   return xclbin->get_axlf();
 }
 
 xrt::xclbin
 get_xclbin(xrtXclbinHandle handle)
 {
-  return xrt::xclbin(::get_xclbin(handle));
+  return xrt::xclbin(xclbins.get_or_error(handle));
 }
 
 std::pair<const char*, size_t>
@@ -1231,6 +1276,12 @@ get_membank_encoding(const xrt::xclbin& xclbin)
   return xclbin.get_handle()->get_membank_encoding();
 }
 
+std::string
+get_project_name(const xrt::xclbin& xclbin)
+{
+  return xclbin.get_handle()->get_project_name();
+}
+
 }} // namespace xclbin_int, core_core
 
 ////////////////////////////////////////////////////////////////
@@ -1243,7 +1294,7 @@ xrtXclbinAllocFilename(const char* filename)
     return xdp::native::profiling_wrapper(__func__, [filename]{
       auto xclbin = std::make_shared<xrt::xclbin_full>(filename);
       auto handle = xclbin.get();
-      xclbins.emplace(handle, std::move(xclbin));
+      xclbins.add(handle, std::move(xclbin));
       return handle;
     });
   }
@@ -1265,7 +1316,7 @@ xrtXclbinAllocRawData(const char* data, int size)
       std::vector<char> raw_data(data, data + size);
       auto xclbin = std::make_shared<xrt::xclbin_full>(raw_data);
       auto handle = xclbin.get();
-      xclbins.emplace(handle, std::move(xclbin));
+      xclbins.add(handle, std::move(xclbin));
       return handle;
     });
   }
@@ -1284,7 +1335,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle]{
-      free_xclbin(handle);
+      xclbins.remove_or_error(handle);
       return 0;
     });
   }
@@ -1305,7 +1356,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, name, size, ret_size]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       const std::string& xsaname = xclbin->get_xsa_name();
       // populate ret_size if memory is allocated
       if (ret_size)
@@ -1331,7 +1382,7 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto result = xclbin->get_uuid();
       uuid_copy(ret_uuid, result.get());
       return 0;
@@ -1353,7 +1404,7 @@ xrtXclbinGetNumKernels(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       return xclbin->get_kernels().size();
     });
   }
@@ -1373,7 +1424,7 @@ xrtXclbinGetNumKernelComputeUnits(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto kernels = xclbin->get_kernels();
       return std::accumulate(kernels.begin(), kernels.end(), 0,
                              [](size_t sum, const auto& k) {
@@ -1397,7 +1448,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, data, size, ret_size]{
-      auto xclbin = get_xclbin(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto& result = xclbin->get_data();
       int result_size = result.size();
       // populate ret_size if memory is allocated

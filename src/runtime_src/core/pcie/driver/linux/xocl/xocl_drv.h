@@ -337,12 +337,13 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_FLASH_CONTROLER   0x51
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
+#define XOCL_VSEC_XGQ               0x54
+#define XOCL_VSEC_XGQ_PAYLOAD       0x55
 
 #define XOCL_VSEC_FLASH_TYPE_SPI_IP		0x0
 #define XOCL_VSEC_FLASH_TYPE_SPI_REG		0x1
 #define XOCL_VSEC_FLASH_TYPE_QSPI		0x2
 #define XOCL_VSEC_FLASH_TYPE_XFER_VERSAL	0x3
-#define XOCL_VSEC_FLASH_TYPE_XGQ		0x4
 
 #define XOCL_VSEC_PLAT_RECOVERY     0x0
 #define XOCL_VSEC_PLAT_1RP          0x1
@@ -1428,7 +1429,7 @@ static inline int xocl_clock_w_ops_level(xdev_handle_t xdev)
 	int __idx = xocl_clock_w_ops_level(xdev);			\
 	(CLOCK_W_CB(xdev, __idx, get_data) ?				\
 	CLOCK_W_OPS(xdev, __idx)->get_data(CLOCK_W_DEV(xdev, __idx),	\
-		kind) : 0); 						\
+		kind) : -ENODEV); 						\
 })
 
 /* Not a real SC version to indicate that SC image does not exist. */
@@ -2106,6 +2107,7 @@ struct xocl_xfer_versal_funcs {
 	XFER_VERSAL_OPS(xdev)->download_axlf(XFER_VERSAL_DEV(xdev), xclbin) : -ENODEV)
 
 struct xocl_pmc_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*enable_reset)(struct platform_device *pdev);
 };
 #define	PMC_DEV(xdev)	\
@@ -2119,28 +2121,44 @@ struct xocl_pmc_funcs {
 	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
 
 struct xocl_xgq_funcs {
+	struct xocl_subdev_funcs common_funcs;
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
+	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
+		struct clock_freq_topology *top, int verify);
+	uint64_t (*xgq_get_data)(struct platform_device *pdev,
+		enum data_kind kind);
+	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 };
-#define	XGQ_DEV(xdev)					\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+#define	XGQ_DEV(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
 	SUBDEV(xdev, XOCL_SUBDEV_XGQ)->pldev : NULL)
-#define	XGQ_OPS(xdev)					\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 		\
+#define	XGQ_OPS(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
 	(struct xocl_xgq_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XGQ)->ops : NULL)
-#define	XGQ_CB(xdev)	(XGQ_DEV(xdev) && XGQ_OPS(xdev))
-#define	xocl_xgq_download_axlf(xdev, xclbin)		\
-	(XGQ_CB(xdev) ?					\
+#define	XGQ_CB(xdev, cb)					\
+	(XGQ_DEV(xdev) && XGQ_OPS(xdev) && XGQ_OPS(xdev)->cb)
+#define	xocl_xgq_download_axlf(xdev, xclbin)			\
+	(XGQ_CB(xdev, xgq_load_xclbin) ?			\
 	XGQ_OPS(xdev)->xgq_load_xclbin(XGQ_DEV(xdev), xclbin) : -ENODEV)
-#define	xocl_xgq_check_firewall(xdev)			\
-	(XGQ_CB(xdev) ?					\
+#define	xocl_xgq_check_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
-	(XGQ_CB(xdev) ?						\
+	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
+#define	xocl_xgq_freq_scaling_by_topo(xdev, topo, verify) 	\
+	(XGQ_CB(xdev, xgq_freq_scaling_by_topo) ?		\
+	XGQ_OPS(xdev)->xgq_freq_scaling_by_topo(XGQ_DEV(xdev), topo, verify) : -ENODEV)
+#define	xocl_xgq_clock_get_data(xdev, kind) 			\
+	(XGQ_CB(xdev, xgq_get_data) ?				\
+	XGQ_OPS(xdev)->xgq_get_data(XGQ_DEV(xdev), kind) : -ENODEV)
+#define	xocl_download_apu_firmware(xdev) 			\
+	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
+	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)
 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
@@ -2232,8 +2250,8 @@ struct xocl_m2m_funcs {
 	int (*copy_bo)(struct platform_device *pdev, uint64_t src_paddr,
 		uint64_t dst_paddr, uint32_t src_handle, uint32_t dst_handle,
 		uint32_t size);
-	int (*get_host_bank)(struct platform_device *pdev, u64 *addr,
-		u64 *size);
+	void (*get_host_bank)(struct platform_device *pdev, u64 *addr,
+		u64 *size, u8 *used);
 };
 #define	M2M_DEV(xdev)	\
 	(SUBDEV(xdev, XOCL_SUBDEV_M2M) ? \
@@ -2245,9 +2263,9 @@ struct xocl_m2m_funcs {
 #define	xocl_m2m_copy_bo(xdev, src_paddr, dst_paddr, src_handle, dst_handle, size) \
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->copy_bo(M2M_DEV(xdev), src_paddr, dst_paddr, \
 	src_handle, dst_handle, size) : -ENODEV)
-#define xocl_m2m_host_bank(xdev, addr, size)				\
+#define xocl_m2m_host_bank(xdev, addr, size, used)				\
 	(M2M_CB(xdev) ? M2M_OPS(xdev)->get_host_bank(M2M_DEV(xdev),	\
-	addr, size) : -ENODEV)
+	addr, size, used) : -ENODEV)
 
 struct xocl_pcie_firewall_funcs {
 	struct xocl_subdev_funcs common_funcs;
