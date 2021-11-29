@@ -605,6 +605,8 @@ namespace xdp {
           // Set reset and trace start using this counter
           perfCounter->changeRstEvent(mod, counterEvent);
           coreTraceStartEvent = counterEvent;
+          // This is needed because the cores are started/stopped during execution
+          // to get around some hw bugs. We cannot restart tracemodules when that happens
           coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
           ret = perfCounter->start();
