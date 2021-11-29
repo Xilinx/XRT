@@ -70,23 +70,23 @@ namespace xdp {
     uint16_t column;
     uint16_t row;
     uint8_t counterNumber;
-    uint8_t startEvent;
-    uint8_t endEvent;
     uint8_t resetEvent;
+    uint16_t startEvent;
+    uint16_t endEvent;
     double clockFreqMhz;
     std::string module;
     std::string name;
 
     AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
-               uint8_t start, uint8_t end, uint8_t reset,
+               uint16_t start, uint16_t end, uint8_t reset,
                double freq, std::string mod, std::string aieName)
       : id(i),
         column(col),
         row(r),
         counterNumber(num),
+        resetEvent(reset),
         startEvent(start),
         endEvent(end),
-        resetEvent(reset),
         clockFreqMhz(freq),
         module(mod),
         name(aieName)
@@ -375,8 +375,10 @@ class aie_cfg_tile
     std::vector<TraceGMIO*>      gmioList;
     std::map<uint32_t, uint32_t> aieCoreCountersMap;
     std::map<uint32_t, uint32_t> aieMemoryCountersMap;
+    std::map<uint32_t, uint32_t> aieShimCountersMap;
     std::map<uint32_t, uint32_t> aieCoreEventsMap;
     std::map<uint32_t, uint32_t> aieMemoryEventsMap;
+    std::map<uint32_t, uint32_t> aieShimEventsMap;
     std::vector<std::unique_ptr<aie_cfg_tile>> aieCfgList;
 
     inline std::string getUniqueDeviceName()
@@ -563,20 +565,24 @@ class aie_cfg_tile
     void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
           uint16_t len) ;
     void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
-           uint8_t start, uint8_t end, uint8_t reset,
-           double freq, const std::string& mod,
-           const std::string& aieName) ;
-    void addAIECounterResources(uint32_t numCounters, uint32_t numTiles, bool isCore) {
-      if (isCore)
+           uint16_t start, uint16_t end, uint8_t reset, double freq, 
+           const std::string& mod, const std::string& aieName) ;
+    void addAIECounterResources(uint32_t numCounters, uint32_t numTiles, uint8_t moduleType) {
+      if (moduleType == 0)
         aieCoreCountersMap[numCounters] = numTiles;
-      else
+      else if (moduleType == 1)
         aieMemoryCountersMap[numCounters] = numTiles;
+      else
+        aieShimCountersMap[numCounters] = numTiles;
     }
     void addAIECoreEventResources(uint32_t numEvents, uint32_t numTiles) {
       aieCoreEventsMap[numEvents] = numTiles;
     }
     void addAIEMemoryEventResources(uint32_t numEvents, uint32_t numTiles) {
       aieMemoryEventsMap[numEvents] = numTiles;
+    }
+    void addAIEShimEventResources(uint32_t numEvents, uint32_t numTiles) {
+      aieShimEventsMap[numEvents] = numTiles;
     }
     void addAIECfgTile(std::unique_ptr<aie_cfg_tile>& tile) {
       aieCfgList.push_back(std::move(tile));
@@ -1013,6 +1019,12 @@ class aie_cfg_tile
     }
 
     inline std::map<uint32_t, uint32_t>&
+    getAIEShimCounterResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieShimCountersMap;
+    }
+
+    inline std::map<uint32_t, uint32_t>&
     getAIECoreEventResources(uint64_t deviceId)
     {
       return deviceInfo[deviceId]->aieCoreEventsMap;
@@ -1022,6 +1034,12 @@ class aie_cfg_tile
     getAIEMemoryEventResources(uint64_t deviceId)
     {
       return deviceInfo[deviceId]->aieMemoryEventsMap;
+    }
+
+    inline std::map<uint32_t, uint32_t>&
+    getAIEShimEventResources(uint64_t deviceId)
+    {
+      return deviceInfo[deviceId]->aieShimEventsMap;
     }
 
     inline std::vector<std::unique_ptr<aie_cfg_tile>>&
@@ -1048,8 +1066,8 @@ class aie_cfg_tile
     }
 
     inline void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
-            uint16_t r, uint8_t num, uint8_t start,
-            uint8_t end, uint8_t reset, double freq,
+            uint16_t r, uint8_t num, uint16_t start,
+            uint16_t end, uint8_t reset, double freq,
             const std::string& mod,
             const std::string& aieName)
     {
