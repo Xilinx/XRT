@@ -604,7 +604,9 @@ namespace xdp {
 
           // Set reset and trace start using this counter
           perfCounter->changeRstEvent(mod, counterEvent);
+
           coreTraceStartEvent = counterEvent;
+          coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;
