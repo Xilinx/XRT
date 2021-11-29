@@ -156,20 +156,28 @@ static inline int xocl_bo_usage_idx(unsigned bo_flag)
 	switch (bo_flag) {
 	case XOCL_BO_NORMAL:
 		idx = XOCL_BO_USAGE_NORMAL;
+		break;
 	case XOCL_BO_USERPTR:
 		idx = XOCL_BO_USAGE_USERPTR;
+		break;
 	case XOCL_BO_P2P:
 		idx = XOCL_BO_USAGE_P2P;
+		break;
 	case XOCL_BO_DEV_ONLY:
 		idx = XOCL_BO_USAGE_DEV_ONLY;
+		break;
 	case XOCL_BO_IMPORT:
 		idx = XOCL_BO_USAGE_IMPORT;
+		break;
 	case XOCL_BO_EXECBUF:
 		idx = XOCL_BO_USAGE_EXECBUF;
+		break;
 	case XOCL_BO_CMA:
 		idx = XOCL_BO_USAGE_CMA;
+		break;
 	default:
 		idx = -1;
+		break;
 	}
 
 	return idx;
