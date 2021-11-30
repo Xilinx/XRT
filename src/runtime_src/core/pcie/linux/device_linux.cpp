@@ -18,6 +18,7 @@
 #include "device_linux.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "core/common/message.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 #include "core/include/xcl_app_debug.h"
 
@@ -70,9 +71,9 @@ get_pcidev(const xrt_core::device* device)
 }
 
 
-std::vector<uint64_t> 
-get_counter_status_from_sysfs(std::string mon_name_address, 
-                              std::string sysfs_file_name, 
+static std::vector<uint64_t> 
+get_counter_status_from_sysfs(const std::string &mon_name_address, 
+                              const std::string &sysfs_file_name, 
                               size_t size, 
                               const xrt_core::device* device)
 {
@@ -82,9 +83,14 @@ get_counter_status_from_sysfs(std::string mon_name_address,
    * Then use that path to form full path to "counters"/"status" sysfs file 
    * which contains counter/status data for the monitor
    */
-  std::string name_path = pdev->get_sysfs_path(mon_name_address.c_str(), "name");
+  std::string name_path = pdev->get_sysfs_path(mon_name_address, "name");
 
   std::size_t pos = name_path.find_last_of('/');
+  if (std::string::npos == pos) {
+    std::string msg = "Invalid path for name sysfs node for " + mon_name_address;
+    throw xrt_core::query::sysfs_error(msg);
+  }
+
   std::string path = name_path.substr(0, pos+1);
   path += sysfs_file_name;
 
@@ -92,7 +98,8 @@ get_counter_status_from_sysfs(std::string mon_name_address,
 
   std::ifstream ifs(path);
   if (!ifs) {
-    std::cout << "\nINFO: Incomplete counter data in " << path << std::endl;
+    std::string msg = "Incomplete counter data in " + path + ". Using default values in results.";
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
     return val_buf;
   }
 
@@ -100,15 +107,18 @@ get_counter_status_from_sysfs(std::string mon_name_address,
   ifs >> buffer;
 
   size_t idx = 0;
-  while (!ifs.eof()) {
+  // Each line in counter/status sysfs node contains string for integer value (unsigned long long) 
+  while (!ifs.eof() && idx < size) {
     val_buf[idx] = strtoull(buffer.c_str(), nullptr, 10);
     idx++;
     buffer = "";
     ifs >> buffer;
   }
 
-  if (idx < size)
-    std::cout << "\nINFO: Incomplete counter data in " << path << std::endl;
+  if (idx < size) {
+    std::string msg = "Incomplete counter data in " + path + ". Using default values in results.";
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+  }
 
   return val_buf;
 }
