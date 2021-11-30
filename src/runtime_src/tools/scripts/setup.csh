@@ -69,6 +69,9 @@ else
     setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
 endif
 
+alias __xbutil_completion_csh tcsh $XILINX_XRT/share/bash-completion/completions/xbutil-csh
+complete xbutil 'p/*/`__xbutil_completion_csh`/'
+
 # To use the newest version of the XRT tools, either uncomment or set 
 # the following environment variable in your profile:
 #   setenv XRT_TOOLS_NEXTGEN true

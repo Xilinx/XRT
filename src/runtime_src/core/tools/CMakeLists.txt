@@ -23,5 +23,6 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
     # This is used for the setup script
     install (PROGRAMS "./xbmgmt2/xbmgmt-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/bash-completion/completions" RENAME "xbmgmt")
     install (PROGRAMS "./xbutil2/xbutil-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/bash-completion/completions" RENAME "xbutil")
+    install (PROGRAMS "./xbutil2/xbutil-bash-completion-csh" DESTINATION "${XRT_INSTALL_DIR}/share/bash-completion/completions" RENAME "xbutil-csh")
   endif()
 endif()
