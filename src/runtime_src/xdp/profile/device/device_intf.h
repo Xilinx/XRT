@@ -35,6 +35,7 @@
 #include "traceFifoFull.h"
 #include "traceFunnel.h"
 #include "traceS2MM.h"
+#include "add.h"
 
 #include <fstream>
 #include <list>
@@ -193,6 +194,7 @@ class DeviceIntf {
 
     TraceS2MM*     mPlTraceDma  = nullptr;
     std::vector<TraceS2MM*> mAieTraceDmaList;
+    DeadlockDetector*     mDeadlockDetector  = nullptr;
 
     /*
      * Set bandwidth number to a reasonable default
