@@ -99,9 +99,9 @@ struct xocl_xgq_cmd {
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq		*xgq;
 	u64			xgq_cmd_timeout_jiffies; /* timout till */
-	/*TODO: the xgq cq can have up-to 3 u32 payload, optimze the code later */
 	uint32_t		xgq_cmd_rcode;
-	uint32_t		xgq_cmd_rdata;
+	/* xgq complete command can return in-line data via payload */
+	struct xgq_cmd_cq_vmr_payload	xgq_cmd_cq_payload;
 };
 
 struct xocl_xgq;
@@ -123,6 +123,7 @@ struct xocl_xgq {
 	void __iomem		*xgq_cq_base;
 	struct mutex 		xgq_lock;
 	bool 			xgq_polling;
+	bool 			xgq_boot_from_backup;
 	u32			xgq_intr_base;
 	u32			xgq_intr_num;
 	struct list_head	xgq_submitted_cmds;
@@ -134,6 +135,8 @@ struct xocl_xgq {
 	void			*sensor_data;
 	u32			sensor_data_length;
 	struct semaphore 	xgq_data_sema;
+	/* preserve fpt info for sysfs to display */
+	struct xgq_cmd_cq_multiboot_payload xgq_mb_payload;
 };
 
 /*
@@ -444,20 +447,12 @@ done:
 static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 {
 	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
-
-	/* Note: we only care rcode for now */
-	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
-
-	complete(&xgq_cmd->xgq_cmd_complete);
-}
-
-static void xgq_complete_clock_cb(void *arg, struct xgq_com_queue_entry *ccmd)
-{
-	struct xocl_xgq_cmd *xgq_cmd = (struct xocl_xgq_cmd *)arg;
 	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
 
 	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
-	xgq_cmd->xgq_cmd_rdata = cmd_cq->clock_payload.ocl_freq;
+	/* preserve payload prior to free xgq_cmd_cq */
+	memcpy(&xgq_cmd->xgq_cmd_cq_payload, &cmd_cq->default_payload,
+		sizeof(cmd_cq->default_payload));
 
 	complete(&xgq_cmd->xgq_cmd_complete);
 }
@@ -842,7 +837,7 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq *xgq,
 	}
 
 	memset(cmd, 0, sizeof(*cmd));
-	cmd->xgq_cmd_cb = xgq_complete_clock_cb;
+	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq = xgq;
 
@@ -885,7 +880,7 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq *xgq,
 		ret = 0;
 	} else {
 		/* freq result is in rdata */
-		ret = cmd->xgq_cmd_rdata;
+		ret = ((struct xgq_cmd_cq_clock_payload *)&cmd->xgq_cmd_cq_payload)->ocl_freq;
 	}
 
 done:
@@ -969,10 +964,20 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 	return ret;
 }
 
-static int vmr_enable_multiboot(struct platform_device *pdev)
+static void vmr_collect_boot_query(struct xocl_xgq *xgq, struct xocl_xgq_cmd *cmd)
+{
+	struct xgq_cmd_cq_multiboot_payload *payload =
+		(struct xgq_cmd_cq_multiboot_payload *)&cmd->xgq_cmd_cq_payload;
+
+	memcpy(&xgq->xgq_mb_payload, payload, sizeof(*payload));
+}
+
+static int vmr_multiboot_op(struct platform_device *pdev,
+	enum xgq_cmd_multiboot_req_type req_type)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_multiboot_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
@@ -988,11 +993,13 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq = xgq;
 
-	/* no payload for this cmd */
+	payload = &(cmd->xgq_cmd_entry.multiboot_payload);
+	payload->req_type = req_type;
+
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_MULTIPLE_BOOT;
 	hdr->state = XGQ_SQ_CMD_NEW;
-	hdr->count = 0;
+	hdr->count = sizeof(*payload);
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
@@ -1017,9 +1024,12 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 
 	ret = cmd->xgq_cmd_rcode;
 
-	if (ret)
+	if (ret) {
 		XGQ_ERR(xgq, "Multiboot or reset might not work. ret %d",
 			cmd->xgq_cmd_rcode);
+	} else if (req_type == XGQ_CMD_BOOT_QUERY) {
+		vmr_collect_boot_query(xgq, cmd);
+	}
 
 done:
 	if (cmd) {
@@ -1028,6 +1038,19 @@ done:
 	}
 
 	return ret;
+}
+
+static int vmr_fpt_query(struct platform_device *pdev)
+{
+	return vmr_multiboot_op(pdev, XGQ_CMD_BOOT_QUERY);
+}
+
+static int vmr_enable_multiboot(struct platform_device *pdev)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+
+	return vmr_multiboot_op(pdev,
+		xgq->xgq_boot_from_backup ?  XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
 static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
@@ -1103,6 +1126,37 @@ done:
 }
 
 /* sysfs */
+static ssize_t boot_from_backup_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_boot_from_backup = val ? true : false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	return count;
+}
+
+static ssize_t boot_from_backup_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_boot_from_backup);
+	mutex_unlock(&xgq->xgq_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR(boot_from_backup, 0644, boot_from_backup_show, boot_from_backup_store);
+
+
 static ssize_t polling_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1133,8 +1187,38 @@ static ssize_t polling_show(struct device *dev,
 }
 static DEVICE_ATTR(polling, 0644, polling_show, polling_store);
 
+static ssize_t boot_status_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	/* update boot status */
+	vmr_fpt_query(xgq->xgq_pdev);
+
+	mutex_lock(&xgq->xgq_lock);
+	cnt += sprintf(buf + cnt, "HAS_FPT:%d\n",
+		xgq->xgq_mb_payload.has_fpt);
+	cnt += sprintf(buf + cnt, "HAS_FPT_RECOVERY:%d\n",
+		xgq->xgq_mb_payload.has_fpt_recovery);
+	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n",
+		xgq->xgq_mb_payload.boot_on_default);
+	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n",
+		xgq->xgq_mb_payload.boot_on_backup);
+	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n",
+		xgq->xgq_mb_payload.boot_on_recovery);
+	cnt += sprintf(buf + cnt, "MULTI_BOOT_OFFSET:0x%x\n",
+		xgq->xgq_mb_payload.multi_boot_offset);
+	mutex_unlock(&xgq->xgq_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(boot_status);
+
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
+	&dev_attr_boot_from_backup.attr,
+	&dev_attr_boot_status.attr,
 	NULL,
 };
 
