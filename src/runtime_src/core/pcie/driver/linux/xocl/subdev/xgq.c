@@ -964,24 +964,34 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 	return ret;
 }
 
-static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
+static struct xocl_xgq_cmd* prepare_xgq_cmd(struct xocl_xgq *xgq)
 {
-	struct xocl_xgq_cmd *cmd = NULL;
+ 	struct xocl_xgq_cmd *cmd = NULL;
+
+	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return NULL;
+	}
+
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	return cmd;
+}
+
+static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+ 	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
+	struct xgq_sensor_resp *resp = NULL;
 	struct xgq_cmd_log_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
 
-	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
-	if (!cmd) {
-		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return -ENOMEM;
-	}
-
-	memset(cmd, 0, sizeof(*cmd));
-	cmd->xgq_cmd_cb = xgq_complete_cb;
-	cmd->xgq_cmd_arg = cmd;
-	cmd->xgq = xgq;
+	resp = kmalloc(sizeof(*resp), GFP_KERNEL);
 
 	/* reset to all 0 first */
 	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
@@ -990,7 +1000,7 @@ static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
 	payload->address = memcpy_to_devices(xgq,
 		xgq->sensor_data, xgq->sensor_data_length);
 	payload->size = xgq->sensor_data_length;
-	payload->pid = XGQ_CMD_SENSOR_PID_BDINFO;
+	payload->pid = pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1033,7 +1043,37 @@ done:
 		kfree(cmd);
 	}
 
-	return ret;
+	return xgq->sensor_data;
+}
+
+static char* xgq_collect_all_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_ALL);
+}
+
+static char* xgq_collect_bdinfo_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO);
+}
+
+static char* xgq_collect_temp_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP);
+}
+
+static char* xgq_collect_voltage_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_VOLTAGE);
+}
+
+static char* xgq_collect_power_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_POWER);
+}
+
+static char* xgq_collect_qsfp_sensors(struct platform_device *pdev)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_QSFP);
 }
 
 /* sysfs */
@@ -1223,6 +1263,7 @@ static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
 
 static int xgq_probe(struct platform_device *pdev)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xgq *xgq = NULL;
 	struct resource *res = NULL;
 	u64 flags = 0;
@@ -1339,6 +1380,18 @@ static int xgq_probe(struct platform_device *pdev)
 	}
 
 	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
+
+	if (!ret) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
+
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret) {
+			xocl_err(&pdev->dev, "unable to create HWMON_SDM subdev, ret: %d",
+					 ret);
+			ret = 0;
+		}
+	}
+
 	return ret;
 
 attach_failed:
@@ -1353,6 +1406,12 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
+	.xgq_collect_all_sensors = xgq_collect_all_sensors,
+	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
+	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,
+	.xgq_collect_voltage_sensors = xgq_collect_voltage_sensors,
+	.xgq_collect_power_sensors = xgq_collect_power_sensors,
+	.xgq_collect_qsfp_sensors = xgq_collect_qsfp_sensors,
 };
 
 static const struct file_operations xgq_fops = {

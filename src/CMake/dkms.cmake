@@ -250,6 +250,7 @@ SET (XRT_DKMS_DRIVER_SRCS
   xocl/subdev/command_queue.c
   xocl/subdev/cfg_gpio.c
   xocl/subdev/xgq.c
+  xocl/subdev/hwmon_sdm.c
   xocl/Makefile
   )
 
@@ -278,6 +279,7 @@ SET (XRT_DKMS_CORE_INCLUDES
   include/xgq_cmd_ert.h
   include/xgq_cmd_vmr.h
   include/xgq_impl.h
+  include/xgq_resp_parser.h
   )
 
 SET (XRT_DKMS_COMMON_XRT_DRV

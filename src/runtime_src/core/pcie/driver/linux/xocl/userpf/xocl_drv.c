@@ -1817,6 +1817,7 @@ static int (*xocl_drv_reg_funcs[])(void) __initdata = {
 	xocl_init_m2m,
 	xocl_init_config_gpio,
 	xocl_init_command_queue,
+	xocl_init_hwmon_sdm,
 };
 
 static void (*xocl_drv_unreg_funcs[])(void) = {
@@ -1860,6 +1861,7 @@ static void (*xocl_drv_unreg_funcs[])(void) = {
 	xocl_fini_intc,
 	xocl_fini_config_gpio,
 	xocl_fini_command_queue,
+	xocl_fini_hwmon_sdm,
 };
 
 static int __init xocl_init(void)

@@ -20,7 +20,8 @@ set(XRT_HEADER_SRC
   xrt_error_code.h
   xgq_cmd_common.h
   xgq_cmd_ert.h
-  xgq_impl.h)
+  xgq_impl.h
+  xgq_resp_parser.h)
 
 install (FILES ${XRT_HEADER_SRC} DESTINATION ${XRT_INSTALL_INCLUDE_DIR} COMPONENT ${XRT_DEV_COMPONENT})
 
