@@ -136,14 +136,16 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
                     &curr_data[c], sizeof(uint32_t));
     }
 
-    ret_val[XAM_IOCTL_EXECUTION_COUNT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_EXECUTION_COUNT_INDEX])) << 32;
-    ret_val[XAM_IOCTL_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_EXECUTION_CYCLES_INDEX])) << 32;
-    ret_val[XAM_IOCTL_STALL_INT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_INT_INDEX])) << 32;
-    ret_val[XAM_IOCTL_STALL_STR_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_STR_INDEX])) << 32;
-    ret_val[XAM_IOCTL_STALL_EXT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_STALL_EXT_INDEX])) << 32;
-    ret_val[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX])) << 32;
-    ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX])) << 32;
-    ret_val[XAM_IOCTL_START_COUNT_INDEX] = (static_cast<uint64_t>(curr_data[XAM_ACCEL_TOTAL_CU_START_INDEX])) << 32;
+    auto get_upper_bytes = [&] (auto dest, auto src) { ret_val[dest] = (static_cast<uint64_t>(curr_data[src])) << 32; };
+
+    get_upper_bytes(XAM_IOCTL_EXECUTION_COUNT_INDEX, XAM_ACCEL_EXECUTION_COUNT_INDEX);
+    get_upper_bytes(XAM_IOCTL_EXECUTION_CYCLES_INDEX, XAM_ACCEL_EXECUTION_CYCLES_INDEX);
+    get_upper_bytes(XAM_IOCTL_STALL_INT_INDEX, XAM_ACCEL_STALL_INT_INDEX);
+    get_upper_bytes(XAM_IOCTL_STALL_STR_INDEX, XAM_ACCEL_STALL_STR_INDEX);
+    get_upper_bytes(XAM_IOCTL_STALL_EXT_INDEX, XAM_ACCEL_STALL_EXT_INDEX);
+    get_upper_bytes(XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX);
+    get_upper_bytes(XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX);
+    get_upper_bytes(XAM_IOCTL_START_COUNT_INDEX, XAM_ACCEL_TOTAL_CU_START_INDEX);
     
     if (has_dataflow) {
       uint64_t busy_cycles = 0, max_parallel = 0;
@@ -159,15 +161,18 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
   for (int c = 0; c < XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT; c++) {
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address+am_offsets[c], &curr_data[c], sizeof(uint32_t));
   }
-  ret_val[XAM_IOCTL_EXECUTION_COUNT_INDEX] |= curr_data[XAM_ACCEL_EXECUTION_COUNT_INDEX];
-  ret_val[XAM_IOCTL_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_EXECUTION_CYCLES_INDEX];
-  ret_val[XAM_IOCTL_STALL_INT_INDEX] |= curr_data[XAM_ACCEL_STALL_INT_INDEX];
-  ret_val[XAM_IOCTL_STALL_STR_INDEX] |= curr_data[XAM_ACCEL_STALL_STR_INDEX];
-  ret_val[XAM_IOCTL_STALL_EXT_INDEX] |= curr_data[XAM_ACCEL_STALL_EXT_INDEX];
-  ret_val[XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX];
-  ret_val[XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX] |= curr_data[XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX];
-  ret_val[XAM_IOCTL_START_COUNT_INDEX] |= curr_data[XAM_ACCEL_TOTAL_CU_START_INDEX];
-    
+
+  auto get_lower_bytes = [&] (auto dest, auto src) { ret_val[dest] |= curr_data[src]; };
+
+  get_lower_bytes(XAM_IOCTL_EXECUTION_COUNT_INDEX, XAM_ACCEL_EXECUTION_COUNT_INDEX);
+  get_lower_bytes(XAM_IOCTL_EXECUTION_CYCLES_INDEX, XAM_ACCEL_EXECUTION_CYCLES_INDEX);
+  get_lower_bytes(XAM_IOCTL_STALL_INT_INDEX, XAM_ACCEL_STALL_INT_INDEX);
+  get_lower_bytes(XAM_IOCTL_STALL_STR_INDEX, XAM_ACCEL_STALL_STR_INDEX);
+  get_lower_bytes(XAM_IOCTL_STALL_EXT_INDEX, XAM_ACCEL_STALL_EXT_INDEX);
+  get_lower_bytes(XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX);
+  get_lower_bytes(XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX, XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX);
+  get_lower_bytes(XAM_IOCTL_START_COUNT_INDEX, XAM_ACCEL_TOTAL_CU_START_INDEX);
+
   if (has_dataflow) {
     uint64_t busy_cycles = 0, max_parallel = 0;
     device->xread(XCL_ADDR_SPACE_DEVICE_PERFMON, dbg_ip_data->m_base_address + XAM_BUSY_CYCLES_OFFSET, &busy_cycles, sizeof(uint32_t));
