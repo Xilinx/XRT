@@ -335,9 +335,9 @@ struct aim_counter
   using result_type = query::aim_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
 
     std::string aim_name("aximm_mon_");
     aim_name += std::to_string(dbg_ip_data->m_base_address);
@@ -373,9 +373,9 @@ struct am_counter
   using result_type = query::am_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
 
     std::string am_name("accel_mon_");
     am_name += std::to_string(dbg_ip_data->m_base_address);
@@ -396,9 +396,9 @@ struct asm_counter
   using result_type = query::asm_counter::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
 
     std::string asm_name("axistream_mon_");
     asm_name += std::to_string(dbg_ip_data->m_base_address);
@@ -418,9 +418,9 @@ struct lapc_status
   using result_type = query::lapc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
 
     std::string lapc_name("lapc_");
     lapc_name += std::to_string(dbg_ip_data->m_base_address);
@@ -445,9 +445,9 @@ struct spc_status
   using result_type = query::spc_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
 
     std::string spc_name("spc_");
     spc_name += std::to_string(dbg_ip_data->m_base_address);
@@ -472,9 +472,9 @@ struct accel_deadlock_status
   using result_type = query::accel_deadlock_status::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& arg1)
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
   {
-    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(arg1);
+    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
 
     std::string mon_name("accel_deadlock_");
     mon_name += std::to_string(dbg_ip_data->m_base_address);

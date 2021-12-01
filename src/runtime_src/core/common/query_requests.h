@@ -2733,7 +2733,7 @@ struct aim_counter : request
   static const key_type key = key_type::aim_counter;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 struct am_counter : request
@@ -2743,7 +2743,7 @@ struct am_counter : request
   static const key_type key = key_type::am_counter;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 struct asm_counter : request
@@ -2753,7 +2753,7 @@ struct asm_counter : request
   static const key_type key = key_type::asm_counter;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 struct lapc_status : request
@@ -2763,7 +2763,7 @@ struct lapc_status : request
   static const key_type key = key_type::lapc_status;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 struct spc_status : request
@@ -2773,7 +2773,7 @@ struct spc_status : request
   static const key_type key = key_type::spc_status;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 struct accel_deadlock_status : request
@@ -2783,7 +2783,7 @@ struct accel_deadlock_status : request
   static const key_type key = key_type::accel_deadlock_status;
 
   virtual boost::any
-  get(const xrt_core::device* device, const boost::any& arg1) const = 0;
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 } // query
