@@ -71,7 +71,6 @@ class DebugIpStatusCollector
   xclDeviceHandle handle;
   const xrt_core::device* device;
 
-  std::string infoMessage ;
   std::vector<char> map;
 
   uint64_t debugIpNum[DEBUG_IP_TYPE_MAX];
@@ -90,8 +89,6 @@ class DebugIpStatusCollector
 public :
   DebugIpStatusCollector(xclDeviceHandle h, const xrt_core::device* d);
   ~DebugIpStatusCollector() {}
-
-  inline std::string getInfoMessage() { return infoMessage ; }
 
   void collect();
 
@@ -130,7 +127,6 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
                                                const xrt_core::device* d)
     : handle(h)
     , device(d)
-    , infoMessage("")
     , debugIpNum{0}
     , debugIpOpt{false}
     , aimResults{0}
@@ -151,12 +147,12 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
 debug_ip_layout*
 DebugIpStatusCollector::getDebugIpLayout()
 {
-  if(0 == map.size()) {
+  if (0 == map.size()) {
     std::cout << " INFO: Debug IP Data is not populated." << std::endl;
     return nullptr;
   }
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
-  if(0 == dbgIpLayout->m_count) {
+  if (0 == dbgIpLayout->m_count) {
     std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
     return nullptr;
   }
@@ -1266,13 +1262,9 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   auto handle = _pDevice->get_device_handle();
 
   DebugIpStatusCollector collector(handle, _pDevice);
-  if (collector.getInfoMessage() != "") {
-    pt.put("info", collector.getInfoMessage().c_str()) ;
-  } else {
-    collector.populateOverview(pt);
-    collector.collect();
-    collector.populateAllResults(pt);
-  }
+  collector.populateOverview(pt);
+  collector.collect();
+  collector.populateAllResults(pt);
 
   // There can only be 1 root node
   _pt.add_child("debug_ip_status", pt);
