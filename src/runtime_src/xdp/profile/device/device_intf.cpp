@@ -1012,4 +1012,11 @@ DeviceIntf::~DeviceIntf()
     mMaxWriteBW = mDevice->getMaxBwWrite();
   }
 
+  void DeviceIntf::getDeadlockStatus()
+  {
+    if (mDeadlockDetector)
+      return mDeadlockDetector->getDeadlockStatus();
+    return 0;
+  }
+
 } // namespace xdp
