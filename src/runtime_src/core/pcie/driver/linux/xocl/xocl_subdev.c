@@ -1918,6 +1918,25 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 	}
 }
 
+/*
+ * This function will reinitialize the versal platform after a cold or warm
+ * reboot. First, we should re-enable the reset registers, either via host or
+ * via vmr firmware. Second, we should try to load apu firmware via vmr.
+ * Note: we ignore errors after all subdev has been probed after extended_probe.
+ *       if any of this procedure fails due to fatal error, a hot reset warning
+ *       will be reported.
+ */
+void xocl_reinit_vmr(xdev_handle_t xdev)
+{
+	int rc = 0;
+
+	rc = xocl_pmc_enable_reset(xdev);
+	if (rc == -ENODEV)
+		xocl_vmr_enable_multiboot(xdev);
+
+	(void) xocl_download_apu_firmware(xdev);
+}
+
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
 		int *bar_idx, resource_size_t *bar_off)
 {

@@ -239,8 +239,9 @@ static bool xgq_submitted_cmd_check(struct xocl_xgq *xgq)
 
 		/* Finding timed out cmds */
 		if (xgq_cmd->xgq_cmd_timeout_jiffies < jiffies) {
-			XGQ_ERR(xgq, "cmd id: %d timed out, hot reset is required!",
-				xgq_cmd->xgq_cmd_entry.hdr.cid);
+			XGQ_ERR(xgq, "cmd id: %d op: 0x%x timed out, hot reset is required!",
+				xgq_cmd->xgq_cmd_entry.hdr.cid,
+				xgq_cmd->xgq_cmd_entry.hdr.opcode);
 			found_timeout = true;
 			break;
 		}
@@ -616,6 +617,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	int ret = 0;
 	int id = 0;
 
+	/* skip periodic firewall check when xgq service is halted */
+	if (xgq->xgq_halted)
+		return 0;
+
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);	
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
@@ -964,9 +969,70 @@ static int xgq_download_apu_firmware(struct platform_device *pdev)
 	return ret;
 }
 
+static int vmr_enable_multiboot(struct platform_device *pdev)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_cmd *cmd = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+
+	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	memset(cmd, 0, sizeof(*cmd));
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	/* no payload for this cmd */
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_MULTIPLE_BOOT;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = 0;
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto done;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+
+	ret = cmd->xgq_cmd_rcode;
+
+	if (ret)
+		XGQ_ERR(xgq, "Multiboot or reset might not work. ret %d",
+			cmd->xgq_cmd_rcode);
+
+done:
+	if (cmd) {
+		remove_xgq_cid(xgq, id);
+		kfree(cmd);
+	}
+
+	return ret;
+}
+
 static struct xocl_xgq_cmd* prepare_xgq_cmd(struct xocl_xgq *xgq)
 {
- 	struct xocl_xgq_cmd *cmd = NULL;
+	struct xocl_xgq_cmd *cmd = NULL;
 
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
@@ -984,7 +1050,7 @@ static struct xocl_xgq_cmd* prepare_xgq_cmd(struct xocl_xgq *xgq)
 static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
- 	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
+	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
 	struct xgq_cmd_log_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
@@ -1233,6 +1299,8 @@ static int xgq_remove(struct platform_device *pdev)
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
 
+	kfree(xgq->sensor_data);
+
 	if (xgq->xgq_ring_base)
 		iounmap(xgq->xgq_ring_base);
 	if (xgq->xgq_sq_base)
@@ -1249,13 +1317,20 @@ static int xgq_remove(struct platform_device *pdev)
 	return 0;
 }
 
+/* Wait for xgq service is fully ready after a reset. */
 static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
 {
 	u32 rval = 0;
+	int i = 0, retry = 50;
 
-	rval = ioread32(xgq->xgq_ring_base + XOCL_XGQ_DEV_STAT_OFFSET);
+	for (i = 0; i < retry; i++) {
+		msleep(100);
+		rval = ioread32(xgq->xgq_ring_base + XOCL_XGQ_DEV_STAT_OFFSET);
+		if (rval)
+			return true;
+	}
 	
-	return rval != 0;
+	return false;
 }
 
 static int xgq_probe(struct platform_device *pdev)
@@ -1265,6 +1340,7 @@ static int xgq_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 	u64 flags = 0;
 	int ret = 0, i = 0;
+	void *hdl;
 
 	xgq = xocl_drvinst_alloc(&pdev->dev, sizeof (*xgq));
 	if (!xgq)
@@ -1392,7 +1468,11 @@ static int xgq_probe(struct platform_device *pdev)
 	return ret;
 
 attach_failed:
+	kfree(xgq->sensor_data);
 	platform_set_drvdata(pdev, NULL);
+	xocl_drvinst_release(xgq, &hdl);
+	xocl_drvinst_free(hdl);
+
 	return ret;
 }
 
@@ -1403,6 +1483,7 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
+	.vmr_enable_multiboot = vmr_enable_multiboot,
 	.xgq_collect_all_sensors = xgq_collect_all_sensors,
 	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
 	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,

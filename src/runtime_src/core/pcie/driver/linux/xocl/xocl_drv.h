@@ -2132,6 +2132,7 @@ struct xocl_xgq_funcs {
 	uint64_t (*xgq_get_data)(struct platform_device *pdev,
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
+	int (*vmr_enable_multiboot)(struct platform_device *pdev);
 	char* (*xgq_collect_all_sensors)(struct platform_device *pdev);
 	char* (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev);
 	char* (*xgq_collect_temp_sensors)(struct platform_device *pdev);
@@ -2165,6 +2166,9 @@ struct xocl_xgq_funcs {
 #define	xocl_download_apu_firmware(xdev) 			\
 	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
 	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)
+#define	xocl_vmr_enable_multiboot(xdev) 				\
+	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
+	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
 #define	xocl_xgq_collect_all_sensors(xdev) 			\
 	(XGQ_CB(xdev, xgq_collect_all_sensors) ?				\
 	XGQ_OPS(xdev)->xgq_collect_all_sensors(XGQ_DEV(xdev)) : -ENODEV)
@@ -2375,6 +2379,8 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 	struct axlf *bin_obj, bool major_only);
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
+
+void xocl_reinit_vmr(xdev_handle_t xdev_hdl);
 
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);
