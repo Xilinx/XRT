@@ -16,21 +16,23 @@
 
 
 #include "device_linux.h"
+
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
-#include "core/common/message.h"
-#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
+#include "core/common/utils.h"
 #include "core/include/xcl_app_debug.h"
+#include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <map>
+
 #include <array>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <map>
+#include <string>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -97,26 +99,15 @@ get_counter_status_from_sysfs(const std::string &mon_name_address,
   std::vector<uint64_t> val_buf(size);
 
   std::ifstream ifs(path);
-  if (!ifs) {
-    std::string msg = "Incomplete counter data in " + path + ". Using default values in results.";
-    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
-    return val_buf;
-  }
 
-  std::string buffer;
-  ifs >> buffer;
-
-  size_t idx = 0;
-  // Each line in counter/status sysfs node contains string for integer value (unsigned long long) 
-  while (!ifs.eof() && idx < size) {
-    val_buf[idx] = strtoull(buffer.c_str(), nullptr, 10);
-    idx++;
-    buffer = "";
-    ifs >> buffer;
-  }
-
-  if (idx < size) {
-    std::string msg = "Incomplete counter data in " + path + ". Using default values in results.";
+  try {
+    // Enable exception on reading error
+    ifs.exceptions(std::ifstream::failbit);
+    for (std::size_t idx = 0; idx < size; ++idx)
+      ifs >> val_buf[idx];
+  } catch (const std::ios_base::failure& fail) {
+    std::string msg = "Incomplete counter data read from " + path + " due to " + fail.what()
+                         + ".\n Using 0 as default value in results.";
     xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
   }
 
