@@ -174,12 +174,14 @@ register_axlf(const axlf* top)
     for (const auto& d : cudata)
       m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
 
-    // Soft kernels
-    auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_stat>(this);
-    for (const auto& d : scudata)
-      m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
-
-    // Validate softkernel instances against IP_LAYOUT, which 
+    // Soft kernels, not an error if query doesn't exist (edge)
+    try {
+      auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_stat>(this);
+      for (const auto& d : scudata)
+        m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+    }
+    catch (const query::no_such_key&) {
+    }
   }
   catch (const query::no_such_key&) {
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);

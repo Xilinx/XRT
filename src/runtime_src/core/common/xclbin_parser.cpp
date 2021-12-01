@@ -437,7 +437,7 @@ get_cu_indices(const ip_layout* ip_layout)
   auto cus = get_cus(ip_layout);
 
   // ps kernel cu index start at 0
-  static uint16_t ps_kernel_idx = 0;
+  uint16_t ps_kernel_idx = 0;
 
   std::map<std::string, cuidx_type> cu2idx;
   for (int32_t count=0; count <ip_layout->m_count; ++count) {
@@ -453,7 +453,7 @@ get_cu_indices(const ip_layout* ip_layout)
     else {
       auto itr = std::find(cus.begin(), cus.end(), ip_data.m_base_address);
       if (itr == cus.end())
-        throw std::runtime_error("Internal error: cu not found");
+        continue; // ignore kernels without base address (AP_CTRL_NONE)
 
       cuidx.domain = 0; // magic
       cuidx.domain_index = static_cast<uint16_t>(std::distance(cus.begin(), itr));

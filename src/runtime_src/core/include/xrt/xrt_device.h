@@ -84,6 +84,10 @@ namespace info {
  *  Pcie information of the device (std::string)
  * @var host
  *  Host information (std::string)
+ * @var aie
+ *  AIE core information of the device (std::string)
+ * @var aie_shim
+ *  AIE shim information of the device (std::string)
  * @var dynamic_regions
  *  Information about xclbin on the device (std::string)
  */
@@ -103,6 +107,8 @@ enum class device : unsigned int {
   platform,
   pcie_info,
   host, 
+  aie, 
+  aie_shim, 
   dynamic_regions
 };
 
@@ -125,6 +131,8 @@ XRT_INFO_PARAM_TRAITS(device::memory, std::string);
 XRT_INFO_PARAM_TRAITS(device::platform, std::string);
 XRT_INFO_PARAM_TRAITS(device::pcie_info, std::string);
 XRT_INFO_PARAM_TRAITS(device::host, std::string);
+XRT_INFO_PARAM_TRAITS(device::aie, std::string);
+XRT_INFO_PARAM_TRAITS(device::aie_shim, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
 /// @endcond 
 

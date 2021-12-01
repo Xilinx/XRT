@@ -148,7 +148,12 @@ get_first_used_mem(const axlf* top);
 int32_t
 address_to_memidx(const mem_topology* mem, uint64_t address);
 
-// get_cu_indices() -
+// get_cu_indices() - mapping from cu name to its index type
+//
+// Compute index type for all controllable IPs in IP_LAYOUT Normally
+// indexing is determined by KDS in driver via kds_cu_stat query
+// request, but in emulation mode that query request is not not
+// implemented
 std::map<std::string, cuidx_type>
 get_cu_indices(const ip_layout* ip_layout);
 
