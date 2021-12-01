@@ -215,8 +215,8 @@ inline unsigned int
 get_aie_status_interval_us()
 {
   // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000) ;
-  return value ;
+  static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000);
+  return value;
 }
 
 inline bool

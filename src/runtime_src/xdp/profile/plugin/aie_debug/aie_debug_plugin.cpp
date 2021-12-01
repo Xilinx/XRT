@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,26 +39,25 @@ namespace {
     auto drv = ZYNQ::shim::handleCheck(devHandle);
     if (!drv)
       return nullptr ;
-    auto aieArray = drv->getAieArray() ;
+    auto aieArray = drv->getAieArray();
     if (!aieArray)
       return nullptr ;
-    return aieArray->getDevInst() ;
+    return aieArray->getDevInst();
   }
 
   static void* allocateAieDevice(void* devHandle)
   {
-    XAie_DevInst* aieDevInst =
-      static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle)) ;
+    XAie_DevInst* aieDevInst = static_cast<XAie_DevInst*>(fetchAieDevInst(devHandle));
     if (!aieDevInst)
-      return nullptr ;
-    return new xaiefal::XAieDev(aieDevInst, false) ;
+      return nullptr;
+    return new xaiefal::XAieDev(aieDevInst, false);
   }
 
   static void deallocateAieDevice(void* aieDevice)
   {
-    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice) ;
+    xaiefal::XAieDev* object = static_cast<xaiefal::XAieDev*>(aieDevice);
     if (object != nullptr)
-      delete object ;
+      delete object;
   }
 
 } // end anonymous namespace
@@ -81,9 +80,8 @@ namespace xdp {
 
     // Write out final version of file and unregister plugin
     if (VPDatabase::alive()) {
-      for (auto w : writers) {
+      for (auto w : writers)
         w->write(false);
-      }
 
       db->unregisterPlugin(this);
     }
@@ -114,9 +112,8 @@ namespace xdp {
       msg << "Tiles used for AIE debug:\n";
       for (const auto& kv : mGraphCoreTilesMap) {
         msg << kv.first << " : ";
-        for (const auto& tile : kv.second) {
+        for (const auto& tile : kv.second)
           msg << "(" << tile.col << "," << tile.row << "), ";
-        }
         msg << "\n";
       }
       xrt_core::message::send(severity_level::debug, "XRT", msg.str());
@@ -164,6 +161,9 @@ namespace xdp {
       statusStr += "ECC_Error_Stall,";
     if (status & 0x40000)
       statusStr += "ECC_Scrubbing_Stall,";
+
+    if (!statusStr.empty())
+      statusStr.pop_back();
 
     return statusStr;
   }
@@ -330,9 +330,10 @@ namespace xdp {
     if (!xrt_core::config::get_aie_status())
       return;
 
-    char pathBuf[512];
-    memset(pathBuf, 0, 512);
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512);
+    const unsigned int PATH_LENGTH = 512;
+    char pathBuf[PATH_LENGTH];
+    memset(pathBuf, 0, PATH_LENGTH);
+    xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
 
     std::string sysfspath(pathBuf);
     uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id

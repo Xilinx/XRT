@@ -41,36 +41,29 @@ bool load()
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
       xrt_core::config::get_device_trace() != "off" ||
       xrt_core::config::get_device_counters()) {
-    xdp::hal::device_offload::load() ;
+    xdp::hal::device_offload::load();
   }
 
-  if (xrt_core::config::get_aie_status()) {
-    xdp::aie::debug::load() ;
-  }
+  if (xrt_core::config::get_aie_status())
+    xdp::aie::debug::load();
 
-  if (xrt_core::config::get_aie_profile()) {
-    xdp::aie::profile::load() ;
-  }
+  if (xrt_core::config::get_aie_profile())
+    xdp::aie::profile::load();
 
-  if (xrt_core::config::get_noc_profile()) {
-    xdp::noc::profile::load() ;
-  }
+  if (xrt_core::config::get_noc_profile())
+    xdp::noc::profile::load();
 
-  if (xrt_core::config::get_power_profile()) {
-    xdp::power::profile::load() ;
-  }
+  if (xrt_core::config::get_power_profile())
+    xdp::power::profile::load();
 
-  if (xrt_core::config::get_aie_trace()) {
-    xdp::aie::trace::load() ;
-  }
+  if (xrt_core::config::get_aie_trace())
+    xdp::aie::trace::load();
 
-  if (xrt_core::config::get_sc_profile()) {
-    xdp::sc::profile::load() ;
-  }
+  if (xrt_core::config::get_sc_profile())
+    xdp::sc::profile::load();
 
-  if (xrt_core::config::get_vitis_ai_profile()) {
-    xdp::vart::profile::load() ;
-  }
+  if (xrt_core::config::get_vitis_ai_profile())
+    xdp::vart::profile::load();
 
   // Deprecation messages
   if (xrt_core::config::get_data_transfer_trace() != "off") {

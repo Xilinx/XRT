@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,12 +25,12 @@ namespace xdp {
   class AIEDebugWriter : public VPWriter
   {
   public:
-    AIEDebugWriter(const char* fileName, const char* deviceName, 
+    AIEDebugWriter(const char* fileName, const char* deviceName,
                    uint64_t deviceIndex);
     ~AIEDebugWriter();
 
     virtual bool write(bool openNewFile);
-    
+
   private:
     std::string mDeviceName;
     uint64_t mDeviceIndex;

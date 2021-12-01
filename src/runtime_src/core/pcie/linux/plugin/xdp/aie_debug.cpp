@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,13 +35,15 @@ namespace debug {
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*) ;
+    typedef void (*ftype)(void*);
 
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDebugDevice")) ;
-    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr ;
+    if (xrt_core::dlerror() != NULL)
+      update_device_cb = nullptr;
 
     end_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIEDebugPoll")) ;
-    if (xrt_core::dlerror() != NULL) end_poll_cb = nullptr ;
+    if (xrt_core::dlerror() != NULL)
+      end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
@@ -54,16 +56,14 @@ namespace debug {
 namespace dbg {
   void update_device(void* handle)
   {
-    if (debug::update_device_cb != nullptr) {
-      debug::update_device_cb(handle) ;
-    }
+    if (debug::update_device_cb != nullptr)
+      debug::update_device_cb(handle);
   }
 
   void end_poll(void* handle)
   {
-    if (debug::end_poll_cb != nullptr) {
-      debug::end_poll_cb(handle) ;
-    }
+    if (debug::end_poll_cb != nullptr)
+      debug::end_poll_cb(handle);
   }
 } // end namespace dbg
 } // end namespace aie
