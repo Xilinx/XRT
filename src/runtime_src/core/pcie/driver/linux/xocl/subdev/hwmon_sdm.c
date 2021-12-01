@@ -187,7 +187,7 @@ static void display_sensor_data(struct sdr_response *repo_object)
 					   pow(10, srec->unit_modifier_byte));
 			}
 		}
-		if(srec->bu_type_length != SDR_NULL_BYTE) {
+		if(srec->base_unit_type_length != SDR_NULL_BYTE) {
 			uint8_t bu_type   = (srec->base_unit_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 			if(bu_type == TYPECODE_ASCII)
 				printk(KERN_INFO "Base Unit Value : %s\r\n", srec->base_unit);
@@ -295,10 +295,6 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 					* remaining_records, GFP_KERNEL);
 	repo_object->sensor_record = srec;
 
-	iter = (struct sensor_device_attribute*)devm_kzalloc(&sdm->pdev->dev,
-		sizeof(struct sensor_device_attribute) * remaining_records * 4, GFP_KERNEL);
-	repo_object->sysfs_iter = iter;
-
 	while(remaining_records > 0)
 	{
 		memcpy(&srec->id, &in_buf[buf_index++], sbyte);
@@ -339,10 +335,10 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			buf_index += val_len;
 		}
 
-		memcpy(&srec->bu_type_length, &in_buf[buf_index++], sbyte);
-		if(srec->bu_type_length != SDR_NULL_BYTE)
+		memcpy(&srec->base_unit_type_length, &in_buf[buf_index++], sbyte);
+		if(srec->base_unit_type_length != SDR_NULL_BYTE)
 		{
-			uint8_t bu_len = srec->bu_type_length & SDR_LENGTH_MASK;
+			uint8_t bu_len = srec->base_unit_type_length & SDR_LENGTH_MASK;
 			uint8_t bu_type   = (srec->base_unit_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 
 			if(bu_type == TYPECODE_ASCII)
@@ -509,7 +505,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			}
 		}
 
-		if ((srec->bu_type_length != SDR_NULL_BYTE) && create_sysfs) {
+		if ((srec->base_unit_type_length != SDR_NULL_BYTE) && create_sysfs) {
 			char sysfs_name[4][20] = {0};
 			bool create = false;
 
@@ -549,6 +545,9 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 					break;
 			}
 			if (create) {
+				iter = (struct sensor_device_attribute*)devm_kzalloc(&sdm->pdev->dev,
+                                        sizeof(struct sensor_device_attribute) * remaining_records * 4, GFP_KERNEL);
+				sdm->sysfs_iter = iter;
 				int err;
 				//Create *_label sysfs node
 				if(strlen(sysfs_name[0]) != 0) {//not empty
@@ -562,8 +561,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[1]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[1], repo_type, SENSOR_VALUE, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err:
-							   %d\n", sysfs_name[1], err);
+						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[1], err);
 					}
 				}
 
@@ -571,8 +569,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[2]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[2], repo_type, SENSOR_MAX_VAL, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err:
-							   %d\n", sysfs_name[2], err);
+						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[2], err);
 					}
 				}
 
@@ -580,8 +577,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[3]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[3], repo_type, SENSOR_AVG_VAL, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err:
-							   %d\n", sysfs_name[3], err);
+						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
 					}
 				}
 			}

@@ -985,13 +985,10 @@ static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
  	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
-	struct xgq_sensor_resp *resp = NULL;
 	struct xgq_cmd_log_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
-
-	resp = kmalloc(sizeof(*resp), GFP_KERNEL);
 
 	/* reset to all 0 first */
 	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
@@ -1121,7 +1118,7 @@ static ssize_t sensor_data_read(struct file *filp, struct kobject *kobj,
 
 	/* if off == 0, read data */
 	if (off == 0)
-		xgq_collect_sensor_data(xgq);
+		xgq_collect_sensors(xgq, XGQ_CMD_SENSOR_PID_BDINFO);
 
 	if (xgq->sensor_data == NULL)
 		goto bail;
