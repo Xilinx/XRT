@@ -19,8 +19,8 @@
 
 #include "core/common/config.h"
 
-#include<vector>
 #include<cstdint>
+#include<vector>
 
 struct debug_ip_data;
 
