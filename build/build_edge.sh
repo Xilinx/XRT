@@ -101,6 +101,10 @@ config_project()
     echo "CONFIG_XILINX_OF_BOARD_DTB_ADDR=0x40000" > project-spec/meta-user/recipes-bsp/u-boot/files/$UBOOT_USER_SCRIPT
     echo "SRC_URI += \"file://${UBOOT_USER_SCRIPT}\"" >> project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
 
+    # Configure kernel
+    echo "CONFIG_SUSPEND=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_PM=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_SPI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
 }
 
 # --- End internal functions
