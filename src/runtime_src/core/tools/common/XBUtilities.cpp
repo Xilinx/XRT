@@ -811,6 +811,13 @@ XBUtilities::string_to_bytes(std::string str)
   return size;
 }
 
+bool 
+XBUtilities::
+isPowerOf2(const uint64_t x)
+{
+  return !(x & (x - 1));
+}
+
 std::string
 XBUtilities::
 get_xrt_pretty_version()

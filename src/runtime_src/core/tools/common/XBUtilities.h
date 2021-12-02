@@ -152,6 +152,9 @@ namespace XBUtilities {
   uint64_t 
   string_to_bytes(std::string str);
 
+  bool
+  isPowerOf2(const uint64_t x);
+
  /*
   * xclbin locking
   */
