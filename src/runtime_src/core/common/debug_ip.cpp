@@ -125,7 +125,7 @@ get_am_counter_result(const xrt_core::device* device, debug_ip_data* dbg_ip_data
 
   auto dbg_ip_version = std::make_pair(dbg_ip_data->m_major, dbg_ip_data->m_minor);
 
-  std::pair<uint8_t, uint8_t> ref_version { 1, 1};
+  std::pair<uint8_t, uint8_t> ref_version { static_cast<uint8_t>(1), static_cast<uint8_t>(1)};
 
   bool has_dataflow = (dbg_ip_version > ref_version);
 
