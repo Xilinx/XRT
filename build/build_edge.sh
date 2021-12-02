@@ -70,7 +70,7 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
-config_project()
+config_versal_project()
 {
     # remove following unused packages from rootfs sothat its size would fit in QSPI
 
@@ -264,8 +264,10 @@ fi
 echo " * Performing PetaLinux Build (from: ${PWD})"
 #Run a full build if -full option is provided
 if [[ $full == 1 ]]; then
-  # configure the project with appropriate options
-  config_project
+  if [[ $AARCH = $versal_dir ]]; then
+    # configure the project with appropriate options
+    config_versal_project
+  fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
   $PETA_BIN/petalinux-config -c kernel --silentconfig
