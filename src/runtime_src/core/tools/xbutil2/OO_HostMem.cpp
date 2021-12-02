@@ -116,8 +116,9 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     }
     enable =  boost::iequals(m_action, "ENABLE");
 
-    // Exit if ENABLE action is specified but size is not
-    if(enable && size == 0)
+    // Exit if ENABLE action is specified but size is not 
+    // or is a power of 2
+    if(enable && (size == 0 || (size & (size - 1))))
       throw xrt_core::error(std::errc::invalid_argument, "Please specify a non-zero memory size between 4M and 1G as a power of 2.");
 
     // Collect all of the devices of interest
