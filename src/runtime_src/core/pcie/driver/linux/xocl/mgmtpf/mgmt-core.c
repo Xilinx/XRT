@@ -1398,9 +1398,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	xocl_info(&pdev->dev, "+++before xocl_hwmon_sdm_get_sensors_list\n");
-	xocl_hwmon_sdm_get_sensors_list(lro);
-	xocl_info(&pdev->dev, "+++after xocl_hwmon_sdm_get_sensors_list\n");
+	(void) xocl_hwmon_sdm_get_sensors_list(lro);
 
 	xocl_drvinst_set_offline(lro, false);
 	return 0;

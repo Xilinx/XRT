@@ -53,6 +53,7 @@
 #define THRESHOLD_SENSOR_MAX_MASK		(0x1 << 7)
 
 enum xgq_sdr_repo_type {
+    SDR_TYPE_GET_SIZE     = 0x00,
     SDR_TYPE_BDINFO       = 0xC0,
     SDR_TYPE_TEMP         = 0xC1,
     SDR_TYPE_VOLTAGE      = 0xC2,
@@ -63,7 +64,7 @@ enum xgq_sdr_repo_type {
     SDR_TYPE_IPMIFRU      = 0xD1,
     SDR_TYPE_CSDR_LOGDATA = 0xE0,
     SDR_TYPE_VMC_LOGDATA  = 0xE1,
-    SDR_TYPE_MAX		  = 10,//increment if new entry added in this enum
+    SDR_TYPE_MAX	  = 11,//increment if new entry added in this enum
 };
 
 enum xgq_sdr_completion_code {

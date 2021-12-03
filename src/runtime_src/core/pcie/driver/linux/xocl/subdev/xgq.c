@@ -1175,50 +1175,8 @@ static struct attribute *xgq_attrs[] = {
 	NULL,
 };
 
-static ssize_t sensor_data_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
-{
-	struct xocl_xgq *xgq =
-		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	ssize_t ret = 0;
-
-	/* if off == 0, read data */
-	if (off == 0)
-		xgq_collect_sensors(xgq, XGQ_CMD_SENSOR_PID_BDINFO);
-
-	if (xgq->sensor_data == NULL)
-		goto bail;
-
-	if (off >= xgq->sensor_data_length)
-		goto bail;
-
-	if (off + count > xgq->sensor_data_length)
-		count = xgq->sensor_data_length - off;
-
-	memcpy(buf, xgq->sensor_data + off, count);
-
-	ret = count;
-bail:
-	return ret;
-}
-
-static struct bin_attribute bin_attr_sensor_data = {
-	.attr = {
-		.name = "sensor_data",
-		.mode = 0444
-	},
-	.read = sensor_data_read,
-	.size = 0
-};
-
-static struct bin_attribute *xgq_bin_attrs[] = {
-	&bin_attr_sensor_data,
-	NULL,
-};
-
 static struct attribute_group xgq_attr_group = {
 	.attrs = xgq_attrs,
-	.bin_attrs = xgq_bin_attrs,
 };
 
 static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,

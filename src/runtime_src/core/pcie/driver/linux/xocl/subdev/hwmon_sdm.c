@@ -59,7 +59,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	uint8_t sensor_id = index & 0xFF;
 	uint8_t repo_id = sdr_get_id(repo_type);
 	if (repo_id < 0) {
-		printk(KERN_ERR "SDR has INVALID REPO TYPE: %d\n", repo_type);
+		xocl_err(&sdm->pdev->dev, "SDR has INVALID REPO TYPE: %d\n", repo_type);
 		return NULL;
 	}
 
@@ -68,8 +68,8 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		sensor_id;
 
 	if (srec == NULL) {
-		printk(KERN_ERR "SDR Record is NULL, repo_type: %d, field_type: %d, sensor_id: %d\n",
-               repo_type, field_id, sensor_id);
+		xocl_err(&sdm->pdev->dev, "SDR Record is NULL, repo_type: %d, field_type: %d, sensor_id: %d\n",
+                         repo_type, field_id, sensor_id);
 		return sprintf(buf, "%d\n", 0);
 	}
 
@@ -109,7 +109,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm, char *sysfs_name,
 	return 0;
 }
 
-static void display_sensor_data(struct sdr_response *repo_object)
+static void display_sensor_data(struct xocl_hwmon_sdm * sdm, struct sdr_response *repo_object)
 {
 	if (repo_object == NULL)
 		return;
@@ -117,113 +117,113 @@ static void display_sensor_data(struct sdr_response *repo_object)
 	struct sdr_sensor_record *srec = repo_object->sensor_record;
 	int sr = repo_object->header.no_of_records;
 
-	printk(KERN_INFO "Repository Type : 0x%x\r\n", repo_object->header.repository_type);
-	printk(KERN_INFO "Repository Version No : 0x%x\r\n", repo_object->header.repository_version_no);
-	printk(KERN_INFO "Number of Records : 0x%x\r\n", repo_object->header.no_of_records);
+	xocl_info(&sdm->pdev->dev, "Repository Type : 0x%x\r\n", repo_object->header.repository_type);
+    xocl_info(&sdm->pdev->dev, "Repository Version No : 0x%x\r\n", repo_object->header.repository_version_no);
+	xocl_info(&sdm->pdev->dev, "Number of Records : 0x%x\r\n", repo_object->header.no_of_records);
 
 	while(sr > 0) {
-		printk(KERN_INFO "Sensor ID: 0x%x\r\n", srec->id);
+		xocl_info(&sdm->pdev->dev, "Sensor ID: 0x%x\r\n", srec->id);
 		uint8_t name_type = (srec->name_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 		uint8_t value_type = (srec->value_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
-		printk(KERN_INFO "Name tyte : 0x%x\r\n", name_type);
+		xocl_info(&sdm->pdev->dev, "Name tyte : 0x%x\r\n", name_type);
 
 		if(name_type == TYPECODE_ASCII)
-			printk(KERN_INFO "Sensor name : %s\r\n", srec->name);
+			xocl_info(&sdm->pdev->dev, "Sensor name : %s\r\n", srec->name);
 		else if(name_type == TYPECODE_BINARY)
-			printk(KERN_INFO "Sensor Name : 0x%x\r\n", *(srec->name));
+			xocl_info(&sdm->pdev->dev, "Sensor Name : 0x%x\r\n", *(srec->name));
 
 		if (value_type == TYPECODE_ASCII) {
-			printk(KERN_INFO "[s]Sensor Raw value : %s\r\n", srec->value);
+			xocl_info(&sdm->pdev->dev, "Sensor Raw value : %s\r\n", srec->value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK)
-				printk(KERN_INFO "[s]Sensor AVG Raw value : %s\r\n", srec->avg_value);
+				xocl_info(&sdm->pdev->dev, "Sensor AVG Raw value : %s\r\n", srec->avg_value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK)
-				printk(KERN_INFO "[s]Sensor Max Raw value : %s\r\n", srec->max_value);
+				xocl_info(&sdm->pdev->dev, "Sensor Max Raw value : %s\r\n", srec->max_value);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK)
-				printk(KERN_INFO "Upper Warning Limit: %s\r\n", srec->upper_warning_limit);
+				xocl_info(&sdm->pdev->dev, "Upper Warning Limit: %s\r\n", srec->upper_warning_limit);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK)
-				printk(KERN_INFO "Upper Critical Limit: %s\r\n", srec->upper_critical_limit);
+				xocl_info(&sdm->pdev->dev, "Upper Critical Limit: %s\r\n", srec->upper_critical_limit);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK)
-				printk(KERN_INFO "Upper Fatal Limit: %s\r\n", srec->upper_fatal_limit);
+				xocl_info(&sdm->pdev->dev, "Upper Fatal Limit: %s\r\n", srec->upper_fatal_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK)
-				printk(KERN_INFO "Lower Warning Limit: %s\r\n", srec->lower_warning_limit);
+				xocl_info(&sdm->pdev->dev, "Lower Warning Limit: %s\r\n", srec->lower_warning_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK)
-				printk(KERN_INFO "Lower Critical Limit: %s\r\n", srec->lower_critical_limit);
+				xocl_info(&sdm->pdev->dev, "Lower Critical Limit: %s\r\n", srec->lower_critical_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK)
-				printk(KERN_INFO "Lower Fatal Limit: %s\r\n", srec->lower_fatal_limit);
+				xocl_info(&sdm->pdev->dev, "Lower Fatal Limit: %s\r\n", srec->lower_fatal_limit);
 		} else if(value_type == TYPECODE_BINARY) {
-			printk(KERN_INFO "[0x]Sensor Raw Value : 0x%x\r\n", *(uint8_t *)srec->value);
+			xocl_info(&sdm->pdev->dev, "Sensor Raw Value : 0x%x\r\n", *(uint8_t *)srec->value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK)
-				printk(KERN_INFO "Sensor AVG Raw Value : 0x%x\r\n", *(uint8_t *)srec->avg_value);
+				xocl_info(&sdm->pdev->dev, "Sensor AVG Raw Value : 0x%x\r\n", *(uint8_t *)srec->avg_value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK)
-				printk(KERN_INFO "Sensor MAX Raw Value : 0x%x\r\n", *(uint8_t *)srec->max_value);
+				xocl_info(&sdm->pdev->dev, "Sensor MAX Raw Value : 0x%x\r\n", *(uint8_t *)srec->max_value);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK) {
-				printk(KERN_INFO "Upper Warning Limit: 0x%x\r\n", *(srec->upper_warning_limit));
-				printk(KERN_INFO "Upper Warning Adjusted Limit : %f\r\n", (*(srec->upper_warning_limit)) *
+				xocl_info(&sdm->pdev->dev, "Upper Warning Limit: 0x%x\r\n", *(srec->upper_warning_limit));
+				xocl_info(&sdm->pdev->dev, "Upper Warning Adjusted Limit : %f\r\n", (*(srec->upper_warning_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK) {
-				printk(KERN_INFO "Upper Critical Limit: 0x%x\r\n", *(srec->upper_critical_limit));
-				printk(KERN_INFO "Upper Critical Adjusted Limit : %f\r\n", (*(srec->upper_critical_limit)) *
+				xocl_info(&sdm->pdev->dev, "Upper Critical Limit: 0x%x\r\n", *(srec->upper_critical_limit));
+				xocl_info(&sdm->pdev->dev, "Upper Critical Adjusted Limit : %f\r\n", (*(srec->upper_critical_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK) {
-				printk(KERN_INFO "Upper Fatal Limit: 0x%x\r\n", *(srec->upper_fatal_limit));
-				printk(KERN_INFO "Upper Fatal Adjusted Limit : %f\r\n", (*(srec->upper_fatal_limit)) *
+				xocl_info(&sdm->pdev->dev, "Upper Fatal Limit: 0x%x\r\n", *(srec->upper_fatal_limit));
+				xocl_info(&sdm->pdev->dev, "Upper Fatal Adjusted Limit : %f\r\n", (*(srec->upper_fatal_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK) {
-				printk(KERN_INFO "Lower Warning Limit: 0x%x\r\n", *(srec->lower_warning_limit));
-				printk(KERN_INFO "Lower Warning Adjusted Limit : %f\r\n", (*(srec->lower_warning_limit)) *
+				xocl_info(&sdm->pdev->dev, "Lower Warning Limit: 0x%x\r\n", *(srec->lower_warning_limit));
+				xocl_info(&sdm->pdev->dev, "Lower Warning Adjusted Limit : %f\r\n", (*(srec->lower_warning_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK) {
-				printk(KERN_INFO "Lower Critical Limit: 0x%x\r\n", *(srec->lower_critical_limit));
-				printk(KERN_INFO "Lower Critical Adjusted Limit : %f\r\n", (*(srec->lower_critical_limit)) *
+				xocl_info(&sdm->pdev->dev, "Lower Critical Limit: 0x%x\r\n", *(srec->lower_critical_limit));
+				xocl_info(&sdm->pdev->dev, "Lower Critical Adjusted Limit : %f\r\n", (*(srec->lower_critical_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK) {
-				printk(KERN_INFO "Lower Fatal Limit: 0x%x\r\n", *(srec->lower_fatal_limit));
-				printk(KERN_INFO "Lower Fatal Adjusted Limit : %f\r\n", (*(srec->lower_fatal_limit)) *
+				xocl_info(&sdm->pdev->dev, "Lower Fatal Limit: 0x%x\r\n", *(srec->lower_fatal_limit));
+				xocl_info(&sdm->pdev->dev, "Lower Fatal Adjusted Limit : %f\r\n", (*(srec->lower_fatal_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 		}
 		if(srec->base_unit_type_length != SDR_NULL_BYTE) {
 			uint8_t bu_type   = (srec->base_unit_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 			if(bu_type == TYPECODE_ASCII)
-				printk(KERN_INFO "Base Unit Value : %s\r\n", srec->base_unit);
+				xocl_info(&sdm->pdev->dev, "Base Unit Value : %s\r\n", srec->base_unit);
 			else if (bu_type == TYPECODE_BINARY)
-				printk(KERN_INFO "Sensor Base Unit : 0x%x\r\n", *(srec->base_unit));
+				xocl_info(&sdm->pdev->dev, "Sensor Base Unit : 0x%x\r\n", *(srec->base_unit));
 		}
 
 		uint8_t val_len = srec->value_type_length & SDR_LENGTH_MASK;
 		if(srec->unit_modifier_byte != 0x7F)
 		{
 			if(val_len == 1)
-				printk(KERN_INFO "Sensor Adjusted Value : %f\r\n", (*(uint8_t *)srec->value) *
+				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint8_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 			else if(val_len == 2)
-				printk(KERN_INFO "Sensor Adjusted Value : %f\r\n", (*(uint16_t *)srec->value) *
+				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint16_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 			else if(val_len == 4)
-				printk(KERN_INFO "Sensor Adjusted Value : %f\r\n", (*(uint32_t *)srec->value) *
+				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint32_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 		}
 
 		if(srec->status == SENSOR_NOT_PRESENT)
-			printk(KERN_ERR "Sensor Status : Sensor Not Present\r\n");
+			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Not Present\r\n");
 		else if(srec->status == SENSOR_PRESENT_AND_VALID)
-			printk(KERN_INFO "Sensor Status : Sensor Present and Valid\r\n");
+			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Present and Valid\r\n");
 		else if(srec->status == DATA_NOT_AVAILABLE)
-			printk(KERN_ERR "Sensor Status : Sensor Data Not Available\r\n");
+			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
 		else if(srec->status == SENSOR_STATUS_NOT_AVAILABLE)
-			printk(KERN_ERR "Sensor Status : Sensor Data Not Available\r\n");
+			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
 
 		srec++;
 		sr--;
 
-		printk(KERN_INFO "\r\n");
+		xocl_info(&sdm->pdev->dev, "\r\n");
 	}
-	printk(KERN_INFO "%s\r\n",  repo_object->eor.eor_marker);
+	xocl_info(&sdm->pdev->dev, "%s\r\n",  repo_object->eor.eor_marker);
 }
 
 static uint8_t sdr_get_id(uint8_t repo_type)
@@ -258,30 +258,31 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 	uint8_t repo_id = 0;
 	size_t sbyte = sizeof(uint8_t);
 
-	printk(KERN_DEBUG "\r\nParsing SDR Repository \r\n\r\n");
+	xocl_dbg(&sdm->pdev->dev, "\r\nParsing SDR Repository, completion_code: 0x%x \r\n\r\n", completion_code);
 
 	if(completion_code != SDR_CODE_OP_SUCCESS)
 	{
 		if(completion_code == SDR_CODE_NOT_AVAILABLE)
-			printk(KERN_ERR "Error: SDR Code Not Available\r\n");
+			xocl_err(&sdm->pdev->dev, "Error: SDR Code Not Available\r\n");
 		else if(completion_code == SDR_CODE_OP_FAILED)
-			printk(KERN_ERR "Error: SDR Code Operation Failed\r\n");
+			xocl_err(&sdm->pdev->dev, "Error: SDR Code Operation Failed\r\n");
 		else if(completion_code == SDR_CODE_FLOW_CONTROL_READ_STALE)
-			printk(KERN_ERR "Error: SDR Code Flow Control Read Stale\r\n");
+			xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Read Stale\r\n");
 		else if(completion_code == SDR_CODE_FLOW_CONTROL_WRITE_ERROR)
-			printk(KERN_ERR "Error: SDR Code Flow Control Write Error\r\n");
+			xocl_err(&sdm->pdev->dev, "Error: SDR Code Flow Control Write Error\r\n");
 		else if(completion_code == SDR_CODE_INVALID_SENSOR_ID)
-			printk(KERN_ERR "Error: SDR Code Invalid Sensor ID\r\n");
+			xocl_err(&sdm->pdev->dev, "Error: SDR Code Invalid Sensor ID\r\n");
 		else
-			printk(KERN_ERR "\r\nFailed in sending SDR Repository command\r\n");
+			xocl_err(&sdm->pdev->dev, "\r\nFailed in sending SDR Repository command\r\n");
 		return NULL;
 	}
 
 	repo_id = sdr_get_id(repo_type);
 	if (repo_id < 0) {
-		printk(KERN_ERR "SDR Responce has INVALID REPO TYPE: %d\n", repo_type);
+		xocl_err(&sdm->pdev->dev, "SDR Responce has INVALID REPO TYPE: %d\n", repo_type);
 		return NULL;
 	}
+	xocl_err(&sdm->pdev->dev, "SDR Responce has repo_type: 0x%x\n", repo_type);
 
 	struct sdr_response* repo_object = &sdm->sensor_tree[repo_id];
 
@@ -541,7 +542,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				case SDR_TYPE_IPMIFRU:
 					//break;
 				default:
-					printk(KERN_ERR "Unable to capture the parsed base_unit: %s for repo: %d\n", srec->base_unit, repo_type);
+					xocl_err(&sdm->pdev->dev, "Unable to capture the parsed base_unit: %s for repo: %d\n", srec->base_unit, repo_type);
 					break;
 			}
 			if (create) {
@@ -553,7 +554,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[0]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[0], repo_type, SENSOR_NAME, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[0], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[0], err);
 					}
 				}
 
@@ -561,7 +562,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[1]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[1], repo_type, SENSOR_VALUE, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[1], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[1], err);
 					}
 				}
 
@@ -569,7 +570,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[2]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[2], repo_type, SENSOR_MAX_VAL, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[2], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[2], err);
 					}
 				}
 
@@ -577,7 +578,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 				if(strlen(sysfs_name[3]) != 0) {//not empty
 					err = hwmon_sysfs_create(sdm, sysfs_name[3], repo_type, SENSOR_AVG_VAL, srecords);
 					if (err) {
-						printk(KERN_ERR "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
+						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
 					}
 				}
 			}
@@ -680,7 +681,7 @@ static ssize_t bdinfo_show(struct device *dev,
 
 	char *in_buf = xocl_xgq_collect_bdinfo_sensors(xdev);
 	struct sdr_response* resp = parse_sdr_info(in_buf, sdm, false);
-	display_sensor_data(resp);
+	display_sensor_data(sdm, resp);
 
 	return sprintf(buf, "%d\n", i);
 }
@@ -695,19 +696,19 @@ static ssize_t all_sensors_show(struct device *dev,
 
 	char* in_buf = xocl_xgq_collect_power_sensors(xdev);
 	struct sdr_response* resp = parse_sdr_info(in_buf, sdm, false);
-	display_sensor_data(resp);
+	display_sensor_data(sdm, resp);
 
 	char* in_buf1 = xocl_xgq_collect_temp_sensors(xdev);
 	resp = parse_sdr_info(in_buf1, sdm, false);
-	display_sensor_data(resp);
+	display_sensor_data(sdm, resp);
 
 	char* in_buf2 = xocl_xgq_collect_voltage_sensors(xdev);
 	resp = parse_sdr_info(in_buf2, sdm, false);
-	display_sensor_data(resp);
+	display_sensor_data(sdm, resp);
 
 	char* in_buf3 = xocl_xgq_collect_bdinfo_sensors(xdev);
 	resp = parse_sdr_info(in_buf3, sdm, false);
-	display_sensor_data(resp);
+	display_sensor_data(sdm, resp);
 
 	return sprintf(buf, "%d\n", i);
 }
@@ -760,17 +761,21 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 
-	char* in_buf = xocl_xgq_collect_power_sensors(xdev);
-	struct sdr_response* resp = parse_sdr_info(in_buf, sdm, true);
+	char* in_buf3 = xocl_xgq_collect_bdinfo_sensors(xdev);
+	struct sdr_response* resp = parse_sdr_info(in_buf3, sdm, false);
+	display_sensor_data(sdm, resp);
 
 	char* in_buf1 = xocl_xgq_collect_temp_sensors(xdev);
 	resp = parse_sdr_info(in_buf1, sdm, true);
+	display_sensor_data(sdm, resp);
 
 	char* in_buf2 = xocl_xgq_collect_voltage_sensors(xdev);
 	resp = parse_sdr_info(in_buf2, sdm, true);
+	display_sensor_data(sdm, resp);
 
-	char* in_buf3 = xocl_xgq_collect_bdinfo_sensors(xdev);
-	resp = parse_sdr_info(in_buf3, sdm, false);
+	char* in_buf = xocl_xgq_collect_power_sensors(xdev);
+	resp = parse_sdr_info(in_buf, sdm, true);
+	display_sensor_data(sdm, resp);
 }
 
 static struct xocl_sdm_funcs sdm_ops = {
