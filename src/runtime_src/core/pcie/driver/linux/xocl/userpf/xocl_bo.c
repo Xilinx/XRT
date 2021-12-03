@@ -87,6 +87,20 @@ void xocl_describe(const struct drm_xocl_bo *xobj)
 		xobj->sgt ? xobj->sgt->orig_nents : 0, xobj->flags);
 }
 
+void xocl_bo_get_usage_stat(struct xocl_drm *drm_p, u32 bo_idx,
+	struct drm_xocl_mm_stat *pstat)
+{
+	if (!drm_p->bo_usage_stat)
+		return;
+	if (bo_idx < 0)
+		return;
+	if (bo_idx >= XOCL_BO_USAGE_TOTAL)
+		return;
+
+	pstat->memory_usage = drm_p->bo_usage_stat[bo_idx].memory_usage;
+	pstat->bo_count = drm_p->bo_usage_stat[bo_idx].bo_count;
+}
+
 static int xocl_bo_update_usage_stat(struct xocl_drm *drm_p, unsigned bo_flag,
 	u64 size, int count)
 {
