@@ -202,7 +202,7 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				stat.bo_count, 0);
 		} else {
 			count = sprintf(buf, bo_txt_fmt,
-				&bo_types[i],
+				bo_types[i],
 				stat.memory_usage / 1024,
 				stat.bo_count);
 		}
