@@ -508,14 +508,14 @@ prep_sles()
     echo "Preparing SLES for package dependencies..."
 
     if [ "$VERSION" == "15.2" ]; then
-	SUSEConnect -p sle-module-desktop-applications/$VERSION/x86_64
-	SUSEConnect -p sle-module-development-tools/$VERSION/x86_64
-	SUSEConnect -p PackageHub/$VERSION/x86_64
-	zypper addrepo https://download.opensuse.org/repositories/science/SLE_15_SP2/science.repo
-	zypper addrepo https://download.opensuse.org/repositories/devel:libraries:c_c++/SLE_15_SP2/devel:libraries:c_c++.repo
-	zypper --no-gpg-checks refresh
-	zypper install -y opencl-headers ocl-icd-devel rapidjson-devel
-	zypper mr -d -f science devel_libraries_c_c++ devel_languages_python
+        SUSEConnect -p sle-module-desktop-applications/$VERSION/x86_64
+        SUSEConnect -p sle-module-development-tools/$VERSION/x86_64
+        SUSEConnect -p PackageHub/$VERSION/x86_64
+        zypper addrepo https://download.opensuse.org/repositories/science/SLE_15_SP2/science.repo
+        zypper addrepo https://download.opensuse.org/repositories/home:cvoegl:pmem/SLE_15_SP2/home:cvoegl:pmem.repo
+        zypper --no-gpg-checks refresh
+        zypper install -y opencl-headers ocl-icd-devel rapidjson-devel
+        zypper mr -d -f science home_cvoegl_pmem
     fi
 }
 
