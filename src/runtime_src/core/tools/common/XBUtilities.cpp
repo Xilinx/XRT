@@ -815,7 +815,7 @@ bool
 XBUtilities::
 isPowerOf2(const uint64_t x)
 {
-  return !(x & (x - 1));
+  return !(x==0 || (x & (x - 1)));
 }
 
 std::string
