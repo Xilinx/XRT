@@ -607,10 +607,6 @@ static void destroy_hwmon_sysfs(struct platform_device *pdev)
 		return;
 
 	if (sdm->hwmon_dev) {
-//		while (sdm->sysfs_iter != NULL) {
-//			device_remove_file(sdm->hwmon_dev, &sdm->sysfs_iter->dev_attr);
-//			sdm->sysfs_iter++;
-//		}
 		hwmon_device_unregister(sdm->hwmon_dev);
 		sdm->hwmon_dev = NULL;
 	}
