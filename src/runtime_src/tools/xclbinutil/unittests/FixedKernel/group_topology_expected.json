@@ -1,0 +1,21 @@
+{
+    "group_topology": {
+        "m_count": "2",
+        "m_mem_data": [
+            {
+                "m_type": "MEM_DRAM",
+                "m_used": "1",
+                "m_sizeKB": "0x10000",
+                "m_tag": "HOST",
+                "m_base_address": "0x4000000"
+            },
+            {
+                "m_type": "MEM_DRAM",
+                "m_used": "0",
+                "m_sizeKB": "0x200",
+                "m_tag": "SRAM",
+                "m_base_address": "0x0"
+            }
+        ]
+    }
+}
