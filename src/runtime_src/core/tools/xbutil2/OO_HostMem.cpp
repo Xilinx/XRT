@@ -118,7 +118,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
     // Exit if ENABLE action is specified and 
     // size is not a power of 2
-    if(enable && !XBUtilities::isPowerOf2(size))
+    if(enable && ((0 == size) || !XBUtilities::isPowerOf2(size)))
       throw xrt_core::error(std::errc::invalid_argument, "Please specify a non-zero memory size between 4M and 1G as a power of 2.");
 
     // Collect all of the devices of interest
