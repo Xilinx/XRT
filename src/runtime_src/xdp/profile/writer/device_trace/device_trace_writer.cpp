@@ -94,8 +94,8 @@ namespace xdp {
       ComputeUnitInstance* cu = iter.second ;
       fout << "Group_Start,Compute Unit " << cu->getName();
 
-      if(-1 == cu->getAccelMon() && !(cu->dataTransferEnabled())
-                                 && !(cu->streamEnabled())) {
+      if(-1 == cu->getAccelMon() && !(cu->getDataTransferTraceEnabled())
+                                 && !(cu->getStreamTraceEnabled())) {
         fout << " - No Trace";
       }
 
@@ -140,7 +140,7 @@ namespace xdp {
     cuBucketIdMap[index] = rowCount;
 
     // Generate wave group for Kernel Stall if Stall monitoring is enabled in CU
-    if (cu->stallEnabled()) {
+    if (cu->getStallEnabled()) {
       fout << "Group_Summary_Start,Stall,Stalls in accelerator " << cu->getName() << std::endl;
       fout << "Static_Row," << (rowCount + KERNEL_STALL_EXT_MEM - KERNEL)  << ",External Memory Stall, Stalls from accessing external memory" << std::endl;
       fout << "Static_Row," << (rowCount + KERNEL_STALL_DATAFLOW - KERNEL) << ",Intra-Kernel Dataflow Stall,Stalls from dataflow streams inside compute unit" << std::endl;
@@ -154,7 +154,7 @@ namespace xdp {
   void DeviceTraceWriter::writeCUMemoryTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount)
   {
     // Generate Wave group for Read/Write if data transfer monitoring is enabled
-    if (!(cu->dataTransferEnabled())) return ;
+    if (!(cu->getDataTransferTraceEnabled())) return ;
 
     std::vector<uint32_t>* cuAIMs = cu->getAIMsWithTrace() ;
     for (auto cuAIM : *cuAIMs) {
@@ -181,7 +181,7 @@ namespace xdp {
   void DeviceTraceWriter::writeCUStreamTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount)
   {
     // Generate Wave group for stream data transfers if enabled
-    if (!(cu->streamEnabled())) return ;
+    if (!(cu->getStreamTraceEnabled())) return ;
 
     std::vector<uint32_t>* cuASMs = cu->getASMsWithTrace() ;
     for (auto cuASM : *cuASMs) {

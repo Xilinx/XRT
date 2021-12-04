@@ -261,13 +261,13 @@ namespace xdp {
     VTFEventType streamEventType = KERNEL_STREAM_WRITE;
     if(txEvent) {
       streamEventType =
-        (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
+        (mon->isStreamRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
     } else if(starveEvent) {
       streamEventType =
-        (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
+        (mon->isStreamRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
     } else if(stallEvent) {
       streamEventType =
-        (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
+        (mon->isStreamRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
     }
 
     DeviceStreamAccess* strmEvent = nullptr;
@@ -585,13 +585,13 @@ namespace xdp {
         }
       }
 
-      VTFEventType streamEventType = (mon->isRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
+      VTFEventType streamEventType = (mon->isStreamRead) ? KERNEL_STREAM_READ : KERNEL_STREAM_WRITE;
       addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
-      streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
+      streamEventType = (mon->isStreamRead) ? KERNEL_STREAM_READ_STALL : KERNEL_STREAM_WRITE_STALL;
       addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
-      streamEventType = (mon->isRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
+      streamEventType = (mon->isStreamRead) ? KERNEL_STREAM_READ_STARVE : KERNEL_STREAM_WRITE_STARVE;
       addApproximateStreamEndEvent(asmIndex, asmTraceID, streamEventType, cuId, amId, cuLastTimestamp, asmAppxLastTransTimeStamp, unfinishedASMevents);
 
       asmLastTrans[asmIndex] = asmAppxLastTransTimeStamp;

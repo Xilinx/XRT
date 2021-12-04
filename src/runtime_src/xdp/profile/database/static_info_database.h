@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,18 +17,20 @@
 #ifndef STATIC_INFO_DATABASE_DOT_H
 #define STATIC_INFO_DATABASE_DOT_H
 
-#include <map>
-#include <set>
-#include <mutex>
-#include <vector>
-#include <string>
 #include <list>
+#include <map>
 #include <memory> // for unique_ptr
+#include <mutex>
+#include <set>
+#include <string>
+#include <vector>
+
+#include "core/common/system.h"
+#include "core/common/device.h"
 
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
-#include "core/common/system.h"
-#include "core/common/device.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 
 namespace xdp {
 
@@ -36,34 +38,6 @@ namespace xdp {
   class VPDatabase;
   class VPWriter;
   class DeviceIntf;
-
-  struct Monitor {
-    uint8_t     type;
-    uint64_t    index;
-    int32_t     cuIndex;
-    int32_t     memIndex;
-    std::string name;
-    std::string args; // For OpenCL monitors associated with a port on a CU
-    std::string port;
-    uint64_t    portWidth; // For OpenCL monitors associated with a port
-    bool        isRead;
-
-    // The index in the xclCounterResults to use for counter values
-    uint64_t slotIndex ;
-
-    Monitor(uint8_t ty, uint64_t idx, const char* n, int32_t cuId = -1, int32_t memId = -1, uint64_t slotId = 0)
-      : type(ty),
-        index(idx),
-        cuIndex(cuId),
-        memIndex(memId),
-        name(n),
-        args(""),
-        port(""),
-        portWidth(0),
-        isRead(false),
-        slotIndex(slotId)
-    {}
-  };
 
   struct AIECounter {
     uint32_t id;
@@ -180,82 +154,6 @@ class aie_cfg_tile
     aie_cfg_memory memory_trace_config;
     aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
 };
-
-  class ComputeUnitInstance
-  {
-  private:
-    // The connections require the original index in the ip_layout
-    int32_t index ; 
-
-    std::string name ;
-    std::string kernelName ;
-
-    // In OpenCL, each compute unit is set up with a static workgroup size
-    int32_t dim[3] ;
-
-    // A mapping of arguments to memory resources
-    std::map<int32_t, std::vector<int32_t>> connections ;
-
-    // The slot ID inside the counter results structure for this CU
-    int32_t amId;
-
-    // All of the slot IDs inside the counter results structure for any
-    //  monitors attached to this CU
-    std::vector<uint32_t> aimIds; // All AIMs (counters only and trace enabled)
-    std::vector<uint32_t> asmIds; // All ASMs (counters only and trace enabled)
-
-    std::vector<uint32_t> aimIdsWithTrace ; // Only AIMs with trace
-    std::vector<uint32_t> asmIdsWithTrace ; // Only ASMs with trace
-
-    bool stall        = false;
-    bool dataflow     = false;
-    bool hasfa        = false;
-
-    ComputeUnitInstance() = delete ;
-  public:
-    
-    // Getters and setters
-    inline const std::string& getName() { return name ; }
-    inline const std::string& getKernelName() { return kernelName ; }
-
-    inline int32_t getIndex() { return index ; }
-    inline void setDim(int32_t x, int32_t y, int32_t z) { dim[0] = x; dim[1] = y; dim[2] = z; }
-    XDP_EXPORT std::string getDim() ;
-
-    XDP_EXPORT void addConnection(int32_t, int32_t);
-    inline std::map<int32_t, std::vector<int32_t>>* getConnections()
-    {  return &connections; }
-
-    void    setAccelMon(int32_t id) { amId = id; }
-    int32_t getAccelMon() { return amId; }
- 
-    void addAIM(uint32_t id, bool trace = false)
-      { aimIds.push_back(id); if (trace) aimIdsWithTrace.push_back(id) ; }
-    void addASM(uint32_t id, bool trace = false)
-      { asmIds.push_back(id); if (trace) asmIdsWithTrace.push_back(id) ; }
-
-    inline std::vector<uint32_t>* getAIMs() { return &aimIds; }
-    inline std::vector<uint32_t>* getASMs() { return &asmIds; }
-
-    inline std::vector<uint32_t>* getAIMsWithTrace() {return &aimIdsWithTrace;}
-    inline std::vector<uint32_t>* getASMsWithTrace() {return &asmIdsWithTrace;}
-
-    void setStallEnabled(bool b) { stall = b; }
-    bool stallEnabled() { return stall; }
-
-    bool streamEnabled() { return (asmIds.empty() ? false : true); }
-
-    void setDataflowEnabled(bool b) { dataflow = b; }
-    bool dataflowEnabled() { return dataflow; }
-
-    bool dataTransferEnabled() { return (aimIdsWithTrace.empty() ? false : true); }
-
-    void setFaEnabled(bool b) { hasfa = b; }
-    bool faEnabled() { return hasfa; }
-
-    XDP_EXPORT ComputeUnitInstance(int32_t i, const std::string &n);
-    XDP_EXPORT ~ComputeUnitInstance() ;
-  } ;
 
   struct Memory {
     uint8_t     type;
@@ -1133,7 +1031,7 @@ class aie_cfg_tile
         if(count >= size)
           return;
         auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon->cuIndex];
-        config[count] = cu->dataflowEnabled();
+        config[count] = cu->getDataflowEnabled();
         ++count;
       }
     }
@@ -1160,7 +1058,7 @@ class aie_cfg_tile
         if(count >= size)
           return;
         auto cu = deviceInfo[deviceId]->loadedXclbins.back()->cus[mon->cuIndex];
-        config[count] = cu->faEnabled();
+        config[count] = cu->getHasFA();
         ++count;
       }
     }

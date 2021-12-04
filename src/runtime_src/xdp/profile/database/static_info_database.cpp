@@ -50,46 +50,6 @@
 
 namespace xdp {
 
-  ComputeUnitInstance::ComputeUnitInstance(int32_t i, const std::string &n)
-    : index(i),
-      amId(-1)
-  {
-    std::string fullName(n);
-    size_t pos = fullName.find(':');
-    kernelName = fullName.substr(0, pos);
-    name = fullName.substr(pos+1);
-    
-    dim[0] = 0 ;
-    dim[1] = 0 ;
-    dim[2] = 0 ;
-  }
-
-  ComputeUnitInstance::~ComputeUnitInstance()
-  {
-  }
-
-  std::string ComputeUnitInstance::getDim()
-  {
-    std::string combined ;
-
-    combined = std::to_string(dim[0]) ;
-    combined += ":" ;
-    combined += std::to_string(dim[1]) ;
-    combined += ":" ;
-    combined += std::to_string(dim[2]) ;
-    return combined ;
-  }
-
-  void ComputeUnitInstance::addConnection(int32_t argIdx, int32_t memIdx)
-  {
-    if(connections.find(argIdx) == connections.end()) {
-      std::vector<int32_t> mems(1, memIdx);
-      connections[argIdx] = mems;
-      return;
-    }
-    connections[argIdx].push_back(memIdx);
-  }
-
   DeviceInfo::~DeviceInfo()
   {
     for (auto& i : loadedXclbins) {
@@ -224,7 +184,7 @@ namespace xdp {
       if ((device.second)->loadedXclbins.size() <= 0) continue ;
       for (auto cu : (device.second)->loadedXclbins.back()->cus)
       {
-        if ((cu.second)->stallEnabled()) return true ;
+        if ((cu.second)->getStallEnabled()) return true ;
       }
     }
     return false ;
@@ -557,9 +517,9 @@ namespace xdp {
           cuObj->setStallEnabled(true);
         }
 
-        Monitor* mon = new Monitor(debugIpData->m_type, index,
-                                   debugIpData->m_name, cuId, -1 /* memId */,
-                                   slotId) ;
+        Monitor* mon =
+          new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type), index,
+                      debugIpData->m_name, cuId, -1 /* memId */, slotId) ;
         // First, add this monitor to the list of all AMs
         devInfo->loadedXclbins.back()->amList.push_back(mon);
         // Second, determine if this is a trace-enabled AM or just a counter AM
@@ -624,8 +584,8 @@ namespace xdp {
         break;
       }
     }
-    Monitor* mon = new Monitor(debugIpData->m_type, index,
-                               debugIpData->m_name, cuId, memId, slotId);
+    Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
+                               index, debugIpData->m_name, cuId, memId, slotId);
     mon->port = portName;
 
     // Add the monitor to the list of all AIMs
@@ -711,11 +671,12 @@ namespace xdp {
       }
     }
 
-    Monitor* mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+    Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
+                               index, debugIpData->m_name,
                                cuId, -1 /* memId */, slotId);
     mon->port = portName;
     if(debugIpData->m_properties & 0x2) {
-      mon->isRead = true;
+      mon->isStreamRead = true;
     }
 
     // Add this monitor to the list of all monitors
@@ -749,7 +710,8 @@ namespace xdp {
     uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
     uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
 
-    Monitor* mon = new Monitor(debugIpData->m_type, index, debugIpData->m_name,
+    Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
+                               index, debugIpData->m_name,
                                readTrafficClass, writeTrafficClass);
     devInfo->loadedXclbins.back()->nocList.push_back(mon);
     // nocList in xdp::DeviceIntf is sorted; Is that required here?

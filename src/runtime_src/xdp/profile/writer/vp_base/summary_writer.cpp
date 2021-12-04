@@ -740,7 +740,7 @@ namespace xdp {
 	  std::string kernelName = (cuInfo.second)->getKernelName() ;
 	  std::string cuLocalDimensions = (cuInfo.second)->getDim() ;
 	  std::string dataflowEnabled = 
-	    (cuInfo.second)->dataflowEnabled() ? "Yes" : "No" ;
+	    (cuInfo.second)->getDataflowEnabled() ? "Yes" : "No" ;
 	  
 	  // For each compute unit, we can have executions from the host
 	  //  with different global work sizes.  Determine the number of 
