@@ -27,10 +27,6 @@ namespace xdp {
     size_t pos = fullName.find(':') ;
     kernelName = fullName.substr(0, pos) ;
     name = fullName.substr(pos + 1) ;
-
-    dim[0] = 0 ;
-    dim[1] = 0 ;
-    dim[2] = 0 ;
   }
 
   ComputeUnitInstance::~ComputeUnitInstance()

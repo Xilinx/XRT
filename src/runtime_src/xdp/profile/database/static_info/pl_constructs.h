@@ -118,7 +118,7 @@ namespace xdp {
 
     // OpenCL compute units have x, y, and z dimensions to create a
     //  workgroup size.  Non-OpenCL compute units do not report this information
-    int32_t dim[3] ;
+    int32_t dim[3] = { 0, 0, 0 } ;
 
     // If this compute unit was built in HLS with stalls enabled
     bool stall = false ;
