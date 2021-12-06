@@ -188,6 +188,48 @@ namespace xdp {
     XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
     XDP_EXPORT ~ComputeUnitInstance() ;
   } ;
+
+  // The Memory struct collects all of the information on a single
+  //  hardware memory resource (DDR bank, HBM, PLRAM, etc.).  Each
+  //  platform has a set number of resources, but each xclbin will
+  //  only use a subset of the total memory.
+  struct Memory
+  {
+    // The type of the memory resource copied from the MEM_TOPOLOGY section.
+    //  This is inconsistent in some xclbins and should be unused
+    //  [[maybe_unused]]
+    uint8_t type ;
+
+    // The index of the memory resource in the MEM_TOPOLOGY section
+    //  [[maybe_unused]]
+    int32_t index ;
+
+    // The start physical address on the device for this memory resource
+    uint64_t baseAddress ;
+
+    // The size (in bytes) of the memory resource on the device
+    uint64_t size ;
+
+    // The name of the memory resource (as defined by the "tag" in
+    //  the MEM_TOPOLOGY section)
+    std::string name ;
+
+    // A memory resource is considered "used" in an xclbin if it is
+    //  connected to either a compute unit or the host memory.  This is
+    //  set based on information in the MEM_TOPOLOGY section
+    bool used ;
+
+    Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz,
+           const char* n, bool u)
+      : type(ty)
+      , index(idx)
+      , baseAddress(baseAddr)
+      , size(sz)
+      , name(n)
+      , used(u)
+    {
+    }
+  } ;
   
 } // end namespace xdp
 

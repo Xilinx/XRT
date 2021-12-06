@@ -155,24 +155,6 @@ class aie_cfg_tile
     aie_cfg_tile(uint32_t c, uint32_t r) : column(c), row(r) {}
 };
 
-  struct Memory {
-    uint8_t     type;
-    int32_t     index;
-    uint64_t    baseAddress;
-    uint64_t    size;
-    std::string name;
-    bool used ;
-
-  Memory(uint8_t ty, int32_t idx, uint64_t baseAddr, uint64_t sz, const char* n, bool u)
-      : type(ty),
-        index(idx),
-        baseAddress(baseAddr),
-        size(sz),
-        name(n),
-        used(u)
-    {}
-  };
-
   struct XclbinInfo {
     // Choose reasonable defaults
     double maxReadBW = 0.0 ;
