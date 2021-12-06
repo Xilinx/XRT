@@ -92,8 +92,6 @@ void xocl_bo_get_usage_stat(struct xocl_drm *drm_p, u32 bo_idx,
 {
 	if (!drm_p->bo_usage_stat)
 		return;
-	if (bo_idx < 0)
-		return;
 	if (bo_idx >= XOCL_BO_USAGE_TOTAL)
 		return;
 
