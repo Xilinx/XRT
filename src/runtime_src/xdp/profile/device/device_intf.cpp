@@ -1012,7 +1012,7 @@ DeviceIntf::~DeviceIntf()
     mMaxWriteBW = mDevice->getMaxBwWrite();
   }
 
-  void DeviceIntf::getDeadlockStatus()
+  uint32_t DeviceIntf::getDeadlockStatus()
   {
     if (mDeadlockDetector)
       return mDeadlockDetector->getDeadlockStatus();

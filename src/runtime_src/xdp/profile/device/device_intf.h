@@ -168,6 +168,9 @@ class DeviceIntf {
     XDP_EXPORT
     void setMaxBwWrite();
 
+    XDP_EXPORT
+    uint32_t getDeadlockStatus();
+
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
   private:
