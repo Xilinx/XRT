@@ -169,8 +169,8 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
     auto clock_topology = reinterpret_cast<const clock_freq_topology*>(raw.data());
     for(int i = 0; i < clock_topology->m_count; i++) {
       ptree_type pt_clock;
-      pt_clock.add("id", clock_topology->m_clock_freq[i].m_name);
-      pt_clock.add("description", xq::clock_freq_topology_raw::parse(clock_topology->m_clock_freq[i].m_name));
+      pt_clock.add("id", clock_topology->m_clock_freq[i].m_type);
+      pt_clock.add("description", xq::clock_freq_topology_raw::parse(clock_topology->m_clock_freq[i].m_type));
       pt_clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
       pt_clock_array.push_back(std::make_pair("", pt_clock));
     }

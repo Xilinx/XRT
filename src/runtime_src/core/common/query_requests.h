@@ -872,7 +872,7 @@ struct clock_freq_topology_raw : request
   // parse a clock_freq_topo::clock_freq::m_name (null terminated string)
   XRT_CORE_COMMON_EXPORT
   static std::string
-  parse(const std::string& value);
+  parse(uint8_t value);
 
   virtual boost::any
   get(const device*) const = 0;

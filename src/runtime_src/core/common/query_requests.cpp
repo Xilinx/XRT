@@ -110,17 +110,11 @@ parse(const xrt_core::query::oem_id::result_type& value)
 
 std::string
 xrt_core::query::clock_freq_topology_raw::
-parse(const std::string& clock)
+parse(uint8_t clock)
 {
-  static const std::map<std::string, std::string> clock_map =
-  {
-   {"DATA_CLK", "Data"},
-   {"KERNEL_CLK", "Kernel"},
-   {"SYSTEM_CLK", "System"},
-  };
-
-  auto clock_str = clock_map.find(clock);
-  return clock_str != clock_map.end() ? clock_str->second : "N/A";
+    // from CLOCK_TYPE enum in xclbin.h
+    std::vector<std::string> clock_names = { "Unused", "Data", "Kernel", "System"};
+    return clock < clock_names.size() ? clock_names[clock] : "N/A";
 }
 
 std::pair<uint64_t, uint64_t>
