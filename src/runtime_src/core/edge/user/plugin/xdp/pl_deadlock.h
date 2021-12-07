@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,23 +14,21 @@
  * under the License.
  */
 
-#define XDP_SOURCE
-
-#include "pl_deadlock_cb.h"
-#include "pl_deadlock_plugin.h"
+#ifndef PL_DEADLOCK_DOT_H
+#define PL_DEADLOCK_DOT_H
 
 namespace xdp {
-  static PLDeadlockPlugin plDeadlockPluginInstance ;
+namespace pl_deadlock {
 
-  static void updateDevicePLDeadlock(void* handle)
-  {
-    plDeadlockPluginInstance.updateDevice(handle) ;
-  }
+namespace profile {
+  void load();
+  void register_callbacks(void* handle);
+  void warning_callbacks();
+} // end namespace profile
 
-} // end namespace xdp 
+  void update_device(void* handle);
 
-extern "C"
-void updateDevicePLDeadlock(void* handle) 
-{
-  xdp::updateDevicePLDeadlock(handle) ;
-}
+} // end namespace aie
+} // end namespace xdp
+
+#endif

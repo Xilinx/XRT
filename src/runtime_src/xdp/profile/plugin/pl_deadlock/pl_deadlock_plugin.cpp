@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -66,7 +66,9 @@ namespace xdp {
       
       DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
       if (deviceIntf == nullptr)
-        continue;
+        return;
+      if (!deviceIntf->hasDeadlockDetector())
+        return;
 
       if (deviceIntf->getDeadlockStatus())
         std::cout << "Deadlock detected" << std::endl;

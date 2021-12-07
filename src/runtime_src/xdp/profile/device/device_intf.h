@@ -173,6 +173,8 @@ class DeviceIntf {
 
     inline xdp::Device* getAbstractDevice() {return mDevice;}
 
+    bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
+
   private:
     // Turn on/off debug messages to stdout
     bool mVerbose = false;

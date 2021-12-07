@@ -23,6 +23,7 @@
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/vart_profile.h"
 #include "plugin/xdp/sc_profile.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -66,6 +67,9 @@ bool load()
   if (xrt_core::config::get_vitis_ai_profile()) {
     xdp::vart::profile::load() ;
   }
+
+  if (xrt_core::config::get_pl_deadlock_detection())
+    xdp::pl_deadlock::profile::load();
 
   // Deprecation messages
   if (xrt_core::config::get_data_transfer_trace() != "off") {

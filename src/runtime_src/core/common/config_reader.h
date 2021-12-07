@@ -380,6 +380,13 @@ get_vitis_ai_profile()
 }
 
 inline bool
+get_pl_deadlock_detection()
+{
+  static bool value = detail::get_bool_value("Debug.pl_deadlock_detection", false);
+  return value;
+}
+
+inline bool
 get_api_checks()
 {
   static bool value = detail::get_bool_value("Runtime.api_checks",true);
