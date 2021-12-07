@@ -891,11 +891,17 @@ ert_pre_process(struct xocl_ert_user *ert_user, struct xrt_ert_command *ecmd)
 	case ERT_SK_START:
 		BUG_ON(ert_user->ctrl_busy);
 #if KERNEL_VERSION(5, 4, 0) > LINUX_VERSION_CODE
-	#if defined(RHEL_RELEASE_CODE)
+	#if defined(CONFIG_SUSE_KERNEL)
+		#if SLE_VERSION(SUSE_VERSION, SUSE_PATCHLEVEL, SUSE_AUXRELEASE) >= SLE_VERSION(15, 2, 0)
+			__attribute__ ((__fallthrough__));
+		#else
+			__attribute__ ((fallthrough));
+		#endif
+	#elif defined(RHEL_RELEASE_CODE)
 		#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 4)
 			__attribute__ ((__fallthrough__));
 		#else
-		__attribute__ ((fallthrough));
+			__attribute__ ((fallthrough));
 		#endif
 	#else
 		__attribute__ ((fallthrough));
