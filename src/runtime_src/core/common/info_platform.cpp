@@ -138,7 +138,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
     ptree_type cmc;
     std::stringstream version;
-    
+
     try {
        version << "0x" << std::hex << std::stoi(xrt_core::device_query<xq::xmc_version>(device));
     }
@@ -217,7 +217,7 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     pt.put_child("macs", pt_mac);
 
   }
-  catch (const xq::no_such_key&) {
+  catch (const xq::exception&) {
     // Ignoring if not available: Edge Case
   }
 }
@@ -268,7 +268,7 @@ pcie_info(const xrt_core::device * device)
     try {
       ptree.add("dma_thread_count", xrt_core::device_query<xq::dma_threads_raw>(device).size());
     }
-    catch(const xq::no_such_key&) {
+    catch(const xq::exception&) {
     }
 
     ptree.add("cpu_affinity", xrt_core::device_query<xq::cpu_affinity>(device));

@@ -86,7 +86,7 @@ struct memory_info_collector
 
   const std::vector<char> mem_topo_raw;    // xclbin raw mem topology
   const std::vector<char> grp_topo_raw;    // xclbin raw grp topology
-  const std::vector<char> mem_temp_raw;    // xclbin temperator raw data
+  std::vector<char> mem_temp_raw;    // xclbin temperator raw data
 
   const mem_topology* mem_topo = nullptr;  // xclbin mem topology from device
   const mem_topology* grp_topo = nullptr;  // xclbin group topology from device
@@ -334,12 +334,17 @@ public:
     : device(dev)
     , mem_topo_raw(xrt_core::device_query<xq::mem_topology_raw>(device))
     , grp_topo_raw(xrt_core::device_query<xq::group_topology>(device))
-    , mem_temp_raw(xrt_core::device_query<xq::temp_by_mem_topology>(device))
     , mem_topo(mem_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mem_topo_raw.data()))
     , grp_topo(grp_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(grp_topo_raw.data()))
     , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
-    , mem_temp(mem_temp_raw.empty() ? nullptr : reinterpret_cast<const uint32_t*>(mem_temp_raw.data()))
   {
+    try {
+      mem_temp_raw = xrt_core::device_query<xq::temp_by_mem_topology>(dev);
+      mem_temp = mem_temp_raw.empty() ? nullptr : reinterpret_cast<const uint32_t*>(mem_temp_raw.data());
+    }
+    catch (const xq::exception&) {
+      //ignore if xmc is not present 
+    }
     // info gathering functions indexes mem_stat by mem_toplogy entry index
     if (mem_topo && mem_stat.size() < static_cast<size_t>(mem_topo->m_count))
       throw xrt_core::internal_error("incorrect memstat_raw entries");
