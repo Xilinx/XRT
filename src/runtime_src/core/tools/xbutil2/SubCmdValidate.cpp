@@ -837,7 +837,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
   std::string name;
-  uint64_t max_power;
+  uint64_t max_power = 0;
   try {
     name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
     max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
