@@ -24,6 +24,7 @@
 #include <atomic>
 #include <cstdint>
 #include <limits>
+#include <sstream>
 #include <boost/algorithm/string.hpp>
 
 namespace {
@@ -257,6 +258,48 @@ parse_clock_id(const std::string& id)
 {
   auto clock_str = clock_map.find(id);
   return clock_str != clock_map.end() ? clock_str->second : "N/A";
+}
+
+XRT_CORE_COMMON_EXPORT
+uint64_t
+mac_addr_to_value(const std::string& mac_addr){
+  std::string mac_addr_editable = mac_addr; // Make a copy to edit
+  boost::erase_all(mac_addr_editable, ":");
+  // Convert the reduced string into a value using the hex formatter
+  std::istringstream converter(mac_addr_editable);
+  uint64_t mac_addr_value = 0;
+  converter >> std::hex >> mac_addr_value;
+  return mac_addr_value;
+}
+
+XRT_CORE_COMMON_EXPORT
+std::string
+value_to_mac_addr(const uint64_t mac_addr_value){
+    // Convert the given value back into a string using a hex format
+    std::stringstream stream;
+    stream << std::hex << mac_addr_value;
+    std::string result( stream.str() );
+
+    // prepend zeros if needed
+    if(result.size() < 12)
+      result.insert(0, 12-result.size(), '0');
+    // If the string is longer than 12 characters only accept the last 12
+    else
+      result = result.substr(result.size()-12,12);
+
+    // Go through the converted string to add : characters and capitalize all characters
+    std::stringstream newStream;
+    const uint32_t MAC_ADDR_SIZE = 6;
+    const char* resultBytes = result.c_str();
+    for(uint32_t i = 0; i < MAC_ADDR_SIZE; ++i)
+    {
+        // Process the result string bytes in groups of 2. Similar to how MAC addresses hex values are grouped.
+        newStream << (char)toupper(resultBytes[i*2]) << (char)toupper(resultBytes[i*2+1]);
+        // Add the : at the end of each group except the last one!
+        if(i < MAC_ADDR_SIZE - 1)
+          newStream << ":";
+    }
+    return newStream.str();
 }
 
 }} // utils, xrt_core
