@@ -31,7 +31,6 @@ struct xocl_hwmon_sdm {
 	bool					sysfs_created;
 };
 
-struct sensor_device_attribute* iter;
 
 static struct sdr_response* parse_sdr_info(char *in_buf,
                                            struct xocl_hwmon_sdm *sdm,
@@ -39,14 +38,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 static uint8_t sdr_get_id(uint8_t repo_type);
 
 /* Function to calculate x raised to the power y */
-int pow(int8_t x, int8_t y)
+static long pow(int8_t x, int8_t y)
 {
-    if (y == 0)
-        return 1;
-    else if (y % 2 == 0)
-        return pow(x, y / 2) * pow(x, y / 2);
-    else
-        return x * pow(x, y / 2) * pow(x, y / 2);
+    int res = 1, i;
+
+    for (i = 1; i <= y; ++i)
+        res = res * x;
+
+    return res;
 }
 
 static ssize_t hwmon_sensor_show(struct device *dev,
@@ -64,8 +63,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	}
 
 	struct sdr_response* repo_object = &sdm->sensor_tree[repo_id];
-	struct sdr_sensor_record *srec = repo_object->sensor_record +
-		sensor_id;
+	struct sdr_sensor_record *srec = repo_object->sensor_record + sensor_id;
 
 	if (srec == NULL) {
 		xocl_err(&sdm->pdev->dev, "SDR Record is NULL, repo_type: %d, field_type: %d, sensor_id: %d\n",
@@ -75,7 +73,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 
 	switch(field_id) {
 	case SENSOR_NAME:
-		return sprintf(buf, "%s\n", srec->name);
+		return snprintf(buf, strlen(srec->name) + 2, "%s\n", srec->name);
 	case SENSOR_VALUE:
 		return sprintf(buf, "%u %s\n", *(srec->value), srec->base_unit);
 	case SENSOR_AVG_VAL:
@@ -92,138 +90,146 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm, char *sysfs_name,
                               uint8_t repo_type, uint8_t field_id, uint8_t sid)
 {
 	int err = 0;
-	iter->dev_attr.attr.name = (char*)kzalloc(sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
-	strcpy(iter->dev_attr.attr.name, sysfs_name);
-	iter->dev_attr.attr.mode = S_IRUGO;
-	iter->dev_attr.show = hwmon_sensor_show;
-	iter->index = (repo_type << 16) | (field_id << 8) | sid;
+	sdm->sysfs_iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
+                                sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
+	strcpy(sdm->sysfs_iter->dev_attr.attr.name, sysfs_name);
+	sdm->sysfs_iter->dev_attr.attr.mode = S_IRUGO;
+	sdm->sysfs_iter->dev_attr.show = hwmon_sensor_show;
+	sdm->sysfs_iter->index = (repo_type << 16) | (field_id << 8) | sid;
 
-	sysfs_attr_init(&iter->dev_attr.attr);
-	err = device_create_file(sdm->hwmon_dev, &iter->dev_attr);
+	sysfs_attr_init(&sdm->sysfs_iter->dev_attr.attr);
+	err = device_create_file(sdm->hwmon_dev, &sdm->sysfs_iter->dev_attr);
 	if (err) {
-		iter->dev_attr.attr.name = NULL;
+		sdm->sysfs_iter->dev_attr.attr.name = NULL;
 		xocl_err(&sdm->pdev->dev, "unabled to create sensors_list0 hwmon sysfs file ret: 0x%x", err);
 		return err;
 	}
-	iter++;
+	sdm->sysfs_iter++;
 	return 0;
 }
 
-static void display_sensor_data(struct xocl_hwmon_sdm * sdm, struct sdr_response *repo_object)
+static void display_sensor_data(struct xocl_hwmon_sdm * sdm,
+                                struct sdr_response *repo_object)
 {
+	struct sdr_sensor_record *srec;
+	int sr;
+
 	if (repo_object == NULL)
 		return;
 
-	struct sdr_sensor_record *srec = repo_object->sensor_record;
-	int sr = repo_object->header.no_of_records;
+	srec = repo_object->sensor_record;
+	sr = repo_object->header.no_of_records;
 
-	xocl_info(&sdm->pdev->dev, "Repository Type : 0x%x\r\n", repo_object->header.repository_type);
-    xocl_info(&sdm->pdev->dev, "Repository Version No : 0x%x\r\n", repo_object->header.repository_version_no);
-	xocl_info(&sdm->pdev->dev, "Number of Records : 0x%x\r\n", repo_object->header.no_of_records);
+	xocl_dbg(&sdm->pdev->dev, "Repository Type : 0x%x\r\n",
+             repo_object->header.repository_type);
+	xocl_dbg(&sdm->pdev->dev, "Repository Version No : 0x%x\r\n",
+             repo_object->header.repository_version_no);
+	xocl_dbg(&sdm->pdev->dev, "Number of Records : 0x%x\r\n",
+             repo_object->header.no_of_records);
 
 	while(sr > 0) {
-		xocl_info(&sdm->pdev->dev, "Sensor ID: 0x%x\r\n", srec->id);
+		xocl_dbg(&sdm->pdev->dev, "Sensor ID: 0x%x\r\n", srec->id);
 		uint8_t name_type = (srec->name_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 		uint8_t value_type = (srec->value_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
-		xocl_info(&sdm->pdev->dev, "Name tyte : 0x%x\r\n", name_type);
+		xocl_dbg(&sdm->pdev->dev, "Name tyte : 0x%x\r\n", name_type);
 
 		if(name_type == TYPECODE_ASCII)
-			xocl_info(&sdm->pdev->dev, "Sensor name : %s\r\n", srec->name);
+			xocl_dbg(&sdm->pdev->dev, "Sensor name : %s\r\n", srec->name);
 		else if(name_type == TYPECODE_BINARY)
-			xocl_info(&sdm->pdev->dev, "Sensor Name : 0x%x\r\n", *(srec->name));
+			xocl_dbg(&sdm->pdev->dev, "Sensor Name : 0x%x\r\n", *(srec->name));
 
 		if (value_type == TYPECODE_ASCII) {
-			xocl_info(&sdm->pdev->dev, "Sensor Raw value : %s\r\n", srec->value);
+			xocl_dbg(&sdm->pdev->dev, "Sensor Raw value : %s\r\n", srec->value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK)
-				xocl_info(&sdm->pdev->dev, "Sensor AVG Raw value : %s\r\n", srec->avg_value);
+				xocl_dbg(&sdm->pdev->dev, "Sensor AVG Raw value : %s\r\n", srec->avg_value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK)
-				xocl_info(&sdm->pdev->dev, "Sensor Max Raw value : %s\r\n", srec->max_value);
+				xocl_dbg(&sdm->pdev->dev, "Sensor Max Raw value : %s\r\n", srec->max_value);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK)
-				xocl_info(&sdm->pdev->dev, "Upper Warning Limit: %s\r\n", srec->upper_warning_limit);
+				xocl_dbg(&sdm->pdev->dev, "Upper Warning Limit: %s\r\n", srec->upper_warning_limit);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK)
-				xocl_info(&sdm->pdev->dev, "Upper Critical Limit: %s\r\n", srec->upper_critical_limit);
+				xocl_dbg(&sdm->pdev->dev, "Upper Critical Limit: %s\r\n", srec->upper_critical_limit);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK)
-				xocl_info(&sdm->pdev->dev, "Upper Fatal Limit: %s\r\n", srec->upper_fatal_limit);
+				xocl_dbg(&sdm->pdev->dev, "Upper Fatal Limit: %s\r\n", srec->upper_fatal_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK)
-				xocl_info(&sdm->pdev->dev, "Lower Warning Limit: %s\r\n", srec->lower_warning_limit);
+				xocl_dbg(&sdm->pdev->dev, "Lower Warning Limit: %s\r\n", srec->lower_warning_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK)
-				xocl_info(&sdm->pdev->dev, "Lower Critical Limit: %s\r\n", srec->lower_critical_limit);
+				xocl_dbg(&sdm->pdev->dev, "Lower Critical Limit: %s\r\n", srec->lower_critical_limit);
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK)
-				xocl_info(&sdm->pdev->dev, "Lower Fatal Limit: %s\r\n", srec->lower_fatal_limit);
+				xocl_dbg(&sdm->pdev->dev, "Lower Fatal Limit: %s\r\n", srec->lower_fatal_limit);
 		} else if(value_type == TYPECODE_BINARY) {
-			xocl_info(&sdm->pdev->dev, "Sensor Raw Value : 0x%x\r\n", *(uint8_t *)srec->value);
+			xocl_dbg(&sdm->pdev->dev, "Sensor Raw Value : 0x%x\r\n", *(uint8_t *)srec->value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK)
-				xocl_info(&sdm->pdev->dev, "Sensor AVG Raw Value : 0x%x\r\n", *(uint8_t *)srec->avg_value);
+				xocl_dbg(&sdm->pdev->dev, "Sensor AVG Raw Value : 0x%x\r\n", *(uint8_t *)srec->avg_value);
 			if(srec->threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK)
-				xocl_info(&sdm->pdev->dev, "Sensor MAX Raw Value : 0x%x\r\n", *(uint8_t *)srec->max_value);
+				xocl_dbg(&sdm->pdev->dev, "Sensor MAX Raw Value : 0x%x\r\n", *(uint8_t *)srec->max_value);
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK) {
-				xocl_info(&sdm->pdev->dev, "Upper Warning Limit: 0x%x\r\n", *(srec->upper_warning_limit));
-				xocl_info(&sdm->pdev->dev, "Upper Warning Adjusted Limit : %f\r\n", (*(srec->upper_warning_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Upper Warning Limit: 0x%x\r\n", *(srec->upper_warning_limit));
+				xocl_dbg(&sdm->pdev->dev, "Upper Warning Adjusted Limit : %f\r\n", (*(srec->upper_warning_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK) {
-				xocl_info(&sdm->pdev->dev, "Upper Critical Limit: 0x%x\r\n", *(srec->upper_critical_limit));
-				xocl_info(&sdm->pdev->dev, "Upper Critical Adjusted Limit : %f\r\n", (*(srec->upper_critical_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Upper Critical Limit: 0x%x\r\n", *(srec->upper_critical_limit));
+				xocl_dbg(&sdm->pdev->dev, "Upper Critical Adjusted Limit : %f\r\n", (*(srec->upper_critical_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK) {
-				xocl_info(&sdm->pdev->dev, "Upper Fatal Limit: 0x%x\r\n", *(srec->upper_fatal_limit));
-				xocl_info(&sdm->pdev->dev, "Upper Fatal Adjusted Limit : %f\r\n", (*(srec->upper_fatal_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Upper Fatal Limit: 0x%x\r\n", *(srec->upper_fatal_limit));
+				xocl_dbg(&sdm->pdev->dev, "Upper Fatal Adjusted Limit : %f\r\n", (*(srec->upper_fatal_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK) {
-				xocl_info(&sdm->pdev->dev, "Lower Warning Limit: 0x%x\r\n", *(srec->lower_warning_limit));
-				xocl_info(&sdm->pdev->dev, "Lower Warning Adjusted Limit : %f\r\n", (*(srec->lower_warning_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Lower Warning Limit: 0x%x\r\n", *(srec->lower_warning_limit));
+				xocl_dbg(&sdm->pdev->dev, "Lower Warning Adjusted Limit : %f\r\n", (*(srec->lower_warning_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK) {
-				xocl_info(&sdm->pdev->dev, "Lower Critical Limit: 0x%x\r\n", *(srec->lower_critical_limit));
-				xocl_info(&sdm->pdev->dev, "Lower Critical Adjusted Limit : %f\r\n", (*(srec->lower_critical_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Lower Critical Limit: 0x%x\r\n", *(srec->lower_critical_limit));
+				xocl_dbg(&sdm->pdev->dev, "Lower Critical Adjusted Limit : %f\r\n", (*(srec->lower_critical_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 			if(srec->threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK) {
-				xocl_info(&sdm->pdev->dev, "Lower Fatal Limit: 0x%x\r\n", *(srec->lower_fatal_limit));
-				xocl_info(&sdm->pdev->dev, "Lower Fatal Adjusted Limit : %f\r\n", (*(srec->lower_fatal_limit)) *
+				xocl_dbg(&sdm->pdev->dev, "Lower Fatal Limit: 0x%x\r\n", *(srec->lower_fatal_limit));
+				xocl_dbg(&sdm->pdev->dev, "Lower Fatal Adjusted Limit : %f\r\n", (*(srec->lower_fatal_limit)) *
 					   pow(10, srec->unit_modifier_byte));
 			}
 		}
 		if(srec->base_unit_type_length != SDR_NULL_BYTE) {
 			uint8_t bu_type   = (srec->base_unit_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 			if(bu_type == TYPECODE_ASCII)
-				xocl_info(&sdm->pdev->dev, "Base Unit Value : %s\r\n", srec->base_unit);
+				xocl_dbg(&sdm->pdev->dev, "Base Unit Value : %s\r\n", srec->base_unit);
 			else if (bu_type == TYPECODE_BINARY)
-				xocl_info(&sdm->pdev->dev, "Sensor Base Unit : 0x%x\r\n", *(srec->base_unit));
+				xocl_dbg(&sdm->pdev->dev, "Sensor Base Unit : 0x%x\r\n", *(srec->base_unit));
 		}
 
 		uint8_t val_len = srec->value_type_length & SDR_LENGTH_MASK;
 		if(srec->unit_modifier_byte != 0x7F)
 		{
 			if(val_len == 1)
-				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint8_t *)srec->value) *
+				xocl_dbg(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint8_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 			else if(val_len == 2)
-				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint16_t *)srec->value) *
+				xocl_dbg(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint16_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 			else if(val_len == 4)
-				xocl_info(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint32_t *)srec->value) *
+				xocl_dbg(&sdm->pdev->dev, "Sensor Adjusted Value : %f\r\n", (*(uint32_t *)srec->value) *
 					   pow(10, srec->unit_modifier_byte));
 		}
 
 		if(srec->status == SENSOR_NOT_PRESENT)
-			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Not Present\r\n");
+			xocl_dbg(&sdm->pdev->dev, "Sensor Status : Sensor Not Present\r\n");
 		else if(srec->status == SENSOR_PRESENT_AND_VALID)
-			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Present and Valid\r\n");
+			xocl_dbg(&sdm->pdev->dev, "Sensor Status : Sensor Present and Valid\r\n");
 		else if(srec->status == DATA_NOT_AVAILABLE)
-			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
+			xocl_dbg(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
 		else if(srec->status == SENSOR_STATUS_NOT_AVAILABLE)
-			xocl_info(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
+			xocl_dbg(&sdm->pdev->dev, "Sensor Status : Sensor Data Not Available\r\n");
 
 		srec++;
 		sr--;
 
-		xocl_info(&sdm->pdev->dev, "\r\n");
+		xocl_dbg(&sdm->pdev->dev, "\r\n");
 	}
-	xocl_info(&sdm->pdev->dev, "%s\r\n",  repo_object->eor.eor_marker);
+	xocl_dbg(&sdm->pdev->dev, "%s\r\n",  repo_object->eor.eor_marker);
 }
 
 static uint8_t sdr_get_id(uint8_t repo_type)
@@ -282,61 +288,61 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 		xocl_err(&sdm->pdev->dev, "SDR Responce has INVALID REPO TYPE: %d\n", repo_type);
 		return NULL;
 	}
-	xocl_err(&sdm->pdev->dev, "SDR Responce has repo_type: 0x%x\n", repo_type);
 
 	struct sdr_response* repo_object = &sdm->sensor_tree[repo_id];
 
-	memcpy(&repo_object->header.repository_type, &in_buf[buf_index++], sbyte);
-	memcpy(&repo_object->header.repository_version_no, &in_buf[buf_index++], sbyte);
-	memcpy(&repo_object->header.no_of_records, &in_buf[buf_index++], sbyte);
-	memcpy(&repo_object->header.no_of_bytes, &in_buf[buf_index++], sbyte);
+	repo_object->header.repository_type = in_buf[buf_index++];
+	repo_object->header.repository_version_no = in_buf[buf_index++];
+	repo_object->header.no_of_records = in_buf[buf_index++];
+	repo_object->header.no_of_bytes = in_buf[buf_index++];
 
 	remaining_records = repo_object->header.no_of_records;
-	struct sdr_sensor_record *srec = (struct sdr_sensor_record *)kzalloc(sizeof(struct sdr_sensor_record)
-					* remaining_records, GFP_KERNEL);
+	struct sdr_sensor_record *srec = (struct sdr_sensor_record *)devm_kzalloc(&sdm->pdev->dev,
+                                      sizeof(struct sdr_sensor_record) *
+                                      remaining_records, GFP_KERNEL);
 	repo_object->sensor_record = srec;
 
 	while(remaining_records > 0)
 	{
-		memcpy(&srec->id, &in_buf[buf_index++], sbyte);
-		memcpy(&srec->name_type_length, &in_buf[buf_index++], sbyte);
+		srec->id = in_buf[buf_index++];
+		srec->name_type_length = in_buf[buf_index++];
 		uint8_t name_length = srec->name_type_length & SDR_LENGTH_MASK;
 		uint8_t name_type = (srec->name_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 
 		if(name_type == TYPECODE_ASCII)
 		{
-			srec->name = (uint8_t *)kzalloc(sbyte * (name_length + 1), GFP_KERNEL);
+			srec->name = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (name_length + 1), GFP_KERNEL);
 			memcpy(srec->name, &in_buf[buf_index], sbyte * name_length);
 			*(srec->name + name_length) = '\0';
 			buf_index += name_length;
 		}
 		else if(name_type == TYPECODE_BINARY)
 		{
-			srec->name = (uint8_t *)kzalloc(sbyte * (name_length), GFP_KERNEL);
+			srec->name = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (name_length), GFP_KERNEL);
 			memcpy(srec->name, &in_buf[buf_index], sbyte * name_length);
 			buf_index += name_length;
 		}
 
-		memcpy(&srec->value_type_length, &in_buf[buf_index++], sbyte);
+		srec->value_type_length = in_buf[buf_index++];
 
 		uint8_t val_len = srec->value_type_length & SDR_LENGTH_MASK;
 		uint8_t value_type = (srec->value_type_length >> SDR_TYPE_POS) & SDR_TYPE_MASK;
 
 		if(value_type == TYPECODE_ASCII)
 		{
-			srec->value = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+			srec->value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 			memcpy(srec->value, &in_buf[buf_index], sbyte * val_len);
 			*(srec->value + val_len) = '\0';
 			buf_index += val_len;
 		}
 		else if(value_type == TYPECODE_BINARY)
 		{
-			srec->value = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+			srec->value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 			memcpy(srec->value, &in_buf[buf_index], sbyte * val_len);
 			buf_index += val_len;
 		}
 
-		memcpy(&srec->base_unit_type_length, &in_buf[buf_index++], sbyte);
+		srec->base_unit_type_length = in_buf[buf_index++];
 		if(srec->base_unit_type_length != SDR_NULL_BYTE)
 		{
 			uint8_t bu_len = srec->base_unit_type_length & SDR_LENGTH_MASK;
@@ -344,21 +350,22 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 
 			if(bu_type == TYPECODE_ASCII)
 			{
-				srec->base_unit = (uint8_t *)kzalloc(sizeof(uint8_t *) * (bu_len + 1), GFP_KERNEL);
+				srec->base_unit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sizeof(uint8_t *) * (bu_len + 1), GFP_KERNEL);
 				memcpy(srec->base_unit, &in_buf[buf_index], sbyte * bu_len);
 				*(srec->base_unit + bu_len) = '\0';
 				buf_index += bu_len;
 			}
 			else if(bu_type == TYPECODE_BINARY)
 			{
-				srec->base_unit = (uint8_t *)kzalloc(sbyte * (bu_len), GFP_KERNEL);
+				srec->base_unit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (bu_len), GFP_KERNEL);
 				memcpy(srec->base_unit, &in_buf[buf_index], sbyte * bu_len);
 				buf_index += bu_len;
 			}
 		}
 
-		memcpy(&srec->unit_modifier_byte, &in_buf[buf_index++], sbyte);
-		memcpy(&srec->threshold_support_byte, &in_buf[buf_index++], sbyte);
+		srec->unit_modifier_byte = in_buf[buf_index++];
+		srec->threshold_support_byte = in_buf[buf_index++];
+
 		if(srec->threshold_support_byte != SDR_NULL_BYTE)
 		{
 			//Upper_Warning_Threshold
@@ -366,14 +373,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->upper_warning_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->upper_warning_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->upper_warning_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->upper_warning_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->upper_warning_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->upper_warning_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->upper_warning_limit, &in_buf[buf_index], sbyte * val_len);
 					buf_index += val_len;
 				}
@@ -384,14 +391,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->upper_critical_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->upper_critical_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->upper_critical_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->upper_critical_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->upper_critical_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->upper_critical_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->upper_critical_limit, &in_buf[buf_index], sbyte * val_len);
 					buf_index += val_len;
 				}
@@ -402,14 +409,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->upper_fatal_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->upper_fatal_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->upper_fatal_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->upper_fatal_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->upper_fatal_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->upper_fatal_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->upper_fatal_limit, &in_buf[buf_index], sbyte * val_len);
 					buf_index += val_len;
 				}
@@ -420,14 +427,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->lower_warning_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->lower_warning_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->lower_warning_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->lower_warning_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->lower_warning_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->lower_warning_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->lower_warning_limit, &in_buf[buf_index], sbyte * val_len);
 					buf_index += val_len;
 				}
@@ -438,14 +445,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->lower_critical_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->lower_critical_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->lower_critical_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->lower_critical_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->lower_critical_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->lower_critical_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->lower_critical_limit, &in_buf[buf_index], sbyte *  val_len);
 					buf_index += val_len;
 				}
@@ -457,34 +464,34 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			{
 				if(value_type == TYPECODE_ASCII)
 				{
-					srec->lower_fatal_limit = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+					srec->lower_fatal_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 					memcpy(srec->lower_fatal_limit, &in_buf[buf_index], sbyte * val_len);
 					*(srec->lower_fatal_limit + val_len) = '\0';
 					buf_index += val_len;
 				}
 				else
 				{
-					srec->lower_fatal_limit = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+					srec->lower_fatal_limit = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 					memcpy(srec->lower_fatal_limit, &in_buf[buf_index], sbyte *  val_len);
 					buf_index += val_len;
 				}
 			}
 		}
 
-		memcpy(&srec->status, &in_buf[buf_index++], sbyte);
+		srec->status = in_buf[buf_index++];
 
 		/* Parse Max and AVg sensor */
 		if(srec->threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK) {
 			if(value_type == TYPECODE_ASCII)
 			{
-				srec->avg_value = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+				srec->avg_value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 				memcpy(srec->avg_value, &in_buf[buf_index], sbyte * val_len);
 				*(srec->avg_value + val_len) = '\0';
 				buf_index += val_len;
 			}
 			else if(value_type == TYPECODE_BINARY)
 			{
-				srec->avg_value = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+				srec->avg_value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 				memcpy(srec->avg_value, &in_buf[buf_index], sbyte *  val_len);
 				buf_index += val_len;
 			}
@@ -493,14 +500,14 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 		if(srec->threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK) {
 			if(value_type == TYPECODE_ASCII)
 			{
-				srec->max_value = (uint8_t *)kzalloc(sbyte * (val_len + 1), GFP_KERNEL);
+				srec->max_value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len + 1), GFP_KERNEL);
 				memcpy(srec->max_value, &in_buf[buf_index], sbyte * val_len);
 				*(srec->max_value + val_len) = '\0';
 				buf_index += val_len;
 			}
 			else if(value_type == TYPECODE_BINARY)
 			{
-				srec->max_value = (uint8_t *)kzalloc(sbyte * (val_len), GFP_KERNEL);
+				srec->max_value = (uint8_t *)devm_kzalloc(&sdm->pdev->dev, sbyte * (val_len), GFP_KERNEL);
 				memcpy(srec->max_value, &in_buf[buf_index], sbyte *  val_len);
 				buf_index += val_len;
 			}
@@ -546,9 +553,8 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 					break;
 			}
 			if (create) {
-				iter = (struct sensor_device_attribute*)devm_kzalloc(&sdm->pdev->dev,
+				sdm->sysfs_iter = (struct sensor_device_attribute*)devm_kzalloc(&sdm->pdev->dev,
                                         sizeof(struct sensor_device_attribute) * remaining_records * 4, GFP_KERNEL);
-				sdm->sysfs_iter = iter;
 				int err;
 				//Create *_label sysfs node
 				if(strlen(sysfs_name[0]) != 0) {//not empty
@@ -592,7 +598,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 	memcpy(repo_object->eor.eor_marker, &in_buf[buf_index], sbyte * 3);
 	buf_index += 3;
 	*(repo_object->eor.eor_marker + 3) = '\0';
-	iter = NULL;
+	sdm->sysfs_iter = NULL;
 
 	return repo_object;
 }
