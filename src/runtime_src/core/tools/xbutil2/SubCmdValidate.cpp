@@ -1634,6 +1634,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       XBU::verbose("Sub command: --path");
       if (!boost::filesystem::exists(xclbin_location) || !boost::filesystem::is_directory(xclbin_location))
         throw xrt_core::error((boost::format("Invalid directory path : '%s'") % xclbin_location).str());
+      if(xclbin_location.compare(".") == 0 || xclbin_location.compare("./") == 0)
+        xclbin_location = boost::filesystem::current_path().string();
+      if(xclbin_location.back() != '/')
+        xclbin_location.append("/");
     }
 
   } catch (const xrt_core::error& e) {
