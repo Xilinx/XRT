@@ -111,7 +111,7 @@ parse_cmc_status(unsigned int val);
 
 XRT_CORE_COMMON_EXPORT
 uint64_t
-mac_addr_to_value(const std::string& mac_addr);
+mac_addr_to_value(std::string mac_addr);
 
 XRT_CORE_COMMON_EXPORT
 std::string
