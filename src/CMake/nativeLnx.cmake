@@ -101,7 +101,7 @@ else()
 endif()
 set(Boost_USE_MULTITHREADED ON)             # Multi-threaded libraries
 
-# Some later versions of boost spew warnings form property_tree
+# Some later versions of boost spew warnings from property_tree
 add_compile_options("-DBOOST_BIND_GLOBAL_PLACEHOLDERS")
 
 # Boost_VERSION_STRING is not working properly, use our own macro
