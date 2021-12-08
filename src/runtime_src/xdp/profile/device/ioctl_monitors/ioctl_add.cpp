@@ -74,7 +74,7 @@ uint32_t IOCtlDeadlockDetector::getDeadlockStatus()
   if (!isOpened())
     return 0;
  
-  if(out_stream)
+  if (out_stream)
     (*out_stream) << " IOCtlDeadlockDetector::getDeadlockStatus " << std::endl;
 
   uint32_t status = 0;
