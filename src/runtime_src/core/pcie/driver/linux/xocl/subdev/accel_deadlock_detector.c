@@ -182,7 +182,7 @@ long accel_deadlock_detector_ioctl(struct file *filp, unsigned int cmd, unsigned
         case ACCEL_DEADLOCK_DETECTOR_IOC_GET_STATUS:
             reg = XOCL_READ_REG32(accel_deadlock_detector->base + 0x0);
             if (copy_to_user(data, &reg, sizeof(uint32_t))) {
-                result -EFAULT;
+                result = -EFAULT;
             }
             break;
         default:
