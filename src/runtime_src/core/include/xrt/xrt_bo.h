@@ -194,10 +194,30 @@ public:
    * If the exported buffer handle acquired by using the export() method is 
    * from another process, then it must be transferred through proper IPC 
    * mechanism translating the underlying file-descriptor asscociated with 
-   * the buffer 
+   * the buffer, see also constructor taking process id as argument.
    */
   XCL_DRIVER_DLLESPEC
   bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl);
+
+  /**
+   * bo() - Constructor to import an exported buffer from another process
+   *
+   * @param dhdl
+   *  Device that imports the exported buffer
+   * @param pid
+   *  Process id of exporting process
+   * @param ehdl
+   *  Exported buffer handle, implementation specific type
+   * 
+   * The exported buffer handle is obtained from exporting process by
+   * calling `export()`. This contructor requires that XRT is built on
+   * and running on a system with pidfd support.  Also the importing 
+   * process must have permission to duplicate the exporting process'
+   * file descriptor.  This permission is controlled by ptrace access 
+   * mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)).
+   */
+  XCL_DRIVER_DLLESPEC
+  bo(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl);
 
   /**
    * bo() - Constructor for sub-buffer
