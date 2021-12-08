@@ -337,6 +337,7 @@ public:
     , mem_topo(mem_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(mem_topo_raw.data()))
     , grp_topo(grp_topo_raw.empty() ? nullptr : reinterpret_cast<const mem_topology*>(grp_topo_raw.data()))
     , mem_stat(xrt_core::device_query<xq::memstat_raw>(device))
+    , mem_temp(0)
   {
     try {
       mem_temp_raw = xrt_core::device_query<xq::temp_by_mem_topology>(dev);
