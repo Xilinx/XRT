@@ -50,8 +50,9 @@ public:
      * During the construction, the exclusive access to this
      * IP will be requested, otherwise exception will be thrown.
      */
-    DeadlockDetector(Device* handle /** < [in] the xrt or hal device handle */, 
-                  uint64_t index /** < [in] the index of the IP in debug_ip_layout */, debug_ip_data* data = nullptr);
+    DeadlockDetector(Device* handle /** < [in] the xrt or hal device handle */
+                   , uint64_t index /** < [in] the index of the IP in debug_ip_layout */
+                   , debug_ip_data* data = nullptr);
 
     /**
      * The exclusive access should be release in the destructor

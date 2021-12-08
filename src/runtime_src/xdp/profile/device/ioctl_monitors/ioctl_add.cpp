@@ -59,9 +59,8 @@ IOCtlDeadlockDetector::~IOCtlDeadlockDetector()
 
 bool IOCtlDeadlockDetector::isOpened()
 {
-  if (driver_FD == -1) {
+  if (driver_FD == -1)
     return false;
-  }
   return true;
 }
 
@@ -72,9 +71,8 @@ size_t IOCtlDeadlockDetector::reset()
 
 uint32_t IOCtlDeadlockDetector::getDeadlockStatus()
 {
-  if (!isOpened()) {
+  if (!isOpened())
     return 0;
-  }
  
   if(out_stream)
     (*out_stream) << " IOCtlDeadlockDetector::getDeadlockStatus " << std::endl;
