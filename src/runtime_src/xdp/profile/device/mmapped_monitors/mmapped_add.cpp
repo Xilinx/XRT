@@ -34,14 +34,14 @@ MMappedDeadlockDetector::MMappedDeadlockDetector(Device* handle, uint64_t index,
   std::string driverFileName = getDevice()->getSubDevicePath(subDev, 0 /* a design can have atmost 1 DeadlockDetector*/);
 
   driver_FD = open(driverFileName.c_str(), O_RDWR);
-  if(-1 == driver_FD) {
+  if (driver_FD == -1) {
     showWarning("Could not open device file.");
     return;
   }
 
   // mmap opened device driver file
   mapped_device = (char*)mmap(NULL, PROFILE_IP_SZ, PROT_READ | PROT_WRITE, MAP_SHARED, driver_FD, 0);
-  if(mapped_device == MAP_FAILED) {
+  if (mapped_device == MAP_FAILED) {
     showWarning("mmap failed for device file.");
     return;
   }
@@ -55,7 +55,7 @@ MMappedDeadlockDetector::~MMappedDeadlockDetector()
 
 bool MMappedDeadlockDetector::isMMapped()
 {
-  if(mapped_device == nullptr || mapped_device == MAP_FAILED) {
+  if (mapped_device == nullptr || mapped_device == MAP_FAILED) {
     return false;
   }
   return true;
@@ -63,7 +63,7 @@ bool MMappedDeadlockDetector::isMMapped()
 
 int MMappedDeadlockDetector::read(uint64_t offset, size_t size, void* data)
 {
-  if(!isMMapped()) {
+  if (!isMMapped()) {
     return 0;
   }
   memcpy((char*)data, mapped_device + offset, size);
@@ -72,20 +72,20 @@ int MMappedDeadlockDetector::read(uint64_t offset, size_t size, void* data)
 
 int MMappedDeadlockDetector::write(uint64_t offset, size_t size, void* data)
 {
-  if(!isMMapped()) {
+  if (!isMMapped()) {
     return 0;
   }
-  if(size == sizeof(uint32_t)) {
+  if (size == sizeof(uint32_t)) {
     // Special case for 4 bytes write to improve performance
     memcpy(mapped_device + offset, (uint32_t*)data, sizeof(uint32_t));
     return size;
   }
   size_t numWords = size / sizeof(uint32_t);
   size_t remBytes = size % sizeof(uint32_t);
-  for(size_t i = 0; i < numWords ; i++) {
+  for (size_t i = 0; i < numWords ; i++) {
     memcpy(((uint32_t*)(mapped_device + offset))+i, ((uint32_t*)data) + i, sizeof(uint32_t));
   }
-  if(remBytes) {
+  if (remBytes) {
     memcpy(((uint32_t*)(mapped_device + offset))+numWords, ((uint32_t*)data) + numWords, remBytes);
   }
   return size;

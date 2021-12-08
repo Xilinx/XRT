@@ -27,7 +27,7 @@ DeadlockDetector::DeadlockDetector(Device* handle /** < [in] the xrt or hal devi
       major_version(0),
       minor_version(0)
 {
-    if(data) {
+    if (data) {
         properties = data->m_properties;
         major_version = data->m_major;
         minor_version = data->m_minor;
@@ -37,7 +37,7 @@ DeadlockDetector::DeadlockDetector(Device* handle /** < [in] the xrt or hal devi
 uint32_t DeadlockDetector::getDeadlockStatus()
 {
     uint32_t reg = 0;
-    read(SYSTEM_DEADLOCK_OFFSET, 4, &reg);
+    read(SYSTEM_DEADLOCK_OFFSET, sizeof(uint32_t), &reg);
     return reg;
 }
 

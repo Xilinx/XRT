@@ -39,13 +39,14 @@ IOCtlDeadlockDetector::IOCtlDeadlockDetector(Device* handle, uint64_t index, deb
 
   driver_FD = open(driverFileName.c_str(), O_RDWR);
   uint32_t tries = 0;
-  while(-1 == driver_FD && tries < 5) {
+  const unsigned int maxTries = 5;
+  while (driver_FD == -1 && tries < maxTries) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
     driver_FD = open(driverFileName.c_str(), O_RDWR);
     tries++;
   }
 
-  if(-1 == driver_FD) {
+  if (driver_FD == -1) {
     showWarning("Could not open device file.");
     return;
   }
@@ -58,7 +59,7 @@ IOCtlDeadlockDetector::~IOCtlDeadlockDetector()
 
 bool IOCtlDeadlockDetector::isOpened()
 {
-  if(-1 == driver_FD) {
+  if (driver_FD == -1) {
     return false;
   }
   return true;
@@ -71,7 +72,7 @@ size_t IOCtlDeadlockDetector::reset()
 
 uint32_t IOCtlDeadlockDetector::getDeadlockStatus()
 {
-  if(!isOpened()) {
+  if (!isOpened()) {
     return 0;
   }
  

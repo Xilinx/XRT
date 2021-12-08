@@ -32,12 +32,11 @@ namespace profile {
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*) ;
+    typedef void (*ftype)(void*);
 
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDevicePLDeadlock")) ;
+    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDevicePLDeadlock"));
     if (xrt_core::dlerror() != NULL)
-      update_device_cb = nullptr ;
-
+      update_device_cb = nullptr;
   }
 
   void warning_callbacks()
