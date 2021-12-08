@@ -28,7 +28,7 @@ namespace profile {
 
   void update_device(void* handle);
 
-} // end namespace aie
+} // end namespace pl_deadlock
 } // end namespace xdp
 
 #endif

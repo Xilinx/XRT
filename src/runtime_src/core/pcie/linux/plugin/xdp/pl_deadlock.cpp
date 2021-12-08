@@ -24,11 +24,9 @@ namespace pl_deadlock {
 namespace profile {
   void load()
   {
-#ifdef XRT_ENABLE_AIE
-    static xrt_core::module_loader xdp_aie_loader("xdp_pl_deadlock_plugin",
-						    register_callbacks,
-						    warning_callbacks);
-#endif
+    static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin",
+                register_callbacks,
+                warning_callbacks);
   }
   std::function<void (void*)> update_device_cb;
 
@@ -44,7 +42,7 @@ namespace profile {
 
   void warning_callbacks()
   {
-    // No warnings for AIE profiling
+    // No warnings for PL Deadlock Detection
   }
 
 } // end namespace profile
