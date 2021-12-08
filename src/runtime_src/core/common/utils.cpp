@@ -264,7 +264,7 @@ uint64_t
 mac_addr_to_value(std::string mac_addr)
 {
   boost::erase_all(mac_addr, ":");
-  return std::stoul(mac_addr, nullptr, 16);
+  return std::stoull(mac_addr, nullptr, 16);
 }
 
 std::string
