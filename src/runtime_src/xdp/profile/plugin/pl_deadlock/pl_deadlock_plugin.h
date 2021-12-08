@@ -15,7 +15,7 @@
  */
 
 #ifndef PL_DEADLOCK_PLUGIN_DOT_H
-#define PL_DEADLOCK_OFFLOAD_PLUGIN_DOT_H
+#define PL_DEADLOCK_PLUGIN_DOT_H
 
 #include <vector>
 #include <atomic>
