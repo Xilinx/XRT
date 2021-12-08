@@ -80,7 +80,7 @@ uint32_t IOCtlDeadlockDetector::getDeadlockStatus()
 
   uint32_t status = 0;
   ioctl(driver_FD, ACCEL_DEADLOCK_DETECTOR_IOC_GET_STATUS, &status);
-  
+
   return status;
 } 
 

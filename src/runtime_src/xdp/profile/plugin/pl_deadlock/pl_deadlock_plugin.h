@@ -27,11 +27,11 @@ namespace xdp {
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    XDP_EXPORT virtual void pollDeadlock(void* handle, uint32_t index);
+    XDP_EXPORT virtual void pollDeadlock(uint32_t index);
   
   private:
-    uint32_t mPollingIntervalMs = 10;
-    std::atomic <bool> mKeepPolling;
+    uint32_t mPollingIntervalMs = 100;
+    std::atomic <bool> mAtomicKeepPolling;
     std::vector<std::thread> mThreadVector;
 
   public:
@@ -39,6 +39,9 @@ namespace xdp {
     XDP_EXPORT ~PLDeadlockPlugin();
 
     XDP_EXPORT virtual void updateDevice(void* handle);
+
+    // Virtual functions from XDPPlugin
+    XDP_EXPORT virtual void writeAll(bool openNewFiles) ;
   };
 
 } // end namespace xdp

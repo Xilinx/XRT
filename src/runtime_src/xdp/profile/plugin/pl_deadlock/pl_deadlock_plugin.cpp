@@ -39,41 +39,45 @@ namespace xdp {
 
   PLDeadlockPlugin::PLDeadlockPlugin() : XDPPlugin()
   {
-    mKeepPolling= true;
+    db->registerPlugin(this);
+    mAtomicKeepPolling= true;
   }
 
   PLDeadlockPlugin::~PLDeadlockPlugin()
   {
-    // Stop the polling thread
-    mKeepPolling = false;
-    for (auto& t: mThreadVector) {
-      if (t.joinable())
-        t.join();
-    }
+    writeAll(false);
 
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
   }
 
-
-
-
-  void PLDeadlockPlugin::pollDeadlock(void* handle, uint32_t deviceId)
+  void PLDeadlockPlugin::writeAll(bool /*openNewFiles*/)
   {
-    while (mKeepPolling) {
-      if (!(db->getStaticInfo().isDeviceReady(deviceId)))
-        continue;
-      
-      DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
-      if (deviceIntf == nullptr)
-        return;
-      if (!deviceIntf->hasDeadlockDetector())
-        return;
+    // Stop the polling thread
+    mAtomicKeepPolling = false;
+    for (auto& t: mThreadVector) {
+      if (t.joinable())
+        t.join();
+    }
+  }
 
-      if (deviceIntf->getDeadlockStatus())
-        std::cout << "Deadlock detected" << std::endl;
-      else
-        std::cout << "Polling for deadlock.." << std::endl;
+
+  void PLDeadlockPlugin::pollDeadlock(uint32_t deviceId)
+  {
+    std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
+    DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
+
+    if (deviceIntf == nullptr)
+      return;
+    if (!deviceIntf->hasDeadlockDetector())
+      return;
+
+    while (mAtomicKeepPolling) {
+      if (deviceIntf->getDeadlockStatus()) {
+        std::string msg = "System Deadlock detected on device " + deviceName;
+        xrt_core::message::send(severity_level::warning, "XRT", msg);
+        return;
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingIntervalMs));
     }
   }
@@ -117,7 +121,7 @@ namespace xdp {
     }
 
     // Start the PL deadlock detection thread
-    mThreadVector.emplace_back(&PLDeadlockPlugin::pollDeadlock, this, handle, deviceId);
+    mThreadVector.emplace_back(&PLDeadlockPlugin::pollDeadlock, this, deviceId);
   }
   
 } // end namespace xdp
