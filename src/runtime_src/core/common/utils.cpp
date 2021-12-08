@@ -264,40 +264,28 @@ uint64_t
 mac_addr_to_value(std::string mac_addr)
 {
   boost::erase_all(mac_addr, ":");
-  // Convert the reduced string into a value using the hex formatter
-  std::istringstream converter(mac_addr);
-  uint64_t mac_addr_value = 0;
-  converter >> std::hex >> mac_addr_value;
-  return mac_addr_value;
+  return std::stoul(mac_addr, nullptr, 16);
 }
 
 std::string
 value_to_mac_addr(const uint64_t mac_addr_value)
 {
-    // Convert the given value back into a string using a hex format
-    std::stringstream converter;
-    converter << std::hex << mac_addr_value;
-    std::string result( converter.str() );
+  // Any bits higher than position 48 will be ignored
+  // If any are set throw an error as they cannot be placed into the mac address
+  if ((mac_addr_value & 0xFFFF000000000000) != 0){
+    std::string err_msg = boost::str(boost::format("Mac address exceed IP4 maximum value: 0x%1$X") % mac_addr_value);
+    throw std::runtime_error(err_msg);
+  }
 
-    // prepend zeros if needed
-    if (result.size() < 12)
-      result.insert(0, 12-result.size(), '0');
-    // If the string is longer than 12 characters only accept the last 12
-    else
-      result = result.substr(result.size()-12, 12);
+  std::string mac_addr = boost::str(boost::format("%02X:%02X:%02X:%02X:%02X:%02X")
+                                          % ((mac_addr_value >> (5 * 8)) & 0xFF)
+                                          % ((mac_addr_value >> (4 * 8)) & 0xFF)
+                                          % ((mac_addr_value >> (3 * 8)) & 0xFF)
+                                          % ((mac_addr_value >> (2 * 8)) & 0xFF)
+                                          % ((mac_addr_value >> (1 * 8)) & 0xFF)
+                                          % ((mac_addr_value >> (0 * 8)) & 0xFF));
 
-    // Go through the converted string to add : characters and capitalize all characters
-    std::stringstream mac_addr_stream;
-    const uint32_t MAC_ADDR_SIZE = 6;
-    const char* result_bytes = result.c_str();
-    for (uint32_t i = 0; i < MAC_ADDR_SIZE; ++i){
-        // Process the result string bytes in groups of 2. Similar to how MAC addresses hex values are grouped.
-        mac_addr_stream << (char)toupper(result_bytes[i*2]) << (char)toupper(result_bytes[i*2+1]);
-        // Add the : character at the end of each group except the last one!
-        if (i < MAC_ADDR_SIZE - 1)
-          mac_addr_stream << ":";
-    }
-    return mac_addr_stream.str();
+  return mac_addr;
 }
 
 }} // utils, xrt_core
