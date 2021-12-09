@@ -2169,24 +2169,24 @@ struct xocl_xgq_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 				\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_all_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_all_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_all_sensors(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_bdinfo_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_temp_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_voltage_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_voltage_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_voltage_sensors(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_power_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_power_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_power_sensors(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_qsfp_sensors(xdev) 			\
-	(XGQ_CB(xdev, xgq_collect_qsfp_sensors) ?				\
-	XGQ_OPS(xdev)->xgq_collect_qsfp_sensors(XGQ_DEV(xdev)) : -ENODEV)
+#define	xocl_xgq_collect_all_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_all_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_all_sensors(XGQ_DEV(xdev)) : NULL)
+#define	xocl_xgq_collect_bdinfo_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev)) : NULL)
+#define	xocl_xgq_collect_temp_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev)) : NULL)
+#define	xocl_xgq_collect_voltage_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_voltage_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_voltage_sensors(XGQ_DEV(xdev)) : NULL)
+#define	xocl_xgq_collect_power_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_power_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_power_sensors(XGQ_DEV(xdev)) : NULL)
+#define	xocl_xgq_collect_qsfp_sensors(xdev)		\
+	(XGQ_CB(xdev, xgq_collect_qsfp_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_qsfp_sensors(XGQ_DEV(xdev)) : NULL)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
