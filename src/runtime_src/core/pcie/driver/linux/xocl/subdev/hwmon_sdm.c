@@ -318,7 +318,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 	repo_object->header.no_of_records = in_buf[SDR_NUM_REC_IDX];
 	repo_object->header.no_of_bytes = in_buf[SDR_NUM_BYTES_IDX];
 
-	buf_index = buf_index + SDR_NUM_BYTES_IDX + 1;
+	buf_index = SDR_NUM_BYTES_IDX + 1;
 
 	remaining_records = repo_object->header.no_of_records;
 	srec = (struct sdr_sensor_record *)devm_kzalloc(&sdm->pdev->dev,
