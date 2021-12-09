@@ -43,6 +43,12 @@
 #define SDR_TYPE_MASK	0x03
 #define SDR_TYPE_POS	6
 
+#define SDR_COMPLETE_IDX 0
+#define SDR_REPO_IDX 1
+#define SDR_REPO_VER_IDX 2
+#define SDR_NUM_REC_IDX 3
+#define SDR_NUM_BYTES_IDX 4
+
 #define THRESHOLD_UPPER_WARNING_MASK	(0x1 << 0)
 #define THRESHOLD_UPPER_CRITICAL_MASK	(0x1 << 1)
 #define THRESHOLD_UPPER_FATAL_MASK		(0x1 << 2)
@@ -136,13 +142,18 @@ struct sdr_response {
     struct sdr_eor eor;
 };
 
+struct sdr_sysfs {
+    struct sensor_device_attribute *iter;
+    struct sensor_device_attribute *iter_end;
+};
+
 enum bitmap_typecode {
     TYPECODE_BINARY = 0x00,
     TYPECODE_ASCII  = 0x03,
 };
 
 enum threshold_support {
-    UPPER_WARNING_THRESHOLD  = 0x01,
+    UPPER_WARNING_THRESHOLD  = (0x01 << 0),
     UPPER_CRITICAL_THRESHOLD = (0x01 << 1),
     UPPER_FATAL_THRESHOLD    = (0x01 << 2),
     LOWER_WARNING_THRESHOLD  = (0x01 << 3),
