@@ -29,14 +29,18 @@ namespace profile {
                 warning_callbacks);
   }
   std::function<void (void*)> update_device_cb;
+  std::function<void (void*)> flush_device_cb;
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*);
+    typedef void (*ftype)(void*) ;
 
     update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateDevicePLDeadlock"));
     if (xrt_core::dlerror() != NULL)
       update_device_cb = nullptr;
+    flush_device_cb = (ftype)(xrt_core::dlsym(handle, "flushDevicePLDeadlock"));
+    if (xrt_core::dlerror() != NULL)
+      flush_device_cb = nullptr;
   }
 
   void warning_callbacks()
@@ -50,6 +54,12 @@ namespace profile {
   {
     if (profile::update_device_cb != nullptr)
       profile::update_device_cb(handle);
+  }
+
+  void flush_device(void* handle)
+  {
+    if (profile::flush_device_cb != nullptr)
+      profile::flush_device_cb(handle);
   }
 
 } // end namespace pl_deadlock

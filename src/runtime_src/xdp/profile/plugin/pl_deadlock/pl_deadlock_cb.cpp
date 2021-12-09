@@ -20,11 +20,16 @@
 #include "pl_deadlock_plugin.h"
 
 namespace xdp {
-  static PLDeadlockPlugin plDeadlockPluginInstance ;
+  static PLDeadlockPlugin plDeadlockPluginInstance;
 
   static void updateDevicePLDeadlock(void* handle)
   {
-    plDeadlockPluginInstance.updateDevice(handle) ;
+    plDeadlockPluginInstance.updateDevice(handle);
+  }
+
+  static void flushDevicePLDeadlock(void* handle)
+  {
+    plDeadlockPluginInstance.flushDevice(handle);
   }
 
 } // end namespace xdp 
@@ -32,5 +37,11 @@ namespace xdp {
 extern "C"
 void updateDevicePLDeadlock(void* handle) 
 {
-  xdp::updateDevicePLDeadlock(handle) ;
+  xdp::updateDevicePLDeadlock(handle);
+}
+
+extern "C"
+void flushDevicePLDeadlock(void* handle)
+{
+  xdp::flushDevicePLDeadlock(handle);
 }

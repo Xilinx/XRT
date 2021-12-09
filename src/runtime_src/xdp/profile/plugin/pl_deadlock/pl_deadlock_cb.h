@@ -21,7 +21,9 @@
 //  loaded.  They should be linked to callbacks in XRT via dlsym and then
 //  called directly.
 
-extern "C" 
-void updateDevicePLDeadlock(void* handle) ;
+extern "C"
+void updateDevicePLDeadlock(void* handle);
+extern "C"
+void flushDevicePLDeadlock(void* handle);
 
 #endif

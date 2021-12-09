@@ -40,7 +40,6 @@ namespace xdp {
   PLDeadlockPlugin::PLDeadlockPlugin() : XDPPlugin()
   {
     db->registerPlugin(this);
-    mAtomicKeepPolling= true;
   }
 
   PLDeadlockPlugin::~PLDeadlockPlugin()
@@ -53,16 +52,19 @@ namespace xdp {
 
   void PLDeadlockPlugin::writeAll(bool /*openNewFiles*/)
   {
-    // Stop the polling thread
-    mAtomicKeepPolling = false;
-    for (auto& t: mThreadVector) {
-      if (t.joinable())
-        t.join();
-    }
+    // Ask all threads to end
+    for (auto& p : mThreadCtrlMap)
+      p.second = false;
+
+    for (auto& t : mThreadMap)
+      t.second.join();
+
+    mThreadCtrlMap.clear();
+    mThreadMap.clear();
   }
 
 
-  void PLDeadlockPlugin::pollDeadlock(uint32_t deviceId)
+  void PLDeadlockPlugin::pollDeadlock(void* handle, uint32_t deviceId)
   {
     std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);
@@ -72,13 +74,29 @@ namespace xdp {
     if (!deviceIntf->hasDeadlockDetector())
       return;
 
-    while (mAtomicKeepPolling) {
+    auto it = mThreadCtrlMap.find(handle);
+    if (it == mThreadCtrlMap.end())
+      return;
+    auto& should_continue = it->second;
+
+    while (should_continue) {
       if (deviceIntf->getDeadlockStatus()) {
         std::string msg = "System Deadlock detected on device " + deviceName;
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         return;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(mPollingIntervalMs));
+    }
+  }
+
+  void PLDeadlockPlugin::flushDevice(void* handle)
+  {
+    mThreadCtrlMap[handle] = false;
+    auto it = mThreadMap.find(handle);
+    if (it != mThreadMap.end()) {
+      it->second.join();
+      mThreadMap.erase(it);
+      mThreadCtrlMap.erase(handle);
     }
   }
 
@@ -121,7 +139,9 @@ namespace xdp {
     }
 
     // Start the PL deadlock detection thread
-    mThreadVector.emplace_back(&PLDeadlockPlugin::pollDeadlock, this, deviceId);
+    mThreadCtrlMap[handle] = true;
+    auto device_thread = std::thread(&PLDeadlockPlugin::pollDeadlock, this, handle, deviceId);
+    mThreadMap[handle] = std::move (device_thread);
   }
   
 } // end namespace xdp

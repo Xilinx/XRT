@@ -27,6 +27,7 @@ namespace profile {
 } // end namespace profile
 
   void update_device(void* handle);
+  void flush_device(void* handle);
 
 } // end namespace pl_deadlock
 } // end namespace xdp

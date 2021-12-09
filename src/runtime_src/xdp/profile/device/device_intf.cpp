@@ -598,14 +598,15 @@ DeviceIntf::~DeviceIntf()
               else
                 mPlTraceDma = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
-            case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
-                                         break;
-
+            case AXI_NOC :
+              nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
+              break;
             case ACCEL_DEADLOCK_DETECTOR :
               mDeadlockDetector = new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
             case AXI_STREAM_PROTOCOL_CHECKER :
             default : 
-                  break;
+              break;
           }
         }
       }
@@ -716,7 +717,7 @@ DeviceIntf::~DeviceIntf()
               break;
             }
             default :
-                  break;
+              break;
           }
         }
       }
@@ -816,7 +817,7 @@ DeviceIntf::~DeviceIntf()
             case AXI_STREAM_PROTOCOL_CHECKER :
             case AXI_NOC :
             default :
-                  break;
+              break;
           }
         }
       }

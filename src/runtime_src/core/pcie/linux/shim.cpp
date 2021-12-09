@@ -2435,8 +2435,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return -EINVAL;
     }
 
-    xdp::hal::flush_device(handle) ;
-    xdp::aie::flush_device(handle) ;
+    xdp::hal::flush_device(handle);
+    xdp::aie::flush_device(handle);
+    xdp::pl_deadlock::flush_device(handle);
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
