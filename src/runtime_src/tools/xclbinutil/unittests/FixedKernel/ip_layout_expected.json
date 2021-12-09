@@ -11,10 +11,8 @@
                 "m_name": "vadd:vadd_1"
             },
             {
-                "m_type": "IP_KERNEL",
-                "m_int_enable": "0",
-                "m_interrupt_id": "0",
-                "m_ip_control": "AP_CTRL_HS",
+                "m_type": "IP_PS_KERNEL",
+                "properties": "0x0",
                 "m_base_address": "not_used",
                 "m_name": "DPU:IPUV1CNN"
             }

@@ -16,16 +16,23 @@
 
 
 #include "device_linux.h"
+
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/utils.h"
+#include "core/include/xcl_app_debug.h"
 #include "core/pcie/driver/linux/include/mgmt-ioctl.h"
 
-#include "common/utils.h"
 #include "xrt.h"
 #include "scan.h"
-#include <string>
+
+#include <array>
+#include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
-#include <functional>
+#include <string>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -59,12 +66,54 @@ get_render_value(const std::string dir)
     return instance_num;
 }
 
-
 inline pdev
 get_pcidev(const xrt_core::device* device)
 {
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
+
+
+static std::vector<uint64_t> 
+get_counter_status_from_sysfs(const std::string &mon_name_address, 
+                              const std::string &sysfs_file_name, 
+                              size_t size, 
+                              const xrt_core::device* device)
+{
+  auto pdev = get_pcidev(device);
+
+  /* Get full path to "name" sysfs file. 
+   * Then use that path to form full path to "counters"/"status" sysfs file 
+   * which contains counter/status data for the monitor
+   */
+  std::string name_path = pdev->get_sysfs_path(mon_name_address, "name");
+
+  std::size_t pos = name_path.find_last_of('/');
+  if (std::string::npos == pos) {
+    std::string msg = "Invalid path for name sysfs node for " + mon_name_address;
+    throw xrt_core::query::sysfs_error(msg);
+  }
+
+  std::string path = name_path.substr(0, pos+1);
+  path += sysfs_file_name;
+
+  std::vector<uint64_t> val_buf(size);
+
+  std::ifstream ifs(path);
+
+  try {
+    // Enable exception on reading error
+    ifs.exceptions(std::ifstream::failbit);
+    for (std::size_t idx = 0; idx < size; ++idx)
+      ifs >> val_buf[idx];
+  } catch (const std::ios_base::failure& fail) {
+    std::string msg = "Incomplete counter data read from " + path + " due to " + fail.what()
+                         + ".\n Using 0 as default value in results.";
+    xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+  }
+
+  return val_buf;
+}
+
 
 struct bdf
 {
@@ -290,6 +339,166 @@ struct mac_addr_list
   }
 };
 
+/* AIM counter values 
+ * In PCIe Linux, access the sysfs file for AIM to retrieve the AIM counter values
+ */ 
+struct aim_counter
+{
+  using result_type = query::aim_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string aim_name("aximm_mon_");
+    aim_name += std::to_string(dbg_ip_data->m_base_address);
+
+    result_type retval_buf(XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, 0);
+
+    result_type val_buf = get_counter_status_from_sysfs(aim_name, "counters", XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT, device);
+
+    /* Note that required return values are NOT in contiguous sequential order 
+     * in AIM subdevice file. So, need to read only a few isolated indices in val_buf.
+     */
+    retval_buf[XAIM_WRITE_BYTES_INDEX]        = val_buf[XAIM_IOCTL_WRITE_BYTES_INDEX];
+    retval_buf[XAIM_WRITE_TRANX_INDEX]        = val_buf[XAIM_IOCTL_WRITE_TRANX_INDEX];
+    retval_buf[XAIM_READ_BYTES_INDEX]         = val_buf[XAIM_IOCTL_READ_BYTES_INDEX];
+    retval_buf[XAIM_READ_TRANX_INDEX]         = val_buf[XAIM_IOCTL_READ_TRANX_INDEX];
+    retval_buf[XAIM_OUTSTANDING_COUNT_INDEX]  = val_buf[XAIM_IOCTL_OUTSTANDING_COUNT_INDEX];
+    retval_buf[XAIM_WRITE_LAST_ADDRESS_INDEX] = val_buf[XAIM_IOCTL_WRITE_LAST_ADDRESS_INDEX];
+    retval_buf[XAIM_WRITE_LAST_DATA_INDEX]    = val_buf[XAIM_IOCTL_WRITE_LAST_DATA_INDEX];
+    retval_buf[XAIM_READ_LAST_ADDRESS_INDEX]  = val_buf[XAIM_IOCTL_READ_LAST_ADDRESS_INDEX];
+    retval_buf[XAIM_READ_LAST_DATA_INDEX]     = val_buf[XAIM_IOCTL_READ_LAST_DATA_INDEX];
+
+    return retval_buf;
+  }
+
+};
+
+
+/* AM counter values 
+ * In PCIe Linux, access the sysfs file for AM to retrieve the AM counter values
+ */ 
+struct am_counter
+{
+  using result_type = query::am_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string am_name("accel_mon_");
+    am_name += std::to_string(dbg_ip_data->m_base_address);
+
+    result_type val_buf = get_counter_status_from_sysfs(am_name, "counters", XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT, device);
+
+    return val_buf;
+  }
+
+};
+
+
+/* ASM counter values 
+ * In PCIe Linux, access the sysfs file for ASM to retrieve the ASM counter values
+ */ 
+struct asm_counter
+{
+  using result_type = query::asm_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string asm_name("axistream_mon_");
+    asm_name += std::to_string(dbg_ip_data->m_base_address);
+
+    result_type val_buf = get_counter_status_from_sysfs(asm_name, "counters", XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT, device);
+
+    return val_buf;
+  }
+};
+
+
+/* LAPC status 
+ * In PCIe Linux, access the sysfs file for LAPC to retrieve the LAPC status 
+ */ 
+struct lapc_status
+{
+  using result_type = query::lapc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string lapc_name("lapc_");
+    lapc_name += std::to_string(dbg_ip_data->m_base_address);
+
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(lapc_name, "status", XLAPC_STATUS_PER_SLOT, device);
+
+    result_type ret_val;
+    for(auto& e: val_buf) {
+      ret_val.push_back(static_cast<uint32_t>(e));
+    }
+
+    return ret_val;
+  }
+};
+
+
+/* SPC status 
+ * In PCIe Linux, access the sysfs file for SPC to retrieve the SPC status
+ */ 
+struct spc_status
+{
+  using result_type = query::spc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string spc_name("spc_");
+    spc_name += std::to_string(dbg_ip_data->m_base_address);
+
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(spc_name, "status", XSPC_STATUS_PER_SLOT, device);
+
+    result_type ret_val;
+    for(auto& e: val_buf) {
+      ret_val.push_back(static_cast<uint32_t>(e));
+    }
+
+    return ret_val;
+  }
+};
+
+
+/* Accelerator Deadlock Detector status 
+ * In PCIe Linux, access the sysfs file for Accelerator Deadlock Detector to retrieve the deadlock status
+ */ 
+struct accel_deadlock_status
+{
+  using result_type = query::accel_deadlock_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
+
+    std::string mon_name("accel_deadlock_");
+    mon_name += std::to_string(dbg_ip_data->m_base_address);
+
+    std::vector<uint64_t> val_buf = get_counter_status_from_sysfs(mon_name, "status", 1, device);
+
+    result_type ret_val = val_buf[0];
+
+    return ret_val;
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -436,6 +645,17 @@ struct function0_get : virtual QueryRequestType
   }
 };
 
+template <typename QueryRequestType, typename Getter>
+struct function4_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 template <typename QueryRequestType>
@@ -452,6 +672,14 @@ emplace_func0_request()
 {
   auto k = QueryRequestType::key;
   query_tbl.emplace(k, std::make_unique<function0_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func4_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function4_get<QueryRequestType, Getter>>());
 }
 
 template <typename QueryRequestType>
@@ -498,6 +726,7 @@ initialize_query_table()
   emplace_sysfs_get<query::dma_stream>                         ("dma", "");
   emplace_sysfs_get<query::group_topology>                     ("icap", "group_topology");
   emplace_sysfs_get<query::ip_layout_raw>                      ("icap", "ip_layout");
+  emplace_sysfs_get<query::debug_ip_layout_raw>                ("icap", "debug_ip_layout");
   emplace_sysfs_get<query::clock_freq_topology_raw>            ("icap", "clock_freq_topology");
   emplace_sysfs_get<query::clock_freqs_mhz>                    ("icap", "clock_freqs");
   emplace_sysfs_get<query::idcode>                             ("icap", "idcode");
@@ -650,6 +879,13 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                     bdf>();
   emplace_func0_request<query::kds_cu_info,                  kds_cu_info>();
   emplace_func0_request<query::instance,                     instance>();
+
+  emplace_func4_request<query::aim_counter,                  aim_counter>();
+  emplace_func4_request<query::am_counter,                   am_counter>();
+  emplace_func4_request<query::asm_counter,                  asm_counter>();
+  emplace_func4_request<query::lapc_status,                  lapc_status>();
+  emplace_func4_request<query::spc_status,                   spc_status>();
+  emplace_func4_request<query::accel_deadlock_status,        accel_deadlock_status>();
 }
 
 struct X { X() { initialize_query_table(); }};

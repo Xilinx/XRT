@@ -19,11 +19,12 @@
 #define _XRT_ENQUEUE_H_
 
 #ifdef __cplusplus
-# include <memory>
-# include <vector>
-# include <functional>
 # include <algorithm>
+# include <functional>
 # include <future>
+# include <memory>
+# include <type_traits>
+# include <vector>
 #endif
 
 #ifdef __cplusplus
@@ -77,30 +78,7 @@ class event_queue
 
       void execute(const event_ptr& evp)
       {
-        m_held();                  // synchronous function
-        event::notify(evp.get());  // notify event of completion
-      }
-    };
-
-    // Wrap asynchronous operation
-    template <typename Callable, typename ResultType>
-    struct task_async_holder : public task_iholder
-    {
-      using future_type = std::shared_future<ResultType>;
-
-      Callable m_held;
-      std::shared_future<ResultType> m_future;
-
-      task_async_holder(Callable&& t, const std::shared_future<ResultType>& f)
-        : m_held(std::move(t)), m_future(f)
-      {}
-
-      void
-      execute(const event_ptr& evp)
-      {
-        m_held();                 // start async operation
-        auto& w = m_future.get(); // get waitable return value
-        w.set_event(evp);         // waitable must notify event
+        m_held(evp);               // synchronous function
       }
     };
 
@@ -119,15 +97,6 @@ class event_queue
     template <typename Callable>
     task(Callable&& c)
       : m_content(new task_holder<Callable>(std::forward<Callable>(c)))
-    {}
-
-    // task() - task constructor for asynchronous operation
-    //
-    // @c : callable object, a std::packaged_task
-    // @f : future for return value of callable
-    template <typename Callable, typename ResultType>
-    task(Callable&& c, const std::shared_future<ResultType>& f)
-      : m_content(new task_async_holder<Callable, ResultType>(std::forward<Callable>(c), f))
     {}
 
     task&
@@ -191,7 +160,7 @@ public:
 
 private:
   /** 
-   * class event_queue::event_type - event for synchronous operations
+   * class event_queue::event_type - event for task
    *
    * Wraps a std::future which can be waited on of value retrieved
    *
@@ -202,7 +171,8 @@ private:
   class event_type : public event
   {
     using value_type = ResultType;
-    using task_type = std::packaged_task<value_type()>;
+    using event_ptr = std::shared_ptr<event_impl>;
+    using task_type = std::packaged_task<value_type(const event_ptr&)>;
     using future_type = std::future<value_type>;
     std::future<value_type> m_future;
 
@@ -224,58 +194,65 @@ private:
     }
   }; // class event_queue::event_type
 
-
-  /** 
-   * class event_queue::event_async_type - event for asynchronous operations
-   *
-   * Wraps a std::shared_future which can be waited on.
-   *
-   * This event type is returned through event_queue::enqueue and can
-   * be used to chain execution further events.
-   */
-  template <typename ResultType>
-  class event_async_type : public event
-  {
-    using value_type = ResultType;
-    using task_type = std::packaged_task<value_type()>;
-    std::shared_future<value_type> m_future;
-
-  public:
-    event_async_type(task_type&& t, const std::shared_future<value_type>& f, const std::vector<event>& deps)
-      : event(task(std::move(t), f), deps)
-      , m_future(f) 
-    {}
-  };
-
 private:
+  // Add event to event graph
   void
   add_event(const event& ev);
 
-  template <typename ResultType, bool async = false>
+  // Create enqueuable event for a synchronous operation
+  template <typename Callable, bool async, typename ...Args>
   struct enqueuer
   {
-    using value_type = ResultType;
-    using task_type = std::packaged_task<value_type()>;
-
     static auto
-    add(task_type&& t, const std::vector<event>& deps)
+    add(Callable&& c, const std::vector<event>& deps, Args&&... args)
     {
+      using value_type = decltype(c(std::forward<Args>(args)...));
+      using event_ptr = std::shared_ptr<event_impl>;
+      using task_type = std::packaged_task<value_type(const event_ptr&)>;
+
+      // Create packaged task that executes the synchronous operation
+      // an notifies the argument event upon completion.
+      task_type t([&c, &args...] (const event_ptr& evp) {
+                    struct at_exit {
+                      const event_ptr& evp;
+                      ~at_exit() { event::notify(evp.get()); }
+                    };
+                    at_exit ea {evp};
+                    return c(args...);
+                  });
+
+      // Create and return the event so that it captures the task
+      // future that can be waited on and used to retrieve return
+      // value from synchronous operation.
       std::future<value_type> f(t.get_future());
       return event_type<value_type>(std::move(t), std::move(f), deps);
     }
   };
     
-  template <typename ResultType>
-  struct enqueuer<ResultType, true>
+  // Create enqueuable event for an asynchronous operation
+  template <typename Callable, typename ...Args>
+  struct enqueuer<Callable, true, Args...>
   {
-    using value_type = ResultType;
-    using task_type = std::packaged_task<value_type()>;
-
     static auto
-    add(task_type&& t, const std::vector<event>& deps)
+    add(Callable&& c, const std::vector<event>& deps, Args&&... args)
     {
-      std::shared_future<value_type> f(t.get_future());
-      return event_async_type<value_type>(std::move(t), f, deps);
+      using value_type = decltype(c(std::forward<Args>(args)...));
+      using event_ptr = std::shared_ptr<event_impl>;
+      using task_type = std::packaged_task<value_type(const event_ptr&)>;
+
+      // Create packaged task starts the asynchronous operation
+      // after setting the argument event in the callable so that
+      // it can be notified upon completion of the async operation.
+      task_type t([&c, &args...] (const event_ptr& evp) {
+                    c.set_event(evp);
+                    return c(args...);
+                  });
+
+      // Create and return the event so that it captures the task
+      // future that can be waited on and used to retrieve return
+      // value from asynchronous operation.
+      std::future<value_type> f(t.get_future());
+      return event_type<value_type>(std::move(t), std::move(f), deps);
     }
   };
 
@@ -292,13 +269,11 @@ public:
    */
   template <typename Callable, typename ...Args>
   auto
-  enqueue_with_waitlist(Callable&& r, const std::vector<event>& deps, Args&&... args)
+  enqueue_with_waitlist(Callable&& c, const std::vector<event>& deps, Args&&... args)
   {
-    using value_type = decltype(r(std::forward<Args>(args)...));
-    using task_type = std::packaged_task<value_type()>;
-    using task_traits = callable_traits<value_type>;
-    task_type t(std::bind(std::forward<Callable>(r), std::forward<Args>(args)...));
-    auto event = enqueuer<value_type,task_traits::is_async>::add(std::move(t), deps);
+    using task_traits = callable_traits<std::remove_reference_t<Callable>>;
+    auto event = enqueuer<Callable, task_traits::is_async, Args...>::
+      add(std::forward<Callable>(c), deps, std::forward<Args>(args)...);
     add_event(event);
     return event;
   }

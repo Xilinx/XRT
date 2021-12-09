@@ -558,6 +558,7 @@ xclLoadAxlf(const axlf *buffer)
           return -EINVAL;
       std::strncpy(krnl->name, kernel.name.c_str(), sizeof(krnl->name)-1);
       krnl->name[sizeof(krnl->name)-1] = '\0';
+      krnl->range = kernel.range;
       krnl->anums = kernel.args.size();
 
       int ai = 0;

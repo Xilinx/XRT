@@ -1,6 +1,5 @@
-/*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
- * Xilinx SDAccel Media Accelerator API
+/**
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,21 +13,26 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#ifndef _XMA_HW_HAL_H_
-#define _XMA_HW_HAL_H_
 
-typedef struct XmaHwHALKernel
-{
-    char            name[MAX_KERNEL_NAME];
-    uint64_t        base_address;
-    uint32_t        ddr_bank;
-}XmaHwHALKernel;
+#ifndef COMMON_INFO_AIE_H
+#define COMMON_INFO_AIE_H
 
-typedef struct XmaHwHAL
-{
-    void           *dev_handle;                  // HAL device handle
-    XmaHwHALKernel  kernels[MAX_XILINX_KERNELS];
-    uint32_t       dev_index;
-} XmaHwHAL;
+#include <boost/property_tree/json_parser.hpp>
+
+// Local - Include Files
+#include "device.h"
+
+namespace xrt_core {
+namespace aie {
+
+// Get AIE core information for this device
+boost::property_tree::ptree
+aie_core(const xrt_core::device * device);
+
+// Get AIE shim information for this device
+boost::property_tree::ptree
+aie_shim(const xrt_core::device * device);
+
+}} // aie, xrt_core
 
 #endif

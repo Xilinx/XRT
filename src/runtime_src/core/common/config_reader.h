@@ -365,6 +365,13 @@ get_aie_profile_memory_metrics()
   return value;
 }
 
+inline std::string
+get_aie_profile_shim_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "bandwidths");
+  return value;
+}
+
 inline bool
 get_lop_trace()
 {
