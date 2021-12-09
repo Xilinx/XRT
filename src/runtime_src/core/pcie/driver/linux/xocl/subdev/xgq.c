@@ -1296,6 +1296,7 @@ static int xgq_probe(struct platform_device *pdev)
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xgq *xgq = NULL;
 	struct resource *res = NULL;
+	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
 	u64 flags = 0;
 	int ret = 0, i = 0;
 	void *hdl;
@@ -1412,15 +1413,10 @@ static int xgq_probe(struct platform_device *pdev)
 
 	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
 
-	if (!ret) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
-
-		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret) {
-			xocl_err(&pdev->dev, "unable to create HWMON_SDM subdev, ret: %d",
-					 ret);
-			ret = 0;
-		}
+	ret = xocl_subdev_create(xdev, &subdev_info);
+	if (ret) {
+		xocl_err(&pdev->dev, "unable to create HWMON_SDM subdev, ret: %d", ret);
+		ret = 0;
 	}
 
 	return ret;
