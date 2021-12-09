@@ -135,6 +135,8 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *raw_fmt = "%llu %d %llu\n";
 	struct mem_topology *topo = NULL;
 	struct drm_xocl_mm_stat stat;
+	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
+	const char *bo_types[XOCL_BO_USAGE_TOTAL];
 
 	mutex_lock(&xdev->dev_lock);
 
@@ -168,6 +170,39 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
+				stat.memory_usage / 1024,
+				stat.bo_count);
+		}
+		buf += count;
+		size += count;
+	}
+	/* -- Separator for bo stats -- */
+	if (raw)
+		count = sprintf(buf, raw_fmt, -EINVAL, -EINVAL, -EINVAL);
+	else
+		count = sprintf(buf, txt_fmt,
+			"== BO Stats Below ==",
+			"NA", 0, 0, 0, 0);
+
+	/* -- Append bo stats -- */
+	buf += count;
+	size += count;
+	bo_types[XOCL_BO_USAGE_NORMAL] = "Regular";
+	bo_types[XOCL_BO_USAGE_USERPTR] = "UserPointer";
+	bo_types[XOCL_BO_USAGE_P2P] = "P2P";
+	bo_types[XOCL_BO_USAGE_DEV_ONLY] = "DeviceOnly";
+	bo_types[XOCL_BO_USAGE_IMPORT] = "Imported";
+	bo_types[XOCL_BO_USAGE_EXECBUF] = "ExecBuf";
+	bo_types[XOCL_BO_USAGE_CMA] = "CMA";
+	for (i = 0; i < XOCL_BO_USAGE_TOTAL; i++) {
+		xocl_bo_get_usage_stat(XOCL_DRM(xdev), i, &stat);
+		if (raw) {
+			count = sprintf(buf, raw_fmt,
+				stat.memory_usage,
+				stat.bo_count, 0);
+		} else {
+			count = sprintf(buf, bo_txt_fmt,
+				bo_types[i],
 				stat.memory_usage / 1024,
 				stat.bo_count);
 		}

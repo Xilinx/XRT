@@ -220,6 +220,7 @@ int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx)
 int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 {
 	struct platform_device *pldev;
+	struct kernel_info *krnl_info;
 	struct resource res;
 	int ret;
 
@@ -229,12 +230,20 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		return -ENOMEM;
 	}
 
+	krnl_info = zocl_query_kernel(zdev, info->kname);
+	if(!krnl_info) {
+		DRM_WARN("%s CU has no metadata, using default size",info->kname);
+		info->size = 0x10000;
+	}
+	else {
+		info->size = krnl_info->range;
+	}
 	/* hard code resource
 	 * TODO: maybe we should define resource in a header file
 	 */
 	/* zdev->res_start provides higher 32 bits address */
 	res.start = zdev->res_start + info->addr;
-	res.end = res.start + 0xFFFF;
+	res.end = res.start + info->size - 1;
 	res.flags = IORESOURCE_MEM;
 	res.parent = NULL;
 	ret = platform_device_add_resources(pldev, &res, 1);
