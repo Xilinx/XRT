@@ -1061,7 +1061,7 @@ struct kds_cu_info
       data.index = i;
       // TODO: CuInfo should contain CU name, but it is not there today
       data.name = "kernel:cu_" + std::to_string(i);
-      data.base_address = stats->CuInfo[i].BaseAddress;
+      data.base_addr = stats->CuInfo[i].BaseAddress;
       data.usages = stats->CuInfo[i].Usage;
       data.status = 0;
 

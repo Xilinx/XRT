@@ -658,7 +658,6 @@ initialize_query_table()
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
 
-  emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();
 

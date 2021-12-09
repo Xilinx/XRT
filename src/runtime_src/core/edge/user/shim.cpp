@@ -933,18 +933,12 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
-  // In new kds, driver determines CU index
-  if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
-    for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_info>(mCoreDevice))
-      if (stat.name == name)
-        return stat.index;
+  for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_info>(mCoreDevice))
+    if (stat.name == name)
+      return stat.index;
 
-    xclLog(XRT_ERROR, "%s not found", name);
-    return -ENOENT;
-  }
-
-  xclLog(XRT_ERROR, "old KDS is not supprot");
-  return -EINVAL;
+  xclLog(XRT_ERROR, "%s not found", name);
+  return -ENOENT;
 }
 
 int
