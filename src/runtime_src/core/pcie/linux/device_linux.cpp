@@ -999,4 +999,48 @@ xclmgmt_load_xclbin(const char* buffer) const {
   }
 }
 
+////////////////////////////////////////////////////////////////
+// User Managed IP Interrupt Handling
+////////////////////////////////////////////////////////////////
+xclInterruptNotifyHandle
+device_linux::
+open_ip_interrupt_notify(unsigned int ip_index)
+{
+  return xclOpenIPInterruptNotify(get_device_handle(), ip_index, 0);
+}
+  
+void
+device_linux::
+close_ip_interrupt_notify(xclInterruptNotifyHandle handle)
+{
+  xclCloseIPInterruptNotify(get_device_handle(), handle);
+}
+
+void
+device_linux::
+enable_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int enable = 1;
+  if (::write(handle, &enable, sizeof(enable)) == -1)
+    throw error(errno, "enable_ip_interrupt failed POSIX write");
+}
+
+void
+device_linux::
+disable_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int disable = 0;
+  if (::write(handle, &disable, sizeof(disable)) == -1)
+    throw error(errno, "disable_ip_interrupt failed POSIX write");
+}
+
+void
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle)
+{
+  int pending = 0;
+  if (::read(handle, &pending, sizeof(pending)) == -1)
+    throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
 } // xrt_core
