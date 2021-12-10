@@ -442,8 +442,11 @@ namespace xdp {
     }
 
     auto metricSet = getMetricSet(handle);
-    if (metricSet.empty())
+    if (metricSet.empty()) {
+      if (!runtimeMetrics)
+        return true;
       return false;
+    }
     auto tiles = getTilesForTracing(handle);
 
     // getTraceStartDelayCycles is 32 bit for now
