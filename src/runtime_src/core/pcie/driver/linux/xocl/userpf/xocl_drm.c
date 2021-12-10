@@ -279,7 +279,12 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if (xocl_bo_p2p(xobj)) {
+	/*
+	 * It looks vm_insert_mixed() is the newer interface to handle different
+	 * types of page. We may consider to only use this interface when the old
+	 * kernel support is dropped.
+	 */
+	if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 #ifdef RHEL_RELEASE_VERSION
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
