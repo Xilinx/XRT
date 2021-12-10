@@ -71,7 +71,7 @@ bool load()
   }
 
   if (xrt_core::config::get_pl_deadlock_detection())
-    xdp::pl_deadlock::profile::load();
+    xdp::pl_deadlock::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off") {
     std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;

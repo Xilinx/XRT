@@ -21,7 +21,7 @@
 
 namespace xdp {
 namespace pl_deadlock {
-namespace profile {
+
   void load()
   {
     static xrt_core::module_loader xdp_pl_deadlock_loader("xdp_pl_deadlock_plugin",
@@ -48,18 +48,16 @@ namespace profile {
     // No warnings for PL Deadlock Detection
   }
 
-} // end namespace profile
-
   void update_device(void* handle)
   {
-    if (profile::update_device_cb != nullptr)
-      profile::update_device_cb(handle);
+    if (update_device_cb != nullptr)
+      update_device_cb(handle);
   }
 
   void flush_device(void* handle)
   {
-    if (profile::flush_device_cb != nullptr)
-      profile::flush_device_cb(handle);
+    if (flush_device_cb != nullptr)
+      flush_device_cb(handle);
   }
 
 } // end namespace pl_deadlock

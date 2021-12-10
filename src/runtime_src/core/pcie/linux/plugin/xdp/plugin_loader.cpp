@@ -69,7 +69,7 @@ bool load()
   }
 
   if (xrt_core::config::get_pl_deadlock_detection())
-    xdp::pl_deadlock::profile::load();
+    xdp::pl_deadlock::load();
 
   // Deprecation messages
   if (xrt_core::config::get_data_transfer_trace() != "off") {

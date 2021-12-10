@@ -44,10 +44,10 @@ namespace xdp {
 
   PLDeadlockPlugin::~PLDeadlockPlugin()
   {
-    writeAll(false);
-
-    if (VPDatabase::alive())
+    if (VPDatabase::alive()) {
+      writeAll(false);
       db->unregisterPlugin(this);
+    }
   }
 
   void PLDeadlockPlugin::writeAll(bool /*openNewFiles*/)

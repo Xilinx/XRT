@@ -20,11 +20,9 @@
 namespace xdp {
 namespace pl_deadlock {
 
-namespace profile {
   void load();
   void register_callbacks(void* handle);
   void warning_callbacks();
-} // end namespace profile
 
   void update_device(void* handle);
   void flush_device(void* handle);
