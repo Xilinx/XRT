@@ -1044,6 +1044,7 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
 
 xclBufferHandle
 device_linux::
@@ -1071,7 +1072,6 @@ import_bo(pid_t pid, xclBufferExportHandle ehdl)
      "Importing buffer object from different process requires XRT "
      " built and installed on a system with 'pidfd' kernel support");
 #endif
->>>>>>> Vitis-3928 IPC facility using XRT BO APIs for export/import
 }
 
 } // xrt_core

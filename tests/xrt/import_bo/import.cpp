@@ -70,16 +70,20 @@ child(const std::string& device_id, pid_t pid)
 
   try {
     auto bo_data = bo.map<char*>();
+
+    // wait at most 5 seconds for expected buffer content
+    // parent has started kernel
     int count = 5;
-    while (!std::equal(std::begin(gold), std::end(gold), bo_data) && --count)
+    while (!std::equal(std::begin(gold), std::end(gold), bo_data) && --count) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE);
+    }
 
     std::cout << "child reads: " << bo_data << '\n';
     if (!count)
       std::cout << "child times out\n";
     else
       bo.write("child");
-    bo.write("child");
   }
   catch (const std::exception& ex) {
     std::cout << "child fails with: " << ex.what() << "\n";
@@ -94,11 +98,11 @@ parent(const std::string& device_id, const std::string& xclbin_fnm, xrt::bo::fla
   xrt::device device{device_id};
   auto uuid = device.load_xclbin(xclbin_fnm);
   xrt::kernel hello(device, uuid, "hello");
-  xrt::bo bo(device, 1024, flags, hello.group_id(0));
+  xrt::bo bo(device, 1024, flags, hello.group_id(0)); // 1K buffer is somewhat arbitrary
   auto bo_data = bo.map<char*>();
 
   // clear device data
-  std::fill(bo_data, bo_data + 1024, 0);
+  std::fill(bo_data, bo_data + bo.size(), 0);
   bo.sync(XCL_BO_SYNC_BO_TO_DEVICE);
 
   auto export_handle = bo.export_buffer();
