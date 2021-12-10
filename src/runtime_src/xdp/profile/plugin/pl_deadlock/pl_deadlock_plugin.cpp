@@ -64,7 +64,7 @@ namespace xdp {
   }
 
 
-  void PLDeadlockPlugin::pollDeadlock(void* handle, uint32_t deviceId)
+  void PLDeadlockPlugin::pollDeadlock(void* handle, uint64_t deviceId)
   {
     std::string deviceName = (db->getStaticInfo()).getDeviceName(deviceId);
     DeviceIntf* deviceIntf = (db->getStaticInfo()).getDeviceIntf(deviceId);

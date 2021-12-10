@@ -27,7 +27,7 @@ namespace xdp {
   class PLDeadlockPlugin : public XDPPlugin
   {
   private:
-    XDP_EXPORT virtual void pollDeadlock(void* handle, uint32_t index);
+    XDP_EXPORT virtual void pollDeadlock(void* handle, uint64_t index);
   
   private:
     uint32_t mPollingIntervalMs = 100;
