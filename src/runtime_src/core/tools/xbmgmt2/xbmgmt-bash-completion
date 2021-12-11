@@ -98,7 +98,7 @@ _xbmgmt_completion()
   esac
 }
 
-complete  -o nosort -F _xbmgmt_completion xbmgmt
+complete -F _xbmgmt_completion xbmgmt
 echo Autocomplete enabled for the xbmgmt command
 
 # ex: filetype=sh

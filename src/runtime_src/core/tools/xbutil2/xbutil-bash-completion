@@ -104,7 +104,7 @@ _xbutil_completion()
   esac
 }
 
-complete -o nosort -F _xbutil_completion xbutil
+complete -F _xbutil_completion xbutil
 echo Autocomplete enabled for the xbutil command
 
 # ex: filetype=sh
