@@ -64,6 +64,8 @@ struct xocl_drm {
 	struct drm_mm           *mm;
 	struct mutex            mm_lock;
 	struct drm_xocl_mm_stat **mm_usage_stat;
+	/* Array of bo usage stats */
+	struct drm_xocl_mm_stat *bo_usage_stat;
 
 	int			cma_bank_idx;
 

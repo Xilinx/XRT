@@ -15,20 +15,26 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 // This file implements XRT APIs as declared in
 // core/include/experimental/xrt_aie.h -- end user APIs
 // core/include/experimental/xrt_graph.h -- end user APIs
 // core/include/xcl_graph.h -- shim level APIs
-#include "core/include/experimental/xrt_aie.h"
-#include "core/include/experimental/xrt_bo.h"
+#define XCL_DRIVER_DLL_EXPORT  // exporting xrt_graph.h
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
+#include "core/include/xrt/xrt_graph.h"
+#include "core/include/xrt/xrt_aie.h"
+#include "core/include/xrt/xrt_bo.h"
 #include "core/include/xcl_graph.h"
 
 #include "core/include/experimental/xrt_device.h"
 #include "core/common/api/device_int.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/error.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
+
+#include <limits>
+#include <memory>
 
 namespace xrt {
 
@@ -125,7 +131,7 @@ namespace {
 static std::map<xrtGraphHandle, std::shared_ptr<xrt::graph_impl>> graph_cache;
 
 static std::shared_ptr<xrt::graph_impl>
-open_graph(xrtDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
+open_graph(xrtDeviceHandle dhdl, const xuid_t xclbin_uuid, const char* graph_name, xrt::graph::access_mode am)
 {
   auto core_device = xrt_core::device_int::get_core_device(dhdl);
   auto handle = core_device->open_graph(xclbin_uuid, graph_name, am);
@@ -314,7 +320,7 @@ read_port(const std::string& port_name, void* value, size_t bytes)
 ////////////////////////////////////////////////////////////////
 
 xrtGraphHandle
-xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpen(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::primary);
@@ -332,7 +338,7 @@ xrtGraphOpen(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* g
 }
 
 xrtGraphHandle
-xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::exclusive);
@@ -350,7 +356,7 @@ xrtGraphOpenExclusive(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, cons
 }
 
 xrtGraphHandle
-xrtGraphOpenShared(xrtDeviceHandle dev_handle, const uuid_t xclbin_uuid, const char* graph_name)
+xrtGraphOpenShared(xrtDeviceHandle dev_handle, const xuid_t xclbin_uuid, const char* graph_name)
 {
   try {
     auto hdl = open_graph(dev_handle, xclbin_uuid, graph_name, xrt::graph::access_mode::shared);
@@ -414,7 +420,7 @@ xrtGraphTimeStamp(xrtGraphHandle graph_hdl)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return -1;
+  return std::numeric_limits<uint64_t>::max();
 }
 
 int
@@ -777,7 +783,7 @@ xrtAIEReadProfiling(xrtDeviceHandle handle, int pHandle)
   catch (const std::exception& ex) {
     send_exception_message(ex.what());
   }
-  return -1;
+  return std::numeric_limits<uint64_t>::max();
 }
 
 /**

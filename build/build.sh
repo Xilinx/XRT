@@ -47,6 +47,7 @@ usage()
     echo "[-noctest]                  Skip unit tests"
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
+    echo "[-pskernel]                 Enable building of POC ps kernel"
     echo "[-docs]                     Enable documentation generation with sphinx"
     echo "[-j <n>]                    Compile parallel (default: system cores)"
     echo "[-ccache]                   Build using RDI's compile cache"
@@ -156,6 +157,10 @@ while [ $# -gt 0 ]; do
             ;;
         -clangtidy)
             cmake_flags+=" -DXRT_CLANG_TIDY=ON"
+            shift
+            ;;
+        -pskernel)
+            cmake_flags+=" -DXRT_PSKERNEL_BUILD=ON"
             shift
             ;;
         -verbose)

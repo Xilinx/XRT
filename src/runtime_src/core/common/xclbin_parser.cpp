@@ -38,6 +38,7 @@
 namespace {
 
 namespace pt = boost::property_tree;
+using kernel_type = xrt_core::xclbin::kernel_properties::kernel_type;
 
 // NOLINTNEXTLINE
 constexpr size_t operator"" _kb(unsigned long long v)  { return 1024u * v; }
@@ -46,6 +47,19 @@ static size_t
 convert(const std::string& str)
 {
   return str.empty() ? 0 : std::stoul(str,nullptr,0);
+}
+
+static kernel_type
+to_kernel_type(const std::string& str)
+{
+  if (str == "pl")
+    return kernel_type::pl;
+  else if (str == "ps")
+    return kernel_type::ps;
+  else if (str == "dpu")
+    return kernel_type::dpu;
+
+  return kernel_type::none;
 }
 
 static bool
@@ -131,13 +145,13 @@ get_xml_section(const axlf* top)
 static bool
 is_valid_cu(const ip_data& ip)
 {
-  if (ip.m_type != IP_TYPE::IP_KERNEL)
-    return false;
+  if (ip.m_type == IP_TYPE::IP_KERNEL)
+    return true;
 
-  // Filter IP KERNELS if necessary
-  // ...
+  if (ip.m_type == IP_TYPE::IP_PS_KERNEL)
+    return true;
 
-  return true;
+  return false;
 }
 
 static bool
@@ -280,9 +294,15 @@ get_portname_width_map(const pt::ptree& xml_kernel)
     if (xml_port.first != "port")
       continue;
 
-    pwmap.emplace(
-      xml_port.second.get<std::string>("<xmlattr>.name")
-     ,convert(xml_port.second.get<std::string>("<xmlattr>.dataWidth")));
+    auto nm = xml_port.second.get<std::string>("<xmlattr>.name", "");
+    if (nm.empty())
+      continue;
+
+    auto dw = xml_port.second.get<std::string>("<xmlattr>.dataWidth", "");
+    if (dw.empty())
+      continue;
+
+    pwmap.emplace(nm, convert(dw));
   }
   
   return pwmap;
@@ -408,6 +428,41 @@ get_max_cu_size(const char* xml_data, size_t xml_size)
     }
   }
   return maxsz;
+}
+
+std::map<std::string, cuidx_type>
+get_cu_indices(const ip_layout* ip_layout)
+{
+  // cus in index sort order for PL kernel cu index
+  auto cus = get_cus(ip_layout);
+
+  // ps kernel cu index start at 0
+  uint16_t ps_kernel_idx = 0;
+
+  std::map<std::string, cuidx_type> cu2idx;
+  for (int32_t count=0; count <ip_layout->m_count; ++count) {
+    const auto& ip_data = ip_layout->m_ip_data[count];
+    if (!is_valid_cu(ip_data))
+      continue;
+
+    cuidx_type cuidx;
+    if (ip_data.m_type == IP_TYPE::IP_PS_KERNEL) {
+      cuidx.domain = 1; // magic
+      cuidx.domain_index = ps_kernel_idx++;
+    }
+    else {
+      auto itr = std::find(cus.begin(), cus.end(), ip_data.m_base_address);
+      if (itr == cus.end())
+        continue; // ignore kernels without base address (AP_CTRL_NONE)
+
+      cuidx.domain = 0; // magic
+      cuidx.domain_index = static_cast<uint16_t>(std::distance(cus.begin(), itr));
+    }
+
+    cu2idx.emplace(reinterpret_cast<const char*>(ip_data.m_name), cuidx);
+  }
+
+  return cu2idx;
 }
 
 std::vector<uint64_t>
@@ -825,19 +880,19 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       continue;
 
     // Determine features
-    auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox","none"));
+    auto mailbox = convert_to_mailbox_type(xml_kernel.second.get<std::string>("<xmlattr>.mailbox", "none"));
     if (mailbox == kernel_properties::mailbox_type::none)
       mailbox = get_mailbox_from_ini(kname);
-    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.countedAutoRestart","0"));
+    auto restart = convert(xml_kernel.second.get<std::string>("<xmlattr>.countedAutoRestart", "0"));
     if (restart == 0)
       restart = get_restart_from_ini(kname);
-    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.swReset","false"));
+    auto sw_reset = to_bool(xml_kernel.second.get<std::string>("<xmlattr>.swReset", "false"));
     if (!sw_reset)
       sw_reset = get_sw_reset_from_ini(kname);
 
     return kernel_properties
       { kname
-      , kernel_properties::kernel_type::pl
+      , to_kernel_type(xml_kernel.second.get<std::string>("<xmlattr>.type", "pl"))
       , restart
       , mailbox
       , get_address_range(xml_kernel.second)

@@ -442,8 +442,11 @@ namespace xdp {
     }
 
     auto metricSet = getMetricSet(handle);
-    if (metricSet.empty())
+    if (metricSet.empty()) {
+      if (!runtimeMetrics)
+        return true;
       return false;
+    }
     auto tiles = getTilesForTracing(handle);
 
     // getTraceStartDelayCycles is 32 bit for now
@@ -605,6 +608,9 @@ namespace xdp {
           // Set reset and trace start using this counter
           perfCounter->changeRstEvent(mod, counterEvent);
           coreTraceStartEvent = counterEvent;
+          // This is needed because the cores are started/stopped during execution
+          // to get around some hw bugs. We cannot restart tracemodules when that happens
+          coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
           ret = perfCounter->start();
           if (ret != XAIE_OK) break;

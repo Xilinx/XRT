@@ -44,6 +44,20 @@
 #define XOCL_BO_EXECBUF		(XOCL_HOST_MEM | XOCL_DRV_ALLOC | XOCL_DRM_SHMEM)
 #define XOCL_BO_CMA		(XOCL_HOST_MEM | XOCL_CMA_MEM)
 
+/*
+ * BO Usage stats stored in an array in drm_device.
+ * BO types are tracked: P2P, EXECBUF, etc
+ * BO usage stats to be shown in sysfs & with xbutil
+*/
+#define XOCL_BO_USAGE_TOTAL	7
+#define XOCL_BO_USAGE_NORMAL	0 //Array indexes
+#define XOCL_BO_USAGE_USERPTR	1
+#define XOCL_BO_USAGE_P2P	2
+#define XOCL_BO_USAGE_DEV_ONLY	3
+#define XOCL_BO_USAGE_IMPORT	4
+#define XOCL_BO_USAGE_EXECBUF	5
+#define XOCL_BO_USAGE_CMA	6
+
 #define XOCL_BO_DDR0 (1 << 0)
 #define XOCL_BO_DDR1 (1 << 1)
 #define XOCL_BO_DDR2 (1 << 2)
@@ -141,6 +155,8 @@ static inline bool xocl_bo_sync_able(unsigned bo_flags)
 		|| (bo_flags & XOCL_CMA_MEM) || (bo_flags & XOCL_P2P_MEM);
 }
 
+void xocl_bo_get_usage_stat(struct xocl_drm *drm_p, u32 bo_idx,
+	struct drm_xocl_mm_stat *pstat);
 int xocl_create_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_userptr_bo_ioctl(struct drm_device *dev, void *data,

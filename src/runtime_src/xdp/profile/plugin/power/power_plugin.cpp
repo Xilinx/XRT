@@ -16,6 +16,8 @@
 
 #define XDP_SOURCE
 
+#include <map>
+
 #include "xdp/profile/plugin/power/power_plugin.h"
 #include "xdp/profile/writer/power/power_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -61,7 +63,11 @@ namespace xdp {
     db->registerInfo(info::power) ;
 
     pollingInterval = xrt_core::config::get_power_profile_interval_ms() ;
-   
+
+    // There can be multiple boards with the same shell loaded as well as
+    //  different boards.  We number them all individually.
+    std::map<std::string, uint64_t> deviceNumbering ;
+
     // Just like HAL level device profiling, go through the devices 
     //  that exist in order to find all of the sysfs paths
     uint64_t index = 0 ;
@@ -82,6 +88,14 @@ namespace xdp {
       struct xclDeviceInfo2 info ;
       xclGetDeviceInfo2(handle, &info) ;
       std::string deviceName = std::string(info.mName) ;
+
+      if (deviceNumbering.find(deviceName) == deviceNumbering.end()) {
+        deviceNumbering[deviceName] = 0 ;
+      }
+      deviceName += "-" ;
+      deviceName += deviceNumbering[deviceName] ;
+      deviceNumbering[deviceName]++ ;
+
       std::string outputFile = "power_profile_" + deviceName + ".csv" ; 
 
       VPWriter* writer = new PowerProfilingWriter(outputFile.c_str(),

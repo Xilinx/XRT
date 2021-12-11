@@ -191,16 +191,14 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     auto mac_addr_first = xrt_core::device_query<xq::mac_addr_first>(device);
 
     // new flow
-    if (mac_contiguous_num && !mac_addr_first.empty()) {
-      std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
-      std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
-      constexpr int base = 16;
-      auto mac_base_val = std::stoul(mac_base, nullptr, base);
+    if (mac_contiguous_num!=0 && !mac_addr_first.empty()) {
+      // Convert the mac address into a number
+      uint64_t mac_addr_first_value = xrt_core::utils::mac_addr_to_value(mac_addr_first);
 
       for (decltype(mac_contiguous_num) i = 0; i < mac_contiguous_num; ++i) {
         ptree_type addr;
-        auto basex = boost::format("%02X") % (mac_base_val + i);
-        addr.add("address", mac_prefix + ":" + basex.str());
+        // Add desired increment to the mac address value and convert back into a mac address
+        addr.add("address", xrt_core::utils::value_to_mac_addr(mac_addr_first_value + i));
         pt_mac.push_back(std::make_pair("", addr));
       }
     }

@@ -4,6 +4,7 @@
  */
 
 #include "core/include/xrt/xrt_uuid.h"
+#include "core/common/cuidx_type.h"
 #include <memory>
 
 // This file defines APIs for compute unit (ip) context management
@@ -47,7 +48,7 @@ create(const xrt_core::device* device);
 // The function is simply a synchronization between two threads
 // simultanous use of open_context and close_context.
 void
-open_context(xrt_core::device* device, const xrt::uuid& uuid, unsigned int cuidx, bool shared);
+open_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx, bool shared);
 
 // Close a previously opened device context
 //
@@ -57,6 +58,6 @@ open_context(xrt_core::device* device, const xrt::uuid& uuid, unsigned int cuidx
 //
 // The function throws if no context is open on specified CU.
 void
-close_context(xrt_core::device* device, const xrt::uuid& uuid, unsigned int cuidx);
+close_context(xrt_core::device* device, const xrt::uuid& uuid, cuidx_type cuidx);
  
 }} // context_mgr, xrt_core

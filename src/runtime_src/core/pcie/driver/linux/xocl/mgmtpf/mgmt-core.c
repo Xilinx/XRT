@@ -1382,7 +1382,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	xocl_pmc_enable_reset(lro);
+	(void) xocl_reinit_vmr(lro);
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we

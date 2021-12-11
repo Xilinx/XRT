@@ -290,7 +290,7 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	userpf_info(xdev, "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
-	return 0;
+	return ret;
 }
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,

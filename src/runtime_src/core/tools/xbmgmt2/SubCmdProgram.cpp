@@ -397,7 +397,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
 
   // -- Some DRCs (Design Rule Checks) --
   // Is the SC present
-  if (current.bmc_ver().empty()) {
+  if (current.bmc_ver().empty() || candidate.bmc_ver().empty()) {
      std::cout << "INFO: Satellite controller is not present.\n";
      return false;
   }
@@ -476,7 +476,7 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate)
  * Refactor code to support only 1 device. 
  */
 static void 
-auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string& image = "") 
+auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string& flashType = "", const std::string& image = "") 
 {
   // Get platform information
   boost::property_tree::ptree pt;
@@ -505,6 +505,14 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
       throw xrt_core::error(std::errc::operation_canceled);
     }
     image_path = available_shells.front().second.get<std::string>("file");
+  }
+  else if (boost::filesystem::exists(image)) {
+    if (!flashType.empty()) 
+      update_shell(workingDevice->get_device_id(), flashType, image, {});
+    else
+      update_shell(workingDevice->get_device_id(), image, {});
+    std::cout <<boost::format("  [%s] : Successfully flashed the base (e.g., shell) image\n") % getBDF(workingDevice->get_device_id());
+    return;
   }
   else {
     //iterate over installed shells
@@ -845,7 +853,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
     // We support up to 2 flash images 
     if (image.size() == 1)
-      auto_flash(workingDevice, image.front());
+      auto_flash(workingDevice, flashType, image.front());
     
     if (image.size() == 2) {
       std::cout << "CAUTION! Force flashing the platform on the device without any checks." <<

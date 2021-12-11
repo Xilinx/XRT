@@ -42,7 +42,6 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/include/xclbin.h"
-#include "core/include/xclperf.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
 
@@ -115,8 +114,11 @@ namespace xdp {
     gmioList.push_back(traceGmio);
   }
 
+  // Add AIE counter to database list
+  // NOTE: Start and end events are 16 bits so we can add offsets
+  //       for both memory and PL/shim events.
   void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
-                                 uint8_t num, uint8_t start, uint8_t end,
+                                 uint8_t num, uint16_t start, uint16_t end,
                                  uint8_t reset, double freq,
                                  const std::string& mod,
                                  const std::string& aieName)

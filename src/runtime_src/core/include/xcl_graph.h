@@ -21,7 +21,8 @@
 #ifndef XCL_COMMON_GRAPH_H_
 #define XCL_COMMON_GRAPH_H_
 
-#include "experimental/xrt_graph.h"
+#include "xrt/xrt_aie.h"
+#include "xrt/xrt_graph.h"
 
 typedef void * xclGraphHandle;
 

@@ -13,12 +13,13 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
 #ifndef xclbin_parser_h_
 #define xclbin_parser_h_
 
-#include "core/common/config.h"
-#include "xclbin.h"
+#include "config.h"
+#include "cuidx_type.h"
+#include "core/include/xclbin.h"
+
 #include <array>
 #include <limits>
 #include <map>
@@ -28,9 +29,7 @@
 
 namespace xrt_core { namespace xclbin {
 
-/**
- * struct kernel_argument -
- */
+// struct kernel_argument - kernel argument meta data
 struct kernel_argument
 {
   static constexpr size_t no_index { std::numeric_limits<size_t>::max() };
@@ -51,9 +50,10 @@ struct kernel_argument
   direction dir;
 };
 
+// struct kernel_properties - kernel property metadata
 struct kernel_properties
 {
-  enum class kernel_type { none, pl, ps };
+  enum class kernel_type { none, pl, ps, dpu };
   enum class mailbox_type { none, in , out, inout };
   using restart_type = size_t;
   std::string name;
@@ -78,14 +78,12 @@ struct kernel_object
   bool sw_reset;
 };
 
-/**
- * struct softkernel_object - wrapper for a soft kernel object
- *
- * @ninst: number of instances
- * @symbol_name: soft kernel symbol name
- * @size: size of soft kernel image
- * @sk_buf: pointer to the soft kernel buffer
- */
+// struct softkernel_object - wrapper for a soft kernel object
+//
+// @ninst: number of instances
+// @symbol_name: soft kernel symbol name
+// @size: size of soft kernel image
+// @sk_buf: pointer to the soft kernel buffer
 struct softkernel_object
 {
   uint32_t ninst;
@@ -149,6 +147,15 @@ get_first_used_mem(const axlf* top);
  */
 int32_t
 address_to_memidx(const mem_topology* mem, uint64_t address);
+
+// get_cu_indices() - mapping from cu name to its index type
+//
+// Compute index type for all controllable IPs in IP_LAYOUT Normally
+// indexing is determined by KDS in driver via kds_cu_stat query
+// request, but in emulation mode that query request is not not
+// implemented
+std::map<std::string, cuidx_type>
+get_cu_indices(const ip_layout* ip_layout);
 
 /**
  * get_max_cu_size() - Compute max register map size of CUs in xclbin
