@@ -307,7 +307,7 @@ add_dependencies(xdp_opencl_counters_plugin xdp_core xrt_coreutil xilinxopencl)
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
-add_dependencies(xdp_pl_deadlock_plugin xdp_core xrt_coreutil)
+add_dependencies(xdp_pl_deadlock_plugin xdp_core xrt_core xrt_coreutil)
 
 target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
@@ -318,7 +318,7 @@ target_link_libraries(xdp_opencl_counters_plugin PRIVATE xdp_core xrt_coreutil x
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl xrt_coreutil)
 target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
-target_link_libraries(xdp_pl_deadlock_plugin PRIVATE xdp_core xrt_coreutil)
+target_link_libraries(xdp_pl_deadlock_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
