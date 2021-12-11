@@ -124,6 +124,7 @@ struct xocl_xgq {
 	struct mutex 		xgq_lock;
 	bool 			xgq_polling;
 	bool 			xgq_boot_from_backup;
+	bool 			xgq_flush_default_only;
 	u32			xgq_intr_base;
 	u32			xgq_intr_num;
 	struct list_head	xgq_submitted_cmds;
@@ -538,6 +539,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq *xgq, const void *buf,
 	payload->address = memcpy_to_devices(xgq, buf, len);
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
+	payload->flush_default_only = xgq->xgq_flush_default_only;
 
 	/* set up hdr */
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1156,6 +1158,35 @@ static ssize_t boot_from_backup_show(struct device *dev,
 }
 static DEVICE_ATTR(boot_from_backup, 0644, boot_from_backup_show, boot_from_backup_store);
 
+static ssize_t flush_default_only_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_flush_default_only = val ? true : false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	return count;
+}
+
+static ssize_t flush_default_only_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flush_default_only);
+	mutex_unlock(&xgq->xgq_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR(flush_default_only, 0644, flush_default_only_show, flush_default_only_store);
 
 static ssize_t polling_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -1218,6 +1249,7 @@ static DEVICE_ATTR_RO(boot_status);
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
+	&dev_attr_flush_default_only.attr,
 	&dev_attr_boot_status.attr,
 	NULL,
 };

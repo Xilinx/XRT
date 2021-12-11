@@ -123,7 +123,8 @@ struct xgq_cmd_data_payload {
 	uint64_t address;
 	uint32_t size;
 	uint32_t addr_type:4;
-	uint32_t rsvd1:28;
+	uint32_t flush_default_only:1;
+	uint32_t rsvd1:27;
 	uint32_t pad1;
 };
 
