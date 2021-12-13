@@ -77,7 +77,8 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << std::endl << "Clocks" << std::endl;
       for(auto& kc : clocks) {
         const boost::property_tree::ptree& pt_clock = kc.second;
-        _output << boost::format("  %-23s: %s MHz\n") % pt_clock.get<std::string>("description") % pt_clock.get<std::string>("freq_mhz");
+        std::string clock_name_type = pt_clock.get<std::string>("id") + " (" + pt_clock.get<std::string>("description") + ")"; 
+        _output << boost::format("  %-23s: %3s MHz\n") % clock_name_type % pt_clock.get<std::string>("freq_mhz");
       }
     }
 

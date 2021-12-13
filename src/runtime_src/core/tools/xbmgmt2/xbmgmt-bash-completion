@@ -1,0 +1,104 @@
+# bash completion for xbmgmt                              -*- shell-script -*-
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+#
+
+# Generates the command word options dependant on the previous word
+# using COMPREPLY
+# If an option requires an argument, it will not provide a list through
+# COMPREPLY
+# 
+# Parameters:
+# 1: The complete list of options for the previous word
+_command_word_xbmgmt_completion()
+{
+  # Get the righthand most word on the command line
+  currentWord=${COMP_WORDS[COMP_CWORD]}
+  # The previous word is used 
+  previousWord=${COMP_WORDS[COMP_CWORD-1]}
+  # Each defined case requires an argument so no reply is given
+  # All other cases default to using `compgen` output to format COMPREPLY
+  case ${previousWord} in
+    --device)
+      ;;
+    -d)
+      ;;
+    --user)
+      ;;
+    -u)
+      ;;
+    --run)
+      ;;
+    --format)
+      ;;
+    -f)
+      ;;
+    --output)
+      ;;
+    -o)
+      ;;
+    --report)
+      ;;
+    -r)
+      ;;
+    --shell)
+      ;;
+    --image)
+      ;;
+    *)
+      # The format of the compgen commands options is seperated from the current word using a --.
+      # The -- character signifies the end of command options. All following arguments are positional.
+      COMPREPLY=($(compgen -W "$1" -- ${currentWord}))
+      ;;
+  esac
+}
+
+# The main function populating the COMPREPLY
+_xbmgmt_completion()
+{
+  commonSubCommands="--verbose --batch --force --help -h --version"
+  # COMP_CWORD is the current index of the cursor in the command line
+  # 0 is the first argument (xbmgmt), 1 is the desired command for xbmgmt,
+  # 2 is an option for the command, etc.
+  case ${COMP_CWORD} in
+    # Case for command after xbutil
+    1)
+      commandWordOptions="dump examine program reset ${commonSubCommands}"
+      _command_word_xbmgmt_completion "${commandWordOptions}"
+      ;;
+    # Case for options after the above command is entered
+    *)
+      # Command word is used to specify further options as the command expands
+      commandWord=${COMP_WORDS[1]}
+      # Options that appear for all commands
+      commonSubCommands="--device -d ${commonSubCommands}"
+      # Once a command is identified the options will always be the same
+      case ${commandWord} in
+        "dump")
+          dumpOptions="--flash -f --config -c --output -o ${commonSubCommands}"
+          _command_word_xbmgmt_completion "${dumpOptions}"
+          ;;
+        "examine")
+          examineOptions="--report -r --format -f --output -o ${commonSubCommands}"
+          _command_word_xbmgmt_completion "${examineOptions}"
+          ;;
+        "program")
+          programOptions="--base --image --shell --user -u --revert-to-golden ${commonSubCommands}"
+          _command_word_xbmgmt_completion "${programOptions}"
+          ;;
+        "reset")
+          resetOptions="${commonSubCommands}"
+          _command_word_xbmgmt_completion "${resetOptions}"
+          ;;
+        # Return an empty reply if an invalid command is entered
+        *)
+          ;;
+      esac
+      ;;
+  esac
+}
+
+complete -F _xbmgmt_completion xbmgmt
+echo Autocomplete enabled for the xbmgmt command
+
+# ex: filetype=sh

@@ -366,7 +366,7 @@ set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSIO
 # With x86 sw_emu support of AIE, XRT_AIE_BUILD is defined even on x86
 # so the condition is strengthen to include native build not defined,
 # which is same condition that compiles edge.
-if (DEFINED XRT_AIE_BUILD AND NOT DEFINED XRT_NATIVE_BUILD)
+if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   # AIE Profile plugin
   add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)

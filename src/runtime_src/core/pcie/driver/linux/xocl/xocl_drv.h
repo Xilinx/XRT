@@ -2102,7 +2102,7 @@ struct xocl_xgq_funcs {
 #define	xocl_download_apu_firmware(xdev) 			\
 	(XGQ_CB(xdev, xgq_download_apu_firmware) ?		\
 	XGQ_OPS(xdev)->xgq_download_apu_firmware(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_vmr_enable_multiboot(xdev) 				\
+#define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
 
