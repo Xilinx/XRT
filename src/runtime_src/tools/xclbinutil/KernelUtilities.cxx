@@ -292,7 +292,7 @@ void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
         throw std::runtime_error("Error: Memory tag '" + memoryConnection + "' not found in the MEM_TOPOLOGY section.");
 
       // We have a match
-      unsigned int memIndex = std::distance(memTopology.begin(), iter);
+      uint64_t memIndex = std::distance(memTopology.begin(), iter);
       boost::property_tree::ptree ptEntry;
       ptEntry.put("arg_index", std::to_string(argIndexID));
       ptEntry.put("m_ip_layout_index", std::to_string(ipLayoutIndexID));

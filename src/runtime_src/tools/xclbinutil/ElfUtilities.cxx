@@ -23,6 +23,13 @@
 #include <boost/algorithm/string/split.hpp> 
 #include <boost/filesystem.hpp>
 
+#include <array>
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+
 namespace XUtil = XclBinUtilities;
 
 
