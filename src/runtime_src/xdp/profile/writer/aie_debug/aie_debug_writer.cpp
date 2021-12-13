@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,10 +22,10 @@
 namespace xdp {
 
   AIEDebugWriter::AIEDebugWriter(const char* fileName,
-               const char* deviceName, uint64_t deviceIndex) :
-    VPWriter(fileName),
-    mDeviceName(deviceName),
-    mDeviceIndex(deviceIndex)
+               const char* deviceName, uint64_t deviceIndex)
+    : VPWriter(fileName)
+    , mDeviceName(deviceName)
+    , mDeviceIndex(deviceIndex)
   {
   }
 
@@ -38,15 +38,13 @@ namespace xdp {
     refreshFile();
 
     auto xrtDevice = xrt::device((int)mDeviceIndex);
-    //auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
-    //auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aieshim>();
-    //fout << aieInfoStr << std::endl;
-    //fout << aieShimInfoStr << std::endl;
+    auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+    auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    fout << aieInfoStr << std::endl;
+    fout << aieShimInfoStr << std::endl;
 
-    auto hostStr = xrtDevice.get_info<xrt::info::device::host>();
-    fout << hostStr << std::endl;
-
-    if (openNewFile) switchFiles();
+    if (openNewFile)
+      switchFiles();
     return true;
   }
 

@@ -215,8 +215,8 @@ inline unsigned int
 get_aie_status_interval_us()
 {
   // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000) ;
-  return value ;
+  static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000);
+  return value;
 }
 
 inline bool
@@ -377,6 +377,13 @@ inline std::string
 get_aie_profile_memory_metrics()
 {
   static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
+  return value;
+}
+
+inline std::string
+get_aie_profile_shim_metrics()
+{
+  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "bandwidths");
   return value;
 }
 
