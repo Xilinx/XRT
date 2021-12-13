@@ -37,8 +37,8 @@
 #include <stdlib.h>
 
 // Constant data
-static const std::string MIRROR_DATA_START("XCLBIN_MIRROR_DATA_START");
-static const std::string MIRROR_DATA_END("XCLBIN_MIRROR_DATA_END");
+static const std::string mirroDataStart("XCLBIN_MIRROR_DATA_START");
+static const std::string mirrorDataEnd("XCLBIN_MIRROR_DATA_END");
 
 namespace XUtil = XclBinUtilities;
 
@@ -105,9 +105,8 @@ void
 XclBin::printSections(std::ostream& _ostream) const
 {
   XUtil::TRACE("Printing Section Header(s)");
-  for (Section* pSection : m_sections) {
+  for (const auto pSection : m_sections) 
     pSection->printHeader(_ostream);
-  }
 }
 
 void
@@ -334,9 +333,9 @@ void
 XclBin::writeXclBinBinaryMirrorData(std::ostream& _ostream,
                                     const boost::property_tree::ptree& _mirroredData) const
 {
-  _ostream << MIRROR_DATA_START;
+  _ostream << mirroDataStart;
   boost::property_tree::write_json(_ostream, _mirroredData, false /*Pretty print*/);
-  _ostream << MIRROR_DATA_END;
+  _ostream << mirrorDataEnd;
 
   XUtil::TRACE_PrintTree("Mirrored Data", _mirroredData);
 }
@@ -465,9 +464,9 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   // Find start of buffer
   _istream.seekg(0);
   unsigned int startOffset = 0;
-  if (XUtil::findBytesInStream(_istream, MIRROR_DATA_START, startOffset) == true) {
+  if (XUtil::findBytesInStream(_istream, mirroDataStart, startOffset) == true) {
     XUtil::TRACE(XUtil::format("Found MIRROR_DATA_START at offset: 0x%lx", startOffset));
-    startOffset += (unsigned int)MIRROR_DATA_START.length();
+    startOffset += (unsigned int)mirroDataStart.length();
   }  else {
     std::string errMsg;
     errMsg  = "ERROR: Mirror backup data not found in given file.\n";
@@ -482,7 +481,7 @@ XclBin::findAndReadMirrorData(std::fstream& _istream, boost::property_tree::ptre
   // Find end of buffer (continue where we left off)
   _istream.seekg(startOffset);
   unsigned int bufferSize = 0;
-  if (XUtil::findBytesInStream(_istream, MIRROR_DATA_END, bufferSize) == true) {
+  if (XUtil::findBytesInStream(_istream, mirrorDataEnd, bufferSize) == true) {
     XUtil::TRACE(XUtil::format("Found MIRROR_DATA_END.  Buffersize: 0x%lx", bufferSize));
   }  else {
     std::string errMsg = "ERROR: Mirror backup data not well formed in given file.";
@@ -872,7 +871,7 @@ XclBin::updateHeaderFromSection(Section* _pSection)
     boost::property_tree::ptree ptDsa;
     ptDsa = pt.get_child("build_metadata.dsa");
 
-    std::vector<boost::property_tree::ptree> feature_roms = XUtil::as_vector<boost::property_tree::ptree>(ptDsa, "feature_roms");
+    auto feature_roms = XUtil::as_vector<boost::property_tree::ptree>(ptDsa, "feature_roms");
 
     boost::property_tree::ptree featureRom;
     if (!feature_roms.empty()) {
@@ -1388,7 +1387,7 @@ XclBin::dumpSections(ParameterSectionData& _PSD)
   switch (_PSD.getFormatType()) {
     case Section::FT_JSON: {
         boost::property_tree::ptree pt;
-        for (auto pSection : m_sections) {
+        for (const auto pSection : m_sections) {
           std::string sectionName = pSection->getSectionKindAsString();
           XUtil::TRACE(std::string("Examining: '") + sectionName + "'");
           pSection->getPayload(pt);
@@ -1562,7 +1561,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
 
     XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
     boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
-    std::vector<boost::property_tree::ptree> keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+    auto keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
 
     // Update existing key
     bool bKeyFound = false;
@@ -1586,7 +1585,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
 
     // Now create a new tree to add back into the section
     boost::property_tree::ptree ptKeyValuesNew;
-    for (auto keyvalue : keyValues) {
+    for (const auto keyvalue : keyValues) {
       ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
     }
 
@@ -1622,7 +1621,7 @@ XclBin::removeKey(const std::string& _sKey)
 
   XUtil::TRACE_PrintTree("KEYVALUE:", ptKeyValueMetadata);
   boost::property_tree::ptree ptKeyValues = ptKeyValueMetadata.get_child("keyvalue_metadata");
-  std::vector<boost::property_tree::ptree> keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
+  auto keyValues = XUtil::as_vector<boost::property_tree::ptree>(ptKeyValues, "key_values");
 
   // Update existing key
   bool bKeyFound = false;
@@ -1642,7 +1641,7 @@ XclBin::removeKey(const std::string& _sKey)
 
   // Now create a new tree to add back into the section
   boost::property_tree::ptree ptKeyValuesNew;
-  for (auto keyvalue : keyValues) {
+  for (const auto &keyvalue : keyValues) {
     ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
   }
 
@@ -1685,16 +1684,16 @@ parsePSKernelString(const std::string& encodedString,
   std::vector<std::string> tokens;
 
   // Parse the string until the entire string has been parsed or MAX_TOKENS tokens have been found
-  constexpr size_t MAX_TOKENS = 3;
+  constexpr size_t maxTokens = 3;
   while ((lastPos < encodedString.length() + 1) &&
-         (tokens.size() < MAX_TOKENS)) {
+         (tokens.size() < maxTokens)) {
     pos = encodedString.find_first_of(delimiters, lastPos);
 
     // Update the substring end to be at then end of the encodedString if:
     // a. No more delimiters were found.
     // b. The last known 'token' is being parsed. 
     if ((pos == std::string::npos) ||
-        (tokens.size() == MAX_TOKENS-1)) {
+        (tokens.size() == maxTokens-1)) {
       pos = encodedString.length();
     }
 
@@ -1792,8 +1791,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   parsePSKernelString(encodedString, symbolicName, numInstances, kernelLibrary);
 
   // Examine the PS library data mining the function and its arguments
-  std::vector<std::string> functionSigs;
-  XUtil::dataMineExportedFunctions(kernelLibrary, functionSigs);
+  std::vector<std::string> functionSigs = XUtil::dataMineExportedFunctions(kernelLibrary);
 
   // Convert the function signatures into something useful.
   boost::property_tree::ptree ptFunctions;
@@ -1808,7 +1806,7 @@ XclBin::addPsKernel(const std::string& encodedString)
   const boost::property_tree::ptree ptEmpty;  
 
   const boost::property_tree::ptree ptKernels = ptPSKernels.get_child("ps-kernels", ptEmpty);
-  std::vector<boost::property_tree::ptree> kernels = XUtil::as_vector<boost::property_tree::ptree>(ptKernels, "kernels");
+  auto kernels = XUtil::as_vector<boost::property_tree::ptree>(ptKernels, "kernels");
 
   if (kernels.empty()) {
     std::string errMsg = "ERROR: No kernels found in the kernel library file: " + kernelLibrary;
@@ -1891,7 +1889,7 @@ XclBin::addKernels(const std::string& jsonFile)
 
   // Get the kernels from the property_tree
   const boost::property_tree::ptree ptKernels = ptFixKernels.get_child("ps-kernels", ptEmpty);
-  std::vector<boost::property_tree::ptree> kernels = XUtil::as_vector<boost::property_tree::ptree>(ptKernels, "kernels");
+  auto kernels = XUtil::as_vector<boost::property_tree::ptree>(ptKernels, "kernels");
   if (kernels.empty()) {
     std::string errMsg = "ERROR: No kernels found in the JSON file: " + jsonFile;
     throw std::runtime_error(errMsg);

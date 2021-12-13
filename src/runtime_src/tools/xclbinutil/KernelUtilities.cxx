@@ -146,7 +146,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    size_t argSize = getTypeSize(argType, isFixedPS);
+    auto argSize = getTypeSize(argType, isFixedPS);
 
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
@@ -338,13 +338,13 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
   // Transform the sections into something more manageable
   boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout");
-  std::vector<boost::property_tree::ptree> ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
+  auto ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
   const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology");
-  std::vector<boost::property_tree::ptree> memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
+  auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
 
   boost::property_tree::ptree& ptConnectivity = ptConnectivityRoot.get_child("connectivity");
-  std::vector<boost::property_tree::ptree> connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
+  auto connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
 
   // -- Create the kernel instances
   for (const auto& instance: ptKernel.get_child("instances", ptEmpty)) {
@@ -394,7 +394,7 @@ transposeFunction(const std::string& functionSig, boost::property_tree::ptree& p
     throw std::runtime_error("Error: No function found to transform to a property_tree.");
 
   // Discover the function name
-  std::size_t startArgs = functionSig.find("(");
+  auto startArgs = functionSig.find("(");
   if (startArgs == std::string::npos)
     throw std::runtime_error("Error: Function signature not formed correctly, missing opening parenthesis '(': '" + functionSig + "'");
 
@@ -414,7 +414,7 @@ transposeFunction(const std::string& functionSig, boost::property_tree::ptree& p
   ptFunction.put("type", functionType);
 
   // Discover the arguments
-  std::size_t endArgs = functionSig.find(")");
+  auto endArgs = functionSig.find(")");
   if (startArgs == std::string::npos)
     throw std::runtime_error("Error: Function signature not formed correctly, missing ending parenthesis ')(': '" + functionSig + "'");
 
@@ -497,14 +497,14 @@ validateSignature(std::vector<boost::property_tree::ptree> functions,
                              "        Actual: '" + name + "'");
 
   // Validate arguments
-  std::vector<boost::property_tree::ptree> args = XUtil::as_vector<boost::property_tree::ptree>(ptFunction, "args");
+  auto args = XUtil::as_vector<boost::property_tree::ptree>(ptFunction, "args");
   if (args.size() != expectedArgs.size())
     throw std::runtime_error("Error: " + ptFunction.get<std::string>("type") + " kernel signature argument count mismatch.\n"
                              "Shared Library: '" + kernelLibrary + "'\n"
                              "      Expected: '" + name + "(" + boost::algorithm::join(expectedArgs, ", ") + ")'\n"
                              "        Actual: '" + ptFunction.get<std::string>("signature", "") + "'");
 
-  for (size_t index = 0; index < expectedArgs.size(); ++index) {
+  for (std::size_t index = 0; index < expectedArgs.size(); ++index) {
     if (expectedArgs[index] != args[index].get<std::string>("type", "")) {
       throw std::runtime_error("Error: Argument mismatch.\n"
                                "Shared Library: '" + kernelLibrary + "'\n"
@@ -522,7 +522,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
 {
   XUtil::TRACE_PrintTree("Validate ptFunctions", ptFunctions);
 
-  std::vector<boost::property_tree::ptree> functions = XUtil::as_vector<boost::property_tree::ptree>(ptFunctions, "functions");
+  auto functions = XUtil::as_vector<boost::property_tree::ptree>(ptFunctions, "functions");
 
   // Collect the functions
   std::vector<boost::property_tree::ptree> initKernels;
@@ -577,7 +577,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
   }
 
   // Validate kernel's last argument
-  std::vector<boost::property_tree::ptree> args = XUtil::as_vector<boost::property_tree::ptree>(kernels[0], "args");
+  auto args = XUtil::as_vector<boost::property_tree::ptree>(kernels[0], "args");
   if (args.back().get<std::string>("type") != "xrtHandles*")
     throw std::runtime_error("Error: Last kernel argument isn't a xrtHandle pointer."
                              "Shared Library: '" + kernelLibrary + "'\n"
@@ -594,8 +594,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
                                         boost::property_tree::ptree& ptPSKernels)
 {
   // Find the PS kernel entry
-  std::vector<boost::property_tree::ptree> functions = XUtil::as_vector<boost::property_tree::ptree>(ptFunctions, "functions");
-
+  auto functions = XUtil::as_vector<boost::property_tree::ptree>(ptFunctions, "functions");
 
   boost::property_tree::ptree ptKernelArray;
   for (const auto& ptFunction : functions) {
@@ -607,7 +606,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     ptKernel.put("name", ptFunction.get<std::string>("name"));
 
     // Gather arguments
-    std::vector<boost::property_tree::ptree> args = XUtil::as_vector<boost::property_tree::ptree>(ptFunction, "args");
+    auto args = XUtil::as_vector<boost::property_tree::ptree>(ptFunction, "args");
     boost::property_tree::ptree ptArgArray;
     uint64_t offset = 0;
     for (const auto& entry : args) {
@@ -645,7 +644,7 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     boost::property_tree::ptree ptInstanceArray;
     for (unsigned long instance = 0; instance < numInstances; ++instance) {
       boost::property_tree::ptree ptInstance;
-      ptInstance.put("name", std::to_string(instance));
+      ptInstance.put("name", "scu_" + std::to_string(instance));
       ptInstanceArray.push_back(std::make_pair("", ptInstance));
     }
     ptKernel.add_child("instances", ptInstanceArray);

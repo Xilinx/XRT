@@ -20,37 +20,16 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp> 
+#include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp> 
-#include <boost/filesystem.hpp>
+#include <boost/process.hpp>
+#include <boost/format.hpp>
 
-#include <array>
-#include <cstdio>
-#include <iostream>
-#include <memory>
-#include <stdexcept>
-#include <string>
 
 namespace XUtil = XclBinUtilities;
 
-
-std::string exec(const std::string cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) 
-      throw std::runtime_error("Error: The OS command failed: " + cmd);
-
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-    return result;
-}
-
-
-
-void 
-dataMindExportedFunctionsObjdump(const std::string &elfLibrary, 
-                                 std::vector<std::string> &kernelSignatures) {
+std::vector<std::string> 
+dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
   // Sample output being parsed: 
   // /proj/xcohdstaff1/stephenr/github/XRT/WIP/src/runtime_src/tools/xclbinutil/unittests/PSKernel/pskernel.so:     file format elf64-little
   // DYNAMIC SYMBOL TABLE:
@@ -65,24 +44,38 @@ dataMindExportedFunctionsObjdump(const std::string &elfLibrary,
   // 0000000000003ac4 g    DF .text  00000000000001e8  Base        kernel0_init(void*, unsigned char const*)
 
   // Call objdump to get the collection of functions
-  std::string cmd = "objdump --wide --section=.text -T -C " + elfLibrary;
-  const std::string output = exec(cmd);
+  auto objdumpPath = boost::process::search_path("objdump");
 
+  const std::string expectedObjdumpPath = "/usr/bin/objdump";
+
+  if (objdumpPath.string() != expectedObjdumpPath) 
+    std::cout << boost::format("Warning: Unexpected objdump path.\n"
+                               "         Expected: %s\n"
+                               "           Actual: %s\n") % expectedObjdumpPath % objdumpPath.string();
+
+
+  const std::vector<std::string> cmdOptions = {"--wide", "--section=.text", "-T", "-C", elfLibrary};
+  std::ostringstream os_stdout;
+  std::ostringstream os_stderr;
+  XUtil::exec(objdumpPath, cmdOptions, true /*throw exception*/, os_stdout, os_stdout);
+                                                                                      
   std::vector<std::string> entries;
+  std::string output = os_stdout.str();
   boost::split(entries, output, boost::is_any_of("\n"), boost::token_compress_on);
 
   // Look for the following function attributes in the '.text' section
   // g - Global
   // F - Function
+  std::vector<std::string> kernelSignatures;
 
-  for (auto entry : entries) {
+  for (const auto &entry : entries) {
     // Look for the ' .text' entry.
-    std::size_t textIndex = entry.find(" .text");
+    auto textIndex = entry.find(" .text");
     if (textIndex == std::string::npos)
       continue;
 
     // Examine the flags looking for a global function.
-    std::size_t flagIndex = entry.find(" ");
+    auto flagIndex = entry.find(" ");
     if (flagIndex == std::string::npos) 
       throw std::runtime_error("Error: Could not find the start of the flag section: " + entry);
 
@@ -94,7 +87,7 @@ dataMindExportedFunctionsObjdump(const std::string &elfLibrary,
       continue;
 
     // Find and record the function signature
-    std::size_t baseIndex = entry.find("Base");
+    auto baseIndex = entry.find("Base");
     if (baseIndex == std::string::npos) 
       throw std::runtime_error("Error: Missing base entry: " + entry);
 
@@ -103,22 +96,22 @@ dataMindExportedFunctionsObjdump(const std::string &elfLibrary,
 
     kernelSignatures.push_back(functionSig);
   }
+  return kernelSignatures;
 }
 
 
 
-void 
-XclBinUtilities::dataMineExportedFunctions(const std::string &elfLibrary, 
-                                           std::vector<std::string> &kernelSignatures) {
-  // Initialize output data to a known state
-  kernelSignatures.clear();
-
+std::vector<std::string> 
+XclBinUtilities::dataMineExportedFunctions(const std::string &elfLibrary) {
   if ( !boost::filesystem::exists( elfLibrary ) )
     throw std::runtime_error("Error: The PS library file does not exist: '" + elfLibrary + "'");
 
   // Data mine the ELF file
-  dataMindExportedFunctionsObjdump(elfLibrary, kernelSignatures);
+  std::vector<std::string> kernelSignatures = dataMineExportedFunctionsObjdump(elfLibrary);
+
   if (kernelSignatures.empty())
     throw std::runtime_error("Error: No global exported functions were found in the library: '" + elfLibrary + "'");
+
+  return kernelSignatures;
 }
 

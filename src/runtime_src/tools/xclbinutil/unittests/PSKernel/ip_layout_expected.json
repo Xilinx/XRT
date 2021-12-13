@@ -14,7 +14,7 @@
                 "m_type": "IP_PS_KERNEL",
                 "properties": "0x0",
                 "m_base_address": "not_used",
-                "m_name": "kernel0:0"
+                "m_name": "kernel0:scu_0"
             }
         ]
     }

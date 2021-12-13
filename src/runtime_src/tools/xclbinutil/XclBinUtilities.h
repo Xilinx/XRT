@@ -19,15 +19,18 @@
 
 // Include files
 #include "xclbin.h"
-#include <string>
+
+#include <boost/filesystem.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <sstream>
-#include <fstream>
-#include <boost/property_tree/ptree.hpp>
-
-#include <iostream>
+#include <sstream>
 #include <stdint.h>
+#include <string>
 #include <vector>
+
 
 class XclBin;
 
@@ -152,6 +155,7 @@ uint64_t stringToUInt64(const std::string& _sInteger, bool _bForceHex = false);
 void printKinds();
 std::string getUUIDAsString( const unsigned char (&_uuid)[16] );
 
+int exec(const boost::filesystem::path &cmd, const std::vector<std::string> &args, bool bThrow, std::ostringstream & os_stdout, std::ostringstream & os_stderr);
 void write_htonl(std::ostream & _buf, uint32_t _word32);
 
 void createMemoryBankGrouping(XclBin & xclbin);

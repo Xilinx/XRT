@@ -24,7 +24,7 @@
 
 namespace XclBinUtilities {
 
-void dataMineExportedFunctions(const std::string& elfLibrary, std::vector<std::string>& kernelSignatures);
+std::vector<std::string> dataMineExportedFunctions(const std::string& elfLibrary);
 
 };
 
