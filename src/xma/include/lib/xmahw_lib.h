@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 //#include "lib/xmacfg.h"
+#include "core/include/experimental/xrt_bo.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 #include "app/xmaparam.h"
@@ -224,25 +225,13 @@ typedef struct XmaHwSessionPrivate
 typedef struct XmaBufferObjPrivate
 {
     void*    dummy;
-    uint64_t size;
-    uint64_t paddr;
-    int32_t  bank_index;
-    int32_t  dev_index;
-    xclBufferHandle boHandle;
+    xrt::bo  xrt_bo;
     std::atomic<int32_t> ref_cnt;
-    bool     device_only_buffer;
-    xclDeviceHandle dev_handle;
     uint32_t reserved[4];
 
   XmaBufferObjPrivate() {
-   dummy = NULL;
-   size = 0;
-   bank_index = -1;
-   dev_index = -1;
-   ref_cnt = 0;
-   dev_handle = NULL;
-   device_only_buffer = false;
-   boHandle = 0;
+   dummy = NULL;  
+   ref_cnt = 0;  
   }
 } XmaBufferObjPrivate;
 
@@ -337,7 +326,7 @@ typedef struct XmaHwDevice
 {
     //char        dsa[MAX_DSA_NAME];
     xclDeviceHandle    handle;
-    xclDeviceInfo2     info;
+    //xclDeviceInfo2     info;
     uint32_t           dev_index;
     uuid_t             uuid; 
     uint32_t           number_of_cus;

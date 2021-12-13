@@ -21,6 +21,7 @@
 #include "app/xmalogger.h"
 #include "app/xmaerror.h"
 #include "lib/xmahw_lib.h"
+#include "core/common/api/bo.h"
 //#include <cstdio>
 #include <iostream>
 #include <cstring>
@@ -144,7 +145,7 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
-    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+    if (b_obj->dev_index < 0 || xrt_core::bo::group_id(b_obj_priv->xrt_bo) < 0 || b_obj_priv->xrt_bo.size() <= 0) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
@@ -152,7 +153,7 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
-    if (!b_obj_priv->dev_handle) {
+    if (!xrt_core::bo::device_handle(b_obj_priv->xrt_bo)) {
         xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
         return XMA_ERROR;
     }
@@ -226,12 +227,7 @@ xma_device_buffer_free(XmaBufferObj *b_obj)
         return;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
-
-    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
-    b_obj_priv->dummy = nullptr;
-    b_obj_priv->size = -1;
-    b_obj_priv->bank_index = -1;
-    b_obj_priv->dev_index = -1;
+    b_obj_priv->dummy = nullptr;  
     free(b_obj_priv);
     b_obj->data = nullptr;
     b_obj->size = -1;

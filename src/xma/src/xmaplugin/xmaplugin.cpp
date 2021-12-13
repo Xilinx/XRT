@@ -21,12 +21,14 @@
 #include "lib/xmaapi.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
+#include "core/common/api/bo.h"
 
 #include <cstdio>
 #include <iostream>
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <algorithm>
 using namespace std;
 
 static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be <= sizeof int32_t");
@@ -35,24 +37,18 @@ static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be 
 extern XmaSingleton *g_xma_singleton;
 
 int32_t create_bo(xclDeviceHandle dev_handle, XmaBufferObj& b_obj, uint32_t size, uint32_t ddr_bank, 
-    bool device_only_buffer, xclBufferHandle& b_obj_handle) {
+    bool device_only_buffer, xrt::bo& xrt_bo_obj) {
     if (device_only_buffer) {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, XCL_BO_FLAGS_DEV_ONLY | ddr_bank);
+        xrt::bo::flags flags = xrt::bo::flags::device_only;
+        xrt_bo_obj = xrt::bo(dev_handle, size, flags, ddr_bank);
         b_obj.device_only_buffer = true;
     } else {
-        b_obj_handle = xclAllocBO(dev_handle, size, 0, ddr_bank);
-    }
-
-    struct xclBOProperties bop = {0};
-    if (xclGetBOProperties(dev_handle, b_obj_handle, &bop) != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed to get BO properties");
-        xclFreeBO(dev_handle, b_obj_handle);
-        return XMA_ERROR;
-    }
-    b_obj.paddr = bop.paddr;
-
+        xrt_bo_obj = xrt::bo(dev_handle, size, ddr_bank);
+    }        
+    b_obj.paddr = xrt_bo_obj.address();
     if (!device_only_buffer) {
-        b_obj.data = (uint8_t*) xclMapBO(dev_handle, b_obj_handle, true);
+        b_obj.data = xrt_bo_obj.map<uint8_t*>();
+	    std::fill(b_obj.data, b_obj.data + size, 0);
     }
     return XMA_SUCCESS;
 }
@@ -66,9 +62,7 @@ void cmd_obj_default(XmaCUCmdObj& cmd_obj) {
     cmd_obj.do_not_use1 = nullptr;
 }
 
-XmaBufferObj
-xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
-{
+XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool device_only_buffer, uint32_t ddr_bank ,int32_t* return_code) {
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
@@ -83,31 +77,67 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
     //b_obj.ref_cnt = 0;
     b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = nullptr;
+    b_obj.private_do_not_touch = nullptr;   
+
+    if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    XmaHwSessionPrivate* priv1 = (XmaHwSessionPrivate*)s_handle.hw_session.private_do_not_use;
+    xclDeviceHandle dev_handle = priv1->dev_handle;
+    
+    //uint32_t ddr_bank = s_handle.hw_session.bank_index;
+    b_obj.bank_index = ddr_bank;
+    b_obj.size = size;
+    b_obj.dev_index = s_handle.hw_session.dev_index;
+
+    if (s_handle.session_type >= XMA_ADMIN) {
+        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma plugin buffer allocation can not be used for this XMASession type");
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+    
+    xrt::bo b_obj_handle;
+    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
+        if (return_code) *return_code = XMA_ERROR;
+        return b_obj_error;
+    }
+
+    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
+    b_obj.private_do_not_touch = (void*)tmp1;
+    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
+    tmp1->xrt_bo = b_obj_handle;
+
+    if (return_code) *return_code = XMA_SUCCESS;
+    return b_obj;
+}
+
+XmaBufferObj
+xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
+{
+    XmaBufferObj b_obj_error;
+    b_obj_error.data = nullptr;
+    //b_obj_error.ref_cnt = 0;
+    b_obj_error.size = 0;
+    b_obj_error.paddr = 0;
+    b_obj_error.bank_index = -1;
+    b_obj_error.dev_index = -1;
+    b_obj_error.device_only_buffer = false;
+    b_obj_error.private_do_not_touch = nullptr;
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    xclDeviceHandle dev_handle = priv1->dev_handle;
-    uint32_t ddr_bank = s_handle.hw_session.bank_index;
-    b_obj.bank_index = ddr_bank;
-    b_obj.size = size;
-    b_obj.dev_index = s_handle.hw_session.dev_index;
 
-    if (s_handle.session_type >= XMA_ADMIN) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession type");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
+    uint32_t ddr_bank = s_handle.hw_session.bank_index;
     if (s_handle.hw_session.bank_index < 0) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc can not be used for this XMASession as kernel not connected to any DDR");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-
     //Also check that libxmaapi is linked and loaded. As libxmaplugin can not be used without loading libxmaapi
     //Here it is cheap test rather than checking in other APIs
     if (!g_xma_singleton) {
@@ -115,31 +145,12 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-
-    xclBufferHandle b_obj_handle = 0;
-    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-
-    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
-    b_obj.private_do_not_touch = (void*) tmp1;
-    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
-    tmp1->size = size;
-    tmp1->paddr = b_obj.paddr;
-    tmp1->bank_index = b_obj.bank_index;
-    tmp1->dev_index = b_obj.dev_index;
-    tmp1->boHandle = b_obj_handle;
-    tmp1->device_only_buffer = b_obj.device_only_buffer;
-    tmp1->dev_handle = dev_handle;
-
-    if (return_code) *return_code = XMA_SUCCESS;
-    return b_obj;
+    return create_xma_buffer_object(s_handle, size, device_only_buffer, ddr_bank, return_code);
 }
 
-XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t arg_num, int32_t* return_code)
+XmaBufferObj
+xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t arg_num, int32_t* return_code)
 {
-    XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
@@ -149,70 +160,34 @@ XmaBufferObj xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = nullptr;
-    b_obj_error.user_ptr = nullptr;
-    b_obj.data = nullptr;
-    //b_obj.ref_cnt = 0;
-    b_obj.user_ptr = nullptr;
-    b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = nullptr;
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    xclDeviceHandle dev_handle = priv1->dev_handle;
-    uint32_t ddr_bank = s_handle.hw_session.bank_index;
-    b_obj.bank_index = ddr_bank;
-    b_obj.size = size;
-    b_obj.dev_index = s_handle.hw_session.dev_index;
-
-    if (s_handle.session_type >= XMA_ADMIN) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num can not be used for this XMASession type");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-
+    XmaHwSessionPrivate* priv1 = (XmaHwSessionPrivate*)s_handle.hw_session.private_do_not_use;
     XmaHwKernel* kernel_info = priv1->kernel_info;
+    uint32_t ddr_bank = -1;
     if (arg_num < 0) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: arg_num is invalid, using default session ddr_bank.");
-    } else {
+    }
+    else {
         auto arg_to_mem_itr1 = kernel_info->CU_arg_to_mem_info.find(arg_num);
         if (arg_to_mem_itr1 == kernel_info->CU_arg_to_mem_info.end()) {
             xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: arg_num is not connected to any DDR bank, using default session ddr_bank.");
-        } else {
-            ddr_bank = arg_to_mem_itr1->second;
-            b_obj.bank_index = ddr_bank;
+        }
+        else {
+            ddr_bank = arg_to_mem_itr1->second;            
             xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num: Using ddr_bank# %d connected to arg_num# %d.", ddr_bank, arg_num);
         }
     }
-
-    xclBufferHandle b_obj_handle = 0;
-    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-
-    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
-    b_obj.private_do_not_touch = (void*) tmp1;
-    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
-    tmp1->size = size;
-    tmp1->paddr = b_obj.paddr;
-    tmp1->bank_index = b_obj.bank_index;
-    tmp1->dev_index = b_obj.dev_index;
-    tmp1->boHandle = b_obj_handle;
-    tmp1->device_only_buffer = b_obj.device_only_buffer;
-    tmp1->dev_handle = dev_handle;
-
-    if (return_code) *return_code = XMA_SUCCESS;
-    return b_obj;
+    return create_xma_buffer_object(s_handle, size, device_only_buffer, ddr_bank, return_code);
 }
 
 XmaBufferObj
 xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t ddr_index, int32_t* return_code)
 {
-    XmaBufferObj b_obj;
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
@@ -222,43 +197,27 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = nullptr;
-    b_obj_error.user_ptr = nullptr;
-    b_obj.data = nullptr;
-    //b_obj.ref_cnt = 0;
-    b_obj.user_ptr = nullptr;
-    b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = nullptr;
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-    XmaHwSessionPrivate *priv1 = (XmaHwSessionPrivate*) s_handle.hw_session.private_do_not_use;
-    xclDeviceHandle dev_handle = priv1->dev_handle;
+    XmaHwSessionPrivate* priv1 = (XmaHwSessionPrivate*)s_handle.hw_session.private_do_not_use;
     uint32_t ddr_bank = ddr_index;
-    b_obj.bank_index = ddr_bank;
-    b_obj.size = size;
-    b_obj.dev_index = s_handle.hw_session.dev_index;
-
-    if (s_handle.session_type != XMA_ADMIN) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr can be used only for XMA_ADMIN session type");
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-
     //Use this lambda func to print ddr info
-    auto print_ddrs = [&](XmaLogLevelType log_level, XmaHwDevice     *device) {
+    auto print_ddrs = [&](XmaLogLevelType log_level, XmaHwDevice* device) {
         uint32_t tmp_int1 = 0;
-        for (auto& ddr: device->ddrs) {
+        for (auto& ddr : device->ddrs) {
             if (ddr.in_use) {
-                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: %lu KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
-            } else {
-                xma_logmsg(log_level, XMAPLUGIN_MOD,"\tMEM# %d - %s - size: UnUsed", tmp_int1, (char*)ddr.name);
+                xma_logmsg(log_level, XMAPLUGIN_MOD, "\tMEM# %d - %s - size: %lu KB", tmp_int1, (char*)ddr.name, ddr.size_kb);
+            }
+            else {
+                xma_logmsg(log_level, XMAPLUGIN_MOD, "\tMEM# %d - %s - size: UnUsed", tmp_int1, (char*)ddr.name);
             }
             tmp_int1++;
         }
-        return; 
+        return;
     };
 
     if ((uint32_t)ddr_index >= priv1->device->ddrs.size() || ddr_index < 0) {
@@ -273,26 +232,7 @@ xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buff
         if (return_code) *return_code = XMA_ERROR;
         return b_obj_error;
     }
-
-    xclBufferHandle b_obj_handle = 0;
-    if (create_bo(dev_handle, b_obj, size, ddr_bank, device_only_buffer, b_obj_handle) != XMA_SUCCESS) {
-        if (return_code) *return_code = XMA_ERROR;
-        return b_obj_error;
-    }
-
-    XmaBufferObjPrivate* tmp1 = new XmaBufferObjPrivate;
-    b_obj.private_do_not_touch = (void*) tmp1;
-    tmp1->dummy = (void*)(((uint64_t)tmp1) | signature);
-    tmp1->size = size;
-    tmp1->paddr = b_obj.paddr;
-    tmp1->bank_index = b_obj.bank_index;
-    tmp1->dev_index = b_obj.dev_index;
-    tmp1->boHandle = b_obj_handle;
-    tmp1->device_only_buffer = b_obj.device_only_buffer;
-    tmp1->dev_handle = dev_handle;
-
-    if (return_code) *return_code = XMA_SUCCESS;
-    return b_obj;
+    return create_xma_buffer_object(s_handle, size, device_only_buffer, ddr_bank, return_code);
 }
 
 int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
@@ -308,7 +248,7 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation");
         return XMA_ERROR;
     }
-    if (b_obj_priv->dev_index < 0 || b_obj_priv->bank_index < 0 || b_obj_priv->size <= 0) {
+    if (b_obj->dev_index < 0 || xrt_core::bo::group_id(b_obj_priv->xrt_bo) < 0 || b_obj_priv->xrt_bo.size() <= 0) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj failed allocation" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation");
         return XMA_ERROR;
@@ -318,7 +258,7 @@ int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.");
         return XMA_ERROR;
     }
-    if (b_obj_priv->dev_handle == NULL) {
+    if (xrt_core::bo::device_handle(b_obj_priv->xrt_bo) == NULL) {
         //std::cout << "ERROR: xma_device_buffer_free failed. XMABufferObj is corrupted" << std::endl;
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.");
         return XMA_ERROR;
@@ -336,14 +276,8 @@ xma_plg_buffer_free(XmaSession s_handle, XmaBufferObj b_obj)
     if (xma_check_device_buffer(&b_obj) != XMA_SUCCESS) {
         return;
     }
-    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    //xclDeviceHandle dev_handle = s_handle.hw_session.dev_handle;
-    xclUnmapBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, b_obj.data);
-    xclFreeBO(b_obj_priv->dev_handle, b_obj_priv->boHandle);
+    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;  
     b_obj_priv->dummy = nullptr;
-    b_obj_priv->size = -1;
-    b_obj_priv->bank_index = -1;
-    b_obj_priv->dev_index = -1;
     delete b_obj_priv;
 }
 
@@ -353,7 +287,7 @@ xma_plg_buffer_write(XmaSession s_handle,
                      size_t           size,
                      size_t           offset)
 {
-    int32_t rc;
+    //int32_t rc;
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. XMASession is corrupted.");
         return XMA_ERROR;
@@ -362,11 +296,12 @@ xma_plg_buffer_write(XmaSession s_handle,
         return XMA_ERROR;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv->device_only_buffer) {
+
+    if (xrt_core::bo::get_flags(b_obj_priv->xrt_bo) == xrt::bo::flags::device_only) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write skipped as it is device only buffer.");
         return XMA_SUCCESS;
     }
-    if (size + offset > b_obj_priv->size) {
+    if (size + offset > b_obj_priv->xrt_bo.size()) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. Can not write past end of buffer.");
         return XMA_ERROR;
     }
@@ -375,12 +310,7 @@ xma_plg_buffer_write(XmaSession s_handle,
         return XMA_SUCCESS;
     }
 
-    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
-    if (rc != 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_write failed. dev_index: %d. xclSyncBO failed. Check device logs for more info. Error: %d", b_obj_priv->dev_index, rc);
-        return XMA_ERROR;
-    }
-
+    b_obj_priv->xrt_bo.sync(XCL_BO_SYNC_BO_TO_DEVICE, size, offset);
     return XMA_SUCCESS;
 }
 
@@ -390,7 +320,7 @@ xma_plg_buffer_read(XmaSession s_handle,
                     size_t           size,
                     size_t           offset)
 {
-    int32_t rc;
+    //int32_t rc;
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. XMASession is corrupted.");
         return XMA_ERROR;
@@ -399,11 +329,11 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_ERROR;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj.private_do_not_touch;
-    if (b_obj_priv->device_only_buffer) {
+    if (xrt_core::bo::get_flags(b_obj_priv->xrt_bo) == xrt::bo::flags::device_only) {
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read skipped as it is device only buffer.");
         return XMA_SUCCESS;
     }
-    if (size + offset > b_obj_priv->size) {
+    if (size + offset > b_obj_priv->xrt_bo.size()) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. Can not read past end of buffer.");
         return XMA_ERROR;
     }
@@ -412,14 +342,7 @@ xma_plg_buffer_read(XmaSession s_handle,
         return XMA_SUCCESS;
     }
 
-    rc = xclSyncBO(b_obj_priv->dev_handle, b_obj_priv->boHandle, XCL_BO_SYNC_BO_FROM_DEVICE,
-                   size, offset);
-    if (rc != 0)
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_read failed. dev_index: %d. xclSyncBO failed. Check device logs for more info. Error: %d", b_obj_priv->dev_index, rc);
-        return XMA_ERROR;
-    }
-
+    b_obj_priv->xrt_bo.sync(XCL_BO_SYNC_BO_FROM_DEVICE, size, offset);
     return XMA_SUCCESS;
 }
 

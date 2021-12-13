@@ -892,6 +892,16 @@ group_id(const xrt::bo& bo)
   return bo.get_handle()->get_group_id();
 }
 
+xclDeviceHandle
+device_handle(const xrt::bo& bo) {
+    return bo.get_handle()->get_device()->get_device_handle();
+}
+
+xrt::bo::flags
+get_flags(const xrt::bo& bo) {
+    return bo.get_handle()->get_flags();
+}
+
 void
 fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
               size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)

@@ -45,6 +45,24 @@ address(xrtBufferHandle handle);
 int32_t
 group_id(const xrt::bo& bo);
 
+/**
+ * device_handle() - Get device handle from BO
+ *
+ * @bo:       Buffer object
+ * Return:    Device handle
+ */
+xclDeviceHandle
+device_handle(const xrt::bo& bo);
+
+/**
+ * get_flags() - Get flag from BO
+ *
+ * @bo:       Buffer object
+ * Return:    flag
+ */
+xrt::bo::flags 
+get_flags(const xrt::bo& bo);
+
 // Fill the ERT copy BO command packet
 XRT_CORE_COMMON_EXPORT
 void
