@@ -221,9 +221,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   } catch(...) { }
 
   std::string xclbinPath;
-  if(!logic_uuid.empty()) {
+  auto xclbin_location = _ptTest.get<std::string>("xclbin_directory", "");
+  if(!xclbin_location.empty()) {
+    xclbinPath = xclbin_location + xclbin;
+  }
+  else if(!logic_uuid.empty()) {
     xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, _ptTest);
-  } else {
+  } 
+  else {
     auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(_dev);
     xclbinPath = searchLegacyXclbin(vendor, name, xclbin, _ptTest);
   }
@@ -688,7 +693,11 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
     } catch(...) { }
 
     std::string xclbinPath;
-    if(!logic_uuid.empty()) {
+    auto xclbin_location = ptTest.get<std::string>("xclbin_directory", "");
+    if(!xclbin_location.empty()) {
+      xclbinPath = xclbin_location + xclbin;
+    }
+    else if(!logic_uuid.empty()) {
       xclbinPath = searchSSV2Xclbin(logic_uuid.front(), xclbin, ptTest);
     } else {
       auto vendor = xrt_core::device_query<xrt_core::query::pcie_vendor>(dev);
@@ -827,9 +836,14 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 {
   const std::vector<std::string> auxPwrRequiredDevice = { "VCU1525", "U200", "U250", "U280" };
 
-  std::string name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
-  uint64_t max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
-
+  std::string name;
+  uint64_t max_power = 0;
+  try {
+    name = xrt_core::device_query<xrt_core::query::xmc_board_name>(_dev);
+    max_power = xrt_core::device_query<xrt_core::query::max_power_level>(_dev);
+  }
+  catch (const xrt_core::query::exception&) { }
+  
   //check if device has aux power connector
   bool auxDevice = false;
   for (auto bd : auxPwrRequiredDevice) {
@@ -877,11 +891,12 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
 void
 scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  auto sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
+  std::string sc_ver;
   std::string exp_sc_ver = "";
   try{
-    exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
-  } catch(...) {}
+      sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(_dev);
+      exp_sc_ver = xrt_core::device_query<xrt_core::query::expected_sc_version>(_dev);
+  } catch(const xrt_core::query::exception& ) {}
 
   if (!exp_sc_ver.empty() && sc_ver.compare(exp_sc_ver) != 0) {
     logger(_ptTest, "Warning", "SC firmware mismatch");
@@ -1531,6 +1546,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
   std::string sOutput = "";
+  std::string xclbin_location;
   bool help = false;
 
   po::options_description commonOptions("Commmon Options");
@@ -1540,6 +1556,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
+    ("path,p", boost::program_options::value<decltype(xclbin_location)>(&xclbin_location), "Path to the directory containing validate xclbins")
     ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
@@ -1612,6 +1629,17 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     for (auto &userTestName : testsToRun)
       boost::algorithm::to_lower(userTestName);   // Lower case the string entry
 
+    // check if xclbin folder path is provided
+    if (!xclbin_location.empty()) {
+      XBU::verbose("Sub command: --path");
+      if (!boost::filesystem::exists(xclbin_location) || !boost::filesystem::is_directory(xclbin_location))
+        throw xrt_core::error((boost::format("Invalid directory path : '%s'") % xclbin_location).str());
+      if(xclbin_location.compare(".") == 0 || xclbin_location.compare("./") == 0)
+        xclbin_location = boost::filesystem::current_path().string();
+      if(xclbin_location.back() != '/')
+        xclbin_location.append("/");
+    }
+
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -1654,11 +1682,15 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if(testSuite[index].ptTest.get<bool>("explicit"))
         continue;
       testObjectsToRun.push_back(&testSuite[index]);
+      if(!xclbin_location.empty())
+        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
       continue;
     }
 
     if (testsToRun[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
+      if(!xclbin_location.empty())
+        testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
       // Only the first 3 should be processed
       if (index == 3)
         break;
@@ -1669,6 +1701,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
+        if(!xclbin_location.empty())
+          testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
         break;
       }
     }

@@ -194,17 +194,23 @@ read_electrical(const xrt_core::device * device)
     populate_sensor<xq::v0v9_int_vcc_vcu_millivolts, xq::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")));
   root.add_child("power_rails", sensor_array);
 
+  std::string max_power_watts;
   std::string power_watts;
+  std::string warning;
   try {
     auto power_level = xrt_core::device_query<xq::max_power_level>(device);
-    power_watts = lvl_to_power_watts(power_level);
+    max_power_watts = lvl_to_power_watts(power_level);
+    power_watts = xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xq::power_microwatts>(device));
+    warning = xq::power_warning::to_string(xrt_core::device_query<xq::power_warning>(device));
   }
-  catch (...) {
+  catch (const xq::exception&) {
+    max_power_watts = "N/A";
     power_watts = "N/A";
+    warning = "N/A";
   }
-  root.put("power_consumption_max_watts", power_watts);
-  root.put("power_consumption_watts", xrt_core::utils::format_base10_shiftdown6(xrt_core::device_query<xq::power_microwatts>(device)));
-  root.put("power_consumption_warning", xq::power_warning::to_string(xrt_core::device_query<xq::power_warning>(device)));
+  root.put("power_consumption_max_watts", max_power_watts);
+  root.put("power_consumption_watts", power_watts);
+  root.put("power_consumption_warning", warning);
   return root;
 }
 
