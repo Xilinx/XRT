@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 //#include "lib/xmacfg.h"
-#include "core/include/experimental/xrt_bo.h"
+#include "core/include/xrt/xrt_bo.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 #include "app/xmaparam.h"

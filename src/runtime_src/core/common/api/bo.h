@@ -51,6 +51,7 @@ group_id(const xrt::bo& bo);
  * @bo:       Buffer object
  * Return:    Device handle
  */
+//NOTE: will remove this function after migration of xclDeviceHandle to xrt::device in XMA codebase.
 xclDeviceHandle
 device_handle(const xrt::bo& bo);
 
