@@ -70,7 +70,9 @@ namespace xdp {
   {
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
-    getPollingInterval();
+
+    mIndex = 0;
+    mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
   AIEDebugPlugin::~AIEDebugPlugin()
@@ -85,12 +87,6 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
-  }
-
-  // Get polling interval (in usec; no minimum)
-  void AIEDebugPlugin::getPollingInterval()
-  {
-    mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
   // Get tiles to debug

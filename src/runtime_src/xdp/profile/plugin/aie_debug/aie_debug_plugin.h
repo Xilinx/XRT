@@ -52,13 +52,12 @@ namespace xdp {
 
   private:
     void getTilesForDebug(void* handle);
-    void getPollingInterval();
     void pollAIERegisters(uint32_t index, void* handle);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
 
   private:
-    uint32_t mIndex = 0;
+    uint32_t mIndex;
     uint32_t mPollingInterval;
 
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
