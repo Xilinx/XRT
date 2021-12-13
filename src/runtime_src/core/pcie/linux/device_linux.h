@@ -39,24 +39,30 @@ public:
   virtual void reset(query::reset_type&) const;
   virtual void xclmgmt_load_xclbin(const char* buffer) const;
 
+public:
   ////////////////////////////////////////////////////////////////
-  // Custom ip interrupt handling
-  // Redefined from xrt_core::ishim
+  // Custom ishim implementation
+  // Redefined from xrt_core::ishim for functions that are not
+  // universally implemented by all shims
   ////////////////////////////////////////////////////////////////
-  virtual xclInterruptNotifyHandle
-  open_ip_interrupt_notify(unsigned int ip_index);
+  xclInterruptNotifyHandle
+  open_ip_interrupt_notify(unsigned int ip_index) override;
   
-  virtual void
-  close_ip_interrupt_notify(xclInterruptNotifyHandle handle);
+  void
+  close_ip_interrupt_notify(xclInterruptNotifyHandle handle) override;
 
-  virtual void
-  enable_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  enable_ip_interrupt(xclInterruptNotifyHandle) override;
 
-  virtual void
-  disable_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  disable_ip_interrupt(xclInterruptNotifyHandle) override;
 
-  virtual void
-  wait_ip_interrupt(xclInterruptNotifyHandle);
+  void
+  wait_ip_interrupt(xclInterruptNotifyHandle) override;
+
+  xclBufferHandle
+  import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
+  ////////////////////////////////////////////////////////////////
 
 private:
   // Private look up function for concrete query::request
