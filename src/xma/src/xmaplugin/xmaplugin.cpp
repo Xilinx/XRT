@@ -62,8 +62,9 @@ void cmd_obj_default(XmaCUCmdObj& cmd_obj) {
     cmd_obj.do_not_use1 = nullptr;
 }
 
-XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool device_only_buffer, uint32_t ddr_bank ,int32_t* return_code) {
-    XmaBufferObj b_obj;
+XmaBufferObj
+create_error_bo()
+{
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
     //b_obj_error.ref_cnt = 0;
@@ -73,6 +74,12 @@ XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool de
     b_obj_error.dev_index = -1;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = nullptr;
+    return b_obj_error;
+}
+
+XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool device_only_buffer, uint32_t ddr_bank ,int32_t* return_code) {
+    XmaBufferObj b_obj;
+    XmaBufferObj b_obj_error = create_error_bo(); 
     b_obj.data = nullptr;
     //b_obj.ref_cnt = 0;
     b_obj.user_ptr = nullptr;
@@ -116,16 +123,7 @@ XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool de
 XmaBufferObj
 xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t* return_code)
 {
-    XmaBufferObj b_obj_error;
-    b_obj_error.data = nullptr;
-    //b_obj_error.ref_cnt = 0;
-    b_obj_error.size = 0;
-    b_obj_error.paddr = 0;
-    b_obj_error.bank_index = -1;
-    b_obj_error.dev_index = -1;
-    b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = nullptr;
-
+    XmaBufferObj b_obj_error = create_error_bo();
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
@@ -151,16 +149,7 @@ xma_plg_buffer_alloc(XmaSession s_handle, size_t size, bool device_only_buffer, 
 XmaBufferObj
 xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t arg_num, int32_t* return_code)
 {
-    XmaBufferObj b_obj_error;
-    b_obj_error.data = nullptr;
-    //b_obj_error.ref_cnt = 0;
-    b_obj_error.size = 0;
-    b_obj_error.paddr = 0;
-    b_obj_error.bank_index = -1;
-    b_obj_error.dev_index = -1;
-    b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = nullptr;
-
+    XmaBufferObj b_obj_error = create_error_bo();
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_arg_num failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
@@ -188,16 +177,7 @@ xma_plg_buffer_alloc_arg_num(XmaSession s_handle, size_t size, bool device_only_
 XmaBufferObj
 xma_plg_buffer_alloc_ddr(XmaSession s_handle, size_t size, bool device_only_buffer, int32_t ddr_index, int32_t* return_code)
 {
-    XmaBufferObj b_obj_error;
-    b_obj_error.data = nullptr;
-    //b_obj_error.ref_cnt = 0;
-    b_obj_error.size = 0;
-    b_obj_error.paddr = 0;
-    b_obj_error.bank_index = -1;
-    b_obj_error.dev_index = -1;
-    b_obj_error.device_only_buffer = false;
-    b_obj_error.private_do_not_touch = nullptr;
-
+    XmaBufferObj b_obj_error = create_error_bo();
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
         if (return_code) *return_code = XMA_ERROR;
