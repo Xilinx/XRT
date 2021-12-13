@@ -35,15 +35,13 @@ namespace debug {
 
   void register_callbacks(void* handle)
   {
-    typedef void (*ftype)(void*);
+    using ftype = void (*)(void*); // Device handle
 
-    update_device_cb = (ftype)(xrt_core::dlsym(handle, "updateAIEDebugDevice")) ;
-    if (xrt_core::dlerror() != NULL)
-      update_device_cb = nullptr;
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
+    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr;
 
-    end_poll_cb = (ftype)(xrt_core::dlsym(handle, "endAIEDebugPoll")) ;
-    if (xrt_core::dlerror() != NULL)
-      end_poll_cb = nullptr;
+    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugPoll"));
+    if (xrt_core::dlerror() != NULL) end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
