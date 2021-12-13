@@ -4,6 +4,7 @@ import argparse
 from argparse import RawDescriptionHelpFormatter
 import filecmp
 import json
+import binascii
 
 # Start of our unit test
 # -- main() -------------------------------------------------------------------
@@ -14,7 +15,7 @@ import json
 #       and classes have been defined and the syntax validated
 def main():
   # -- Configure the argument parser
-  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for the adding Fixed Kernels')
+  parser = argparse.ArgumentParser(formatter_class=RawDescriptionHelpFormatter, description='description:\n  Unit test wrapper for the adding PS Kernels')
   parser.add_argument('--resource-dir', nargs='?', default=".", help='directory containing data to be used by this unit test')
   args = parser.parse_args()
 
@@ -51,45 +52,75 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "1) Read in a fixed kernel, updated and validate the sections"
+  step = "1a) Create shared ps kernel library (compile objects)"
 
-  inputJSON = os.path.join(args.resource_dir, "fixed_kernel_add.json")
-  outputEmbeddedMetadata = "updated_embedded_metadata.xml"
+  # Note: This hex image was created from the pskernel.cpp file and converted
+  # to hex via the command
+  # xxd -p pskernel.so | tr -d ' \n' > pskernel.hex
+
+  psKernelSharedLibraryHex = os.path.join(args.resource_dir, "pskernel.hex")
+  psKernelSharedLibrary = "pskernel.so"
+
+  # Read in the hex array
+  with open(psKernelSharedLibraryHex) as file:
+      hexImage = file.read();
+
+  binImage = bytes.fromhex(hexImage[ : ])
+
+  with open(psKernelSharedLibrary, 'wb') as file:
+      file.write(binImage)
+
+  # ---------------------------------------------------------------------------
+
+  step = "2a) Read in a PS kernel, updated and validate the sections"
+
+  inputPSKernelLib = psKernelSharedLibrary
+  outputEmbeddedMetadata = "embedded_metadata_updated.xml"
   expectedEmbeddedMetadata = os.path.join(args.resource_dir, "embedded_metadata_expected.xml")
 
-  outputIpLayout = "updated_ip_layout.json"
+  outputIpLayout = "ip_layout_updated.json"
   expectedIpLayout = os.path.join(args.resource_dir, "ip_layout_expected.json")
 
-  outputConnectivity = "updated_connectivity.json"
+  outputConnectivity = "connectivity_updated.json"
   expectedConnectivity = os.path.join(args.resource_dir, "connectivity_expected.json")
 
-  outputGroupTopology = "updated_group_topology.json"
-  expectedGroupTopology = os.path.join(args.resource_dir, "group_topology_expected.json")
-
-  outputGroupConnectivity = "updated_group_connectivity.json"
-  expectedGroupConnectivity = os.path.join(args.resource_dir, "group_connectivity_expected.json")
+  outputMemTopology = "mem_topology_updated.json"
+  expectedMemTopology = os.path.join(args.resource_dir, "mem_topology_expected.json")
 
   outputXCLBIN = "pskernel_output.xclbin"
 
   cmd = [xclbinutil, "--input", workingXCLBIN,
-                     "--add-kernel", inputJSON, 
+                     "--add-pskernel", inputPSKernelLib, 
                      "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
                      "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
-                     "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
-                     "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
+                     "--dump-section", "MEM_TOPOLOGY:JSON:" + outputMemTopology,
                      "--output", outputXCLBIN, 
-                     "--force",
-                     "--trace"]
+                     "--force"
+                     ]
   execCmd(step, cmd)
 
   # Validate the contents of the various sections
   textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
   jsonFileCompare(outputIpLayout, expectedIpLayout)
   jsonFileCompare(outputConnectivity, expectedConnectivity)
-  jsonFileCompare(outputGroupTopology, expectedGroupTopology)
-  jsonFileCompare(outputGroupConnectivity, expectedGroupConnectivity)
+  jsonFileCompare(outputMemTopology, expectedMemTopology)
+
   # ---------------------------------------------------------------------------
+  # Validate the contents of the SoftKernel section
+
+  step = "2b) Validate the soft kernel section"
+
+  expectedKernelJSON = os.path.join(args.resource_dir, "pskernel_expected.json")
+  outputKernelJSON = "pskernel_output.json"
+  softKernelName = "kernel0"
+
+  cmd = [xclbinutil, "--input", outputXCLBIN, 
+                     "--dump-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + outputKernelJSON, 
+                     "--force"]
+  execCmd(step, cmd)
+
+  jsonFileCompare(expectedKernelJSON, outputKernelJSON)
 
 
   # If the code gets this far, all is good.

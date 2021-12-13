@@ -185,7 +185,8 @@ extern "C" {
         MEM_BRAM,
         MEM_URAM,
         MEM_STREAMING_CONNECTION,
-        MEM_HOST
+        MEM_HOST,
+        MEM_PS_KERNEL,
     };
 
     enum IP_TYPE {
