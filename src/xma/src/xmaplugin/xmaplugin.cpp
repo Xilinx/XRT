@@ -23,12 +23,14 @@
 #include "lib/xma_utils.hpp"
 #include "core/common/api/bo.h"
 
-#include <cstdio>
-#include <iostream>
-#include <cstring>
-#include <thread>
-#include <chrono>
 #include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <iostream>
+#include <thread>
+
+
 using namespace std;
 
 static_assert(sizeof(XmaCmdState) <= sizeof(int32_t), "XmaCmdState size must be <= sizeof int32_t");
@@ -81,10 +83,9 @@ XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool de
     XmaBufferObj b_obj;
     XmaBufferObj b_obj_error = create_error_bo(); 
     b_obj.data = nullptr;
-    //b_obj.ref_cnt = 0;
     b_obj.user_ptr = nullptr;
     b_obj.device_only_buffer = false;
-    b_obj.private_do_not_touch = nullptr;   
+    b_obj.private_do_not_touch = nullptr;
 
     if (xma_core::utils::check_xma_session(s_handle) != XMA_SUCCESS) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_buffer_alloc_ddr failed. XMASession is corrupted.");
