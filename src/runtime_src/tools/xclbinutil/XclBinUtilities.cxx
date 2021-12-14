@@ -1031,6 +1031,10 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
 
+#ifdef _WIN32
+#pragma warning (disable : 4244)    // Addresses Boost conversion Windows build warnings
+#endif
+
 int 
 XclBinUtilities::exec(const boost::filesystem::path &cmd,
                       const std::vector<std::string> &args,
@@ -1068,7 +1072,8 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
                                           % cmd.string() % boost::algorithm::join(args, " ")
                                           % os_stdout.str()
                                           % os_stderr.str());
-    throw std::runtime_error(errMsg);
+    if (bThrow) 
+      throw std::runtime_error(errMsg);
   }
 
   return exitCode;
