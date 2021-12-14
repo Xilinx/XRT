@@ -20,17 +20,23 @@
 #include "XclBinClass.h"
 
 #include <iostream>
+#include <boost/algorithm/string/join.hpp>
 #include <boost/format.hpp>
-#include <boost/process.hpp>
-#include <boost/process/child.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
+#include <boost/version.hpp>
 #include <fstream>
 #include <inttypes.h>
 #include <iomanip>
 #include <memory>
 #include <vector>
+
+#if (BOOST_VERSION >= 106400)
+#include <boost/process.hpp>
+#include <boost/process/child.hpp>
+#endif
+
 
 
 #ifdef _WIN32
@@ -1020,6 +1026,11 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 }
 
 
+#if (BOOST_VERSION >= 106400)
+
+#include <boost/process.hpp>
+#include <boost/process/child.hpp>
+
 int 
 XclBinUtilities::exec(const boost::filesystem::path &cmd,
                       const std::vector<std::string> &args,
@@ -1063,7 +1074,36 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
   return exitCode;
 }
 
+#else
+int 
+XclBinUtilities::exec(const boost::filesystem::path &cmd,
+                      const std::vector<std::string> &args,
+                      bool bThrow,
+                      std::ostringstream & os_stdout,
+                      std::ostringstream & os_stderr)
+{
+  // Build the command line
+  const std::string cmdLine = cmd.string() + " " + boost::algorithm::join(args, " ");
 
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmdLine.c_str(), "r"), pclose);
+  if (!pipe) {
+    if (bThrow) 
+      throw std::runtime_error("popen() failed!");
+    return 1;
+  }
+
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) 
+    result += buffer.data();
+
+  os_stdout << result;
+
+  return 0;                   
+}
+
+
+#endif
 
 
 

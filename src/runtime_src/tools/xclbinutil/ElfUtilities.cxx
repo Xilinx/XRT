@@ -22,8 +22,12 @@
 #include <boost/algorithm/string/classification.hpp> 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/split.hpp> 
-#include <boost/process.hpp>
 #include <boost/format.hpp>
+#include <boost/version.hpp>
+
+#if (BOOST_VERSION >= 106400)
+  #include <boost/process.hpp>
+#endif
 
 
 namespace XUtil = XclBinUtilities;
@@ -44,15 +48,18 @@ dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
   // 0000000000003ac4 g    DF .text  00000000000001e8  Base        kernel0_init(void*, unsigned char const*)
 
   // Call objdump to get the collection of functions
-  auto objdumpPath = boost::process::search_path("objdump");
+  boost::filesystem::path objdumpPath = "/usr/bin/objdump";    // Assume it is in a known location
 
+#if (BOOST_VERSION >= 106400)
+  objdumpPath = boost::process::search_path("objdump");
+  
   const std::string expectedObjdumpPath = "/usr/bin/objdump";
-
+  
   if (objdumpPath.string() != expectedObjdumpPath) 
     std::cout << boost::format("Warning: Unexpected objdump path.\n"
                                "         Expected: %s\n"
                                "           Actual: %s\n") % expectedObjdumpPath % objdumpPath.string();
-
+#endif
 
   const std::vector<std::string> cmdOptions = {"--wide", "--section=.text", "-T", "-C", elfLibrary};
   std::ostringstream os_stdout;
