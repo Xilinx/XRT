@@ -131,8 +131,6 @@ struct xocl_xgq {
 	struct xgq_worker	xgq_health_worker;
 	bool			xgq_halted;
 	int 			xgq_cmd_id;
-	void			*sensor_data;
-	u32			sensor_data_length;
 	struct semaphore 	xgq_data_sema;
 };
 
@@ -1047,7 +1045,7 @@ static struct xocl_xgq_cmd* prepare_xgq_cmd(struct xocl_xgq *xgq)
 	return cmd;
 }
 
-static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
+static int xgq_collect_sensors(struct platform_device *pdev, int pid, char *data_buf, uint32_t len)
 {
 	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
@@ -1057,12 +1055,10 @@ static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
 	int id = 0;
 
 	/* reset to all 0 first */
-	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	/* set address offset, so that device will write data start from this offset */
-	payload->address = memcpy_to_devices(xgq,
-		xgq->sensor_data, xgq->sensor_data_length);
-	payload->size = xgq->sensor_data_length;
+	payload->address = memcpy_to_devices(xgq, data_buf, len);
+	payload->size = len;
 	payload->pid = pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1072,6 +1068,7 @@ static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		ret = id;
 		goto done;
 	}
 	hdr->cid = id;
@@ -1096,8 +1093,7 @@ static char* xgq_collect_sensors(struct platform_device *pdev, int pid)
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 	} else {
-		memcpy_from_devices(xgq, xgq->sensor_data,
-			xgq->sensor_data_length);
+		memcpy_from_devices(xgq, data_buf, len);
 	}
 
 done:
@@ -1106,37 +1102,17 @@ done:
 		kfree(cmd);
 	}
 
-	return xgq->sensor_data;
+	return ret;
 }
 
-static char* xgq_collect_all_sensors(struct platform_device *pdev)
+static int xgq_collect_bdinfo_sensors(struct platform_device *pdev, char *buf, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_ALL);
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO, buf, len);
 }
 
-static char* xgq_collect_bdinfo_sensors(struct platform_device *pdev)
+static int xgq_collect_temp_sensors(struct platform_device *pdev, char *buf, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO);
-}
-
-static char* xgq_collect_temp_sensors(struct platform_device *pdev)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP);
-}
-
-static char* xgq_collect_voltage_sensors(struct platform_device *pdev)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_VOLTAGE);
-}
-
-static char* xgq_collect_power_sensors(struct platform_device *pdev)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_POWER);
-}
-
-static char* xgq_collect_qsfp_sensors(struct platform_device *pdev)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_QSFP);
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP, buf, len);
 }
 
 /* sysfs */
@@ -1257,8 +1233,6 @@ static int xgq_remove(struct platform_device *pdev)
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
 
-	kfree(xgq->sensor_data);
-
 	if (xgq->xgq_ring_base)
 		iounmap(xgq->xgq_ring_base);
 	if (xgq->xgq_sq_base)
@@ -1310,10 +1284,6 @@ static int xgq_probe(struct platform_device *pdev)
 
 	mutex_init(&xgq->xgq_lock);
 	sema_init(&xgq->xgq_data_sema, 1); /*TODO: improve to n based on availabity */
-
-	/*TODO: after real sensor data enabled, redefine this size */
-	xgq->sensor_data_length = 8 * 512;
-	xgq->sensor_data = kmalloc(xgq->sensor_data_length, GFP_KERNEL);
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
@@ -1422,7 +1392,6 @@ static int xgq_probe(struct platform_device *pdev)
 	return ret;
 
 attach_failed:
-	kfree(xgq->sensor_data);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_release(xgq, &hdl);
 	xocl_drvinst_free(hdl);
@@ -1438,12 +1407,8 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_all_sensors = xgq_collect_all_sensors,
 	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
 	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,
-	.xgq_collect_voltage_sensors = xgq_collect_voltage_sensors,
-	.xgq_collect_power_sensors = xgq_collect_power_sensors,
-	.xgq_collect_qsfp_sensors = xgq_collect_qsfp_sensors,
 };
 
 static const struct file_operations xgq_fops = {

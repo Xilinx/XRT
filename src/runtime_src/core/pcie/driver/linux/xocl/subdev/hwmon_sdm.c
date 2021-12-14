@@ -93,11 +93,10 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
                               const char *sysfs_name,
                               uint8_t repo_type, uint8_t field_id,
-                              uint8_t sid, uint8_t repo_id)
+                              uint8_t sid)
 {
-	struct sdr_sysfs* sysfs = &sdm->sysfs[repo_id];
 	struct sensor_device_attribute *iter = (struct sensor_device_attribute*)
-		kzalloc(sizeof(struct sensor_device_attribute), GFP_KERNEL);
+		devm_kzalloc(&sdm->pdev->dev, sizeof(struct sensor_device_attribute), GFP_KERNEL);
 	int err = 0;
 	iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
                                 sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
@@ -113,7 +112,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 		xocl_err(&sdm->pdev->dev, "unabled to create sensors_list0 hwmon sysfs file ret: 0x%x", err);
 	}
 
-	kfree(iter);
+	//kfree(iter);
 	return err;
 }
 
@@ -269,10 +268,8 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
                                            bool create_sysfs)
 {
 	struct sdr_response* repo_object;
-	struct sdr_sysfs* sysfs;
 	struct sdr_sensor_record *srec;
 	size_t sbyte = sizeof(uint8_t);
-	struct sensor_device_attribute *iter = NULL;
 	bool create = false;
 	uint8_t srecords = 0;
 	int buf_index;
@@ -311,7 +308,6 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 	}
 
 	repo_object = &sdm->sensor_tree[repo_id];
-	sysfs = &sdm->sysfs[repo_id];
 
 	repo_object->header.repository_type = in_buf[SDR_REPO_IDX];
 	repo_object->header.repository_version_no = in_buf[SDR_REPO_VER_IDX];
@@ -321,10 +317,13 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 	buf_index = SDR_NUM_BYTES_IDX + 1;
 
 	remaining_records = repo_object->header.no_of_records;
-	srec = (struct sdr_sensor_record *)devm_kzalloc(&sdm->pdev->dev,
+
+	if (repo_object->sensor_record == NULL) {
+		repo_object->sensor_record = (struct sdr_sensor_record *)devm_kzalloc(&sdm->pdev->dev,
                                       sizeof(struct sdr_sensor_record) *
                                       remaining_records, GFP_KERNEL);
-	repo_object->sensor_record = srec;
+	}
+	srec = repo_object->sensor_record;
 
 	while(remaining_records > 0)
 	{
@@ -557,7 +556,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 			if (create) {
 				//Create *_label sysfs node
 				if(strlen(sysfs_name[0]) != 0) {//not empty
-					err = hwmon_sysfs_create(sdm, sysfs_name[0], repo_type, SENSOR_NAME, srecords, repo_id);
+					err = hwmon_sysfs_create(sdm, sysfs_name[0], repo_type, SENSOR_NAME, srecords);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[0], err);
 					}
@@ -565,7 +564,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 
 				//Create *_ins sysfs node
 				if(strlen(sysfs_name[1]) != 0) {//not empty
-					err = hwmon_sysfs_create(sdm, sysfs_name[1], repo_type, SENSOR_VALUE, srecords, repo_id);
+					err = hwmon_sysfs_create(sdm, sysfs_name[1], repo_type, SENSOR_VALUE, srecords);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[1], err);
 					}
@@ -573,7 +572,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 
 				//Create *_max sysfs node
 				if(strlen(sysfs_name[2]) != 0) {//not empty
-					err = hwmon_sysfs_create(sdm, sysfs_name[2], repo_type, SENSOR_MAX_VAL, srecords, repo_id);
+					err = hwmon_sysfs_create(sdm, sysfs_name[2], repo_type, SENSOR_MAX_VAL, srecords);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[2], err);
 					}
@@ -581,7 +580,7 @@ static struct sdr_response* parse_sdr_info(char *in_buf,
 
 				//Create *_avg sysfs node
 				if(strlen(sysfs_name[3]) != 0) {//not empty
-					err = hwmon_sysfs_create(sdm, sysfs_name[3], repo_type, SENSOR_AVG_VAL, srecords, repo_id);
+					err = hwmon_sysfs_create(sdm, sysfs_name[3], repo_type, SENSOR_AVG_VAL, srecords);
 					if (err) {
 						xocl_err(&sdm->pdev->dev, "Unable to create sysfs node (%s), err: %d\n", sysfs_name[3], err);
 					}
@@ -674,16 +673,13 @@ static ssize_t bdinfo_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
-	xdev_handle_t xdev = xocl_get_xdev(sdm->pdev);
 	struct sdr_response* resp;
-	char *in_buf;
-	int i = 0;
+	uint8_t repo_id = sdr_get_id(SDR_TYPE_BDINFO);
 
-	in_buf = xocl_xgq_collect_bdinfo_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
+	resp = &sdm->sensor_tree[repo_id];
 	display_sensor_data(sdm, resp);
 
-	return sprintf(buf, "%d\n", i);
+	return sprintf(buf, "%d\n", 0);
 }
 static DEVICE_ATTR_RO(bdinfo);
 
@@ -691,28 +687,17 @@ static ssize_t all_sensors_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
-	xdev_handle_t xdev = xocl_get_xdev(sdm->pdev);
 	struct sdr_response* resp;
-	char *in_buf;
-	int i = 0;
+	uint8_t repo_id = sdr_get_id(SDR_TYPE_TEMP);
 
-	in_buf = xocl_xgq_collect_power_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
+	resp = &sdm->sensor_tree[repo_id];
 	display_sensor_data(sdm, resp);
 
-	in_buf = xocl_xgq_collect_temp_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
+	repo_id = sdr_get_id(SDR_TYPE_BDINFO);
+	resp = &sdm->sensor_tree[repo_id];
 	display_sensor_data(sdm, resp);
 
-	in_buf = xocl_xgq_collect_voltage_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
-	display_sensor_data(sdm, resp);
-
-	in_buf = xocl_xgq_collect_bdinfo_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
-	display_sensor_data(sdm, resp);
-
-	return sprintf(buf, "%d\n", i);
+	return sprintf(buf, "%d\n", 0);
 }
 static DEVICE_ATTR_RO(all_sensors);
 
@@ -763,23 +748,33 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct sdr_response* resp;
+	uint32_t resp_size;
 	char* in_buf;
+	int ret = 0;
 
-	in_buf = xocl_xgq_collect_bdinfo_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, false);
-	display_sensor_data(sdm, resp);
+	//TODO: request vmc/vmr for bdinfo resp size
+	resp_size = 4 * 1024;
+	in_buf = (char*)kzalloc(sizeof(char) * resp_size, GFP_KERNEL);
+	ret = xocl_xgq_collect_bdinfo_sensors(xdev, in_buf, resp_size);
+	if (!ret) {
+		resp = parse_sdr_info(in_buf, sdm, false);
+		display_sensor_data(sdm, resp);
+	} else {
+		xocl_err(&pdev->dev, "request is failed with err: %d", ret);
+	}
+	kfree(in_buf);
 
-	in_buf = xocl_xgq_collect_temp_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, true);
-	display_sensor_data(sdm, resp);
-
-	in_buf = xocl_xgq_collect_voltage_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, true);
-	display_sensor_data(sdm, resp);
-
-	in_buf = xocl_xgq_collect_power_sensors(xdev);
-	resp = parse_sdr_info(in_buf, sdm, true);
-	display_sensor_data(sdm, resp);
+	//TODO: request vmc/vmr for temp resp size
+	resp_size = 4 * 1024;
+	in_buf = (char*)kzalloc(sizeof(char) * resp_size, GFP_KERNEL);
+	ret = xocl_xgq_collect_temp_sensors(xdev, in_buf, resp_size);
+	if (!ret) {
+		resp = parse_sdr_info(in_buf, sdm, true);
+		display_sensor_data(sdm, resp);
+	} else {
+		xocl_err(&pdev->dev, "request is failed with err: %d", ret);
+	}
+	kfree(in_buf);
 }
 
 static struct xocl_sdm_funcs sdm_ops = {
