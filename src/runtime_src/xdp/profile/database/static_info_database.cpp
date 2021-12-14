@@ -72,8 +72,7 @@ namespace xdp {
 
   VPStaticDatabase::~VPStaticDatabase()
   {
-    if (runSummary != nullptr)
-    {
+    if (runSummary != nullptr) {
       runSummary->write(false) ;
       delete runSummary ;
     }
@@ -934,7 +933,8 @@ namespace xdp {
     std::lock_guard<std::mutex> lock(aieLock) ;
     if (aieDevice)
       return aieDevice;
-    if (!aieDevInst) return nullptr ;
+    if (!aieDevInst)
+      return nullptr ;
 
     deallocateAieDevice = deallocate ;
     aieDevice = allocate(devHandle) ;
