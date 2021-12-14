@@ -15,16 +15,17 @@
  */
 
 #include "plugin/xdp/plugin_loader.h"
-#include "plugin/xdp/hal_profile.h"
-#include "plugin/xdp/hal_device_offload.h"
+
 #include "plugin/xdp/aie_debug.h"
 #include "plugin/xdp/aie_profile.h"
-#include "plugin/xdp/noc_profile.h"
-#include "plugin/xdp/power_profile.h"
 #include "plugin/xdp/aie_trace.h"
-#include "plugin/xdp/vart_profile.h"
-#include "plugin/xdp/sc_profile.h"
+#include "plugin/xdp/hal_device_offload.h"
+#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/noc_profile.h"
 #include "plugin/xdp/pl_deadlock.h"
+#include "plugin/xdp/power_profile.h"
+#include "plugin/xdp/sc_profile.h"
+#include "plugin/xdp/vart_profile.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"

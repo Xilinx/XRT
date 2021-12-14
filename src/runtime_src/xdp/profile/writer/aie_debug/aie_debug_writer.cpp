@@ -14,9 +14,10 @@
  * under the License.
  */
 
+#include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
+
 #include <vector>
 
-#include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 #include "xdp/profile/database/database.h"
 
 namespace xdp {
@@ -26,10 +27,6 @@ namespace xdp {
     : VPWriter(fileName)
     , mDeviceName(deviceName)
     , mDeviceIndex(deviceIndex)
-  {
-  }
-
-  AIEDebugWriter::~AIEDebugWriter()
   {
   }
 

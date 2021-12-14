@@ -38,10 +38,12 @@ namespace profile {
     using ftype = void (*)(void*); // Device handle
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
-    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr;
+    if (xrt_core::dlerror() != nullptr)
+      update_device_cb = nullptr;
 
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
-    if (xrt_core::dlerror() != NULL) end_poll_cb = nullptr;
+    if (xrt_core::dlerror() != nullptr)
+      end_poll_cb = nullptr;
   }
 
   void warning_callbacks()

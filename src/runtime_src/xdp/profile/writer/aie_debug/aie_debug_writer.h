@@ -27,7 +27,6 @@ namespace xdp {
   public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
                    uint64_t deviceIndex);
-    ~AIEDebugWriter();
 
     virtual bool write(bool openNewFile);
 

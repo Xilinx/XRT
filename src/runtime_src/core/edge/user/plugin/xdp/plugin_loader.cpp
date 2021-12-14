@@ -15,15 +15,16 @@
  */
 
 #include "plugin_loader.h"
-#include "hal_profile.h"
-#include "hal_device_offload.h"
+
 #include "aie_debug.h"
 #include "aie_profile.h"
-#include "noc_profile.h"
 #include "aie_trace.h"
-#include "vart_profile.h"
-#include "sc_profile.h"
+#include "hal_profile.h"
+#include "hal_device_offload.h"
+#include "noc_profile.h"
 #include "pl_deadlock.h"
+#include "sc_profile.h"
+#include "vart_profile.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"

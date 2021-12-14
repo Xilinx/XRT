@@ -17,11 +17,11 @@
 #ifndef XDP_AIE_DEBUG_PLUGIN_DOT_H
 #define XDP_AIE_DEBUG_PLUGIN_DOT_H
 
-#include <vector>
-#include <string>
-#include <thread>
 #include <atomic>
 #include <iostream>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/config.h"
@@ -60,8 +60,11 @@ namespace xdp {
     uint32_t mIndex;
     uint32_t mPollingInterval;
 
+    // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
+    // Threads mapped to device handles
     std::map<void*,std::thread> mThreadMap;
+    // Graphname -> coretiles
     std::map<std::string,std::vector<tile_type>> mGraphCoreTilesMap;
   };
 

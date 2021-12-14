@@ -16,11 +16,10 @@
 
 #define XDP_SOURCE
 
-#define AIE_OFFSET_CORE_STATUS     0x32004
-#define AIE_OFFSET_PROGRAM_COUNTER 0x30280
-
-#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/plugin/aie_debug/aie_debug_plugin.h"
+
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/plugin/vp_base/info.h"
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
 
 #include "core/common/message.h"
@@ -29,9 +28,6 @@
 #include "core/common/config_reader.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
-#include "xdp/profile/database/database.h"
-
-#include <boost/algorithm/string.hpp>
 
 namespace {
   static void* fetchAieDevInst(void* devHandle)
@@ -158,6 +154,7 @@ namespace xdp {
     if (status & 0x40000)
       statusStr += "ECC_Scrubbing_Stall,";
 
+    // remove trailing comma
     if (!statusStr.empty())
       statusStr.pop_back();
 
@@ -169,6 +166,9 @@ namespace xdp {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
       return;
+
+    // AIE core register offsets
+    constexpr uint32_t AIE_OFFSET_CORE_STATUS = 0x32004;
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
@@ -188,17 +188,17 @@ namespace xdp {
     // Memory_Stall_N
     // Memory_Stall_W
     // Memory_Stall_S
-    const uint32_t CORE_STALL_MASK = 0xFFFC;
+    constexpr uint32_t CORE_STALL_MASK = 0xFFFC;
     // This mask check for following states
     // Reset
     // Done
-    const uint32_t CORE_INACTIVE_MASK = 0x100002;
+    constexpr uint32_t CORE_INACTIVE_MASK = 0x100002;
     // Count of samples before we say it's a hang
-    const unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
-    const unsigned int GRAPH_HANG_COUNT_THRESHOLD = 50;
+    constexpr unsigned int CORE_HANG_COUNT_THRESHOLD = 100;
+    constexpr unsigned int GRAPH_HANG_COUNT_THRESHOLD = 50;
     // Reset values
-    const uint32_t CORE_RESET_STATUS  = 0x2;
-    const uint32_t CORE_ENABLE_MASK  = 0x1;
+    constexpr uint32_t CORE_RESET_STATUS  = 0x2;
+    constexpr uint32_t CORE_ENABLE_MASK  = 0x1;
     // Graph -> total stuck core cycles
     std::map<std::string, uint64_t> graphStallTotalMap;
     // Core -> total stall cycles
@@ -351,7 +351,7 @@ namespace xdp {
     // Open the writer for this device
     struct xclDeviceInfo2 info;
     xclGetDeviceInfo2(handle, &info);
-    std::string deviceName = std::string(info.mName);
+    std::string deviceName { info.mName };
     // Create and register writer and file
     std::string outputFile = "aie_status_" + deviceName + ".json";
 

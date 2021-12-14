@@ -15,9 +15,11 @@
  */
 
 #include "aie_debug.h"
+
+#include <iostream>
+
 #include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
-#include <iostream>
 
 namespace xdp {
 namespace aie {
@@ -26,22 +28,27 @@ namespace debug {
   {
 #ifdef XRT_ENABLE_AIE
     static xrt_core::module_loader xdp_aie_loader("xdp_aie_debug_plugin",
-						    register_callbacks,
-						    warning_callbacks);
+      register_callbacks,
+      warning_callbacks);
 #endif
   }
+
+  // Callback from shim to load device information and start polling
   std::function<void (void*)> update_device_cb;
+  // Callback from shim to end poll for a device when xclbin changes
   std::function<void (void*)> end_poll_cb;
 
   void register_callbacks(void* handle)
   {
-    using ftype = void (*)(void*); // Device handle 
+    using ftype = void (*)(void*); // Device handle
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
-    if (xrt_core::dlerror() != NULL) update_device_cb = nullptr;
+    if (xrt_core::dlerror() != nullptr)
+      update_device_cb = nullptr;
 
     end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugPoll"));
-    if (xrt_core::dlerror() != NULL) end_poll_cb = nullptr;
+    if (xrt_core::dlerror() != nullptr)
+      end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
