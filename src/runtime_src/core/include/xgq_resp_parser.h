@@ -103,59 +103,6 @@ enum sensor_record_fields {
     SENSOR_AVG_VAL,
 };
 
-/* SDR Definitions */
-struct sdr_header {
-    uint8_t repository_type;
-    uint8_t repository_version_no;
-    uint8_t no_of_records;
-    uint8_t no_of_bytes;
-};
-
-struct sdr_sensor_record {
-    uint8_t id;
-    uint8_t name_type_length;
-    uint8_t name[64];
-    uint8_t value_type_length;
-    uint8_t value[64];
-    uint8_t base_unit_type_length;
-    uint8_t base_unit[64];
-    int8_t unit_modifier_byte;
-    uint8_t threshold_support_byte;
-    uint8_t lower_fatal_limit[64];
-    uint8_t lower_critical_limit[64];
-    uint8_t lower_warning_limit[64];
-    uint8_t upper_fatal_limit[64];
-    uint8_t upper_critical_limit[64];
-    uint8_t upper_warning_limit[64];
-    uint8_t status;
-    uint8_t max_value[64];
-    uint8_t avg_value[64];
-};
-
-struct sdr_eor {
-    uint8_t eor_marker[4];
-};
-
-struct sdr_response {
-    struct sdr_header header;
-    struct sdr_sensor_record *sensor_record;
-    struct sdr_eor eor;
-};
-
-enum bitmap_typecode {
-    TYPECODE_BINARY = 0x00,
-    TYPECODE_ASCII  = 0x03,
-};
-
-enum threshold_support {
-    UPPER_WARNING_THRESHOLD  = (0x01 << 0),
-    UPPER_CRITICAL_THRESHOLD = (0x01 << 1),
-    UPPER_FATAL_THRESHOLD    = (0x01 << 2),
-    LOWER_WARNING_THRESHOLD  = (0x01 << 3),
-    LOWER_CRITICAL_THRESHOLD = (0x01 << 4),
-    LOWER_FATAL_THRESHOLD    = (0x01 << 5),
-};
-
 enum sensor_status {
     SENSOR_NOT_PRESENT          = 0x00,
     SENSOR_PRESENT_AND_VALID    = 0x01,
