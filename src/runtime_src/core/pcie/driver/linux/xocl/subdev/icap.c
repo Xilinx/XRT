@@ -32,12 +32,6 @@
 #include "mgmt-ioctl.h"
 #include "ps_kernel.h"
 
-#if PF == MGMTPF
-int kds_mode = 0;
-#else
-extern int kds_mode;
-#endif
-
 #if defined(XOCL_UUID)
 static xuid_t uuid_null = NULL_UUID_LE;
 #endif
@@ -2465,13 +2459,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 
 	err = __icap_peer_xclbin_download(icap, xclbin, force_download);
 
-	/* TODO: Remove this after new KDS replace the legacy one */
-	/*
-	 * xclbin download changes PR region, make sure next
-	 * ERT configure cmd will go through
-	 */
-	if (!kds_mode)
-		(void) xocl_exec_reconfig(xdev);
 	if (err)
 		goto done;
 
@@ -2793,12 +2780,6 @@ static int icap_lock_bitstream(struct platform_device *pdev, const xuid_t *id)
 	ICAP_INFO(icap, "bitstream %pUb locked, ref=%d", id,
 		icap->icap_bitstream_ref);
 
-	/* TODO: Remove this after new KDS replace the legacy one */
-	if (!kds_mode && ref == 0) {
-		/* reset on first reference */
-		xocl_exec_reset(xocl_get_xdev(pdev), id);
-	}
-
 done:
 	mutex_unlock(&icap->icap_lock);
 	icap_xclbin_rd_unlock(icap);
@@ -2839,10 +2820,6 @@ static int icap_unlock_bitstream(struct platform_device *pdev, const xuid_t *id)
 			id, &on_device_uuid);
 		goto done;
 	}
-
-	/* TODO: Remove this after new KDS replace the legacy one */
-	if (!kds_mode && icap->icap_bitstream_ref == 0 && !ICAP_PRIVILEGED(icap))
-		(void) xocl_exec_stop(xocl_get_xdev(pdev));
 
 done:
 	mutex_unlock(&icap->icap_lock);

@@ -128,10 +128,10 @@ struct bdf
   }
 };
 
-struct kds_cu_stat
+struct kds_cu_info
 {
-  using result_type = query::kds_cu_stat::result_type;
-  using data_type = query::kds_cu_stat::data_type;
+  using result_type = query::kds_cu_info::result_type;
+  using data_type = query::kds_cu_info::data_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -196,10 +196,10 @@ struct instance
 };
 
 
-struct kds_scu_stat
+struct kds_scu_info
 {
-  using result_type = query::kds_scu_stat::result_type;
-  using data_type = query::kds_scu_stat::data_type;
+  using result_type = query::kds_scu_info::result_type;
+  using data_type = query::kds_scu_info::data_type;
   static constexpr uint32_t scu_domain = 0x10000;
 
   static result_type
@@ -251,34 +251,6 @@ struct kds_scu_stat
     }
 
     return cu_stats;
-  }
-};
-
-struct kds_cu_info
-{
-  using result_type = query::kds_cu_info::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type)
-  {
-    auto pdev = get_pcidev(device);
-  
-    std::vector<std::string> stats; 
-    std::string errmsg;
-    pdev->sysfs_get("mb_scheduler", "kds_custat", errmsg, stats);
-    if (!errmsg.empty())
-      throw xrt_core::query::sysfs_error(errmsg);
-
-    result_type cuStats;
-    for (auto& line : stats) {
-	uint32_t base_addr = 0;
-	uint32_t usage = 0;
-	uint32_t status = 0;
-	sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_addr, &usage, &status);
-	cuStats.push_back(std::make_tuple(base_addr, usage, status));
-    }
-
-    return cuStats;
   }
 };
 
@@ -835,7 +807,6 @@ initialize_query_table()
   emplace_sysfs_get<query::power_microwatts>                   ("xmc", "xmc_power");
   emplace_sysfs_get<query::power_warning>                      ("xmc", "xmc_power_warn");
   emplace_sysfs_get<query::host_mem_size>                      ("address_translator", "host_mem_size");
-  emplace_sysfs_get<query::kds_numcdmas>                       ("mb_scheduler", "kds_numcdmas");
 
   emplace_sysfs_get<query::mig_ecc_status>                     ("mig", "ecc_status");
   emplace_sysfs_get<query::mig_ecc_ce_cnt>                     ("mig", "ecc_ce_cnt");
@@ -870,9 +841,9 @@ initialize_query_table()
   emplace_sysfs_getput<query::config_xclbin_change>            ("", "config_xclbin_change");
   emplace_sysfs_getput<query::cache_xclbin>                    ("", "cache_xclbin");
 
-  emplace_sysfs_get<query::kds_mode>                           ("", "kds_mode");
-  emplace_func0_request<query::kds_cu_stat,                    kds_cu_stat>();
-  emplace_func0_request<query::kds_scu_stat,                   kds_scu_stat>();
+  emplace_sysfs_get<query::kds_numcdmas>                       ("", "kds_numcdmas");
+  emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
+  emplace_func0_request<query::kds_scu_info,                   kds_scu_info>();
   emplace_sysfs_get<query::ps_kernel>                          ("icap", "ps_kernel");
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 

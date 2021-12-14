@@ -220,7 +220,6 @@ enum {
 #define	XOCL_XDMA		"dma.xdma"
 #define	XOCL_QDMA4		"dma.qdma4"
 #define	XOCL_QDMA		"dma.qdma"
-#define	XOCL_MB_SCHEDULER	"mb_scheduler"
 #define	XOCL_XVC_PUB		"xvc_pub"
 #define	XOCL_XVC_PRI		"xvc_pri"
 #define	XOCL_NIFD_PRI		"nifd_pri"
@@ -289,7 +288,6 @@ enum subdev_id {
 	XOCL_SUBDEV_MAILBOX,
 	XOCL_SUBDEV_MAILBOX_VERSAL,
 	XOCL_SUBDEV_P2P,
-	XOCL_SUBDEV_MB_SCHEDULER,
 	XOCL_SUBDEV_XVC_PUB,
 	XOCL_SUBDEV_XVC_PRI,
 	XOCL_SUBDEV_NIFD_PRI,
@@ -1713,46 +1711,11 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_SCHEDULER				\
-		((struct resource []) {			\
-		/*
- 		 * map entire bar for now because scheduler directly
-		 * programs CUs
-		 */					\
-			{				\
-			.start	= ERT_CSR_ADDR,		\
-			.end	= ERT_CSR_ADDR + 0xfff,	\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= ERT_CQ_BASE_ADDR,	\
-			.end	= ERT_CQ_BASE_ADDR +	\
-			ERT_CQ_SIZE - 1,	\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 0,			\
-			.end	= 3,			\
-			.flags	= IORESOURCE_IRQ,	\
-			}				\
-		})
-
 #define XOCL_RES_SCHEDULER_PRIV				\
 	((struct xocl_ert_sched_privdata) {		\
 		1,					\
 		1,					\
 	 })
-
-#define	XOCL_DEVINFO_SCHEDULER				\
-	{						\
-		XOCL_SUBDEV_MB_SCHEDULER,		\
-		XOCL_MB_SCHEDULER,			\
-		XOCL_RES_SCHEDULER,			\
-		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
-		&XOCL_RES_SCHEDULER_PRIV,		\
-		sizeof(struct xocl_ert_sched_privdata),	\
-		.override_idx = -1,			\
-	}
 
 #define XOCL_RES_INTC_QDMA				\
 	((struct resource []) {				\
@@ -1810,54 +1773,6 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_SCHEDULER_QDMA				\
-		((struct resource []) {			\
-			{				\
-			.start	= ERT_CSR_ADDR,		\
-			.end	= ERT_CSR_ADDR + 0xfff,	\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= ERT_CQ_BASE_ADDR,	\
-			.end	= ERT_CQ_BASE_ADDR +	\
-			ERT_CQ_SIZE - 1,	\
-			.flags	= IORESOURCE_MEM,	\
-			},				\
-			{				\
-			.start	= 2,			\
-			.end	= 5,			\
-			.flags	= IORESOURCE_IRQ,	\
-			}				\
-		})
-
-#define	XOCL_DEVINFO_SCHEDULER_QDMA			\
-	{						\
-		XOCL_SUBDEV_MB_SCHEDULER,		\
-		XOCL_MB_SCHEDULER,			\
-		XOCL_RES_SCHEDULER_QDMA,		\
-		ARRAY_SIZE(XOCL_RES_SCHEDULER_QDMA),	\
-		&XOCL_RES_SCHEDULER_PRIV,		\
-		sizeof(struct xocl_ert_sched_privdata),	\
-		.override_idx = -1,			\
-	}
-
-#define XOCL_RES_SCHEDULER_PRIV_51			\
-	((struct xocl_ert_sched_privdata) {		\
-		0,					\
-		1,					\
-	 })
-
-#define	XOCL_DEVINFO_SCHEDULER_51			\
-	{						\
-		XOCL_SUBDEV_MB_SCHEDULER,		\
-		XOCL_MB_SCHEDULER,			\
-		XOCL_RES_SCHEDULER,			\
-		ARRAY_SIZE(XOCL_RES_SCHEDULER),		\
-		&XOCL_RES_SCHEDULER_PRIV_51,		\
-		sizeof(struct xocl_ert_sched_privdata),	\
-		.override_idx = -1,			\
-	}
-
 #define	ERT_CSR_ADDR_VERSAL		0x2040000
 #define	ERT_CQ_BASE_ADDR_VERSAL		0x6000000
 
@@ -1883,42 +1798,6 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_INTC_VERSAL),	\
 		.override_idx = -1,			\
 		.bar_idx = (char []){ 2 },		\
-	}
-
-#define XOCL_RES_SCHEDULER_VERSAL				\
-		((struct resource []) {				\
-		/*
- 		 * map entire bar for now because scheduler directly
-		 * programs CUs
-		 */						\
-			{					\
-			.start	= ERT_CSR_ADDR_VERSAL,		\
-			.end	= ERT_CSR_ADDR_VERSAL + 0xffff,	\
-			.flags	= IORESOURCE_MEM,		\
-			},					\
-			{					\
-			.start	= ERT_CQ_BASE_ADDR_VERSAL,	\
-			.end	= ERT_CQ_BASE_ADDR_VERSAL +	\
-			ERT_CQ_SIZE - 1,			\
-			.flags	= IORESOURCE_MEM,		\
-			},					\
-			{					\
-			.start	= 0,				\
-			.end	= 0,				\
-			.flags	= IORESOURCE_IRQ,		\
-			}					\
-		})
-
-#define	XOCL_DEVINFO_SCHEDULER_VERSAL			\
-	{						\
-		XOCL_SUBDEV_MB_SCHEDULER,		\
-		XOCL_MB_SCHEDULER,			\
-		XOCL_RES_SCHEDULER_VERSAL,		\
-		ARRAY_SIZE(XOCL_RES_SCHEDULER_VERSAL),	\
-		&XOCL_RES_SCHEDULER_PRIV_51,		\
-		sizeof(struct xocl_ert_sched_privdata),	\
-		.bar_idx = (char []){ 2, 2 },		\
-		.override_idx = -1,			\
 	}
 
 #define	XOCL_DEVINFO_FMGR				\
@@ -1971,7 +1850,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_QDMA,				\
-			XOCL_DEVINFO_SCHEDULER_QDMA,			\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
 			XOCL_DEVINFO_ICAP_USER,				\
@@ -1991,7 +1869,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_INTC,				\
 		})
@@ -2000,7 +1877,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER_51,			\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
@@ -2013,7 +1889,6 @@ struct xocl_subdev_map {
 		 	XOCL_DEVINFO_FEATURE_ROM_VERSAL,		\
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_XMC_USER,				\
-		 	XOCL_DEVINFO_SCHEDULER_VERSAL,			\
 			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
@@ -2040,7 +1915,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER,				\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
@@ -2055,7 +1929,6 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_FEATURE_ROM,			\
 			XOCL_DEVINFO_VERSION_CTRL,			\
 			XOCL_DEVINFO_XDMA,				\
-			XOCL_DEVINFO_SCHEDULER,				\
 			XOCL_DEVINFO_MAILBOX_USER,			\
 			XOCL_DEVINFO_XVC_PUB,				\
 			XOCL_DEVINFO_ICAP_USER,				\
@@ -2068,7 +1941,6 @@ struct xocl_subdev_map {
 #define USER_RES_SMARTN							\
 		((struct xocl_subdev_info []) {				\
 			XOCL_DEVINFO_FEATURE_ROM_SMARTN,		\
-			XOCL_DEVINFO_SCHEDULER_DYN,			\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_MAILBOX_USER_QDMA,			\
@@ -2727,7 +2599,6 @@ struct xocl_subdev_map {
 #define RES_USER_VSEC							\
 	((struct xocl_subdev_info []) {					\
 	 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
-		XOCL_DEVINFO_SCHEDULER_DYN,				\
 		XOCL_DEVINFO_ICAP_USER,					\
 		XOCL_DEVINFO_XMC_USER,					\
 		XOCL_DEVINFO_AF_USER,					\
@@ -2763,7 +2634,6 @@ struct xocl_subdev_map {
 #define RES_USER_VCK190_VSEC                                            \
         ((struct xocl_subdev_info []) {                                 \
                 XOCL_DEVINFO_FEATURE_ROM_USER_DYN,                      \
-                XOCL_DEVINFO_SCHEDULER_DYN,                             \
                 XOCL_DEVINFO_ICAP_USER,                                 \
                 XOCL_DEVINFO_XMC_USER,                                  \
                 XOCL_DEVINFO_AF_USER,                                   \
@@ -2786,7 +2656,6 @@ struct xocl_subdev_map {
 #define RES_USER_VERSAL_VSEC						\
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
-		XOCL_DEVINFO_SCHEDULER_VERSAL,				\
 		XOCL_DEVINFO_ICAP_USER,					\
 		XOCL_DEVINFO_XMC_USER,					\
 	 })
@@ -3296,22 +3165,10 @@ struct xocl_subdev_map {
 		.sched_bin = "xilinx/sched_u50.bin",			\
 	}
 
-#define	XOCL_DEVINFO_SCHEDULER_DYN			\
-	{						\
-		XOCL_SUBDEV_MB_SCHEDULER,		\
-		XOCL_MB_SCHEDULER,			\
-		NULL,					\
-		0,					\
-		&XOCL_RES_SCHEDULER_PRIV,		\
-		sizeof(struct xocl_ert_sched_privdata),	\
-		.override_idx = -1,			\
-	}
-
 #define USER_RES_DYNAMIC_IP						\
 		((struct xocl_subdev_info []) {				\
 		 	XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_DYN,			\
-		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -3461,7 +3318,6 @@ struct xocl_subdev_map {
 		((struct xocl_subdev_info []) {				\
 	 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,		\
 		 	XOCL_DEVINFO_MAILBOX_USER_U25,			\
-		 	XOCL_DEVINFO_SCHEDULER_DYN,			\
 		 	XOCL_DEVINFO_ICAP_USER,				\
 		 	XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
@@ -3538,7 +3394,6 @@ struct xocl_subdev_map {
     ((struct xocl_subdev_info[]) {             \
         XOCL_DEVINFO_FEATURE_ROM,              \
         XOCL_DEVINFO_QDMA,                     \
-        XOCL_DEVINFO_SCHEDULER_QDMA,           \
         XOCL_DEVINFO_XVC_PUB,                  \
         XOCL_DEVINFO_MAILBOX_USER_QDMA,        \
         XOCL_DEVINFO_ICAP_USER,                \
