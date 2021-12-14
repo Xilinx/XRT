@@ -751,10 +751,10 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
                                                                       "  Name (and path) of the partition.")
 
     // TODO: Auto update the 'base' values
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image."/*  Value values:\n"
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
                                                                          "  ALL   - All images will be updated"
-                                                                         "  FLASH - Flash image\n"
-                                                                         "  SC    - Satellite controller"*/)
+                                                                         /*"  shell - Platform image\n"*/
+                                                                         "  SC    - Satellite controller")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
     ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
@@ -843,48 +843,51 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   // Get the device
   auto & workingDevice = deviceCollection[0];
 
-  // TODO: Added mutually exclusive code for image, update, and revert-to-golden action.
-
-  if (!image.empty()) {
-
-    // image is a sub-option of update
-    if (update.empty())
-      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
-
-    // We support up to 2 flash images 
-    if (image.size() == 1)
-      auto_flash(workingDevice, flashType, image.front());
-    
-    if (image.size() == 2) {
-      std::cout << "CAUTION! Force flashing the platform on the device without any checks." <<
-                   "Please make sure that the correct information is passed in." << std::endl;
-      auto image_paths = find_flash_image_paths(image);
-      update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
-    }
-    
-    if (image.size() > 2)
-      throw xrt_core::error("Please specify either 1 or 2 flash images");
-    return;
-  }
-
   if (!update.empty()) {
     XBU::verbose("Sub command: --base");
     XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
-    if (update.compare("all") == 0)
-      // Note: To get around a bug in the SC flashing code base,
-      //       auto_flash will clear the collection. This code need to be refactored and clean up.
-      auto_flash( workingDevice );
+    if (update.compare("all") == 0){
+      switch (image.size()){
+        // Allow system to search for images if none are specified when the all command is specified
+        case 0:
+          // Note: To get around a bug in the SC flashing code base,
+          //       auto_flash will clear the collection. This code need to be refactored and clean up.
+          auto_flash( workingDevice );
+          break;
+        /*
+         * The software supports up to 2 images being specified.
+         */
+        case 1:
+          auto_flash(workingDevice, flashType, image.front());
+          break;
+        case 2:
+          std::cout << "CAUTION! Force flashing the platform on the device without any checks." <<
+              "Please make sure that the correct information is passed in." << std::endl;
+          auto image_paths = find_flash_image_paths(image);
+          update_shell(workingDevice->get_device_id(), flashType, image_paths.front(), (image_paths.size() == 2 ? image_paths[1]: ""));
+          break;
+        default:
+          throw xrt_core::error("Please specify either 1 or 2 flash images");
+          break;
+      }
+    }
+    else if (update.compare("sc") == 0){
+        if (!image.empty())
+          update_SC(workingDevice.get()->get_device_id(), image[0]);
+        else
+          throw xrt_core::error("SC update requires a valid image");
+    }
     else {
-      if (update.compare("flash") == 0)
+      if (update.compare("shell") == 0)
         throw xrt_core::error("Platform only update is not supported");
 
-      if (update.compare("sc") == 0)
-        throw xrt_core::error("SC only update is not supported");
-       
       throw xrt_core::error("Please specify a valid value");
     }
+
     return;
   }
+  else
+    throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base --image='/path/to/flash_image' OR shell_name");
   
   // -- process "revert-to-golden" option ---------------------------------------
   if(revertToGolden) {
