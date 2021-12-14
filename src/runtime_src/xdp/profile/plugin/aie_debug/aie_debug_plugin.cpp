@@ -168,7 +168,7 @@ namespace xdp {
       return;
 
     // AIE core register offsets
-    constexpr uint32_t AIE_OFFSET_CORE_STATUS = 0x32004;
+    constexpr uint64_t AIE_OFFSET_CORE_STATUS = 0x32004;
 
     // This mask check for following states
     // ECC_Scrubbing_Stall
