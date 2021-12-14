@@ -70,7 +70,7 @@ install_recipes()
     eval "$SAVED_OPTIONS_LOCAL"
 }
 
-config_project()
+config_versal_project()
 {
     # remove following unused packages from rootfs sothat its size would fit in QSPI
 
@@ -100,6 +100,22 @@ config_project()
     UBOOT_USER_SCRIPT=u-boot_custom.cfg
     echo "CONFIG_XILINX_OF_BOARD_DTB_ADDR=0x40000" > project-spec/meta-user/recipes-bsp/u-boot/files/$UBOOT_USER_SCRIPT
     echo "SRC_URI += \"file://${UBOOT_USER_SCRIPT}\"" >> project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
+
+    # Configure kernel
+    echo "CONFIG_SUSPEND=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_PM=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_SPI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+
+    # Configure inittab for getty
+    INIT_TAB_FILE=project-spec/meta-user/recipes-core/sysvinit/sysvinit-inittab_%.bbappend
+    if [ ! -d $(dirname "$INIT_TAB_FILE") ]; then
+        mkdir -p $(dirname "$INIT_TAB_FILE")
+    fi
+cat << EOF > $INIT_TAB_FILE
+do_install_append(){
+  echo "UL0:12345:respawn:/bin/start_getty 115200 ttyUL0 vt102" >> \${D}\${sysconfdir}/inittab
+}
+EOF
 
 }
 
@@ -260,8 +276,10 @@ fi
 echo " * Performing PetaLinux Build (from: ${PWD})"
 #Run a full build if -full option is provided
 if [[ $full == 1 ]]; then
-  # configure the project with appropriate options
-  config_project
+  if [[ $AARCH = $versal_dir ]]; then
+    # configure the project with appropriate options
+    config_versal_project
+  fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
   $PETA_BIN/petalinux-config -c kernel --silentconfig

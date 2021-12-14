@@ -478,9 +478,6 @@ static int cu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
-	/* If mb_scheduler is enable, the intc subdevic would not be created.
-	 * In this case, the err would be -ENODEV. Don't print error message.
-	 */
 	if (info->intr_enable) {
 		err = xocl_intc_cu_request(xdev, info->intr_id, cu_isr, xcu);
 		if (!err)

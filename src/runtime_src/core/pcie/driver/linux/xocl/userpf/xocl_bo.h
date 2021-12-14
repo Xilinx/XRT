@@ -155,6 +155,8 @@ static inline bool xocl_bo_sync_able(unsigned bo_flags)
 		|| (bo_flags & XOCL_CMA_MEM) || (bo_flags & XOCL_P2P_MEM);
 }
 
+void xocl_bo_get_usage_stat(struct xocl_drm *drm_p, u32 bo_idx,
+	struct drm_xocl_mm_stat *pstat);
 int xocl_create_bo_ioctl(struct drm_device *dev, void *data,
 	struct drm_file *filp);
 int xocl_userptr_bo_ioctl(struct drm_device *dev, void *data,

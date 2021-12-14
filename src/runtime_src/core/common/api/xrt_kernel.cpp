@@ -750,27 +750,6 @@ public:
       m_callbacks->pop_back();
   }
 
-  // set_event() - enqueued notifcation of event
-  //
-  // @event:  Event to notify upon completion of cmd
-  //
-  // Event notification is used when a kernel/run is enqueued in an
-  // event graph.  When cmd completes, the event must be notified.
-  //
-  // The event (stored in the event graph) participates in lifetime
-  // of the object that holds on to cmd object.
-  void
-  set_event(const std::shared_ptr<xrt::event_impl>& event) const
-  {
-    std::lock_guard<std::mutex> lk(m_mutex);
-    XRT_DEBUGF("kernel_command::set_event() m_uid(%d)\n", m_uid);
-    if (m_done) {
-      xrt_core::enqueue::done(event.get());
-      return;
-    }
-    m_event = event;
-  }
-
   // Run registered callbacks.
   void
   run_callbacks(ert_cmd_state state) const
@@ -798,15 +777,18 @@ public:
       (*cb)(state);
   }
 
-  // Submit the command for execution
+  // Submit the command for execution.
+  // The argument event, if valid, means execution is event based
+  // which means that event must be notified upon completion.
   void
-  run()
+  run(const std::shared_ptr<xrt::event_impl>& event = nullptr)
   {
     {
       std::lock_guard<std::mutex> lk(m_mutex);
       if (!m_done)
         throw std::runtime_error("bad command state, can't launch");
-      m_managed = (m_callbacks && !m_callbacks->empty());
+      m_event = event;
+      m_managed = ( m_event || (m_callbacks && !m_callbacks->empty()) );
       m_done = false;
     }
     if (m_managed)
@@ -890,14 +872,15 @@ public:
 
       // Clear the event if any.  This must be last since if used, it
       // holds the lifeline to this command object which could end up
-      // being deleted when the event is cleared.
-      m_event = nullptr;
+      // being deleted when the event is cleared.  (Not sure this
+      // lifeline thing is true).
+      m_event.reset();
     }
   }
 
 private:
   std::shared_ptr<device_type> m_device;
-  mutable std::shared_ptr<xrt::event_impl> m_event;
+  std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
   unsigned int m_uid = 0;
   bool m_managed = false;
@@ -1832,6 +1815,7 @@ class run_impl
   std::bitset<max_cus> cumask;            // cumask for command execution
   xrt_core::device* core_device;          // convenience, in scope of kernel
   std::shared_ptr<kernel_command> cmd;    // underlying command object
+  std::shared_ptr<xrt::event_impl> event; // event based execution, nullptr otherwise
   uint32_t* data;                         // command argument data payload @0x0
   uint32_t uid;                           // internal unique id for debug
   std::unique_ptr<arg_setter> asetter;    // helper to populate payload data
@@ -1864,11 +1848,11 @@ public:
   // event graph.  When run completes, the event must be notified.
   //
   // The event (stored in the event graph) participates in lifetime
-  // of the run object.
+  // of the run object. (Not sure this lifetime thing is true).
   void
-  set_event(const std::shared_ptr<event_impl>& event) const
+  set_event(const std::shared_ptr<event_impl>& evp)
   {
-    cmd->set_event(event);
+    event = evp;
   }
 
   // run_type() - constructor
@@ -2073,7 +2057,8 @@ public:
 
     XRT_DEBUG_CALL(debug_cmd_packet(kernel->get_name(), pkt));
 
-    cmd->run();
+    cmd->run(event);
+    event.reset();
   }
 
   void

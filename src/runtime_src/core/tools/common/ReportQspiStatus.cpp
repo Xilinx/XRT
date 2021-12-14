@@ -34,10 +34,13 @@ void
 ReportQspiStatus::getPropertyTree20202( const xrt_core::device * device, 
                                            boost::property_tree::ptree &pt) const
 {
-  auto qspi_stat = xrt_core::device_query<qr::xmc_qspi_status>(device);
   boost::property_tree::ptree ptree;
-  ptree.put("primary", std::get<0>(qspi_stat));
-  ptree.put("recovery", std::get<1>(qspi_stat));
+  try {
+    auto qspi_stat = xrt_core::device_query<qr::xmc_qspi_status>(device);
+    ptree.put("primary", std::get<0>(qspi_stat));
+    ptree.put("recovery", std::get<1>(qspi_stat));
+  } 
+  catch (const qr::exception&) {}
   
   // There can only be 1 root node
   pt.add_child("qspi_wp_status", ptree);
@@ -52,8 +55,7 @@ ReportQspiStatus::writeReport( const xrt_core::device* /*_pDevice*/,
   boost::property_tree::ptree ptEmpty;
   const boost::property_tree::ptree& ptree = _pt.get_child("qspi_wp_status", ptEmpty);
 
-  _output << "QSPI write protection status" << std::endl;
-  _output << boost::format("  %-23s: %s\n") % "Primary" % ptree.get<std::string>("primary");
-  _output << boost::format("  %-23s: %s\n") % "Recovery" % ptree.get<std::string>("recovery");
+  _output << boost::format("  %-23s: %s\n") % "Primary" % ptree.get<std::string>("primary", "N/A");
+  _output << boost::format("  %-23s: %s\n") % "Recovery" % ptree.get<std::string>("recovery", "N/A");
   _output << std::endl;
 }

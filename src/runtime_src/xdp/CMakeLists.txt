@@ -63,6 +63,7 @@ set(XRT_XDP_AIE_TRACE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/wr
 set(XRT_XDP_POWER_PROFILE_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/power")
 set(XRT_XDP_POWER_PROFILE_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/power")
 set(XRT_XDP_SYSTEM_COMPILER_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/system_compiler")
+set(XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/pl_deadlock")
 
 # Files for the new xdp core
 set(XRT_XDP_PROFILE_BASE_PLUGIN_DIR    "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/vp_base")
@@ -257,6 +258,13 @@ file(GLOB XRT_XDP_PROFILE_VART_PLUGIN_FILES
   "${XRT_XDP_PROFILE_VART_PLUGIN_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_DIR}/*.cpp"
+  )
+
 set(XRT_XDP_ALL_SRC
   ${XRT_XDP_PROFILE_FILES}
   ${XRT_XDP_FILES}
@@ -291,6 +299,7 @@ add_library(xdp_opencl_counters_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_COUNTERS_
 add_library(xdp_user_plugin MODULE ${XRT_XDP_PROFILE_USER_PLUGIN_FILES})
 add_library(xdp_device_offload_plugin MODULE ${XRT_XDP_OPENCL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
+add_library(xdp_pl_deadlock_plugin MODULE ${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES})
 
 add_dependencies(xdp_hal_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_hal_api_interface_plugin xdp_core xrt_core xrt_coreutil)
@@ -301,6 +310,7 @@ add_dependencies(xdp_opencl_counters_plugin xdp_core xrt_coreutil xilinxopencl)
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
+add_dependencies(xdp_pl_deadlock_plugin xdp_core xrt_core xrt_coreutil)
 
 target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
@@ -311,6 +321,7 @@ target_link_libraries(xdp_opencl_counters_plugin PRIVATE xdp_core xrt_coreutil x
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl xrt_coreutil)
 target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
+target_link_libraries(xdp_pl_deadlock_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_api_interface_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -321,16 +332,18 @@ set_target_properties(xdp_opencl_counters_plugin PROPERTIES VERSION ${XRT_VERSIO
 set_target_properties(xdp_user_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_hal_plugin
                  xdp_hal_api_interface_plugin
                  xdp_lop_plugin
-		 xdp_native_plugin
+                 xdp_native_plugin
                  xdp_opencl_trace_plugin
                  xdp_opencl_counters_plugin
                  xdp_user_plugin
                  xdp_device_offload_plugin
                  xdp_hal_device_offload_plugin
+                 xdp_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
 
@@ -369,7 +382,7 @@ set_target_properties(xdp_system_compiler_plugin PROPERTIES VERSION ${XRT_VERSIO
 # With x86 sw_emu support of AIE, XRT_AIE_BUILD is defined even on x86
 # so the condition is strengthen to include native build not defined,
 # which is same condition that compiles edge.
-if (DEFINED XRT_AIE_BUILD AND NOT DEFINED XRT_NATIVE_BUILD)
+if (DEFINED XRT_AIE_BUILD AND ${XRT_NATIVE_BUILD} STREQUAL "no")
   # AIE Profile plugin
   add_library(xdp_aie_profile_plugin MODULE ${XRT_XDP_PROFILE_AIE_PLUGIN_FILES})
   add_dependencies(xdp_aie_profile_plugin xdp_core xrt_core)
