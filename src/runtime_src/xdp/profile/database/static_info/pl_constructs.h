@@ -224,7 +224,7 @@ namespace xdp {
     XDP_EXPORT void addConnection(int32_t argIdx, int32_t memIdx) ;
 
     XDP_EXPORT explicit ComputeUnitInstance(int32_t i, const std::string& n) ;
-    XDP_EXPORT ~ComputeUnitInstance() ;
+    XDP_EXPORT ~ComputeUnitInstance() = default ;
   } ;
 
   // The Memory struct collects all of the information on a single

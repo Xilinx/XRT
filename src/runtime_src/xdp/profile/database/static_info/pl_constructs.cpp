@@ -29,10 +29,6 @@ namespace xdp {
     name = fullName.substr(pos + 1) ;
   }
 
-  ComputeUnitInstance::~ComputeUnitInstance()
-  {
-  }
-
   std::string ComputeUnitInstance::getDim()
   {
     std::string combined ;
