@@ -869,11 +869,6 @@ struct clock_freq_topology_raw : request
   using result_type = std::vector<char>;
   static const key_type key = key_type::clock_freq_topology_raw;
 
-  // parse a clock_freq_topo::clock_freq::m_name (null terminated string)
-  XRT_CORE_COMMON_EXPORT
-  static std::string
-  parse(const std::string& value);
-
   virtual boost::any
   get(const device*) const = 0;
 };
