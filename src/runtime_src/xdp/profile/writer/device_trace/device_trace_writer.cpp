@@ -14,13 +14,16 @@
  * under the License.
  */
 
-#include "xdp/profile/writer/device_trace/device_trace_writer.h"
+#define XDP_SOURCE
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/device_events.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/device_trace/device_trace_writer.h"
 
 namespace xdp {
-
 
   DeviceTraceWriter::DeviceTraceWriter(const char* filename, uint64_t devId, 
                                        const std::string& version,
@@ -90,7 +93,7 @@ namespace xdp {
                                                      uint32_t& rowCount)
   {
     // Create structure for all CUs in the xclbin
-    for (auto iter : xclbin->cus) {
+    for (auto iter : xclbin->pl.cus) {
       ComputeUnitInstance* cu = iter.second ;
       fout << "Group_Start,Compute Unit " << cu->getName();
 
@@ -202,25 +205,22 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingMemoryTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo().hasFloatingAIMwithTrace(deviceId, xclbin))) return ;
+    if (!(db->getStaticInfo().hasFloatingAIMWithTrace(deviceId, xclbin))) return ;
     fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
 
     // Go through all of the AIMs in this xclbin to find the floating ones
-    std::map<uint64_t, Monitor*> *aimMap =
-      (db->getStaticInfo()).getAIMonitors(deviceId, xclbin);
-    
-    size_t i = 0;
-    for(auto& entry : *aimMap) {
-      Monitor* aim = entry.second;
-      if(nullptr == aim) {
-        continue;
-      }
-      if(-1 != aim->cuIndex) {
-        // not a floating AIM, must have been covered in CU section
-        i++;
-        continue;
-      }
+    std::vector<Monitor*>* aims =
+      db->getStaticInfo().getAIMonitors(deviceId, xclbin) ;
 
+    size_t i = 0;
+    for (auto aim : *aims) {
+      if (nullptr == aim)
+        continue ;
+      if (-1 != aim->cuIndex) {
+        // not a floating AIM, must have been covered in CU section
+        ++i ;
+        continue ;
+      }
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
       aimBucketIdMap[index] = ++rowCount;
 
@@ -239,21 +239,20 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingStreamTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo()).hasFloatingASMwithTrace(deviceId, xclbin)) return ;
+    if (!(db->getStaticInfo()).hasFloatingASMWithTrace(deviceId, xclbin)) return ;
     fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
 
-    std::map<uint64_t, Monitor*> *asmMap =
-      (db->getStaticInfo()).getASMonitors(deviceId, xclbin);
+    std::vector<Monitor*>* asms =
+      db->getStaticInfo().getASMonitors(deviceId, xclbin) ;
+
     size_t i = 0 ;
-    for(auto& entry : *asmMap) {
-      Monitor* asM = entry.second;
-      if(nullptr == asM) {
-        continue;
-      }
-      if(-1 != asM->cuIndex) {
-        // not a floating ASM, must have been covered in CU section
-        i++;
-        continue;
+    for (auto asM : *asms) {
+      if (nullptr == asM)
+        continue ;
+      if (-1 != asM->cuIndex) {
+        // Not a floating ASM.  Must have been covered in CU section
+        ++i ;
+        continue ;
       }
 
       std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, static_cast<uint32_t>(i)) ;
@@ -319,7 +318,7 @@ namespace xdp {
           std::make_pair(xclbin, cuId) ;
         kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL) ;
         // Also output the tool tips
-        for (auto iter : xclbin->cus) {
+        for (auto iter : xclbin->pl.cus) {
           ComputeUnitInstance* cu = iter.second ;
           if (cu->getAccelMon() == cuId) {
             fout << "," << db->getDynamicInfo().addString(cu->getKernelName());
@@ -402,7 +401,7 @@ namespace xdp {
       (db->getStaticInfo()).getLoadedXclbins(deviceId) ;
 
     for (auto xclbin : loadedXclbins) {
-      for (auto iter : xclbin->cus) {
+      for (auto iter : xclbin->pl.cus) {
         ComputeUnitInstance* cu = iter.second ;
         db->getDynamicInfo().addString(cu->getKernelName()) ;
         db->getDynamicInfo().addString(cu->getName()) ;

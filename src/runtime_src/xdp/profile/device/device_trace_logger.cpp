@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/device/device_trace_logger.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -40,13 +41,16 @@ namespace xdp {
 
     xclbin = (db->getStaticInfo()).getCurrentlyLoadedXclbin(devId) ;
 
+    // Use the total number of Accelerator Monitors for the size
     auto numAM = (db->getStaticInfo()).getNumAM(deviceId, xclbin) ;
     traceIDs.resize(numAM);
     cuStarts.resize(numAM);
     amLastTrans.resize(numAM);
 
-    aimLastTrans.resize((db->getStaticInfo()).getNumAIM(deviceId, xclbin)) ;
-    asmLastTrans.resize((db->getStaticInfo()).getNumASMWithTrace(deviceId, xclbin)) ;
+    // Use the number of monitors in the PL region (not the shell) including
+    //  any configured for just trace.
+    aimLastTrans.resize((db->getStaticInfo()).getNumUserAIM(deviceId, xclbin)) ;
+    asmLastTrans.resize((db->getStaticInfo()).getNumUserASM(deviceId, xclbin)) ;
   }
 
   DeviceTraceLogger::~DeviceTraceLogger()
@@ -510,16 +514,17 @@ namespace xdp {
     // Go through all of our AIMs that have trace enabled.  If any of them
     //  have any outstanding reads or writes, then finish them based off of
     //  the last CU execution time.
-    auto aims = db->getStaticInfo().getAIMonitors(deviceId, xclbin) ;
-    if (aims == nullptr) return ;
+    auto aims = db->getStaticInfo().getUserAIMsWithTrace(deviceId, xclbin) ;
 
-    // aims is a map of slotID to Monitor*.
-    //  We can get the read traceID of an AIM by slotID * 2 and
-    //  the write traceID of an AIM by (slotID * 2) + 1
-    for (auto pair : (*aims)) {
-      uint64_t aimSlotID = (pair.first * 2) ;
-      Monitor* mon = pair.second ;
-      if (!mon) continue ;
+    // aims is a vector of Monitor*.
+    for (auto mon : aims) {
+      if (!mon)
+        continue ;
+      // We can get the trace IDs of what the hardware packets would
+      //  be by (slotIndex * 2) for read packets and (slotIndex * 2) + 1
+      //  for write packets
+      uint64_t aimReadId = mon->slotIndex * 2 ;
+      uint64_t aimWriteId = (mon->slotIndex * 2) + 1 ;
 
       int32_t cuId = mon->cuIndex ;
       int32_t amId = -1 ;
@@ -531,8 +536,8 @@ namespace xdp {
         }
       }
 
-      addApproximateDataTransferEvent(KERNEL_READ, aimSlotID, amId, cuId) ;
-      addApproximateDataTransferEvent(KERNEL_WRITE, aimSlotID + 1, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_READ, aimReadId, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_WRITE, aimWriteId, amId, cuId) ;
     }
   }
 
@@ -566,7 +571,7 @@ namespace xdp {
   {
     // Find unfinished ASM events
     bool unfinishedASMevents = false;
-    for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumASMWithTrace(deviceId, xclbin); ++asmIndex) {
+    for(uint64_t asmIndex = 0; asmIndex < (db->getStaticInfo()).getNumUserASMWithTrace(deviceId, xclbin); ++asmIndex) {
       uint64_t asmTraceID = asmIndex + MIN_TRACE_ID_ASM;
       Monitor* mon  = db->getStaticInfo().getASMonitor(deviceId, xclbin, asmIndex);
       if(!mon) {

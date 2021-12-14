@@ -25,6 +25,10 @@
 #include <string>
 #include <vector>
 
+// For the MIN_TRACE_IDs
+#include "core/include/xclperf.h"
+
+// For DEBUG_IP_TYPE
 #include "core/include/xclbin.h"
 
 #include "xdp/config.h"
@@ -43,6 +47,11 @@ namespace xdp {
     //  the slot index.  We store the original index from the debug_ip_layout
     //  here, but it may not be used.  [[maybe_unused]]
     uint64_t index ;
+
+    // Each monitor can be configured either as counters only, or as
+    //  counters + trace during compilation.  This keeps track of that
+    //  information and is set based on the properties field in debug_ip_layout 
+    bool traceEnabled = false ;
 
     // The index of the Compute Unit in the IP_LAYOUT section of the xclbin
     //  this Monitor is attached to (if any).
@@ -85,14 +94,43 @@ namespace xdp {
     uint64_t slotIndex ;
 
     Monitor(DEBUG_IP_TYPE ty, uint64_t idx, const char* n,
-            int32_t cuId = -1, int32_t memId = -1, uint64_t slotId = 0)
+            int32_t cuId = -1, int32_t memId = -1)
       : type(ty)
       , index(idx)
       , cuIndex(cuId)
       , memIndex(memId)
       , name(n)
-      , slotIndex(slotId)
-    { 
+    {
+      // The slot index is determined by the index from the debug_ip_layout.
+      switch (ty) {
+      case ACCEL_MONITOR:
+        // Because of the different stalls, AMs can produce up to 16 different
+        //  trace IDs in their trace packets.
+        slotIndex = (idx - MIN_TRACE_ID_AM) / 16 ;
+        break ;
+      case AXI_MM_MONITOR:
+        // To differentiate between reads and writes, AIMs can produce up
+        //  to 2 different trace IDs in their trace packets.
+        slotIndex = (idx - MIN_TRACE_ID_AIM) / 2 ;
+        break ;
+      case AXI_STREAM_MONITOR:
+        // ASMs only generate one type of trace ID in their trace packets.
+        slotIndex = idx - MIN_TRACE_ID_ASM ;
+        break ;
+      default:
+        // Should never be reached
+        slotIndex = 0 ;
+        break ;
+      }
+    }
+
+    // Some platforms have monitors inside the shell.  These are configured
+    //  for counters only and are identified by their name.
+    inline bool isShellMonitor() const
+    {
+      return (name.find("Host to Device")   != std::string::npos) ||
+             (name.find("Peer to Peer")     != std::string::npos) ||
+             (name.find("Memory to Memory") != std::string::npos) ;
     }
   } ;
 

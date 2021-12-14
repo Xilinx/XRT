@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,71 +34,40 @@
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
-#define XDP_SOURCE
-
-#include "xdp/profile/database/static_info_database.h"
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/writer/vp_base/vp_run_summary.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-
-#include "core/include/xclbin.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/include/xclbin.h"
+
+#define XDP_SOURCE
+
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/device_info.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/database/static_info/xclbin_info.h"
+#include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/device/device_intf.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/vp_base/vp_run_summary.h"
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XMON_TRACE_PROPERTY_MASK       0x1
 
 namespace xdp {
 
-  DeviceInfo::~DeviceInfo()
-  {
-    for (auto& i : loadedXclbins) {
-      delete i ;
-    }
-    loadedXclbins.clear() ;
-
-    for(auto i : aieList) {
-      delete i;
-    }
-    aieList.clear();
-    for(auto i : gmioList) {
-      delete i;
-    }
-    gmioList.clear();
-  }
-
-  void DeviceInfo::addTraceGMIO(uint32_t id, uint16_t col, uint16_t num,
-                                uint16_t stream, uint16_t len)
-  {
-    TraceGMIO* traceGmio = new TraceGMIO(id, col, num, stream, len);
-    gmioList.push_back(traceGmio);
-  }
-
-  // Add AIE counter to database list
-  // NOTE: Start and end events are 16 bits so we can add offsets
-  //       for both memory and PL/shim events.
-  void DeviceInfo::addAIECounter(uint32_t i, uint16_t col, uint16_t r,
-                                 uint8_t num, uint16_t start, uint16_t end,
-                                 uint8_t reset, double freq,
-                                 const std::string& mod,
-                                 const std::string& aieName)
-  {
-      AIECounter* aie = new AIECounter(i, col, r, num, start, end,
-                                       reset, freq, mod, aieName);
-      aieList.push_back(aie);
-  }
-
-  VPStaticDatabase::VPStaticDatabase(VPDatabase* d) :
-    db(d), runSummary(nullptr), systemDiagram(""),
-    softwareEmulationDeviceName(""), aieDevInst(nullptr),
-    aieDevice(nullptr), deallocateAieDevice(nullptr)
+  VPStaticDatabase::VPStaticDatabase(VPDatabase* d)
+    : db(d)
+    , runSummary(nullptr)
+    , systemDiagram("")
+    , softwareEmulationDeviceName("")
+    , aieDevInst(nullptr)
+    , aieDevice(nullptr)
+    , deallocateAieDevice(nullptr)
   {
 #ifdef _WIN32
     pid = _getpid() ;
 #else
     pid = static_cast<int>(getpid()) ;
 #endif
-    applicationStartTime = 0 ;
   }
 
   VPStaticDatabase::~VPStaticDatabase()
@@ -117,6 +86,1072 @@ namespace xdp {
       delete iter.second ;
     }
   }
+
+  // ***********************************************************************
+  // ***** Functions related to information on the running application *****
+  int VPStaticDatabase::getPid() const
+  {
+    return pid ;
+  }
+
+  uint64_t VPStaticDatabase::getApplicationStartTime() const
+  {
+    return applicationStartTime ;
+  }
+
+  void VPStaticDatabase::setApplicationStartTime(uint64_t t)
+  {
+    std::lock_guard<std::mutex> lock(summaryLock) ;
+    applicationStartTime = t ;
+  }
+
+  // ***************************************************
+  // ***** Functions related to OpenCL information *****
+
+  std::set<uint64_t>& VPStaticDatabase::getCommandQueueAddresses()
+  {
+    return commandQueueAddresses ;
+  }
+
+  std::set<std::string>& VPStaticDatabase::getEnqueuedKernels()
+  {
+    return enqueuedKernels ;
+  }
+
+  void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    enqueuedKernels.emplace(identifier) ;
+  }
+
+  void VPStaticDatabase::setNumDevices(uint64_t contextId, uint64_t numDevices)
+  {
+    contextIdToNumDevices[contextId] = numDevices ;
+  }
+
+  uint64_t VPStaticDatabase::getNumDevices(uint64_t contextId)
+  {
+    if (contextIdToNumDevices.find(contextId) == contextIdToNumDevices.end())
+      return 0 ;
+    return contextIdToNumDevices[contextId] ;
+  }
+
+  std::string VPStaticDatabase::getSoftwareEmulationDeviceName()
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    return softwareEmulationDeviceName ;
+  }
+
+  void VPStaticDatabase::setSoftwareEmulationDeviceName(const std::string& name)
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    softwareEmulationDeviceName = name ;
+  }
+
+  std::map<std::string, uint64_t>
+  VPStaticDatabase::getSoftwareEmulationCUCounts()
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    return softwareEmulationCUCounts ;
+  }
+
+  void
+  VPStaticDatabase::addSoftwareEmulationCUInstance(const std::string& kName)
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    if (softwareEmulationCUCounts.find(kName) ==
+        softwareEmulationCUCounts.end())
+      softwareEmulationCUCounts[kName] = 1 ;
+    else
+      softwareEmulationCUCounts[kName] += 1 ;
+  }
+
+  std::map<std::string, bool>&
+  VPStaticDatabase::getSoftwareEmulationMemUsage()
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    return softwareEmulationMemUsage ;
+  }
+
+  void
+  VPStaticDatabase::
+  addSoftwareEmulationMemUsage(const std::string& mem, bool used)
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    softwareEmulationMemUsage[mem] = used ;
+  }
+
+  std::vector<std::string>&
+  VPStaticDatabase::getSoftwareEmulationPortBitWidths()
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    return softwareEmulationPortBitWidths ;
+  }
+
+  void VPStaticDatabase::addSoftwareEmulationPortBitWidth(const std::string& s)
+  {
+    std::lock_guard<std::mutex> lock(openCLLock) ;
+    softwareEmulationPortBitWidths.push_back(s) ;
+  }
+
+  // ************************************************
+  // ***** Functions related to the run summary *****
+  std::vector<std::pair<std::string, std::string>>&
+  VPStaticDatabase::getOpenedFiles()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock) ;
+    return openedFiles ;
+  }
+
+  void VPStaticDatabase::addOpenedFile(const std::string& name,
+                                       const std::string& type)
+  {
+    std::lock_guard<std::mutex> lock(summaryLock) ;
+
+    openedFiles.push_back(std::make_pair(name, type)) ;
+
+    if (runSummary == nullptr)
+    {
+      runSummary = new VPRunSummaryWriter("xrt.run_summary", db) ;
+    }
+    runSummary->write(false) ;
+  }
+
+  std::string VPStaticDatabase::getSystemDiagram()
+  {
+    std::lock_guard<std::mutex> lock(summaryLock) ;
+    return systemDiagram ;
+  }
+
+  // ***************************************************************
+  // ***** Functions related to information on all the devices *****
+  uint64_t VPStaticDatabase::getNumDevices()
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    return deviceInfo.size() ;
+  }
+
+  DeviceInfo* VPStaticDatabase::getDeviceInfo(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId] ;
+  }
+
+  std::vector<std::string> VPStaticDatabase::getDeviceNames()
+  {
+    std::vector<std::string> uniqueNames ;
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    for (auto device : deviceInfo) {
+      uniqueNames.push_back(device.second->getUniqueDeviceName()) ;
+    }
+    return uniqueNames ;
+  }
+
+  std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
+  {
+    std::vector<DeviceInfo*> infos ;
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    for (auto device : deviceInfo) {
+      infos.push_back(device.second) ;
+    }
+    return infos ;
+  }
+
+  bool VPStaticDatabase::hasStallInfo()
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    for (auto device : deviceInfo) {
+      for (auto xclbin : device.second->getLoadedXclbins()) {
+        for (auto cu : xclbin->pl.cus) {
+          if (cu.second->getStallEnabled())
+            return true ;
+        }
+      }
+    }
+    return false ;
+  }
+
+  XclbinInfo* VPStaticDatabase::getCurrentlyLoadedXclbin(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->currentXclbin() ;
+  }
+
+  void VPStaticDatabase::deleteCurrentlyUsedDeviceInterface(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+    if (xclbin->deviceIntf) {
+      delete xclbin->deviceIntf ;
+      xclbin->deviceIntf = nullptr ;
+    }
+  }
+
+  bool VPStaticDatabase::isDeviceReady(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return false ;
+    return deviceInfo[deviceId]->isReady ;
+  }
+
+  double VPStaticDatabase::getClockRateMHz(uint64_t deviceId, bool PL)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    // If we don't have any information on the specific ID, return
+    //  defaults.  300 MHz for PL clock rate and 1 GHz for AIE clock rate.
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return PL ? 300.0 : 1000.0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return PL ? 300.0 : 1000.0 ;
+
+    if (PL)
+      return xclbin->pl.clockRatePLMHz ;
+    else
+      return xclbin->aie.clockRateAIEMHz ;
+  }
+
+  void
+  VPStaticDatabase::setDeviceName(uint64_t deviceId, const std::string& name)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->deviceName = name ;
+  }
+
+  std::string VPStaticDatabase::getDeviceName(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return "" ;
+    return deviceInfo[deviceId]->deviceName ;
+  }
+
+  void VPStaticDatabase::setDeviceIntf(uint64_t deviceId, DeviceIntf* devIntf)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+    xclbin->deviceIntf = devIntf ;
+  }
+
+  DeviceIntf* VPStaticDatabase::getDeviceIntf(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return xclbin->deviceIntf ;
+  }
+
+  void VPStaticDatabase::setKDMACount(uint64_t deviceId, uint64_t num)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->kdmaCount = num ;
+  }
+
+  uint64_t VPStaticDatabase::getKDMACount(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->kdmaCount ;
+  }
+
+  void VPStaticDatabase::setMaxReadBW(uint64_t deviceId, double bw)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+    xclbin->pl.maxReadBW = bw ;
+  }
+
+  double VPStaticDatabase::getMaxReadBW(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0.0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0.0 ;
+
+    return xclbin->pl.maxReadBW ;
+  }
+
+  void VPStaticDatabase::setMaxWriteBW(uint64_t deviceId, double bw)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->pl.maxWriteBW = bw ;
+  }
+
+  double VPStaticDatabase::getMaxWriteBW(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0.0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0.0 ;
+
+    return xclbin->pl.maxWriteBW ;
+  }
+
+  std::string VPStaticDatabase::getXclbinName(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return "" ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return "" ;
+
+    return xclbin->name ;
+  }
+
+  std::vector<XclbinInfo*> VPStaticDatabase::getLoadedXclbins(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end()) {
+      std::vector<XclbinInfo*> blank ;
+      return blank ;
+    }
+    return deviceInfo[deviceId]->getLoadedXclbins() ;
+  }
+
+  ComputeUnitInstance* VPStaticDatabase::getCU(uint64_t deviceId, int32_t cuId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return xclbin->pl.cus[cuId] ;
+  }
+
+  std::map<int32_t, ComputeUnitInstance*>*
+  VPStaticDatabase::getCUs(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->pl.cus) ;
+  }
+
+  std::map<int32_t, Memory*>*
+  VPStaticDatabase::getMemoryInfo(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->pl.memoryInfo) ;
+  }
+
+  Memory* VPStaticDatabase::getMemory(uint64_t deviceId, int32_t memId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    if (xclbin->pl.memoryInfo.find(memId) == xclbin->pl.memoryInfo.end())
+      return nullptr ;
+
+    return xclbin->pl.memoryInfo[memId] ;
+  }
+
+  void VPStaticDatabase::getDataflowConfiguration(uint64_t deviceId,
+                                                  bool* config,
+                                                  size_t size)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    // User space AM in sorted order of their slotIds.  Matches with
+    //  sorted list of AM in xdp::DeviceIntf
+    size_t count = 0 ;
+    for (auto mon : xclbin->pl.ams) {
+      if (count >= size)
+        return ;
+      auto cu = xclbin->pl.cus[mon->cuIndex] ;
+      config[count] = cu->getDataflowEnabled() ;
+      ++count ;
+    }
+  }
+
+  void VPStaticDatabase::getFaConfiguration(uint64_t deviceId, bool* config,
+                                            size_t size)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    // User space AM in sorted order of their slotIds.  Matches with
+    //  sorted list of AM in xdp::DeviceIntf
+    size_t count = 0 ;
+    for (auto mon : xclbin->pl.ams) {
+      if (count >= size)
+        return ;
+      auto cu = xclbin->pl.cus[mon->cuIndex] ;
+      config[count] = cu->getHasFA() ;
+      ++count ;
+    }
+  }
+
+  std::string VPStaticDatabase::getCtxInfo(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return "" ;
+    return deviceInfo[deviceId]->ctxInfo ;
+  }
+
+  // *********************************************************
+  // ***** Functions related to AIE specific information *****
+  bool VPStaticDatabase::isAIECounterRead(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return false ;
+
+    for (auto xclbin : deviceInfo[deviceId]->getLoadedXclbins()) {
+      if (!xclbin)
+        continue ;
+      if (xclbin->aie.isAIEcounterRead)
+        return true ;
+    }
+    return false ;
+  }
+
+  void VPStaticDatabase::setIsAIECounterRead(uint64_t deviceId, bool val)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->aie.isAIEcounterRead = val ;
+  }
+
+  void VPStaticDatabase::setIsGMIORead(uint64_t deviceId, bool val)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
+    xclbin->aie.isGMIORead = val ;
+  }
+
+  bool VPStaticDatabase::isGMIORead(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return false ;
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return false ;
+    return xclbin->aie.isGMIORead ;
+  }
+
+  uint64_t VPStaticDatabase::getNumAIECounter(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0 ;
+
+    return xclbin->aie.aieList.size() ;
+  }
+
+  uint64_t VPStaticDatabase::getNumTraceGMIO(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0 ;
+
+    return xclbin->aie.gmioList.size() ;
+  }
+
+  AIECounter* VPStaticDatabase::getAIECounter(uint64_t deviceId, uint64_t idx)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return xclbin->aie.aieList[idx] ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIECoreCounterResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieCoreCountersMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemoryCounterResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemoryCountersMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEShimCounterResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieShimCountersMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIECoreEventResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieCoreEventsMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEMemoryEventResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieMemoryEventsMap) ;
+  }
+
+  std::map<uint32_t, uint32_t>*
+  VPStaticDatabase::getAIEShimEventResources(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieShimEventsMap) ;
+  }
+
+  std::vector<std::unique_ptr<aie_cfg_tile>>*
+  VPStaticDatabase::getAIECfgTiles(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    return &(xclbin->aie.aieCfgList) ;
+  }
+
+  TraceGMIO* VPStaticDatabase::getTraceGMIO(uint64_t deviceId, uint64_t idx)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return nullptr ;
+
+    if (xclbin->aie.gmioList.size() <= idx)
+      return nullptr ;
+    return xclbin->aie.gmioList[idx] ;
+  }
+
+  void VPStaticDatabase::addTraceGMIO(uint64_t deviceId, uint32_t i,
+                                      uint16_t col, uint16_t num,
+                                      uint16_t stream, uint16_t len)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addTraceGMIO(i, col, num, stream, len) ;
+  }
+
+  void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,
+                                       uint16_t col, uint16_t r, uint8_t num,
+                                       uint16_t start, uint16_t end,
+                                       uint8_t reset, double freq,
+                                       const std::string& mod,
+                                       const std::string& aieName)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
+                                        freq, mod, aieName) ;
+  }
+
+  void VPStaticDatabase::addAIECounterResources(uint64_t deviceId,
+                                                uint32_t numCounters,
+                                                uint32_t numTiles,
+                                                bool isCore)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIECounterResources(numCounters, numTiles, isCore);
+  }
+
+  void VPStaticDatabase::addAIECoreEventResources(uint64_t deviceId,
+                                                  uint32_t numEvents,
+                                                  uint32_t numTiles)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIECoreEventResources(numEvents, numTiles) ;
+  }
+
+  void VPStaticDatabase::addAIEMemoryEventResources(uint64_t deviceId,
+                                                    uint32_t numEvents,
+                                                    uint32_t numTiles)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIEMemoryEventResources(numEvents, numTiles) ;
+  }
+
+  void VPStaticDatabase::addAIECfgTile(uint64_t deviceId, 
+                                       std::unique_ptr<aie_cfg_tile>& tile)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return ;
+    deviceInfo[deviceId]->addAIECfgTile(tile) ;
+  }
+
+  uint64_t VPStaticDatabase::getNumTracePLIO(uint64_t deviceId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+
+    XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+    if (!xclbin)
+      return 0 ;
+    return xclbin->aie.numTracePLIO ;
+  }
+
+  uint64_t VPStaticDatabase::getNumAIETraceStream(uint64_t deviceId)
+  {
+    uint64_t numAIETraceStream = getNumTracePLIO(deviceId) ;
+    if (numAIETraceStream)
+      return numAIETraceStream ;
+    {
+      // NumTracePLIO also locks the database, so put this lock in its own
+      //  scope after numTracePLIO has returned.
+      std::lock_guard<std::mutex> lock(deviceLock) ;
+
+      if (deviceInfo.find(deviceId) == deviceInfo.end())
+        return 0 ;
+
+      XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+      if (!xclbin)
+        return 0 ;
+      return xclbin->aie.gmioList.size() ;
+    }
+  }
+
+  void* VPStaticDatabase::getAieDevInst(std::function<void* (void*)> fetch,
+                                        void* devHandle)
+  {
+    std::lock_guard<std::mutex> lock(aieLock) ;
+    if (aieDevInst)
+      return aieDevInst ;
+
+    aieDevInst = fetch(devHandle) ;
+    return aieDevInst ;
+  }
+
+  void* VPStaticDatabase::getAieDevice(std::function<void* (void*)> allocate,
+                                       std::function<void (void*)> deallocate,
+                                       void* devHandle)
+  {
+    std::lock_guard<std::mutex> lock(aieLock) ;
+    if (aieDevice)
+      return aieDevice;
+    if (!aieDevInst) return nullptr ;
+
+    deallocateAieDevice = deallocate ;
+    aieDevice = allocate(devHandle) ;
+    return aieDevice ;
+  }
+
+  // ************************************************************************
+  // ***** Functions for information from a specific xclbin on a device *****
+  uint64_t VPStaticDatabase::getNumAM(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumAM(xclbin) ;
+  }
+
+  uint64_t VPStaticDatabase::getNumUserAMWithTrace(uint64_t deviceId,
+                                                   XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumUserAMWithTrace(xclbin) ;
+  }
+
+  // Get the total number of AIMs in the design.  This includes shell monitors
+  //  and all user space monitors.
+  uint64_t VPStaticDatabase::getNumAIM(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumAIM(xclbin) ;
+  }
+
+  // Get the number of AIMs in the user space, including monitors configured
+  //  for counters only and counters + trace.  Exclude shell monitors.
+  uint64_t
+  VPStaticDatabase::getNumUserAIM(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumUserAIM(xclbin) ;
+  }
+
+  // Get the number of AIMs only in the user space configured with trace.
+  //  Exclude shell monitors, memory monitors, and any other monitors configured
+  //  just with counters.
+  uint64_t
+  VPStaticDatabase::getNumUserAIMWithTrace(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumUserAIMWithTrace(xclbin) ;
+  }
+
+  // Get the total number of ASMs in the design.  This includes shell monitors
+  //  and all user space monitors.
+  uint64_t VPStaticDatabase::getNumASM(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumASM(xclbin) ;
+  }
+
+  // Get the number of ASMs in the user space, including monitors configured
+  //  for counters only and counters + trace.  Exclude shell monitors.
+  uint64_t
+  VPStaticDatabase::getNumUserASM(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumUserASM(xclbin) ;
+  }
+
+  // Get the number of ASMs only in the user space configured with trace.
+  //  Exclude shell monitors and any other monitors configured
+  //  just with counters.
+  uint64_t
+  VPStaticDatabase::getNumUserASMWithTrace(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumUserASMWithTrace(xclbin) ;
+  }
+
+  uint64_t VPStaticDatabase::getNumNOC(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return 0 ;
+    return deviceInfo[deviceId]->getNumNOC(xclbin) ;
+  }
+
+  std::vector<Monitor*>*
+  VPStaticDatabase::getAIMonitors(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getAIMonitors(xclbin) ;
+  }
+
+  std::vector<Monitor*>
+  VPStaticDatabase::getUserAIMsWithTrace(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end()) {
+      std::vector<Monitor*> constructed ;
+      return constructed ;
+    }
+    return deviceInfo[deviceId]->getUserAIMsWithTrace(xclbin) ;
+  }
+
+  std::vector<Monitor*>*
+  VPStaticDatabase::getASMonitors(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getASMonitors(xclbin) ;
+  }
+
+  std::vector<Monitor*>
+  VPStaticDatabase::getUserASMsWithTrace(uint64_t deviceId, XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end()) {
+      std::vector<Monitor*> constructed ;
+      return constructed ;
+    }
+    return deviceInfo[deviceId]->getUserASMsWithTrace(xclbin) ;
+  }
+
+  bool VPStaticDatabase::hasFloatingAIMWithTrace(uint64_t deviceId,
+                                                 XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return false ;
+    return deviceInfo[deviceId]->hasFloatingAIMWithTrace(xclbin) ;
+  }
+
+  bool VPStaticDatabase::hasFloatingASMWithTrace(uint64_t deviceId,
+                                                 XclbinInfo* xclbin)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return false ;
+    return deviceInfo[deviceId]->hasFloatingASMWithTrace(xclbin) ;
+  }
+
+  // ********************************************************************
+  // ***** Functions for single monitors from an xclbin on a device *****
+  Monitor*
+  VPStaticDatabase::
+  getAMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getAMonitor(xclbin, slotId) ;
+  }
+
+  Monitor*
+  VPStaticDatabase::
+  getAIMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getAIMonitor(xclbin, slotId) ;
+  }
+
+  Monitor*
+  VPStaticDatabase::
+  getASMonitor(uint64_t deviceId, XclbinInfo* xclbin, uint64_t slotId)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getASMonitor(xclbin, slotId) ;
+  }
+
+  NoCNode*
+  VPStaticDatabase::getNOC(uint64_t deviceId, XclbinInfo* xclbin, uint64_t idx)
+  {
+    std::lock_guard<std::mutex> lock(deviceLock) ;
+
+    if (deviceInfo.find(deviceId) == deviceInfo.end())
+      return nullptr ;
+    return deviceInfo[deviceId]->getNOC(xclbin, idx) ;
+  }
+
+  // ************************************************************************
+  // ***** Functions for  *****
+
 
   bool VPStaticDatabase::validXclbin(void* devHandle)
   {
@@ -156,39 +1191,11 @@ namespace xdp {
     return false ;
   }
 
-  std::vector<std::string> VPStaticDatabase::getDeviceNames()
-  {
-    std::vector<std::string> deviceNames ;
-    for (auto device : deviceInfo)
-    {
-      deviceNames.push_back((device.second)->getUniqueDeviceName()) ;
-    }
 
-    return deviceNames ;
-  }
 
-  std::vector<DeviceInfo*> VPStaticDatabase::getDeviceInfos()
-  {
-    std::vector<DeviceInfo*> infos ;
-    for (auto device : deviceInfo)
-    {
-      infos.push_back(device.second) ;
-    }
-    return infos ;
-  }
 
-  bool VPStaticDatabase::hasStallInfo()
-  {
-    for (auto device : deviceInfo)
-    {
-      if ((device.second)->loadedXclbins.size() <= 0) continue ;
-      for (auto cu : (device.second)->loadedXclbins.back()->cus)
-      {
-        if ((cu.second)->getStallEnabled()) return true ;
-      }
-    }
-    return false ;
-  }
+
+
 
   double VPStaticDatabase::findClockRate(std::shared_ptr<xrt_core::device> device)
   {
@@ -269,9 +1276,10 @@ namespace xdp {
     
     // We need to update the device, but if we had an xclbin previously loaded
     //  then we need to mark it
-    if ((deviceInfo.find(deviceId) != deviceInfo.end()) &&
-        deviceInfo[deviceId]->loadedXclbins.size() >= 1) {
-      (db->getDynamicInfo()).markXclbinEnd(deviceId) ;
+    if (deviceInfo.find(deviceId) != deviceInfo.end()) {
+      XclbinInfo* xclbin = deviceInfo[deviceId]->currentXclbin() ;
+      if (xclbin)
+        db->getDynamicInfo().markXclbinEnd(deviceId) ;
     }
 
     DeviceInfo* devInfo = nullptr ;
@@ -291,7 +1299,7 @@ namespace xdp {
     
     XclbinInfo* currentXclbin = new XclbinInfo() ;
     currentXclbin->uuid = device->get_xclbin_uuid() ;
-    currentXclbin->clockRateMHz = findClockRate(device) ;
+    currentXclbin->pl.clockRatePLMHz = findClockRate(device) ;
 
 
     /* Configure AMs if context monitoring is supported
@@ -317,14 +1325,14 @@ namespace xdp {
   // Return false if we should not reset device information
   bool VPStaticDatabase::resetDeviceInfo(uint64_t deviceId, const std::shared_ptr<xrt_core::device>& device)
   {
-    std::lock_guard<std::mutex> lock(dbLock);
+    std::lock_guard<std::mutex> lock(deviceLock);
 
     auto itr = deviceInfo.find(deviceId);
     if(itr != deviceInfo.end()) {
       DeviceInfo *devInfo = itr->second;
       // Are we attempting to load the same xclbin multiple times?
-      if (devInfo->loadedXclbins.size() > 0 &&
-          device->get_xclbin_uuid() == devInfo->loadedXclbins.back()->uuid) {
+      XclbinInfo* xclbin = devInfo->currentXclbin() ;
+      if (xclbin && device->get_xclbin_uuid() == xclbin->uuid) {
         return false ;
       }
     }
@@ -347,7 +1355,10 @@ namespace xdp {
     {
       buf << std::hex << std::setw(2) << std::setfill('0') << (unsigned int)(systemMetadataSection[index]);
     }
-    systemDiagram = buf.str() ;
+    {
+      std::lock_guard<std::mutex> lock(summaryLock) ;
+      systemDiagram = buf.str() ;
+    }
 
     try {
       std::stringstream ss;
@@ -387,7 +1398,7 @@ namespace xdp {
         continue;
       }
       cu = new ComputeUnitInstance(i, cuName);
-      currentXclbin->cus[i] = cu ;
+      currentXclbin->pl.cus[i] = cu ;
       if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
         cu->setDataflowEnabled(true);
       } else
@@ -402,7 +1413,7 @@ namespace xdp {
 
     for(int32_t i = 0; i < memTopologySection->m_count; i++) {
       const struct mem_data* memData = &(memTopologySection->m_mem_data[i]);
-      currentXclbin->memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
+      currentXclbin->pl.memoryInfo[i] = new Memory(memData->m_type, i, memData->m_base_address, memData->m_size,
                                           reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
     }
 
@@ -416,7 +1427,7 @@ namespace xdp {
     for(int32_t i = 0; i < connectivitySection->m_count; i++) {
       const struct connection* connctn = &(connectivitySection->m_connection[i]);
 
-      if(currentXclbin->cus.find(connctn->m_ip_layout_index) == currentXclbin->cus.end()) {
+      if(currentXclbin->pl.cus.find(connctn->m_ip_layout_index) == currentXclbin->pl.cus.end()) {
         const struct ip_data* ipData = &(ipLayoutSection->m_ip_data[connctn->m_ip_layout_index]);
         if(ipData->m_type != IP_KERNEL) {
           // error ?
@@ -430,7 +1441,7 @@ namespace xdp {
           continue;
         }
         cu = new ComputeUnitInstance(connctn->m_ip_layout_index, cuName);
-        currentXclbin->cus[connctn->m_ip_layout_index] = cu;
+        currentXclbin->pl.cus[connctn->m_ip_layout_index] = cu;
         if((ipData->properties >> IP_CONTROL_SHIFT) & AP_CTRL_CHAIN) {
           cu->setDataflowEnabled(true);
         } else
@@ -438,12 +1449,12 @@ namespace xdp {
           cu->setFaEnabled(true);
         }
       } else {
-        cu = currentXclbin->cus[connctn->m_ip_layout_index];
+        cu = currentXclbin->pl.cus[connctn->m_ip_layout_index];
       }
 
-      if(currentXclbin->memoryInfo.find(connctn->mem_data_index) == currentXclbin->memoryInfo.end()) {
+      if(currentXclbin->pl.memoryInfo.find(connctn->mem_data_index) == currentXclbin->pl.memoryInfo.end()) {
         const struct mem_data* memData = &(memTopologySection->m_mem_data[connctn->mem_data_index]);
-        currentXclbin->memoryInfo[connctn->mem_data_index]
+        currentXclbin->pl.memoryInfo[connctn->mem_data_index]
                  = new Memory(memData->m_type, connctn->mem_data_index,
                               memData->m_base_address, memData->m_size, reinterpret_cast<const char*>(memData->m_tag), memData->m_used);
       }
@@ -487,7 +1498,7 @@ namespace xdp {
       }
 
       // Find the ComputeUnitInstance
-      for(auto cuItr : currentXclbin->cus) {
+      for(auto cuItr : currentXclbin->pl.cus) {
         if(0 != cuItr.second->getKernelName().compare(kernelName)) {
           continue;
         }
@@ -502,12 +1513,18 @@ namespace xdp {
                                       const std::string& name,
                                       const struct debug_ip_data* debugIpData)
   {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              "Attempt to initialize an AM without a loaded xclbin") ;
+      return ;
+    }
+
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
-    // MIN_TRACE_ID_AM is 0, so the index is always >=
-    uint64_t slotId = (index - MIN_TRACE_ID_AM) / 16;
 
-    for (auto cu : devInfo->loadedXclbins.back()->cus) {
+    // Find the compute unit that this AM is attached to.
+    for (auto cu : xclbin->pl.cus) {
       ComputeUnitInstance* cuObj = cu.second ;
       int32_t cuId = cu.second->getIndex() ;
 
@@ -519,18 +1536,15 @@ namespace xdp {
 
         Monitor* mon =
           new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type), index,
-                      debugIpData->m_name, cuId, -1 /* memId */, slotId) ;
-        // First, add this monitor to the list of all AMs
-        devInfo->loadedXclbins.back()->amList.push_back(mon);
-        // Second, determine if this is a trace-enabled AM or just a counter AM
-        //  and add it to the appropriate container
-        if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
-          devInfo->loadedXclbins.back()->amMap.emplace(slotId, mon);
-          cuObj->setAccelMon(slotId);
-        }
-        else {
-          devInfo->loadedXclbins.back()->noTraceAMs.push_back(mon);
-        }
+                      debugIpData->m_name, cuId) ;
+
+        if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK)
+          mon->traceEnabled = true ;
+
+        // Add the monitor to the list of all monitors in this xclbin
+        xclbin->pl.ams.push_back(mon);
+        // Associate it with this compute unit
+        cuObj->setAccelMon(mon->slotIndex) ;
         break ;
       }
     }
@@ -540,6 +1554,13 @@ namespace xdp {
                                        const std::string& name,
                                        const struct debug_ip_data* debugIpData)
   {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              "Attempt to initialize an AIM without a loaded xclbin") ;
+      return ;
+    }
+
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
     if (index < MIN_TRACE_ID_AIM) {
@@ -549,14 +1570,16 @@ namespace xdp {
                               msg.str());
       index = MIN_TRACE_ID_AIM ;
     }
-    uint64_t slotId = (index - MIN_TRACE_ID_AIM) / 2;
 
-    // Parse name to find CU Name and Memory
+    // Parse name to find CU Name and Memory.  We expect the name in
+    //  debug_ip_layout to be in the form of "cu_name/memory_name-port_name"
     size_t pos = name.find('/');
     std::string monCuName = name.substr(0, pos);
 
     if (monCuName == "memory_subsystem") {
-      devInfo->loadedXclbins.back()->hasMemoryAIM = true ;
+      XclbinInfo* xclbin = devInfo->currentXclbin() ;
+      if (xclbin)
+        xclbin->pl.hasMemoryAIM = true ;
     }
 
     std::string memName = "" ;
@@ -571,44 +1594,39 @@ namespace xdp {
     int32_t cuId = -1 ;
     int32_t memId = -1;
 
-    for(auto cu : devInfo->loadedXclbins.back()->cus) {
+    // Find both the compute unit this AIM is attached to (if applicable)
+    //  and the memory this AIM is attached to (if applicable).
+    for(auto cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
         break;
       }
     }
-    for(auto mem : devInfo->loadedXclbins.back()->memoryInfo) {
+    for(auto mem : xclbin->pl.memoryInfo) {
       if(0 == memName.compare(mem.second->name)) {
         memId = mem.second->index;
         break;
       }
     }
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
-                               index, debugIpData->m_name, cuId, memId, slotId);
+                               index, debugIpData->m_name, cuId, memId);
     mon->port = portName;
+    if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
+      mon->traceEnabled = true ;
+    }
 
     // Add the monitor to the list of all AIMs
-    devInfo->loadedXclbins.back()->aimList.push_back(mon) ;
-    bool traceEnabled =
-      (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) != 0 ;
+    xclbin->pl.aims.push_back(mon) ;
 
     // Attach to a CU if appropriate
     if (cuObj) {
-      cuObj->addAIM(slotId, traceEnabled) ;
+      cuObj->addAIM(mon->slotIndex, mon->traceEnabled) ;
     }
-    else if(traceEnabled) {
+    else if(mon->traceEnabled) {
       // If not connected to CU and not a shell monitor, then a floating monitor
       // This floating monitor is enabled for trace too
-      devInfo->loadedXclbins.back()->hasFloatingAIMwithTrace = true;
-    }
-
-    // If the AIM is an User Space AIM with trace enabled i.e. either
-    //  connected to a CU or floating but not shell AIM
-    if(traceEnabled) {
-      devInfo->loadedXclbins.back()->aimMap.emplace(slotId, mon);
-    } else {
-      devInfo->loadedXclbins.back()->noTraceAIMs.push_back(mon);
+      xclbin->pl.hasFloatingAIMWithTrace = true ;
     }
   }
 
@@ -616,6 +1634,13 @@ namespace xdp {
                                        const std::string& name,
                                        const struct debug_ip_data* debugIpData)
   {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin) {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              "Attempt to initialize an ASM without a loaded xclbin") ;
+      return ;
+    }
+
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
     if (index < MIN_TRACE_ID_ASM) {
@@ -625,9 +1650,11 @@ namespace xdp {
                               msg.str());
       index = MIN_TRACE_ID_ASM ;
     }
-    uint64_t slotId = (index - MIN_TRACE_ID_ASM);
 
-    // associate with the first CU
+    // Parse out the name of the compute unit this monitor is attached to if
+    //  possible.  We expect the name in debug_ip_layout to be in the form of
+    //  compute_unit_name/port_name.  If this is a floating 
+
     size_t pos = name.find('/');
     std::string monCuName = name.substr(0, pos);
 
@@ -635,7 +1662,7 @@ namespace xdp {
     ComputeUnitInstance* cuObj = nullptr ;
     int32_t cuId = -1 ;
 
-    for(auto cu : devInfo->loadedXclbins.back()->cus) {
+    for(auto cu : xclbin->pl.cus) {
       if(0 == monCuName.compare(cu.second->getName())) {
         cuId = cu.second->getIndex();
         cuObj = cu.second;
@@ -661,7 +1688,7 @@ namespace xdp {
 
         monCuName = monCuName.substr(0, pos);
 
-        for(auto cu : devInfo->loadedXclbins.back()->cus) {
+        for(auto cu : xclbin->pl.cus) {
           if(0 == monCuName.compare(cu.second->getName())) {
             cuId = cu.second->getIndex();
             cuObj = cu.second;
@@ -673,58 +1700,59 @@ namespace xdp {
 
     Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
                                index, debugIpData->m_name,
-                               cuId, -1 /* memId */, slotId);
+                               cuId);
     mon->port = portName;
-    if(debugIpData->m_properties & 0x2) {
+    if (debugIpData->m_properties & 0x2) {
       mon->isStreamRead = true;
+    }
+    if (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) {
+      mon->traceEnabled = true ;
     }
 
     // Add this monitor to the list of all monitors
-    devInfo->loadedXclbins.back()->asmList.push_back(mon) ;
-    bool traceEnabled =
-      (debugIpData->m_properties & XMON_TRACE_PROPERTY_MASK) != 0 ;
+    xclbin->pl.asms.push_back(mon) ;
 
     // If the ASM is an User Space ASM i.e. either connected to a CU or floating but not shell ASM
     if (cuObj) {
-      cuObj->addASM(slotId, traceEnabled) ;
+      cuObj->addASM(mon->slotIndex, mon->traceEnabled) ;
     }
-    else if (traceEnabled) {
+    else if (mon->traceEnabled) {
       // If not connected to CU and not a shell monitor, then a floating monitor
       // This floating monitor is enabled for trace too
-      devInfo->loadedXclbins.back()->hasFloatingASMwithTrace = true ;
-    }
-
-    if (traceEnabled) {
-      devInfo->loadedXclbins.back()->asmMap.emplace(slotId, mon) ;
-    }
-    else {
-      devInfo->loadedXclbins.back()->noTraceASMs.push_back(mon);
+      xclbin->pl.hasFloatingASMWithTrace = true ;
     }
   }
 
   void VPStaticDatabase::initializeNOC(DeviceInfo* devInfo,
                                        const struct debug_ip_data* debugIpData)
   {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
     uint64_t index = static_cast<uint64_t>(debugIpData->m_index_lowbyte) |
       (static_cast<uint64_t>(debugIpData->m_index_highbyte) << 8);
     uint8_t readTrafficClass  = debugIpData->m_properties >> 2;
     uint8_t writeTrafficClass = debugIpData->m_properties & 0x3;
 
-    Monitor* mon = new Monitor(static_cast<DEBUG_IP_TYPE>(debugIpData->m_type),
-                               index, debugIpData->m_name,
-                               readTrafficClass, writeTrafficClass);
-    devInfo->loadedXclbins.back()->nocList.push_back(mon);
+    NoCNode* noc = new NoCNode(index, debugIpData->m_name, readTrafficClass,
+                               writeTrafficClass) ;
+    xclbin->aie.nocList.push_back(noc) ;
     // nocList in xdp::DeviceIntf is sorted; Is that required here?
   }
 
   void VPStaticDatabase::initializeTS2MM(DeviceInfo* devInfo,
                                          const struct debug_ip_data* debugIpData)
   {
+    XclbinInfo* xclbin = devInfo->currentXclbin() ;
+    if (!xclbin)
+      return ;
+
     // TS2MM IP for either AIE PLIO or PL trace offload
     if (debugIpData->m_properties & 0x1)
-      devInfo->loadedXclbins.back()->numTracePLIO++;
+      xclbin->aie.numTracePLIO++ ;
     else
-      devInfo->loadedXclbins.back()->usesTs2mm = true;
+      xclbin->pl.usesTs2mm = true ;
   }
 
   bool VPStaticDatabase::initializeProfileMonitors(DeviceInfo* devInfo, const std::shared_ptr<xrt_core::device>& device)
@@ -773,56 +1801,15 @@ namespace xdp {
     return true; 
   }
 
-  void* VPStaticDatabase::getAieDevInst(std::function<void* (void*)> fetch,
-                                        void* devHandle)
-  {
-    std::lock_guard<std::mutex> lock(aieLock) ;
-    if (aieDevInst)
-      return aieDevInst ;
 
-    aieDevInst = fetch(devHandle) ;
-    return aieDevInst ;
-  }
-
-  void* VPStaticDatabase::getAieDevice(std::function<void* (void*)> allocate,
-                                       std::function<void (void*)> deallocate,
-                                       void* devHandle)
-  {
-    std::lock_guard<std::mutex> lock(aieLock) ;
-    if (aieDevice)
-      return aieDevice;
-    if (!aieDevInst) return nullptr ;
-
-    deallocateAieDevice = deallocate ;
-    aieDevice = allocate(devHandle) ;
-    return aieDevice ;
-  }
 
   void VPStaticDatabase::addCommandQueueAddress(uint64_t a)
   {
-    std::lock_guard<std::mutex> lock(dbLock) ;
+    std::lock_guard<std::mutex> lock(openCLLock) ;
 
     commandQueueAddresses.emplace(a) ;
   }
 
-  void VPStaticDatabase::addOpenedFile(const std::string& name,
-                                       const std::string& type)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
 
-    openedFiles.push_back(std::make_pair(name, type)) ;
 
-    if (runSummary == nullptr)
-    {
-      runSummary = new VPRunSummaryWriter("xrt.run_summary", db) ;
-    }
-    runSummary->write(false) ;
-  }
-
-  void VPStaticDatabase::addEnqueuedKernel(const std::string& identifier)
-  {
-    std::lock_guard<std::mutex> lock(dbLock) ;
-    enqueuedKernels.emplace(identifier) ;
-  }
-
-}
+} // end namespace xdp
