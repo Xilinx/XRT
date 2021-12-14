@@ -206,13 +206,16 @@ namespace xdp {
   void VPStaticDatabase::addOpenedFile(const std::string& name,
                                        const std::string& type)
   {
-    std::lock_guard<std::mutex> lock(summaryLock) ;
-
-    openedFiles.push_back(std::make_pair(name, type)) ;
-
-    if (runSummary == nullptr)
     {
-      runSummary = new VPRunSummaryWriter("xrt.run_summary", db) ;
+      // Protect changes to openedFiles and creation of the run summary.
+      //  The write function, however, needs to query the opened files so
+      //  place the lock inside its own scope.
+      std::lock_guard<std::mutex> lock(summaryLock) ;
+
+      openedFiles.push_back(std::make_pair(name, type)) ;
+
+      if (runSummary == nullptr)
+        runSummary = new VPRunSummaryWriter("xrt.run_summary", db) ;
     }
     runSummary->write(false) ;
   }
