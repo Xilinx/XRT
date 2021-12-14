@@ -18,8 +18,8 @@
 
 #include <iostream>
 
-#include "core/common/module_loader.h"
 #include "core/common/dlfcn.h"
+#include "core/common/module_loader.h"
 
 namespace xdp {
 namespace aie {
