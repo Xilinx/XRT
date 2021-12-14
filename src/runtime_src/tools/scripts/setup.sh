@@ -33,6 +33,10 @@ if [[ $XILINX_XRT != *"/opt/xilinx/xrt" ]]; then
     return 1
 fi
 
+# Enable autocompletion for the xbutil and xbmgmt commands
+source $XILINX_XRT/share/completions/xbutil-bash-completion
+source $XILINX_XRT/share/completions/xbmgmt-bash-completion
+
 # To use the newest version of the XRT tools, either uncomment or set 
 # the following environment variable in your profile:
 #   export XRT_TOOLS_NEXTGEN=true

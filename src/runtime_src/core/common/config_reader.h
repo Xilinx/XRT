@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -398,6 +398,13 @@ inline bool
 get_vitis_ai_profile()
 {
   static bool value = detail::get_bool_value("Debug.vitis_ai_profile", false);
+  return value;
+}
+
+inline bool
+get_pl_deadlock_detection()
+{
+  static bool value = detail::get_bool_value("Debug.pl_deadlock_detection", false);
   return value;
 }
 

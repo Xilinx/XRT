@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,37 +13,17 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "lib/xma_buffer.hpp"
-#include "app/xmaerror.h"
-#include <stdexcept>
 
-namespace xma_core {
-namespace plg {
+#ifndef PL_DEADLOCK_CB_DOT_H
+#define PL_DEADLOCK_CB_DOT_H
 
+// These are the functions that are visible when the plugin is dynamically
+//  loaded.  They should be linked to callbacks in XRT via dlsym and then
+//  called directly.
 
+extern "C"
+void updateDevicePLDeadlock(void* handle);
+extern "C"
+void flushDevicePLDeadlock(void* handle);
 
-buffer::buffer(xclDeviceHandle dhdl, xrt::bo::flags flags, memory_group grp, uint64_t sz)
-:xrt_bo{dhdl, sz, flags, grp} 
-{
-  //TODO
-  throw std::runtime_error(" --- TODO --");
-}
-
-int32_t
-buffer::read_ddr(int32_t offset, uint64_t size) const
-{
-  //TODO
-
-  return XMA_ERROR;
-}
-
-int32_t
-buffer::write_ddr(int32_t offset, uint64_t size) const
-{
-  //TODO
-
-  return XMA_ERROR;
-}
-
-}} //namespace xma_core->plg
-
+#endif

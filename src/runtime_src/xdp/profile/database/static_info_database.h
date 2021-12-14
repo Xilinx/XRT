@@ -427,7 +427,7 @@ class aie_cfg_tile
 
     inline uint64_t getNumAIM(XclbinInfo* xclbin) {
       for (auto bin : loadedXclbins) {
-        if (bin == xclbin) return bin->aimMap.size() ;
+        if (bin == xclbin) return bin->aimList.size() ;
       }
       return 0 ;
     }

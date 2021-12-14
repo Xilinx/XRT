@@ -23,6 +23,7 @@
 #include "aie_trace.h"
 #include "vart_profile.h"
 #include "sc_profile.h"
+#include "pl_deadlock.h"
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -66,6 +67,9 @@ bool load()
 
   if (xrt_core::config::get_vitis_ai_profile())
     xdp::vart::profile::load();
+
+  if (xrt_core::config::get_pl_deadlock_detection())
+    xdp::pl_deadlock::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off") {
     std::string msg = "The xrt.ini flag \"data_transfer_trace\" is deprecated and will be removed in a future release.  Please use the equivalent flag \"device_trace.\"" ;

@@ -298,6 +298,17 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
+	/*
+	 * reset multi-boot config for next boot.
+	 * This is needed to make sure next boot will be based on pre-loaded
+	 *    boot configuration.
+	 */
+	err = xocl_vmr_enable_multiboot(lro);
+	if (err && err != -ENODEV) {
+		mgmt_info(lro, "reset multi-boot config failed. err: %ld", err);
+		goto done;
+	}
+
 	if (!force && xrt_reset_syncup) {
 		mgmt_info(lro, "wait for master off for all functions");
 		err = xocl_wait_master_off(lro);
@@ -377,6 +388,8 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		xocl_set_master_on(lro);
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
+
+	(void) xocl_reinit_vmr(lro);
 
 done:
 	return err;

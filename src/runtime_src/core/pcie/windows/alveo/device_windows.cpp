@@ -12,6 +12,8 @@
 #include "core/include/xrt.h"
 #include "core/include/xclfeatures.h"
 
+#include "core/common/debug_ip.h"
+
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 #include <type_traits>
@@ -509,6 +511,14 @@ struct xclbin
       userpf::get_ip_layout(uhdl, nullptr, 0, &size_ret);
       std::vector<char> data(size_ret);
       userpf::get_ip_layout(uhdl, data.data(), size_ret, nullptr);
+      return data;
+    }
+
+    if (key == key_type::debug_ip_layout_raw) {
+      size_t size_ret = 0;
+      userpf::get_debug_ip_layout(uhdl, nullptr, 0, &size_ret);
+      std::vector<char> data(size_ret);
+      userpf::get_debug_ip_layout(uhdl, data.data(), size_ret, nullptr);
       return data;
     }
 
@@ -1016,6 +1026,7 @@ struct rom
 struct kds_cu_info
 {
   using result_type = query::kds_cu_info::result_type;
+  using data_type = query::kds_cu_info::data_type;
 
   static XOCL_KDS_CU_INFORMATION*
     init_kds_custat(const xrt_core::device* dev)
@@ -1044,8 +1055,19 @@ struct kds_cu_info
 
     auto& stats = (*it).second;
     result_type cuStats;
-    for (unsigned int i = 0; i < stats->CuCount; i++)
-      cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+    for (unsigned int i = 0; i < stats->CuCount; i++) {
+      data_type data;
+      // Assume elements of CuInfo[] are in CU indexing order.
+      data.index = i;
+      // TODO: CuInfo should contain CU name, but it is not there today
+      data.name = "kernel:cu_" + std::to_string(i);
+      data.base_addr = stats->CuInfo[i].BaseAddress;
+      data.usages = stats->CuInfo[i].Usage;
+      data.status = 0;
+
+      //cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+      cuStats.push_back(data);
+    }
     return cuStats;
   }
 
@@ -1187,6 +1209,86 @@ struct mailbox
   }
 }; //end of struct mailbox
 
+
+struct aim_counter
+{
+  using result_type = query::aim_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::aim_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_aim_counter_result(device, dbg_ip_data);
+  }
+};
+
+struct am_counter
+{
+  using result_type = query::am_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::am_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_am_counter_result(device, dbg_ip_data);
+  }
+};
+
+struct asm_counter
+{
+  using result_type = query::asm_counter::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::asm_counter::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_asm_counter_result(device, dbg_ip_data);
+  }
+};
+
+struct lapc_status
+{
+  using result_type = query::lapc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::lapc_status::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_lapc_status(device, dbg_ip_data);
+  }
+};
+
+struct spc_status
+{
+  using result_type = query::spc_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_spc_status(device, dbg_ip_data);
+  }
+};
+
+struct accel_deadlock_status
+{
+  using result_type = query::accel_deadlock_status::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::accel_deadlock_status::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_accel_deadlock_status(device, dbg_ip_data);
+  }
+};
+
+
 template <typename QueryRequestType, typename Getter>
 struct function0_getput : QueryRequestType
 {
@@ -1275,6 +1377,19 @@ struct function2_getter : QueryRequestType
   }
 };
 
+
+template <typename QueryRequestType, typename Getter>
+struct function4_get : virtual QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1);
+  }
+};
+
+
 static std::map<xrt_core::query::key_type, std::unique_ptr<xrt_core::query::request>> query_tbl;
 
 template <typename QueryRequestType, typename Getter>
@@ -1309,6 +1424,15 @@ emplace_function0_getput()
   query_tbl.emplace(k, std::make_unique<function0_getput<QueryRequestType, Getter>>());
 }
 
+
+template <typename QueryRequestType, typename Getter>
+static void
+emplace_func4_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function4_get<QueryRequestType, Getter>>());
+}
+
 static void
 initialize_query_table()
 {
@@ -1333,6 +1457,7 @@ initialize_query_table()
   emplace_function0_getter<query::rom_time_since_epoch,      rom>();
   emplace_function0_getter<query::mem_topology_raw,          xclbin>();
   emplace_function0_getter<query::ip_layout_raw,             xclbin>();
+  emplace_function0_getter<query::debug_ip_layout_raw,       xclbin>();
   emplace_function0_getter<query::temp_by_mem_topology,      xclbin>();
   emplace_function0_getter<query::clock_freqs_mhz,           icap>();
   emplace_function0_getter<query::idcode,                    icap>();
@@ -1428,6 +1553,13 @@ initialize_query_table()
   emplace_function0_getter<query::memstat_raw,               memstat_raw>();
   emplace_function0_getter<query::memstat,                   memstat>();
   emplace_function0_getter<query::group_topology,            group_topology>();
+
+  emplace_func4_request<query::aim_counter,                  aim_counter>();
+  emplace_func4_request<query::am_counter,                   am_counter>();
+  emplace_func4_request<query::asm_counter,                  asm_counter>();
+  emplace_func4_request<query::lapc_status,                  lapc_status>();
+  emplace_func4_request<query::spc_status,                   spc_status>();
+  emplace_func4_request<query::accel_deadlock_status,        accel_deadlock_status>();
 }
 
 struct X { X() { initialize_query_table(); }};

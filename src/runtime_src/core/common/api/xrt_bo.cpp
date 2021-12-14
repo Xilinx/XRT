@@ -185,6 +185,14 @@ public:
     size = prop.size;
   }
 
+  bo_impl(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(pid, ehdl)), free_bo(true)
+  {
+    xclBOProperties prop{};
+    device->get_bo_properties(handle, &prop);
+    size = prop.size;
+  }
+
   bo_impl(xclDeviceHandle dhdl, xcl_buffer_handle xhdl)
     : device(xrt_core::get_userpf_device(dhdl)), handle(xhdl.bhdl), free_bo(false)
   {
@@ -465,14 +473,39 @@ public:
 // class buffer_imported - Buffer imported from another device
 //
 // The exported buffer handle is an opaque type from a call
-// to export_buffer() on a buffer to be exported.
+// to export_buffer() on a buffer to be exported.  The exported
+// buffer can be imported within same process or from another
+// process (linux pidfd support required)
 class buffer_import : public bo_impl
 {
   void* hbuf;
 
 public:
+  // buffer_import() - Import the buffer 
+  //
+  // @device:  device to import to
+  // @ehdl:    export handle obtained by calling export_buffer
   buffer_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
     : bo_impl(dhdl, ehdl)
+  {
+    try {
+      hbuf = device->map_bo(handle, true);
+    }
+    catch (const std::exception&) {
+      hbuf = nullptr;
+    }
+  }
+
+  // buffer_import() - Import the buffer from another process 
+  //
+  // @device:  device to import to
+  // @pid:     process id of exporting process
+  // @ehdl:    export handle obtained from exporting process
+  //
+  // This consrructor works on linux only and require pidfd support in
+  // linux kernel.
+  buffer_import(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+    : bo_impl(dhdl, pid, ehdl)
   {
     try {
       hbuf = device->map_bo(handle, true);
@@ -826,6 +859,12 @@ alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 }
 
 static std::shared_ptr<xrt::bo_impl>
+alloc_import_from_pid(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+{
+  return std::make_shared<xrt::buffer_import>(dhdl, pid, ehdl);
+}
+
+static std::shared_ptr<xrt::bo_impl>
 alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offset)
 {
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
@@ -948,6 +987,12 @@ bo::
 bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
 	   alloc_import, dhdl, ehdl))
+{}
+
+bo::
+bo(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+            alloc_import_from_pid, dhdl, pid , ehdl))
 {}
 
 bo::

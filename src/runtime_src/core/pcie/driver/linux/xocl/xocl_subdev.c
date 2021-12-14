@@ -19,9 +19,6 @@
 #include "xocl_drv.h"
 #include "version.h"
 
-/* TODO: remove this with old kds */
-extern int kds_mode;
-
 struct xocl_subdev_array {
 	xdev_handle_t xdev_hdl;
 	int id;
@@ -1772,11 +1769,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u64 offset;
 	unsigned val;
 	bool vsec = false;
-	/* workaround MB_SCHEDULER and INTC resource conflict
-	 * Remove below variables when MB_SCHEDULER is removed
-	 */
-	int i;
-	struct xocl_subdev_info *sdev_info;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
@@ -1820,23 +1812,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.xpr = true;
 
 	core->priv.dsa_ver = pdev->subsystem_device & 0xff;
-
-	/* workaround MB_SCHEDULER and INTC resource conflict
-	 * Remove below loop when MB_SCHEDULER is removed
-	 */
-	for (i = 0; i < in->subdev_num; i++) {
-		sdev_info = &in->subdev_info[i];
-		if (sdev_info->id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode == 1) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		}
-	}
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;
@@ -1916,6 +1891,25 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
 		core->dev_minor = XOCL_INVALID_MINOR;
 	}
+}
+
+/*
+ * This function will reinitialize the versal platform after a cold or warm
+ * reboot. First, we should re-enable the reset registers, either via host or
+ * via vmr firmware. Second, we should try to load apu firmware via vmr.
+ * Note: we ignore errors after all subdev has been probed after extended_probe.
+ *       if any of this procedure fails due to fatal error, a hot reset warning
+ *       will be reported.
+ */
+void xocl_reinit_vmr(xdev_handle_t xdev)
+{
+	int rc = 0;
+
+	rc = xocl_pmc_enable_reset(xdev);
+	if (rc == -ENODEV)
+		xocl_vmr_enable_multiboot(xdev);
+
+	(void) xocl_download_apu_firmware(xdev);
 }
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,

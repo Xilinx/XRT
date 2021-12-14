@@ -64,6 +64,12 @@ struct ishim
   virtual xclBufferHandle
   import_bo(xclBufferExportHandle ehdl) = 0;
 
+  // Import an exported BO from another process identified by argument pid.
+  // This function is only supported on systems with pidfd kernel support
+  virtual xclBufferHandle
+  import_bo(pid_t, xclBufferExportHandle)
+  { throw xrt_core::error(std::errc::not_supported,"import_bo(pid, hdl)"); }
+
   virtual void
   copy_bo(xclBufferHandle dst, xclBufferHandle src, size_t size, size_t dst_offset, size_t src_offset) = 0;
 

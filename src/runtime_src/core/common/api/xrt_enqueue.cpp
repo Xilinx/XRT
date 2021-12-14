@@ -77,6 +77,7 @@ public:
       return;
     m_chain.push_back(ev);
     ++ev->m_wait_count;
+    XRT_DEBUGF("event_impl(%d) chains ev(%d) ev_wc(%d)\n", m_uid, ev->m_uid, ev->m_wait_count);
   }
 
   // Try to submit this event for execution.  This function
@@ -163,6 +164,7 @@ public:
     static unsigned int count = 0;
     m_uid = count++;
     XRT_DEBUGF("event_impl::event_impl(%d)\n", m_uid);
+    std::lock_guard<std::mutex> lk(m_mutex);
     for (auto& ev : deps)
       if (auto& impl = ev.get_impl())
         impl->chain(this);
@@ -284,6 +286,7 @@ event_impl::
 submit()
 {
   std::lock_guard<std::mutex> lk(m_mutex);
+  XRT_DEBUGF("event_impl::submit(%d) wc(%d)\n", m_uid, m_wait_count);
   if (--m_wait_count)
     return false;
   

@@ -168,7 +168,7 @@ register_axlf(const axlf* top)
   m_cus.clear();
   try {
     // Regular CUs
-    auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_stat>(this);
+    auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
     std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
     std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
     for (const auto& d : cudata)
@@ -176,7 +176,7 @@ register_axlf(const axlf* top)
 
     // Soft kernels, not an error if query doesn't exist (edge)
     try {
-      auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_stat>(this);
+      auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
       for (const auto& d : scudata)
         m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
     }

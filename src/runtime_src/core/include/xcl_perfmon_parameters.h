@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -420,6 +420,12 @@
 #define LAPC_SNAPSHOT_STATUS_1_OFFSET     0x204
 #define LAPC_SNAPSHOT_STATUS_2_OFFSET     0x208
 #define LAPC_SNAPSHOT_STATUS_3_OFFSET     0x20c
+
+
+/******************* Accelerator Deadlock Detector ***********************/
+
+/* Address offset */
+#define XACCEL_DEADLOCK_STATUS_OFFSET    0x0
 
 #endif /* _PERFMON_PARAMETERS_H_ */
 

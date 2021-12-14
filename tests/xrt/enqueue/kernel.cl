@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2016-2017 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,19 +13,27 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "lib/xma_session.hpp"
-#include "app/xmaerror.h"
 
-namespace xma_core {
-namespace plg {
+// Copyright 2017 Xilinx, Inc. All rights reserved.
 
-int32_t
-session::alloc_buf() const
+/*
+  OpenCL Task (1 work item)
+  512 bit wide add one
+  512 bits = 8 vector of 64 bit unsigned
+    Add one to first element in vector
+    Copy through remaining elements
+*/
+
+__kernel __attribute__ ((reqd_work_group_size(1, 1 , 1)))
+void addone (__global ulong8 *a, __global ulong8 * b, __global ulong8 * c, unsigned int  elements)
 {
-  //TODO
+  ulong8 temp;
+  unsigned int i;
 
-  return XMA_ERROR;
+  for(i=0;i< elements;i++) {
+    temp = a[i] + b[i];
+    temp.s0 = temp.s0 + 1;
+    c[i] = temp;
+  }
+  return;
 }
-
-
-}} //namespace xma_core->plg

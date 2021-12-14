@@ -22,6 +22,7 @@ endif (NOT WIN32)
 file(GLOB XRT_CORE_COMMON_SRC_SHARED
   "config_reader.cpp"
   "debug.cpp"
+  "debug_ip.cpp"
   "device.cpp"
   "error.cpp"
   "info_*.cpp"

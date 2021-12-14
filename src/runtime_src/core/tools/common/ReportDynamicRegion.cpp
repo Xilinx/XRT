@@ -95,60 +95,6 @@ schedulerUpdateStat(xrt_core::device *device)
   }
 }
 
-boost::property_tree::ptree
-populate_cus(const xrt_core::device *device)
-{
-  schedulerUpdateStat(const_cast<xrt_core::device *>(device));
-  boost::property_tree::ptree pt;
-  std::vector<char> ip_buf;
-  std::vector<std::tuple<uint64_t, uint32_t, uint32_t>> cu_stats; // tuple <base_addr, usage, status>
-  boost::property_tree::ptree ptree;
-
-  try {
-    std::string uuid = xrt::uuid(xrt_core::device_query<xrt_core::query::xclbin_uuid>(device)).to_string();
-    boost::algorithm::to_upper(uuid);
-    ptree.put("xclbin_uuid", uuid);
-  } catch (...) {  }
-
-  try {
-    ip_buf = xrt_core::device_query<qr::ip_layout_raw>(device);
-    cu_stats = xrt_core::device_query<qr::kds_cu_info>(device);
-  } catch (const std::exception& ex){
-    ptree.put("error_msg", ex.what());
-    return ptree;
-  }
-
-  if(ip_buf.empty() || cu_stats.empty()) {
-    ptree.put("error_msg", "ip_layout/kds_cu data is empty");
-    return ptree;
-  }
-
-  const ip_layout *layout = reinterpret_cast<const ip_layout*>(ip_buf.data());
-  for (int i = 0; i < layout->m_count; i++) {
-    if (layout->m_ip_data[i].m_type != IP_KERNEL)
-      continue;
-
-    for(auto& stat : cu_stats) {
-      uint64_t base_addr = std::get<0>(stat);
-      if (layout->m_ip_data[i].m_base_address == base_addr) {
-        uint32_t usage = std::get<1>(stat);
-        uint32_t status = std::get<2>(stat);
-
-        boost::property_tree::ptree ptCu;
-        ptCu.put( "name",			layout->m_ip_data[i].m_name);
-        ptCu.put( "base_address",		boost::str(boost::format("0x%x") % base_addr));
-        ptCu.put( "usage",			usage);
-        ptCu.put( "type", enum_to_str(cu_type::PL));
-        ptCu.add_child( std::string("status"),	get_cu_status(status));
-        pt.push_back(std::make_pair("", ptCu));
-      }
-    }
-  }
-
-  ptree.add_child("compute_units", pt);
-  return ptree;
-}
-
 int 
 getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *device)
 {
@@ -171,13 +117,13 @@ getPSKernels(std::vector<ps_kernel_data> &psKernels, const xrt_core::device *dev
 }
 
 boost::property_tree::ptree
-populate_cus_new(const xrt_core::device *device)
+populate_cus(const xrt_core::device *device)
 {
   schedulerUpdateStat(const_cast<xrt_core::device *>(device));
 
   boost::property_tree::ptree pt;
-  using cu_data_type = qr::kds_cu_stat::data_type;
-  using scu_data_type = qr::kds_scu_stat::data_type;
+  using cu_data_type = qr::kds_cu_info::data_type;
+  using scu_data_type = qr::kds_scu_info::data_type;
   std::vector<cu_data_type> cu_stats;
   std::vector<scu_data_type> scu_stats;
   boost::property_tree::ptree ptree;
@@ -188,8 +134,8 @@ populate_cus_new(const xrt_core::device *device)
   } catch (...) {  }
 
   try {
-    cu_stats  = xrt_core::device_query<qr::kds_cu_stat>(device);
-    scu_stats = xrt_core::device_query<qr::kds_scu_stat>(device);
+    cu_stats  = xrt_core::device_query<qr::kds_cu_info>(device);
+    scu_stats = xrt_core::device_query<qr::kds_scu_info>(device);
   }
   catch (const xrt_core::query::no_such_key&) {
     // Ignoring if not available: Edge Case
@@ -271,21 +217,8 @@ void
 ReportDynamicRegion::getPropertyTree20202( const xrt_core::device * _pDevice, 
                                            boost::property_tree::ptree &_pt) const
 {
-  uint32_t kds_mode;
-
-  // sysfs attribute kds_mode: 1 - new KDS; 0 - old KDS
-  try {
-    kds_mode = xrt_core::device_query<qr::kds_mode>(_pDevice);
-  } catch (...){
-    // When kds_mode doesn't present, xocl driver supports old KDS
-    kds_mode = 0;
-  }
   boost::property_tree::ptree pt_dynamic_region;
-  // There can only be 1 root node
-  if (kds_mode == 0) // Old kds
-    pt_dynamic_region.push_back(std::make_pair("", populate_cus(_pDevice)));
-  else // new kds
-    pt_dynamic_region.push_back(std::make_pair("", populate_cus_new(_pDevice)));
+  pt_dynamic_region.push_back(std::make_pair("", populate_cus(_pDevice)));
   
   _pt.add_child("dynamic_regions", pt_dynamic_region);
 }

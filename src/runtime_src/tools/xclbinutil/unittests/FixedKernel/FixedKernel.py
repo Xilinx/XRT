@@ -63,6 +63,12 @@ def main():
   outputConnectivity = "updated_connectivity.json"
   expectedConnectivity = os.path.join(args.resource_dir, "connectivity_expected.json")
 
+  outputGroupTopology = "updated_group_topology.json"
+  expectedGroupTopology = os.path.join(args.resource_dir, "group_topology_expected.json")
+
+  outputGroupConnectivity = "updated_group_connectivity.json"
+  expectedGroupConnectivity = os.path.join(args.resource_dir, "group_connectivity_expected.json")
+
   outputXCLBIN = "pskernel_output.xclbin"
 
   cmd = [xclbinutil, "--input", workingXCLBIN,
@@ -70,6 +76,8 @@ def main():
                      "--dump-section", "EMBEDDED_METADATA:RAW:" + outputEmbeddedMetadata,
                      "--dump-section", "IP_LAYOUT:JSON:" + outputIpLayout,
                      "--dump-section", "CONNECTIVITY:JSON:" + outputConnectivity,
+                     "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
+                     "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
                      "--output", outputXCLBIN, 
                      "--force"]
   execCmd(step, cmd)
@@ -78,6 +86,8 @@ def main():
   textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
   jsonFileCompare(outputIpLayout, expectedIpLayout)
   jsonFileCompare(outputConnectivity, expectedConnectivity)
+  jsonFileCompare(outputGroupTopology, expectedGroupTopology)
+  jsonFileCompare(outputGroupConnectivity, expectedGroupConnectivity)
   # ---------------------------------------------------------------------------
 
 

@@ -315,7 +315,7 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
     // Create the new PS kernel instance and add it to the vector
     boost::property_tree::ptree ptIPEntry;
-    ptIPEntry.put("m_type", "IP_KERNEL");
+    ptIPEntry.put("m_type", "IP_PS_KERNEL");
     ptIPEntry.put("m_base_address", "not_used");
     ptIPEntry.put("m_name", ipLayoutName);
     ipLayout.push_back(ptIPEntry);
