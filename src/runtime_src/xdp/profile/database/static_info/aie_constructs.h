@@ -40,16 +40,16 @@ namespace xdp {
     AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
                double freq, std::string mod, std::string aieName)
-      : id(i),
-        column(col),
-        row(r),
-        counterNumber(num),
-        resetEvent(reset),
-        startEvent(start),
-        endEvent(end),
-        clockFreqMhz(freq),
-        module(mod),
-        name(aieName)
+      : id(i)
+      , column(col)
+      , row(r)
+      , counterNumber(num)
+      , resetEvent(reset)
+      , startEvent(start)
+      , endEvent(end)
+      , clockFreqMhz(freq)
+      , module(mod)
+      , name(aieName)
     {}
   };
 
@@ -63,11 +63,11 @@ namespace xdp {
 
     TraceGMIO(uint32_t i, uint16_t col, uint16_t num, 
               uint16_t stream, uint16_t len)
-      : id(i),
-        shimColumn(col),
-        channelNumber(num),
-        streamId(stream),
-        burstLength(len)
+      : id(i)
+      , shimColumn(col)
+      , channelNumber(num)
+      , streamId(stream)
+      , burstLength(len)
     {}
   };
 
