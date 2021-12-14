@@ -109,6 +109,14 @@ XRT_CORE_COMMON_EXPORT
 std::string
 parse_cmc_status(unsigned int val);
 
+XRT_CORE_COMMON_EXPORT
+uint64_t
+mac_addr_to_value(std::string mac_addr);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+value_to_mac_addr(const uint64_t mac_addr_value);
+
 }} // utils, xrt_core
 
 #endif
