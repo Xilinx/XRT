@@ -114,22 +114,22 @@ struct sdr_header {
 struct sdr_sensor_record {
     uint8_t id;
     uint8_t name_type_length;
-    uint8_t *name;
+    uint8_t name[64];
     uint8_t value_type_length;
-    uint8_t *value;
+    uint8_t value[64];
     uint8_t base_unit_type_length;
-    uint8_t *base_unit;
+    uint8_t base_unit[64];
     int8_t unit_modifier_byte;
     uint8_t threshold_support_byte;
-    uint8_t *lower_fatal_limit;
-    uint8_t *lower_critical_limit;
-    uint8_t *lower_warning_limit;
-    uint8_t *upper_fatal_limit;
-    uint8_t *upper_critical_limit;
-    uint8_t *upper_warning_limit;
+    uint8_t lower_fatal_limit[64];
+    uint8_t lower_critical_limit[64];
+    uint8_t lower_warning_limit[64];
+    uint8_t upper_fatal_limit[64];
+    uint8_t upper_critical_limit[64];
+    uint8_t upper_warning_limit[64];
     uint8_t status;
-    uint8_t *max_value;
-    uint8_t *avg_value;
+    uint8_t max_value[64];
+    uint8_t avg_value[64];
 };
 
 struct sdr_eor {
@@ -140,11 +140,6 @@ struct sdr_response {
     struct sdr_header header;
     struct sdr_sensor_record *sensor_record;
     struct sdr_eor eor;
-};
-
-struct sdr_sysfs {
-    struct sensor_device_attribute *iter;
-    struct sensor_device_attribute *iter_end;
 };
 
 enum bitmap_typecode {
