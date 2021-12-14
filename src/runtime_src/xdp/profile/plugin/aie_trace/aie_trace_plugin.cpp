@@ -1089,7 +1089,7 @@ namespace xdp {
 
     uint32_t prevCol = 0;
     uint32_t prevRow = 0;
-    uint32_t numFlushCounters = 2;
+    constexpr int numFlushCounters = 2;
 
     // 1. Ensure we have counters, whether or not requested previously
     if (coreCounterStartEvents.size() < numFlushCounters) {
