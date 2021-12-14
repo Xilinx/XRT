@@ -35,7 +35,7 @@ namespace debug {
 
   void register_callbacks(void* handle)
   {
-    using ftype = void (*)(void*); // Device handle
+    using ftype = void (*)(void*); // Device handle 
 
     update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
     if (xrt_core::dlerror() != NULL) update_device_cb = nullptr;
