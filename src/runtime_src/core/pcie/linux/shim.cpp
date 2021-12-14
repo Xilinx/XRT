@@ -33,8 +33,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
-
 #include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 #include "xclbin.h"
 #include "ert.h"
@@ -2418,8 +2418,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return -EINVAL;
     }
 
-    xdp::hal::flush_device(handle) ;
-    xdp::aie::flush_device(handle) ;
+    xdp::hal::flush_device(handle);
+    xdp::aie::flush_device(handle);
+    xdp::pl_deadlock::flush_device(handle);
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2433,6 +2434,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
       xdp::hal::update_device(handle) ;
       xdp::aie::update_device(handle);
+      xdp::pl_deadlock::update_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin

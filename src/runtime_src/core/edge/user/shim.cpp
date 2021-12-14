@@ -52,6 +52,7 @@
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/pl_deadlock.h"
 #endif
 
 namespace {
@@ -1769,8 +1770,9 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-    xdp::hal::flush_device(handle) ;
-    xdp::aie::flush_device(handle) ;
+    xdp::hal::flush_device(handle);
+    xdp::aie::flush_device(handle);
+    xdp::pl_deadlock::flush_device(handle);
 #endif
 
     int ret;
@@ -1816,6 +1818,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::hal::update_device(handle) ;
     xdp::aie::update_device(handle);
     xdp::aie::ctr::update_device(handle);
+    xdp::pl_deadlock::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif
