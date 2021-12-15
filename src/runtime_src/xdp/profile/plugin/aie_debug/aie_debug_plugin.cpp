@@ -362,8 +362,7 @@ namespace xdp {
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
-    auto device_thread = std::thread(&AIEDebugPlugin::pollAIERegisters, this, mIndex, handle);
-    mThreadMap[handle] = std::move(device_thread);
+    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(mIndex, handle); } };
 
     ++mIndex;
   }
