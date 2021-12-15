@@ -9,6 +9,7 @@
 
 #include "xocl_drv.h"
 #include "xrt_cu.h"
+#include "cu_xgq.h"
 
 #define XCU_INFO(xcu, fmt, arg...) \
 	xocl_info(&xcu->pdev->dev, fmt "\n", ##arg)
@@ -52,7 +53,6 @@ static ssize_t debug_store(struct device *dev,
 
 	return count;
 }
-
 static DEVICE_ATTR_RW(debug);
 
 static ssize_t
@@ -330,46 +330,6 @@ static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
 	return 0;
 }
 
-static int cu_add_args(struct xocl_cu *xcu, struct kernel_info *kinfo)
-{
-	struct xrt_cu_arg *args = NULL;
-	int i;
-
-	/* If there is no detail kernel information, maybe it is a manualy
-	 * created xclbin. Print warning and let it go through
-	 */
-	if (!kinfo) {
-		XCU_WARN(xcu, "CU %s metadata not found, xclbin maybe corrupted",
-			 xcu->base.info.iname);
-		xcu->base.info.num_args = 0;
-		xcu->base.info.args = NULL;
-		return 0;
-	}
-
-	args = vmalloc(sizeof(struct xrt_cu_arg) * kinfo->anums);
-	if (!args)
-		return -ENOMEM;
-
-	if (kinfo) {
-		for (i = 0; i < kinfo->anums; i++) {
-			strcpy(args[i].name, kinfo->args[i].name);
-			args[i].offset = kinfo->args[i].offset;
-			args[i].size = kinfo->args[i].size;
-			args[i].dir = kinfo->args[i].dir;
-		}
-		xcu->base.info.num_args = kinfo->anums;
-		xcu->base.info.args = args;
-	}
-
-	return 0;
-}
-
-static void cu_del_args(struct xocl_cu *xcu)
-{
-	if (xcu->base.info.args)
-		vfree(xcu->base.info.args);
-}
-
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -396,46 +356,20 @@ static int cu_probe(struct platform_device *pdev)
 	BUG_ON(!info);
 	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
 
-	switch (info->protocol) {
-	case CTRL_HS:
-	case CTRL_CHAIN:
-	case CTRL_NONE:
-		xcu->base.info.model = XCU_HLS;
-		break;
-	case CTRL_FA:
-		xcu->base.info.model = XCU_FA;
-		break;
-	default:
-		XCU_ERR(xcu, "Unknown protocol");
-		return -EINVAL;
-	}
-
-	if (!xcu->base.info.is_m2m) {
-		krnl_info = xocl_query_kernel(xdev, info->kname);
-		err = cu_add_args(xcu, krnl_info);
-		if (err)
-			goto err;
-	} else {
-		/* M2M CU has 3 arguments */
-		args = vmalloc(sizeof(struct xrt_cu_arg) * 3);
-
-		strcpy(args[0].name, "src_addr");
-		args[0].offset = 0x10;
-		args[0].size = 8;
-		args[0].dir = DIR_INPUT;
-
-		strcpy(args[1].name, "dst_addr");
-		args[1].offset = 0x1C;
-		args[1].size = 8;
-		args[1].dir = DIR_INPUT;
-
-		strcpy(args[2].name, "size");
-		args[2].offset = 0x28;
-		args[2].size = 4;
-		args[2].dir = DIR_INPUT;
-
-		xcu->base.info.num_args = 3;
-		xcu->base.info.args = args;
+	if (xcu->base.info.model == XCU_AUTO) {
+		switch (info->protocol) {
+		case CTRL_HS:
+		case CTRL_CHAIN:
+		case CTRL_NONE:
+			xcu->base.info.model = XCU_HLS;
+			break;
+		case CTRL_FA:
+			xcu->base.info.model = XCU_FA;
+			break;
+		default:
+			XCU_ERR(xcu, "Unknown protocol");
+			return -EINVAL;
+		}
 	}
 
 	res = vzalloc(sizeof(struct resource *) * xcu->base.info.num_res);
@@ -469,6 +403,9 @@ static int cu_probe(struct platform_device *pdev)
 		break;
 	case XCU_FA:
 		err = xrt_cu_fa_init(&xcu->base);
+		break;
+	case XCU_XGQ:
+		err = xrt_cu_xgq_init(&xcu->base);
 		break;
 	default:
 		err = -EINVAL;
@@ -540,14 +477,15 @@ static int cu_remove(struct platform_device *pdev)
 	case XCU_FA:
 		xrt_cu_fa_fini(&xcu->base);
 		break;
+	case XCU_XGQ:
+		xrt_cu_xgq_fini(&xcu->base);
+		break;
 	}
 
 	(void) xocl_kds_del_cu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);
-
-	cu_del_args(xcu);
 
 	platform_set_drvdata(pdev, NULL);
 

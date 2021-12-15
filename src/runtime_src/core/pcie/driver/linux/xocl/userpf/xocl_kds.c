@@ -16,6 +16,7 @@
  */
 #include "xclbin.h"
 #include "ps_kernel.h"
+#include "xgq_execbuf.h"
 
 #ifdef KDS_VERBOSE
 #define print_ecmd_info(ecmd) \
@@ -469,6 +470,9 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 		return false;
 	}
 
+	if (kds->xgq_enable)
+		return true;
+
 	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
 		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
@@ -490,6 +494,42 @@ static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
 	/* Shift payload 6 words up */
 	for (i = ecmd->extra_cu_masks; i < end; i++)
 		ecmd->data[i] = ecmd->data[i + 6];
+}
+
+static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd)
+{
+	struct ert_packet *ecmd = NULL;
+	struct ert_start_kernel_cmd *kecmd;
+	int ret = 0;
+
+	ecmd = (struct ert_packet *)xcmd->execbuf;
+
+	switch (ecmd->opcode) {
+	case ERT_CONFIGURE:
+	case ERT_SK_CONFIG:
+		/* All configure commands are moved to xclbin download flow.
+		 * We can safely ignore user's config command and directly
+		 * return complete.
+		 */
+		xcmd->status = KDS_COMPLETED;
+		xcmd->cb.notify_host(xcmd, xcmd->status);
+		break;
+	case ERT_START_CU:
+		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		xcmd->type = KDS_CU;
+		xcmd->opcode = OP_START;
+		xcmd->cu_mask[0] = kecmd->cu_mask;
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
+		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
+		ret = 1; /* hack */
+		break;
+	default:
+		userpf_err(xdev, "Unsupport command\n");
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
@@ -571,6 +611,13 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	print_ecmd_info(ecmd);
 
+	if (XDEV(xdev)->kds.xgq_enable) {
+		ret = xocl_fill_payload_xgq(xdev, xcmd);
+		if (ret > 0)
+			goto out2;
+		goto out1;
+	}
+
 	/* xcmd->type is the only thing determine who to handle this command.
 	 * If ERT is supported, use ERT as default handler.
 	 * It could be override later if some command needs specific handler.
@@ -646,6 +693,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		goto out1;
 	}
 
+out2:
 	if (in_kernel) {
 		struct drm_xocl_execbuf_cb *args_cb =
 					(struct drm_xocl_execbuf_cb *)data;
@@ -1173,13 +1221,94 @@ out:
 	return ret;
 }
 
-/* The xocl_kds_update function sould be called after xclbin is
- * downloaded. Do not use this function in other place.
- */
-int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+static int
+xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		      int num_info)
 {
-	int ret = 0;
+	struct ip_layout *ip_layout;
+	struct kernel_info *krnl_info;
+	int num_cus;
+	int i;
+
+	/*
+	 * Get CU metadata from ip_layout:
+	 * - CU name
+	 * - base address
+	 * - interrupt
+	 * - protocol
+	 */
+	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
+	num_cus = kds_ip_layout2cu_info(ip_layout, cu_info, num_info);
+	XOCL_PUT_MEM_TOPOLOGY(xdev);
+
+	/*
+	 * Get CU metadata from XML,
+	 * - map size
+	 * - number of arguments
+	 * - arguments list
+	 * - misc: software, number of resourse ...
+	 */
+	for (i = 0; i < num_cus; i++) {
+		cu_info[i].model = XCU_AUTO;
+		cu_info[i].size = 0x1000;
+		cu_info[i].sw_reset = false;
+		cu_info[i].num_res = 1;
+		cu_info[i].num_args = 0;
+		cu_info[i].args = NULL;
+
+		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
+		if (!krnl_info) {
+			/* Workaround for U30, maybe we can remove this in the future */
+			userpf_info(xdev, "%s has no metadata. Use default", cu_info[i].kname);
+			continue;
+		}
+
+		cu_info[i].size = krnl_info->range;
+		cu_info[i].sw_reset = false;
+		if (krnl_info->features & KRNL_SW_RESET)
+			cu_info[i].sw_reset = true;
+
+		cu_info[i].num_res = 1;
+		cu_info[i].num_args = krnl_info->anums;
+		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
+	}
+
+	return num_cus;
+}
+
+static void
+xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
+		    int num_cus)
+{
+	int i;
+
+	for (i = 0; i < num_cus; i++) {
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
+
+		subdev_info.res[0].start = cu_info[i].addr;
+		subdev_info.res[0].end = cu_info[i].addr + cu_info[i].size - 1;
+		subdev_info.priv_data = &cu_info[i];
+		subdev_info.data_len = sizeof(struct xrt_cu_info);
+		subdev_info.override_idx = i;
+		if (xocl_subdev_create(xdev, &subdev_info))
+			userpf_info(xdev, "Create CU %s failed. Skip", cu_info[i].iname);
+	}
+}
+
+static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+{
+	struct xrt_cu_info *cu_info;
 	struct ert_cu_bulletin brd;
+	int num_cus;
+	int ret = 0;
+
+	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
+	if (!cu_info)
+		return -ENOMEM;
+
+	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);
 	/* Detect if ERT subsystem is able to support CU to host interrupt
@@ -1196,19 +1325,301 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
+	/* Construct and send configure command */
+	xocl_ert_user_enable(xdev);
+	ret = xocl_config_ert(xdev, cfg);
+	if (ret)
+		userpf_info(xdev, "ERT configure failed, ret %d", ret);
+
+	kfree(cu_info);
+	return ret;
+}
+
+static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
+{
+	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+
+	complete(&kds->comp);
+}
+
+static int
+xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_cus)
+{
+	struct xgq_cmd_config_start *cfg_start;
+	struct xgq_cmd_resp_config_start resp;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client;
+	struct kds_command *xcmd;
+	int ret;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_start));
+	if (!xcmd)
+		return -ENOMEM;
+
+	cfg_start = xcmd->info;
+
+	cfg_start->hdr.opcode = XGQ_CMD_OP_CFG_START;
+	cfg_start->hdr.count = sizeof(*cfg_start) - sizeof(cfg_start->hdr);
+	cfg_start->hdr.state = 1;
+
+	cfg_start->num_cus = num_cus;
+	cfg_start->i2h = 1;
+	cfg_start->i2e = 1;
+	cfg_start->cui = 0;
+	cfg_start->mode = 0;
+	cfg_start->echo = 0;
+	cfg_start->verbose = 0;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (xcmd->status != KDS_COMPLETED) {
+		userpf_err(xdev, "Configure XGQ ERT failed");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int
+xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
+{
+	struct xgq_cmd_config_end *cfg_end;
+	struct xgq_com_queue_entry resp;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client;
+	struct kds_command *xcmd;
+	int ret;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_end));
+	if (!xcmd)
+		return -ENOMEM;
+
+	cfg_end = xcmd->info;
+
+	cfg_end->hdr.opcode = XGQ_CMD_OP_CFG_END;
+	cfg_end->hdr.count = sizeof(*cfg_end) - sizeof(cfg_end->hdr);
+	cfg_end->hdr.state = 1;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (xcmd->status != KDS_COMPLETED) {
+		userpf_err(xdev, "Configure XGQ ERT failed");
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int
+xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_cus)
+{
+	struct xgq_cmd_config_cu *cfg_cu;
+	struct xgq_com_queue_entry resp;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client;
+	struct kds_command *xcmd;
+	int ret = 0;
+	int i, j;
+
+	for (i = 0; i < num_cus; i++) {
+		int max_off_idx = 0;
+		int max_off = 0;
+
+		client = kds->anon_client;
+		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
+		if (!xcmd)
+			return -ENOMEM;
+
+		cfg_cu = xcmd->info;
+		cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
+		cfg_cu->hdr.count = sizeof(*cfg_cu) - sizeof(cfg_cu->hdr);
+		cfg_cu->hdr.state = 1;
+
+		cfg_cu->cu_idx = i;
+		cfg_cu->ip_ctrl = cu_info[i].protocol;
+		cfg_cu->map_size = cu_info[i].size;
+		cfg_cu->laddr = cu_info[i].addr;
+		cfg_cu->haddr = cu_info[i].addr >> 32;
+		for (j = 0; j < cu_info[i].num_args; j++) {
+			if (max_off < cu_info[i].args[j].offset) {
+				max_off = cu_info[i].args[j].offset;
+				max_off_idx = j;
+			}
+		}
+		cfg_cu->payload_size = max_off + cu_info[i].args[max_off_idx].size;
+		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
+			  cu_info[i].kname, cu_info[i].iname);
+
+		xcmd->cb.notify_host = xocl_kds_xgq_notify;
+		xcmd->cb.free = kds_free_command;
+		xcmd->priv = kds;
+		xcmd->type = KDS_ERT;
+		xcmd->opcode = OP_CONFIG;
+		xcmd->response = &resp;
+		xcmd->response_size = sizeof(resp);
+
+		ret = kds_submit_cmd_and_wait(kds, xcmd);
+		if (ret)
+			break;
+
+		if (xcmd->status != KDS_COMPLETED) {
+			userpf_err(xdev, "Configure XGQ ERT failed");
+			ret = -EINVAL;
+			break;
+		}
+	}
+
+	return ret;
+}
+
+static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
+				 struct xgq_cmd_resp_query_cu *resp)
+{
+	struct xgq_cmd_query_cu *query_cu;
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client;
+	struct kds_command *xcmd;
+	int ret;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_query_cu));
+	if (!xcmd)
+		return -ENOMEM;
+
+	query_cu = xcmd->info;
+
+	query_cu->hdr.opcode = XGQ_CMD_OP_QUERY_CU;
+	query_cu->hdr.count = sizeof(*query_cu) - sizeof(query_cu->hdr);
+	query_cu->hdr.state = 1;
+	query_cu->cu_idx = cu_idx;
+	query_cu->type = XGQ_CMD_QUERY_CU_CONFIG;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = resp;
+	xcmd->response_size = sizeof(*resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (xcmd->status != KDS_COMPLETED) {
+		userpf_err(xdev, "Query CU(%d) failed", cu_idx);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+{
+	struct xrt_cu_info *cu_info;
+	int num_cus;
+	int ret = 0;
+	int i;
+
+	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
+	if (!cu_info)
+		return -ENOMEM;
+
+	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
+	if (ret)
+		goto create_regular_cu;
+
+	ret = xocl_kds_xgq_cfg_cu(xdev, cu_info, num_cus);
+	if (ret)
+		goto create_regular_cu;
+
+	ret = xocl_kds_xgq_cfg_end(xdev);
+	if (ret)
+		goto create_regular_cu;
+
+	/*
+	 * Configure XGQ ERT looks good.
+	 * XGQs are allocated by device, hence query information.
+	 */
+	for (i = 0; i < num_cus; i++) {
+		struct xgq_cmd_resp_query_cu resp;
+		void *xgq;
+
+		ret = xocl_kds_xgq_query_cu(xdev, i, &resp);
+		if (ret)
+			goto create_regular_cu;
+
+		xgq = xocl_ert_ctrl_setup_xgq(xdev, resp.xgq_id, resp.offset);
+		if (IS_ERR(xgq)) {
+			userpf_err(xdev, "Setup XGQ failed\n");
+			ret = PTR_ERR(xgq);
+			goto create_regular_cu;
+		}
+		cu_info[i].model = XCU_XGQ;
+		cu_info[i].xgq = xgq;
+	}
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
+
+	XDEV(xdev)->kds.xgq_enable = true;
+	kfree(cu_info);
+	return 0;
+
+create_regular_cu:
+	/* Regular CU directly talks to CU, without XGQ */
+	xocl_kds_create_cus(xdev, cu_info, num_cus);
+	XDEV(xdev)->kds.xgq_enable = false;
+
+	kfree(cu_info);
+	return ret;
+}
+
+/* The xocl_kds_update function should be called after xclbin is
+ * downloaded. Do not use this function in other place.
+ */
+int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+{
+	int ret = 0;
+
+	XDEV(xdev)->kds.xgq_enable = false;
+	ret = xocl_ert_ctrl_connect(xdev);
+	if (ret < 0) {
+		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
+		goto out;
+	}
+
+	if (xocl_ert_ctrl_is_version(xdev, 1, 0))
+		ret = xocl_kds_update_xgq(xdev, cfg);
+	else
+		ret = xocl_kds_update_legacy(xdev, cfg);
+	if (ret)
+		goto out;
+
 	xocl_kds_fa_clear(xdev);
 
 	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
 		userpf_info(xdev, "Detect FA cmdmem failed, ret %d", ret);
-		goto out;
-	}
-
-	/* Construct and send configure command */
-	xocl_ert_user_enable(xdev);
-	ret = xocl_config_ert(xdev, cfg);
-	if (ret) {
-		userpf_info(xdev, "ERT configure failed, ret %d", ret);
 		goto out;
 	}
 

@@ -518,6 +518,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		XDEV(xdev)->kernels = kernels;
 	}
 
+	xocl_ert_ctrl_disconnect(xdev);
+
 	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	/*
 	 * Don't just bail out here, always recreate drm mem

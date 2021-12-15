@@ -37,15 +37,16 @@ static int cu_plram_peek_credit(void *core)
 	return cu_plram->credits;
 }
 
-static void cu_plram_configure(void *core, u32 *data, size_t sz, int type)
+static int cu_plram_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_plram *cu_plram = core;
 
 	if (kds_echo)
-		return;
+		return 0;
 
 	/* TODO: Configure in specific slot */
 	memcpy(cu_plram->plram, data, sz);
+	return 0;
 }
 
 static void cu_plram_start(void *core)

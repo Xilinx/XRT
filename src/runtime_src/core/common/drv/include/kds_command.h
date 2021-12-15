@@ -13,11 +13,13 @@
 #ifndef _KDS_COMMAND_H
 #define _KDS_COMMAND_H
 
+#include "xgq_cmd_ert.h"
 /* Userspace command format */
 #include "ert.h"
 
 #define REGMAP 0
 #define KEY_VAL 1
+#define XGQ_CMD 2
 
 enum kds_opcode {
 	OP_NONE = 0,
@@ -77,23 +79,27 @@ struct kds_command {
 	u32			 type;
 	u32			 opcode;
 	struct list_head	 list;
+	u32			 payload_alloc;
+	u32			 payload_type;
 	void			*info;
 	size_t			 isize;
-	/* TODO: may rethink if we should have cu bit mask here
-	 * or move it to info.
-	 * Since NO all types of command have cu_mask
-	 */
-	u32			 cu_mask[4];
-	u32			 num_mask;
-	u32			 payload_type;
-	u64			 start;
+	void                    *response;
+	size_t                   response_size;
+	struct kds_cmd_ops	 cb;
 	void			*priv;
 
 	unsigned int		 tick;
 	u32			 timestamp_enabled;
 	u64			 timestamp[KDS_STAT_MAX];
 
-	struct kds_cmd_ops	 cb;
+	/* TODO: may rethink if we should have cu bit mask here
+	 * or move it to info.
+	 * Since NO all types of command have cu_mask
+	 */
+	u32			 cu_mask[4];
+	u32			 num_mask;
+	u64			 start;
+
 	/* execbuf is used to update the header
 	 * of execbuf when notifying host
 	 */

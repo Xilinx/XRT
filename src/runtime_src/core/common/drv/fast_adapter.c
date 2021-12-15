@@ -76,7 +76,7 @@ static int cu_fa_peek_credit(void *core)
 	return cu_fa->credits;
 }
 
-static void cu_fa_configure(void *core, u32 *data, size_t sz, int type)
+static int cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_fa *cu_fa = core;
 	u32 *slot = cu_fa->cmdmem + cu_fa->head_slot;
@@ -85,7 +85,7 @@ static void cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 	WARN_ON(!cu_fa->cmdmem);
 
 	if (kds_echo || !cu_fa->cmdmem)
-		return;
+		return 0;
 
 	/* move commands to device quickly is the key of performance */
 	memcpy(&slot[1], &data[1], sz - 4);
@@ -93,6 +93,7 @@ static void cu_fa_configure(void *core, u32 *data, size_t sz, int type)
 	/* Update status of descriptor */
 	wmb();
 	slot[0] = data[0];
+	return 0;
 }
 
 static void cu_fa_start(void *core)
