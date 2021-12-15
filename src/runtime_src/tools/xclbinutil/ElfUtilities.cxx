@@ -25,7 +25,7 @@
 #include <boost/version.hpp>
 
 #if (BOOST_VERSION >= 106400)
-  #include <boost/process.hpp>
+  #include <boost/process/search_path.hpp>
 #endif
 
 
