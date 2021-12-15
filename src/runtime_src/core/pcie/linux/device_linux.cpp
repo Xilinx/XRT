@@ -1013,7 +1013,7 @@ device_linux::
 wait_ip_interrupt(xclInterruptNotifyHandle handle)
 {
   int num_interrupts = 0;
-  if (::read(handle, &pending, sizeof(pending)) == -1)
+  if (::read(handle, &num_interrupts, sizeof(num_interrupts)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
 
   if (num_interrupts > 1)
