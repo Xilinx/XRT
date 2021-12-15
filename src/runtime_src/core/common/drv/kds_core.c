@@ -725,10 +725,15 @@ static __poll_t kds_ucu_poll(struct file *filp, poll_table *wait)
 	__poll_t ret = 0;
 #endif
 	struct xrt_cu *xcu = filp->private_data;
+	s32 events = 0;
+
+	events = atomic_dec_if_positive(&xcu->ucu_event);
+	if (events >= 0)
+		ret = POLLIN;
 
 	poll_wait(filp, &xcu->ucu_waitq, wait);
-
-	if (atomic_read(&xcu->ucu_event) > 0)
+	events = atomic_dec_if_positive(&xcu->ucu_event);
+	if (events >= 0)
 		ret = POLLIN;
 
 	return ret;
