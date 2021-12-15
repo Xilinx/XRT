@@ -157,7 +157,8 @@ namespace xdp {
   void DeviceTraceWriter::writeCUMemoryTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount)
   {
     // Generate Wave group for Read/Write if data transfer monitoring is enabled
-    if (!(cu->getDataTransferTraceEnabled())) return ;
+    if (!(cu->getDataTransferTraceEnabled()))
+      return ;
 
     std::vector<uint32_t>* cuAIMs = cu->getAIMsWithTrace() ;
     for (auto cuAIM : *cuAIMs) {
@@ -184,7 +185,8 @@ namespace xdp {
   void DeviceTraceWriter::writeCUStreamTransfersStructure(XclbinInfo* xclbin, ComputeUnitInstance* cu, uint32_t& rowCount)
   {
     // Generate Wave group for stream data transfers if enabled
-    if (!(cu->getStreamTraceEnabled())) return ;
+    if (!(cu->getStreamTraceEnabled()))
+      return ;
 
     std::vector<uint32_t>* cuASMs = cu->getASMsWithTrace() ;
     for (auto cuASM : *cuASMs) {
@@ -205,7 +207,9 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingMemoryTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo().hasFloatingAIMWithTrace(deviceId, xclbin))) return ;
+    if (!(db->getStaticInfo().hasFloatingAIMWithTrace(deviceId, xclbin)))
+      return ;
+
     fout << "Group_Start,AXI Memory Monitors,Read/Write data transfers over AXI Memory Mapped connection " << std::endl;
 
     // Go through all of the AIMs in this xclbin to find the floating ones
@@ -239,7 +243,9 @@ namespace xdp {
 
   void DeviceTraceWriter::writeFloatingStreamTransfersStructure(XclbinInfo* xclbin, uint32_t& rowCount)
   {
-    if (!(db->getStaticInfo()).hasFloatingASMWithTrace(deviceId, xclbin)) return ;
+    if (!(db->getStaticInfo()).hasFloatingASMWithTrace(deviceId, xclbin))
+      return ;
+
     fout << "Group_Start,AXI Stream Monitors,Data transfers over AXI Stream connection " << std::endl;
 
     std::vector<Monitor*>* asms =
@@ -313,7 +319,8 @@ namespace xdp {
         xclbin = loadedXclbins[++xclbinIndex] ;
       } else if (KERNEL == eventType) {
         KernelEvent* kernelEvent = dynamic_cast<KernelEvent*>(deviceEvent) ;
-        if (kernelEvent == nullptr) continue ; // Coverity - In case dynamic cast fails
+        if (kernelEvent == nullptr)
+          continue ; // Coverity - In case dynamic cast fails
         std::pair<XclbinInfo*, int32_t> index =
           std::make_pair(xclbin, cuId) ;
         kernelEvent->dump(fout, cuBucketIdMap[index] + eventType - KERNEL) ;
@@ -336,16 +343,16 @@ namespace xdp {
         // Memory or Stream Acceses
         uint32_t monId = deviceEvent->getMonitorId();
         DeviceMemoryAccess* memoryEvent = dynamic_cast<DeviceMemoryAccess*>(e.get());
-        if(memoryEvent) {
+        if (memoryEvent) {
           std::pair<XclbinInfo*, uint32_t> index =std::make_pair(xclbin, monId);
           deviceEvent->dump(fout, aimBucketIdMap[index] + eventType - KERNEL_READ);
           continue;
         }
         DeviceStreamAccess* streamEvent = dynamic_cast<DeviceStreamAccess*>(e.get());
-        if(streamEvent) {
+        if (streamEvent) {
           std::pair<XclbinInfo*, uint32_t> index = std::make_pair(xclbin, monId) ;
-          if(KERNEL_STREAM_READ == eventType || KERNEL_STREAM_READ_STALL == eventType
-                                             || KERNEL_STREAM_READ_STARVE == eventType) {
+          if (KERNEL_STREAM_READ == eventType || KERNEL_STREAM_READ_STALL == eventType
+                                              || KERNEL_STREAM_READ_STARVE == eventType) {
             deviceEvent->dump(fout, asmBucketIdMap[index] + eventType - KERNEL_STREAM_READ);
           } else {
             deviceEvent->dump(fout, asmBucketIdMap[index] + eventType - KERNEL_STREAM_WRITE);
@@ -371,9 +378,8 @@ namespace xdp {
 
   bool DeviceTraceWriter::write(bool openNewFile)
   {
-    if (openNewFile && !traceEventsExist()) {
+    if (openNewFile && !traceEventsExist())
       return false;
-    }
 
     initialize() ;
 
