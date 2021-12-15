@@ -1012,9 +1012,12 @@ void
 device_linux::
 wait_ip_interrupt(xclInterruptNotifyHandle handle)
 {
-  int pending = 0;
+  int num_interrupts = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+
+  if (num_interrupts > 1)
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", "More than one interrupt was received");
 }
 
 xclBufferHandle
