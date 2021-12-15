@@ -154,7 +154,7 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 	uint8_t name_length, name_type_length;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
-	uint32_t name_index, ins_index, max_index = 0, avg_index = 0;
+	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 
@@ -185,11 +185,12 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 		return;
 	}
 
+	buf_size = in_buf[SDR_NUM_BYTES_IDX] * 8;
 	buf_index = SDR_NUM_BYTES_IDX + 1;
 
 	remaining_records = in_buf[SDR_NUM_REC_IDX];
 
-	while(remaining_records > 0)
+	while((remaining_records > 0) && (buf_index < buf_size))
 	{
 		sensor_id = in_buf[buf_index++];
 
