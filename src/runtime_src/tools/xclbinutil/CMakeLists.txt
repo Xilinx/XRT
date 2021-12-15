@@ -77,6 +77,7 @@ if(NOT WIN32)
    endif()
 endif()
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
 
