@@ -486,12 +486,10 @@ namespace xdp {
 
         for (int i=0; i < coreCounterStartEvents.size(); ++i) {
           auto perfCounter = core.perfCounter();
-          auto ret = perfCounter->initialize(mod, coreCounterStartEvents.at(i),
-                                             mod, coreCounterEndEvents.at(i));
-          if (ret != XAIE_OK)
+          if (perfCounter->initialize(mod, coreCounterStartEvents.at(i),
+                                      mod, coreCounterEndEvents.at(i)) != XAIE_OK)
             break;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) 
+          if (perfCounter->reserve() != XAIE_OK) 
             break;
 
           // NOTE: store events for later use in trace
@@ -508,8 +506,7 @@ namespace xdp {
           if (memoryCounterStartEvents.empty())
             memoryEvents.push_back(counterEvent);
 
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) 
+          if (perfCounter->start() != XAIE_OK) 
             break;
 
           mCoreCounterTiles.push_back(tile);
@@ -538,12 +535,10 @@ namespace xdp {
 
         for (int i=0; i < memoryCounterStartEvents.size(); ++i) {
           auto perfCounter = memory.perfCounter();
-          auto ret = perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
-                                             mod, memoryCounterEndEvents.at(i));
-          if (ret != XAIE_OK) 
+          if (perfCounter->initialize(mod, memoryCounterStartEvents.at(i),
+                                      mod, memoryCounterEndEvents.at(i)) != XAIE_OK) 
             break;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) 
+          if (perfCounter->reserve() != XAIE_OK) 
             break;
 
           // Set reset event based on counter number
@@ -555,8 +550,7 @@ namespace xdp {
           perfCounter->changeRstEvent(mod, counterEvent);
           memoryEvents.push_back(counterEvent);
 
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) 
+          if (perfCounter->start() != XAIE_OK) 
             break;
 
           mMemoryCounters.push_back(perfCounter);
@@ -604,13 +598,12 @@ namespace xdp {
           coreTraceEndEvent = XAIE_EVENT_INSTR_EVENT_1_CORE;
         } else if (useDelay) {
           auto perfCounter = core.perfCounter();
-          auto ret = perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
-                                             mod, XAIE_EVENT_DISABLED_CORE);
-          if (ret != XAIE_OK) 
+          if (perfCounter->initialize(mod, XAIE_EVENT_ACTIVE_CORE,
+                                      mod, XAIE_EVENT_DISABLED_CORE) != XAIE_OK) 
             break;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) 
+          if (perfCounter->reserve() != XAIE_OK) 
             break;
+
           perfCounter->changeThreshold(delayCycles);
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
@@ -622,18 +615,16 @@ namespace xdp {
           // to get around some hw bugs. We cannot restart tracemodules when that happens
           coreTraceEndEvent = XAIE_EVENT_NONE_CORE;
 
-          ret = perfCounter->start();
-          if (ret != XAIE_OK) 
+          if (perfCounter->start() != XAIE_OK) 
             break;
         }
 
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        auto ret = coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
-        if (ret != XAIE_OK) 
+        if (coreTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
           break;
 
-        ret = coreTrace->reserve();
+        auto ret = coreTrace->reserve();
         if (ret != XAIE_OK) {
           std::stringstream msg;
           msg << "Unable to reserve core module trace control for AIE tile (" 
@@ -649,11 +640,9 @@ namespace xdp {
         int numTraceEvents = 0;
         for (int i=0; i < coreEvents.size(); i++) {
           uint8_t slot;
-          ret = coreTrace->reserveTraceSlot(slot);
-          if (ret != XAIE_OK) 
+          if (coreTrace->reserveTraceSlot(slot) != XAIE_OK) 
             break;
-          ret = coreTrace->setTraceEvent(slot, coreEvents[i]);
-          if (ret != XAIE_OK) 
+          if (coreTrace->setTraceEvent(slot, coreEvents[i]) != XAIE_OK) 
             break;
           numTraceEvents++;
 
@@ -674,15 +663,12 @@ namespace xdp {
         msg << "Reserved " << numTraceEvents << " core trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-        ret = coreTrace->setMode(XAIE_TRACE_EVENT_PC);
-        if (ret != XAIE_OK) 
+        if (coreTrace->setMode(XAIE_TRACE_EVENT_PC) != XAIE_OK) 
           break;
         XAie_Packet pkt = {0, 0};
-        ret = coreTrace->setPkt(pkt);
-        if (ret != XAIE_OK) 
+        if (coreTrace->setPkt(pkt) != XAIE_OK) 
           break;
-        ret = coreTrace->start();
-        if (ret != XAIE_OK) 
+        if (coreTrace->start() != XAIE_OK) 
           break;
       }
 
@@ -695,11 +681,10 @@ namespace xdp {
         auto memoryTrace = memory.traceControl();
         // Set overall start/end for trace capture
         // Wendy said this should be done first
-        auto ret = memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent);
-        if (ret != XAIE_OK) 
+        if (memoryTrace->setCntrEvent(coreTraceStartEvent, coreTraceEndEvent) != XAIE_OK) 
           break;
 
-        ret = memoryTrace->reserve();
+        auto ret = memoryTrace->reserve();
         if (ret != XAIE_OK) {
           std::stringstream msg;
           msg << "Unable to reserve memory module trace control for AIE tile (" 
@@ -719,15 +704,13 @@ namespace xdp {
           uint32_t bcBit = 0x1;
           auto TraceE = memory.traceEvent();
           TraceE->setEvent(XAIE_CORE_MOD, memoryCrossEvents[i]);
-          auto ret = TraceE->reserve();
-          if (ret != XAIE_OK) 
+          if (TraceE->reserve() != XAIE_OK) 
             break;
 
           int bcId = TraceE->getBc();
           coreToMemBcMask |= (bcBit << bcId);
 
-          ret = TraceE->start();
-          if (ret != XAIE_OK) 
+          if (TraceE->start() != XAIE_OK) 
             break;
           numTraceEvents++;
 
@@ -747,11 +730,9 @@ namespace xdp {
         for (int i=0; i < memoryEvents.size(); i++) {
           auto TraceE = memory.traceEvent();
           TraceE->setEvent(XAIE_MEM_MOD, memoryEvents[i]);
-          auto ret = TraceE->reserve();
-          if (ret != XAIE_OK) 
+          if (TraceE->reserve() != XAIE_OK) 
             break;
-          ret = TraceE->start();
-          if (ret != XAIE_OK) 
+          if (TraceE->start() != XAIE_OK) 
             break;
           numTraceEvents++;
 
@@ -803,15 +784,12 @@ namespace xdp {
         msg << "Reserved " << numTraceEvents << " memory trace events for AIE tile (" << col << "," << row << ").";
         xrt_core::message::send(severity_level::debug, "XRT", msg.str());
 
-        ret = memoryTrace->setMode(XAIE_TRACE_EVENT_TIME);
-        if (ret != XAIE_OK) 
+        if (memoryTrace->setMode(XAIE_TRACE_EVENT_TIME) != XAIE_OK) 
           break;
         XAie_Packet pkt = {0, 1};
-        ret = memoryTrace->setPkt(pkt);
-        if (ret != XAIE_OK) 
+        if (memoryTrace->setPkt(pkt) != XAIE_OK) 
           break;
-        ret = memoryTrace->start();
-        if (ret != XAIE_OK) 
+        if (memoryTrace->start() != XAIE_OK) 
           break;
 
         // Update memory packet type in config file
@@ -1109,12 +1087,10 @@ namespace xdp {
         // We need two counters to flush out the trace
         for (int c=0; c < numCountersToRequest; ++c) {
           auto perfCounter = core.perfCounter();
-          auto ret = perfCounter->initialize(mod, XAIE_EVENT_NONE_CORE,
-                                             mod, XAIE_EVENT_NONE_CORE);
-          if (ret != XAIE_OK) 
+          if (perfCounter->initialize(mod, XAIE_EVENT_NONE_CORE,
+                                      mod, XAIE_EVENT_NONE_CORE) != XAIE_OK) 
             continue;
-          ret = perfCounter->reserve();
-          if (ret != XAIE_OK) 
+          if (perfCounter->reserve() != XAIE_OK) 
             continue;
 
           // Configure threshold and reset of counter
@@ -1127,11 +1103,9 @@ namespace xdp {
           auto coreTrace = core.traceControl();
           coreTrace->stop();
           uint8_t slot = 0;
-          ret = coreTrace->reserveTraceSlot(slot);
-          if (ret != XAIE_OK) 
+          if (coreTrace->reserveTraceSlot(slot) != XAIE_OK) 
             break;
-          ret = coreTrace->setTraceEvent(slot, counterEvent);
-          if (ret != XAIE_OK) 
+          if (coreTrace->setTraceEvent(slot, counterEvent) != XAIE_OK) 
             break;
 
           mCoreCounters.push_back(perfCounter);
