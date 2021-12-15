@@ -42,7 +42,7 @@ struct xocl_xgq {
 static inline void
 xocl_xgq_write_queue(u32 __iomem *dst, u32 *src, int words)
 {
-	int i;
+	int i = 0;
 
 	for (i = 0; i < words; i++)
 		iowrite32(src[i], dst + i);
@@ -51,7 +51,7 @@ xocl_xgq_write_queue(u32 __iomem *dst, u32 *src, int words)
 static inline void
 xocl_xgq_read_queue(u32 *dst, u32 __iomem *src, int words)
 {
-	int i;
+	int i = 0;
 
 	for (i = 0; i < words; i++)
 		dst[i] = ioread32(src + i);
@@ -67,10 +67,10 @@ static inline void xocl_xgq_trigger_sq_intr(struct xocl_xgq *xgq)
 int xocl_xgq_set_command(void *xgq_handle, int id, u32 *cmd, size_t sz)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xgq_cmd_sq_hdr *hdr;
-	unsigned long flags;
-	u64 addr;
-	int ret;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	unsigned long flags = 0;
+	u64 addr = 0;
+	int ret = 0;
 
 	hdr = (struct xgq_cmd_sq_hdr *)cmd;
 	/* Assign XGQ command CID */
@@ -90,7 +90,7 @@ unlock_and_out:
 void xocl_xgq_notify(void *xgq_handle)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 	xgq_notify_peer_produced(&xgq->xx_xgq);
@@ -101,10 +101,10 @@ void xocl_xgq_notify(void *xgq_handle)
 int xocl_xgq_get_response(void *xgq_handle, int id)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xgq_com_queue_entry resp;
-	unsigned long flags;
-	u64 addr;
-	int ret;
+	struct xgq_com_queue_entry resp = {0};
+	unsigned long flags = 0;
+	u64 addr = 0;
+	int ret = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 	ret = xgq_consume(&xgq->xx_xgq, &addr);
@@ -128,7 +128,7 @@ unlock_and_out:
 int xocl_xgq_attach(void *xgq_handle, void *client, int *client_id)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
 
@@ -145,8 +145,8 @@ int xocl_xgq_attach(void *xgq_handle, void *client, int *client_id)
 
 void *xocl_xgq_init(struct xocl_xgq_info *info)
 {
-	struct xocl_xgq *xgq;
-	int ret;
+	struct xocl_xgq *xgq = NULL;
+	int ret = 0;
 
 	xgq = kzalloc(sizeof(struct xocl_xgq), GFP_KERNEL);
 	if (!xgq)

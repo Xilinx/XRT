@@ -333,13 +333,12 @@ static int configure_irq(struct xrt_cu *xrt_cu, bool enable)
 static int cu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_cu *xcu;
-	struct resource **res;
-	struct xrt_cu_info *info;
-	struct kernel_info *krnl_info;
+	struct xocl_cu *xcu = NULL;
+	struct resource **res = NULL;
+	struct xrt_cu_info *info = NULL;
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
-	int i;
+	int i = 0;
 
 	/* Not using xocl_drvinst_alloc here. Because it would quickly run out
 	 * of memory when there are a lot of cards. Since user cannot open CU

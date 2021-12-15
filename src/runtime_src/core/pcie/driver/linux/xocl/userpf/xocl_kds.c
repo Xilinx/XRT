@@ -499,7 +499,7 @@ static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
 static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd)
 {
 	struct ert_packet *ecmd = NULL;
-	struct ert_start_kernel_cmd *kecmd;
+	struct ert_start_kernel_cmd *kecmd = NULL;
 	int ret = 0;
 
 	ecmd = (struct ert_packet *)xcmd->execbuf;
@@ -1225,10 +1225,10 @@ static int
 xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		      int num_info)
 {
-	struct ip_layout *ip_layout;
-	struct kernel_info *krnl_info;
-	int num_cus;
-	int i;
+	struct ip_layout *ip_layout = NULL;
+	struct kernel_info *krnl_info = NULL;
+	int num_cus = 0;
+	int i = 0;
 
 	/*
 	 * Get CU metadata from ip_layout:
@@ -1280,7 +1280,7 @@ static void
 xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		    int num_cus)
 {
-	int i;
+	int i = 0;
 
 	for (i = 0; i < num_cus; i++) {
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
@@ -1297,9 +1297,9 @@ xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 
 static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
-	struct xrt_cu_info *cu_info;
-	struct ert_cu_bulletin brd;
-	int num_cus;
+	struct xrt_cu_info *cu_info = NULL;
+	struct ert_cu_bulletin brd = {0};
+	int num_cus = 0;
 	int ret = 0;
 
 	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
@@ -1345,12 +1345,12 @@ static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
 static int
 xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_cus)
 {
-	struct xgq_cmd_config_start *cfg_start;
-	struct xgq_cmd_resp_config_start resp;
+	struct xgq_cmd_config_start *cfg_start = NULL;
+	struct xgq_cmd_resp_config_start resp = {0};
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_client *client;
-	struct kds_command *xcmd;
-	int ret;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
 
 	client = kds->anon_client;
 	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_start));
@@ -1393,12 +1393,12 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 static int
 xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 {
-	struct xgq_cmd_config_end *cfg_end;
-	struct xgq_com_queue_entry resp;
+	struct xgq_cmd_config_end *cfg_end = NULL;
+	struct xgq_com_queue_entry resp = {0};
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_client *client;
-	struct kds_command *xcmd;
-	int ret;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
 
 	client = kds->anon_client;
 	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_end));
@@ -1433,13 +1433,13 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 static int
 xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_cus)
 {
-	struct xgq_cmd_config_cu *cfg_cu;
-	struct xgq_com_queue_entry resp;
+	struct xgq_cmd_config_cu *cfg_cu = NULL;
+	struct xgq_com_queue_entry resp = {0};
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_client *client;
-	struct kds_command *xcmd;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
 	int ret = 0;
-	int i, j;
+	int i = 0, j = 0;
 
 	for (i = 0; i < num_cus; i++) {
 		int max_off_idx = 0;
@@ -1495,11 +1495,11 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 				 struct xgq_cmd_resp_query_cu *resp)
 {
-	struct xgq_cmd_query_cu *query_cu;
+	struct xgq_cmd_query_cu *query_cu = NULL;
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct kds_client *client;
-	struct kds_command *xcmd;
-	int ret;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
 
 	client = kds->anon_client;
 	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_query_cu));
@@ -1536,10 +1536,10 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 
 static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
-	struct xrt_cu_info *cu_info;
-	int num_cus;
+	struct xrt_cu_info *cu_info = NULL;
+	int num_cus = 0;
 	int ret = 0;
-	int i;
+	int i = 0;
 
 	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
 	if (!cu_info)

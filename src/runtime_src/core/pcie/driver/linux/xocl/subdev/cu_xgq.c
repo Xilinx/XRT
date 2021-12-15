@@ -40,7 +40,7 @@ static int cu_xgq_peek_credit(void *core)
 static int cu_xgq_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_xgq *cu_xgq = core;
-	int ret;
+	int ret = 0;
 
 	ret = xocl_xgq_set_command(cu_xgq->xgq, cu_xgq->xgq_client_id, data, sz);
 	return ret;
@@ -105,7 +105,7 @@ static struct xcu_funcs xrt_cu_xgq_funcs = {
 
 int xrt_cu_xgq_init(struct xrt_cu *xcu)
 {
-	struct xrt_cu_xgq *core;
+	struct xrt_cu_xgq *core = NULL;
 	int err = 0;
 
 	core = kzalloc(sizeof(struct xrt_cu_xgq), GFP_KERNEL);

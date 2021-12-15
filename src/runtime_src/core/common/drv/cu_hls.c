@@ -2,7 +2,7 @@
 /*
  * Xilinx HLS CU
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -79,8 +79,8 @@ static int cu_hls_peek_credit(void *core)
 static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
 {
 	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)data;
-	u32 num_reg;
-	u32 i;
+	u32 num_reg = 0;
+	u32 i = 0;
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
@@ -92,8 +92,8 @@ static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
 static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
 {
 	struct xgq_cmd_start_cuidx_kv *cmd = (struct xgq_cmd_start_cuidx_kv *)data;
-	u32 num_reg;
-	u32 i;
+	u32 num_reg = 0;
+	u32 i = 0;
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx_kv)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
@@ -105,8 +105,8 @@ static int cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_hls *cu_hls = core;
 	struct xgq_cmd_sq_hdr *hdr;
-	size_t num_reg;
-	u32 i;
+	size_t num_reg = 0;
+	u32 i = 0;
 
 	if (kds_echo)
 		return 0;

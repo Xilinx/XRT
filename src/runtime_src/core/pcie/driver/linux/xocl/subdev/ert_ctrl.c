@@ -101,7 +101,7 @@ static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
 {
 	struct ert_ctrl *ec = container_of(ert, struct ert_ctrl, ec_ert);
 	struct xgq_cmd_sq_hdr *sq_hdr;
-	u64 timeout;
+	u64 timeout = 0;
 	u64 slot_addr = 0;
 	bool is_timeout = false;
 	int ret = 0;
@@ -182,8 +182,8 @@ static int ert_ctrl_legacy_init(struct ert_ctrl *ec)
 {
 	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_COMMAND_QUEUE;
 	xdev_handle_t xdev = xocl_get_xdev(ec->ec_pdev);
-	struct xocl_ert_cq_privdata priv;
-	int err;
+	struct xocl_ert_cq_privdata priv = {0};
+	int err = 0;
 
 	priv.cq_base = ec->ec_cq_base;
 	priv.cq_range = ec->ec_cq_range;
@@ -233,7 +233,7 @@ static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
 static void ert_ctrl_xgq_fini(struct ert_ctrl *ec)
 {
 	xdev_handle_t xdev = xocl_get_xdev(ec->ec_pdev);
-	int i;
+	int i = 0;
 
 	for (i = 0; i < ec->ec_exgq_capacity; i++) {
 		if (ec->ec_exgq[i] == NULL)
@@ -300,7 +300,7 @@ static void ert_ctrl_disconnect(struct platform_device *pdev)
 static int ert_ctrl_is_version(struct platform_device *pdev, u32 major, u32 minor)
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
-	u32 version;
+	u32 version = 0;
 
 	major &= 0xFFFF;
 	minor &= 0xFFFF;
@@ -321,7 +321,7 @@ static void *ert_ctrl_setup_xgq(struct platform_device *pdev, int id, u64 offset
 {
 	struct ert_ctrl *ec = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_xgq_info xx_info;
+	struct xocl_xgq_info xx_info = {0};
 	int ret = 0;
 
 	if (id >= ec->ec_exgq_capacity) {
@@ -351,8 +351,8 @@ done:
 
 static int ert_ctrl_remove(struct platform_device *pdev)
 {
-	struct ert_ctrl	*ec;
-	void *hdl;
+	struct ert_ctrl	*ec = NULL;
+	void *hdl = NULL;
 
 	ec = platform_get_drvdata(pdev);
 	if (!ec) {
@@ -378,9 +378,9 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
-	struct ert_ctrl	*ec;
-	struct resource *res;
-	void *hdl;
+	struct ert_ctrl	*ec = NULL;
+	struct resource *res = NULL;
+	void *hdl = NULL;
 	int err = 0;
 
 	ec = xocl_drvinst_alloc(&pdev->dev, sizeof(struct ert_ctrl));

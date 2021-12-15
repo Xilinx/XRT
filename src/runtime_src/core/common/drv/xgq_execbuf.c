@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -19,8 +19,8 @@
 int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 				   struct ert_start_kernel_cmd *ecmd)
 {
-	int num_mask;
-	int payload_size;
+	int num_mask = 0;
+	int payload_size = 0;
 
 	num_mask = 1 + ecmd->extra_cu_masks;
 	payload_size = (ecmd->count - num_mask - 4) * sizeof(u32);

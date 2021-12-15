@@ -1504,12 +1504,12 @@ out:
  */
 int kds_ip_layout2cu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_info[], int num_info)
 {
-	struct xrt_cu_info info;
+	struct xrt_cu_info info = {0};
 	struct ip_data *ip;
-	char kname[64];
-	char *kname_p;
+	char kname[64] = {0};
+	char *kname_p = NULL;
 	int num_cus = 0;
-	int i, j;
+	int i = 0, j = 0;
 
 	for(i = 0; i < ip_layout->m_count; ++i) {
 		ip = &ip_layout->m_ip_data[i];

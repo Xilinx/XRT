@@ -656,7 +656,7 @@ static int command_queue_probe(struct platform_device *pdev)
 	struct command_queue *cmd_queue;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_ert_cq_privdata *priv;
+	struct xocl_ert_cq_privdata *priv = NULL;
 	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ERT_USER;
 
 	cmd_queue = xocl_drvinst_alloc(&pdev->dev, sizeof(struct command_queue));
