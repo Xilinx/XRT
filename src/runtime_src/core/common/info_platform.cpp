@@ -139,11 +139,22 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
     ptree_type cmc;
 
+    /*
+     * The card managment controller (CMC) version number is formatted where the bottom three bytes contain
+     * the Major, Minor, and Version values respectively.
+     * Ex:
+     * CMC version = 010203
+     * This implies
+     * 01 -> Major Number
+     * 02 -> Minor Number
+     * 03 -> Version Number
+     * Output = 1.2.3
+     */
     uint64_t versionValue = std::stoull(xrt_core::device_query<xq::xmc_version>(device), nullptr, 10);
     std::string version = boost::str(boost::format("%u.%u.%u")
-                          % ((versionValue >> (2 * 8)) & 0xFF)
-                          % ((versionValue >> (1 * 8)) & 0xFF)
-                          % ((versionValue >> (0 * 8)) & 0xFF));
+                          % ((versionValue >> (2 * 8)) & 0xFF) // Major
+                          % ((versionValue >> (1 * 8)) & 0xFF) // Minor
+                          % ((versionValue >> (0 * 8)) & 0xFF)); // Version
     cmc.add("version", version);
     cmc.add("serial_number", xrt_core::device_query<xq::xmc_serial_num>(device));
     cmc.add("oem_id", xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device)));
