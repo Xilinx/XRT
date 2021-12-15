@@ -17,6 +17,7 @@
 #include "info_platform.h"
 #include "query_requests.h"
 #include "utils.h"
+#include "xclbin.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -138,7 +139,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
     ptree_type cmc;
     std::stringstream version;
-    
+
     try {
        version << "0x" << std::hex << std::stoi(xrt_core::device_query<xq::xmc_version>(device));
     }
@@ -153,6 +154,23 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
   catch (const xq::exception&) {
     // Ignoring if not available: Edge Case
   }
+}
+
+static std::string
+enum_to_str(CLOCK_TYPE type)
+{
+  switch(type) {
+    case CT_UNUSED:
+      return "Unused";
+    case CT_DATA:
+      return "Data";
+    case CT_KERNEL:
+      return "Kernel";
+    case CT_SYSTEM:
+      return "System";
+    default:
+      throw xrt_core::internal_error("enum value does not exists");
+    }
 }
 
 void
@@ -170,7 +188,7 @@ add_clock_info(const xrt_core::device* device, ptree_type& pt)
     for(int i = 0; i < clock_topology->m_count; i++) {
       ptree_type pt_clock;
       pt_clock.add("id", clock_topology->m_clock_freq[i].m_name);
-      pt_clock.add("description", xq::clock_freq_topology_raw::parse(clock_topology->m_clock_freq[i].m_name));
+      pt_clock.add("description", enum_to_str(static_cast<CLOCK_TYPE>(clock_topology->m_clock_freq[i].m_type)));
       pt_clock.add("freq_mhz", clock_topology->m_clock_freq[i].m_freq_Mhz);
       pt_clock_array.push_back(std::make_pair("", pt_clock));
     }
@@ -191,16 +209,14 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     auto mac_addr_first = xrt_core::device_query<xq::mac_addr_first>(device);
 
     // new flow
-    if (mac_contiguous_num && !mac_addr_first.empty()) {
-      std::string mac_prefix = mac_addr_first.substr(0, mac_addr_first.find_last_of(":"));
-      std::string mac_base = mac_addr_first.substr(mac_addr_first.find_last_of(":") + 1);
-      constexpr int base = 16;
-      auto mac_base_val = std::stoul(mac_base, nullptr, base);
+    if (mac_contiguous_num!=0 && !mac_addr_first.empty()) {
+      // Convert the mac address into a number
+      uint64_t mac_addr_first_value = xrt_core::utils::mac_addr_to_value(mac_addr_first);
 
       for (decltype(mac_contiguous_num) i = 0; i < mac_contiguous_num; ++i) {
         ptree_type addr;
-        auto basex = boost::format("%02X") % (mac_base_val + i);
-        addr.add("address", mac_prefix + ":" + basex.str());
+        // Add desired increment to the mac address value and convert back into a mac address
+        addr.add("address", xrt_core::utils::value_to_mac_addr(mac_addr_first_value + i));
         pt_mac.push_back(std::make_pair("", addr));
       }
     }
@@ -217,7 +233,7 @@ add_mac_info(const xrt_core::device* device, ptree_type& pt)
     pt.put_child("macs", pt_mac);
 
   }
-  catch (const xq::no_such_key&) {
+  catch (const xq::exception&) {
     // Ignoring if not available: Edge Case
   }
 }
@@ -268,7 +284,7 @@ pcie_info(const xrt_core::device * device)
     try {
       ptree.add("dma_thread_count", xrt_core::device_query<xq::dma_threads_raw>(device).size());
     }
-    catch(const xq::no_such_key&) {
+    catch(const xq::exception&) {
     }
 
     ptree.add("cpu_affinity", xrt_core::device_query<xq::cpu_affinity>(device));

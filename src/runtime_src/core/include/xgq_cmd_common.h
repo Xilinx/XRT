@@ -89,6 +89,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_CLOCK		= 0xb,
 	XGQ_CMD_OP_SENSOR		= 0xc,
 	XGQ_CMD_OP_LOAD_APUBIN		= 0xd,
+	XGQ_CMD_OP_MULTIPLE_BOOT	= 0xe,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,
@@ -161,7 +162,8 @@ enum xgq_cmd_page_id {
  * @count:	[30-16]	number of bytes representing packet payload
  * @state:	[31]	flag indicates this is a new entry
  * @cid:		unique command id
- * @rsvd:		reserved for future use
+ * @rsvd, rsvd1:	reserved for future use
+ * @cu_idx:	[11-0]	CU index for certain start CU op codes
  *
  * Any command in XGQ submission queue shares same command header.
  * An command ID is used to identify the command. When the command
@@ -177,7 +179,13 @@ struct xgq_cmd_sq_hdr {
 			uint32_t count:15;  /* [30-16] */
 			uint32_t state:1;   /* [31] */
 			uint16_t cid;
-			uint16_t rsvd;
+			union {
+				uint16_t rsvd;
+				struct {
+					uint16_t cu_idx:12;
+					uint16_t rsvd1:4;
+				};
+			};
 		};
 		uint32_t header[2]; // NOLINT
 	};
@@ -203,7 +211,7 @@ struct xgq_cmd_cq_hdr {
 		struct {
 			uint16_t cid;
 			uint16_t cstate:14;
-			uint16_t specifc:1;
+			uint16_t specific:1;
 			uint16_t state:1;
 		};
 		uint32_t header[1]; // NOLINT

@@ -69,6 +69,10 @@ else
     setenv PYTHONPATH $XILINX_XRT/python:$PYTHONPATH
 endif
 
+# Enable autocompletion for the xbutil and xbmgmt commands
+source $XILINX_XRT/share/completions/xbutil-csh-completion-wrapper
+source $XILINX_XRT/share/completions/xbmgmt-csh-completion-wrapper
+
 # To use the newest version of the XRT tools, either uncomment or set 
 # the following environment variable in your profile:
 #   setenv XRT_TOOLS_NEXTGEN true

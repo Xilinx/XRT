@@ -19,6 +19,7 @@
 
 // Local - Include Files
 #include "device.h"
+#include "xclbin.h"
 
 namespace xrt_core { namespace platform {
 

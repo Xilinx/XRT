@@ -29,6 +29,7 @@
 #include "ioctl_monitors/ioctl_traceFunnel.h"
 #include "ioctl_monitors/ioctl_traceS2MM.h"
 #include "ioctl_monitors/ioctl_aieTraceS2MM.h"
+#include "ioctl_monitors/ioctl_add.h"
 
 // open+mmap based Profile IP 
 #include "mmapped_monitors/mmapped_aim.h"
@@ -39,6 +40,7 @@
 #include "mmapped_monitors/mmapped_traceFunnel.h"
 #include "mmapped_monitors/mmapped_traceS2MM.h"
 #include "mmapped_monitors/mmapped_aieTraceS2MM.h"
+#include "mmapped_monitors/mmapped_add.h"
 
 #endif
 
@@ -167,6 +169,7 @@ DeviceIntf::~DeviceIntf()
     delete mFifoRead;
     delete mTraceFunnel;
     delete mPlTraceDma;
+    delete mDeadlockDetector;
 
     delete mDevice;
 }
@@ -595,13 +598,15 @@ DeviceIntf::~DeviceIntf()
               else
                 mPlTraceDma = new TraceS2MM(mDevice, i, &(map->m_debug_ip_data[i]));
               break;
-            case AXI_NOC :               nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
-                                         break;
-
+            case AXI_NOC :
+              nocList.push_back(new NOC(mDevice, i, &(map->m_debug_ip_data[i])));
+              break;
             case ACCEL_DEADLOCK_DETECTOR :
+              mDeadlockDetector = new DeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+              break;
             case AXI_STREAM_PROTOCOL_CHECKER :
             default : 
-                  break;
+              break;
           }
         }
       }
@@ -703,8 +708,16 @@ DeviceIntf::~DeviceIntf()
             //  break;
             //}
             case ACCEL_DEADLOCK_DETECTOR :
+            {
+              mDeadlockDetector = new MMappedDeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mDeadlockDetector->isMMapped()) {
+                delete mDeadlockDetector;
+                mDeadlockDetector = nullptr;
+              }
+              break;
+            }
             default :
-                  break;
+              break;
           }
         }
       }
@@ -793,10 +806,18 @@ DeviceIntf::~DeviceIntf()
               break;
             }
             case ACCEL_DEADLOCK_DETECTOR :
+            {
+              mDeadlockDetector = new IOCtlDeadlockDetector(mDevice, i, &(map->m_debug_ip_data[i]));
+              if(!mDeadlockDetector->isOpened()) {
+                delete mDeadlockDetector;
+                mDeadlockDetector = nullptr;
+              }
+              break;
+            }
             case AXI_STREAM_PROTOCOL_CHECKER :
             case AXI_NOC :
             default :
-                  break;
+              break;
           }
         }
       }
@@ -990,6 +1011,13 @@ DeviceIntf::~DeviceIntf()
   void DeviceIntf::setMaxBwWrite()
   {
     mMaxWriteBW = mDevice->getMaxBwWrite();
+  }
+
+  uint32_t DeviceIntf::getDeadlockStatus()
+  {
+    if (mDeadlockDetector)
+      return mDeadlockDetector->getDeadlockStatus();
+    return 0;
   }
 
 } // namespace xdp

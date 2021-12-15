@@ -44,7 +44,7 @@ compute_unit(xrt::xclbin::kernel xkernel,
   static unsigned int count = 0;
   m_uid = count++;
 
-  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%zu) address(0x%x)\n",m_uid,m_name.c_str(),m_index,m_address);
+  XOCL_DEBUGF("xocl::compute_unit::compute_unit(%d) name(%s) index(%zu) address(0x%x)\n",m_uid,m_xcu.get_name().c_str(),m_index,m_address);
 }
 
 compute_unit::
