@@ -120,29 +120,29 @@ namespace xdp {
     // NOTE 2: These counters are required HW workarounds with thresholds chosen 
     //         to produce events before hitting the bug. For example, sync packets 
     //         occur after 1024 cycles and with no events, is incorrectly repeated.
-    if (xrt_core::config::get_aie_trace_counter_type() == "es1") {
+    auto counterScheme = xrt_core::config::get_aie_trace_counter_scheme();
+    if (counterScheme == "es1") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE,             XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE,           XAIE_EVENT_DISABLED_CORE};
       coreCounterEventValues   = {1020, 1020*1020};
     }
-    else {
+    else if (counterScheme == "es2") {
       coreCounterStartEvents   = {XAIE_EVENT_ACTIVE_CORE};
       coreCounterEndEvents     = {XAIE_EVENT_DISABLED_CORE};
       coreCounterEventValues   = {0x3FF00};
     }
-    coreCounterResetEvents     = {XAIE_EVENT_PERF_CNT_0_CORE,         XAIE_EVENT_PERF_CNT_1_CORE,
-                                  XAIE_EVENT_PERF_CNT_2_CORE,         XAIE_EVENT_PERF_CNT_3_CORE};
-
+    
     // **** Memory Module Counters ****
     // NOTE 1: Reset events are dependent on actual profile counter reserved.
     // NOTE 2: These counters are required HW workarounds (see description above).
     //         They are only required for ES1 devices. For ES2 devices, the core
     //         counter is broadcast.
-    if (xrt_core::config::get_aie_trace_counter_type() == "es1") {
+    if (counterScheme == "es1") {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM,                XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
       memoryCounterEventValues = {1020, 1020*1020};
     }
+  }
 
   AieTracePlugin::~AieTracePlugin()
   {
