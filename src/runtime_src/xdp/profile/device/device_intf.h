@@ -35,6 +35,7 @@
 #include "traceFifoFull.h"
 #include "traceFunnel.h"
 #include "traceS2MM.h"
+#include "add.h"
 
 #include <fstream>
 #include <list>
@@ -48,7 +49,7 @@ namespace xdp {
 // Helper methods
 
 XDP_EXPORT
-uint32_t GetDeviceTraceBufferSize(uint32_t property);
+uint64_t GetDeviceTraceBufferSize(uint32_t property);
 
 XDP_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
@@ -126,7 +127,7 @@ class DeviceIntf {
     XDP_EXPORT
     size_t stopTrace();
     XDP_EXPORT
-    size_t readTrace(std::vector<xclTraceResults>& traceVector);
+    size_t readTrace(uint32_t*& traceData) ;
 
     /** Trace S2MM Management
      */
@@ -167,7 +168,12 @@ class DeviceIntf {
     XDP_EXPORT
     void setMaxBwWrite();
 
+    XDP_EXPORT
+    uint32_t getDeadlockStatus();
+
     inline xdp::Device* getAbstractDevice() {return mDevice;}
+
+    bool hasDeadlockDetector() {return mDeadlockDetector != nullptr;}
 
   private:
     // Turn on/off debug messages to stdout
@@ -193,6 +199,7 @@ class DeviceIntf {
 
     TraceS2MM*     mPlTraceDma  = nullptr;
     std::vector<TraceS2MM*> mAieTraceDmaList;
+    DeadlockDetector*     mDeadlockDetector  = nullptr;
 
     /*
      * Set bandwidth number to a reasonable default

@@ -98,28 +98,6 @@ namespace xdp {
     }
   }
 
-  void HALAPIInterface::startTrace()
-  {
-    for(auto itr : devices) {
-      itr.second->startTrace(0);
-    }
-  }
-
-  void HALAPIInterface::stopTrace()
-  {
-    for(auto itr : devices) {
-      itr.second->stopTrace();
-    }
-  }
-
-  void HALAPIInterface::readTrace()
-  {
-    std::vector<xclTraceResults> traceVector;
-    for(auto itr : devices) {
-      itr.second->readTrace(traceVector);
-    }
-  }
-
   void HALAPIInterface::createProfileResults(xclDeviceHandle deviceHandle, 
 					     void* ret)
   {

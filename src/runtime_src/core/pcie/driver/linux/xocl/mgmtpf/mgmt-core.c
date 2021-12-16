@@ -629,9 +629,21 @@ static int xclmgmt_icap_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 static void xclmgmt_clock_get_data_impl(struct xclmgmt_dev *lro, void *buf)
 {
 	struct xcl_pr_region *hwicap = NULL;
+	int ret = 0;
 
 	hwicap = (struct xcl_pr_region *)buf;
-	hwicap->freq_0 = xocl_clock_get_data(lro, CLOCK_FREQ_0);
+	ret = xocl_clock_get_data(lro, CLOCK_FREQ_0);
+	if (ret == -ENODEV) {
+		hwicap->freq_0 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_0);
+		hwicap->freq_1 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_1);
+		hwicap->freq_2 = xocl_xgq_clock_get_data(lro, CLOCK_FREQ_2);
+		hwicap->freq_cntr_0 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_0);
+		hwicap->freq_cntr_1 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_1);
+		hwicap->freq_cntr_2 = xocl_xgq_clock_get_data(lro, FREQ_COUNTER_2);
+		return;
+	}
+
+	hwicap->freq_0 = ret;
 	hwicap->freq_1 = xocl_clock_get_data(lro, CLOCK_FREQ_1);
 	hwicap->freq_2 = xocl_clock_get_data(lro, CLOCK_FREQ_2);
 	hwicap->freq_cntr_0 = xocl_clock_get_data(lro, FREQ_COUNTER_0);
@@ -1370,7 +1382,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	xocl_pmc_enable_reset(lro);
+	(void) xocl_reinit_vmr(lro);
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we

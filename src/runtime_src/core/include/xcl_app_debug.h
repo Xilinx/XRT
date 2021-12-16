@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -43,13 +43,67 @@ extern "C" {
 #endif
 
 /************************ AIM Debug Counters ********************************/
-#define XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     9
+#define XAIM_DEBUG_SAMPLE_COUNTERS_PER_SLOT           9
+#define XAIM_TOTAL_DEBUG_SAMPLE_COUNTERS_PER_SLOT     13
+
+#define XAIM_WRITE_BYTES_INDEX         0
+#define XAIM_WRITE_TRANX_INDEX         1
+#define XAIM_READ_BYTES_INDEX          2
+#define XAIM_READ_TRANX_INDEX          3
+#define XAIM_OUTSTANDING_COUNT_INDEX   4
+#define XAIM_WRITE_LAST_ADDRESS_INDEX  5
+#define XAIM_WRITE_LAST_DATA_INDEX     6
+#define XAIM_READ_LAST_ADDRESS_INDEX   7
+#define XAIM_READ_LAST_DATA_INDEX      8
+
+#define XAIM_IOCTL_WRITE_BYTES_INDEX         0
+#define XAIM_IOCTL_WRITE_TRANX_INDEX         1
+#define XAIM_IOCTL_WRITE_LATENCY_INDEX       2
+#define XAIM_IOCTL_WRITE_BUSY_CYCLES_INDEX   3
+#define XAIM_IOCTL_READ_BYTES_INDEX          4
+#define XAIM_IOCTL_READ_TRANX_INDEX          5
+#define XAIM_IOCTL_READ_LATENCY_INDEX        6
+#define XAIM_IOCTL_READ_BUSY_CYCLES_INDEX    7
+#define XAIM_IOCTL_OUTSTANDING_COUNT_INDEX   8
+#define XAIM_IOCTL_WRITE_LAST_ADDRESS_INDEX  9
+#define XAIM_IOCTL_WRITE_LAST_DATA_INDEX     10
+#define XAIM_IOCTL_READ_LAST_ADDRESS_INDEX   11
+#define XAIM_IOCTL_READ_LAST_DATA_INDEX      12
 
 /************************ AM Debug Counters ********************************/
 #define XAM_DEBUG_SAMPLE_COUNTERS_PER_SLOT     8
+#define XAM_TOTAL_DEBUG_COUNTERS_PER_SLOT      10
+
+#define XAM_ACCEL_EXECUTION_COUNT_INDEX       0
+#define XAM_ACCEL_EXECUTION_CYCLES_INDEX      1
+#define XAM_ACCEL_STALL_INT_INDEX             2
+#define XAM_ACCEL_STALL_STR_INDEX             3
+#define XAM_ACCEL_STALL_EXT_INDEX             4
+#define XAM_ACCEL_MIN_EXECUTION_CYCLES_INDEX  5
+#define XAM_ACCEL_MAX_EXECUTION_CYCLES_INDEX  6
+#define XAM_ACCEL_TOTAL_CU_START_INDEX        7
+
+#define XAM_IOCTL_EXECUTION_COUNT_INDEX       0
+#define XAM_IOCTL_START_COUNT_INDEX           1
+#define XAM_IOCTL_EXECUTION_CYCLES_INDEX      2
+#define XAM_IOCTL_STALL_INT_INDEX             3
+#define XAM_IOCTL_STALL_STR_INDEX             4
+#define XAM_IOCTL_STALL_EXT_INDEX             5
+#define XAM_IOCTL_BUSY_CYCLES_INDEX           6
+#define XAM_IOCTL_MAX_PARALLEL_ITR_INDEX      7
+#define XAM_IOCTL_MAX_EXECUTION_CYCLES_INDEX  8
+#define XAM_IOCTL_MIN_EXECUTION_CYCLES_INDEX  9
 
 /************************ ASM Debug Counters ********************************/
 #define XASM_DEBUG_SAMPLE_COUNTERS_PER_SLOT    5
+
+#define XASM_NUM_TRANX_INDEX      0
+#define XASM_DATA_BYTES_INDEX     1
+#define XASM_BUSY_CYCLES_INDEX    2
+#define XASM_STALL_CYCLES_INDEX   3
+#define XASM_STARVE_CYCLES_INDEX  4
+
+
 
 /*
  * LAPC related defs here
@@ -69,10 +123,17 @@ extern "C" {
 #define XLAPC_SNAPSHOT_STATUS_2             7
 #define XLAPC_SNAPSHOT_STATUS_3             8
 
+
 /*
  * AXI Streaming Protocol Checker related defs here
  */
 #define XSPC_MAX_NUMBER_SLOTS 31
+#define XSPC_STATUS_PER_SLOT  3
+
+#define XSPC_PC_ASSERTED 0
+#define XSPC_CURRENT_PC  1
+#define XSPC_SNAPSHOT_PC 2
+
 
 /********************** Definitions: Enums, Structs ***************************/
 enum xclDebugReadType {

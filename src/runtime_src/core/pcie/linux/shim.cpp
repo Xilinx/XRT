@@ -33,8 +33,8 @@
 #include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
-
 #include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 #include "xclbin.h"
 #include "ert.h"
@@ -997,8 +997,7 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mDDRSize *= info->mDDRBankCount;
     info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
     info->mNumClocks = numClocks(info->mName);
-
-    mDev->sysfs_get<unsigned short>("mb_scheduler", "kds_numcdmas", errmsg, info->mNumCDMA, static_cast<unsigned short>(-1));
+    info->mNumCDMA = xrt_core::device_query<xrt_core::query::kds_numcdmas>(mCoreDevice);
     
     mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth, static_cast<unsigned short>(-1));
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed, static_cast<unsigned short>(-1));
@@ -1464,7 +1463,27 @@ int shim::xclLoadAxlf(const axlf *buffer)
     axlf_obj.kds_cfg.slot_size = mCoreDevice->get_ert_slots(xml_data, xml_size).second;
 
     int ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
-    if(ret)
+    if (ret && errno == EAGAIN) {
+        //special case for aws
+        //if EAGAIN is seen, that means a pcie removal&rescan is ongoing, let's just
+        //wait and reload 2nd time -- this time the there will be no device id
+        //change, hence no pcie removal&rescan, anymore
+	//we need to close the device otherwise the removal&rescan (unload driver) will hang
+	//we also need to reopen the device once removal&rescan completes
+        int dev_hotplug_done = 0;
+        std::string err;
+        dev_fini();
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        while (!dev_hotplug_done) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                pcidev::get_dev(mBoardNumber)->sysfs_get<int>("",
+                "dev_hotplug_done", err, dev_hotplug_done, 0);
+        }
+        dev_init();
+        ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
+    }
+    
+    if (ret)
         return -errno;
 
     // If it is an XPR DSA, zero out the DDR again as downloading the XCLBIN
@@ -1699,25 +1718,9 @@ int shim::xclExecBuf(unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned in
     xrt_logmsg(XRT_INFO, "%s, cmdBO: %d, num_bo_in_wait_list: %d, bo_wait_list: %d",
             __func__, cmdBO, num_bo_in_wait_list, bo_wait_list);
 
-    // New KDS does not support xclExecBufWithWaitList(). Only allow it to go through if
-    // driver is in old KDS mode.
-    static bool newkds = xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice);
-    if (newkds) {
-        xrt_logmsg(XRT_ERROR, "xclExecBufWithWaitList() is no longer supported.");
-        return -ENOTSUP;
-    }
-
-    if (num_bo_in_wait_list > MAX_DEPS) {
-        xrt_logmsg(XRT_ERROR, "%s, Incorrect argument. Max num of BOs in wait_list: %d",
-            __func__, MAX_DEPS);
-        return -EINVAL;
-    }
-    int ret;
-    unsigned int bwl[8] = {0};
-    std::memcpy(bwl,bo_wait_list,num_bo_in_wait_list*sizeof(unsigned int));
-    drm_xocl_execbuf exec = {0, cmdBO, bwl[0],bwl[1],bwl[2],bwl[3],bwl[4],bwl[5],bwl[6],bwl[7]};
-    ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_EXECBUF, &exec);
-    return ret ? -errno : ret;
+    // New KDS does not support xclExecBufWithWaitList().
+    xrt_logmsg(XRT_ERROR, "xclExecBufWithWaitList() is no longer supported.");
+    return -ENOTSUP;
 }
 
 /*
@@ -2259,7 +2262,7 @@ int shim::xclIPName2Index(const char *name)
 {
     // In new kds, driver determines CU index
     try {
-      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
+      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_info>(mCoreDevice))
         if (stat.name == name)
           return stat.index;
 
@@ -2415,8 +2418,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
         return -EINVAL;
     }
 
-    xdp::hal::flush_device(handle) ;
-    xdp::aie::flush_device(handle) ;
+    xdp::hal::flush_device(handle);
+    xdp::aie::flush_device(handle);
+    xdp::pl_deadlock::flush_device(handle);
 
 #ifdef DISABLE_DOWNLOAD_XCLBIN
     int ret = 0;
@@ -2430,6 +2434,7 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 
       xdp::hal::update_device(handle) ;
       xdp::aie::update_device(handle);
+      xdp::pl_deadlock::update_device(handle);
 
 #ifndef DISABLE_DOWNLOAD_XCLBIN
       //scheduler::init can not be skipped even for same_xclbin

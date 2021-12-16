@@ -51,8 +51,6 @@
 #define DRM_DBG(fmt, args...)
 #endif
 
-extern int kds_mode;
-
 static char driver_date[9];
 
 static void xocl_free_object(struct drm_gem_object *obj)
@@ -139,16 +137,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 		u32 cu_addr;
 		u32 cu_idx = vma->vm_pgoff - 1;
 
-		if (kds_mode)
-			ret = xocl_cu_map_addr(xdev, cu_idx, priv, vsize, &cu_addr);
-		else {
-			if (vsize > 64 * 1024) {
-				userpf_err(xdev,
-					   "bad size (0x%lx) for native CU mmap", vsize);
-				return -EINVAL;
-			}
-			ret = xocl_exec_cu_map_addr(xdev, cu_idx, priv, &cu_addr);
-		}
+		ret = xocl_cu_map_addr(xdev, cu_idx, priv, vsize, &cu_addr);
 		if (ret != 0)
 			return ret;
 		res_start += cu_addr;
@@ -279,7 +268,12 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	if (page_offset > num_pages)
 		return VM_FAULT_SIGBUS;
 
-	if (xocl_bo_p2p(xobj)) {
+	/*
+	 * It looks vm_insert_mixed() is the newer interface to handle different
+	 * types of page. We may consider to only use this interface when the old
+	 * kernel support is dropped.
+	 */
+	if (xocl_bo_p2p(xobj) || xocl_bo_import(xobj)) {
 #ifdef RHEL_RELEASE_VERSION
 		pfn_t pfn;
 		pfn = phys_to_pfn_t(page_to_phys(xobj->pages[page_offset]), PFN_MAP|PFN_DEV);
@@ -365,10 +359,7 @@ static int xocl_client_open(struct drm_device *dev, struct drm_file *filp)
 		return -ENXIO;
 	}
 
-	if (kds_mode == 1)
-		ret = xocl_create_client(drm_p->xdev, &filp->driver_priv);
-	else
-		ret = xocl_exec_create_client(drm_p->xdev, &filp->driver_priv);
+	ret = xocl_create_client(drm_p->xdev, &filp->driver_priv);
 	if (ret) {
 		xocl_drvinst_close(drm_p);
 		goto failed;
@@ -384,10 +375,7 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	struct xocl_drm	*drm_p = dev->dev_private;
 
-	if (kds_mode == 1)
-		xocl_destroy_client(drm_p->xdev, &filp->driver_priv);
-	else
-		xocl_exec_destroy_client(drm_p->xdev, &filp->driver_priv);
+	xocl_destroy_client(drm_p->xdev, &filp->driver_priv);
 	xocl_p2p_mem_reclaim(drm_p->xdev);
 	xocl_drvinst_close(drm_p);
 }
@@ -401,10 +389,7 @@ static uint xocl_poll(struct file *filp, poll_table *wait)
 	BUG_ON(!priv->driver_priv);
 
 	DRM_ENTER("");
-	if (kds_mode == 1)
-		return xocl_poll_client(filp, wait, priv->driver_priv);
-	else
-		return xocl_exec_poll_client(drm_p->xdev, filp, wait, priv->driver_priv);
+	return xocl_poll_client(filp, wait, priv->driver_priv);
 }
 
 static const struct drm_ioctl_desc xocl_ioctls[] = {
@@ -786,6 +771,10 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 
 	BUG_ON(!mutex_is_locked(&drm_p->mm_lock));
 
+	if (drm_p->bo_usage_stat) {
+		vfree(drm_p->bo_usage_stat);
+		drm_p->bo_usage_stat = NULL;
+	}
 	err = xocl_check_topology(drm_p);
 	if (err)
 		return err;
@@ -960,6 +949,13 @@ int xocl_init_mem(struct xocl_drm *drm_p)
 	size = group_topo->m_count * sizeof(void *);
 	drm_p->mm_usage_stat = vzalloc(size);
 	if (!drm_p->mm_usage_stat) {
+		err = -ENOMEM;
+		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
+		goto done;
+	}
+
+	drm_p->bo_usage_stat = vzalloc(XOCL_BO_USAGE_TOTAL * sizeof(struct drm_xocl_mm_stat));
+	if (!drm_p->bo_usage_stat) {
 		err = -ENOMEM;
 		XOCL_PUT_GROUP_TOPOLOGY(drm_p->xdev);
 		goto done;

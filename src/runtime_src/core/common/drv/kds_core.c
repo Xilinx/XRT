@@ -22,16 +22,12 @@
 
 /* for sysfs */
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
-		   int kds_mode, u32 clients, int *echo)
+		   int *echo)
 {
 	u32 enable;
 	u32 live_clients;
 
-	if (kds)
-		live_clients = kds_live_clients(kds, NULL);
-	else
-		live_clients = clients;
-
+	live_clients = kds_live_clients(kds, NULL);
 	/* Ideally, KDS should be locked to reject new client.
 	 * But, this node is hidden for internal test purpose.
 	 * Let's refine it after new KDS is the default and
@@ -91,10 +87,14 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	 * So, this separate kds_scustat_raw is better.
 	 *
 	 * But in the worst case, this is still not good enough.
+	 *
+	 * Soft kernels are namespaced with a domain identifer that
+	 * is or'ed into the scu index.	 For soft kernels the 
+	 * domain is SCU_DOMAIN.
 	 */
 	mutex_lock(&scu_mgmt->lock);
 	for (i = 0; i < scu_mgmt->num_cus; ++i) {
-		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, i,
+		sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, (i | SCU_DOMAIN),
 				scu_mgmt->name[i], scu_mgmt->status[i],
 				cu_stat_read(scu_mgmt,usage[i]));
 	}
@@ -611,12 +611,12 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 	bool shared;
 	int ret = 0;
 
-        if (info->cu_idx < MAX_CUS) {
+	if (info->cu_idx < MAX_CUS) {
 		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
-        } else {
-                cu_idx = info->cu_idx - MAX_CUS;
-        }
+	} else {
+		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
+	}
 
 	if (cu_idx >= scu_mgmt->num_cus) {
 		kds_err(client, "SCU(%d) not found", cu_idx);
@@ -670,12 +670,12 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
 
-        if (info->cu_idx < MAX_CUS) {
+	if (info->cu_idx < MAX_CUS) {
 		kds_err(client, "SCU cu_idx %d not valid.  SCU should start from %d", info->cu_idx, MAX_CUS);
 		return -EINVAL;
-        } else {
-                cu_idx = info->cu_idx - MAX_CUS;
-        }
+	} else {
+		cu_idx = info->cu_idx & ~(SCU_DOMAIN);
+	}
 
 	if (cu_idx >= scu_mgmt->num_cus) {
 		kds_err(client, "SCU(%d) not found", cu_idx);

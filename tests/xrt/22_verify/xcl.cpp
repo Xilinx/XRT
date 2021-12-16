@@ -19,9 +19,11 @@ to an xrt::bo object which is then used as a kernel argument.
 % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o xcl.exe xcl.cpp -lxrt_coreutil -lxrt_core -luuid -pthread
 % xcl.exe -k verify.xclbin [--api <c | cpp>]  (default is cpp)
 ****************************************************************/
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "xrt.h"
 #include "xrt/xrt_device.h"
@@ -43,11 +45,36 @@ usage()
               << "* Bitstream is required\n";
 }
 
+static std::vector<char>
+read_xclbin(const std::string& fnm)
+{
+  if (fnm.empty())
+    throw std::runtime_error("No xclbin specified");
+
+  // load the file
+  std::ifstream stream(fnm);
+  if (!stream)
+    throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
+
+  stream.seekg(0, stream.end);
+  size_t size = stream.tellg();
+  stream.seekg(0, stream.beg);
+
+  std::vector<char> header(size);
+  stream.read(header.data(), size);
+  return header;
+}
+
+
 static void
-run_c(xclDeviceHandle dhdl, const xrt::uuid& uuid)
+run_c(xclDeviceHandle dhdl)
 {
   auto device = xrtDeviceOpenFromXcl(dhdl);
-  auto hello  = xrtPLKernelOpen(device, uuid.get(), "hello:{hello_1}");
+
+  xuid_t xuid;
+  xrtDeviceGetXclbinUUID(device, xuid);
+  
+  auto hello  = xrtPLKernelOpen(device, xuid, "hello:{hello_1}");
   auto bank = xrtKernelArgGroupId(hello, 0);
   
   // Allocate buffer object via xcl
@@ -92,9 +119,11 @@ run_c(xclDeviceHandle dhdl, const xrt::uuid& uuid)
 }
 
 static void
-run_cpp(xclDeviceHandle dhdl, const xrt::uuid& uuid)
+run_cpp(xclDeviceHandle dhdl)
 {
   auto device = xrt::device{dhdl};
+  auto uuid = device.get_xclbin_uuid();
+
   auto hello = xrt::kernel(device, uuid.get(), "hello:{hello_1}");
   auto bank = hello.group_id(0);
   
@@ -170,14 +199,16 @@ run(int argc, char** argv)
   if (xclbin_fnm.empty())
     throw std::runtime_error("FAILED_TEST\nNo xclbin specified");
 
-  auto device = xrt::device(device_index);
-  auto uuid = device.load_xclbin(xclbin_fnm);
+  // Use shim core APIs for opening device and loading xclbin
+  auto xclbin = read_xclbin(xclbin_fnm);
+  auto dhdl = xclOpen(device_index, nullptr, XCL_QUIET);
+  xclLoadXclBin(dhdl, reinterpret_cast<const axlf*>(xclbin.data()));
 
+  // Demonstrate how to go from shim level handes to XRT handles
   if (cpp)
-    run_cpp(device, uuid);
+    run_cpp(dhdl);
   else 
-    run_c(device, uuid);
-
+    run_c(dhdl);
   return 0;
 }
 

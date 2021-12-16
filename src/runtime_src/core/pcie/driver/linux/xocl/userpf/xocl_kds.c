@@ -33,14 +33,6 @@ do {\
 
 void xocl_describe(const struct drm_xocl_bo *xobj);
 
-int kds_mode = 1;
-module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_mode,
-		 "enable new KDS (0 = disable, 1 = enable (default))");
-
-/* kds_echo also impact mb_scheduler.c, keep this as global.
- * Let's move it to struct kds_sched in the future.
- */
 int kds_echo = 0;
 
 static void xocl_kds_fa_clear(struct xocl_dev *xdev)
@@ -290,7 +282,7 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	userpf_info(xdev, "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
-	return 0;
+	return ret;
 }
 
 static int xocl_context_ioctl(struct xocl_dev *xdev, void *data,
@@ -358,7 +350,7 @@ static inline void read_ert_stat(struct kds_command *xcmd)
 	/* Skip header and FPGA CU stats. off_idx points to PS kernel stats */
 	off_idx = 4 + num_cu;
 	for (i = 0; i < num_scu; i++)
-		kds->scu_mgmt.cu_stats->usage[i] = ecmd->data[off_idx + i];
+		cu_stat_write((&kds->scu_mgmt), usage[i], ecmd->data[off_idx + i]);
 
 	/* off_idx points to PS kernel status */
 	off_idx += num_scu + num_cu;

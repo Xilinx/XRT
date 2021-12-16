@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -98,11 +98,8 @@ namespace xdp {
     if (getFlowMode() == HW) {
       continuous_trace = xrt_core::config::get_continuous_trace() ;
 
-    // Use new flag if specified
-      trace_buffer_offload_interval_ms = xrt_core::config::get_continuous_trace_interval_ms() ;
-      auto newInt = xrt_core::config::get_trace_buffer_offload_interval_ms();
-        if (newInt != DEFAULT_TRACE_OFFLOAD_INTERVAL_MS)
-          trace_buffer_offload_interval_ms = newInt;
+      trace_buffer_offload_interval_ms =
+        xrt_core::config::get_trace_buffer_offload_interval_ms();
 
       m_enable_circular_buffer = continuous_trace;
     }
@@ -213,7 +210,8 @@ namespace xdp {
 
     // If trace is enabled, set up trace.  Otherwise just keep the offloader
     //  for reading the counters.
-    if (xrt_core::config::get_data_transfer_trace() != "off") {
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_device_trace() != "off") {
       bool init_successful =
         offloader->read_trace_init(m_enable_circular_buffer) ;
 
@@ -286,6 +284,9 @@ namespace xdp {
     // Collect all the profiling options from xrt.ini
     std::string data_transfer_trace = 
       xrt_core::config::get_data_transfer_trace() ;
+    if (data_transfer_trace == "off") {
+      data_transfer_trace = xrt_core::config::get_device_trace() ;
+    }
     std::string stall_trace = xrt_core::config::get_stall_trace() ;
 
     // Set up the hardware trace option
@@ -409,6 +410,12 @@ namespace xdp {
       {
         readTrace() ;
       }
+      break ;
+    case VPDatabase::DUMP_TRACE:
+      {
+	XDPPlugin::forceWrite(true) ;
+      }
+      break ;
     default:
       break ;
     }

@@ -18,7 +18,7 @@
 #define XRT_CORE_DEVICE_H
 
 #include "config.h"
-
+#include "cuidx_type.h"
 #include "error.h"
 #include "ishim.h"
 #include "query.h"
@@ -293,8 +293,22 @@ public:
   get_memory_type(size_t memidx) const;
 
   // get_cus() - Get list cu base addresses sorted by cu inidex
+  XRT_CORE_COMMON_EXPORT
   const std::vector<uint64_t>&
   get_cus(const uuid& xclbin_id = uuid()) const;
+
+  // get_cuidx() - Get index of cu identified by name
+  //
+  // @return
+  //  The index of the CU represented as cuidx_type per
+  //  defintion in xrt_core::xclbin
+  //
+  // The index is used when opening a context on this device
+  // and it is used to specify the cumask in commands send
+  // for execution
+  XRT_CORE_COMMON_EXPORT
+  cuidx_type
+  get_cuidx(const std::string& cuname, const uuid& xclbin_id = uuid()) const;
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots
@@ -359,6 +373,7 @@ public:
   id_type m_device_id;
   mutable boost::optional<bool> m_nodma = boost::none;
 
+  std::map<std::string, cuidx_type> m_cu2idx; // cu name mapping to cuidx
   std::vector<uint64_t> m_cus;           // cu base addresses in expeced sort order
   xrt::xclbin m_xclbin;                  // currently loaded xclbin
 };

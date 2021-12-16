@@ -161,8 +161,7 @@ public:
   // only program constructs kernels, but private doesn't work as long
   // std::make_unique is used
   friend class program; // only program constructs kernels
-  kernel(program* prog, const std::string& name,const xclbin::symbol&);
-  kernel(program* prog, const std::string& name);
+  kernel(program* prog, const std::string& name, xrt::xclbin::kernel xk);
 
 public:
   virtual ~kernel();
@@ -175,10 +174,10 @@ public:
   }
 
   // Get unique id for the kernel symbol associated with this object
-  unsigned int
+  const void*
   get_symbol_uid() const
   {
-    return m_symbol.uid;
+    return m_xkernel.get_handle().get();
   }
 
   // Get the program used to construct this kernel object
@@ -200,36 +199,36 @@ public:
     return m_name;
   }
 
-  const std::string&
+  std::string
   get_attributes() const
   {
-    return m_symbol.attributes;
+    return "";
   }
 
   size_t
   get_wg_size() const
   {
-    return m_symbol.workgroupsize;
+    return m_properties.workgroupsize;
   }
 
   // Get compile work group size per xclbin
   range<const size_t*>
   get_compile_wg_size_range() const
   {
-    return range<const size_t*>(m_symbol.compileworkgroupsize,m_symbol.compileworkgroupsize+3);
+    return range<const size_t*>(m_properties.compileworkgroupsize.data(),m_properties.compileworkgroupsize.data()+3);
   }
 
   //  Get max work group size per xclbin
   range<const size_t*>
   get_max_wg_size_range() const
   {
-    return range<const size_t*>(m_symbol.maxworkgroupsize,m_symbol.maxworkgroupsize+3);
+    return range<const size_t*>(m_properties.maxworkgroupsize.data(),m_properties.maxworkgroupsize.data()+3);
   }
 
-  auto
-  get_stringtable() const -> decltype(xclbin::symbol::stringtable)
+  decltype(xrt_core::xclbin::kernel_properties::stringtable)
+  get_stringtable() const
   {
-    return m_symbol.stringtable;
+    return m_properties.stringtable;
   }
 
   bool
@@ -376,7 +375,10 @@ private:
   unsigned int m_uid = 0;
   ptr<program> m_program;     // retain reference
   std::string m_name;
-  const xclbin::symbol& m_symbol;
+
+  // xclbin meta
+  xrt::xclbin::kernel m_xkernel;
+  const xrt_core::xclbin::kernel_properties& m_properties;
 
   xargument_vector_type m_indexed_xargs;
   xargument_vector_type m_rtinfo_xargs;

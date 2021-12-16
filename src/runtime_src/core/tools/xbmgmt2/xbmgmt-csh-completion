@@ -1,0 +1,100 @@
+#!/bin/csh -f
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+#
+
+# parse out required variables
+set list = "$COMMAND_LINE"
+# The command word associated with this xbutil invocation
+set commandWord = `echo $list | awk 'BEGIN{FS=" "}{print $2}'`
+# Get the number of arguments. This script turns spaces into commas to count
+# the number of commands. It only really matters for the first couple
+set argsplit=(`echo "$list" | sed -e "s/ /,/g"`)
+set argsplit=(`echo "$argsplit" | sed "s/[a-zA-Z']//g"`)
+set commandCount = (`echo $argsplit | awk '{print length($0)}'`)
+# This is the word on the righthand side
+set currentWord = `echo $list | awk 'BEGIN{FS=" "}{print $NF}'`
+
+# The options for the current command line statement
+set programOptions = "--verbose --batch --force --help -h --version"
+
+# Handle the default xbutil options first
+if($commandCount == "1") then
+    set programOptions="dump examine program reset ${programOptions}"
+# All other commands enter into this case
+else
+  set commonSubCommands="--device -d ${programOptions}"
+
+  # First handle the gathering of all options unique to each command
+  switch($commandWord)
+    case "dump":
+      set programOptions="--flash -f --config -c --output -o ${commonSubCommands}"
+      breaksw
+    case "examine":
+      set programOptions="--report -r --format -f --output -o ${commonSubCommands}"
+      breaksw
+    case "program":
+      set programOptions="--base --image --shell --user -u --revert-to-golden ${commonSubCommands}"
+      breaksw
+    case "reset":
+      set programOptions="${commonSubCommands}"
+      breaksw
+    # Return an empty reply if an invalid command is entered
+    default:
+      breaksw
+  endsw
+
+  # If the current word requires an argument, clear the option list
+  switch($currentWord)
+    case "--device":
+      set programOptions=""
+      breaksw
+    case "-d":
+      set programOptions=""
+      breaksw
+    case "--user":
+      set programOptions=""
+      breaksw
+    case "-u":
+      set programOptions=""
+      breaksw
+    case "--run":
+      set programOptions=""
+      breaksw
+    case "--format":
+      set programOptions=""
+      breaksw
+    case "-f":
+      set programOptions=""
+      breaksw
+    case "--output":
+      set programOptions=""
+      breaksw
+    case "-o":
+      set programOptions=""
+      breaksw
+    case "--report":
+      set programOptions=""
+      breaksw
+    case "--type":
+      set programOptions=""
+      breaksw
+    case "-t":
+      set programOptions=""
+      breaksw
+    # -r shorthand applies to multiple commands under xbutil and requires additional processing
+    # Assuming we want to add something here one day
+    case "-r":
+      set programOptions=""
+      breaksw
+    case "--image":
+      set programOptions=""
+      breaksw
+    # do not modify the option list if the argument is not required
+    default:
+      breaksw
+  endsw
+endif
+
+# Printout the options for complete to register them
+echo $programOptions

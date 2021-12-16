@@ -68,6 +68,7 @@ namespace xdp {
 
     XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
     XDP_EXPORT void endWrite(bool openNewFiles);
+    XDP_EXPORT void forceWrite(bool openNewFiles) ;
 
   public:
     XDP_EXPORT XDPPlugin() ;

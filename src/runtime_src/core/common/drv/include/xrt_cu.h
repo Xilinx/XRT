@@ -29,6 +29,12 @@
 
 #define MAX_CUS 128
 
+/* Soft kernel indices are numbered from 0 to some MAX_CUS
+ * but are in a distinct domain which is indiciated by the
+ * first 16 bit of the index used to identify the soft kernel
+ */
+#define SCU_DOMAIN 0x10000
+
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
  * m2m CU is at the end of the CU, which is compatible with

@@ -29,6 +29,8 @@
 #include <boost/any.hpp>
 #include <boost/format.hpp>
 
+struct debug_ip_data;
+
 namespace xrt_core {
 
 namespace query {
@@ -76,12 +78,11 @@ enum class key_type
   temp_by_mem_topology,
   mem_topology_raw,
   ip_layout_raw,
+  debug_ip_layout_raw,
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
-  kds_mode,
-  kds_cu_stat,
-  kds_scu_stat,
+  kds_scu_info,
   ps_kernel,
   xocl_errors,
   xclbin_full,
@@ -248,6 +249,13 @@ enum class key_type
   ert_cu_write,
   ert_cu_read,
   ert_data_integrity,
+
+  aim_counter,
+  am_counter,
+  asm_counter,
+  lapc_status,
+  spc_status,
+  accel_deadlock_status,
 
   noop
 };
@@ -803,26 +811,16 @@ struct ip_layout_raw : request
   get(const device*) const = 0;
 };
 
+struct debug_ip_layout_raw : request
+{
+  using result_type = std::vector<char>;
+  static const key_type key = key_type::debug_ip_layout_raw;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct kds_cu_info : request
-{
-  // Returning CUs info as <base_addr, usages, status>
-  using result_type = std::vector<std::tuple<uint64_t, uint32_t, uint32_t>>;
-  static const key_type key = key_type::kds_cu_info;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct kds_mode : request
-{
-  using result_type = uint32_t;
-  static const key_type key = key_type::kds_mode;
-
-  virtual boost::any
-  get(const device*) const = 0;
-};
-
-struct kds_cu_stat : request
 {
   struct data {
     uint32_t index;
@@ -833,7 +831,7 @@ struct kds_cu_stat : request
   };
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::kds_cu_stat;
+  static const key_type key = key_type::kds_cu_info;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -848,7 +846,7 @@ struct ps_kernel : request
   get(const device*) const = 0;
 };
 
-struct kds_scu_stat : request
+struct kds_scu_info : request
 {
   struct data {
     uint32_t index;
@@ -858,7 +856,7 @@ struct kds_scu_stat : request
   };
   using result_type = std::vector<struct data>;
   using data_type = struct data;
-  static const key_type key = key_type::kds_scu_stat;
+  static const key_type key = key_type::kds_scu_info;
 
   virtual boost::any
   get(const device*) const = 0;
@@ -868,11 +866,6 @@ struct clock_freq_topology_raw : request
 {
   using result_type = std::vector<char>;
   static const key_type key = key_type::clock_freq_topology_raw;
-
-  // parse a clock_freq_topo::clock_freq::m_name (null terminated string)
-  XRT_CORE_COMMON_EXPORT
-  static std::string
-  parse(const std::string& value);
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2705,6 +2698,66 @@ struct heartbeat_stall : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct aim_counter : request
+{
+  using result_type = std::vector<uint64_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::aim_counter;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct am_counter : request
+{
+  using result_type = std::vector<uint64_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::am_counter;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct asm_counter : request
+{
+  using result_type = std::vector<uint64_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::asm_counter;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct lapc_status : request
+{
+  using result_type = std::vector<uint32_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::lapc_status;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct spc_status : request
+{
+  using result_type = std::vector<uint32_t>;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::spc_status;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct accel_deadlock_status : request
+{
+  using result_type = uint32_t;
+  using debug_ip_data_type = debug_ip_data*;
+  static const key_type key = key_type::accel_deadlock_status;
+
+  virtual boost::any
+  get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
 } // query

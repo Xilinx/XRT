@@ -25,6 +25,7 @@
 #include "bo.h"
 
 #include "device_int.h"
+#include "handle.h"
 #include "kernel_int.h"
 #include "core/common/device.h"
 #include "core/common/memalign.h"
@@ -178,6 +179,14 @@ public:
 
   bo_impl(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
     : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(ehdl)), free_bo(true)
+  {
+    xclBOProperties prop{};
+    device->get_bo_properties(handle, &prop);
+    size = prop.size;
+  }
+
+  bo_impl(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(pid, ehdl)), free_bo(true)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
@@ -464,14 +473,39 @@ public:
 // class buffer_imported - Buffer imported from another device
 //
 // The exported buffer handle is an opaque type from a call
-// to export_buffer() on a buffer to be exported.
+// to export_buffer() on a buffer to be exported.  The exported
+// buffer can be imported within same process or from another
+// process (linux pidfd support required)
 class buffer_import : public bo_impl
 {
   void* hbuf;
 
 public:
+  // buffer_import() - Import the buffer 
+  //
+  // @device:  device to import to
+  // @ehdl:    export handle obtained by calling export_buffer
   buffer_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
     : bo_impl(dhdl, ehdl)
+  {
+    try {
+      hbuf = device->map_bo(handle, true);
+    }
+    catch (const std::exception&) {
+      hbuf = nullptr;
+    }
+  }
+
+  // buffer_import() - Import the buffer from another process 
+  //
+  // @device:  device to import to
+  // @pid:     process id of exporting process
+  // @ehdl:    export handle obtained from exporting process
+  //
+  // This consrructor works on linux only and require pidfd support in
+  // linux kernel.
+  buffer_import(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+    : bo_impl(dhdl, pid, ehdl)
   {
     try {
       hbuf = device->map_bo(handle, true);
@@ -685,15 +719,12 @@ namespace {
 // handles are inserted in this map.  When the unmanaged handle is
 // closed, it is removed from this map and underlying buffer is
 // deleted if no other shared ptrs exists for this buffer
-static std::map<xrtBufferHandle, std::shared_ptr<xrt::bo_impl>> bo_cache;
+static xrt_core::handle_map<xrtBufferHandle, std::shared_ptr<xrt::bo_impl>> bo_cache;
 
 static const std::shared_ptr<xrt::bo_impl>&
 get_boh(xrtBufferHandle bhdl)
 {
-  auto itr = bo_cache.find(bhdl);
-  if (itr == bo_cache.end())
-    throw xrt_core::error(-EINVAL, "No such buffer handle");
-  return (*itr).second;
+  return bo_cache.get_or_error(bhdl);
 }
 
 static xclBufferHandle
@@ -720,14 +751,6 @@ alloc_bo(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup g
     }
     throw;
   }
-}
-
-
-static void
-free_bo(xrtBufferHandle bhdl)
-{
-  if (bo_cache.erase(bhdl) == 0)
-    throw std::runtime_error("Unexpected internal error");
 }
 
 // driver allocates host buffer
@@ -833,6 +856,12 @@ static std::shared_ptr<xrt::bo_impl>
 alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {
   return std::make_shared<xrt::buffer_import>(dhdl, ehdl);
+}
+
+static std::shared_ptr<xrt::bo_impl>
+alloc_import_from_pid(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+{
+  return std::make_shared<xrt::buffer_import>(dhdl, pid, ehdl);
 }
 
 static std::shared_ptr<xrt::bo_impl>
@@ -961,6 +990,12 @@ bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {}
 
 bo::
+bo(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+  : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
+            alloc_import_from_pid, dhdl, pid , ehdl))
+{}
+
+bo::
 bo(const bo& parent, size_t size, size_t offset)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
 	   alloc_sub, parent.handle, size, offset))
@@ -1063,8 +1098,7 @@ void
 bo::
 sync(const std::string& port, xclBOSyncDirection dir, size_t sz, size_t offset)
 {
-  const auto& handle = get_handle();
-  handle->sync(*this, port, dir, sz, offset);
+  get_handle()->sync(*this, port, dir, sz, offset);
 }
 
 }} // namespace aie, xrt
@@ -1080,8 +1114,9 @@ xrtBOAllocUserPtr(xrtDeviceHandle dhdl, void* userptr, size_t size, xrtBufferFla
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, userptr, size, flags, grp]{
       auto boh = alloc_userptr(get_xcl_device_handle(dhdl), userptr, size, flags, grp);
-      bo_cache[boh.get()] = boh;
-      return boh.get();
+      auto hdl = boh.get();
+      bo_cache.add(hdl, std::move(boh));
+      return hdl;
     });
   }
   catch (const xrt_core::error& ex) {
@@ -1102,8 +1137,9 @@ xrtBOAlloc(xrtDeviceHandle dhdl, size_t size, xrtBufferFlags flags, xrtMemoryGro
     return xdp::native::profiling_wrapper(__func__,
     [dhdl, size, flags, grp]{
       auto boh = alloc(get_xcl_device_handle(dhdl), size, flags, grp);
-      bo_cache[boh.get()] = boh;
-      return boh.get();
+      auto hdl = boh.get();
+      bo_cache.add(hdl, std::move(boh));
+      return hdl;
     });
   }
   catch (const xrt_core::error& ex) {
@@ -1123,8 +1159,10 @@ xrtBOSubAlloc(xrtBufferHandle phdl, size_t sz, size_t offset)
     return xdp::native::profiling_wrapper(__func__, [phdl, sz, offset]{
       const auto& parent = get_boh(phdl);
       auto boh = alloc_sub(parent, sz, offset);
-      bo_cache[boh.get()] = boh;
-      return boh.get();
+      auto hdl = boh.get();
+      bo_cache.add(hdl, std::move(boh));
+      return hdl;
+
     });
   }
   catch (const xrt_core::error& ex) {
@@ -1143,8 +1181,9 @@ xrtBOImport(xrtDeviceHandle dhdl, xclBufferExportHandle ehdl)
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, ehdl]{
       auto boh = alloc_import(get_xcl_device_handle(dhdl), ehdl);
-      bo_cache[boh.get()] = boh;
-      return boh.get();
+      auto hdl = boh.get();
+      bo_cache.add(hdl, std::move(boh));
+      return hdl;
     });
   }
   catch (const xrt_core::error& ex) {
@@ -1181,8 +1220,9 @@ xrtBOAllocFromXcl(xrtDeviceHandle dhdl, xclBufferHandle xhdl)
   try {
     return xdp::native::profiling_wrapper(__func__, [dhdl, xhdl] {
       auto boh = alloc_xbuf(xrtDeviceToXclDevice(dhdl), xhdl);
-      bo_cache[boh.get()] = boh;
-      return boh.get();
+      auto hdl = boh.get();
+      bo_cache.add(hdl, std::move(boh));
+      return hdl;
     });
   }
   catch (const xrt_core::error& ex) {
@@ -1200,7 +1240,7 @@ xrtBOFree(xrtBufferHandle bhdl)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [bhdl]{
-      free_bo(bhdl);
+      bo_cache.remove_or_error(bhdl);
       return 0;
     });
   }

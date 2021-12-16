@@ -150,8 +150,13 @@ struct job_type
     ++runs;
     if (r == XRT_NULL_HANDLE) {
       running = true;
-      r = xrtKernelRun(k, a, b, ELEMENTS);
+      r = xrtRunOpen(k);
       xrtRunSetCallback(r, ERT_CMD_STATE_COMPLETED, kernel_done, this);
+      xrtRunSetArg(r, 0, a);
+      xrtRunSetArg(r, 1, b);
+      xrtRunSetArg(r, 2, ELEMENTS);
+      xrtRunStart(r);
+      //r = xrtKernelRun(k, a, b, ELEMENTS);
     }
     else if (!stop)
       xrtRunStart(r);

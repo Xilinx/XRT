@@ -113,7 +113,9 @@ namespace xdp {
     }
 
     if (fileNum == TRACE_DUMP_FILE_COUNT_WARN && !warnFileNum) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_FILE_COUNT_WARN_MSG);
+      if (xrt_core::config::get_continuous_trace()) {
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TRACE_DUMP_FILE_COUNT_WARN_MSG);
+      }
       warnFileNum = true;
     }
 

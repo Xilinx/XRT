@@ -23,23 +23,25 @@ namespace xdp {
 
   IniParameters::IniParameters()
   {
-    addParameter("profile", xrt_core::config::get_profile(),
-                 "Profiling (deprecated)");
     addParameter("opencl_summary", xrt_core::config::get_opencl_summary(),
-                 "Generation of OpenCL summary report");
+                 "Generation of OpenCL summary report (deprecated)");
+    addParameter("opencl_trace", xrt_core::config::get_opencl_trace(),
+                 "Generation of trace of OpenCL APIs and memory transfers");
     addParameter("opencl_device_counter",
                  xrt_core::config::get_opencl_device_counter(),
-                 "Hardware counters added to OpenCL summary file");
-    addParameter("timeline_trace", xrt_core::config::get_timeline_trace(),
-                 "Timeline trace (deprecated)");
+                 "Hardware counters added to OpenCL summary file (deprecated)");
+    addParameter("device_counters",
+                 xrt_core::config::get_device_counters(),
+                 "Hardware counters added to summary file");
     addParameter("native_xrt_trace", xrt_core::config::get_native_xrt_trace(),
                  "Generation of Native XRT API function trace");
     addParameter("xrt_trace", xrt_core::config::get_xrt_trace(),
                  "Generation of hardware SHIM function trace");
-    addParameter("xrt_profile", xrt_core::config::get_xrt_profile(),
-                 "Equivalent to xrt_trace (deprecated)");
     addParameter("data_transfer_trace",
                  xrt_core::config::get_data_transfer_trace(),
+                 "Collection of data from PL monitors and added to summary and trace (deprecated)");
+    addParameter("device_trace",
+                 xrt_core::config::get_device_trace(),
                  "Collection of data from PL monitors and added to summary and trace");
     addParameter("power_profile", xrt_core::config::get_power_profile(),
                  "Polling of power data during execution of application");
@@ -55,9 +57,6 @@ namespace xdp {
                  "Verbosity level");
     addParameter("continuous_trace", xrt_core::config::get_continuous_trace(),
                  "Continuous offloading of trace from memory to host");
-    addParameter("continuous_trace_interval_ms",
-                 xrt_core::config::get_continuous_trace_interval_ms(),
-                 "Interval for offloading trace (in ms; deprecated)");
     addParameter("trace_buffer_offload_interval_ms",
                  xrt_core::config::get_trace_buffer_offload_interval_ms(),
                  "Interval for reading of device data to host (in ms)");

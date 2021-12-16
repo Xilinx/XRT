@@ -298,7 +298,7 @@ public: // purposely not a struct to match decl in xrt_xclbin.h
   std::vector<xclbin::ip> m_cus;
   std::vector<xclbin::arg> m_args;
   std::vector<xrt_core::xclbin::kernel_argument> m_arginfo;
-  
+
 public:
   kernel_impl(std::string&& nm,
               xrt_core::xclbin::kernel_properties&& props,
@@ -1230,14 +1230,14 @@ namespace xrt_core { namespace xclbin_int {
 const axlf*
 get_axlf(xrtXclbinHandle handle)
 {
-  auto xclbin = xclbins.get_impl(handle);
+  auto xclbin = xclbins.get_or_error(handle);
   return xclbin->get_axlf();
 }
 
 xrt::xclbin
 get_xclbin(xrtXclbinHandle handle)
 {
-  return xrt::xclbin(xclbins.get_impl(handle));
+  return xrt::xclbin(xclbins.get_or_error(handle));
 }
 
 std::pair<const char*, size_t>
@@ -1335,7 +1335,7 @@ xrtXclbinFreeHandle(xrtXclbinHandle handle)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle]{
-      xclbins.remove(handle);
+      xclbins.remove_or_error(handle);
       return 0;
     });
   }
@@ -1356,7 +1356,7 @@ xrtXclbinGetXSAName(xrtXclbinHandle handle, char* name, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, name, size, ret_size]{
-      auto xclbin = xclbins.get_impl(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       const std::string& xsaname = xclbin->get_xsa_name();
       // populate ret_size if memory is allocated
       if (ret_size)
@@ -1382,7 +1382,7 @@ xrtXclbinGetUUID(xrtXclbinHandle handle, xuid_t ret_uuid)
 {
   try {
     return xdp::native::profiling_wrapper(__func__, [handle, ret_uuid]{
-      auto xclbin = xclbins.get_impl(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto result = xclbin->get_uuid();
       uuid_copy(ret_uuid, result.get());
       return 0;
@@ -1404,7 +1404,7 @@ xrtXclbinGetNumKernels(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = xclbins.get_impl(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       return xclbin->get_kernels().size();
     });
   }
@@ -1424,7 +1424,7 @@ xrtXclbinGetNumKernelComputeUnits(xrtXclbinHandle handle)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle]{
-      auto xclbin = xclbins.get_impl(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto kernels = xclbin->get_kernels();
       return std::accumulate(kernels.begin(), kernels.end(), 0,
                              [](size_t sum, const auto& k) {
@@ -1448,7 +1448,7 @@ xrtXclbinGetData(xrtXclbinHandle handle, char* data, int size, int* ret_size)
   try {
     return xdp::native::profiling_wrapper(__func__,
     [handle, data, size, ret_size]{
-      auto xclbin = xclbins.get_impl(handle);
+      auto xclbin = xclbins.get_or_error(handle);
       auto& result = xclbin->get_data();
       int result_size = result.size();
       // populate ret_size if memory is allocated

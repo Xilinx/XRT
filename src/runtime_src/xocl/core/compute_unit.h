@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,8 @@
 #define xocl_core_compute_unit_h_
 
 #include "xocl/xclbin/xclbin.h"
+#include "core/include/experimental/xrt_xclbin.h"
+#include "core/common/api/xclbin_int.h"
 #include <string>
 
 namespace xocl {
@@ -40,7 +42,10 @@ public:
 
 private:
   // construct through static create only
-  compute_unit(const xclbin::symbol* s, const std::string& n, size_t base, size_t idx, const device* d);
+  compute_unit(xrt::xclbin::kernel xkernel,
+               xrt::xclbin::ip xcu,
+               size_t idx,
+               const device* d);
 public:
   ~compute_unit();
 
@@ -68,16 +73,14 @@ public:
     return m_index;
   }
 
+  XRT_XOCL_EXPORT
   std::string
-  get_name() const
-  {
-    return m_name;
-  }
+  get_name() const;
 
   std::string
   get_kernel_name() const
   {
-    return m_symbol->name;
+    return m_xkernel.get_name();
   }
 
   /**
@@ -89,7 +92,7 @@ public:
    */
   XRT_XOCL_EXPORT
   xclbin::memidx_bitmask_type
-  get_memidx(unsigned int arg) const;
+  get_memidx(size_t arg) const;
 
   /**
    * Get memory indeces intersection of DDR banks for CU args
@@ -109,16 +112,17 @@ public:
   xclbin::memidx_bitmask_type
   get_memidx_union() const;
 
-  const xocl::xclbin::symbol*
-  get_symbol() const
-  {
-    return m_symbol;
-  }
-
-  unsigned int
+  const void*
   get_symbol_uid() const
   {
-    return m_symbol->uid;
+    // the kernel containing this CU is its symbol
+    return m_xkernel.get_handle().get();  // really the kernel id as void* impl pointer?
+  }
+
+  const std::vector<xrt_core::xclbin::kernel_argument>&
+  get_args() const
+  {
+    return xrt_core::xclbin_int::get_arginfo(m_xkernel);
   }
 
   context_type
@@ -142,24 +146,26 @@ public:
   /**
    * Static constructor for compute units.
    *
-   * @symbol: The kernel symbol gather from xclbin meta data
-   * @inst: The kernel instance
-   * @device: The device constructing this compute unit
-   * @cuaddr: Sorted base addresses of all CUs in xclbin
-   *
+   * @xkernel: The xclbin kernel with the compute unit
+   * @xcu:     The xclbin ip representing the compute unit
+   * @device:  The device constructing this compute unit
+   * @cuaddr:  Sorted base addresses of all CUs in xclbin
+
    * The kernel instance base address is checked against @cuaddr to
    * determine its index.  If the instance base address is not in
    * @cuaddr it is ignored, e.g. no compute unit object constructed.
    */
   static std::unique_ptr<compute_unit>
-  create(const xclbin::symbol*, const xclbin::symbol::instance&,
-         const device*, const std::vector<uint64_t>&);
+  create(const xrt::xclbin::kernel& xkernel,
+         const xrt::xclbin::ip& xcu,
+         const device* device,
+         const std::vector<uint64_t>& cu2addr);
 
 private:
 
   // Shared implementation by outer locking routines
   xclbin::memidx_bitmask_type
-  get_memidx_nolock(unsigned int arg) const;
+  get_memidx_nolock(size_t arg) const;
 
   // Used by xocl::device to cache the acquire context for
   void
@@ -176,8 +182,8 @@ private:
   }
 
   unsigned int m_uid = 0;
-  const xclbin::symbol* m_symbol = nullptr;
-  std::string m_name;
+  xrt::xclbin::kernel m_xkernel;
+  xrt::xclbin::ip m_xcu;
   const device* m_device = nullptr;
   size_t m_address = 0;
   size_t m_index = 0;
@@ -186,7 +192,7 @@ private:
 
   // Map CU arg to memory bank indicies. An argument can
   // be connected to multiple memory banks.
-  mutable std::map<unsigned int,xclbin::memidx_bitmask_type> m_memidx_mask;
+  mutable std::map<size_t, xclbin::memidx_bitmask_type> m_memidx_mask;
 
   // Intersection of all argument masks
   mutable bool cached = false;

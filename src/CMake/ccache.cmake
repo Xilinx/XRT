@@ -20,4 +20,8 @@ if (RDI_CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK "${gccarwrap} --with-cache-rw")
   endif ()
 
+  # Disable abi compile time checks which renders ccache close to useless
+  message ("***** CCACHE: DISABLING ABI VERSION CHECK ******")
+  add_compile_options("-DDISABLE_ABI_CHECK")
+
 endif()

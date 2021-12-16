@@ -23,8 +23,10 @@
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/vart_profile.h"
 #include "plugin/xdp/sc_profile.h"
+#include "plugin/xdp/pl_deadlock.h"
 
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 
 namespace xdp {
 namespace hal_hw_plugins {
@@ -32,11 +34,13 @@ namespace hal_hw_plugins {
 // This function is responsible for loading all of the HAL level HW XDP plugins
 bool load()
 {
-  if (xrt_core::config::get_xrt_trace() || xrt_core::config::get_xrt_profile()) {
+  if (xrt_core::config::get_xrt_trace()) {
     xdp::hal::load() ;
   }
 
-  if (xrt_core::config::get_data_transfer_trace() != "off") {
+  if (xrt_core::config::get_data_transfer_trace() != "off" ||
+      xrt_core::config::get_device_trace() != "off" ||
+      xrt_core::config::get_device_counters()) {
     xdp::hal::device_offload::load() ;
   }
 
@@ -62,6 +66,18 @@ bool load()
 
   if (xrt_core::config::get_vitis_ai_profile()) {
     xdp::vart::profile::load() ;
+  }
+
+  if (xrt_core::config::get_pl_deadlock_detection())
+    xdp::pl_deadlock::load();
+
+  // Deprecation messages
+  if (xrt_core::config::get_data_transfer_trace() != "off") {
+    std::string msg = xrt_core::config::get_data_transfer_trace_dep_message();
+    if (msg != "") {
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
+                              msg) ;
+    }
   }
 
   return true ;

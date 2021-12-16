@@ -17,7 +17,6 @@
 #include "common.h"
 #include "kds_core.h"
 
-extern int kds_mode;
 extern int kds_echo;
 
 /* Attributes followed by bin_attributes. */
@@ -135,6 +134,8 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 	const char *raw_fmt = "%llu %d %llu\n";
 	struct mem_topology *topo = NULL;
 	struct drm_xocl_mm_stat stat;
+	const char *bo_txt_fmt = "[%s] %lluKB %dBOs\n";
+	const char *bo_types[XOCL_BO_USAGE_TOTAL];
 
 	mutex_lock(&xdev->dev_lock);
 
@@ -168,6 +169,39 @@ static ssize_t xocl_mm_stat(struct xocl_dev *xdev, char *buf, bool raw)
 				topo->m_mem_data[i].m_tag,
 				topo->m_mem_data[i].m_base_address,
 				topo->m_mem_data[i].m_size / 1024,
+				stat.memory_usage / 1024,
+				stat.bo_count);
+		}
+		buf += count;
+		size += count;
+	}
+	/* -- Separator for bo stats -- */
+	if (raw)
+		count = sprintf(buf, raw_fmt, -EINVAL, -EINVAL, -EINVAL);
+	else
+		count = sprintf(buf, txt_fmt,
+			"== BO Stats Below ==",
+			"NA", 0, 0, 0, 0);
+
+	/* -- Append bo stats -- */
+	buf += count;
+	size += count;
+	bo_types[XOCL_BO_USAGE_NORMAL] = "Regular";
+	bo_types[XOCL_BO_USAGE_USERPTR] = "UserPointer";
+	bo_types[XOCL_BO_USAGE_P2P] = "P2P";
+	bo_types[XOCL_BO_USAGE_DEV_ONLY] = "DeviceOnly";
+	bo_types[XOCL_BO_USAGE_IMPORT] = "Imported";
+	bo_types[XOCL_BO_USAGE_EXECBUF] = "ExecBuf";
+	bo_types[XOCL_BO_USAGE_CMA] = "CMA";
+	for (i = 0; i < XOCL_BO_USAGE_TOTAL; i++) {
+		xocl_bo_get_usage_stat(XOCL_DRM(xdev), i, &stat);
+		if (raw) {
+			count = sprintf(buf, raw_fmt,
+				stat.memory_usage,
+				stat.bo_count, 0);
+		} else {
+			count = sprintf(buf, bo_txt_fmt,
+				bo_types[i],
 				stat.memory_usage / 1024,
 				stat.bo_count);
 		}
@@ -211,34 +245,19 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 	       const char *buf, size_t count)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
-	u32 clients = 0;
 
-	/* TODO: this should be as simple as */
-	/* return stroe_kds_echo(&XDEV(xdev)->kds, buf, count); */
-
-	if (!kds_mode)
-		clients = get_live_clients(xdev, NULL);
-
-	return store_kds_echo(&XDEV(xdev)->kds, buf, count,
-			      kds_mode, clients, &kds_echo);
+	return store_kds_echo(&XDEV(xdev)->kds, buf, count, &kds_echo);
 }
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
 
 static ssize_t
-kds_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", kds_mode);
-}
-static DEVICE_ATTR_RO(kds_mode);
-
-static ssize_t
-kds_numcdma_show(struct device *dev, struct device_attribute *attr, char *buf)
+kds_numcdmas_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_dev *xdev = dev_get_drvdata(dev);
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	return sprintf(buf, "%d\n", kds->cu_mgmt.num_cdma);
 }
-static DEVICE_ATTR_RO(kds_numcdma);
+static DEVICE_ATTR_RO(kds_numcdmas);
 
 static ssize_t
 kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -303,10 +322,7 @@ kds_interrupt_store(struct device *dev, struct device_attribute *da,
 		return -ENODEV;
 
 	mutex_lock(&XDEV(xdev)->kds.lock);
-	if (kds_mode)
-		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
-	else
-		live_clients = get_live_clients(xdev, NULL);
+	live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
 
 	if (live_clients > 0) {
 		mutex_unlock(&XDEV(xdev)->kds.lock);
@@ -400,10 +416,7 @@ ert_disable_store(struct device *dev, struct device_attribute *da,
 		return -ENODEV;
 
 	mutex_lock(&XDEV(xdev)->kds.lock);
-	if (kds_mode)
-		live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
-	else
-		live_clients = get_live_clients(xdev, NULL);
+	live_clients = kds_live_clients_nolock(&XDEV(xdev)->kds, NULL);
 
 	if (live_clients > 0) {
 		mutex_unlock(&XDEV(xdev)->kds.lock);
@@ -416,7 +429,7 @@ ert_disable_store(struct device *dev, struct device_attribute *da,
 	}
 
 	/* If ERT subdev doesn't present, cound not enable ERT */
-	if (kds_mode && !XDEV(xdev)->kds.ert)
+	if (!XDEV(xdev)->kds.ert)
 		disable = 1;
 
 	/* once ini_disable set to true, xrt.ini could not
@@ -474,6 +487,28 @@ static ssize_t shutdown_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR(shutdown, 0644, shutdown_show, shutdown_store);
+
+static ssize_t dev_hotplug_done_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	
+	return sprintf(buf, "%d\n", atomic_read(&xdev->dev_hotplug_done));
+}
+
+static ssize_t dev_hotplug_done_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct xocl_dev *xdev = dev_get_drvdata(dev);
+	u32 val;
+	
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+	
+	atomic_set(&xdev->dev_hotplug_done, val);
+	return count;
+}
+static DEVICE_ATTR(dev_hotplug_done, 0644, dev_hotplug_done_show, dev_hotplug_done_store);
 
 static ssize_t mig_calibration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -730,9 +765,8 @@ static struct attribute *xocl_attrs[] = {
 	&dev_attr_kdsstat.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
-	&dev_attr_kds_mode.attr,
 	&dev_attr_kds_echo.attr,
-	&dev_attr_kds_numcdma.attr,
+	&dev_attr_kds_numcdmas.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_custat_raw.attr,
 	&dev_attr_kds_scustat_raw.attr,
@@ -766,6 +800,7 @@ static struct attribute *xocl_attrs[] = {
  */
 static struct attribute *xocl_persist_attrs[] = {
 	&dev_attr_shutdown.attr,
+	&dev_attr_dev_hotplug_done.attr,
 	&dev_attr_user_pf.attr,
 	NULL,
 };

@@ -19,9 +19,6 @@
 #include "xocl_drv.h"
 #include "version.h"
 
-/* TODO: remove this with old kds */
-extern int kds_mode;
-
 struct xocl_subdev_array {
 	xdev_handle_t xdev_hdl;
 	int id;
@@ -1455,6 +1452,8 @@ xocl_subdev_vsec_read32(xdev_handle_t xdev, int bar, u64 offset)
  * |rsvd                        |
  * +----+-----------------------|
  *  ... next entry ...
+ *
+ * TODO: refactor this code to use struct bit field and memcpy_fromio
  */
 int
 xocl_subdev_vsec(xdev_handle_t xdev, u32 type,
@@ -1674,30 +1673,53 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			if (ret)
 				return ret;
 			break;
-		case XOCL_VSEC_FLASH_TYPE_XGQ:
-			/*TODO: VSEC definition is TBD, we now get res from metadata */
-			xocl_xdev_dbg(xdev,
-			    "VSEC XGQ FLASH RES Start 0x%llx, bar %d",
-			    offset, bar);
-
-			/* set devinfo to xfer versal */
-			subdev_info.id = XOCL_SUBDEV_XGQ;
-			subdev_info.name = XOCL_XGQ;
-			subdev_info.res[0].name = XOCL_XGQ;
-			memcpy(((struct xocl_flash_privdata *)
-			    (subdev_info.priv_data))->flash_type,
-			    FLASH_TYPE_OSPI_XGQ, strlen(FLASH_TYPE_OSPI_XGQ));
-
-			ret = xocl_subdev_create_vsec_impl(xdev, &subdev_info,
-				offset, bar);
-
-			if (ret)
-				return ret;
-			break;
 		default:
 			xocl_xdev_err(xdev, "Unsupport flash type 0x%x", vtype);
 			break;
 		}
+	}
+
+	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ, &bar, &offset, NULL);
+	if (!ret) {
+		int bar_payload = 0; 
+		u64 offset_payload = 0;
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VSEC;
+
+		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_PAYLOAD,
+			&bar_payload, &offset_payload, NULL);
+		if (ret) {
+			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_PAYLOAD");
+			goto done;
+		}
+
+		subdev_info.bar_idx[0] = bar;
+		subdev_info.bar_idx[1] = bar_payload;
+
+		/*
+		 * TODO: update the payload actual size from device later.
+		 * all end_points from VSEC should just have 0x1000(4k) size.
+		 * For now, just hardcode the size which will be reported by
+		 * the device.
+		 */
+		subdev_info.res[0].start = offset;
+		subdev_info.res[0].end = offset + 0xfff;
+		subdev_info.res[0].name = NODE_XGQ_SQ_BASE;
+
+		subdev_info.res[1].start = offset_payload;
+		subdev_info.res[1].end = offset_payload + 0x7ffffff;
+		subdev_info.res[1].name = NODE_XGQ_RING_BASE;
+
+		xocl_xdev_dbg(xdev,
+		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",
+		    offset, bar, offset_payload, bar_payload);
+
+		ret = xocl_subdev_create(xdev, &subdev_info);
+		if (ret) {
+			xocl_xdev_err(xdev, "Create XGQ subdev failed. %d", ret);
+			goto done;
+		}
+
+		xocl_xdev_dbg(xdev, "VSEC XGQ created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
@@ -1714,6 +1736,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 			return ret;
 	}
 
+done:
 	return 0;
 }
 
@@ -1746,11 +1769,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 	u64 offset;
 	unsigned val;
 	bool vsec = false;
-	/* workaround MB_SCHEDULER and INTC resource conflict
-	 * Remove below variables when MB_SCHEDULER is removed
-	 */
-	int i;
-	struct xocl_subdev_info *sdev_info;
 
 	memset(&core->priv, 0, sizeof(core->priv));
 	core->priv.vbnv = in->vbnv;
@@ -1794,23 +1812,6 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 		core->priv.xpr = true;
 
 	core->priv.dsa_ver = pdev->subsystem_device & 0xff;
-
-	/* workaround MB_SCHEDULER and INTC resource conflict
-	 * Remove below loop when MB_SCHEDULER is removed
-	 */
-	for (i = 0; i < in->subdev_num; i++) {
-		sdev_info = &in->subdev_info[i];
-		if (sdev_info->id == XOCL_SUBDEV_MB_SCHEDULER && kds_mode == 1) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_INTC && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		} else if (sdev_info->id == XOCL_SUBDEV_ERT_USER && kds_mode == 0) {
-			sdev_info->res = NULL;
-			sdev_info->num_res = 0;
-		}
-	}
 
 	/* data defined in subdev header */
 	core->priv.subdev_info = in->subdev_info;
@@ -1890,6 +1891,25 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
 		ida_simple_remove(&xocl_dev_minor_ida, core->dev_minor);
 		core->dev_minor = XOCL_INVALID_MINOR;
 	}
+}
+
+/*
+ * This function will reinitialize the versal platform after a cold or warm
+ * reboot. First, we should re-enable the reset registers, either via host or
+ * via vmr firmware. Second, we should try to load apu firmware via vmr.
+ * Note: we ignore errors after all subdev has been probed after extended_probe.
+ *       if any of this procedure fails due to fatal error, a hot reset warning
+ *       will be reported.
+ */
+void xocl_reinit_vmr(xdev_handle_t xdev)
+{
+	int rc = 0;
+
+	rc = xocl_pmc_enable_reset(xdev);
+	if (rc == -ENODEV)
+		xocl_vmr_enable_multiboot(xdev);
+
+	(void) xocl_download_apu_firmware(xdev);
 }
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,

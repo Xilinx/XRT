@@ -22,6 +22,7 @@ usage()
     echo "[-help]                    List this help"
     echo "[-j <n>]                   Compile parallel (default: system cores)"
     echo "[-nocmake]                 Skip CMake itself, go straight to make"
+    echo "[-pskernel]                Enable building of POC ps kernel"
     echo "[clean|-clean]             Remove build directories"
     echo "[-noccache]                Disable ccache"
 
@@ -32,6 +33,7 @@ clean=0
 ccache=1
 jcore=$CORE
 nocmake=0
+cmake_flags="-DXOCL_VERBOSE=1 -DXRT_VERBOSE=1 -DCMAKE_BUILD_TYPE=Debug"
 while [ $# -gt 0 ]; do
     case "$1" in
         -help)
@@ -54,6 +56,10 @@ while [ $# -gt 0 ]; do
             nocmake=1
             shift
             ;;
+        -pskernel)
+            cmake_flags+=" -DXRT_PSKERNEL_BUILD=ON"
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
@@ -72,6 +78,7 @@ if [[ $ccache == 1 ]]; then
     if [[ -e /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl ]]; then
         /proj/rdi/env/HEAD/hierdesign/ccache/cleanup.pl 1 30 $RDI_CCACHEROOT
     fi
+    cmake_flags+=" -DRDI_CCACHE=1"
 fi
 
 here=$PWD
@@ -87,7 +94,7 @@ fi
 mkdir -p XDebug
 cd XDebug
 if [ $nocmake == 0 ]; then
-    $CMAKE -DRDI_CCACHE=$ccache -DCMAKE_BUILD_TYPE=Debug -DXOCL_VERBOSE=1 -DXRT_VERBOSE=1 ../../src
+    $CMAKE $cmake_flags ../../src
 fi
 make -j $jcore VERBOSE=1 DESTDIR=$PWD install
 make VERBOSE=1 DESTDIR=$PWD package

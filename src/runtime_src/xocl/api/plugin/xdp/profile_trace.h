@@ -40,8 +40,7 @@ namespace xocl {
     inline void
     set_event_action(xocl::event* e, F&& f, Args&&... args)
     {
-      if (xrt_core::config::get_timeline_trace() ||
-	  xrt_core::config::get_opencl_trace())
+      if (xrt_core::config::get_opencl_trace())
 	e->set_profile_action(f(std::forward<Args>(args)...)) ;
     }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,8 @@
 #include "xocl/core/error.h"
 #include "xocl/core/kernel.h"
 #include "xocl/core/compute_unit.h"
+
+#include "core/common/xclbin_parser.h"
 
 #include "detail/kernel.h"
 
@@ -74,7 +76,6 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
 
   auto xkernel = xocl(kernel);
   auto cu = xkernel->get_cus()[cu_id];
-  auto symbol = cu->get_symbol();
 
   switch(param_name) {
     case XCL_COMPUTE_UNIT_NAME:
@@ -88,10 +89,11 @@ xclGetComputeUnitInfo(cl_kernel             kernel,
       break;
     case XCL_COMPUTE_UNIT_CONNECTIONS: {
       int argidx = 0;
-      for (auto& arg : symbol->arguments) {
-        if (arg.atype!=xclbin::symbol::arg::argtype::indexed)
+      for (auto& arg : cu->get_args()) {
+        if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
           continue;
-        if (arg.address_qualifier==1 || arg.address_qualifier==2) { // global or constant
+        if (arg.type == xrt_core::xclbin::kernel_argument::argtype::global
+            ||arg.type == xrt_core::xclbin::kernel_argument::argtype::constant) {
           auto memidx = cu->get_memidx(argidx);
           buffer.as<cl_ulong>() = memidx.to_ulong();
         }
