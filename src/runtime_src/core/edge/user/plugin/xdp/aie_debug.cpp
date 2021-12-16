@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,59 +14,62 @@
  * under the License.
  */
 
-#include "aie_profile.h"
-#include "core/common/module_loader.h"
-#include "core/common/dlfcn.h"
+#include "aie_debug.h"
+
 #include <iostream>
+
+#include "core/common/dlfcn.h"
+#include "core/common/module_loader.h"
 
 namespace xdp {
 namespace aie {
-namespace profile {
+namespace debug {
   void load()
   {
 #ifdef XRT_ENABLE_AIE
-    static xrt_core::module_loader xdp_aie_loader("xdp_aie_profile_plugin",
-						    register_callbacks,
-						    warning_callbacks);
+    static xrt_core::module_loader xdp_aie_loader("xdp_aie_debug_plugin",
+                                                  register_callbacks,
+                                                  warning_callbacks);
 #endif
   }
+
+  // Callback from shim to load device information and start polling
   std::function<void (void*)> update_device_cb;
+  // Callback from shim to end poll for a device when xclbin changes
   std::function<void (void*)> end_poll_cb;
 
   void register_callbacks(void* handle)
   {
     using ftype = void (*)(void*); // Device handle
 
-    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIECtrDevice"));
+    update_device_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "updateAIEDebugDevice"));
     if (xrt_core::dlerror() != nullptr)
       update_device_cb = nullptr;
 
-    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIECtrPoll"));
+    end_poll_cb = reinterpret_cast<ftype>(xrt_core::dlsym(handle, "endAIEDebugPoll"));
     if (xrt_core::dlerror() != nullptr)
       end_poll_cb = nullptr;
   }
 
   void warning_callbacks()
   {
-    // No warnings for AIE profiling
+    // No warnings for AIE debug
   }
 
-} // end namespace profile
+} // end namespace debug
 
-namespace ctr {
+namespace dbg {
   void update_device(void* handle)
   {
-    if (profile::update_device_cb != nullptr) {
-      profile::update_device_cb(handle) ;
-    }
+    if (debug::update_device_cb != nullptr)
+      debug::update_device_cb(handle);
   }
 
   void end_poll(void* handle)
   {
-    if (profile::end_poll_cb != nullptr) {
-      profile::end_poll_cb(handle) ;
-    }
+    if (debug::end_poll_cb != nullptr)
+      debug::end_poll_cb(handle);
   }
-} // end namespace ctr
+} // end namespace dbg
 } // end namespace aie
 } // end namespace xdp
