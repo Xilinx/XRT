@@ -23,6 +23,10 @@ if(NOT WIN32)
   endif()
 endif()
 
+# Need pthreads for the boost processes
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
@@ -75,12 +79,9 @@ if(NOT WIN32)
    if(${RapidJSON_VERSION_MAJOR} GREATER 0)
      target_compile_definitions(${XCLBINUTIL_NAME} PRIVATE ENABLE_JSON_SCHEMA_VALIDATION)
    endif()
-
-   # Boost support
-   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 endif()
 
-target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
+target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
