@@ -33,8 +33,15 @@
 #include <vector>
 
 #if (BOOST_VERSION >= 106400)
+
+#ifdef _WIN32
+#define _WIN32_WINNT 0x0501
+#pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
+#endif  
+
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
+#include <boost/process/env.hpp>
 #endif
 
 
@@ -1026,15 +1033,8 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 }
 
 
+
 #if (BOOST_VERSION >= 106400)
-
-#include <boost/process.hpp>
-#include <boost/process/child.hpp>
-
-#ifdef _WIN32
-#pragma warning (disable : 4244)    // Addresses Boost conversion Windows build warnings
-#endif
-
 int 
 XclBinUtilities::exec(const boost::filesystem::path &cmd,
                       const std::vector<std::string> &args,
@@ -1044,12 +1044,11 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
 {
   boost::process::ipstream ip_stdout;
   boost::process::ipstream ip_stderr;
-  boost::process::child runningProcess( cmd, 
+  boost::process::child runningProcess( cmd.string(), 
                                         args, 
                                         boost::process::std_out > ip_stdout,
                                         boost::process::std_err > ip_stderr,
                                         boost::this_process::environment());
-
   runningProcess.wait();
   // boost::process::ipstream::rdbuf() gives conversion error in
   // 1.65.1 Base class is constructed with underlying buffer so just
@@ -1109,6 +1108,5 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
 
 
 #endif
-
 
 
