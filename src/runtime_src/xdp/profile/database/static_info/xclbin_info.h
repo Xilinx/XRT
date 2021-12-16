@@ -25,14 +25,15 @@
 
 #include "core/common/system.h"
 
+#include "xdp/config.h"
 #include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp {
 
   // Forward declarations
   class DeviceIntf ;
-  class Monitor ;
-  class Memory ;
+  struct Monitor ;
+  struct Memory ;
   class ComputeUnitInstance ;
 
   // The PLInfo struct keeps track of all the information in the PL section

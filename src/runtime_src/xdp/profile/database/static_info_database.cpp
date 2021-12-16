@@ -1580,7 +1580,6 @@ namespace xdp {
     std::string monCuName = name.substr(0, pos);
 
     if (monCuName == "memory_subsystem") {
-      XclbinInfo* xclbin = devInfo->currentXclbin() ;
       if (xclbin)
         xclbin->pl.hasMemoryAIM = true ;
     }

@@ -16,6 +16,8 @@
 
 #include <string>
 
+#define XDP_SOURCE
+
 #include "xdp/profile/database/static_info/pl_constructs.h"
 
 namespace xdp {

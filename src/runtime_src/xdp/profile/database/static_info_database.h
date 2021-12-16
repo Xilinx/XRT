@@ -40,7 +40,7 @@ namespace xdp {
   // Forward declarations of PL contents
   struct Monitor ;
   struct Memory ;
-  struct ComputeUnitInstance ;
+  class ComputeUnitInstance ;
 
   // Forward declarations of AIE contents
   struct AIECounter ;
