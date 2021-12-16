@@ -18,6 +18,7 @@
 
 #include "aie_trace_config_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 namespace xdp {
 
@@ -47,7 +48,7 @@ namespace xdp {
 
     auto tiles = (db->getStaticInfo()).getAIECfgTiles(deviceIndex);
     if (tiles != nullptr) {
-      for (auto tile: *tiles) {
+      for (auto& tile: *tiles) {
         bpt::ptree TileTraceConfig_C;
         bpt::ptree core_trace_config;
         bpt::ptree memory_trace_config;
