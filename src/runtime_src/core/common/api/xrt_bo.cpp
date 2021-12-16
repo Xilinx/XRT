@@ -893,12 +893,14 @@ group_id(const xrt::bo& bo)
 }
 
 xclDeviceHandle
-device_handle(const xrt::bo& bo) {
+device_handle(const xrt::bo& bo)
+{
     return bo.get_handle()->get_device()->get_device_handle();
 }
 
 xrt::bo::flags
-get_flags(const xrt::bo& bo) {
+get_flags(const xrt::bo& bo)
+{
     return bo.get_handle()->get_flags();
 }
 

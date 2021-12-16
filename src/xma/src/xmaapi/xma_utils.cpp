@@ -25,6 +25,7 @@
 #include "core/common/config_reader.h"
 #include "core/pcie/linux/scan.h"
 #include "core/common/utils.h"
+#include "core/common/api/bo.h"
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -690,6 +691,28 @@ int32_t check_all_execbo(XmaSession s_handle) {
         }
     }
 
+    return XMA_SUCCESS;
+}
+
+int32_t xma_check_device_buffer(XmaBufferObj* b_obj) {
+    if (!b_obj) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    XmaBufferObjPrivate* b_obj_priv = reinterpret_cast<XmaBufferObjPrivate*>(b_obj->private_do_not_touch);
+    if (!b_obj_priv) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj->dev_index < 0 || xrt_core::bo::group_id(b_obj_priv->xrt_bo) < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
     return XMA_SUCCESS;
 }
 

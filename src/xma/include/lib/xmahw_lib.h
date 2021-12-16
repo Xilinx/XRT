@@ -224,15 +224,10 @@ typedef struct XmaHwSessionPrivate
 
 typedef struct XmaBufferObjPrivate
 {
-    void*    dummy;
+    void*    dummy = nullptr;
     xrt::bo  xrt_bo;
-    std::atomic<int32_t> ref_cnt;
+    std::atomic<int32_t> ref_cnt{0};
     uint32_t reserved[4];
-
-  XmaBufferObjPrivate() {
-   dummy = NULL;  
-   ref_cnt = 0;  
-  }
 } XmaBufferObjPrivate;
 
 typedef struct XmaHwKernel
@@ -324,9 +319,7 @@ typedef struct XmaHwMem
 
 typedef struct XmaHwDevice
 {
-    //char        dsa[MAX_DSA_NAME];
     xclDeviceHandle    handle;
-    //xclDeviceInfo2     info;
     uint32_t           dev_index;
     uuid_t             uuid; 
     uint32_t           number_of_cus;

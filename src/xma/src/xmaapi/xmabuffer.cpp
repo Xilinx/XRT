@@ -21,6 +21,7 @@
 #include "app/xmalogger.h"
 #include "app/xmaerror.h"
 #include "lib/xmahw_lib.h"
+#include "lib/xma_utils.hpp"
 #include "core/common/api/bo.h"
 //#include <cstdio>
 #include <iostream>
@@ -133,38 +134,11 @@ xma_frame_from_buffers_clone(XmaFrameProperties *frame_props,
     return frame;
 }
 
-
-int32_t xma_check_device_buffer(XmaBufferObj *b_obj) {
-    if (!b_obj) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-
-    XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
-    if (!b_obj_priv) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj->dev_index < 0 || xrt_core::bo::group_id(b_obj_priv->xrt_bo) < 0 || b_obj_priv->xrt_bo.size() <= 0) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
-        return XMA_ERROR;
-    }
-    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
-        return XMA_ERROR;
-    }
-    if (!xrt_core::bo::device_handle(b_obj_priv->xrt_bo)) {
-        xma_logmsg(XMA_ERROR_LOG, XMA_BUFFER_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
-        return XMA_ERROR;
-    }
-    return XMA_SUCCESS;
-}
-
 int32_t xma_add_ref_cnt(XmaBufferObj *b_obj, int32_t num) {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
                "%s(), line# %d\n", __func__, __LINE__);
 
-    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+    if (xma_core::utils::xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
         return -999;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
@@ -201,7 +175,7 @@ xma_frame_from_device_buffers(XmaFrameProperties *frame_props,
             free(frame);
             return nullptr;
         }
-        if (xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
+        if (xma_core::utils::xma_check_device_buffer(frame_data->dev_buf[i]) != XMA_SUCCESS) {
             free(frame);
             return nullptr;
         }
@@ -223,7 +197,7 @@ void
 xma_device_buffer_free(XmaBufferObj *b_obj)
 {
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD, "%s()\n", __func__);
-    if (xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
+    if (xma_core::utils::xma_check_device_buffer(b_obj) != XMA_SUCCESS) {
         return;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
@@ -514,7 +488,7 @@ xma_data_from_device_buffer(XmaBufferObj *dev_buf, bool clone)
                 "%s(): dev_buf XmaBufferObj is NULL\n", __func__);
         return nullptr;
     }
-    if (xma_check_device_buffer(dev_buf) != XMA_SUCCESS) {
+    if (xma_core::utils::xma_check_device_buffer(dev_buf) != XMA_SUCCESS) {
         return nullptr;
     }
     xma_logmsg(XMA_DEBUG_LOG, XMA_BUFFER_MOD,
