@@ -205,6 +205,21 @@ get_aie_profile_interval_us()
 }
 
 inline bool
+get_aie_status()
+{
+  static bool value = detail::get_bool_value("Debug.aie_status", false);
+  return value;
+}
+
+inline unsigned int
+get_aie_status_interval_us()
+{
+  // NOLINTNEXTLINE
+  static unsigned int value = detail::get_uint_value("Debug.aie_status_interval_us", 1000);
+  return value;
+}
+
+inline bool
 get_noc_profile()
 {
   static bool value = detail::get_bool_value("Debug.noc_profile",false);
