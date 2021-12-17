@@ -1557,7 +1557,6 @@ getTestNameDescriptions(bool addAdditionOptions)
   return reportDescriptionCollection;
 }
 
-
 void
 SubCmdValidate::execute(const SubCmdOptions& _options) const
 
@@ -1626,7 +1625,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     if (testsToRun.empty())
       throw std::runtime_error("No test given to validate against.");
 
-    // Examine test entries
+    // Validate the user test requests
     for (auto &userTestName : testsToRun) {
       userTestName = get_run_test_name(userTestName);
 
@@ -1636,7 +1635,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if ((userTestName == "quick") && (testsToRun.size() > 1))
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
-      // Validate all of the test names
+      // Verify the current user test request exists in the test suite
       bool nameFound = false;
       for (auto &test : testNameDescription) {
         if (userTestName.compare(test.first) == 0) {
@@ -1645,7 +1644,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         }
       }
 
-      // Did we have a hit?  If not then let the user know of a typo
       if (nameFound == false) {
         throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
       }
