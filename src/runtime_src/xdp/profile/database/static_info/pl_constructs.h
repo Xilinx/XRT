@@ -93,6 +93,13 @@ namespace xdp {
     //  counter values for itself.
     uint64_t slotIndex ;
 
+    // Some platforms have monitors inside the shell.  These are configured
+    //  for counters only and are identified by their name.  To minimize
+    //  string comparisons, we check the name in the constructor and set
+    //  this boolean.
+    bool shellMonitor = false ;
+    inline bool isShellMonitor() const { return shellMonitor ; }
+
     // Because of the different stalls, AMs can produce up to 16 different
     //  trace IDs in their trace packets.
     constexpr static uint64_t numTraceIdsPerAM = 16 ;
@@ -131,16 +138,12 @@ namespace xdp {
         slotIndex = 0 ;
         break ;
       }
+
+      shellMonitor = (name.find("Host to Device")   != std::string::npos) ||
+                     (name.find("Peer to Peer")     != std::string::npos) ||
+                     (name.find("Memory to Memory") != std::string::npos) ;
     }
 
-    // Some platforms have monitors inside the shell.  These are configured
-    //  for counters only and are identified by their name.
-    inline bool isShellMonitor() const
-    {
-      return (name.find("Host to Device")   != std::string::npos) ||
-             (name.find("Peer to Peer")     != std::string::npos) ||
-             (name.find("Memory to Memory") != std::string::npos) ;
-    }
   } ;
 
   // The ComputeUnitInstance class collects all of the information on
