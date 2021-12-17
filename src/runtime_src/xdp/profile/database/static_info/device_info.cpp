@@ -28,6 +28,7 @@ namespace xdp {
     for (auto i : loadedXclbins) {
       delete i ;
     }
+    loadedXclbins.clear() ;
   }
 
   std::string DeviceInfo::getUniqueDeviceName() const
@@ -191,7 +192,7 @@ namespace xdp {
     for (auto bin : loadedXclbins) {
       if (bin == xclbin) {
         for (auto am : bin->pl.ams) {
-          if (((am->index - MIN_TRACE_ID_AM) / 16) == slotId)
+          if (am->slotIndex == slotId)
             return am ;
         }
       }
@@ -204,7 +205,7 @@ namespace xdp {
     for (auto bin : loadedXclbins) {
       if (bin == xclbin) {
         for (auto aim : bin->pl.aims) {
-          if (((aim->index - MIN_TRACE_ID_AIM) /2) == slotId)
+          if (aim->slotIndex == slotId)
             return aim ;
         }
       }
@@ -217,7 +218,7 @@ namespace xdp {
     for (auto bin : loadedXclbins) {
       if (bin == xclbin) {
         for (auto streamMonitor : bin->pl.asms) {
-          if ((streamMonitor->index - MIN_TRACE_ID_ASM) == slotId)
+          if (streamMonitor->slotIndex == slotId)
             return streamMonitor ;
         }
       }
