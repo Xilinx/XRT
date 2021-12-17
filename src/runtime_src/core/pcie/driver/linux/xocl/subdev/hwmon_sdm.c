@@ -31,12 +31,13 @@ struct xocl_hwmon_sdm {
 	bool                    sysfs_created;
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
+	bool                    sensor_data_avail[SDR_TYPE_MAX];
 };
 
+#define SDM_BUF_IDX_INCR(buf_index, len, buf_len) \
+        ((buf_index + len > buf_len) ? -EINVAL : (buf_index + len))
 
-static void parse_sdr_info(char *in_buf,
-                           struct xocl_hwmon_sdm *sdm,
-                           bool create_sysfs);
+static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs);
 static uint8_t sdr_get_id(uint8_t repo_type);
 
 static ssize_t hwmon_sensor_show(struct device *dev,
@@ -51,7 +52,7 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	char output[64];
 	uint8_t value[64];
 
-	if (sdm->sensor_data[repo_id] == NULL) {
+	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
 		xocl_err(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
 		return sprintf(buf, "%d\n", 0);
 	}
@@ -144,8 +145,7 @@ static uint8_t sdr_get_id(uint8_t repo_type)
 	return id;
 }
 
-static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
-                           bool create_sysfs)
+static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs)
 {
 	bool create = false;
 	uint8_t status;
@@ -175,14 +175,14 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 			xocl_err(&sdm->pdev->dev, "Error: SDR Code Invalid Sensor ID");
 		else
 			xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command");
-		return;
+		return -EINVAL;
 	}
 
 	repo_type = in_buf[SDR_REPO_IDX];
 	repo_id = sdr_get_id(repo_type);
 	if (repo_id < 0) {
 		xocl_err(&sdm->pdev->dev, "SDR Responce has INVALID REPO TYPE: %d", repo_type);
-		return;
+		return -EINVAL;
 	}
 
 	buf_size = in_buf[SDR_NUM_BYTES_IDX] * 8;
@@ -198,19 +198,25 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 		name_length = name_type_length & SDR_LENGTH_MASK;
 		name_index = buf_index;
 
-		buf_index += name_length;
+		buf_index = SDM_BUF_IDX_INCR(buf_index, name_length, buf_size);
+		if (buf_index < 0)
+			goto abort;
 
 		value_type_length = in_buf[buf_index++];
 		val_len = value_type_length & SDR_LENGTH_MASK;
 		ins_index = buf_index;
 
-		buf_index += val_len;
+		buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+		if (buf_index < 0)
+			goto abort;
 
 		base_unit_type_length = in_buf[buf_index++];
 		if(base_unit_type_length != SDR_NULL_BYTE)
 		{
 			bu_len = base_unit_type_length & SDR_LENGTH_MASK;
-			buf_index += bu_len;
+			buf_index = SDM_BUF_IDX_INCR(buf_index, bu_len, buf_size);
+			if (buf_index < 0)
+				goto abort;
 		}
 
 		unit_modifier_byte = in_buf[buf_index++];
@@ -221,37 +227,49 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 			//Upper_Warning_Threshold
 			if(threshold_support_byte & THRESHOLD_UPPER_WARNING_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 
 			//Upper_Critical_Threshold
 			if(threshold_support_byte & THRESHOLD_UPPER_CRITICAL_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 
 			//Upper_Fatal_Threshold
 			if(threshold_support_byte & THRESHOLD_UPPER_FATAL_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 
 			//Lower_Warning_Threshold
 			if(threshold_support_byte & THRESHOLD_LOWER_WARNING_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 
 			//Lower_Critical_Threshold
 			if(threshold_support_byte & THRESHOLD_LOWER_CRITICAL_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 
 			//Lower_Fatal_Threshold
 			if(threshold_support_byte & THRESHOLD_LOWER_FATAL_MASK)
 			{
-				buf_index += val_len;
+				buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+				if (buf_index < 0)
+					goto abort;
 			}
 		}
 
@@ -260,12 +278,16 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 		/* Parse Max and Avg sensor */
 		if(threshold_support_byte & THRESHOLD_SENSOR_AVG_MASK) {
 			avg_index = buf_index;
-			buf_index += val_len;
+			buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+			if (buf_index < 0)
+				goto abort;
 		}
 
 		if(threshold_support_byte & THRESHOLD_SENSOR_MAX_MASK) {
 			max_index = buf_index;
-			buf_index += val_len;
+			buf_index = SDM_BUF_IDX_INCR(buf_index, val_len, buf_size);
+			if (buf_index < 0)
+				goto abort;
 		}
 
 		if ((base_unit_type_length != SDR_NULL_BYTE) && create_sysfs) {
@@ -350,7 +372,16 @@ static void parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm,
 		remaining_records--;
 	}
 
+	if ((remaining_records > 0) || (buf_index >= buf_size))
+		goto abort;
+
 	buf_index += 3;
+
+	return 0;
+
+abort:
+	xocl_err(&sdm->pdev->dev, "SDR Responce has corrupted data for repo_type: 0x%x", repo_type);
+	return -EINVAL;
 }
 
 static void destroy_hwmon_sysfs(struct platform_device *pdev)
@@ -465,7 +496,9 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	ret = xocl_xgq_collect_bdinfo_sensors(xdev, sdm->sensor_data[repo_id],
                                           resp_size);
 	if (!ret) {
-		parse_sdr_info(sdm->sensor_data[repo_id], sdm, false);
+		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, false);
+		if (!ret)
+			sdm->sensor_data_avail[repo_id] = true;
 	} else {
 		xocl_err(&pdev->dev, "request is failed with err: %d", ret);
 	}
@@ -478,7 +511,9 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	ret = xocl_xgq_collect_temp_sensors(xdev, sdm->sensor_data[repo_id],
                                         resp_size);
 	if (!ret) {
-		parse_sdr_info(sdm->sensor_data[repo_id], sdm, true);
+		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, true);
+		if (!ret)
+			sdm->sensor_data_avail[repo_id] = true;
 	} else {
 		xocl_err(&pdev->dev, "request is failed with err: %d", ret);
 	}
