@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2021Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,6 +17,7 @@
 #include "SectionMemTopology.h"
 
 #include "XclBinUtilities.h"
+
 namespace XUtil = XclBinUtilities;
 #include <iostream>
 
@@ -57,6 +58,8 @@ SectionMemTopology::getMemTypeStr(enum MEM_TYPE _memType) const {
       return "MEM_STREAMING_CONNECTION";
     case MEM_HOST:
       return "MEM_HOST";
+    case MEM_PS_KERNEL:
+      return "MEM_PS_KERNEL";
   }
 
   return XUtil::format("UNKNOWN (%d)", (unsigned int)_memType);
@@ -96,6 +99,9 @@ SectionMemTopology::getMemType(std::string& _sMemType) const {
 
   if (_sMemType == "MEM_HOST")
     return MEM_HOST;
+
+  if (_sMemType == "MEM_PS_KERNEL")
+    return MEM_PS_KERNEL;
 
   std::string errMsg = "ERROR: Unknown memory type: '" + _sMemType + "'";
   throw std::runtime_error(errMsg);

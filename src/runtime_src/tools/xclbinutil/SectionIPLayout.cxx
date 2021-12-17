@@ -415,7 +415,7 @@ SectionIPLayout::appendToSectionMetadata(const boost::property_tree::ptree& _ptA
   XUtil::TRACE_PrintTree("Append data", _ptAppendData);
 
 
-  std::vector<boost::property_tree::ptree> ip_datas = as_vector<boost::property_tree::ptree>(_ptAppendData, "m_ip_data");
+  auto ip_datas = as_vector<boost::property_tree::ptree>(_ptAppendData, "m_ip_data");
   unsigned int appendCount = _ptAppendData.get<unsigned int>("m_count");
 
   if (appendCount != ip_datas.size()) {
