@@ -22,6 +22,7 @@
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
 #include "xmaplugin.h"
+#include "core/common/device.h"
 #include <bitset>
 
 #define XMA_SCALER_MOD "xmascaler"
@@ -231,7 +232,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
         }
     }
 
-    void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
+    auto dev_handle = hwcfg->devices[hwcfg_dev_index].xrt_device;
     XmaHwKernel* kernel_info = &hwcfg->devices[hwcfg_dev_index].kernels[cu_index];
     sc_session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
 
@@ -306,7 +307,10 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     //Singleton lock acquired
 
     if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
-        if (xclOpenContext(dev_handle, dev_tmp1.uuid, kernel_info->cu_index_ert, true) != 0) {
+        try {
+            dev_handle.get_handle()->open_context(dev_tmp1.uuid, kernel_info->cu_index_ert, true);
+        }
+        catch (const xrt_core::system_error&) {
             xma_logmsg(XMA_ERROR_LOG, XMA_SCALER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
             free(sc_session->base.plugin_data);
             free(sc_session);
