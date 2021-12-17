@@ -152,6 +152,17 @@ namespace XBUtilities {
   uint64_t 
   string_to_bytes(std::string str);
 
+  inline bool 
+  is_power_of_2(const uint64_t x)
+  {
+    /*
+    * Verify that the given value is greater than zero
+    * and that only one bit is set in the given value
+    * if only one bit is set this implies the given value is a power of 2
+    */
+    return (x != 0) && ((x & (x - 1)) == 0);
+  }
+
  /*
   * xclbin locking
   */
