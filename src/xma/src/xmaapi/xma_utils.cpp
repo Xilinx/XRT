@@ -694,13 +694,13 @@ int32_t check_all_execbo(XmaSession s_handle) {
     return XMA_SUCCESS;
 }
 
-int32_t xma_check_device_buffer(XmaBufferObj* b_obj) {
+int32_t xma_check_device_buffer(const XmaBufferObj* b_obj) {
     if (!b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;
     }
 
-    XmaBufferObjPrivate* b_obj_priv = reinterpret_cast<XmaBufferObjPrivate*>(b_obj->private_do_not_touch);
+    auto b_obj_priv = reinterpret_cast<XmaBufferObjPrivate*>(b_obj->private_do_not_touch);
     if (!b_obj_priv) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
         return XMA_ERROR;

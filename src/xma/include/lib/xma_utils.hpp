@@ -36,7 +36,7 @@ int32_t load_libxrt();
 int32_t get_cu_index(int32_t dev_index, char* cu_name);
 int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index);
 int32_t check_all_execbo(XmaSession s_handle);
-int32_t xma_check_device_buffer(XmaBufferObj* b_obj);
+int32_t xma_check_device_buffer(const XmaBufferObj* b_obj);
 void logmsg(XmaLogLevelType level, const std::string& tag, const std::string& msg);
 
 } // namespace utils
