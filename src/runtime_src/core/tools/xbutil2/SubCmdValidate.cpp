@@ -1180,13 +1180,13 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
    ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   } catch(...) {
       logger(_ptTest, "Details", "ERT validate is not available");
-      _ptTest.put("status", "skip");
+      _ptTest.put("status", "skipped");
       return;
   }
 
   if (ert_cfg_gpio < 0) {
       logger(_ptTest, "Details", "This platform does not support ERT validate feature");
-      _ptTest.put("status", "skip");
+      _ptTest.put("status", "skipped");
       return;
   }
 
@@ -1247,19 +1247,45 @@ struct TestCollection {
 * create test suite
 */
 static std::vector<TestCollection> testSuite = {
-  { create_init_test("Aux connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
-  { create_init_test("PCIE link", "Check if PCIE link is active", ""), pcieLinkTest },
-  { create_init_test("SC version", "Check if SC firmware is up-to-date", ""), scVersionTest },
-  { create_init_test("Verify kernel", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
-  { create_init_test("DMA", "Run dma test", "verify.xclbin"), dmaTest },
+  { create_init_test("aux-connection", "Check if auxiliary power is connected", ""), auxConnectionTest },
+  { create_init_test("pcie-link", "Check if PCIE link is active", ""), pcieLinkTest },
+  { create_init_test("sc-version", "Check if SC firmware is up-to-date", ""), scVersionTest },
+  { create_init_test("verify", "Run 'Hello World' kernel test", "verify.xclbin"), verifyKernelTest },
+  { create_init_test("dma", "Run dma test", "verify.xclbin"), dmaTest },
   { create_init_test("iops", "Run scheduler performance measure test", "verify.xclbin"), iopsTest },
-  { create_init_test("Bandwidth kernel", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
-  { create_init_test("Peer to peer bar", "Run P2P test", "bandwidth.xclbin"), p2pTest },
-  { create_init_test("Memory to memory DMA", "Run M2M test", "bandwidth.xclbin"), m2mTest },
-  { create_init_test("Host memory bandwidth test", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
+  { create_init_test("mem-bw", "Run 'bandwidth kernel' and check the throughput", "bandwidth.xclbin"), bandwidthKernelTest },
+  { create_init_test("p2p", "Run P2P test", "bandwidth.xclbin"), p2pTest },
+  { create_init_test("m2m", "Run M2M test", "bandwidth.xclbin"), m2mTest },
+  { create_init_test("hostmem-bw", "Run 'bandwidth kernel' when host memory is enabled", "bandwidth.xclbin"), hostMemBandwidthKernelTest },
   { create_init_test("bist", "Run BIST test", "verify.xclbin", true), bistTest },
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
 };
+
+static std::string
+get_run_test_names(const std::string& input_name)
+{
+  static std::map<std::string, std::string> long_name_to_short_name={
+      { "Aux connection",                "aux-connection"    },
+      { "PCIE link",                     "pcie-link"   },
+      { "SC version",                    "sc-version"   },
+      { "DMA",                           "dma"  },
+      { "Verify kernel",                 "verify"},
+      { "scheduler-perf-test",           "iops"  },
+      { "Bandwidth kernel",              "mem-bw"},
+      { "Peer to peer bar",              "p2p"},
+      { "Memory to memory DMA",          "m2m"},
+      { "Host memory bandwidth test",    "hostmem-bw"},
+      { "hw-scheduler-bist",             "bist"},
+      { "video-decoder-test",            "vcu"}
+  };
+
+  if (long_name_to_short_name.find(input_name) != long_name_to_short_name.end()){
+    std::cout << boost::format("\nWarning: %s is deprecated and will be removed. Replace usage with %s\n\n") % input_name % long_name_to_short_name[input_name];
+    return long_name_to_short_name[input_name];
+  }
+
+  return input_name;
+}
 
 /*
  * print basic information about a test
@@ -1268,14 +1294,15 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  if(test.get<std::string>("status", "").compare("skipped") != 0) {
+  if (test.get<std::string>("status", "").compare("skipped") != 0) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
-    _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name");
+    // Only use the long name option when displaying the test
+    _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
 
-    if(XBU::getVerbose())
+    if (XBU::getVerbose())
       XBU::message(boost::str(boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
   }
-  else if(XBU::getVerbose()) {
+  else if (XBU::getVerbose()) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     XBU::message(boost::str(boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name")));
     XBU::message(boost::str(boost::format("    %-22s: %s\n") % "Description" % test.get<std::string>("description")), false, _ostream);
@@ -1522,9 +1549,10 @@ getTestNameDescriptions(bool addAdditionOptions)
     reportDescriptionCollection.emplace_back("quick", "Only the first 4 tests will be executed");
   }
 
-  // report names and discription
+  // report names and description
   for (const auto & test : testSuite) {
-    reportDescriptionCollection.emplace_back(test.ptTest.get("name", "<unknown>"), test.ptTest.get("description", "<no description>"));
+    std::string testName = get_run_test_names(test.ptTest.get("name", "<unknown>"));
+    reportDescriptionCollection.emplace_back(testName, test.ptTest.get("description", "<no description>"));
   }
 
   return reportDescriptionCollection;
@@ -1697,7 +1725,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
 
     // Must be a test name, look to see if should be added
-    const std::string testSuiteName = boost::algorithm::to_lower_copy(testSuite[index].ptTest.get("name",""));
+    std::string testSuiteName = boost::algorithm::to_lower_copy(get_run_test_names(testSuite[index].ptTest.get("name","<unknown>")));
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
