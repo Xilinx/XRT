@@ -375,7 +375,9 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	if ((remaining_records > 0) || (buf_index >= buf_size))
 		goto abort;
 
-	buf_index += 3;
+	buf_index = SDM_BUF_IDX_INCR(buf_index, SDR_EOR_BYTES, buf_size);
+	if (buf_index < 0)
+		goto abort;
 
 	return 0;
 
