@@ -1261,30 +1261,29 @@ static std::vector<TestCollection> testSuite = {
   { create_init_test("vcu", "Run decoder test", "transcode.xclbin"), vcuKernelTest }
 };
 
+
 static std::string
-get_run_test_names(const std::string& input_name)
+get_run_test_name(const std::string& input_name)
 {
-  static std::map<std::string, std::string> long_name_to_short_name={
-      { "Aux connection",                "aux-connection"    },
-      { "PCIE link",                     "pcie-link"   },
-      { "SC version",                    "sc-version"   },
-      { "DMA",                           "dma"  },
-      { "Verify kernel",                 "verify"},
-      { "scheduler-perf-test",           "iops"  },
-      { "Bandwidth kernel",              "mem-bw"},
-      { "Peer to peer bar",              "p2p"},
-      { "Memory to memory DMA",          "m2m"},
-      { "Host memory bandwidth test",    "hostmem-bw"},
-      { "hw-scheduler-bist",             "bist"},
-      { "video-decoder-test",            "vcu"}
+  static std::map<std::string, std::string> old_name_to_new_name={
+      { "aux connection",                "aux-connection"    },
+      { "pcie link",                     "pcie-link"   },
+      { "sc version",                    "sc-version"   },
+      { "verify kernel",                 "verify"},
+      { "bandwidth kernel",              "mem-bw"},
+      { "peer to peer bar",              "p2p"},
+      { "memory to memory dma",          "m2m"},
+      { "host memory bandwidth test",    "hostmem-bw"}
   };
 
-  if (long_name_to_short_name.find(input_name) != long_name_to_short_name.end()){
-    std::cout << boost::format("\nWarning: %s is deprecated and will be removed. Replace usage with %s\n\n") % input_name % long_name_to_short_name[input_name];
-    return long_name_to_short_name[input_name];
+  std::string input_name_lc = boost::algorithm::to_lower_copy(input_name);
+
+  if (old_name_to_new_name.find(input_name_lc) != old_name_to_new_name.end()){
+    std::cout << boost::format("\nWarning: %s is deprecated and will be removed. Replace usage with %s\n\n") % input_name % old_name_to_new_name[input_name_lc];
+    return old_name_to_new_name[input_name_lc];
   }
 
-  return input_name;
+  return input_name_lc;
 }
 
 /*
@@ -1551,7 +1550,7 @@ getTestNameDescriptions(bool addAdditionOptions)
 
   // report names and description
   for (const auto & test : testSuite) {
-    std::string testName = get_run_test_names(test.ptTest.get("name", "<unknown>"));
+    std::string testName = get_run_test_name(test.ptTest.get("name", "<unknown>"));
     reportDescriptionCollection.emplace_back(testName, test.ptTest.get("description", "<no description>"));
   }
 
@@ -1628,20 +1627,19 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       throw std::runtime_error("No test given to validate against.");
 
     // Examine test entries
-    for (const auto &userTestName : testsToRun) {
-      const std::string userTestNameLC = boost::algorithm::to_lower_copy(userTestName);   // Lower case the string entry
+    for (auto &userTestName : testsToRun) {
+      userTestName = get_run_test_name(userTestName);
 
-      if ((userTestNameLC == "all") && (testsToRun.size() > 1))
+      if ((userTestName == "all") && (testsToRun.size() > 1))
         throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
 
-      if ((userTestNameLC == "quick") && (testsToRun.size() > 1))
+      if ((userTestName == "quick") && (testsToRun.size() > 1))
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
       // Validate all of the test names
       bool nameFound = false;
       for (auto &test : testNameDescription) {
-        const std::string testNameLC = boost::algorithm::to_lower_copy(test.first);
-        if (userTestNameLC.compare(testNameLC) == 0) {
+        if (userTestName.compare(test.first) == 0) {
           nameFound = true;
           break;
         }
@@ -1652,10 +1650,6 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
       }
     }
-
-    // Now lower case all of the entries
-    for (auto &userTestName : testsToRun)
-      boost::algorithm::to_lower(userTestName);   // Lower case the string entry
 
     // check if xclbin folder path is provided
     if (!xclbin_location.empty()) {
@@ -1725,7 +1719,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     }
 
     // Must be a test name, look to see if should be added
-    std::string testSuiteName = boost::algorithm::to_lower_copy(get_run_test_names(testSuite[index].ptTest.get("name","<unknown>")));
+    std::string testSuiteName = get_run_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
