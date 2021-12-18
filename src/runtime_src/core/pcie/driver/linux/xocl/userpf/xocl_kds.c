@@ -1605,6 +1605,8 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	ret = xocl_ert_ctrl_connect(xdev);
 	if (ret < 0) {
 		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
+		/*BYpass*/
+		ret = 0;
 		goto out;
 	}
 

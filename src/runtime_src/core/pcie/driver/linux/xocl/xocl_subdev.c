@@ -1683,7 +1683,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	if (!ret) {
 		int bar_payload = 0; 
 		u64 offset_payload = 0;
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VSEC;
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VMR_VSEC;
 
 		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_PAYLOAD,
 			&bar_payload, &offset_payload, NULL);
@@ -1707,7 +1707,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 		subdev_info.res[1].start = offset_payload;
 		subdev_info.res[1].end = offset_payload + 0x7ffffff;
-		subdev_info.res[1].name = NODE_XGQ_RING_BASE;
+		subdev_info.res[1].name = NODE_XGQ_PAYLOAD_BASE;
 
 		xocl_xdev_dbg(xdev,
 		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",
@@ -1715,11 +1715,11 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
 		if (ret) {
-			xocl_xdev_err(xdev, "Create XGQ subdev failed. %d", ret);
+			xocl_xdev_err(xdev, "Create VMR subdev failed. %d", ret);
 			goto done;
 		}
 
-		xocl_xdev_dbg(xdev, "VSEC XGQ created.");
+		xocl_xdev_dbg(xdev, "VSEC VMR created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);

@@ -276,7 +276,7 @@ enum {
 #define	XOCL_ACCEL_DEADLOCK_DETECTOR	"accel_deadlock"
 #define	XOCL_CFG_GPIO		"ert_cfg_gpio"
 #define	XOCL_COMMAND_QUEUE	"command_queue"
-#define	XOCL_XGQ		"xgq"
+#define	XOCL_XGQ_VMR		"xgq_vmr"
 #define	XOCL_HWMON_SDM		"hwmon_sdm"
 #define XOCL_ERT_CTRL           "ert_ctrl"
 
@@ -335,7 +335,7 @@ enum subdev_id {
 	XOCL_SUBDEV_ACCEL_DEADLOCK_DETECTOR,
 	XOCL_SUBDEV_CFG_GPIO,
 	XOCL_SUBDEV_COMMAND_QUEUE,
-	XOCL_SUBDEV_XGQ,
+	XOCL_SUBDEV_XGQ_VMR,
 	XOCL_SUBDEV_HWMON_SDM,
 	XOCL_SUBDEV_ERT_CTRL,
 	XOCL_SUBDEV_NUM
@@ -3039,7 +3039,7 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_XGQ_VSEC				\
+#define XOCL_RES_XGQ_VMR_VSEC				\
 	((struct resource []) {				\
 		{					\
 			.start	= 0x0,			\
@@ -3050,17 +3050,17 @@ struct xocl_subdev_map {
 		{					\
 			.start	= 0x0,			\
 			.end	= 0x0,			\
-	 		.name   = NODE_XGQ_RING_BASE,	\
+	 		.name   = NODE_XGQ_PAYLOAD_BASE,\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
 
-#define XOCL_DEVINFO_XGQ_VSEC				\
+#define XOCL_DEVINFO_XGQ_VMR_VSEC			\
 	{						\
-		XOCL_SUBDEV_XGQ,			\
-		XOCL_XGQ,				\
-		XOCL_RES_XGQ_VSEC,			\
-		ARRAY_SIZE(XOCL_RES_XGQ_VSEC),		\
+		XOCL_SUBDEV_XGQ_VMR,			\
+		XOCL_XGQ_VMR,				\
+		XOCL_RES_XGQ_VMR_VSEC,			\
+		ARRAY_SIZE(XOCL_RES_XGQ_VMR_VSEC),	\
 		.bar_idx = (char []){ 0, 0 },		\
 		.override_idx = -1,			\
 	}

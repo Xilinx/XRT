@@ -72,8 +72,8 @@ enum xgq_cmd_clock_req_type {
 /**
  * multi-boot operation request types
  */
-enum xgq_cmd_multiboot_req_type {
-	XGQ_CMD_BOOT_QUERY	= 0x0,
+enum xgq_cmd_vmr_control_type {
+	XGQ_CMD_VMR_QUERY	= 0x0,
 	XGQ_CMD_BOOT_DEFAULT	= 0x1,
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
 };
@@ -131,13 +131,14 @@ struct xgq_cmd_data_payload {
 };
 
 /**
- * struct xgq_cmd_multiboot_payload: multiboot request payload
+ * struct xgq_cmd_vmr_control_payload: vmr controlling ops
  *
  * @req_type:		request type
  */
-struct xgq_cmd_multiboot_payload {
+struct xgq_cmd_vmr_control_payload {
 	uint32_t req_type:8;
-	uint32_t rsvd:24;
+	uint32_t debug_level:3;
+	uint32_t rsvd:21;
 };
 
 /**
@@ -159,7 +160,7 @@ struct xgq_cmd_sq {
 		struct xgq_cmd_data_payload 		pdi_payload;
 		struct xgq_cmd_data_payload 		xclbin_payload;
 		struct xgq_cmd_log_payload 		sensor_payload;
-		struct xgq_cmd_multiboot_payload 	multiboot_payload;
+		struct xgq_cmd_vmr_control_payload 	vmr_control_payload;
 	};
 };
 
@@ -168,7 +169,7 @@ struct xgq_cmd_sq {
  *
  * @result:	result code
  */
-struct xgq_cmd_cq_vmr_payload {
+struct xgq_cmd_cq_default_payload {
 	uint32_t resvd0;
 	uint32_t resvd1;
 };
@@ -194,11 +195,12 @@ struct xgq_cmd_cq_sensor_payload {
 };
 
 /**
- * struct xgq_cmd_cq_fpt_payload: vmr multiboot fpt competion payload
+ * struct xgq_cmd_cq_vmr_payload: vmr device status payload
  *
  * bitfields for indicting flash partition statistics.
+ * vmr device status.
  */
-struct xgq_cmd_cq_multiboot_payload {
+struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_fpt:1;
 	uint16_t has_fpt_recovery:1;
 	uint16_t boot_on_default:1;
@@ -206,7 +208,9 @@ struct xgq_cmd_cq_multiboot_payload {
 	uint16_t boot_on_recovery:1;
 	uint16_t resvd1:11;
 	uint16_t multi_boot_offset;
-	uint32_t resvd2;
+	uint32_t debug_level:3;
+	uint32_t flush_progress:7;
+	uint32_t resvd2:22;
 };
 
 /*
@@ -222,12 +226,56 @@ struct xgq_cmd_cq_multiboot_payload {
 struct xgq_cmd_cq {
 	struct xgq_cmd_cq_hdr hdr;
 	union {
-		struct xgq_cmd_cq_vmr_payload		default_payload;
-		struct xgq_cmd_cq_clock_payload		clock_payload;
-		struct xgq_cmd_cq_sensor_payload	sensor_payload;
-		struct xgq_cmd_cq_multiboot_payload	multiboot_payload;
+		struct xgq_cmd_cq_default_payload	cq_default_payload;
+		struct xgq_cmd_cq_clock_payload		cq_clock_payload;
+		struct xgq_cmd_cq_sensor_payload	cq_sensor_payload;
+		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 	};
 	uint32_t rcode;
 };
 XGQ_STATIC_ASSERT(sizeof(struct xgq_cmd_cq) == 16, "xgq_cmd_cq has to be 16 bytes in size");
+
+/**
+ * XGQ memory partition table, should be positioned at shared memory offset 0,
+ *     and inited by VMR software on RPU device.
+ *
+ * We use the memory partition table for sharing info between host and RPU.
+ * Including:
+ *
+ * @vmr_magic_no:	the magic no.
+ * @ring_buffer_off:	the offset of xgq ring buffer inited by xgq server
+ * @ring_buffer_len:	the length of xgq ring buffer inited by xgq server
+ * TODO: only support hearbeat now
+ * @vmr_status_off:	the offset of vmr device status
+ * @vmr_status_len:	the length of vmr device status
+ * @log_msg_index:	the current index of ring buffer log
+ * @log_msg_buf_off:	the offset of dbg log 
+ * @log_msg_buf_len:	the length of dbg log
+ * @vmr_data_start:	the offset of data buffer started
+ * @vmr_data_end: 	the offset of data buffer ended
+ */
+struct vmr_shared_mem {
+	uint32_t	vmr_magic_no;
+	uint32_t	ring_buffer_off;
+	uint32_t	ring_buffer_len;
+	uint32_t	vmr_status_off;
+	uint32_t	vmr_status_len;
+	uint32_t	log_msg_index;
+	uint32_t	log_msg_buf_off;
+	uint32_t	log_msg_buf_len;
+	uint32_t	vmr_data_start;
+	uint32_t	vmr_data_end;
+};
+
+#define VMR_MAGIC_NO	0x564D5230 /* VMR0 */
+
+#define VMR_LOG_ENTRY_SIZE (96)
+#define VMR_LOG_MAX_RECS (50)
+
+struct vmr_log {
+	char	log_buf[VMR_LOG_ENTRY_SIZE];
+};
+
+#define LOG_BUF_LEN (sizeof(struct vmr_log) * VMR_LOG_MAX_RECS);
+
 #endif
