@@ -307,7 +307,7 @@ add_library(xdp_device_offload_plugin MODULE ${XRT_XDP_OPENCL_PROFILE_DEVICE_OFF
 add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_pl_deadlock_plugin MODULE ${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES})
 
-add_dependencies(xdp_hal_plugin xdp_core xrt_core xrt_coreutil)
+add_dependencies(xdp_hal_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_hal_api_interface_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_lop_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_native_plugin xdp_core xrt_coreutil)
@@ -318,7 +318,7 @@ add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
 add_dependencies(xdp_pl_deadlock_plugin xdp_core xrt_core xrt_coreutil)
 
-target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
+target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_hal_api_interface_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 target_link_libraries(xdp_lop_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_native_plugin PRIVATE xdp_core xrt_coreutil)

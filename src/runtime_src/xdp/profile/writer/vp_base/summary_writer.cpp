@@ -259,6 +259,8 @@ namespace xdp {
     HALAPIs.emplace("xclExecWait") ;
     HALAPIs.emplace("xclCloseContext") ;
     HALAPIs.emplace("xclGetBOProperties") ;
+    HALAPIs.emplace("xclRegWrite") ;
+    HALAPIs.emplace("xclRegRead") ;
   }
 
   void SummaryWriter::writeHeader()
