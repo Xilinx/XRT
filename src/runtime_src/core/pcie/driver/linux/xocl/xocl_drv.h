@@ -171,6 +171,12 @@
 #endif
 
 #if defined(RHEL_RELEASE_CODE)
+#if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 5)
+#define RHEL_8_5_GE
+#endif
+#endif
+
+#if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE <= RHEL_RELEASE_VERSION(7, 4)
 #define XOCL_UUID
 #endif
