@@ -185,8 +185,8 @@ public:
     size = prop.size;
   }
 
-  bo_impl(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
-    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(pid, ehdl)), free_bo(true)
+  bo_impl(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
+    : device(xrt_core::get_userpf_device(dhdl)), handle(device->import_bo(pid.pid, ehdl)), free_bo(true)
   {
     xclBOProperties prop{};
     device->get_bo_properties(handle, &prop);
@@ -504,7 +504,7 @@ public:
   //
   // This consrructor works on linux only and require pidfd support in
   // linux kernel.
-  buffer_import(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+  buffer_import(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
     : bo_impl(dhdl, pid, ehdl)
   {
     try {
@@ -859,7 +859,7 @@ alloc_import(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 }
 
 static std::shared_ptr<xrt::bo_impl>
-alloc_import_from_pid(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+alloc_import_from_pid(xclDeviceHandle dhdl, xrt::pid_type pid, xclBufferExportHandle ehdl)
 {
   return std::make_shared<xrt::buffer_import>(dhdl, pid, ehdl);
 }
@@ -931,6 +931,18 @@ group_id(const xrt::bo& bo)
   return bo.get_handle()->get_group_id();
 }
 
+xclDeviceHandle
+device_handle(const xrt::bo& bo)
+{
+    return bo.get_handle()->get_device()->get_device_handle();
+}
+
+xrt::bo::flags
+get_flags(const xrt::bo& bo)
+{
+    return bo.get_handle()->get_flags();
+}
+
 void
 fill_copy_pkt(const xrt::bo& dst, const xrt::bo& src, size_t sz,
               size_t dst_offset, size_t src_offset, ert_start_copybo_cmd* pkt)
@@ -990,7 +1002,7 @@ bo(xclDeviceHandle dhdl, xclBufferExportHandle ehdl)
 {}
 
 bo::
-bo(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl)
+bo(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl)
   : handle(xdp::native::profiling_wrapper("xrt::bo::bo",
             alloc_import_from_pid, dhdl, pid , ehdl))
 {}

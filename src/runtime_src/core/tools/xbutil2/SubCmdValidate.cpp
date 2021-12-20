@@ -247,13 +247,11 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   }
 
   //check if xclbin is present
-  if(xclbinPath.empty()) {
-    if(xclbin.compare("bandwidth.xclbin") == 0) {
-      //if an xclbin isn't present, skip the test
-      _ptTest.put("status", SKIP_TEST_TOKEN);
-    }
+  if (xclbinPath.empty() || !boost::filesystem::exists(xclbinPath)) {
+    _ptTest.put("status", SKIP_TEST_TOKEN);
     return;
   }
+
   // log xclbin path for debugging purposes
   logger(_ptTest, "Xclbin", xclbinPath);
   auto json_exists = [xclbinPath]() {

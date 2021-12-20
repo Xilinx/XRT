@@ -52,12 +52,19 @@ typedef uint32_t xrtMemoryGroup;
  * Use when constructing xrt::bo from xclBufferHandle
  */
 struct xcl_buffer_handle { xclBufferHandle bhdl; };
-  
+
 #ifdef __cplusplus
 
 namespace xrt {
 
 using memory_group = xrtMemoryGroup;
+
+/**
+ * Typed pid_t used to prevent ambiguity when contructing
+ * bo with a process id.  
+ * Use xrt::bo bo{..., pid_type{pid}, ...};
+ */  
+struct pid_type { pid_t pid; };
 
 class bo_impl;
 class bo
@@ -91,7 +98,7 @@ public:
     p2p         = XRT_BO_FLAGS_P2P,
     svm         = XRT_BO_FLAGS_SVM,
   };
-  
+
   /**
    * bo() - Constructor for empty bo
    */
@@ -217,7 +224,7 @@ public:
    * mode PTRACE_MODE_ATTACH_REALCREDS check (see ptrace(2)).
    */
   XCL_DRIVER_DLLESPEC
-  bo(xclDeviceHandle dhdl, pid_t pid, xclBufferExportHandle ehdl);
+  bo(xclDeviceHandle dhdl, pid_type pid, xclBufferExportHandle ehdl);
 
   /**
    * bo() - Constructor for sub-buffer

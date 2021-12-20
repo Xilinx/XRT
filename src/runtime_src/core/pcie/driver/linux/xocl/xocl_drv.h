@@ -2075,6 +2075,8 @@ struct xocl_xgq_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
+	int (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
+	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
@@ -2105,7 +2107,29 @@ struct xocl_xgq_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
+#define	xocl_xgq_collect_bdinfo_sensors(xdev, buf, len)		\
+	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
+#define	xocl_xgq_collect_temp_sensors(xdev, buf, len)		\
+	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
+	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
 
+struct xocl_sdm_funcs {
+	struct xocl_subdev_funcs common_funcs;
+	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev);
+};
+#define	SDM_DEV(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
+	SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->pldev : NULL)
+#define	SDM_OPS(xdev)						\
+	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
+	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
+#define	SDM_CB(xdev, cb)					\
+	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
+#define	xocl_hwmon_sdm_get_sensors_list(xdev)			\
+	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev)) : -ENODEV)
+ 
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
 #define XOCL_MSG_SUBDEV_DATA_LEN	(512 * 1024)
@@ -2606,4 +2630,7 @@ void xocl_fini_config_gpio(void);
 
 int __init xocl_init_xgq(void);
 void xocl_fini_xgq(void);
+
+int __init xocl_init_hwmon_sdm(void);
+void xocl_fini_hwmon_sdm(void);
 #endif

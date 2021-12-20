@@ -20,15 +20,29 @@
 #include "XclBinClass.h"
 
 #include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <memory>
-#include <string.h>
-#include <inttypes.h>
-#include <vector>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/format.hpp>
+#include <boost/property_tree/json_parser.hpp>
 #include <boost/uuid/uuid.hpp>          // for uuid
 #include <boost/uuid/uuid_io.hpp>       // for to_string
-#include <boost/property_tree/json_parser.hpp>
+#include <boost/version.hpp>
+#include <fstream>
+#include <inttypes.h>
+#include <iomanip>
+#include <memory>
+#include <vector>
+
+#if (BOOST_VERSION >= 106400)
+
+#ifdef _WIN32
+#define _WIN32_WINNT 0x0501
+#pragma warning (disable : 4244) // Addresses Boost conversion Windows build warnings
+#endif  
+
+#include <boost/process.hpp>
+#include <boost/process/child.hpp>
+#include <boost/process/env.hpp>
+#endif
 
 
 
@@ -937,7 +951,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
   boost::property_tree::ptree ptMemTopology;
   pMemTopology->getPayload(ptMemTopology);
-  const std::vector<boost::property_tree::ptree> memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology.get_child("mem_topology"), "m_mem_data");
+  const auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology.get_child("mem_topology"), "m_mem_data");
   if ( memTopology.empty() ) {
     std::cout << "Info: MEM_TOPOLOGY section is empty.  No action will be taken to create the GROUP_TOPOLOGY section." << std::endl;
     return;
@@ -953,7 +967,7 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
   if (pConnectivity != nullptr) {
     boost::property_tree::ptree ptConnectivity;
     pConnectivity->getPayload(ptConnectivity);
-    const std::vector<boost::property_tree::ptree> connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity.get_child("connectivity"), "m_connection");
+    const auto connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity.get_child("connectivity"), "m_connection");
     if ( connectivity.empty() ) {
       std::cout << "Info: CONNECTIVITY section is empty.  No action taken regarding creating the GROUP_CONNECTIVITY section." << std::endl;
     } else {
@@ -1020,6 +1034,79 @@ XclBinUtilities::createMemoryBankGrouping(XclBin & xclbin)
 
 
 
+#if (BOOST_VERSION >= 106400)
+int 
+XclBinUtilities::exec(const boost::filesystem::path &cmd,
+                      const std::vector<std::string> &args,
+                      bool bThrow,
+                      std::ostringstream & os_stdout,
+                      std::ostringstream & os_stderr)
+{
+  boost::process::ipstream ip_stdout;
+  boost::process::ipstream ip_stderr;
+  boost::process::child runningProcess( cmd.string(), 
+                                        args, 
+                                        boost::process::std_out > ip_stdout,
+                                        boost::process::std_err > ip_stderr,
+                                        boost::this_process::environment());
+  runningProcess.wait();
+  // boost::process::ipstream::rdbuf() gives conversion error in
+  // 1.65.1 Base class is constructed with underlying buffer so just
+  // use std::istream::rdbuf() instead.
+  std::istream& istr_stdout = ip_stdout;
+  std::istream& istr_stderr = ip_stderr;
 
+  // Update the return buffers
+  os_stdout << istr_stdout.rdbuf();
+  os_stderr << istr_stderr.rdbuf();
+
+  // Obtain the exit code from the running process
+  int exitCode = runningProcess.exit_code();
+
+  if (exitCode != 0) {
+    const std::string errMsg = boost::str(boost::format("Error: Shell command exited with a non-zero value (%d)\n"
+                                                        "     Cmd: %s %s\n"
+                                                        "  StdOut: %s\n"
+                                                        "  StdErr: %s\n")
+                                          % cmd.string() % boost::algorithm::join(args, " ")
+                                          % os_stdout.str()
+                                          % os_stderr.str());
+    if (bThrow) 
+      throw std::runtime_error(errMsg);
+  }
+
+  return exitCode;
+}
+
+#else
+int 
+XclBinUtilities::exec(const boost::filesystem::path &cmd,
+                      const std::vector<std::string> &args,
+                      bool bThrow,
+                      std::ostringstream & os_stdout,
+                      std::ostringstream & os_stderr)
+{
+  // Build the command line
+  const std::string cmdLine = cmd.string() + " " + boost::algorithm::join(args, " ");
+
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmdLine.c_str(), "r"), pclose);
+  if (!pipe) {
+    if (bThrow) 
+      throw std::runtime_error("popen() failed!");
+    return 1;
+  }
+
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) 
+    result += buffer.data();
+
+  os_stdout << result;
+
+  return 0;                   
+}
+
+
+#endif
 
 
