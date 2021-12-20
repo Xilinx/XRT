@@ -42,9 +42,9 @@ using namespace std;
 int hal_probe(XmaHwCfg *hwcfg)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
-    if (hwcfg == NULL) 
+    if (hwcfg == nullptr)
     {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is nullptr\n");
         return XMA_ERROR;
     }
 
@@ -67,8 +67,8 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t 
 bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
     std::bitset<MAX_XILINX_KERNELS> cu_mask_32bits(0xFFFFFFFF);
-    if (hwcfg == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
+    if (hwcfg == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is nullptr\n");
         return false;
     }
 
@@ -86,7 +86,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                        dev_index);
             return false;
         }
-        if (devXclbins[i].xclbin_name == NULL) {
+        if (devXclbins[i].xclbin_name == nullptr) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No xclbin provided for dev_index = %d\n",
                        dev_index);
             return false;
@@ -106,7 +106,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         hwcfg->devices.emplace_back(XmaHwDevice{});
         XmaHwDevice& dev_tmp1 = hwcfg->devices.back();
         dev_tmp1.xrt_device = xrt::device(dev_index);
-        if (dev_tmp1.xrt_device.get_handle()->get_device_handle() == NULL){
+        if (dev_tmp1.xrt_device.get_handle()->get_device_handle() == nullptr){
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
             return false;
         }

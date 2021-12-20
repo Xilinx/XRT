@@ -76,11 +76,11 @@ create_error_bo()
 {
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
-    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
+    b_obj_error.user_ptr = nullptr;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = nullptr;
     return b_obj_error;
