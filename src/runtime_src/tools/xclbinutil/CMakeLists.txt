@@ -23,6 +23,10 @@ if(NOT WIN32)
   endif()
 endif()
 
+# Need pthreads for the boost processes
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 # -----------------------------------------------------------------------------
 # Include the generated header files (e.g., version.h)
 include_directories(${CMAKE_BINARY_DIR}/gen)
@@ -45,6 +49,7 @@ file(GLOB XCLBINUTIL_FILES
   "CBOR.cxx"
   "RapidJsonUtilities.cxx"
   "KernelUtilities.cxx"
+  "ElfUtilities.cxx"
   "FormattedOutput.cxx"
   "ParameterSectionData.cxx"
   "Section.cxx"     # Note: Due to linking dependency issue, this entry needs to be before the other sections
@@ -76,8 +81,7 @@ if(NOT WIN32)
    endif()
 endif()
 
-
-target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES})
+target_link_libraries(${XCLBINUTIL_NAME} PRIVATE ${Boost_LIBRARIES} Threads::Threads)
 
 install (TARGETS ${XCLBINUTIL_NAME} RUNTIME DESTINATION ${XRT_INSTALL_UNWRAPPED_DIR})
 install (PROGRAMS ${XRT_LOADER_SCRIPTS} DESTINATION ${XRT_INSTALL_BIN_DIR})
@@ -112,9 +116,13 @@ if(NOT WIN32)
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata")
     xrt_add_test("partition_metadata" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/PartitionMetadata/SectionPartitionMetadata.py ${TEST_OPTIONS}")
 
-    # -- Fixed Kernels Metadata
+    # -- Fixed Kernels 
     set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/FixedKernel")
     xrt_add_test("fixed-kernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/FixedKernel/FixedKernel.py ${TEST_OPTIONS}")
+
+    # -- PS Kernels 
+    set(TEST_OPTIONS " --resource-dir ${CMAKE_CURRENT_SOURCE_DIR}/unittests/PSKernel")
+    xrt_add_test("ps-kernel" "${PYTHON_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/unittests/PSKernel/PSKernel.py ${TEST_OPTIONS}")
 
     endif()
 endif()

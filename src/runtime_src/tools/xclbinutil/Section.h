@@ -76,7 +76,6 @@ class Section {
   // Xclbin Binary helper methods - child classes can override them if they choose
   virtual void readXclBinBinary(std::fstream& _istream, const struct axlf_section_header& _sectionHeader);
   virtual void readXclBinBinary(std::fstream& _istream, const boost::property_tree::ptree& _ptSection);
-  void readXclBinBinary(std::fstream& _istream, enum FormatType _eFormatType);
   void readJSONSectionImage(const boost::property_tree::ptree& _ptSection);
   void readPayload(std::fstream& _istream, enum FormatType _eFormatType);
   void printHeader(std::ostream &_ostream) const;

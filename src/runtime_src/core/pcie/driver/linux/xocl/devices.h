@@ -277,6 +277,7 @@ enum {
 #define	XOCL_CFG_GPIO		"ert_cfg_gpio"
 #define	XOCL_COMMAND_QUEUE	"command_queue"
 #define	XOCL_XGQ		"xgq"
+#define	XOCL_HWMON_SDM		"hwmon_sdm"
 #define XOCL_ERT_CTRL           "ert_ctrl"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
@@ -335,6 +336,7 @@ enum subdev_id {
 	XOCL_SUBDEV_CFG_GPIO,
 	XOCL_SUBDEV_COMMAND_QUEUE,
 	XOCL_SUBDEV_XGQ,
+	XOCL_SUBDEV_HWMON_SDM,
 	XOCL_SUBDEV_ERT_CTRL,
 	XOCL_SUBDEV_NUM
 };
@@ -1788,6 +1790,15 @@ struct xocl_subdev_map {
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
 		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.override_idx = -1,			\
+	}
+
+#define	XOCL_DEVINFO_HWMON_SDM				\
+	{						\
+		XOCL_SUBDEV_HWMON_SDM,			\
+		XOCL_HWMON_SDM,				\
+		NULL,					\
+		0,					\
 		.override_idx = -1,			\
 	}
 

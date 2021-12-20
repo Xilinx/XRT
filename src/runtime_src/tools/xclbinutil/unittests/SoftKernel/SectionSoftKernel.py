@@ -81,21 +81,6 @@ def main():
 
   # ---------------------------------------------------------------------------
 
-  step = "4) Read in a soft kernel via --add-ps-kernel option"
-
-  inputKernel = os.path.join(args.resource_dir, "dummySoftKernel.txt")
-  expectedJSON = os.path.join(args.resource_dir, "expectedPSKernel.json")
-  outputJSON = "pskernel_output.json"
-  softKernelName = "my_kernel"
-  numInstances = "3"
-
-  cmd = [xclbinutil, "--add-ps-kernel", softKernelName + ":" + numInstances + ":" + inputKernel, "--dump-section", "SOFT_KERNEL[" + softKernelName + "]-METADATA:JSON:" + outputJSON, "--force"]
-  execCmd(step, cmd)
-
-  jsonFileCompare(expectedJSON, outputJSON)
-  # ---------------------------------------------------------------------------
-
-
   # If the code gets this far, all is good.
   return False
 

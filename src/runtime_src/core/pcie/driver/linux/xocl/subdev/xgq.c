@@ -133,8 +133,6 @@ struct xocl_xgq {
 	struct xgq_worker	xgq_health_worker;
 	bool			xgq_halted;
 	int 			xgq_cmd_id;
-	void			*sensor_data;
-	u32			sensor_data_length;
 	struct semaphore 	xgq_data_sema;
 	/* preserve fpt info for sysfs to display */
 	struct xgq_cmd_cq_multiboot_payload xgq_mb_payload;
@@ -1055,33 +1053,39 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ?  XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
-static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
+static struct xocl_xgq_cmd* prepare_xgq_cmd(struct xocl_xgq *xgq)
 {
 	struct xocl_xgq_cmd *cmd = NULL;
+
+	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return NULL;
+	}
+
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq = xgq;
+
+	return cmd;
+}
+
+static int xgq_collect_sensors(struct platform_device *pdev, int pid,
+							   char *data_buf, uint32_t len)
+{
+	struct xocl_xgq *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_cmd *cmd = prepare_xgq_cmd(xgq);
 	struct xgq_cmd_log_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
 
-	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
-	if (!cmd) {
-		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return -ENOMEM;
-	}
-
-	memset(cmd, 0, sizeof(*cmd));
-	cmd->xgq_cmd_cb = xgq_complete_cb;
-	cmd->xgq_cmd_arg = cmd;
-	cmd->xgq = xgq;
-
 	/* reset to all 0 first */
-	memset(xgq->sensor_data, 0, xgq->sensor_data_length);
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	/* set address offset, so that device will write data start from this offset */
-	payload->address = memcpy_to_devices(xgq,
-		xgq->sensor_data, xgq->sensor_data_length);
-	payload->size = xgq->sensor_data_length;
-	payload->pid = XGQ_CMD_SENSOR_PID_BDINFO;
+	payload->address = memcpy_to_devices(xgq, data_buf, len);
+	payload->size = len;
+	payload->pid = pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1090,6 +1094,7 @@ static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		ret = id;
 		goto done;
 	}
 	hdr->cid = id;
@@ -1114,8 +1119,7 @@ static int xgq_collect_sensor_data(struct xocl_xgq *xgq)
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 	} else {
-		memcpy_from_devices(xgq, xgq->sensor_data,
-			xgq->sensor_data_length);
+		memcpy_from_devices(xgq, data_buf, len);
 	}
 
 done:
@@ -1125,6 +1129,16 @@ done:
 	}
 
 	return ret;
+}
+
+static int xgq_collect_bdinfo_sensors(struct platform_device *pdev, char *buf, uint32_t len)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO, buf, len);
+}
+
+static int xgq_collect_temp_sensors(struct platform_device *pdev, char *buf, uint32_t len)
+{
+	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP, buf, len);
 }
 
 /* sysfs */
@@ -1254,50 +1268,8 @@ static struct attribute *xgq_attrs[] = {
 	NULL,
 };
 
-static ssize_t sensor_data_read(struct file *filp, struct kobject *kobj,
-	struct bin_attribute *attr, char *buf, loff_t off, size_t count)
-{
-	struct xocl_xgq *xgq =
-		dev_get_drvdata(container_of(kobj, struct device, kobj));
-	ssize_t ret = 0;
-
-	/* if off == 0, read data */
-	if (off == 0)
-		xgq_collect_sensor_data(xgq);
-
-	if (xgq->sensor_data == NULL)
-		goto bail;
-
-	if (off >= xgq->sensor_data_length)
-		goto bail;
-
-	if (off + count > xgq->sensor_data_length)
-		count = xgq->sensor_data_length - off;
-
-	memcpy(buf, xgq->sensor_data + off, count);
-
-	ret = count;
-bail:
-	return ret;
-}
-
-static struct bin_attribute bin_attr_sensor_data = {
-	.attr = {
-		.name = "sensor_data",
-		.mode = 0444
-	},
-	.read = sensor_data_read,
-	.size = 0
-};
-
-static struct bin_attribute *xgq_bin_attrs[] = {
-	&bin_attr_sensor_data,
-	NULL,
-};
-
 static struct attribute_group xgq_attr_group = {
 	.attrs = xgq_attrs,
-	.bin_attrs = xgq_bin_attrs,
 };
 
 static ssize_t xgq_ospi_write(struct file *filp, const char __user *udata,
@@ -1378,8 +1350,6 @@ static int xgq_remove(struct platform_device *pdev)
 	fini_worker(&xgq->xgq_complete_worker);
 	fini_worker(&xgq->xgq_health_worker);
 
-	kfree(xgq->sensor_data);
-
 	if (xgq->xgq_ring_base)
 		iounmap(xgq->xgq_ring_base);
 	if (xgq->xgq_sq_base)
@@ -1414,8 +1384,10 @@ static inline bool xgq_device_is_ready(struct xocl_xgq *xgq)
 
 static int xgq_probe(struct platform_device *pdev)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xgq *xgq = NULL;
 	struct resource *res = NULL;
+	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
 	u64 flags = 0;
 	int ret = 0, i = 0;
 	void *hdl;
@@ -1429,10 +1401,6 @@ static int xgq_probe(struct platform_device *pdev)
 
 	mutex_init(&xgq->xgq_lock);
 	sema_init(&xgq->xgq_data_sema, 1); /*TODO: improve to n based on availabity */
-
-	/*TODO: after real sensor data enabled, redefine this size */
-	xgq->sensor_data_length = 8 * 512;
-	xgq->sensor_data = kmalloc(xgq->sensor_data_length, GFP_KERNEL);
 
 	for (res = platform_get_resource(pdev, IORESOURCE_MEM, i); res;
 	    res = platform_get_resource(pdev, IORESOURCE_MEM, ++i)) {
@@ -1532,10 +1500,15 @@ static int xgq_probe(struct platform_device *pdev)
 
 	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
 
+	ret = xocl_subdev_create(xdev, &subdev_info);
+	if (ret) {
+		xocl_err(&pdev->dev, "unable to create HWMON_SDM subdev, ret: %d", ret);
+		ret = 0;
+	}
+
 	return ret;
 
 attach_failed:
-	kfree(xgq->sensor_data);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_release(xgq, &hdl);
 	xocl_drvinst_free(hdl);
@@ -1551,6 +1524,8 @@ static struct xocl_xgq_funcs xgq_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
+	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
+	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,
 };
 
 static const struct file_operations xgq_fops = {
