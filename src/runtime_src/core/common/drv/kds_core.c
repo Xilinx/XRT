@@ -1553,7 +1553,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_inf
 		 */
 
 		/* Insertion sort */
-		for (j = i; j >= 0; j--) {
+		for (j = num_cus; j >= 0; j--) {
 			struct xrt_cu_info *prev_info;
 
 			if (j == 0) {
