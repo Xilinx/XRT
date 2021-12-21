@@ -1585,7 +1585,7 @@ XclBin::setKeyValue(const std::string& _keyValue)
 
     // Now create a new tree to add back into the section
     boost::property_tree::ptree ptKeyValuesNew;
-    for (const auto keyvalue : keyValues) {
+    for (const auto &keyvalue : keyValues) {
       ptKeyValuesNew.push_back(std::make_pair("", keyvalue));
     }
 
