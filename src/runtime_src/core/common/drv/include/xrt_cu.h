@@ -2,7 +2,7 @@
 /*
  * Xilinx Unify CU Model
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -76,11 +76,14 @@ enum xcu_model {
 	XCU_ACC,
 	XCU_PLRAM,
 	XCU_FA,
+	XCU_XGQ,
+	XCU_AUTO,
 };
 
 enum xcu_config_type {
 	CONSECUTIVE_T,
 	PAIRS_T,
+	XGQ_T,
 };
 
 enum xcu_process_result {
@@ -134,8 +137,9 @@ struct xcu_funcs {
 	 *
 	 * 1. CONSECUTIVE: Which is a blind copy from data to CU.
 	 * 2. PAIRS: The data contains {offset, val} pairs.
+	 * 3. XGQ: The data contains a XGQ command.
 	 */
-	void (*configure)(void *core, u32 *data, size_t sz, int type);
+	int (*configure)(void *core, u32 *data, size_t sz, int type);
 
 	/**
 	 * @start:
@@ -225,6 +229,7 @@ struct xrt_cu_info {
 	u32			 num_args;
 	char			 iname[32];
 	char			 kname[32];
+	void			*xgq;
 };
 
 struct per_custat {
@@ -354,9 +359,9 @@ static u32 inline xrt_cu_clear_intr(struct xrt_cu *xcu)
 	return xcu->funcs ? xcu->funcs->clear_intr(xcu->core) : 0;
 }
 
-static inline void xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type)
+static inline int xrt_cu_config(struct xrt_cu *xcu, u32 *data, size_t sz, int type)
 {
-	xcu->funcs->configure(xcu->core, data, sz, type);
+	return xcu->funcs->configure(xcu->core, data, sz, type);
 }
 
 static inline void xrt_cu_start(struct xrt_cu *xcu)
@@ -445,6 +450,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr);
 int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr, u32 num_slots);
 int xrt_is_fa(struct xrt_cu *xcu, u32 *size);
 int xrt_cu_get_protocol(struct xrt_cu *xcu);
+u32 xrt_cu_get_status(struct xrt_cu *xcu);
 int xrt_cu_regmap_size(struct xrt_cu *xcu);
 
 int  xrt_cu_init(struct xrt_cu *xcu);

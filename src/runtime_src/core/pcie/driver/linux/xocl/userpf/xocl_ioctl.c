@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
  *
@@ -518,6 +518,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		XDEV(xdev)->ksize = axlf_ptr->ksize;
 		XDEV(xdev)->kernels = kernels;
 	}
+
+	xocl_ert_ctrl_disconnect(xdev);
 
 	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	/*
