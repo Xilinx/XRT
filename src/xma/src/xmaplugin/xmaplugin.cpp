@@ -22,7 +22,7 @@
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
 #include "core/common/api/bo.h"
-#include "core/common/error.h"
+#include "core/common/device.h"
 
 #include <algorithm>
 #include <chrono>
@@ -76,11 +76,11 @@ create_error_bo()
 {
     XmaBufferObj b_obj_error;
     b_obj_error.data = nullptr;
-    //b_obj_error.ref_cnt = 0;
     b_obj_error.size = 0;
     b_obj_error.paddr = 0;
     b_obj_error.bank_index = -1;
     b_obj_error.dev_index = -1;
+    b_obj_error.user_ptr = nullptr;
     b_obj_error.device_only_buffer = false;
     b_obj_error.private_do_not_touch = nullptr;
     return b_obj_error;
@@ -100,7 +100,7 @@ XmaBufferObj  create_xma_buffer_object(XmaSession s_handle, size_t size, bool de
         return b_obj_error;
     }
     auto priv1 = reinterpret_cast<XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
-    xclDeviceHandle dev_handle = priv1->dev_handle;
+    auto dev_handle = priv1->dev_handle;
     
     b_obj.bank_index = ddr_bank;
     b_obj.size = size;
@@ -520,7 +520,7 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
 # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 	/* This is no longer supported by new KDS implementation. */
-        if (xclExecBufWithWaitList(priv1->dev_handle, 
+        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
                         priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
@@ -532,11 +532,12 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             return cmd_obj_error;
         }
     } else {
-        if (xclExecBuf(priv1->dev_handle, 
-                        priv1->kernel_execbos[bo_idx].handle) != 0)
-        {
+        try {
+            priv1->dev_handle.get_handle()->exec_buf(priv1->kernel_execbos[bo_idx].handle);
+        }
+        catch (const xrt_core::system_error&) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                        "Failed to submit kernel start with xclExecBuf");
+                "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
@@ -548,9 +549,6 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     cmd_obj_default(cmd_obj);
     cmd_obj.cu_index = kernel_tmp1->cu_index;
     cmd_obj.do_not_use1 = s_handle.session_signature;
-
-
-
 
     bool found = false;
     while(!found) {
@@ -627,8 +625,10 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 	    //Obtain lock only for a) singleton changes & b) kernel_info changes
             std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
             //Singleton lock acquired
-
-            if (xclOpenContext(dev_tmp1->handle, dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true) != 0) {
+            try {
+                dev_tmp1->xrt_device.get_handle()->open_context(dev_tmp1->uuid, kernel_tmp1->cu_index_ert, true);
+            }
+            catch (const xrt_core::system_error&) {
                 xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Failed to open context to CU %s for this session", kernel_tmp1->name);
                 if (return_code) *return_code = XMA_ERROR;
                 return cmd_obj_error;
@@ -761,7 +761,7 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
 # pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 	/* This is no longer supported by new KDS implementation. */
-        if (xclExecBufWithWaitList(priv1->dev_handle, 
+        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
                         priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
 #ifdef __GNUC__
 # pragma GCC diagnostic pop
@@ -773,11 +773,12 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             return cmd_obj_error;
         }
     } else {
-        if (xclExecBuf(priv1->dev_handle, 
-                        priv1->kernel_execbos[bo_idx].handle) != 0)
-        {
+        try {
+            priv1->dev_handle.get_handle()->exec_buf(priv1->kernel_execbos[bo_idx].handle);
+        }
+        catch (const xrt_core::system_error&) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                        "Failed to submit kernel start with xclExecBuf");
+                "Failed to submit kernel start with xclExecBuf");
             priv1->execbo_locked = false;
             if (return_code) *return_code = XMA_ERROR;
             return cmd_obj_error;
@@ -918,7 +919,7 @@ int32_t xma_plg_cu_cmd_status(XmaSession s_handle, XmaCUCmdObj* cmd_obj_array, i
             } else if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
                 std::this_thread::yield();
             } else {
-                xclExecWait(priv1->dev_handle, 100);
+                priv1->dev_handle.get_handle()->exec_wait(100);
             }
         }
     } while(!all_done);
@@ -1102,8 +1103,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
             if (tmp_num_cmds == 0 && count == 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. There may not be any outstandng CU command to wait for\n", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
             }
-
-            xclExecWait(priv1->dev_handle, timeout1);
+            priv1->dev_handle.get_handle()->exec_wait(timeout1);
             iter1--;
         }
         xma_logmsg(XMA_WARNING_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. CU cmd is still pending. Cu might be stuck", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
@@ -1150,7 +1150,7 @@ int32_t xma_plg_is_work_item_done(XmaSession s_handle, uint32_t timeout_ms)
     
         // Wait for a notification
         if (give_up > 10) {
-            xclExecWait(priv1->dev_handle, timeout1);
+            priv1->dev_handle.get_handle()->exec_wait(timeout1);
             tmp_num_cmds = priv1->num_cu_cmds;
             count = priv1->kernel_complete_count;
             if (count) {
@@ -1351,5 +1351,5 @@ void* xma_plg_get_dev_handle(XmaSession s_handle) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "xma_plg_get_dev_handle failed. XMASession is corrupted.");
         return nullptr;
     }
-    return priv1->dev_handle;
+    return priv1->dev_handle.get_handle()->get_device_handle();
 }
