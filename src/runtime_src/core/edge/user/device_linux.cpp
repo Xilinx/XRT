@@ -240,10 +240,10 @@ struct aie_shim_info : aie_metadata
   }
 };
 
-struct kds_cu_stat
+struct kds_cu_info
 {
-  using result_type = query::kds_cu_stat::result_type;
-  using data_type = query::kds_cu_stat::data_type;
+  using result_type = query::kds_cu_info::result_type;
+  using data_type = query::kds_cu_info::data_type;
 
   static result_type
   get(const xrt_core::device* device, key_type)
@@ -283,34 +283,6 @@ struct kds_cu_stat
       data.usages    = std::stoul(std::string(*tok_it++));
 
       cuStats.push_back(std::move(data));
-    }
-
-    return cuStats;
-  }
-};
-
-struct kds_cu_info
-{
-  using result_type = query::kds_cu_info::result_type;
-
-  static result_type
-  get(const xrt_core::device* device, key_type key)
-  {
-    auto edev = get_edgedev(device);
-
-    std::vector<std::string> stats;
-    std::string errmsg;
-    edev->sysfs_get("kds_custat", errmsg, stats);
-    if (!errmsg.empty())
-      throw xrt_core::query::sysfs_error(errmsg);
-
-    result_type cuStats;
-    for (auto& line : stats) {
-        uint32_t base_address = 0;
-        uint32_t usages = 0;
-        uint32_t status = 0;
-        sscanf(line.c_str(), "CU[@0x%x] : %d status : %d", &base_address, &usages, &status);
-        cuStats.push_back(std::make_tuple(base_address, usages, status));
     }
 
     return cuStats;
@@ -670,7 +642,6 @@ initialize_query_table()
   emplace_func0_request<query::clock_freqs_mhz,         dev_info>();
   emplace_func0_request<query::aie_core_info,		aie_core_info>();
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
-  emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
 
   emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
@@ -687,8 +658,7 @@ initialize_query_table()
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
 
-  emplace_sysfs_get<query::kds_mode>                    ("kds_mode");
-  emplace_func0_request<query::kds_cu_stat,             kds_cu_stat>();
+  emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();
 
   emplace_func4_request<query::aim_counter,             aim_counter>();

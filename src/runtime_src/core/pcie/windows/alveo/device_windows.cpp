@@ -1026,6 +1026,7 @@ struct rom
 struct kds_cu_info
 {
   using result_type = query::kds_cu_info::result_type;
+  using data_type = query::kds_cu_info::data_type;
 
   static XOCL_KDS_CU_INFORMATION*
     init_kds_custat(const xrt_core::device* dev)
@@ -1054,8 +1055,19 @@ struct kds_cu_info
 
     auto& stats = (*it).second;
     result_type cuStats;
-    for (unsigned int i = 0; i < stats->CuCount; i++)
-      cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+    for (unsigned int i = 0; i < stats->CuCount; i++) {
+      data_type data;
+      // Assume elements of CuInfo[] are in CU indexing order.
+      data.index = i;
+      // TODO: CuInfo should contain CU name, but it is not there today
+      data.name = "kernel:cu_" + std::to_string(i);
+      data.base_addr = stats->CuInfo[i].BaseAddress;
+      data.usages = stats->CuInfo[i].Usage;
+      data.status = 0;
+
+      //cuStats.push_back(std::make_tuple(stats->CuInfo[i].BaseAddress, stats->CuInfo[i].Usage, 0));
+      cuStats.push_back(data);
+    }
     return cuStats;
   }
 

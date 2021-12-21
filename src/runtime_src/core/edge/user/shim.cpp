@@ -52,6 +52,7 @@
 
 #include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/aie_profile.h"
+#include "plugin/xdp/pl_deadlock.h"
 #endif
 
 namespace {
@@ -933,74 +934,12 @@ int
 shim::
 xclIPName2Index(const char *name)
 {
-  //if kds_mode is enabled, use kds_cu_stat to get the ip index. 
-  //if kds_mode is disabled get cu index from get_cus function
+  for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_info>(mCoreDevice))
+    if (stat.name == name)
+      return stat.index;
 
-  // In new kds, driver determines CU index
-  try {
-    if (xrt_core::device_query<xrt_core::query::kds_mode>(mCoreDevice)) {
-      for (auto& stat : xrt_core::device_query<xrt_core::query::kds_cu_stat>(mCoreDevice))
-        if (stat.name == name)
-          return stat.index;
-
-      xclLog(XRT_ERROR, "%s not found", name);
-      return -ENOENT;
-    }
-  }
-  catch (const xrt_core::query::no_such_key&) {
-  }
-
-  // Old kds is enabled
-  std::string errmsg;
-  std::vector<char> buf;
-  const uint64_t bad_addr = 0xffffffffffffffff;
-
-  mDev->sysfs_get("ip_layout", errmsg, buf);
-  if (!errmsg.empty()) {
-    xclLog(XRT_ERROR, "can't read ip_layout sysfs node: %s",
-           errmsg.c_str());
-    return -EINVAL;
-  }
-  if (buf.empty())
-  {
-    xclLog(XRT_ERROR, "ip_layout sysfs node is empty");
-    return -ENOENT;
-  }
-
-  const ip_layout *map = (ip_layout *)buf.data();
-  if(map->m_count < 0) {
-    xclLog(XRT_ERROR, "invalid ip_layout sysfs node content");
-    return -EINVAL;
-  }
-
-  uint64_t addr = bad_addr;
-  int i;
-  for(i = 0; i < map->m_count; i++) {
-    if (strncmp((char *)map->m_ip_data[i].m_name, name,
-                sizeof(map->m_ip_data[i].m_name)) == 0) {
-      addr = map->m_ip_data[i].m_base_address;
-      break;
-    }
-  }
-
-  if (i == map->m_count)
-  {
-    xclLog(XRT_ERROR, "no ip with %s found in ip_layout", name);
-    return -ENOENT;
-  }
-
-  if (addr == bad_addr)
-    return -EINVAL;
-
-  auto cus = xrt_core::xclbin::get_cus(map);
-  auto itr = std::find(cus.begin(), cus.end(), addr);
-  if (itr == cus.end())
-  {
-    xclLog(XRT_ERROR, "no cu with 0x%lx found", addr);
-    return -ENOENT;
-  }
-  return std::distance(cus.begin(),itr);
-
+  xclLog(XRT_ERROR, "%s not found", name);
+  return -ENOENT;
 }
 
 int
@@ -1831,8 +1770,9 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
 
 #ifndef __HWEM__
-    xdp::hal::flush_device(handle) ;
-    xdp::aie::flush_device(handle) ;
+    xdp::hal::flush_device(handle);
+    xdp::aie::flush_device(handle);
+    xdp::pl_deadlock::flush_device(handle);
 #endif
 
     int ret;
@@ -1878,6 +1818,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::hal::update_device(handle) ;
     xdp::aie::update_device(handle);
     xdp::aie::ctr::update_device(handle);
+    xdp::pl_deadlock::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
 #endif

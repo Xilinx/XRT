@@ -22,16 +22,12 @@
 
 /* for sysfs */
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,
-		   int kds_mode, u32 clients, int *echo)
+		   int *echo)
 {
 	u32 enable;
 	u32 live_clients;
 
-	if (kds)
-		live_clients = kds_live_clients(kds, NULL);
-	else
-		live_clients = clients;
-
+	live_clients = kds_live_clients(kds, NULL);
 	/* Ideally, KDS should be locked to reject new client.
 	 * But, this node is hidden for internal test purpose.
 	 * Let's refine it after new KDS is the default and

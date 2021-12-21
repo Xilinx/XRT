@@ -11,3 +11,16 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 endif()
 
 install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
+if (${XRT_NATIVE_BUILD} STREQUAL "yes")
+  if (NOT WIN32)
+    # Use PROGRAMS to allow for execution. This is recommended in the CMake documentation
+    # https://cmake.org/cmake/help/latest/command/install.html#files
+    # This is used for the setup script to enable auto completion
+    install (PROGRAMS "./xbmgmt2/xbmgmt-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+    install (PROGRAMS "./xbmgmt2/xbmgmt-csh-completion" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+    install (PROGRAMS "./xbmgmt2/xbmgmt-csh-completion-wrapper" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+    install (PROGRAMS "./xbutil2/xbutil-bash-completion" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+    install (PROGRAMS "./xbutil2/xbutil-csh-completion" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+    install (PROGRAMS "./xbutil2/xbutil-csh-completion-wrapper" DESTINATION "${XRT_INSTALL_DIR}/share/completions")
+  endif()
+endif()
