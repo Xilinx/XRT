@@ -73,13 +73,15 @@ namespace xdp {
     uint8_t resetEvent;
     uint16_t startEvent;
     uint16_t endEvent;
+    uint32_t payload;
     double clockFreqMhz;
     std::string module;
     std::string name;
 
     AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
-               double freq, std::string mod, std::string aieName)
+               uint32_t load, double freq, std::string mod, 
+               std::string aieName)
       : id(i),
         column(col),
         row(r),
@@ -87,6 +89,7 @@ namespace xdp {
         resetEvent(reset),
         startEvent(start),
         endEvent(end),
+        payload(load),
         clockFreqMhz(freq),
         module(mod),
         name(aieName)
@@ -565,8 +568,8 @@ class aie_cfg_tile
     void addTraceGMIO(uint32_t i, uint16_t col, uint16_t num, uint16_t stream,
           uint16_t len) ;
     void addAIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num,
-           uint16_t start, uint16_t end, uint8_t reset, double freq, 
-           const std::string& mod, const std::string& aieName) ;
+           uint16_t start, uint16_t end, uint8_t reset, uint32_t load,
+           double freq, const std::string& mod, const std::string& aieName) ;
     void addAIECounterResources(uint32_t numCounters, uint32_t numTiles, uint8_t moduleType) {
       if (moduleType == 0)
         aieCoreCountersMap[numCounters] = numTiles;
@@ -1066,15 +1069,14 @@ class aie_cfg_tile
     }
 
     inline void addAIECounter(uint64_t deviceId, uint32_t i, uint16_t col,
-            uint16_t r, uint8_t num, uint16_t start,
-            uint16_t end, uint8_t reset, double freq,
-            const std::string& mod,
+            uint16_t r, uint8_t num, uint16_t start, uint16_t end, 
+            uint8_t reset, uint32_t load, double freq, const std::string& mod, 
             const std::string& aieName)
     {
       if (deviceInfo.find(deviceId) == deviceInfo.end())
         return ;
       deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
-                freq, mod, aieName) ;
+                load, freq, mod, aieName) ;
     }
 
     inline void addAIECounterResources(uint64_t deviceId, uint32_t numCounters, uint32_t numTiles, bool isCore) {
