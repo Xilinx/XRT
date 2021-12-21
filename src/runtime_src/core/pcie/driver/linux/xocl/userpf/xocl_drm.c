@@ -493,7 +493,7 @@ static struct drm_driver mm_drm_driver = {
 	.postclose			= xocl_client_release,
 	.open				= xocl_client_open,
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) && !defined(RHEL_8_5_GE)
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0)
 		.gem_free_object_unlocked       = xocl_free_object,
 	#else
@@ -501,7 +501,7 @@ static struct drm_driver mm_drm_driver = {
 	#endif
 #endif
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) && !defined(RHEL_8_5_GE)
         .gem_vm_ops                     = &xocl_vm_ops,
         .gem_prime_get_sg_table         = xocl_gem_prime_get_sg_table,
         .gem_prime_vmap                 = xocl_gem_prime_vmap,
@@ -527,7 +527,7 @@ static struct drm_driver mm_drm_driver = {
 	.date				= driver_date,
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(RHEL_8_5_GE)
 const struct drm_gem_object_funcs xocl_gem_object_funcs = {
         .free = xocl_free_object,
         .vm_ops = &xocl_vm_ops,

@@ -418,6 +418,15 @@ static void csr_write32(struct platform_device *pdev, u32 val, u32 off)
 	iowrite32(val, intc->csr_base + off);
 }
 
+static void __iomem *get_csr_base(struct platform_device *pdev)
+{
+	struct xocl_intc *intc = platform_get_drvdata(pdev);
+
+	if (!intc->csr_base)
+		return NULL;
+	return intc->csr_base;
+}
+
 static int sel_ert_intr(struct platform_device *pdev, int mode)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -667,6 +676,7 @@ static struct xocl_intc_funcs intc_ops = {
 	.request_intr	= request_intr,
 	.config_intr	= config_intr,
 	.sel_ert_intr	= sel_ert_intr,
+	.get_csr_base	= get_csr_base,
 	/* Below two ops only used in ERT sub-device polling mode(for debug) */
 	.csr_read32	= csr_read32,
 	.csr_write32	= csr_write32,

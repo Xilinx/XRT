@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2019 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: Sonal Santan
  *
@@ -23,6 +23,7 @@
 #endif
 #include "version.h"
 #include "common.h"
+#include "mailbox_proto.h"
 
 #if defined(XOCL_UUID)
 xuid_t uuid_null = NULL_UUID_LE;
@@ -518,6 +519,8 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		XDEV(xdev)->kernels = kernels;
 	}
 
+	xocl_ert_ctrl_disconnect(xdev);
+
 	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	/*
 	 * Don't just bail out here, always recreate drm mem
@@ -577,6 +580,15 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 {
 	struct xocl_drm *drm_p = dev->dev_private;
 	struct xocl_dev *xdev = drm_p->xdev;
+	uint64_t chan_disable = 0;
+
+	/*
+	 * if the reset mailbox opcode is disabled, we don't allow
+	 * user run 'xbutil reset'
+	 */
+	xocl_mailbox_get(xdev, CHAN_DISABLE, &chan_disable);
+	if (chan_disable & (1 << XCL_MAILBOX_REQ_HOT_RESET))
+		return -EOPNOTSUPP;
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);

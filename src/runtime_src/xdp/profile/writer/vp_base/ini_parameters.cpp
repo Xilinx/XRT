@@ -83,6 +83,11 @@ namespace xdp {
     addParameter("aie_profile_memory_metrics",
                  xrt_core::config::get_aie_profile_memory_metrics(),
                  "Metric set for AI Engine memory modules");
+    addParameter("aie_status", xrt_core::config::get_aie_status(),
+                 "Generation of AI Engine debug/status");
+    addParameter("aie_status_interval_us",
+                 xrt_core::config::get_aie_status_interval_us(),
+                 "Interval for reading AI Engine debug/status registers (in us)");
     addParameter("vitis_ai_profile", xrt_core::config::get_vitis_ai_profile(),
                  "Generation of Vitis AI summary and trace (Vitis AI designs only)");
   }

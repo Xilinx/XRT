@@ -534,11 +534,11 @@ SchemaTransformToPM_pcie( const boost::property_tree::ptree& _ptOriginal,
 
     // -- Transform 'reg' to 'offset' and 'range'
     if (_ptBarOriginalEntry.find("reg") != _ptBarOriginalEntry.not_found()) {
-      std::vector<std::string> regVector = as_vector<std::string>(_ptBarOriginalEntry, "reg");
+      auto regVector = as_vector<std::string>(_ptBarOriginalEntry, "reg");
 
       if (regVector.size() == 2) {
-	ptBarEntry.put("offset", regVector[0].c_str());
-	ptBarEntry.put("range", regVector[1].c_str());
+        ptBarEntry.put("offset", regVector[0].c_str());
+        ptBarEntry.put("range", regVector[1].c_str());
       }
     }
 
@@ -560,7 +560,7 @@ SchemaTransformToPM_interrupt_endpoint( const boost::property_tree::ptree& _ptOr
 
   // -- Transform 'interrupts" to the addressable_endpoint array format
   if (_ptOriginal.find("interrupts") != _ptOriginal.not_found()) {
-    std::vector<std::string> interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
+    auto interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
 
     if ((interruptVector.size() % 2) != 0) 
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".interrupts' doesn't have and even set of items.");
@@ -621,7 +621,7 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
 {
   // -- Transform 'reg' to 'offset' and 'range'
   if (_ptOriginal.find("reg") != _ptOriginal.not_found()) {
-    std::vector<std::string> regVector = as_vector<std::string>(_ptOriginal, "reg");
+    auto regVector = as_vector<std::string>(_ptOriginal, "reg");
     
     if (regVector.size() != 2) {
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".reg' doesn't have 2 items.");
@@ -638,7 +638,7 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
   // Example: (new)  xilinx.com,reg_abs-xdma_msix-1.0 xdma_msix
   //          (old)  xilinx.com,reg_abs-1.0           xdma_msix
   if (_ptOriginal.find("compatible") != _ptOriginal.not_found()) {
-    std::vector<std::string> compatableVector = as_vector<std::string>(_ptOriginal, "compatible");
+    auto compatableVector = as_vector<std::string>(_ptOriginal, "compatible");
     if (compatableVector.size() != 2) {
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".compatible' doesn't have 2 items.");
     }
@@ -665,7 +665,7 @@ SchemaTransformToPM_addressable_endpoint( const std::string _sEndPointName,
 
   // -- Transform 'interrupts" to 'msix_interrupt_start_index' and 'msix_interrupt_end_index'
   if (_ptOriginal.find("interrupts") != _ptOriginal.not_found()) {
-    std::vector<std::string> interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
+    auto interruptVector = as_vector<std::string>(_ptOriginal, "interrupts");
 
     if (interruptVector.size() != 2) {
       throw std::runtime_error("Error: 'addressable_endpoints." + _sEndPointName + ".interrupts' doesn't have 2 items.");

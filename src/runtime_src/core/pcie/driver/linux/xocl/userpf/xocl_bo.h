@@ -195,7 +195,7 @@ struct sg_table *xocl_gem_prime_get_sg_table(struct drm_gem_object *obj);
 struct drm_gem_object *xocl_gem_prime_import_sg_table(struct drm_device *dev,
 	struct dma_buf_attachment *attach, struct sg_table *sgt);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0) && !defined(RHEL_8_5_GE)
 void *xocl_gem_prime_vmap(struct drm_gem_object *obj);
 void xocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr);
 #else

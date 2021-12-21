@@ -66,7 +66,7 @@ child(const std::string& device_id, pid_t pid)
   std::cout << "child fd: " << fd << '\n';
   
   xrt::device device{device_id};
-  xrt::bo bo{device, pid, fd};
+  xrt::bo bo{device, xrt::pid_type{pid}, fd};
 
   try {
     auto bo_data = bo.map<char*>();
