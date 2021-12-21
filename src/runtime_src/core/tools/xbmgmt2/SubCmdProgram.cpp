@@ -463,7 +463,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
   // Collect all indexes of boards need updating
   std::vector<std::pair<unsigned int , DSAInfo>> boardsToUpdate;
 
-  std::string image_path;
+  std::string image_path = image;
   if(image.empty()) {
     static boost::property_tree::ptree ptEmpty;
     auto available_shells = pt.get_child(std::to_string(workingDevice->get_device_id()) + ".platform.available_shells", ptEmpty);
@@ -480,27 +480,6 @@ auto_flash(std::shared_ptr<xrt_core::device> & workingDevice, const std::string&
       throw xrt_core::error(std::errc::operation_canceled);
     }
     image_path = available_shells.front().second.get<std::string>("file");
-  }
-  else {
-    //iterate over installed shells
-    //check the vbnv against the vnbv passed in by the user
-    auto installedShells = firmwareImage::getIntalledDSAs();
-    int multiple_shells = 0;
-      
-    for(auto const& shell : installedShells) {
-      if(image.compare(shell.name) == 0) {
-        multiple_shells++;
-        image_path = shell.file;
-      }
-    }
-
-    //if multiple shells with the same vbnv are installed on the system, we don't want to 
-    //blindly update the device. in this case, the user needs to specify the complete path
-    if(multiple_shells > 1) 
-      throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
-
-    if(multiple_shells == 0) 
-      throw xrt_core::error("Specified base not found on the system");
   }
     
   DSAInfo dsa(image_path);
@@ -810,39 +789,44 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (deviceCollection.size() == 0) 
     throw std::runtime_error("No devices found.");
 
-  // Get the device
-  auto & workingDevice = deviceCollection[0];
-  const auto validated_images = find_flash_image_paths(image);
   if (!update.empty()) {
-    XBU::verbose("Sub command: --base");
-    XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
-
-    if (update.compare("all") == 0){
-      if (validated_images.empty())
-        auto_flash(workingDevice);
+    // Get a list of images known exist
+    const auto validated_images = find_flash_image_paths(image);
+    if (validated_images.size() <= 2) {
+      // Get the device
+      auto & workingDevice = deviceCollection[0];
+      XBU::verbose("Sub command: --base");
+      XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
+      if (update.compare("all") == 0) {
+        if (validated_images.empty())
+          auto_flash(workingDevice);
+        else if(boost::filesystem::extension(validated_images[0]).compare(".xsabin") == 0)
+          auto_flash(workingDevice, flashType, validated_images[0]);
+        else
+          throw xrt_core::error("Please provide a valid xsabin file or specify a specific base to flash");
+      }
+      else if (update.compare("sc") == 0) {
+          if (!validated_images.empty())
+            update_SC(workingDevice.get()->get_device_id(), validated_images[0]);
+          else
+            throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base sc --image='/path/to/flash_image");
+      }
+      else if (update.compare("shell") == 0) {
+          if (!validated_images.empty())
+            update_shell(workingDevice.get()->get_device_id(), validated_images, flashType);
+          else
+            throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base shell --image='/path/to/flash_image OR shell_name'");
+      }
       else
-        auto_flash(workingDevice, flashType, validated_images[0]);
-    }
-    else if (update.compare("sc") == 0){
-        if (!validated_images.empty())
-          update_SC(workingDevice.get()->get_device_id(), validated_images[0]);
-        else
-          throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base sc --image='/path/to/flash_image");
-    }
-    else if (update.compare("shell") == 0){
-        if (!validated_images.empty())
-          update_shell(workingDevice.get()->get_device_id(), validated_images, flashType);
-        else
-          throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base shell --image='/path/to/flash_image OR shell_name'");
+        throw xrt_core::error("Please specify a valid value");
     }
     else
-      throw xrt_core::error("Please specify a valid value");
-
+      throw xrt_core::error("Please specify either 1 or 2 flash images");
     return;
   }
   
   // -- process "revert-to-golden" option ---------------------------------------
-  if(revertToGolden) {
+  if (revertToGolden) {
     XBU::verbose("Sub command: --revert-to-golden");
     bool has_reset = false;
 
