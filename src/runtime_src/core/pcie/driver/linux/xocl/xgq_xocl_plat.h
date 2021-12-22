@@ -14,6 +14,8 @@
 #ifndef	_XGQ_XOCL_PLAT_H_
 #define	_XGQ_XOCL_PLAT_H_
 
+#include <asm/io.h>
+
 static inline void xgq_mem_write32(uint64_t io_hdl, uint64_t addr, uint32_t val)
 {
 	iowrite32(val, (void __iomem *)addr);
