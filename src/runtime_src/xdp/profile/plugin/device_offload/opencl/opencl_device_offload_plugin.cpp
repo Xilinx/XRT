@@ -19,20 +19,23 @@
 #include <string>
 
 // Includes from xrt_coreutil
-#include "core/common/system.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
 #include "core/common/xclbin_parser.h"
 
 // Includes from xilinxopencl
-#include "xocl/core/platform.h"
 #include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 
 // Includes from XDP
-#include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/database/static_info/device_info.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
+#include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/writer/vp_base/vp_writer.h"
 
 // Anonymous namespace for helper functions used only in this file
@@ -310,7 +313,7 @@ namespace xdp {
     if (storedDevice == nullptr) return ;
     XclbinInfo* xclbin = storedDevice->currentXclbin() ;
     if (xclbin == nullptr) return ;
-    for (auto iter : xclbin->cus)
+    for (auto iter : xclbin->pl.cus)
     {
       ComputeUnitInstance* cu = iter.second ;
 

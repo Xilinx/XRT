@@ -506,6 +506,10 @@ public:
   // Throws if argument handle is not from xrtBOAlloc variant
   XCL_DRIVER_DLLESPEC
   bo(xrtBufferHandle);
+
+  bo(std::shared_ptr<bo_impl> impl)
+    : handle(std::move(impl))
+  {}
   /// @endcond
 private:
   std::shared_ptr<bo_impl> handle;

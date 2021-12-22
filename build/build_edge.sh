@@ -289,10 +289,10 @@ if [[ $full == 1 ]]; then
   $PETA_BIN/petalinux-build
 else
 #Run just xrt build if -full option is not provided
-  echo "[CMD]: petalinux-build -c xrt"
-  $PETA_BIN/petalinux-build -c xrt
   echo "[CMD]: petalinux-build -c zocl"
   $PETA_BIN/petalinux-build -c zocl
+  echo "[CMD]: petalinux-build -c xrt"
+  $PETA_BIN/petalinux-build -c xrt
 fi
 
 if [ $? != 0 ]; then

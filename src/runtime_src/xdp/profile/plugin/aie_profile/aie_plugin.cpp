@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,19 +16,20 @@
 
 #define XDP_SOURCE
 
-#include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/plugin/aie_profile/aie_plugin.h"
-#include "xdp/profile/writer/aie_profile/aie_writer.h"
+#include <boost/algorithm/string.hpp>
 
+#include "core/common/config_reader.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
 #include "core/common/time.h"
-#include "core/common/config_reader.h"
-#include "core/include/experimental/xrt-next.h"
 #include "core/edge/user/shim.h"
-#include "xdp/profile/database/database.h"
+#include "core/include/experimental/xrt-next.h"
 
-#include <boost/algorithm/string.hpp>
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/plugin/aie_profile/aie_plugin.h"
+#include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 #define NUM_CORE_COUNTERS     4
 #define NUM_MEMORY_COUNTERS   2
@@ -577,7 +578,7 @@ namespace xdp {
                                  XAIEGBL_MEM_DMABD6CTRL_LEN_MASK, XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
 
     auto tileOffset = _XAie_GetTileAddr(aieDevInst, row + 1, column);
-    for (int bd=0; bd < NUM_BDS; ++bd) {
+    for (int bd = 0; bd < NUM_BDS; ++bd) {
       uint32_t regValue = 0;
       XAie_Read32(aieDevInst, tileOffset + offsets[bd], &regValue);
       uint32_t bdBytes = BYTES_PER_WORD * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,20 +16,23 @@
 
 #define XDP_SOURCE
 
+#include <iostream>
+
+#include "core/common/message.h"
+
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/device/aie_trace/aie_trace_logger.h"
+#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/tracedefs.h"
 
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/device/aie_trace/aie_trace_offload.h"
-#include "xdp/profile/device/aie_trace/aie_trace_logger.h"
-
-#include <iostream>
 #ifdef XRT_ENABLE_AIE
 #include <sys/mman.h>
 #include "core/include/xrt.h"
 #include "core/edge/user/shim.h"
 #endif
-#include "core/common/message.h"
+
 
 // Default dma chunk size
 #define CHUNK_SZ (MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE)
