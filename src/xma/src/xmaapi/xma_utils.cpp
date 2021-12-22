@@ -26,6 +26,7 @@
 #include "core/pcie/linux/scan.h"
 #include "core/common/utils.h"
 #include "core/common/api/bo.h"
+#include "core/common/device.h"
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -111,20 +112,15 @@ namespace xma_core {
         for (int32_t d = 0; d < count; d++) {
             xclBufferHandle  bo_handle = 0;
             int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            //uint32_t  execBO_flags = (1<<31);
             char     *bo_data;
-            bo_handle = xclAllocBO(priv->dev_handle, 
-                                    execBO_size, 
-                                    0, 
-                                    XCL_BO_FLAGS_EXECBUF);
-            if (!bo_handle || bo_handle == NULLBO) 
+            bo_handle = priv->dev_handle.get_handle()->alloc_bo(execBO_size, XCL_BO_FLAGS_EXECBUF);
+            if (!bo_handle || bo_handle == NULLBO)
             {
                 xma_logmsg(XMA_ERROR_LOG, prefix.c_str(), "Initalization of plugin failed. Failed to alloc execbo");
                 return XMA_ERROR;
             }
-            bo_data = (char*)xclMapBO(priv->dev_handle, bo_handle, true);
+            bo_data = reinterpret_cast<char*>(priv->dev_handle.get_handle()->map_bo(bo_handle, true));
             memset((void*)bo_data, 0x0, execBO_size);
-
             priv->kernel_execbos.emplace_back(XmaHwExecBO{});
             XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
             dev_execbo.handle = bo_handle;

@@ -2,7 +2,7 @@
 /*
  * Xilinx Unify CU Model
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -296,7 +296,10 @@ static inline int process_rq(struct xrt_cu *xcu)
 		return 0;
 
 	/* if successfully get credit, you must start cu */
-	xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type);
+	if (xrt_cu_config(xcu, (u32 *)xcmd->info, xcmd->isize, xcmd->payload_type)) {
+		xrt_cu_put_credit(xcu, 1);
+		return 0;
+	}
 	xrt_cu_start(xcu);
 	set_xcmd_timestamp(xcmd, KDS_RUNNING);
 	xrt_cu_circ_produce(xcu, CU_LOG_STAGE_RQ, (uintptr_t)xcmd);
@@ -741,6 +744,11 @@ int xrt_fa_cfg_update(struct xrt_cu *xcu, u64 bar, u64 dev, void __iomem *vaddr,
 int xrt_cu_get_protocol(struct xrt_cu *xcu)
 {
 	return xcu->info.protocol;
+}
+
+u32 xrt_cu_get_status(struct xrt_cu *xcu)
+{
+	return xcu->status;
 }
 
 int xrt_cu_regmap_size(struct xrt_cu *xcu)

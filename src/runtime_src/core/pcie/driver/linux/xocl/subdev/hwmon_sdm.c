@@ -38,7 +38,7 @@ struct xocl_hwmon_sdm {
         ((buf_index + len > buf_len) ? -EINVAL : (buf_index + len))
 
 static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs);
-static uint8_t sdr_get_id(uint8_t repo_type);
+static int sdr_get_id(uint8_t repo_type);
 
 static ssize_t hwmon_sensor_show(struct device *dev,
                                  struct device_attribute *da, char *buf)
@@ -57,22 +57,27 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 		return sprintf(buf, "%d\n", 0);
 	}
 
-	switch(field_id) {
-	case SENSOR_NAME:
+	if (field_id == SENSOR_NAME) {
 		memcpy(output, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		return snprintf(buf, buf_len + 2, "%s\n", output);
-	case SENSOR_VALUE:
-		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", *value);
-	case SENSOR_AVG_VAL:
-		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", *value);
-	case SENSOR_MAX_VAL:
-		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", *value);
-	default:
-		return sprintf(buf, "%d\n", 0);
 	}
+
+	if (field_id == SENSOR_VALUE) {
+		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
+		return sprintf(buf, "%u\n", *value);
+	}
+
+	if (field_id == SENSOR_AVG_VAL) {
+		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
+		return sprintf(buf, "%u\n", *value);
+	}
+
+	if (field_id == SENSOR_MAX_VAL) {
+		memcpy(value, &sdm->sensor_data[repo_id][buf_index], buf_len);
+		return sprintf(buf, "%u\n", *value);
+	}
+
+	return sprintf(buf, "N/A\n");
 }
 
 static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
@@ -102,7 +107,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 	return err;
 }
 
-static uint8_t sdr_get_id(uint8_t repo_type)
+static int sdr_get_id(uint8_t repo_type)
 {
 	int id = 0;
 
@@ -149,8 +154,8 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 {
 	bool create = false;
 	uint8_t status;
-	int buf_index, err;
-	uint8_t remaining_records, completion_code, repo_type, repo_id;
+	int buf_index, err, repo_id;
+	uint8_t remaining_records, completion_code, repo_type;
 	uint8_t name_length, name_type_length;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
@@ -468,18 +473,19 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	hwmon_sdm->pdev = pdev;
 	hwmon_sdm->supported = true;
 
-	if (err) {
-		hwmon_sdm_remove(pdev);
-		return err;
-	}
-
 	/* create hwmon sysfs nodes */
 	err = create_hwmon_sysfs(pdev);
-	if (err)
+	if (err) {
 		xocl_err(&pdev->dev, "hwmon_sdm hwmon_sysfs is failed, err: %d", err);
+		goto failed;
+	}
 
 	xocl_info(&pdev->dev, "hwmon_sdm driver probe is successful");
 	return 0;
+
+failed:
+	hwmon_sdm_remove(pdev);
+	return err;
 }
 
 static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
@@ -487,8 +493,7 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	uint32_t resp_size;
-	uint8_t repo_id;
-	int ret = 0;
+	int repo_id, ret;
 
 	//TODO: request vmc/vmr for bdinfo resp size
 	resp_size = 4 * 1024;

@@ -31,6 +31,7 @@
 #include <thread>
 #include <algorithm>
 #include "core/common/config_reader.h"
+#include "core/common/device.h"
 
 #define XMAAPI_MOD "xmaapi"
 
@@ -258,12 +259,12 @@ void xma_thread2(uint32_t hw_dev_index) {
 
     bool expected = false;
     bool desired = true;
-    xclDeviceHandle dev_handle = g_xma_singleton->hwcfg.devices[hw_dev_index].handle;
+    auto xrt_device_obj = g_xma_singleton->hwcfg.devices[hw_dev_index].xrt_device;
     while (!g_xma_singleton->xma_exit) {
         if (g_xma_singleton->cpu_mode == XMA_CPU_MODE2) {
             std::this_thread::sleep_for(std::chrono::milliseconds(3));
         } else {
-            xclExecWait(dev_handle, 100);
+            xrt_device_obj.get_handle()->exec_wait(100);
         }
 
         for (auto& itr1: g_xma_singleton->all_sessions_vec) {

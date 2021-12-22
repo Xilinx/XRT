@@ -38,6 +38,8 @@
 #include <cstdlib>
 #include <map>
 #include <set>
+#include <string>
+#include <vector>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4100 4996 4505 )
@@ -160,13 +162,14 @@ private:
 
 protected:
   // deliberately made protected, this is a file-scoped controlled API 
-  std::shared_ptr<xrt_core::device> device; // NOLINT
-  xclBufferHandle handle;                   // NOLINT driver handle
-  size_t size;                              // NOLINT size of buffer
-  mutable uint64_t addr = no_addr;          // NOLINT bo device address
-  mutable int32_t grpid = no_group;         // NOLINT memory group index
-  mutable bo::flags flags = no_flags;       // NOLINT flags per bo properties
-  bool free_bo;                             // NOLINT should dtor free bo
+  std::shared_ptr<xrt_core::device> device;     // NOLINT device where bo is allocated
+  std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
+  xclBufferHandle handle;                       // NOLINT driver bo handle
+  size_t size;                                  // NOLINT size of buffer
+  mutable uint64_t addr = no_addr;              // NOLINT bo device address
+  mutable int32_t grpid = no_group;             // NOLINT memory group index
+  mutable bo::flags flags = no_flags;           // NOLINT flags per bo properties
+  bool free_bo;                                 // NOLINT should dtor free bo
 
 public:
   explicit bo_impl(size_t sz)
@@ -217,6 +220,15 @@ public:
   bo_impl& operator=(bo_impl&) = delete;
   bo_impl& operator=(bo_impl&&) = delete;
 
+  // BOs can be cloned internally by XRT to statisfy kernel
+  // connectivity, the lifetime of a cloned BO is tied to the
+  // lifetime of the BO from which is was cloned.
+  void
+  add_clone(std::shared_ptr<bo_impl> clone)
+  {
+    clones.push_back(std::move(clone));
+  }
+  
   xclBufferHandle
   get_xcl_handle() const
   {
@@ -710,6 +722,23 @@ public:
   }
 };
 
+// class buffer_clone - cloned buffer in different memory bank
+//
+// A cloned buffer is identical to src buffer except for its physical
+// device location (memory group). The clone is valid only as long as
+// the src buffer is valid, lifetime of clone is tied to lifetime of
+// src per alloc_clone() implementation.
+class buffer_clone : public bo_impl
+{
+public:
+  buffer_clone(xclDeviceHandle dhdl, const std::shared_ptr<bo_impl>& src, xclBufferHandle clone, size_t sz)
+    : bo_impl(dhdl, clone, sz)
+  {
+    // copy src to clone
+    copy(src.get(), src->get_size(), 0, 0);
+  }
+};
+
 } // namespace xrt
 
 // Implementation details
@@ -870,6 +899,21 @@ alloc_sub(const std::shared_ptr<xrt::bo_impl>& parent, size_t size, size_t offse
   return std::make_shared<xrt::buffer_sub>(parent, size, offset);
 }
 
+// alloc_clone() - Create a clone of src BO in specified memory bank
+static std::shared_ptr<xrt::bo_impl>
+alloc_clone(const std::shared_ptr<xrt::bo_impl>& src, xrt::memory_group grp)
+{
+  // Same device and flags as src bo
+  auto dhdl = src->get_device()->get_device_handle();
+  auto xflags = static_cast<xrtBufferFlags>(src->get_flags());
+
+  auto clone_handle = alloc_bo(dhdl, src->get_size(), xflags, grp);
+  auto clone = std::make_shared<xrt::buffer_clone>(dhdl, src, clone_handle, src->get_size());
+
+  // the clone implmentation lifetime is tied to src
+  src->add_clone(clone);
+  return clone;
+}
 
 static xclDeviceHandle
 get_xcl_device_handle(xrtDeviceHandle dhdl)
@@ -941,6 +985,12 @@ xrt::bo::flags
 get_flags(const xrt::bo& bo)
 {
     return bo.get_handle()->get_flags();
+}
+
+xrt::bo
+clone(const xrt::bo& src, xrt::memory_group target_grp)
+{
+  return alloc_clone(src.get_handle(), target_grp);
 }
 
 void
