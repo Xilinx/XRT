@@ -32,11 +32,8 @@
 #include "xdp/profile/database/static_info/device_info.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
 #include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 // Anonymous namespace for helper functions used only in this file
 namespace {
