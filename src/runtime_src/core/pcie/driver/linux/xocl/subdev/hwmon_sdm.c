@@ -483,7 +483,7 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	xocl_info(&pdev->dev, "hwmon_sdm driver probe is successful");
 	return 0;
 
-goto failed:
+failed:
 	hwmon_sdm_remove(pdev);
 	return err;
 }
