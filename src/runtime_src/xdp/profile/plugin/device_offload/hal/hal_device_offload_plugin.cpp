@@ -49,16 +49,18 @@ namespace xdp {
       deviceHandles.push_back(handle) ;
 
       // Second, add all the information and a writer for this device
-      char pathBuf[512] ;
-      memset(pathBuf, 0, 512) ;
-      xclGetDebugIPlayoutPath(handle, pathBuf, 512) ;
+      char pathBuf[maxPathLength] ;
+      memset(pathBuf, 0, maxPathLength) ;
+      xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
 
       std::string path(pathBuf) ;
-      addDevice(path) ;
+      if (path != "") {
+        addDevice(path) ;
 
-      // Now, keep track of the device ID for this device so we can use
-      //  our own handle
-      deviceIdToHandle[db->addDevice(path)] = handle ;
+        // Now, keep track of the device ID for this device so we can use
+        //  our own handle
+        deviceIdToHandle[db->addDevice(path)] = handle ;
+      }
 
       // Move on to the next device
       ++index ;
@@ -103,11 +105,13 @@ namespace xdp {
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    char pathBuf[512] ;
-    memset(pathBuf, 0, 512) ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, 512) ;
+    char pathBuf[maxPathLength] ;
+    memset(pathBuf, 0, maxPathLength) ;
+    xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
 
     std::string path(pathBuf) ;
+    if (path == "")
+      return ;
     
     uint64_t deviceId = db->addDevice(path) ;
 
@@ -127,11 +131,13 @@ namespace xdp {
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
     //  device.
-    char pathBuf[512] ;
-    memset(pathBuf, 0, 512) ;
-    xclGetDebugIPlayoutPath(userHandle, pathBuf, 512) ;
+    char pathBuf[maxPathLength] ;
+    memset(pathBuf, 0, maxPathLength) ;
+    xclGetDebugIPlayoutPath(userHandle, pathBuf, maxPathLength-1) ;
 
     std::string path(pathBuf) ;
+    if (path == "")
+      return ;
 
     uint64_t deviceId = db->addDevice(path) ;
     void* ownedHandle = deviceIdToHandle[deviceId] ;

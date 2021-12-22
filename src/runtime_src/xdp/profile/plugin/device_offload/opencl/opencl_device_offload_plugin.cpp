@@ -81,6 +81,11 @@ namespace {
   {
     std::string path = device->getDebugIPlayoutPath().get() ;
 
+    // If the path to the debug_ip_layout.rtd file is too long,
+    //  the call to getDebugIPlayoutPath returns an empty string
+    if (path == "")
+      return path ;
+
     if (xdp::getFlowMode() == xdp::HW_EMU) {
       // Full paths to the hardware emulation debug_ip_layout for different
       //  xclbins on the same device are different.  On disk, they are laid
@@ -152,6 +157,8 @@ namespace xdp {
     xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
 
     std::string path = debugIPLayoutPath(device) ;
+    if (path == "")
+      return ;
 
     uint64_t deviceId = 0;
     deviceId = db->addDevice(path) ;

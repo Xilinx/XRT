@@ -39,6 +39,11 @@ namespace xdp {
 
     XDP_EXPORT virtual void readTrace() ;
 
+    // When trying to determine the path to the debug_ip_layout file,
+    //  we need to call the C-interface function xclGetDebugIPlayoutPath
+    //  function, which takes a preallocated char* and size.
+    constexpr static int maxPathLength = 512 ;
+
   public:
     XDP_EXPORT HALDeviceOffloadPlugin() ;
     XDP_EXPORT ~HALDeviceOffloadPlugin() ;
