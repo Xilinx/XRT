@@ -86,11 +86,11 @@ namespace xdp {
   DeviceOffloadPlugin::DeviceOffloadPlugin() :
     XDPPlugin(), continuous_trace(false), trace_buffer_offload_interval_ms(10)
   {
-    active = db->claimDeviceOffloadOwnership() ;
-    if (!active) return ; 
-
     db->registerPlugin(this) ;
-    db->registerInfo(info::device_offload);
+
+    // Since OpenCL device offload doesn't actually add device offload info,
+    //  setting the available information has to be pushed down to both
+    //  the HAL or HWEmu plugin
 
     // Get the profiling continuous offload options from xrt.ini
     //  Device offload continuous offload and dumping is only supported
@@ -112,14 +112,8 @@ namespace xdp {
     }
   }
 
-  DeviceOffloadPlugin::~DeviceOffloadPlugin()
-  {
-  }
-
   void DeviceOffloadPlugin::addDevice(const std::string& sysfsPath)
   {
-    if (!active) return ;
-
     uint64_t deviceId = db->addDevice(sysfsPath) ;
 
     // When adding a device, also add a writer to dump the information
@@ -178,8 +172,6 @@ namespace xdp {
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
                                          DeviceIntf* devInterface)
   {
-    if (!active) return ;
-
     // If offload via memory is requested, make sure the size requested
     //  fits inside the chosen memory resource.
     uint64_t trace_buffer_size = GetTS2MMBufSize() ;
@@ -230,13 +222,14 @@ namespace xdp {
 
   void DeviceOffloadPlugin::startContinuousThreads(uint64_t deviceId)
   {
-    if (!active) return ;
-    if (offloaders.find(deviceId) == offloaders.end()) return ;
+    if (offloaders.find(deviceId) == offloaders.end())
+      return ;
 
     DeviceData& data = offloaders[deviceId] ;
     auto offloader = std::get<0>(data) ;
     auto devInterface = std::get<2>(data) ;
-    if (offloader == nullptr) return ;
+    if (offloader == nullptr)
+      return ;
 
     offloader->train_clock();
     // Trace FIFO is usually very small (8k,16k etc)
@@ -357,8 +350,6 @@ namespace xdp {
 
   void DeviceOffloadPlugin::writeAll(bool openNewFiles)
   {
-    if (!active) return ;
-
     // This function gets called if the database is destroyed before
     //  the plugin object.  At this time, the information in the database
     //  still exists and is viable, so we should flush our devices
@@ -397,8 +388,6 @@ namespace xdp {
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)
   {
-    if (!active) return ;
-
     switch(msg)
     {
     case VPDatabase::READ_COUNTERS:
