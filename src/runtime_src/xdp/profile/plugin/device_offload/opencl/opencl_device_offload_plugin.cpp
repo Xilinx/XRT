@@ -31,9 +31,6 @@
 #include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/xrt_device/xdp_xrt_device.h"
-#include "xdp/profile/writer/vp_base/vp_writer.h"
 
 // Anonymous namespace for helper functions used only in this file
 namespace {
@@ -44,8 +41,7 @@ namespace {
     std::string memoryName = "" ;
     try {
       auto memidx_mask = cu->get_memidx(index) ;
-      for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx)
-      {
+      for (unsigned int memidx = 0 ; memidx < memidx_mask.size() ; ++memidx) {
         if (memidx_mask.test(memidx)) {
           // Get bank tag string from index
           memoryName = "DDR";
@@ -55,8 +51,7 @@ namespace {
           break;
         }
       }
-    } catch (const std::runtime_error&)
-    {
+    } catch (const std::runtime_error&) {
       memoryName = "DDR" ;
     }
 
@@ -70,15 +65,16 @@ namespace {
   static std::string convertBankToDDR(const std::string& name)
   {
     auto loc = name.find("bank") ;
-    if (loc == std::string::npos) return name ;
+    if (loc == std::string::npos)
+      return name ;
+
     std::string ddr = "DDR[" ;
     ddr += name.substr(loc + 4) ;
     ddr += "]" ;
     return ddr ;
   }
 
-  static std::string
-  debugIPLayoutPath(xrt_xocl::device* device)
+  static std::string debugIPLayoutPath(xrt_xocl::device* device)
   {
     std::string path = device->getDebugIPlayoutPath().get() ;
 
@@ -99,58 +95,22 @@ namespace {
 
 namespace xdp {
 
-  OpenCLDeviceOffloadPlugin::OpenCLDeviceOffloadPlugin() :
-    DeviceOffloadPlugin(),
-    counterOffloadEnabled(false),
-    traceOffloadEnabled(false)
+  OpenCLDeviceOffloadPlugin::OpenCLDeviceOffloadPlugin()
+    : DeviceOffloadPlugin()
   {
-    // If we aren't the plugin that is handling the device offload,
-    //  don't do anything
-    if (!active) return ;
-
     // Software emulation currently has minimal device support for guidance
 
     // Since we are using xocl and xrt level objects in this plugin,
     //  we need a pointer to the shared platform to make sure the
     //  xrt_xocl::device objects aren't destroyed before we get a chance
-    //  to offload the trace at the end
+    //  to access the information we need.
     platform = xocl::get_shared_platform() ;
-
-    // Based on the xrt.ini flags we will support either offload of
-    //  either counters only or counters and trace.
-    if (xrt_core::config::get_opencl_device_counter() ||
-        xrt_core::config::get_device_counters()) {
-      counterOffloadEnabled = true ;
-    }
-    if (xrt_core::config::get_data_transfer_trace() != "off" ||
-        xrt_core::config::get_device_trace() != "off" ||
-        xrt_core::config::get_stall_trace() != "off") {
-      counterOffloadEnabled = true ;
-      traceOffloadEnabled = true ;
-    }
   }
 
   OpenCLDeviceOffloadPlugin::~OpenCLDeviceOffloadPlugin()
   {
-    if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
-
     if (VPDatabase::alive())
-    {
-      // If we are destroyed before the database, we need to
-      //  do a final flush of our devices, then write
-      //  all of our writers, then finally unregister ourselves
-      //  from the database.
-      if (traceOffloadEnabled) {
-        readTrace() ;
-      }
-      if (counterOffloadEnabled) {
-        readCounters() ;
-      }
-      XDPPlugin::endWrite(false);
       db->unregisterPlugin(this) ;
-    } // If db alive
-    clearOffloaders();
   }
 
   // readTrace can be called from either the destructor or from a broadcast
@@ -158,27 +118,14 @@ namespace xdp {
   //  progress.
   void OpenCLDeviceOffloadPlugin::readTrace()
   {
-    if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
-    if (!traceOffloadEnabled) return ;
-
-    for (auto o : offloaders) {
-      uint64_t deviceId = o.first ;
-      if (deviceIdsToBeFlushed.find(deviceId) != deviceIdsToBeFlushed.end()) {
-        deviceIdsToBeFlushed.erase(deviceId) ;
-        auto offloader = std::get<0>(o.second) ;
-        flushTraceOffloader(offloader);
-        checkTraceBufferFullness(offloader, deviceId);
-      }
-    }
+    // Intentionally left blank so we don't call the base class function
+    //  when called and we don't want to actually do anything
   }
 
   void OpenCLDeviceOffloadPlugin::writeAll(bool openNewFiles)
   {
-    if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
-
-    DeviceOffloadPlugin::writeAll(openNewFiles) ;
+    // Intentionally left blank so we don't call the base class function
+    //  when called and we don't want to actually do anything
   }
 
   // This function will only be called if an active device is going to
@@ -186,32 +133,13 @@ namespace xdp {
   //  and bad after this call (until the next update device)
   void OpenCLDeviceOffloadPlugin::flushDevice(void* d)
   {
-    if (!active) return ;
-    if (getFlowMode() == SW_EMU) return ;
-
-    xrt_xocl::device* device = static_cast<xrt_xocl::device*>(d) ;
-
-    std::string path = debugIPLayoutPath(device) ;
-
-    uint64_t deviceId = db->addDevice(path) ;
-    deviceIdsToBeFlushed.erase(deviceId) ;
-    
-    if (traceOffloadEnabled && offloaders.find(deviceId) != offloaders.end()) {
-      auto offloader = std::get<0>(offloaders[deviceId]) ;
-      flushTraceOffloader(offloader);
-      checkTraceBufferFullness(offloader, deviceId);
-    }
-    if (counterOffloadEnabled) {
-      readCounters() ;
-    }
-
-    clearOffloader(deviceId) ;
-    (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
+    // Intentionally left blank so we don't call the base class function.
+    //  This plugin no longer communicates with the actual device so
+    //  there is no information to be flushed.
   }
 
   void OpenCLDeviceOffloadPlugin::updateDevice(void* d)
   {
-    if (!active) return ;
     if (getFlowMode() == SW_EMU){
       updateSWEmulationGuidance() ;
       return ;
@@ -223,19 +151,7 @@ namespace xdp {
     std::string path = debugIPLayoutPath(device) ;
 
     uint64_t deviceId = 0;
-    if((getFlowMode() == HW || getFlowMode() == HW_EMU) && traceOffloadEnabled){
-      try {
-        deviceId = db->getDeviceId(path) ;
-      }
-      catch(std::exception& /*e*/) {
-        // This is the first time we encountered this particular device
-        addDevice(path) ;
-      }
-    }
-
     deviceId = db->addDevice(path) ;
-
-    clearOffloader(deviceId);
 
     if (!(db->getStaticInfo()).validXclbin(device->get_xcl_handle())) {
       std::string msg =
@@ -254,51 +170,7 @@ namespace xdp {
     (db->getStaticInfo()).updateDevice(deviceId, device->get_xcl_handle()) ;
     (db->getStaticInfo()).setDeviceName(deviceId, device->getName()) ;
 
-    // For the OpenCL level, we must create a device inteface using
-    //  the xdp::XrtDevice to communicate with the physical device
-    DeviceIntf* devInterface = (db->getStaticInfo()).getDeviceIntf(deviceId);
-    if(nullptr == devInterface) {
-      // If DeviceIntf is not already created, create a new one to communicate with physical device
-      devInterface = new DeviceIntf() ;
-      try {
-        devInterface->setDevice(new XrtDevice(device)) ;
-        devInterface->readDebugIPlayout() ;
-      }
-      catch(std::exception& /*e*/)
-      {
-        // Read debug IP Layout could throw an exception
-        delete devInterface ;
-        return ;
-      }
-      (db->getStaticInfo()).setDeviceIntf(deviceId, devInterface);
-    }
-
-    configureDataflow(deviceId, devInterface) ;
-    addOffloader(deviceId, devInterface) ;
-
-    if(getFlowMode() == HW && traceOffloadEnabled) {
-      configureTraceIP(devInterface);
-      devInterface->clockTraining() ;
-      startContinuousThreads(deviceId) ;
-    }
-    if(getFlowMode() == HW_EMU) {
-      configureTraceIP(devInterface);
-      devInterface->clockTraining();
-    }
-    if (counterOffloadEnabled) {
-      devInterface->startCounters() ;
-    }
-
-    // Disable AMs for unsupported features
-    configureFa(deviceId, devInterface) ;
-    configureCtx(deviceId, devInterface) ;
-
-    // Once the device has been set up, add additional information to 
-    //  the static database specific to OpenCL runs
-    (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
-    (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
     updateOpenCLInfo(deviceId) ;
-    deviceIdsToBeFlushed.emplace(deviceId) ;
   }
 
   void OpenCLDeviceOffloadPlugin::updateOpenCLInfo(uint64_t deviceId)
@@ -306,41 +178,43 @@ namespace xdp {
     // *******************************************************
     // OpenCL specific info 1: Argument lists for each monitor
     // *******************************************************
+    // Argument information on each port is only available on via
+    //  accessing XOCL constructs.  We should only add port information
+    //  based on the debug monitors that exist, however, so we need to
+    //  cross-reference our data structures with the XOCL constructs.
     DeviceInfo* storedDevice = (db->getStaticInfo()).getDeviceInfo(deviceId) ;
-    if (storedDevice == nullptr) return ;
+    if (storedDevice == nullptr)
+      return ;
     XclbinInfo* xclbin = storedDevice->currentXclbin() ;
-    if (xclbin == nullptr) return ;
-    for (auto iter : xclbin->cus)
-    {
+    if (xclbin == nullptr)
+      return ;
+
+    for (auto iter : xclbin->cus) {
       ComputeUnitInstance* cu = iter.second ;
 
       // Find the Compute unit on the XOCL side that matches this compute unit
       std::shared_ptr<xocl::compute_unit> matchingCU ;
-      for (auto xoclDeviceId : platform->get_device_range())
-      {
-        for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus())
-        {
-          if (xoclCU->get_name() == cu->getName())
-          {
+      for (auto xoclDeviceId : platform->get_device_range()) {
+        for (auto& xoclCU : xocl::xocl(xoclDeviceId)->get_cus()) {
+          if (xoclCU->get_name() == cu->getName()) {
             matchingCU = xoclCU ;
             break ;
           }
         }
       }
 
+      // Now go through all the monitors on the compute unit and set
+      //  information in our data structures based on XOCL info.
       std::vector<uint32_t>* AIMIds = cu->getAIMs() ;
-      std::vector<uint32_t>* ASMIds = cu->getASMs() ;
-
-      for (size_t i = 0 ; i < AIMIds->size() ; ++i)
-      {
-        uint32_t AIMIndex = (*AIMIds)[i] ;
-        Monitor* monitor = (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
-        if (!monitor) continue ;
+      for (uint32_t AIMIndex : (*AIMIds)) {
+        Monitor* monitor =
+          (db->getStaticInfo()).getAIMonitor(deviceId, xclbin, AIMIndex) ;
+        if (!monitor)
+          continue ;
 
         // Construct the argument list of each port
         std::string arguments = "" ;
-        for (const auto& arg : matchingCU->get_args())
-        {
+        for (const auto& arg : matchingCU->get_args()) {
           if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
             continue;
 
@@ -362,7 +236,8 @@ namespace xdp {
               monitor->name.find(convertedName) == std::string::npos )
             continue ;
 
-          if (arguments != "") arguments += "|" ;
+          if (arguments != "")
+            arguments += "|" ;
           arguments += arg.name ;
 
           // Also, set the port width for this monitor explicitly
@@ -370,16 +245,17 @@ namespace xdp {
         }
         monitor->args = arguments ;
       }
-      for (size_t i = 0 ; i < ASMIds->size() ; ++i)
-      {
-        uint32_t ASMIndex = (*ASMIds)[i] ;
-        Monitor* monitor = (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
-        if (!monitor) continue ;
+
+      std::vector<uint32_t>* ASMIds = cu->getASMs() ;
+      for (uint32_t ASMIndex : (*ASMIds)) {
+        Monitor* monitor =
+          (db->getStaticInfo()).getASMonitor(deviceId, xclbin, ASMIndex) ;
+        if (!monitor)
+          continue ;
 
         // Construct the argument list of each port
         std::string arguments = "" ;
-        for (auto arg : matchingCU->get_args())
-        {
+        for (auto arg : matchingCU->get_args()) {
           if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
             continue;
 
@@ -402,7 +278,8 @@ namespace xdp {
             continue ;
           }
 
-          if (arguments != "") arguments += "|" ;
+          if (arguments != "")
+            arguments += "|" ;
           arguments += arg.name ;
 
           // Also, set the port width for this monitor explicitly
@@ -415,19 +292,26 @@ namespace xdp {
 
   void OpenCLDeviceOffloadPlugin::updateSWEmulationGuidance()
   {
-    if (platform == nullptr) return ; 
+    if (platform == nullptr)
+      return ;
+
     // There is just some software emulation specific information
     //  we need to add in order to handle guidance rules
+
+    // Make the connection between kernel name and compute units
     for (auto xrt_device_id : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(xrt_device_id)->get_cus()) {
         (db->getStaticInfo()).addSoftwareEmulationCUInstance(cu->get_kernel_name()) ;
       }
     }
 
+    // Keep track of which memories are used
     for (auto device: platform->get_device_range()) {
-      if (!device->is_active()) continue ;
+      if (!device->is_active())
+        continue ;
       auto mem_tp = device->get_axlf_section<const mem_topology*>(axlf_section_kind::MEM_TOPOLOGY) ;
-      if (!mem_tp) continue ;
+      if (!mem_tp)
+        continue ;
       std::string devName = device->get_unique_name() ;
       for (int i = 0 ; i < mem_tp->m_count ; ++i) {
         std::string mem_tag(reinterpret_cast<const char*>(mem_tp->m_mem_data[i].m_tag));
@@ -437,6 +321,7 @@ namespace xdp {
       }
     }
 
+    // Add the bit widths for each argument and port
     std::set<std::string> bitWidthStrings ;
     for (auto device : platform->get_device_range()) {
       for (auto& cu : xocl::xocl(device)->get_cus()) {
@@ -463,6 +348,5 @@ namespace xdp {
     for (const auto& str : bitWidthStrings) {
       (db->getStaticInfo()).addSoftwareEmulationPortBitWidth(str) ;
     }
-
   }
 } // end namespace xdp

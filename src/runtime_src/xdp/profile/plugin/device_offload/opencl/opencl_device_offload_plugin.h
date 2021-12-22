@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,17 +18,20 @@
 #define OPENCL_DEVICE_OFFLOAD_PLUGIN_DOT_H
 
 #include <memory>
-#include <set>
 
-// Includes from xilinxopencl
-#include "xocl/core/device.h"
+#include "xocl/core/platform.h"
 
-// Includes from xdp
+#include "xdp/config.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 
 namespace xdp {
 
-  // This is the device offload plugin instantiated from the OpenCL layer.
+  // This is the device offload plugin linked in from the OpenCL layer.
+  //  Now that we have a device_offload plugin for both hardware and
+  //  hardware emulation, this plugin is only responsible for updating
+  //  some information in the database necessary for guidance, summary,
+  //  and trace only available at the OpenCL layer.  It no longer communicates
+  //  with the actual device.
   class OpenCLDeviceOffloadPlugin : public DeviceOffloadPlugin
   {
   private:
@@ -37,22 +40,14 @@ namespace xdp {
     //  the end of execution.
     std::shared_ptr<xocl::platform> platform ;
 
-    // The devices that need to be flushed at program end (if the
-    //  host application did not correctly clean them up)
-    std::set<uint64_t> deviceIdsToBeFlushed ;
-
     void updateOpenCLInfo(uint64_t deviceId) ;
     void updateSWEmulationGuidance() ;
 
     XDP_EXPORT virtual void readTrace() ;
 
-    // Which capabilities are turned on
-    bool counterOffloadEnabled ;
-    bool traceOffloadEnabled ;
-
   public:
     XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
-    XDP_EXPORT ~OpenCLDeviceOffloadPlugin() ;
+    XDP_EXPORT virtual ~OpenCLDeviceOffloadPlugin() override ;
 
     // Virtual functions from XDPPlugin
     XDP_EXPORT virtual void writeAll(bool openNewFiles) ;
