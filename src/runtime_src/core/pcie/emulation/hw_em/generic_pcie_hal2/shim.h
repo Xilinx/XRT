@@ -92,6 +92,7 @@ using addr_type = uint64_t;
     size_t m_pdiSize;
     char* m_emuData;
     size_t m_emuDataSize;
+    const axlf* m_top;
   } bitStreamArg;
 
  typedef struct

@@ -230,11 +230,6 @@ namespace xclhwemhal2 {
     }
   }
 
-  static size_t convert(const std::string& str)
-  {
-    return str.empty() ? 0 : std::stoul(str,0,0);
-  }
-
   static void sigHandler(int sn, siginfo_t *si, void *sc)
   {
     switch(sn) {
@@ -400,6 +395,7 @@ namespace xclhwemhal2 {
     loadBitStreamArgs.m_pdiSize = pdiSize;
     loadBitStreamArgs.m_emuData = emuData;
     loadBitStreamArgs.m_emuDataSize = emuDataSize;
+    loadBitStreamArgs.m_top = top;
 
     int returnValue = xclLoadBitstreamWorker(loadBitStreamArgs);
 
@@ -577,44 +573,28 @@ namespace xclhwemhal2 {
       }
     }
 
-    pt::ptree xml_project;
-    std::string sXmlFile;
-    sXmlFile.assign(args.m_xmlfile, args.m_xmlFileSize);
-    std::stringstream xml_stream;
-    xml_stream << sXmlFile;
-    pt::read_xml(xml_stream, xml_project);
+    //CR-1116870 Changes Start
+    
+    std::string projectName = xrt_core::xclbin::get_project_name(args.m_top);
 
-    // iterate platforms
-    int count = 0;
-    for (auto& xml_platform : xml_project.get_child("project"))
+    bool value = xrt_core::xclbin::check_if_multiple_platform_exists(args.m_xmlfile, args.m_xmlFileSize);
+    if (!value)
     {
-      if (xml_platform.first != "platform")
-        continue;
-      if (++count > 1)
-      {
-        //Give error and return from here
-      }
+      if (mLogStream.is_open())
+        mLogStream << __func__ << " Multiple Platform exists .." << std::endl;
+      return -1;
     }
 
-    std::string fpgaDevice="";
-
-    // iterate devices
-    count = 0;
-    for (auto& xml_device : xml_project.get_child("project.platform"))
+    std::string fpgaDevice = "";
+    if (!projectName.empty())
     {
-      if (xml_device.first != "device")
-        continue;
-
-      fpgaDevice = xml_device.second.get<std::string>("<xmlattr>.fpgaDevice");
-
-      if (++count > 1)
-      {
-        //Give error and return from here
-      }
+      fpgaDevice= xrt_core::xclbin::get_device_name(args.m_xmlfile, args.m_xmlFileSize);
+      if (mLogStream.is_open())
+        mLogStream << __func__ << "fpgaDevice::" << fpgaDevice << std::endl;
     }
 
     //New DRC check for Versal Platforms
-    if (fpgaDevice != "" && fpgaDevice.find("versal:") != std::string::npos) {
+    if (!fpgaDevice.empty() && fpgaDevice.find("versal:") != std::string::npos) {
       mVersalPlatform=true;
       if ((args.m_emuData == nullptr) && (args.m_emuDataSize <= 0)) {
         std::string dMsg = "ERROR: [HW-EMU 09] EMULATION_DATA section is missing in XCLBIN. This is a mandatory section required for Versal platforms. Please ensure the design is built with 'v++ -package' step, which inserts EMULATION_DATA into the XCLBIN.";
@@ -625,102 +605,80 @@ namespace xclhwemhal2 {
     if (xclemulation::config::getInstance()->isSharedFmodel() && !mVersalPlatform) {
       setenv("SDX_USE_SHARED_MEMORY","true",true);
     }
-    // iterate cores
-    count = 0;
-    for (auto& xml_core : xml_project.get_child("project.platform.device"))
+
+    bool retVal = xrt_core::xclbin::check_if_multiple_core_exists(args.m_xmlfile, args.m_xmlFileSize);
+    if (!retVal)
     {
-      if (xml_core.first != "core")
-        continue;
-      if (++count > 1)
+      mLogStream << __func__ << " Multiple Core exists .." << std::endl;
+      return -1;
+    }
+
+    std::vector<xrt_core::xclbin::kernel_object> kernels;
+    kernels = xrt_core::xclbin::get_kernels(args.m_top);
+    std::vector<xrt_core::xclbin::kernel_object>::iterator kObjItr;
+    std::map<uint64_t, KernelArg> kernelArgInfo;
+     
+    std::map<std::string, std::vector<xrt_core::xclbin::instance_object>> kernelInstanceMap;
+
+    kernelInstanceMap = xrt_core::xclbin::get_kernel_instance_map(args.m_xmlfile, args.m_xmlFileSize);
+
+
+    for( kObjItr = kernels.begin(); kObjItr != kernels.end(); ++kObjItr )
+    {
+      std::vector<xrt_core::xclbin::kernel_argument>::iterator kArgItr;
+      std::vector<xrt_core::xclbin::kernel_argument> kernelArgs;
+      kernelArgs = xrt_core::xclbin::get_kernel_arguments(args.m_top,kObjItr->name);
+      std::vector<xrt_core::xclbin::instance_object> instances = kernelInstanceMap[kObjItr->name];
+
+      for ( kArgItr = kernelArgs.begin(); kArgItr != kernelArgs.end(); ++kArgItr )
       {
-        //Give error and return from here
+        KernelArg kArg;
+	kArg.name = kObjItr->name + ":" + kArgItr->name;
+	kArg.size = kArgItr->size;
+	kernelArgInfo[kArgItr->offset] = kArg;
+      }
+      for (auto instItr : instances) 
+      {
+        mCuBaseAddress = instItr.base & 0xFFFFFFFF00000000;
+            
+        //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+
+        if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
+        {
+          mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+        }  
+        else if(mVersalPlatform)
+        {
+          mCuBaseAddress = 0x20200000000;
+        }
+        mKernelOffsetArgsInfoMap[instItr.base] = kernelArgInfo;
+
+        if (xclemulation::config::getInstance()->isMemLogsEnabled())
+        {
+          std::ofstream* controlStream = new std::ofstream;
+          controlStream->open(instItr.name+ "_control.mem");
+          mOffsetInstanceStreamMap[instItr.base] = controlStream;
+        }
+      }
+
+    }
+ 
+    std::map<std::string,uint64_t> range_map;
+    range_map = xrt_core::xclbin::get_address_range_map(args.m_xmlfile, args.m_xmlFileSize);
+    for( kObjItr = kernels.begin(); kObjItr != kernels.end(); ++kObjItr )
+    {
+      std::vector<xrt_core::xclbin::instance_object> instances = kernelInstanceMap[kObjItr->name];
+      for (auto instItr : instances) 
+      {
+        std::string kernelInstanceStr = kObjItr->name + ":" + instItr.name;
+        mCURangeMap[kernelInstanceStr] = range_map[kObjItr->name];
       }
     }
 
-    std::vector<std::string> kernels;
+    std::string xclBinName = xrt_core::xclbin::get_project_name(args.m_top);
 
-    // iterate kernels
-    for (auto& xml_kernel : xml_project.get_child("project.platform.device.core"))
-    {
-      if (xml_kernel.first != "kernel")
-        continue;
+    //CR-1116870 Changes End
 
-      std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
-      kernels.push_back(kernelName);
-      int address_range = 0;
-      std::string instanceName;
-
-      if (mLogStream.is_open())
-         mLogStream << __func__ << " Filling kernel " << kernelName << " info from xclbin.xml" << std::endl;
-
-      for (auto& xml_kernel_info : xml_kernel.second)
-      {
-        std::map<uint64_t, KernelArg> kernelArgInfo;
-        if (xml_kernel_info.first == "arg")
-        {
-          std::string name = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
-          std::string id = xml_kernel_info.second.get<std::string>("<xmlattr>.id");
-          std::string port = xml_kernel_info.second.get<std::string>("<xmlattr>.port");
-          uint64_t offset = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.offset"));
-          uint64_t size = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.size"));
-          KernelArg kArg;
-          kArg.name = kernelName + ":" + name;
-          kArg.size = size;
-          kernelArgInfo[offset] = kArg;
-
-          if (mLogStream.is_open())
-            mLogStream << __func__ << " Filling kernel Args name: " << name << " id: " << id << " port: " << port << " info from xclbin.xml" << std::endl;
-        }
-
-        if (xml_kernel_info.first == "port") {
-          std::string mode = xml_kernel_info.second.get<std::string>("<xmlattr>.mode");
-          if (mode == "slave") {
-            address_range = convert(xml_kernel_info.second.get<std::string>("<xmlattr>.range"));
-            if (mLogStream.is_open())
-              mLogStream << __func__ << " Getting the Address Range of mode : " << mode << " info from xclbin.xml" << std::endl;
-          }
-        }
-
-        if (xml_kernel_info.first == "instance")
-        {
-          instanceName = xml_kernel_info.second.get<std::string>("<xmlattr>.name");
-          for (auto& xml_remap : xml_kernel_info.second)
-          {
-            if (xml_remap.first != "addrRemap")
-              continue;
-
-            if (mLogStream.is_open())
-              mLogStream << __func__ << " Filling kernel Instance info from xclbin.xml" << std::endl;
-
-            uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
-            mCuBaseAddress = base & 0xFFFFFFFF00000000;
-
-            std::string vbnv  = mDeviceInfo.mName;
-            //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-            if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1) {
-              mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
-            } else if(mVersalPlatform) {
-              mCuBaseAddress = 0x20200000000;
-            }
-            mKernelOffsetArgsInfoMap[base] = kernelArgInfo;
-            if (xclemulation::config::getInstance()->isMemLogsEnabled())
-            {
-              std::ofstream* controlStream = new std::ofstream;
-              controlStream->open(instanceName + "_control.mem");
-              mOffsetInstanceStreamMap[base] = controlStream;
-            }
-            break;
-          }
-        }
-
-        if (address_range != 0 && !kernelName.empty() && !instanceName.empty() ) {
-          std::string kernelInstanceStr = kernelName + ":" + instanceName;
-          mCURangeMap[kernelInstanceStr] = address_range;
-        }
-      }
-    }
-
-    std::string xclBinName = xml_project.get<std::string>("project.<xmlattr>.name", "");
     set_simulator_started(true);
 
     //Thread to fetch messages from Device to display on host
@@ -1087,7 +1045,7 @@ namespace xclhwemhal2 {
           simMode = launcherArgs.c_str();
 
         if (!file_exists(sim_file))
-          sim_file = "simulate.sh";
+          sim_file = "simulate.sh";       
 
         int r = execl(sim_file.c_str(), sim_file.c_str(), simMode, NULL);
         fclose(stdout);

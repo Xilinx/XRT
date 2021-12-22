@@ -78,6 +78,15 @@ struct kernel_object
   bool sw_reset;
 };
 
+//instance object
+struct instance_object
+{
+  std::string name;
+  uint64_t base;
+  size_t range;
+  std::string port;
+};
+
 // struct softkernel_object - wrapper for a soft kernel object
 //
 // @ninst: number of instances
@@ -151,7 +160,7 @@ address_to_memidx(const mem_topology* mem, uint64_t address);
 // get_cu_indices() - mapping from cu name to its index type
 //
 // Compute index type for all controllable IPs in IP_LAYOUT Normally
-// indexing is determined by KDS in driver via kds_cu_info query
+// indexing is determined by KDS in driver via kds_cu_stat query
 // request, but in emulation mode that query request is not not
 // implemented
 std::map<std::string, cuidx_type>
@@ -370,6 +379,25 @@ XRT_CORE_COMMON_EXPORT
 std::string
 get_project_name(const axlf* top);
 
+XRT_CORE_COMMON_EXPORT
+bool
+check_if_multiple_platform_exists(const char* xml_data, size_t xml_size);
+
+XRT_CORE_COMMON_EXPORT
+bool
+check_if_multiple_core_exists(const char* xml_data, size_t xml_size);
+
+XRT_CORE_COMMON_EXPORT
+std::map<std::string,uint64_t>
+get_address_range_map(const char* xml_data, size_t xml_size);
+
+XRT_CORE_COMMON_EXPORT
+std::string
+get_device_name(const char* xmlFile,size_t xmlFileSize);
+
+XRT_CORE_COMMON_EXPORT
+std::map<std::string, std::vector<instance_object>>
+get_kernel_instance_map( const char* xml_data, size_t xml_size);
 }} // xclbin, xrt_core
 
 #endif

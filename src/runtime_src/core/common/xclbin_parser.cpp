@@ -540,6 +540,54 @@ get_cus(const ip_layout* ip_layout, const std::string& kname)
   return ips;
 }
 
+std::map<std::string, std::vector<instance_object>>
+get_kernel_instance_map( const char* xml_data, size_t xml_size) {
+ 
+  std::map<std::string, std::vector<instance_object>> kernelInstanceMap;
+  std::vector<instance_object> instances;  
+
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data, xml_size);
+  pt::read_xml(xml_stream, xml_project);
+  std::string kernelName;
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core")) 
+  {
+    if (xml_kernel.first != "kernel")
+    continue;
+    kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
+
+    std::vector<instance_object> instances;
+    for (auto& xml_inst : xml_kernel.second) 
+    {
+      if (xml_inst.first != "instance")
+        continue;
+      std::string instanceName = xml_inst.second.get<std::string>("<xmlattr>.name");
+
+      for (auto& xml_remap : xml_inst.second)
+      {
+        if (xml_remap.first != "addrRemap")
+          continue;
+
+        uint64_t base = convert(xml_remap.second.get<std::string>("<xmlattr>.base"));
+        size_t range = convert(xml_remap.second.get<std::string>("<xmlattr>.range"));
+        std::string port = xml_remap.second.get<std::string>("<xmlattr>.port","");
+        instances.emplace_back(instance_object{
+        instanceName
+        ,base
+        ,range
+        ,port
+        });
+
+      }
+    
+    }
+    kernelInstanceMap[kernelName] = instances;
+  }
+  return kernelInstanceMap;
+}
+
 // Extract CU base addresses for xml meta data
 // Used in sw_emu because IP_LAYOUT section is not available in sw emu.
 std::vector<uint64_t>
@@ -983,6 +1031,103 @@ get_vbnv(const axlf* top)
   return {vbnv, strnlen(vbnv, vbnv_length)};
 }
 
+std::string
+get_device_name(const char* xmlFile,size_t xmlFileSize)   
+{
+  std::string fpgaDevice="";
+  pt::ptree xml_project;
+  std::string sXmlFile;
+  sXmlFile.assign(xmlFile, xmlFileSize);
+  std::stringstream xml_stream;
+  xml_stream << sXmlFile;
+  pt::read_xml(xml_stream, xml_project);
+	
+  // iterate devices
+  int count = 0;
+  for (auto& xml_device : xml_project.get_child("project.platform"))
+  {
+    if (xml_device.first != "device")
+      continue;
+
+    fpgaDevice = xml_device.second.get<std::string>("<xmlattr>.fpgaDevice");
+
+    if (++count > 1)
+    {
+      //Give error and return from here
+      return "";
+ 
+    }
+  }
+    
+  return fpgaDevice;
+	
+}
+
+bool
+check_if_multiple_platform_exists(const char* xml_data, size_t xml_size)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+  int count = 0;
+
+  for (auto& xml_platform : xml_project.get_child("project"))
+  {
+    if (xml_platform.first != "platform")
+      continue;
+    if (++count > 1)
+    {
+      //Give error and return from here
+      return false;
+    }
+  }
+  return true;
+}
+
+bool
+check_if_multiple_core_exists(const char* xml_data, size_t xml_size)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+  int count = 0;
+  for (auto& xml_core : xml_project.get_child("project.platform.device"))
+  {
+    if (xml_core.first != "core")
+      continue;
+    if (++count > 1)
+    {
+      //Give error and return from here
+      return false;
+    }
+  }
+  return true;
+}
+
+std::map<std::string,uint64_t>
+get_address_range_map(const char* xml_data, size_t xml_size)
+{
+  std::map<std::string,uint64_t> kernelRangeMap;
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  for (auto& xml_kernel : xml_project.get_child("project.platform.device.core"))
+  {
+    if (xml_kernel.first != "kernel")
+      continue;
+
+    std::string kernelName = xml_kernel.second.get<std::string>("<xmlattr>.name");
+    // determine address range to ensure args are within
+    size_t address_range = get_address_range(xml_kernel.second);
+    kernelRangeMap[kernelName] = address_range;
+  }
+  return kernelRangeMap;
+}	
+	
 std::string
 get_project_name(const char* xml_data, size_t xml_size)
 {
