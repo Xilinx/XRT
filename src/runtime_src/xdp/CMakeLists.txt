@@ -57,6 +57,7 @@ set(XRT_XDP_PROFILE_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profi
 set(XRT_XDP_PROFILE_DEVICE_OFFLOAD_WRITER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/device_trace")
 set(XRT_XDP_PROFILE_OPENCL_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/device_offload/opencl")
 set(XRT_XDP_PROFILE_HAL_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/device_offload/hal")
+set(XRT_XDP_PROFILE_HW_EMU_DEVICE_OFFLOAD_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/device_offload/hw_emu")
 set(XRT_XDP_PROFILE_DEVICE_AIE_TRACE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/profile/device/aie_trace")
 set(XRT_XDP_AIE_TRACE_PLUGIN_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/plugin/aie_trace")
 set(XRT_XDP_AIE_TRACE_WRITER_DIR         "${CMAKE_CURRENT_SOURCE_DIR}/profile/writer/aie_trace")
@@ -229,6 +230,17 @@ file(GLOB XRT_XDP_HAL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES
   "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
   )
 
+file(GLOB XRT_XDP_HW_EMU_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES
+  "${XRT_XDP_PROFILE_DEVICE_OFFLOAD_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_OFFLOAD_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_HW_EMU_DEVICE_OFFLOAD_PLUGIN_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HW_EMU_DEVICE_OFFLOAD_PLUGIN_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_DEVICE_OFFLOAD_WRITER_DIR}/*.h"
+  "${XRT_XDP_PROFILE_DEVICE_OFFLOAD_WRITER_DIR}/*.cpp"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.h"
+  "${XRT_XDP_PROFILE_HAL_DEVICE_DIR}/*.cpp"
+  )
+
 file(GLOB XRT_XDP_POWER_PROFILE_PLUGIN_FILES
   "${XRT_XDP_POWER_PROFILE_PLUGIN_DIR}/*.h"
   "${XRT_XDP_POWER_PROFILE_PLUGIN_DIR}/*.cpp"
@@ -305,6 +317,7 @@ add_library(xdp_opencl_counters_plugin MODULE ${XRT_XDP_PROFILE_OPENCL_COUNTERS_
 add_library(xdp_user_plugin MODULE ${XRT_XDP_PROFILE_USER_PLUGIN_FILES})
 add_library(xdp_device_offload_plugin MODULE ${XRT_XDP_OPENCL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_hal_device_offload_plugin MODULE ${XRT_XDP_HAL_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
+add_library(xdp_hw_emu_device_offload_plugin MODULE ${XRT_XDP_HW_EMU_PROFILE_DEVICE_OFFLOAD_PLUGIN_FILES})
 add_library(xdp_pl_deadlock_plugin MODULE ${XRT_XDP_PROFILE_PL_DEADLOCK_PLUGIN_FILES})
 
 add_dependencies(xdp_hal_plugin xdp_core xrt_coreutil)
@@ -316,6 +329,7 @@ add_dependencies(xdp_opencl_counters_plugin xdp_core xrt_coreutil xilinxopencl)
 add_dependencies(xdp_user_plugin xdp_core xrt_coreutil)
 add_dependencies(xdp_device_offload_plugin xdp_core xilinxopencl xrt_coreutil)
 add_dependencies(xdp_hal_device_offload_plugin xdp_core xrt_core xrt_coreutil)
+add_dependencies(xdp_hw_emu_device_offload_plugin xdp_core xrt_coreutil xrt_hwemu)
 add_dependencies(xdp_pl_deadlock_plugin xdp_core xrt_core xrt_coreutil)
 
 target_link_libraries(xdp_hal_plugin PRIVATE xdp_core xrt_coreutil)
@@ -327,6 +341,7 @@ target_link_libraries(xdp_opencl_counters_plugin PRIVATE xdp_core xrt_coreutil x
 target_link_libraries(xdp_user_plugin PRIVATE xdp_core xrt_coreutil)
 target_link_libraries(xdp_device_offload_plugin PRIVATE xdp_core xilinxopencl xrt_coreutil)
 target_link_libraries(xdp_hal_device_offload_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
+target_link_libraries(xdp_hw_emu_device_offload_plugin PRIVATE xdp_core xrt_coreutil xrt_hwemu)
 target_link_libraries(xdp_pl_deadlock_plugin PRIVATE xdp_core xrt_core xrt_coreutil)
 
 set_target_properties(xdp_hal_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
@@ -338,6 +353,7 @@ set_target_properties(xdp_opencl_counters_plugin PROPERTIES VERSION ${XRT_VERSIO
 set_target_properties(xdp_user_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_hal_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
+set_target_properties(xdp_hw_emu_device_offload_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 set_target_properties(xdp_pl_deadlock_plugin PROPERTIES VERSION ${XRT_VERSION_STRING} SOVERSION ${XRT_SOVERSION})
 
 install (TARGETS xdp_hal_plugin
@@ -349,6 +365,7 @@ install (TARGETS xdp_hal_plugin
                  xdp_user_plugin
                  xdp_device_offload_plugin
                  xdp_hal_device_offload_plugin
+                 xdp_hw_emu_device_offload_plugin
                  xdp_pl_deadlock_plugin
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR}/xrt/module
 )
