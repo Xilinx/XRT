@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,6 +16,7 @@
 
 #define XDP_SOURCE
 
+#include "xdp/profile/database/static_info/aie_constructs.h"
 #include "xdp/profile/plugin/noc/noc_plugin.h"
 #include "xdp/profile/writer/noc/noc_writer.h"
 #include "xdp/profile/plugin/vp_base/info.h"

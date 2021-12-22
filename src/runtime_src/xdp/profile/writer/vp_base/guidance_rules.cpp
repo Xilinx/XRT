@@ -19,6 +19,9 @@
 #include <memory>
 #include <map>
 
+#include "xdp/profile/database/static_info/device_info.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
+#include "xdp/profile/database/static_info/xclbin_info.h"
 #include "xdp/profile/writer/vp_base/guidance_rules.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"
@@ -72,7 +75,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->cus) {
+          for (auto cu : xclbin->pl.cus) {
 	    std::string cuName = cu.second->getName();
 	    std::vector<std::pair<std::string, xdp::TimeStatistics>> cuCalls =
               db->getStats().getComputeUnitExecutionStats(cuName);
@@ -116,14 +119,23 @@ namespace {
     auto deviceInfos = db->getStaticInfo().getDeviceInfos();
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
-        monitors[ACCEL_MONITOR]->numTotal += xclbin->amList.size();
-        monitors[ACCEL_MONITOR]->numTraceEnabled += xclbin->amMap.size();
+        monitors[ACCEL_MONITOR]->numTotal += xclbin->pl.ams.size();
+        for (auto am : xclbin->pl.ams) {
+          if (am->traceEnabled)
+            monitors[ACCEL_MONITOR]->numTraceEnabled++ ;
+        }
 
-        monitors[AXI_MM_MONITOR]->numTotal += xclbin->aimList.size();
-        monitors[AXI_MM_MONITOR]->numTraceEnabled += xclbin->aimMap.size();
+        monitors[AXI_MM_MONITOR]->numTotal += xclbin->pl.aims.size();
+        for (auto aim : xclbin->pl.aims) {
+          if (aim->traceEnabled)
+            monitors[AXI_MM_MONITOR]->numTraceEnabled++ ;
+        }
 
-        monitors[AXI_STREAM_MONITOR]->numTotal += xclbin->asmList.size();
-        monitors[AXI_STREAM_MONITOR]->numTraceEnabled += xclbin->asmMap.size();
+        monitors[AXI_STREAM_MONITOR]->numTotal += xclbin->pl.asms.size();
+        for (auto mon : xclbin->pl.asms) {
+          if (mon->traceEnabled)
+            monitors[AXI_STREAM_MONITOR]->numTraceEnabled++ ;
+        }
       }
       for (auto& mon : monitors) {
         fout << "NUM_MONITORS,"
@@ -162,7 +174,7 @@ namespace {
 
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->memoryInfo) {
+          for (auto memory : xclbin->pl.memoryInfo) {
 	    std::string memName = memory.second->name ;
             if (memName.rfind("bank", 0) == 0)
               memName = "DDR[" + memName.substr(4,4) + "]" ;
@@ -186,7 +198,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos();
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->memoryInfo) {
+          for (auto memory : xclbin->pl.memoryInfo) {
             if (memory.second->name.find("PLRAM") != std::string::npos) {
               hasPLRAM = true ;
               break ;
@@ -219,7 +231,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto memory : xclbin->memoryInfo) {
+          for (auto memory : xclbin->pl.memoryInfo) {
             if (memory.second->name.find("HBM") != std::string::npos) {
               hasHBM = true ;
               break ;
@@ -316,7 +328,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->cus) {
+          for (auto cu : xclbin->pl.cus) {
 	    std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
 	    std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
 
@@ -350,7 +362,7 @@ namespace {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          for (auto cu : xclbin->cus) {
+          for (auto cu : xclbin->pl.cus) {
 	    std::string kernelName = cu.second->getKernelName() ;
             if (kernelCounts.find(kernelName) == kernelCounts.end()) {
               kernelCounts[kernelName] = 1 ;
@@ -399,7 +411,7 @@ namespace {
 
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
-          if (xclbin->usesTs2mm) {
+          if (xclbin->pl.usesTs2mm) {
             memType = "TS2MM" ;
             break ;
 	  }
@@ -440,7 +452,7 @@ namespace {
 
     for (auto device : deviceInfos) {
       for (auto xclbin : device->loadedXclbins) {
-        for (auto memory : xclbin->memoryInfo) {
+        for (auto memory : xclbin->pl.memoryInfo) {
           if (memory.second->name.find("PLRAM") != std::string::npos) {
             fout << "PLRAM_SIZE_BYTES,"
                  << device->getUniqueDeviceName()
@@ -571,17 +583,21 @@ namespace {
 
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
-      auto& coreCounters =
+      auto coreCounters =
         db->getStaticInfo().getAIECoreCounterResources(device->deviceId) ;
-      for (auto const& counter : coreCounters) {
-        fout << "AIE_CORE_COUNTER_RESOURCES," << counter.first << ","
-             << counter.second << ",\n" ;
+      if (coreCounters != nullptr) {
+        for (auto const& counter : *coreCounters) {
+          fout << "AIE_CORE_COUNTER_RESOURCES," << counter.first << ","
+               << counter.second << ",\n" ;
+        }
       }
-      auto& memoryCounters =
+      auto memoryCounters =
         db->getStaticInfo().getAIEMemoryCounterResources(device->deviceId) ;
-      for (auto const& counter : memoryCounters) {
-        fout << "AIE_MEMORY_COUNTER_RESOURCES," << counter.first << ","
-             << counter.second << ",\n" ;
+      if (memoryCounters != nullptr) {
+        for (auto const& counter : *memoryCounters) {
+          fout << "AIE_MEMORY_COUNTER_RESOURCES," << counter.first << ","
+               << counter.second << ",\n" ;
+        }
       }
     }
   }
@@ -592,17 +608,21 @@ namespace {
 
     auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
     for (auto device : deviceInfos) {
-      auto& coreEvents =
+      auto coreEvents =
         db->getStaticInfo().getAIECoreEventResources(device->deviceId) ;
-      for (auto const& coreEvent : coreEvents) {
-        fout << "AIE_CORE_EVENT_RESOURCES," << coreEvent.first << ","
-             << coreEvent.second << ",\n" ;
+      if (coreEvents != nullptr) {
+        for (auto const& coreEvent : *coreEvents) {
+          fout << "AIE_CORE_EVENT_RESOURCES," << coreEvent.first << ","
+               << coreEvent.second << ",\n" ;
+        }
       }
-      auto& memoryEvents =
+      auto memoryEvents =
         db->getStaticInfo().getAIEMemoryEventResources(device->deviceId) ;
-      for (auto const& memoryEvent : memoryEvents) {
-        fout << "AIE_MEMORY_EVENT_RESOURCES," << memoryEvent.first << ","
-             << memoryEvent.second << ",\n" ;
+      if (memoryEvents != nullptr) {
+        for (auto const& memoryEvent : *memoryEvents) {
+          fout << "AIE_MEMORY_EVENT_RESOURCES," << memoryEvent.first << ","
+               << memoryEvent.second << ",\n" ;
+        }
       }
     }
   }
