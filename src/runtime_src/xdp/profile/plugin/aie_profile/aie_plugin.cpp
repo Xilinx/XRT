@@ -840,10 +840,16 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg);
         }
         else {
+          XAie_DevInst* aieDevInst =
+            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+
           for (auto& counter : counters) {
+            auto payload = getCounterPayload(aieDevInst, counter.column, counter.row, 
+                                             counter.startEvent);
+
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
                 counter.row + 1, counter.counterNumber, counter.startEvent, counter.endEvent,
-                counter.resetEvent, 0, counter.clockFreqMhz, counter.module, counter.name);
+                counter.resetEvent, payload, counter.clockFreqMhz, counter.module, counter.name);
           }
         }
       }
