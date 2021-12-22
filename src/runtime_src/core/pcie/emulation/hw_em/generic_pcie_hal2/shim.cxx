@@ -31,6 +31,8 @@
 #include <set>
 #include <vector>
 
+#include "plugin/xdp/device_offload.h"
+
 #define SEND_RESP2QDMA() \
     { \
         auto raw_response_header    = std::make_unique<char[]>(ri_len); \
@@ -1783,6 +1785,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // Shim object is not deleted as part of closing device.
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
+    xdp::hw_emu::flush_device(this);
     mCoreDevice.reset();
     device_handles::remove(this);
 

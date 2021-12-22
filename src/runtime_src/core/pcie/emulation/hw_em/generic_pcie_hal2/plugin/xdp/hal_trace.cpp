@@ -22,9 +22,11 @@
 #include "core/common/utils.h"
 
 #include "hal_trace.h"
+#include "plugin_loader.h"
 
 namespace xdp {
 namespace hw_emu {
+namespace trace {
 
   // For both hardware emulation and hardware, we load the same XDP module
   void load()
@@ -78,18 +80,19 @@ namespace hw_emu {
     return 0 ;
   }
 
-namespace trace {
-
-  bool api_call_logger::hal_plugins_loaded = false ;
+  bool loader::hw_emu_plugins_loaded = false ;
+  loader::loader()
+  {
+    if (hw_emu_plugins_loaded)
+      return ;
+    hw_emu_plugins_loaded = true ;
+    xdp::hw_emu::load() ;
+  }
 
   api_call_logger::api_call_logger(const char* function)
     : m_id(0)
     , m_fullname(function)
   {
-    if (hal_plugins_loaded)
-      return ;
-    hal_plugins_loaded = true ;
-    xdp::hw_emu::load() ;
   }
 
   generic_api_call_logger::generic_api_call_logger(const char* function)

@@ -23,6 +23,7 @@
 
 namespace xdp {
 namespace hw_emu {
+namespace trace {
 
   // Functions for the loading and connecting to the plugin module
   void load() ;
@@ -30,7 +31,14 @@ namespace hw_emu {
   void warning_callbacks() ;
   int error_function() ;
 
-namespace trace {
+  class loader
+  {
+  private:
+    static bool hw_emu_plugins_loaded ;
+  public:
+    loader() ;
+    ~loader() = default ;
+  } ;
 
   // Functions and classes specific to API logging
 
@@ -63,6 +71,7 @@ namespace trace {
   auto
   profiling_wrapper(const char* function, Callable&& f, Args&&...args)
   {
+    loader load_object ;
     if (xrt_core::config::get_xrt_trace()) {
       generic_api_call_logger log_object(function) ;
       return f(std::forward<Args>(args)...) ;
@@ -95,6 +104,7 @@ namespace trace {
                                     bool isWrite, Callable&& f,
                                     Args&&...args)
   {
+    loader load_object ;
     if (xrt_core::config::get_xrt_trace()) {
       buffer_transfer_logger log_object(function, size, isWrite) ;
       return f(std::forward<Args>(args)...) ;

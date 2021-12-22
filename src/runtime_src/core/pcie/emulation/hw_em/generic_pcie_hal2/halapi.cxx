@@ -21,6 +21,7 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "plugin/xdp/device_offload.h"
 #include "plugin/xdp/hal_trace.h"
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
@@ -355,7 +356,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   int ret = 0;
 #else
+  xdp::hw_emu::flush_device(handle) ;
   auto ret = drv->xclLoadXclBin(buffer);
+  xdp::hw_emu::update_device(handle) ;
 #endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
