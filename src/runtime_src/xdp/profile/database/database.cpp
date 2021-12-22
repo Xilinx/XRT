@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,8 +13,6 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
-#include <iostream>
 
 #define XDP_SOURCE
 
@@ -43,8 +41,7 @@ namespace xdp {
   {
     // The only plugins that should still be in this vector are ones
     //  that have not been destroyed yet.
-    for (auto p : plugins)
-    {
+    for (auto p : plugins) {
       p->writeAll(false) ;
     }
 
@@ -75,8 +72,7 @@ namespace xdp {
 
   uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)
   {
-    if (devices.find(sysfsPath) == devices.end())
-    {
+    if (devices.find(sysfsPath) == devices.end()) {
       throw std::runtime_error("Device not registered in database");
     }
     return devices[sysfsPath] ;
@@ -90,26 +86,9 @@ namespace xdp {
     return devices[sysfsPath];
   }
 
-  // This function should return true the first time any plugin calls it.
-  //  The plugin that has ownership is the only one that should be responsible
-  //  for offloading information from the devices.  This is necessary for
-  //  hardware OpenCL flows which will end up loading two offload plugins
-  bool VPDatabase::claimDeviceOffloadOwnership()
-  {
-    static std::mutex deviceOffloadLock ;
-    static bool claimed = false ;
-
-    std::lock_guard<std::mutex> lock(deviceOffloadLock) ;
-    if (claimed) return false ;
-
-    claimed = true ;
-    return true ;
-  }
-
   void VPDatabase::broadcast(MessageType msg, void* blob)
   {
-    for (auto p : plugins)
-    {
+    for (auto p : plugins) {
       p->broadcast(msg, blob) ;
     }
   }

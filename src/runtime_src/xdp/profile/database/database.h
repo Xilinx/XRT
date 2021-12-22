@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,15 +17,14 @@
 #ifndef VTF_DATABASE_DOT_H
 #define VTF_DATABASE_DOT_H
 
-#include <vector>
 #include <list>
 #include <map>
-
-#include "xdp/profile/database/statistics_database.h"
-#include "xdp/profile/database/static_info_database.h"
-#include "xdp/profile/database/dynamic_event_database.h"
+#include <vector>
 
 #include "xdp/config.h"
+#include "xdp/profile/database/dynamic_event_database.h"
+#include "xdp/profile/database/static_info_database.h"
+#include "xdp/profile/database/statistics_database.h"
 
 namespace xdp {
 
@@ -91,11 +90,6 @@ namespace xdp {
 
     XDP_EXPORT uint64_t addDevice(const std::string&);
     XDP_EXPORT uint64_t getDeviceId(const std::string&);
-
-    // Functions that provide arbitration between multiple plugins
-    //  for resources that should only exist once regardless of 
-    //  the number of plugins
-    XDP_EXPORT bool claimDeviceOffloadOwnership() ;
 
     // Functions that send messages to registered plugins
     XDP_EXPORT void broadcast(MessageType msg, void* blob = nullptr);
