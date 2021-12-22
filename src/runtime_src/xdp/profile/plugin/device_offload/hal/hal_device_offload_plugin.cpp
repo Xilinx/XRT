@@ -18,31 +18,25 @@
 
 #include <string>
 #include <vector>
-#include <iostream>
 
 // For HAL applications
-#include "core/common/xrt_profiling.h"
 #include "core/common/message.h"
+#include "core/common/system.h"
+#include "core/common/xrt_profiling.h"
 
-#include "xdp/profile/writer/device_trace/device_trace_writer.h"
-
-#include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
 #include "xdp/profile/database/database.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-
 #include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-
-#include "core/common/system.h"
-#include "core/common/message.h"
+#include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
+#include "xdp/profile/plugin/vp_base/info.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
+#include "xdp/profile/writer/device_trace/device_trace_writer.h"
 
 namespace xdp {
 
   HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
   {
-    // If we aren't the plugin that is handling the device offload, don't
-    //  do anything.
-    if (!active) return ;
+    db->registerInfo(info::device_offload) ;
 
     // Open all of the devices that exist so we can keep our own pointer
     //  to access them.
@@ -74,8 +68,6 @@ namespace xdp {
 
   HALDeviceOffloadPlugin::~HALDeviceOffloadPlugin()
   {
-    if (!active) return ;
-
     if (VPDatabase::alive())
     {
       // If we are destroyed before the database, we need to
@@ -99,8 +91,6 @@ namespace xdp {
 
   void HALDeviceOffloadPlugin::readTrace()
   {
-    if (!active) return ;
-
     for (auto o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
       flushTraceOffloader(offloader);
@@ -108,18 +98,10 @@ namespace xdp {
     }
   }
 
-  void HALDeviceOffloadPlugin::writeAll(bool openNewFiles)
-  {
-    if (!active) return ;
-    DeviceOffloadPlugin::writeAll(openNewFiles) ;
-  }
-
   // This function will only be called if an active device is going
   //  to be reprogrammed.  We can assume the device is good.
   void HALDeviceOffloadPlugin::flushDevice(void* handle)
   {
-    if (!active) return ;
-    
     // For HAL devices, the pointer passed in is an xrtDeviceHandle
     char pathBuf[512] ;
     memset(pathBuf, 0, 512) ;
@@ -141,8 +123,6 @@ namespace xdp {
 
   void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
   {
-    if (!active) return ;
-
     // For HAL devices, the pointer passed in is an xrtDeviceHandle.
     //  We will query information on that passed in handle, but we
     //  should user our own locally opened handle to access the physical
