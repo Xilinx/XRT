@@ -1581,7 +1581,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_inf
 				cu_info[j].cu_idx = j;
 				num_cus++;
 				break;
-			} else if (prev_info->intr_id > info.intr_id) {
+			} else if (prev_info->addr > info.addr) {
 				memcpy(&cu_info[j], prev_info, sizeof(info));
 				cu_info[j].cu_idx = j;
 				continue;
