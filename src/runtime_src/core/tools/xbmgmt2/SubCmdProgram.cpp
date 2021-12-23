@@ -73,11 +73,12 @@ namespace {
  * @brief Update shell on the board for manual flash
  * 
  * @param[in] index The index of the board to be flashed
- * @param[in] image_paths The images to plash onto the board
- * @param[in] flash_type How the board should be flashed. Typically left as blank
+ * @param[in] image_paths The images to flash onto the board
+ * @param[in] flash_type The format in which the board will be flashed. Leave 
+ *                       blank to use the boards default flashing mode
  */
 static void 
-update_shell(unsigned int index, const std::vector<std::string>& image_paths, const std::string& flash_type="")
+update_shell(unsigned int index, const std::vector<std::string>& image_paths, const std::string& flash_type = "")
 {
   if (!flash_type.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
@@ -85,7 +86,7 @@ update_shell(unsigned int index, const std::vector<std::string>& image_paths, co
   }
 
   Flasher flasher(index);
-  if(!flasher.isValid())
+  if (!flasher.isValid())
     throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % index));
 
   if (image_paths.empty())
@@ -408,7 +409,7 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
  * Helper method for auto_flash
  */
 static bool  
-update_shell(unsigned int boardIdx, DSAInfo& candidate, std::string flash_type)
+update_shell(unsigned int boardIdx, DSAInfo& candidate, const std::string& flash_type)
 {
   Flasher flasher(boardIdx);
 
@@ -440,8 +441,7 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, std::string flash_type)
   // Program the shell
   boost::format programFmt("[%s] : %s...\n");
   std::cout << programFmt % flasher.sGetDBDF() % "Updating base (e.g., shell) flash image";
-  std::vector<std::string> validated_image;
-  validated_image.push_back(candidate.file);
+  std::vector<std::string> validated_image = {candidate.file};
   update_shell(boardIdx, validated_image, flash_type);
   return true;
 }
@@ -612,37 +612,39 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
  * @return std::vector<std::string> A list of known and valid images for flashing
  */
 static std::vector<std::string>
-find_flash_image_paths(const std::vector<std::string> image_list)
+find_flash_image_paths(const std::vector<std::string>& image_list)
 {
   std::vector<std::string> path_list;
   auto installedShells = firmwareImage::getIntalledDSAs();
   
   for(const auto& img : image_list) {
     // Check if the passed in image is absolute path
-    if(boost::filesystem::exists(boost::filesystem::path(img)))
+    if(boost::filesystem::exists(img)){
+      if (boost::filesystem::extension(img).compare(".xsabin") != 0)
+        std::cout << "Warning: Development usage, this may damage the card. Proceed with caution"
       path_list.push_back(img);
-    // Search installed shells and find the image path by checking the vbnv
+    }
+    // Search through the installed shells and get the complete path
     else {
-
       /*
-       * Iterate over installed shells
-       * Checks the vbnv against the vnbv passed in by the user
+       * Checks installed shell names against the shell name passed in by the user
        */
-      std::string img_path = "";
-      for(auto const& shell : installedShells) {
-        if(img.compare(shell.name) == 0) {
-          if(img_path.empty())
+      std::string img_path;
+      for (auto const& shell : installedShells) {
+        if (img.compare(shell.name) == 0) {
+          // Only set the image path on the first shell match
+          if (img_path.empty())
             img_path = shell.file;
           /*
-           * If multiple shells with the same vbnv are installed on the system, we don't want to
-           * blindly update the device. in this case, the user needs to specify the complete path
+           * If multiple shells with the same name are installed on the system, we don't want to
+           * blindly update the device. In this case, the user needs to specify the complete path
            */
           else
             throw xrt_core::error("Specified base matched mutiple installed bases. Please specify the full path.");
         }
       }
 
-      if(img_path.empty()) 
+      if (img_path.empty())
         throw xrt_core::error("Specified base not found on the system");
 
       path_list.push_back(img_path);
@@ -695,29 +697,36 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the partition.")
-
-    // TODO: Auto update the 'base' values
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
-                                                                         "  ALL   - All images will be updated\n"
-                                                                         "  shell - Platform image\n"
-                                                                         "  SC    - Satellite controller")
-    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
-                                                                      "  Name (and path) of the xclbin.")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), "Specifies an image to use used to update the persistent device.  Value values:\n"
-                                                                    "  Name (and path) to the mcs image on disk\n"
-                                                                    "  Name (and path) to the xsabin image on disk")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), 
+      "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), 
+      "The partition to be loaded.  Valid values:\n"
+      "  Name (and path) of the partition.")
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), 
+      "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
+      "  ALL   - All images will be updated\n"
+      "  SHELL - Platform image\n"
+      "  SC    - Satellite controller")
+    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), 
+      "The xclbin to be loaded.  Valid values:\n"
+      "  Name (and path) of the xclbin.")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), 
+      "Specifies an image to use used to update the persistent device.  Value values:\n"
+      "  Name (and path) to the mcs image on disk\n"
+      "  Name (and path) to the xsabin image on disk")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), 
+      "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not"
+      " be reverted for a golden image does not exist.")
+    ("help,h", boost::program_options::bool_switch(&help), 
+      "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
   hiddenOptions.add_options()
-    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType), "Overrides the flash mode. Use with caution.  Value values:\n"
-                                                                    "  ospi\n"
-                                                                    "  ospi_versal")
+    ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
+      "Overrides the flash mode. Use with caution.  Value values:\n"
+      "  ospi\n"
+      "  ospi_versal")
   ;
 
   po::options_description allOptions("All Options");  
@@ -772,7 +781,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   // Enforce 1 device specification
   if (deviceCollection.size() > 1) {
-    std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single device using --device option\n\n";
+    std::cerr << "\nERROR: Multiple device programming is not supported. Please specify a single"
+                 " device using --device option\n\n";
     std::cout << "List of available devices:" << std::endl;
 
     boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
@@ -789,39 +799,49 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (deviceCollection.size() == 0) 
     throw std::runtime_error("No devices found.");
 
+  // Only two images options are supported
+  if (image.size() > 2)
+    throw xrt_core::error("Please specify either 1 or 2 flash images");
+
   if (!update.empty()) {
     // Get a list of images known exist
     const auto validated_images = find_flash_image_paths(image);
-    if (validated_images.size() <= 2) {
-      // Get the device
-      auto & workingDevice = deviceCollection[0];
-      XBU::verbose("Sub command: --base");
-      XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
-      if (update.compare("all") == 0) {
-        if (validated_images.empty())
-          auto_flash(workingDevice);
-        else if(boost::filesystem::extension(validated_images[0]).compare(".xsabin") == 0)
-          auto_flash(workingDevice, flashType, validated_images[0]);
-        else
-          throw xrt_core::error("Please provide a valid xsabin file or specify a specific base to flash");
-      }
-      else if (update.compare("sc") == 0) {
-          if (!validated_images.empty())
-            update_SC(workingDevice.get()->get_device_id(), validated_images[0]);
-          else
-            throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base sc --image='/path/to/flash_image");
-      }
-      else if (update.compare("shell") == 0) {
-          if (!validated_images.empty())
-            update_shell(workingDevice.get()->get_device_id(), validated_images, flashType);
-          else
-            throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base shell --image='/path/to/flash_image OR shell_name'");
-      }
+
+    /*
+     * Fail early here to reduce additional conditions below
+     * Technically validated_images will never be empty as: if image is not empty but has a bad
+     * path or bad shell name find_flash_image_paths exits early. This statement can be removed
+     * or left here as a precaution.
+     */
+    if (validated_images.empty())
+      throw xrt_core::error("Please provide a valid xsabin file or specify the type of base to flash");
+
+    // Get the device
+    auto & workingDevice = deviceCollection[0];
+    XBU::verbose("Sub command: --base");
+    XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
+    if (update.compare("all") == 0) {
+      // User did not provide an image. Select image automatically.
+      if (image.empty())
+        auto_flash(workingDevice);
+      // User provided an image. Use it assuming it was validated.
       else
-        throw xrt_core::error("Please specify a valid value");
+        auto_flash(workingDevice, flashType, validated_images[0]);
+    }
+    /*
+     * For the following two if conditions regarding the validated images portion
+     * The user may have provided an image, but, it may not exist or the shell name is wrong
+     */
+    else if (update.compare("sc") == 0) {
+      update_SC(workingDevice.get()->get_device_id(), validated_images[0]);
+    }
+    else if (update.compare("shell") == 0) {
+      update_shell(workingDevice.get()->get_device_id(), validated_images, flashType);
     }
     else
-      throw xrt_core::error("Please specify either 1 or 2 flash images");
+      throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base [all|sc|shell]"
+                            " --image=['/path/to/flash_image'|'shell name']");
+
     return;
   }
   
@@ -851,7 +871,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     
     for(auto& f : flasher_list) {
       if (!f.upgradeFirmware("", nullptr, nullptr)) {
-        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "] is reset successfully." ;
+        std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "Shell on [" % f.sGetDBDF() % "]"
+                                   " is reset successfully.";
         has_reset = true;
       }
     }
@@ -880,7 +901,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       throw xrt_core::error(boost::str(boost::format("%d is an invalid index") % dev->get_device_id()));
 
     if(xrt_core::device_query<xrt_core::query::interface_uuids>(dev).empty())
-      throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package is installed.");
+      throw xrt_core::error("Can not get BLP interface uuid. Please make sure corresponding BLP package"
+                            " is installed.");
 
     // Check if file exists
     if (!boost::filesystem::exists(plp))
