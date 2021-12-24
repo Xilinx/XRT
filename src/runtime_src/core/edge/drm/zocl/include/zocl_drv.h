@@ -296,3 +296,7 @@ zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
 }
 
 #endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+extern const struct drm_gem_object_funcs zocl_gem_object_funcs;
+#endif
