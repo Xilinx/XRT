@@ -1,21 +1,40 @@
 name: Mini Pipeline
 
-on:     
+# 'on' key contains the events which triggers build on github
+# Here, build gets triggered on pull request. Since branch is not specified, build gets triggered for every pull request
+on:
   pull_request:
 
+# 'jobs' key contains jobs that will be in run in this workflow
+# In the below list, vm_creation, ConsoleOutput, Cleanup jobs are run on github-runners which are configured on enclave host
+# verification jobs are run on github-runners which are configured on VMs themselves 
+# Since VMs are already configured with github runners before taking snapshot, it became possible to run verification jobs directly on VMs
+# enclave host only does reverting VMs to fresh state, attaching cards, running virsh console for three VMs and shutting down the VMs
+# Building , Installing XRT and running validate tests are performed by github actions directly on VMs
 jobs:
+
+  # vm_creation job reverts VM to initial state using snapshot and attaches cards to VMs using virsh commands
+  # This job also deletes ~/pipeline/unlock.txt file to prevent succeeding PRs from disturbing present PR build
   vm_creation:
     runs-on: enclave_host
     defaults:
       run:
         shell: bash
+
+    # Steps are tasks present in job executed in sequential order. Each step is dependent on the previous step
     steps:
+
+    # This step acquires the host so that the subsequent PRs cant use this machine until PR is finished
+    # This removes ~/pipeline/unlock.txt file. Subsequent PRs check for this file existence
+    # Last job of this workflow creates this file
     - name: Acquire Host
       run: |
         echo "Wait for Previous PR to complete"
         while [ ! -f ~/pipeline/unlock.txt ]; do sleep 1m; done
         echo "Previous PR is complete"
         sudo rm -f ~/pipeline/unlock.txt > /dev/null
+
+    # This step checks out PR in the github workspace. Eventhough we are not building XRT on enclave host, this step is necessary to get create_vm.sh and attach_cards.sh scripts which are included in the XRT tree
     - name: Checkout PR
       uses: actions/checkout@v2
     - name: Creating a VM from snapshot on enclave host
@@ -24,31 +43,59 @@ jobs:
     - name: Attaching Cards to VM
       run: | 
         sudo .github/scripts/pipeline/attach_cards.sh
+
+  # verification job is responsible for building, installing XRT and running tests
+  # Below verification job is infact three jobs running on three different VMs parallelly
   verification:
+
+    # ${{ matrix.os }} indicates that verification job runs on machines with different OS
     runs-on: ${{ matrix.os }}
+
+    # 'needs' key indicates dependency of verification job on vm_creation job. verification job will be run only after vm_creation job is completed
     needs: vm_creation
     defaults:
       run:
         shell: bash
+
+    # matrix.os is defined under 'strategy' key. matrix.os contains list of labels of github-runners configured on VMs
+    # for example, u200_18.04 label means Ubuntu18.04 with u200 card attached
+    # u50_7.8 label means Centos7.8 with u50 card attached
     strategy:
       matrix:
         os: [ u200_18.04, u50_7.8, u250_20.04]
+
+      # By default, if verification job fails on one VM, the verification job running on other VMs are stopped forcibly since all VMs are part of matrix
+      # To avoid this, fail-fast is set to false, making verification jobs independent of each other
       fail-fast: false
+
+    # timeout for verification job is set to 40 min
     timeout-minutes: 40
+
     steps:
+    # Setup step mounts the nfs directory which contains platform packages and microblaze toolchain on the VM
+    # Note: If any step in this job fails or timeouts, then all succeeding steps are skipped except for 'XRT build artifacts' step
     - name: Setup
       run: sudo ~/pipeline/setup.sh
+
     - name: Checkout PR
       uses: actions/checkout@v2
+
+    # This step builds XRT rpm/deb packages. build.sh is run with -opt option
     - name: Build XRT
       run: |
         .github/scripts/pipeline/build_xrt.sh
+
+      # XRT build aritfacts step uploads the build/Release folder to github action in zip format
+      # This step uses upload-artifacts action which is maintained by github
     - name: XRT build artifacts
+      # if always() keyword is set so that even if previous step fails or workflow is cancelled, this step is set to run always
       if: always()
       uses: actions/upload-artifact@v2
       with:
         name: Build Artifacts
         path: build/Release
+
+    # This step installs the XRT rpm/deb packages created in the previous step
     - name: Install XRT
       run: |
         .github/scripts/pipeline/install_xrt.sh
@@ -64,12 +111,13 @@ jobs:
       timeout-minutes: 5
       run: |
         source /opt/xilinx/xrt/setup.sh
-        xbutil examine
+        xbutil examine -d
     - name: Validate card
       timeout-minutes: 5
       run: |
         source /opt/xilinx/xrt/setup.sh
         xbutil validate -d --verbose --batch
+        xbutil examine -d
     - name: Drivers reloading
       timeout-minutes: 10
       run: |
@@ -80,30 +128,57 @@ jobs:
                 sudo modprobe xocl && sudo modprobe xclmgmt
                 x=$(( $x + 1 ))
         done
-        
+
+  # ConsoleOutput job is run on github-runners configured on enclave host and captures console log of each VM
   ConsoleOutput:
     runs-on: ${{ matrix.os }}
+
+    # This ConsoleOutput job is run after vm_creation job is completed
     needs: vm_creation
     defaults:
       run:
+
+        # As of now, Github actions has no support of TTY allocation. So, commands such as virsh console, when run, show no output in github actions
+        # As a workaround, 'script' is specified in 'shell' key instead of bash
+        # timeout 40m bash {0} exit 0 line means that the bash command will timeout after 40m with exit code 0
+        # If verification job ends before 40min, 'Cleanup' job starts and destroys the VM and thereby killing virsh console command 
+        # Still, this job terminates with exit code 0 as specified in 'shell' key
         shell: 'script -q -c "timeout 40m bash {0}" exit 0'
+
     strategy:
       matrix:
         os: [ ubuntu18.04, centos7.8, ubuntu20.04 ]
+        # Note: The labels listed in matrix:os are not VMs but github runners configured on enclave host
+        # These runners are named exactly same as VM domain names to take advatange of matrix.os feature, thus avoiding repeating this code
+
+      # fail-fast is specified since we need this matrix build to be independent
       fail-fast: false
     steps:
     - name: Console Output
       run: |
+
+        # virsh console runs on github-runners specified in {{ matrix.os }} with each runner capturing console log of one VM
         sudo virsh console ${{ matrix.os }}
-        
+
+  # Cleanup job runs on 'cleanup' github-runner configured on enclave host
+  # Cleanup job is for destroying the VMs and creating ~/pipeline/unlock.txt file on enclave host
   Cleanup:
     runs-on: cleanup
+
+    # This job depends on completion of verification job. Once verification job on VM is completed, then virsh destroy is executed
     needs: verification
+
+    # if: always() is added to this job to ensure this job is made to run even if all verification job fails or workflow is cancelled
+    #  Since creating ~/pipeline/unlock.txt file is a must for this workflow to work, this job is made to run always
     if: always()
+
     steps:
     - name: Clean
       run: |
+
         sudo virsh destroy centos7.8
         sudo virsh destroy ubuntu18.04
         sudo virsh destroy ubuntu20.04
+        # Note: virsh destroy doesn't delete the VM. It just powers off the VM thus stopping the serial console
+        # virsh shutdown also powers off the VM but it doesnot stop the serial console. Hence, virsh destroy is used here
         touch ~/pipeline/unlock.txt
