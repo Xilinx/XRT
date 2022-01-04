@@ -172,8 +172,6 @@ zocl_query_kernel(struct drm_zocl_domain *domain, const char *name)
 	struct kernel_info *kernel;
 	int off = 0;
 
-	printk("[SAIF_TEST -> %s : %d] --------- ksize %d i name %s \n", __func__, __LINE__,
-	       domain->ksize, name);
 	while (off < domain->ksize) {
 		kernel = (struct kernel_info *)(domain->kernels + off);
 		if (!strcmp(kernel->name, name))
@@ -182,8 +180,6 @@ zocl_query_kernel(struct drm_zocl_domain *domain, const char *name)
 		off += sizeof(struct argument_info) * kernel->anums;
 	}
 
-	printk("[SAIF_TEST -> %s : %d] --------- ksize %d off %d name %s a nums %d \n", __func__, __LINE__,
-	       domain->ksize, off, kernel->name, kernel->anums);
 	if (off < domain->ksize)
 		return kernel;
 

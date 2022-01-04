@@ -50,7 +50,6 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
-	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	return show_kds_stat(&zdev->kds, buf);
 }
 static DEVICE_ATTR_RO(kds_stat);
@@ -61,7 +60,6 @@ kds_custat_raw_show(struct device *dev, struct device_attribute *attr,
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
-	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	return show_kds_custat_raw(&zdev->kds, buf);
 }
 static DEVICE_ATTR_RO(kds_custat_raw);
@@ -99,11 +97,9 @@ static ssize_t kds_numcus_show(struct device *dev,
 	struct kds_sched *kds = &zdev->kds;
 	ssize_t size;
 
-	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	if (!zdev || !kds)
 		return 0;
 
-	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	size = sprintf(buf, "%d\n", kds->cu_mgmt.num_cus);
 
 	return size;

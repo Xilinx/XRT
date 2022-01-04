@@ -1024,45 +1024,36 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	if (zdev->domain) {
 		iommu_detach_device(zdev->domain, drm->dev);
 		iommu_domain_free(zdev->domain);
 	}
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	/* If dma channel has been requested, make sure it is released */
 	if (zdev->zdev_dma_chan) {
 		dma_release_channel(zdev->zdev_dma_chan);
 		zdev->zdev_dma_chan = NULL;
 	}
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	zocl_pr_domain_fini(zdev);
 	zocl_destroy_aie(zdev);
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);
 	zocl_fini_error(zdev);
 
 	zocl_fini_sched(zdev);
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	if (zdev->apertures)
 		kfree(zdev->apertures);
 
 	drm_dev_unregister(drm);
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	ZOCL_DRM_DEV_PUT(drm);
 
-	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	return 0;
 }
 

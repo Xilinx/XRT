@@ -102,28 +102,21 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 	struct drm_zocl_domain *domain;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	/* Check whether active count exists for this context */
 	if (cctx && !cctx->num_ctx) {
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		/* Get the corresponding domain for this xclbin */
 		domain = zocl_get_domain(zdev, id);
 		if (!domain)
 			return;
 
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		/* Unlock this domain specific xclbin */
 		zocl_unlock_bitstream(domain, id);
 
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		list_del(&cctx->link);
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		if (cctx->xclbin_id)
 			vfree(cctx->xclbin_id);
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		if (cctx)
 			vfree(cctx);
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	}
 }
 
@@ -135,19 +128,16 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 	struct client_ctx *cctx;
 	int ret;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	/* Get the corresponding domain for this xclbin */
 	domain = zocl_get_domain(zdev, id);
 	if (!domain)
 		return NULL;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	/* Lock this domain specific xclbin */
 	ret = zocl_lock_bitstream(domain, id);
 	if (ret)
 		return NULL;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	/* Allocate the new client context and store the xclbin */
 	cctx = vzalloc(sizeof(struct client_ctx));
 	if (!cctx) {
@@ -155,7 +145,6 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 		return NULL;
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	cctx->xclbin_id = vzalloc(sizeof(uuid_t));
 	if (!cctx->xclbin_id) {
 		vfree(cctx);
@@ -164,7 +153,6 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 	}
 	uuid_copy(cctx->xclbin_id, id);
 
-	printk("[SAIF_TEST -> %s : %d] --------- curr ctx %p\n", __func__, __LINE__, cctx);
 	list_add_tail(&cctx->link, &client->ctx_list);
 
 	return cctx;

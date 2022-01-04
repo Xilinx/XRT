@@ -218,8 +218,6 @@ static int cu_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	printk("[SAIF_TEST -> %s : %d] --------- arg Num %d \n", __func__, __LINE__,
-	       krnl_info->anums);
 	if(krnl_info->anums)
 	{
 		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
@@ -229,25 +227,21 @@ static int cu_probe(struct platform_device *pdev)
 		}
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	for (i = 0; i < krnl_info->anums; i++) {
 		strcpy(args[i].name, krnl_info->args[i].name);
 		args[i].offset = krnl_info->args[i].offset;
 		args[i].size = krnl_info->args[i].size;
 		args[i].dir = krnl_info->args[i].dir;
 	}
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	zcu->base.info.num_args = krnl_info->anums;
 	zcu->base.info.args = args;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);
 		goto err1;
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	zcu->irq_name = kzalloc(20, GFP_KERNEL);
 	if (!zcu->irq_name)
 		return -ENOMEM;
@@ -269,7 +263,6 @@ static int cu_probe(struct platform_device *pdev)
 		}
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	switch (info->model) {
 	case XCU_HLS:
 		err = xrt_cu_hls_init(&zcu->base);
@@ -285,7 +278,6 @@ static int cu_probe(struct platform_device *pdev)
 		goto err2;
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	platform_set_drvdata(pdev, zcu);
 
 	err = sysfs_create_group(&pdev->dev.kobj, &cu_attrgroup);
@@ -295,7 +287,6 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	return 0;
 err2:
 	zocl_kds_del_cu(zdev, &zcu->base);
@@ -304,7 +295,6 @@ err1:
 	vfree(res);
 err:
 	kfree(zcu);
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	return err;
 }
 

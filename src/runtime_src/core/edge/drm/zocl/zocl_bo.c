@@ -1121,42 +1121,33 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	uint64_t mm_start_addr = 0;
 	uint64_t mm_end_addr = 0;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	if (!mtopo)
 		return;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	mutex_lock(&zdev->mm_lock);
 	/* Initialize with max and min possible value */
 	mm_start_addr = 0xffffFFFFffffFFFF;
 	mm_end_addr = 0;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	for (i = 0; i < mtopo->m_count; i++) {
 		struct mem_data *md = &mtopo->m_mem_data[i];
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 
 		if (!md->m_used)
 			continue;
 
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 		memp = vzalloc(sizeof(struct zocl_mem));
 		if (md->m_type == MEM_STREAMING) {
 			memp->zm_type = ZOCL_MEM_TYPE_STREAMING;
 			continue;
 		}
 
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 		memp->zm_base_addr = md->m_base_address;
 		/* In mem_topology, size is in KB */
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
 		memp->zm_mem_idx = SET_MEM_INDEX(domain->domain_idx, i);
-		printk("[SAIF_TEST -> %s : %d] --------- list head %p %d \n",  __func__, __LINE__, &zdev->zm_list_head, i);
-		printk("[SAIF_TEST -> %s : %d] --------- link %p %d \n",  __func__, __LINE__, &memp->link, i);
 
 		list_add_tail(&memp->link, &zdev->zm_list_head);
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 
 		if (!check_for_reserved_memory(memp->zm_base_addr, memp->zm_size)) {
 			DRM_INFO("Memory %d is not reserved in device tree."
@@ -1164,7 +1155,6 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
 			continue;
 		}
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 
                 /* Update the start and end address for the memory manager */
                 if (memp->zm_base_addr < mm_start_addr)
@@ -1172,24 +1162,18 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
                 if ((memp->zm_base_addr + memp->zm_size) > mm_end_addr)
                         mm_end_addr = memp->zm_base_addr + memp->zm_size;
 
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 		memp->zm_type = ZOCL_MEM_TYPE_RANGE_ALLOC;
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 	}
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	/* Initialize drm memory manager if not yet done */
 	if (!zdev->zm_drm_mm) {
 		/* Initialize a single drm memory manager for whole memory
 		 * available for this device.
 		 */
 		zdev->zm_drm_mm = vzalloc(sizeof(struct drm_mm));
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 		drm_mm_init(zdev->zm_drm_mm, mm_start_addr,
 			    (mm_end_addr - mm_start_addr));
-		printk("[SAIF_TEST -> %s : %d] --------- mem %d \n", __func__, __LINE__, i);
 	}
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 
 	/* SAIF TODO : This need to rethink */
 #if 0
@@ -1212,7 +1196,6 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	}
 #endif
 	mutex_unlock(&zdev->mm_lock);
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 }
 
 void zocl_clear_mem_domain(struct drm_zocl_dev *zdev, int domain_idx)
@@ -1220,24 +1203,17 @@ void zocl_clear_mem_domain(struct drm_zocl_dev *zdev, int domain_idx)
 	struct zocl_mem *curr_mem;
 	struct zocl_mem *next;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	mutex_lock(&zdev->mm_lock);
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	if (list_empty(&zdev->zm_list_head))
 		goto done;
 
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	list_for_each_entry_safe(curr_mem, next, &zdev->zm_list_head, link) {
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		if (domain_idx != GET_DOMAIN_INDEX(curr_mem->zm_mem_idx))
 			continue;
 
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 		list_del(&curr_mem->link);
 		vfree(curr_mem);
-		printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 	}
-	printk("[SAIF_TEST -> %s : %d] ---------\n", __func__, __LINE__);
 
 done:
 	mutex_unlock(&zdev->mm_lock);
