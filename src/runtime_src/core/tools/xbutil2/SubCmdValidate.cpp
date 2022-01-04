@@ -1265,7 +1265,7 @@ static std::vector<TestCollection> testSuite = {
 
 
 static std::string
-get_run_test_name(const std::string& input_name)
+get_test_name(const std::string& input_name)
 {
   static std::map<std::string, std::string> old_name_to_new_name={
       { "aux connection",                "aux-connection"    },
@@ -1552,7 +1552,7 @@ getTestNameDescriptions(bool addAdditionOptions)
 
   // report names and description
   for (const auto & test : testSuite) {
-    std::string testName = get_run_test_name(test.ptTest.get("name", "<unknown>"));
+    std::string testName = get_test_name(test.ptTest.get("name", "<unknown>"));
     reportDescriptionCollection.emplace_back(testName, test.ptTest.get("description", "<no description>"));
   }
 
@@ -1629,7 +1629,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
 
     // Validate the user test requests
     for (auto &userTestName : testsToRun) {
-      userTestName = get_run_test_name(userTestName);
+      userTestName = get_test_name(userTestName);
 
       if ((userTestName == "all") && (testsToRun.size() > 1))
         throw xrt_core::error("The 'all' value for the tests to run cannot be used with any other named tests.");
@@ -1699,8 +1699,14 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Collect all of the tests of interests
   std::vector<TestCollection *> testObjectsToRun;
 
+  /*
+   * Iterate through the test suites and compare them against the desired user tests
+   * If a match is found enqueue the test suite to be executed
+   */
   for (unsigned index = 0; index < testSuite.size(); ++index) {
+    // The all option enqueues all test suites not marked explicit
     if (testsToRun[0] == "all") {
+      // Do not queue test suites that must be explicitly passed in
       if(testSuite[index].ptTest.get<bool>("explicit"))
         continue;
       testObjectsToRun.push_back(&testSuite[index]);
@@ -1709,17 +1715,20 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       continue;
     }
 
+    // The quick test option enqueues only the first three test suites
     if (testsToRun[0] == "quick") {
       testObjectsToRun.push_back(&testSuite[index]);
       if(!xclbin_location.empty())
         testSuite[index].ptTest.put("xclbin_directory", xclbin_location);
-      // Only the first 3 should be processed
       if (index == 3)
         break;
     }
 
-    // Must be a test name, look to see if should be added
-    std::string testSuiteName = get_run_test_name(testSuite[index].ptTest.get("name","<unknown>"));
+    /*
+     * Logic for individually defined tests
+     * Enqueue the matching test suites to be executed
+     */
+    std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
