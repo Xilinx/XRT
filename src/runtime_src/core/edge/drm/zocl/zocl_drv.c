@@ -308,7 +308,11 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 struct drm_gem_object *
 zocl_gem_create_object(struct drm_device *dev, size_t size)
 {
-	return kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+	struct drm_zocl_bo *bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
+	return (&bo->gem_base);
 }
 
 void zocl_free_bo(struct drm_gem_object *obj)
@@ -699,22 +703,30 @@ static struct drm_driver zocl_driver = {
 #endif
 	.open                      = zocl_client_open,
 	.postclose                 = zocl_client_release,
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
-	.gem_free_object_unlocked  = zocl_free_bo,
-#else
-	.gem_free_object           = zocl_free_bo,
-#endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+		.gem_free_object_unlocked  = zocl_free_bo,
+	#else
+		.gem_free_object           = zocl_free_bo,
+	#endif
+
 	.gem_vm_ops                = &zocl_bo_vm_ops,
+	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
+	.gem_prime_vmap            = drm_gem_cma_prime_vmap,
+	.gem_prime_vunmap          = drm_gem_cma_prime_vunmap,
+	.gem_prime_export          = drm_gem_prime_export,
+#endif
+
 	.gem_create_object         = zocl_gem_create_object,
 	.prime_handle_to_fd        = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
 	.gem_prime_import          = zocl_gem_import,
-	.gem_prime_export          = drm_gem_prime_export,
-	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
-	.gem_prime_vmap            = drm_gem_cma_prime_vmap,
-	.gem_prime_vunmap          = drm_gem_cma_prime_vunmap,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+	.gem_prime_mmap            = drm_gem_prime_mmap,
+#else
 	.gem_prime_mmap            = drm_gem_cma_prime_mmap,
+#endif
 	.ioctls                    = zocl_ioctls,
 	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
 	.fops                      = &zocl_driver_fops,
@@ -722,6 +734,16 @@ static struct drm_driver zocl_driver = {
 	.desc                      = ZOCL_DRIVER_DESC,
 	.date                      = driver_date,
 };
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+const struct drm_gem_object_funcs zocl_gem_object_funcs = {
+	.free = zocl_free_bo,
+	.vm_ops = &zocl_bo_vm_ops,
+	.get_sg_table = drm_gem_cma_get_sg_table,
+	.vmap = drm_gem_cma_vmap,
+	.export = drm_gem_prime_export,
+};
+#endif
 
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
