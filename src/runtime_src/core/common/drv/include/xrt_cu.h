@@ -28,6 +28,7 @@
 #endif
 
 #define MAX_CUS 128
+#define MAX_DOMAIN 32
 
 /* Soft kernel indices are numbered from 0 to some MAX_CUS
  * but are in a distinct domain which is indiciated by the
@@ -216,6 +217,7 @@ enum CU_PROTOCOL {
 struct xrt_cu_info {
 	u32			 model;
 	int			 cu_idx;
+	int			 domain_idx;
 	int			 inst_idx;
 	u64			 addr;
 	size_t			 size;

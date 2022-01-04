@@ -823,6 +823,7 @@ struct debug_ip_layout_raw : request
 struct kds_cu_info : request
 {
   struct data {
+    uint32_t dom_index;
     uint32_t index;
     std::string name;
     uint64_t base_addr;

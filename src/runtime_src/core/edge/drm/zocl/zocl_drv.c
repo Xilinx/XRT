@@ -59,30 +59,6 @@ static const struct vm_operations_struct reg_physical_vm_ops = {
 #endif
 };
 
-void zocl_free_sections(struct drm_zocl_dev *zdev)
-{
-	if (zdev->ip) {
-		vfree(zdev->ip);
-		CLEAR(zdev->ip);
-	}
-	if (zdev->debug_ip) {
-		vfree(zdev->debug_ip);
-		CLEAR(zdev->debug_ip);
-	}
-	if (zdev->connectivity) {
-		vfree(zdev->connectivity);
-		CLEAR(zdev->connectivity);
-	}
-	if (zdev->topology) {
-		vfree(zdev->topology);
-		CLEAR(zdev->topology);
-	}
-	if (zdev->axlf) {
-		vfree(zdev->axlf);
-		CLEAR(zdev->axlf);
-		zdev->axlf_size = 0;
-	}
-}
 
 #if KERNEL_VERSION(5, 3, 0) <= LINUX_VERSION_CODE
 static int
@@ -99,6 +75,140 @@ match_name(struct device *dev, void *data)
 	 */
 	return strstr(dev_name(dev), name) != NULL;
 }
+
+/**
+ * zocl_pr_domain_init : PR Slot specific initialization
+ *
+ * @zdev: zocl device struct
+ * @pdev: platform device struct
+ *
+ * Returns 0 if initialization successfully.
+ * Returns -EINVAL if failed.
+ */
+
+static int zocl_pr_domain_init(struct drm_zocl_dev *zdev,
+		                       struct platform_device *pdev)
+{
+	struct drm_zocl_domain *zocl_domain = NULL;
+	int ret;
+	int i;
+
+
+	/* SAIF TODO : Need to update this function based on the device tree */
+	if (ZOCL_PLATFORM_ARM64) {
+		u64 pr_num;
+		if (of_property_read_u64(pdev->dev.of_node,
+					 "xlnx,pr-num-support", &pr_num))
+			zdev->num_pr_domain = (int)pr_num;
+	} else {
+		u32 pr_num;
+		if (of_property_read_u32(pdev->dev.of_node,
+				 "xlnx,pr-num-support", &pr_num))
+			zdev->num_pr_domain = (int)pr_num;
+	}
+
+	/* If there is no information available for number of domain available
+	 * for this device then consider it for a single domain device for
+	 * backward compartability.
+	 */
+	if (zdev->num_pr_domain == 0)
+		zdev->num_pr_domain = 1;
+
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = (struct drm_zocl_domain *)
+			kzalloc(sizeof(struct drm_zocl_domain), GFP_KERNEL);
+		if (!zocl_domain)
+			return -ENOMEM;
+
+		/* Initial xclbin */
+		ret = zocl_xclbin_init(zocl_domain);
+		if (ret)
+			return ret;
+
+		mutex_init(&zocl_domain->zdev_xclbin_lock);
+
+		if (ZOCL_PLATFORM_ARM64) {
+			zocl_domain->pr_isolation_freeze = 0x0;
+			zocl_domain->pr_isolation_unfreeze = 0x3;
+			if (of_property_read_u64(pdev->dev.of_node,
+					"xlnx,pr-isolation-addr",
+					&zocl_domain->pr_isolation_addr))
+				zocl_domain->pr_isolation_addr = 0;
+			if (of_property_read_bool(pdev->dev.of_node,
+						  "xlnx,pr-decoupler")) {
+				zocl_domain->pr_isolation_freeze = 0x1;
+				zocl_domain->pr_isolation_unfreeze = 0x0;
+			}
+		} else {
+			u32 prop_addr = 0;
+
+			if (of_property_read_u32(pdev->dev.of_node,
+						 "xlnx,pr-isolation-addr",
+						 &prop_addr))
+				zocl_domain->pr_isolation_addr = 0;
+			else
+				zocl_domain->pr_isolation_addr = prop_addr;
+		}
+
+		DRM_INFO("PR[%d] Isolation addr 0x%llx", i,
+			 zocl_domain->pr_isolation_addr);
+
+		zocl_domain->partial_overlay_id = -1;
+
+		zdev->pr_domain[i] = zocl_domain;
+	}
+
+	zdev->full_overlay_id  = -1;
+
+	return 0;
+}
+
+/**
+ * zocl_pr_domain_fini : PR Slot specific Cleanup
+ *
+ * @zdev: zocl device struct
+ *
+ */
+static void zocl_pr_domain_fini(struct drm_zocl_dev *zdev)
+{
+	struct drm_zocl_domain *zocl_domain = NULL;
+	int i;
+
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+		if (zocl_domain) {
+			zocl_free_sections(zocl_domain);
+			mutex_destroy(&zocl_domain->zdev_xclbin_lock);
+			zocl_xclbin_fini(zdev, zocl_domain);
+			kfree(zocl_domain);
+			zdev->pr_domain[i] = NULL;
+		}
+	}
+}
+
+static int zocl_aperture_init(struct drm_zocl_dev *zdev)
+{
+	zdev->apertures = kcalloc(MAX_APT_NUM, sizeof(struct addr_aperture),
+				 GFP_KERNEL);
+	if (!zdev->apertures) {
+		DRM_ERROR("Out of memory for Aperture\n");
+		return -ENOMEM;
+	}
+
+	zdev->num_apts = 0;
+
+	return 0;
+}
+
+static void zocl_aperture_fini(struct drm_zocl_dev *zdev)
+{
+	/* Free aperture memory */
+	if (zdev->apertures)
+		vfree(zdev->apertures);
+
+	zdev->apertures = NULL;
+}
+
 
 /**
  * get_reserved_mem_region - Get reserved memory region
@@ -221,6 +331,7 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 {
 	struct platform_device *pldev;
 	struct kernel_info *krnl_info;
+	struct drm_zocl_domain *domain;
 	struct resource res;
 	int ret;
 
@@ -230,7 +341,13 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		return -ENOMEM;
 	}
 
-	krnl_info = zocl_query_kernel(zdev, info->kname);
+	domain = zdev->pr_domain[info->domain_idx];
+	if (!domain) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	krnl_info = zocl_query_kernel(domain, info->kname);
 	if(!krnl_info) {
 		DRM_WARN("%s CU has no metadata, using default size",info->kname);
 		info->size = 0x10000;
@@ -308,11 +425,7 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 struct drm_gem_object *
 zocl_gem_create_object(struct drm_device *dev, size_t size)
 {
-	struct drm_zocl_bo *bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-	bo->gem_base.funcs = &zocl_gem_object_funcs;
-#endif
-	return (&bo->gem_base);
+	return kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
 }
 
 void zocl_free_bo(struct drm_gem_object *obj)
@@ -339,7 +452,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 
 			/* Update memory usage statistics */
 			zocl_update_mem_stat(zdev, obj->size, -1,
-			    zocl_obj->bank);
+			    zocl_obj->mem_index);
 		} else {
 			if (zocl_obj->mm_node) {
 				mutex_lock(&zdev->mm_lock);
@@ -351,7 +464,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 					zocl_obj->vmapping = NULL;
 				}
 				zocl_update_mem_stat(zdev, obj->size, -1,
-				    zocl_obj->bank);
+				    zocl_obj->mem_index);
 			}
 			drm_gem_object_release(obj);
 			kfree(zocl_obj);
@@ -381,7 +494,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 
 			/* Update memory usage statistics */
 			zocl_update_mem_stat(zdev, obj->size, -1,
-			    zocl_obj->bank);
+			    zocl_obj->mem_index);
 		}
 	}
 	if (zocl_obj->sgt)
@@ -503,21 +616,6 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 		return 0;
 	}
 
-	/* Hardware component physical address mapping. Typically, this is used
-	 * to map the registers of a compute unit to user space.
-	 *
-	 * For the most of the time, the hardware is at 0 to 4GB address range.
-	 * *NOTE* Base on MPSoC TRM, it is possible to assign hardware to higher
-	 * address than 4GB. But for now, no one use those higher address range
-	 * for IPs. The RPU is not able to access outside of 4GB memory.
-	 *
-	 * Still use this approach before it requires to support hardware
-	 * address mapping from higher than 4GB space.
-	 */
-	if (kds_mode == 0 && !zdev->exec->configured) {
-		DRM_ERROR("Schduler is not configured\n");
-		return -EINVAL;
-	}
 
 	/* Only allow user to map register ranges in apertures list.
 	 * Could not map from the middle of an aperture.
@@ -580,31 +678,18 @@ static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 
 static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
-	if (kds_mode == 1) {
-		return zocl_create_client(dev->dev_private, &filp->driver_priv);
-	} else {
-		return sched_create_client(dev, &filp->driver_priv);
-	}
+	return zocl_create_client(dev->dev_private, &filp->driver_priv);
 }
 
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	if (kds_mode == 1) {
-		zocl_destroy_client(dev->dev_private, &filp->driver_priv);
-		return;
-	}
-	else {
-		sched_destroy_client(dev, &filp->driver_priv);
-		return;
-	}
+	zocl_destroy_client(dev->dev_private, &filp->driver_priv);
+	return;
 }
 
 static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 {
-	if (kds_mode == 1)
-		return zocl_poll_client(filp, wait);
-	else
-		return sched_poll_client(filp, wait);
+	return zocl_poll_client(filp, wait);
 }
 
 static int zocl_iommu_init(struct drm_zocl_dev *zdev,
@@ -704,11 +789,11 @@ static struct drm_driver zocl_driver = {
 	.open                      = zocl_client_open,
 	.postclose                 = zocl_client_release,
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
-		.gem_free_object_unlocked  = zocl_free_bo,
-	#else
-		.gem_free_object           = zocl_free_bo,
-	#endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 7, 0)
+	.gem_free_object_unlocked  = zocl_free_bo,
+#else
+	.gem_free_object           = zocl_free_bo,
+#endif
 
 	.gem_vm_ops                = &zocl_bo_vm_ops,
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
@@ -734,16 +819,6 @@ static struct drm_driver zocl_driver = {
 	.desc                      = ZOCL_DRIVER_DESC,
 	.date                      = driver_date,
 };
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-const struct drm_gem_object_funcs zocl_gem_object_funcs = {
-	.free = zocl_free_bo,
-	.vm_ops = &zocl_bo_vm_ops,
-	.get_sg_table = drm_gem_cma_get_sg_table,
-	.vmap = drm_gem_cma_vmap,
-	.export = drm_gem_prime_export,
-};
-#endif
 
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
@@ -811,6 +886,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->host_mem_len = resource_size(&res_mem);
 	}
 	mutex_init(&zdev->mm_lock);
+	INIT_LIST_HEAD(&zdev->zm_list_head);
 
 	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
@@ -858,30 +934,15 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		of_node_put(fnode);
 	}
 
-	if (ZOCL_PLATFORM_ARM64) {
-		zdev->pr_isolation_freeze = 0x0;
-		zdev->pr_isolation_unfreeze = 0x3;
-		if (of_property_read_u64(pdev->dev.of_node,
-		    "xlnx,pr-isolation-addr", &zdev->pr_isolation_addr))
-			zdev->pr_isolation_addr = 0;
-		if (of_property_read_bool(pdev->dev.of_node,
-		    "xlnx,pr-decoupler")) {
-			zdev->pr_isolation_freeze = 0x1;
-			zdev->pr_isolation_unfreeze = 0x0;
-		}
-	} else {
-		u32 prop_addr = 0;
+	/* Initialize Aperture */
+	ret = zocl_aperture_init(zdev);
+	if (ret)
+		goto err_apt;
 
-		if (of_property_read_u32(pdev->dev.of_node,
-		    "xlnx,pr-isolation-addr", &prop_addr))
-			zdev->pr_isolation_addr = 0;
-		else
-			zdev->pr_isolation_addr = prop_addr;
-	}
-	DRM_INFO("PR Isolation addr 0x%llx", zdev->pr_isolation_addr);
-
-	zdev->partial_overlay_id = -1;
-	zdev->full_overlay_id  = -1;
+	/* SAIF TODO */
+	ret = zocl_pr_domain_init(zdev, pdev);
+	if (ret)
+		goto err_drm;
 
 	/* Initialzie IOMMU */
 	if (iommu_present(&platform_bus_type)) {
@@ -907,21 +968,17 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	/* Create and register DRM device */
 	drm = drm_dev_alloc(&zocl_driver, &pdev->dev);
-	if (IS_ERR(drm))
-		return PTR_ERR(drm);
+	if (IS_ERR(drm)) {
+		ret = PTR_ERR(drm);
+		goto err_drm;
+	}
 
 	ret = drm_dev_register(drm, 0);
 	if (ret)
-		goto err_drm;
+		goto err_sysfs;
 
 	/* During attach, we don't request dma channel */
 	zdev->zdev_dma_chan = NULL;
-
-	/* Initial xclbin */
-	ret = zocl_xclbin_init(zdev);
-	if (ret)
-		goto err_drm;
-	mutex_init(&zdev->zdev_xclbin_lock);
 
 	/* doen with zdev initialization */
 	drm->dev_private = zdev;
@@ -940,15 +997,9 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		goto err_err;
 
 	/* Now initial kds */
-	if (kds_mode == 1) {
-		ret = zocl_init_sched(zdev);
-		if (ret)
-			goto err_sched;
-	} else {
-		ret = sched_init_exec(drm);
-		if (ret)
-			goto err_sched;
-	}
+	ret = zocl_init_sched(zdev);
+	if (ret)
+		goto err_sched;
 
 	return 0;
 
@@ -959,10 +1010,11 @@ err_err:
 	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_error(zdev);
 err_sysfs:
-	zocl_xclbin_fini(zdev);
-	mutex_destroy(&zdev->zdev_xclbin_lock);
-err_drm:
 	ZOCL_DRM_DEV_PUT(drm);
+err_drm:
+	zocl_pr_domain_fini(zdev);
+err_apt:
+	zocl_aperture_fini(zdev);
 	return ret;
 }
 
@@ -972,41 +1024,45 @@ static int zocl_drm_platform_remove(struct platform_device *pdev)
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
 
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	if (zdev->domain) {
 		iommu_detach_device(zdev->domain, drm->dev);
 		iommu_domain_free(zdev->domain);
 	}
 
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	/* If dma channel has been requested, make sure it is released */
 	if (zdev->zdev_dma_chan) {
 		dma_release_channel(zdev->zdev_dma_chan);
 		zdev->zdev_dma_chan = NULL;
 	}
 
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	if (zdev->fpga_mgr)
 		fpga_mgr_put(zdev->fpga_mgr);
 
-	if (kds_mode == 0)
-		sched_fini_exec(drm);
-
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	zocl_clear_mem(zdev);
 	mutex_destroy(&zdev->mm_lock);
-	zocl_free_sections(zdev);
-	zocl_xclbin_fini(zdev);
-	mutex_destroy(&zdev->zdev_xclbin_lock);
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
+	zocl_pr_domain_fini(zdev);
 	zocl_destroy_aie(zdev);
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	mutex_destroy(&zdev->aie_lock);
 	zocl_fini_sysfs(drm->dev);
 	zocl_fini_error(zdev);
 
-	if (kds_mode == 1)
-		zocl_fini_sched(zdev);
+	zocl_fini_sched(zdev);
 
-	kfree(zdev->apertures);
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
+	if (zdev->apertures)
+		kfree(zdev->apertures);
 
 	drm_dev_unregister(drm);
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	ZOCL_DRM_DEV_PUT(drm);
 
+	printk("SAIF : -------- %s %d -------------\n", __func__, __LINE__);
 	return 0;
 }
 

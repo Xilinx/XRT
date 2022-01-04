@@ -19,24 +19,28 @@ struct zocl_xclbin {
 	void		*zx_uuid;
 };
 
-int zocl_xclbin_init(struct drm_zocl_dev *zdev);
-void zocl_xclbin_fini(struct drm_zocl_dev *zdev);
+int zocl_xclbin_init(struct drm_zocl_domain *domain);
+void zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain);
 
-int zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid);
-void *zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev);
-int zocl_xclbin_hold(struct drm_zocl_dev *zdev, const uuid_t *id);
-int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
-int zocl_xclbin_release(struct drm_zocl_dev *zdev, const uuid_t *id);
-int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id);
+int zocl_xclbin_set_uuid(struct drm_zocl_domain *domain, void *uuid);
+void *zocl_xclbin_get_uuid(struct drm_zocl_domain *domain);
+int zocl_xclbin_hold(struct drm_zocl_domain *domain, const uuid_t *id);
+int zocl_lock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id);
+int zocl_xclbin_release(struct drm_zocl_domain *domain, const uuid_t *id);
+int zocl_unlock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id);
+struct drm_zocl_domain *zocl_get_domain(struct drm_zocl_dev *zdev,
+					uuid_t *id);
 
-int zocl_xclbin_refcount(struct drm_zocl_dev *zdev);
+int zocl_xclbin_refcount(struct drm_zocl_domain *domain);
 int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
 	struct drm_zocl_axlf *axlf_obj, struct sched_client_ctx *client);
-int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data);
+int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
+			struct drm_zocl_domain *domain);
 
 bool zocl_xclbin_accel_adapter(int kds_mask);
 bool zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev);
 u32  zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx);
-bool zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev);
+//SAIF TODO Delete this as this is related to old KDS
+//bool zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev);
 
 #endif /* _ZOCL_XCLBIN_H_ */

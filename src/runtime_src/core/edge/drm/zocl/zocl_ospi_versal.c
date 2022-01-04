@@ -237,6 +237,8 @@ static int zocl_ov_recieve(struct zocl_ov_dev *ov)
  */
 static int zocl_ov_get_xclbin(struct zocl_ov_dev *ov)
 {
+	struct drm_zocl_dev *zdev = NULL;
+	struct drm_zocl_domain *domain = NULL;
 	struct axlf *xclbin = NULL;
 	void *pdrv;
 	int ret = 0;
@@ -277,7 +279,15 @@ static int zocl_ov_get_xclbin(struct zocl_ov_dev *ov)
 	}
 
 	write_unlock(&ov->att_rwlock);
-	ret = zocl_xclbin_load_pdi(pdrv, xclbin);
+	zdev = (struct drm_zocl_dev *)pdrv;
+	if (!zdev) {
+		ret = -ENXIO;
+		goto out;
+	}
+
+	/* For OSPI device use default domain i.e. 0 */
+	domain = zdev->pr_domain[0];
+	ret = zocl_xclbin_load_pdi(pdrv, xclbin, domain);
 	if (ret) {
 		set_status(ov, XRT_XFR_PKT_STATUS_FAIL);
 		goto out;

@@ -414,6 +414,7 @@ struct drm_zocl_axlf {
 	int			za_ksize;
 	char			*za_kernels;
 	struct drm_zocl_kds	kds_cfg;
+	uint8_t			za_domain_id;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32

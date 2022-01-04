@@ -540,6 +540,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_flags = flags,
       .za_ksize = 0,
       .za_kernels = NULL,
+      .za_domain_id = 0,
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();

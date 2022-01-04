@@ -24,6 +24,17 @@
 
 #define EV_ABORT	0x1
 
+/* Multiple xclbin context can be active under a single client.
+ * Client should maintain all the active XCLBIN.
+ */
+struct client_ctx {
+	struct list_head          link;
+	void			 *xclbin_id;
+	int			  domain_idx;
+	int			  num_ctx;
+	int			  num_scu_ctx;
+	int			  virt_cu_ref;
+};
 
 /**
  * struct kds_client: Manage user client
@@ -49,10 +60,9 @@ struct kds_client {
 	struct device	         *dev;
 	struct pid	         *pid;
 	struct mutex		  lock;
-	void			 *xclbin_id;
-	int			  num_ctx;
-	int			  num_scu_ctx;
-	int			  virt_cu_ref;
+
+	struct client_ctx	 *ctx;
+	struct list_head          ctx_list;
 
 	struct list_head          graph_list;
 	spinlock_t                graph_list_lock;

@@ -50,15 +50,18 @@ kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
+	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	return show_kds_stat(&zdev->kds, buf);
 }
 static DEVICE_ATTR_RO(kds_stat);
 
 static ssize_t
-kds_custat_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
+kds_custat_raw_show(struct device *dev, struct device_attribute *attr,
+		    char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 
+	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
 	return show_kds_custat_raw(&zdev->kds, buf);
 }
 static DEVICE_ATTR_RO(kds_custat_raw);
@@ -67,12 +70,23 @@ static ssize_t xclbinid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct drm_zocl_domain *zocl_domain = NULL;
+	const char *raw_fmt = "%d %pUb\n";
 	ssize_t size;
+	ssize_t count;
+	int i;
 
-	if (!zdev || !zdev->zdev_xclbin || !zdev->zdev_xclbin->zx_uuid)
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+		if (!zocl_domain || !zocl_domain->zdev_xclbin ||
+		    !zocl_domain->zdev_xclbin->zx_uuid)
+			return 0;
 
-	size = sprintf(buf, "%pUb\n", zdev->zdev_xclbin->zx_uuid);
+		count = sprintf(buf, raw_fmt, zocl_domain->domain_idx,
+				zocl_domain->zdev_xclbin->zx_uuid);
+		buf += count;
+		size += count;
+	}
 
 	return size;
 }
@@ -82,17 +96,22 @@ static ssize_t kds_numcus_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	struct kds_sched *kds = &zdev->kds;
 	ssize_t size;
 
-	if (!zdev || !zdev->exec)
+	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
+	if (!zdev || !kds)
 		return 0;
 
-	size = sprintf(buf, "%d\n", zdev->exec->num_cus);
+	printk("[SAIF_TEST_KDS_CORE -> %s : %d] ---------\n", __func__, __LINE__);
+	size = sprintf(buf, "%d\n", kds->cu_mgmt.num_cus);
 
 	return size;
 }
 static DEVICE_ATTR_RO(kds_numcus);
 
+/* SAIF TODO : Do we need this. Looks like this is for old KDS */
+#if 0
 static ssize_t kds_custat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -177,6 +196,7 @@ static ssize_t kds_stats_show(struct device *dev,
 	return sz;
 }
 static DEVICE_ATTR_RO(kds_stats);
+#endif
 
 static ssize_t kds_skstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -216,7 +236,7 @@ static ssize_t kds_xrt_version_show(struct device *dev,
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	ssize_t sz = 0;
 
-	if (!zdev || !zdev->soft_kernel)
+	if (!zdev)
 		return 0;
 
 	sz += sprintf(buf+sz, "XRT GIT BRANCH: %s\n", XRT_BRANCH);
@@ -232,43 +252,37 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	struct zocl_mem *memp;
-	struct mem_topology *topo;
 	ssize_t size = 0;
 	ssize_t count;
 	size_t memory_usage;
 	unsigned int bo_count;
-	const char *txt_fmt = "[%s] %s@0x%012llx\t(%4lluMB):\t%lluKB\t%dBOs\n";
+	const char *txt_fmt = "[%s] 0x%012llx\t(%4lluMB):\t%lluKB\t%dBOs\n";
 	const char *raw_fmt = "%llu %d\n";
-	int i;
 
 	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->topology || !zdev->mem) {
+	if (!zdev || !zdev->mem) {
 		read_unlock(&zdev->attr_rwlock);
 		return 0;
 	}
 
-	memp = zdev->mem;
-	topo = zdev->topology;
-
-	for (i = 0; i < topo->m_count; i++) {
-		if (topo->m_mem_data[i].m_type == MEM_STREAMING)
+        list_for_each_entry(memp, &zdev->zm_list_head, link) {
+		if (memp->zm_type == ZOCL_MEM_TYPE_STREAMING)
 			continue;
 
-		memory_usage = memp[i].zm_stat.memory_usage;
-		bo_count = memp[i].zm_stat.bo_count;
+		memory_usage = memp->zm_stat.memory_usage;
+		bo_count = memp->zm_stat.bo_count;
 
 		if (raw)
 			count = sprintf(buf, raw_fmt, memory_usage, bo_count);
 		else {
 			count = sprintf(buf, txt_fmt,
-			    topo->m_mem_data[i].m_used ? "IN-USE" : "UNUSED",
-			    topo->m_mem_data[i].m_tag,
-			    topo->m_mem_data[i].m_base_address,
-			    topo->m_mem_data[i].m_size / 1024,
+			    memp->zm_used ? "IN-USE" : "UNUSED",
+			    memp->zm_base_addr,
+			    memp->zm_size / 1024,
 			    memory_usage / 1024,
 			    bo_count);
 		}
@@ -281,7 +295,8 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	return size;
 }
 
-static ssize_t graph_status_show(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t graph_status_show(struct device *dev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = NULL;
 	struct aie_info *aie;
@@ -343,8 +358,11 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -352,25 +370,31 @@ static ssize_t read_aie_metadata(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	size = zdev->aie_data.size;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
 
-	/* Read offset should be lesser then total size of metadata */
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+		size = zocl_domain->aie_data.size;
+
+		/* Read offset should be lesser then total size of metadata */
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		/* Buffer size should be greater than the size of metadata to be read */
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, (char *)zocl_domain->aie_data.data + off, nread);
+
+		buf += nread;
+		f_nread += nread;
 	}
-
-	/* Buffer size should be greater than the size of metadata to be read */
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, (char *)zdev->aie_data.data + off, nread);
-
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static ssize_t memstat_show(struct device *dev,
@@ -422,8 +446,10 @@ static DEVICE_ATTR_RO(errors);
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
+#if 0 // OLD KDS SAIF TODO
 	&dev_attr_kds_custat.attr,
 	&dev_attr_kds_stats.attr,
+#endif
 	&dev_attr_kds_skstat.attr,
 	&dev_attr_kds_xrt_version.attr,
 	&dev_attr_kds_echo.attr,
@@ -441,8 +467,11 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -450,36 +479,45 @@ static ssize_t read_debug_ip_layout(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->debug_ip) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+
+		if (!zocl_domain->debug_ip) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		size = sizeof_section(zocl_domain->debug_ip, m_debug_ip_data);
+
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, ((char *)zocl_domain->debug_ip) + off, nread);
+		buf += nread;
+		f_nread += nread;
+
 	}
-
-	size = sizeof_section(zdev->debug_ip, m_debug_ip_data);
-
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, ((char *)zdev->debug_ip) + off, nread);
-
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -487,36 +525,44 @@ static ssize_t read_ip_layout(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->ip) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+
+		if (!zocl_domain->ip) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		size = sizeof_section(zocl_domain->ip, m_ip_data);
+
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, ((char *)zocl_domain->ip) + off, nread);
+		buf += nread;
+		f_nread += nread;
 	}
-
-	size = sizeof_section(zdev->ip, m_ip_data);
-
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, ((char *)zdev->ip) + off, nread);
-
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -524,36 +570,44 @@ static ssize_t read_connectivity(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->connectivity) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+
+		if (!zocl_domain->connectivity) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		size = sizeof_section(zocl_domain->connectivity, m_connection);
+
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, ((char *)zocl_domain->connectivity + off), nread);
+		buf += nread;
+		f_nread += nread;
 	}
-
-	size = sizeof_section(zdev->connectivity, m_connection);
-
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, ((char *)zdev->connectivity + off), nread);
-
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -561,36 +615,45 @@ static ssize_t read_mem_topology(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->topology) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+
+		if (!zocl_domain->topology) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		size = sizeof_section(zocl_domain->topology, m_mem_data);
+
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, ((char *)zocl_domain->topology + off), nread);
+		buf += nread;
+		f_nread += nread;
 	}
-
-	size = sizeof_section(zdev->topology, m_mem_data);
-
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, ((char *)zdev->topology + off), nread);
 
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 		struct bin_attribute *attr, char *buf, loff_t off, size_t count)
 {
 	struct drm_zocl_dev *zdev;
+	struct drm_zocl_domain *zocl_domain = NULL;
 	size_t size;
 	u32 nread = 0;
+	u32 f_nread = 0;
+	int i;
 
 	zdev = dev_get_drvdata(container_of(kobj, struct device, kobj));
 	if (!zdev)
@@ -598,28 +661,34 @@ static ssize_t read_xclbin_full(struct file *filp, struct kobject *kobj,
 
 	read_lock(&zdev->attr_rwlock);
 
-	if (!zdev->axlf) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
+	for (i = 0; i < zdev->num_pr_domain; i++) {
+		zocl_domain = zdev->pr_domain[i];
+
+		if (!zocl_domain->axlf) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		size = zocl_domain->axlf_size;
+
+		if (off >= size) {
+			read_unlock(&zdev->attr_rwlock);
+			return 0;
+		}
+
+		if (count < size - off)
+			nread = count;
+		else
+			nread = size - off;
+
+		memcpy(buf, ((char *)zocl_domain->axlf + off), nread);
+
+		buf += nread;
+		f_nread += nread;
 	}
-
-	size = zdev->axlf_size;
-
-	if (off >= size) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	if (count < size - off)
-		nread = count;
-	else
-		nread = size - off;
-
-	memcpy(buf, ((char *)zdev->axlf + off), nread);
-
 	read_unlock(&zdev->attr_rwlock);
 
-	return nread;
+	return f_nread;
 }
 
 static struct bin_attribute aie_metadata_attr = {
