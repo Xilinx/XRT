@@ -89,6 +89,7 @@ struct zocl_mem {
 	u64			zm_size;
 	struct drm_zocl_mm_stat zm_stat;
 	struct list_head	link;
+	struct list_head        zm_list;
 };
 
 /*

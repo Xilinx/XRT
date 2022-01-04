@@ -161,7 +161,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct drm_zocl_bo *bo = NULL;
-#if 0
+#if 1
 	struct zocl_mem *head_mem = mem;
 #endif
 	int err = -ENOMEM;
@@ -185,7 +185,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	}
 
 	mutex_lock(&zdev->mm_lock);
-#if 0
+#if 1
 	do {
 #endif
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
@@ -216,13 +216,13 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 		}
 
 		/* SAIF TODO : Need to revisit this concept (DDR/LPDDR) */
-#if 0
+#if 1
 		/* No memory left to this memory manager.
 		 * Try to allocate from similer memory manger link list
 		 */
-		mem = list_entry(mem->zm_mm_list.next, typeof(*mem), zm_mm_list);
+		mem = list_entry(mem->zm_list.next, typeof(*mem), zm_list);
 
-	} while (&mem->zm_mm_list != &head_mem->zm_mm_list);
+	} while (&mem->zm_list != &head_mem->zm_list);
 #endif
 
 get_mem:
@@ -258,13 +258,32 @@ get_mem:
 
 /* This function retruns zocl memory for the given memory index */
 static struct zocl_mem *
-zocl_get_mem(struct drm_zocl_dev *zdev, u32 mem_index)
+zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
 {
 	struct zocl_mem *curr_mem;
 	list_for_each_entry(curr_mem, &zdev->zm_list_head, link)
 		if (curr_mem->zm_mem_idx == mem_index)
 			return curr_mem;
 
+
+	return NULL;
+}
+
+static struct zocl_mem *
+zocl_get_memp_by_mem_data(struct drm_zocl_dev *zdev,
+		     struct mem_data *md, int domain_idx)
+{
+	struct zocl_mem *memp;
+
+	/* Create a link list for similar memory manager for this domain */
+	list_for_each_entry(memp, &zdev->zm_list_head, link) {
+		if (GET_DOMAIN_INDEX(memp->zm_mem_idx) != domain_idx)
+		    continue;
+
+		if ((memp->zm_base_addr == md->m_base_address) &&
+		    (memp->zm_size == md->m_size * 1024))
+			return memp;
+	}
 
 	return NULL;
 }
@@ -293,7 +312,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 	} else {
 		/* We are allocating from a separate mem Index, i.e. PL-DDR or LPDDR */
 		unsigned int mem_index = GET_MEM_INDEX(user_flags);
-		struct zocl_mem *mem = zocl_get_mem(zdev, mem_index);
+		struct zocl_mem *mem = zocl_get_memp_by_mem_index(zdev, mem_index);
 		if (mem == NULL)
 			return ERR_PTR(-ENOMEM);
 
@@ -405,7 +424,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	mem_index = GET_MEM_INDEX(args->flags);
-	mem = zocl_get_mem(zdev, mem_index);
+	mem = zocl_get_memp_by_mem_index(zdev, mem_index);
 	if (!mem) {
 		DRM_ERROR("Invalid memory index");
 		return -EINVAL;
@@ -1053,7 +1072,7 @@ void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 
 	if (update_bank == zdev->num_mem)
 #endif
-	struct zocl_mem *mem = zocl_get_mem(zdev, index);
+	struct zocl_mem *mem = zocl_get_memp_by_mem_index(zdev, index);
 	if (!mem)
 		return;
 
@@ -1097,6 +1116,7 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
 	return false;
 }
 
+
 /*
  * Initialize the memory structure in zocl driver based on the memory
  * topology extracted from xclbin.
@@ -1114,12 +1134,10 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 {
 	struct zocl_mem *memp;
 	struct mem_topology *mtopo = domain->topology;
-	int i;
-#if 0
-	int j;
-#endif
 	uint64_t mm_start_addr = 0;
 	uint64_t mm_end_addr = 0;
+	int i;
+	int j;
 
 	if (!mtopo)
 		return;
@@ -1146,6 +1164,8 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 		memp->zm_size = md->m_size * 1024;
 		memp->zm_used = 1;
 		memp->zm_mem_idx = SET_MEM_INDEX(domain->domain_idx, i);
+		/* This list used for multiple tag case */
+		INIT_LIST_HEAD(&memp->zm_list);
 
 		list_add_tail(&memp->link, &zdev->zm_list_head);
 
@@ -1176,25 +1196,33 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	}
 
 	/* SAIF TODO : This need to rethink */
-#if 0
-	/* Create a link list for similar memory manager */
-	for (i = 0; i < zdev->num_mem; i++) {
-		memp = &zdev->mem[i];
-		if (!memp->zm_used)
+	/* Create a link list for similar memory manager for this domain */
+	for (i = 0; i < mtopo->m_count; i++) {
+		struct mem_data *md = &mtopo->m_mem_data[i];
+		if (!md->m_used)
 			continue;
 
-		for (j = 0; j < zdev->num_mem; j++) {
+		memp = zocl_get_memp_by_mem_data(zdev, md, domain->domain_idx);
+		if (!memp) {
+			DRM_ERROR("Failed to get the memoory\n");
+			mutex_unlock(&zdev->mm_lock);
+			return;
+		}
+
+		for (j = 0; j < mtopo->m_count; j++) {
+			struct zocl_mem *tmp_memp;
 			if ((i == j) || !mtopo->m_mem_data[j].m_used)
 				continue;
 
+			tmp_memp = zocl_get_memp_by_mem_data(zdev, &mtopo->m_mem_data[j], domain->domain_idx);
 			if (strcmp(mtopo->m_mem_data[i].m_tag, mtopo->m_mem_data[j].m_tag) && 
-					list_empty(&zdev->mem[j].zm_mm_list)) {
-				list_add_tail(&zdev->mem[j].zm_mm_list, &memp->zm_mm_list);
-				memp = &zdev->mem[j];
+			    list_empty(&tmp_memp->zm_list)) {
+				list_add_tail(&memp->zm_list, &tmp_memp->zm_list);
+				memp = tmp_memp;
 			}
 		}
 	}
-#endif
+
 	mutex_unlock(&zdev->mm_lock);
 }
 
