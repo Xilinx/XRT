@@ -110,6 +110,9 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	cma_obj->base.funcs = &zocl_gem_object_funcs;
+#endif
 	err = drm_gem_object_init(dev, &cma_obj->base, size);
 	if (err) {
 		DRM_DEBUG("drm gem object initial failed\n");
@@ -161,15 +164,16 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
 	struct drm_zocl_bo *bo = NULL;
-#if 1
 	struct zocl_mem *head_mem = mem;
-#endif
 	int err = -ENOMEM;
 
 	bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
 	if (IS_ERR(bo))
 		return ERR_PTR(-ENOMEM);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
 	err = drm_gem_object_init(dev, &bo->gem_base, size);
 	if (err) {
 		kfree(bo);
@@ -185,12 +189,9 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	}
 
 	mutex_lock(&zdev->mm_lock);
-#if 1
 	do {
-#endif
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
-			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev,
-									 size);
+			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev, size);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
 				mutex_unlock(&zdev->mm_lock);
@@ -210,22 +211,18 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				mem->zm_base_addr + mem->zm_size, 0);
 			if (!err) {
 				/* Got memory from this Range memory manager */
-				//break;
-				goto get_mem;
+				break;
 			}
 		}
 
 		/* SAIF TODO : Need to revisit this concept (DDR/LPDDR) */
-#if 1
 		/* No memory left to this memory manager.
 		 * Try to allocate from similer memory manger link list
 		 */
 		mem = list_entry(mem->zm_list.next, typeof(*mem), zm_list);
 
 	} while (&mem->zm_list != &head_mem->zm_list);
-#endif
 
-get_mem:
 	if (err) {
 		DRM_ERROR("Fail to allocate BO: size %ld\n",
 				(long)size);
@@ -269,6 +266,8 @@ zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
 	return NULL;
 }
 
+/* This function retruns zocl memory for the given domain based on a 
+specific memory topology */
 static struct zocl_mem *
 zocl_get_memp_by_mem_data(struct drm_zocl_dev *zdev,
 		     struct mem_data *md, int domain_idx)
@@ -304,6 +303,9 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (!bo)
 			return ERR_PTR(-ENOMEM);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+		bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
 		err = drm_gem_object_init(dev, &bo->gem_base, size);
 		if (err < 0)
 			goto free;
@@ -1136,8 +1138,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	struct mem_topology *mtopo = domain->topology;
 	uint64_t mm_start_addr = 0;
 	uint64_t mm_end_addr = 0;
-	int i;
-	int j;
+	int i, j;
 
 	if (!mtopo)
 		return;

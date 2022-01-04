@@ -425,7 +425,11 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 struct drm_gem_object *
 zocl_gem_create_object(struct drm_device *dev, size_t size)
 {
-	return kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+	struct drm_zocl_bo *bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
+	return (&bo->gem_base);
 }
 
 void zocl_free_bo(struct drm_gem_object *obj)
@@ -820,6 +824,15 @@ static struct drm_driver zocl_driver = {
 	.date                      = driver_date,
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+const struct drm_gem_object_funcs zocl_gem_object_funcs = {
+	.free = zocl_free_bo,
+	.vm_ops = &zocl_bo_vm_ops,
+	.get_sg_table = drm_gem_cma_get_sg_table,
+	.vmap = drm_gem_cma_vmap,
+	.export = drm_gem_prime_export,
+};
+#endif
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
 };
