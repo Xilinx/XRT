@@ -2697,10 +2697,10 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
     return drv ? drv->xclImportBO(fd, flags) : -ENODEV;
 }
 
-void
+int
 xclCloseExportHandle(int fd)
 {
-  close(fd);
+  return close(fd) ? -errno : 0;
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)

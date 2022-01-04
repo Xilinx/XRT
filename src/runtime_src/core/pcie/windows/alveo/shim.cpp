@@ -1791,11 +1791,12 @@ xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
   return INVALID_HANDLE_VALUE;
 }
 
-void
+int
 xclCloseExportHandle(xclBufferExportHandle)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclCloseExportHandle() NOT IMPLEMENTED");
+  return 0;
 }
 
 int

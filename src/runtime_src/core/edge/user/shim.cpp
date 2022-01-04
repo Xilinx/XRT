@@ -1763,10 +1763,10 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
   return drv->xclImportBO(fd, flags);
 }
 
-void
+int
 xclCloseExportHandle(int fd)
 {
-  close(fd);
+  return close(fd) ? -errno : 0;
 }
 
 static int

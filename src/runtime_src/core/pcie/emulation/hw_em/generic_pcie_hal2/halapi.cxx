@@ -38,9 +38,10 @@ unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned fl
   return drv->xclImportBO(boGlobalHandle,flags);
 }
 
-void xclCloseExportHandle(int ehdl)
+int xclCloseExportHandle(int ehdl)
 {
   // Implement per hw_em requirements
+  return 0;
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)

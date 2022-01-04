@@ -507,11 +507,12 @@ xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
   return XRT_NULL_BO_EXPORT;
 }
 
-void
+int
 xclCloseExportHandle(xclBufferExportHandle fd)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclCloseExportHandle() NOT IMPLEMENTED");
+  return 0;
 }
 
 int

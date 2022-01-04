@@ -29,10 +29,10 @@
 #include <stdexcept>
 
 // Internal shim function forward declarations
-int  xclUpdateSchedulerStat(xclDeviceHandle handle);
-int  xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
-int  xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
-void xclCloseExportHandle(xclBufferExportHandle);
+int xclUpdateSchedulerStat(xclDeviceHandle handle);
+int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind);
+int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size);
+int xclCloseExportHandle(xclBufferExportHandle);
 
 namespace xrt_core {
 
@@ -307,7 +307,8 @@ struct shim : public DeviceType
   void
   close_export_handle(xclBufferExportHandle ehdl) override
   {
-    xclCloseExportHandle(ehdl);
+    if (auto err = xclCloseExportHandle(ehdl))
+      throw system_error(err, "failed to close export handle");
   }
 
   void
