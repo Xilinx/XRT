@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,6 +36,11 @@ unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned fl
   if (!drv)
     return -1;
   return drv->xclImportBO(boGlobalHandle,flags);
+}
+
+void xclCloseExportHandle(int ehdl)
+{
+  // Implement per hw_em requirements
 }
 
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)

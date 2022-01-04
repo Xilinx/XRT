@@ -1,8 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
- * Author(s): Umang Parekh
- *          : Sonal Santan
- *          : Ryan Radjabi
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * XRT PCIe library layered on top of xocl kernel driver
  *
@@ -2698,6 +2695,12 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
         std::cout << __func__ << ", " << std::this_thread::get_id() << ", handle & XOCL Device are bad" << std::endl;
     }
     return drv ? drv->xclImportBO(fd, flags) : -ENODEV;
+}
+
+void
+xclCloseExportHandle(int fd)
+{
+  close(fd);
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
