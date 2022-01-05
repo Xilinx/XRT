@@ -191,8 +191,8 @@ run(const xrt::device& device, const xrt::uuid& uuid, unsigned int iter)
 
     // prepare for next iteration, update the mailbox with the next
     // value of 'adder'.
-    incr_mbox.set_arg(2, ++adder1); // update the mailbox
-    incr_mbox.set_arg(3, --adder2); // update the mailbox
+    incr_mbox.set_arg("adder1", ++adder1); // update the mailbox
+    incr_mbox.set_arg("adder2", --adder2); // update the mailbox
 
     // write the mailbox content to hw, the write will not be picked
     // up until the next iteration of the pipeline (incr).
