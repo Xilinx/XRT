@@ -17,6 +17,10 @@
 #include <linux/pagemap.h>
 #include <linux/of_address.h>
 #include <linux/iommu.h>
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+#include <linux/dma-buf-map.h>
+#endif
 #include <asm/io.h>
 #include "xrt_drv.h"
 #include "zocl_drv.h"
@@ -106,6 +110,10 @@ static struct drm_zocl_bo *zocl_create_userprt_bo(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 	}
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	cma_obj->base.funcs = &zocl_gem_object_funcs;
+#endif
+
 	err = drm_gem_object_init(dev, &cma_obj->base, size);
 	if (err) {
 		DRM_DEBUG("drm gem object initial failed\n");
@@ -163,6 +171,10 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	bo = kzalloc(sizeof(struct drm_zocl_bo), GFP_KERNEL);
 	if (IS_ERR(bo))
 		return ERR_PTR(-ENOMEM);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
 
 	err = drm_gem_object_init(dev, &bo->gem_base, size);
 	if (err) {
@@ -257,6 +269,9 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (!bo)
 			return ERR_PTR(-ENOMEM);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+		bo->gem_base.funcs = &zocl_gem_object_funcs;
+#endif
 		err = drm_gem_object_init(dev, &bo->gem_base, size);
 		if (err < 0)
 			goto free;
@@ -802,6 +817,9 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 			args->handle);
 	char __user *user_data = to_user_ptr(args->data_ptr);
 	struct drm_zocl_bo *bo;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0))
+	struct dma_buf_map map;
+#endif
 	int ret = 0;
 	char *kaddr;
 
@@ -826,8 +844,17 @@ static int zocl_bo_rdwr_ioctl(struct drm_device *dev, void *data,
 	}
 
 	bo = to_zocl_bo(gem_obj);
-	if (bo->flags & ZOCL_BO_FLAGS_CMA)
+	if (bo->flags & ZOCL_BO_FLAGS_CMA) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+		ret = drm_gem_cma_vmap(gem_obj, &map);
+		if(ret || dma_buf_map_is_null(&map))
+			kaddr = NULL;
+		else
+			kaddr = map.is_iomem ? map.vaddr_iomem : map.vaddr;
+#else
 		kaddr = drm_gem_cma_prime_vmap(gem_obj);
+#endif
+	}
 	else
 		kaddr = bo->vmapping;
 	if (!kaddr) {

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,6 +18,7 @@
 
 #include "xdp/profile/writer/noc/noc_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
 
 #include <boost/algorithm/string.hpp>
 
@@ -29,13 +30,13 @@ namespace xdp {
     mDeviceName(deviceName),
     mDeviceIndex(deviceIndex)
   {
-    // TODO: calculate sample period based on requested value 
+    // TODO: calculate sample period based on requested value
     //       and granularity of clock frequency
     mSamplePeriod = 565.13;
   }
 
   NOCProfilingWriter::~NOCProfilingWriter()
-  {    
+  {
   }
 
   bool NOCProfilingWriter::write(bool openNewFile)
@@ -59,12 +60,11 @@ namespace xdp {
     for (uint64_t n=0; n < numNOC; n++) {
       auto noc = (db->getStaticInfo()).getNOC(mDeviceIndex, currentXclbin, n);
 
-      // TODO: either make these members more generic or add new ones
-      auto readTrafficClass = noc->cuIndex;
-      auto writeTrafficClass = noc->memIndex;
+      auto readTrafficClass = noc->readTrafficClass;
+      auto writeTrafficClass = noc->writeTrafficClass;
 
       // Name = <master>-<NMU cell>-<read QoS>-<write QoS>-<NPI freq>-<AIE freq>
-      std::vector<std::string> result; 
+      std::vector<std::string> result;
       boost::split(result, noc->name, boost::is_any_of("-"));
       std::string masterName = (result.size() > 0) ? result[0] : "";
       std::string cellName   = (result.size() > 1) ? result[1] : "";
@@ -96,19 +96,19 @@ namespace xdp {
          << std::endl;
 
     // Write all data elements
-    std::vector<VPDynamicDatabase::CounterSample> samples = 
+    std::vector<VPDynamicDatabase::CounterSample> samples =
       (db->getDynamicInfo()).getNOCSamples(mDeviceIndex);
-    VPDynamicDatabase::CounterNames names = 
+    VPDynamicDatabase::CounterNames names =
       (db->getDynamicInfo()).getNOCNames(mDeviceIndex);
 
     for (auto sample : samples) {
       fout << sample.first << ","; // Timestamp
-      
+
       // Report NMU cell name for this sample
       auto iter = names.find(sample.first);
       std::string cellName = (iter == names.end()) ? "N/A" : iter->second;
       fout << cellName << ",";
-      
+
       // Report all samples at this timestamp for this NMU cell
       for (auto value : sample.second) {
         fout << value << ",";

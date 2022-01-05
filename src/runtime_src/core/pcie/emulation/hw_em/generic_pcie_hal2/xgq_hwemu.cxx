@@ -294,7 +294,7 @@ namespace hwemu {
           cmdp->hdr.state = 1;
           cmdp->hdr.cid = cmdid;
           cmdp->hdr.count = payload_size();
-          cmdp->cu_idx = 0;
+          cmdp->hdr.cu_idx = 0;
           auto ert_start_cu = reinterpret_cast<ert_start_kernel_cmd *>(ert_pkt);
           memcpy(cmdp->data, ert_start_cu->data, payload_size() - 4);
         }

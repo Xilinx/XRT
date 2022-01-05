@@ -423,7 +423,7 @@ merge_node_array( const std::string &nodeName,
                   const boost::property_tree::ptree &ptAppend,
                   const NodeCallBackFuncs &nodeCallBackFuncs) {
    // Extract the node array into a vector of child property trees
-   std::vector<boost::property_tree::ptree> workingNodeArray = XUtil::as_vector<boost::property_tree::ptree>(ptParent, nodeName);
+   auto workingNodeArray = XUtil::as_vector<boost::property_tree::ptree>(ptParent, nodeName);
 
    // Remove this entry.  It will be added later.
    ptParent.erase(nodeName);

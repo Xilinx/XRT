@@ -654,9 +654,10 @@ static int command_queue_remove(struct platform_device *pdev)
 static int command_queue_probe(struct platform_device *pdev)
 {
 	struct command_queue *cmd_queue;
-	struct resource *res;
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct xocl_ert_cq_privdata *priv = NULL;
+	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ERT_USER;
 
 	cmd_queue = xocl_drvinst_alloc(&pdev->dev, sizeof(struct command_queue));
 	if (!cmd_queue)
@@ -667,32 +668,14 @@ static int command_queue_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, cmd_queue);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		xocl_err(&pdev->dev, "did not get memory");
-		err = -ENOMEM;
+	priv = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	cmd_queue->cq_range = priv->cq_range;
+	cmd_queue->cq_base = priv->cq_base;
+
+	err = xocl_subdev_create(xdev, &subdev_info);
+	if (err) {
+		xocl_err(&pdev->dev, "can't create ERT_USER_COMMON subdev");
 		goto done;
-	}
-
-	xocl_info(&pdev->dev, "CQ IO start: 0x%llx, end: 0x%llx",
-		res->start, res->end);
-
-	cmd_queue->cq_range = res->end - res->start + 1;
-	cmd_queue->cq_base = ioremap_wc(res->start, cmd_queue->cq_range);
-	if (!cmd_queue->cq_base) {
-		err = -EIO;
-		xocl_err(&pdev->dev, "Map iomem failed");
-		goto done;
-	}
-
-	if (!err) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_ERT_USER;
-
-		err = xocl_subdev_create(xdev, &subdev_info);
-		if (err) {
-			xocl_err(&pdev->dev, "can't create ERT_USER_COMMON subdev");
-			goto done;
-		}
 	}
 
 	err = sysfs_create_group(&pdev->dev.kobj, &cmd_queue_attr_group);

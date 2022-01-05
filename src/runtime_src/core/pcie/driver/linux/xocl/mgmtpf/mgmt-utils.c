@@ -290,7 +290,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		mgmt_err(lro, "Unable to identify device root port for card %d",
 		       lro->instance);
 		err = -ENODEV;
-		goto done;
+		goto failed;
 	}
 
 	ep_name = pdev->bus->name;
@@ -306,14 +306,14 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	err = xocl_vmr_enable_multiboot(lro);
 	if (err && err != -ENODEV) {
 		mgmt_info(lro, "reset multi-boot config failed. err: %ld", err);
-		goto done;
+		goto failed;
 	}
 
 	if (!force && xrt_reset_syncup) {
 		mgmt_info(lro, "wait for master off for all functions");
 		err = xocl_wait_master_off(lro);
 		if (err)
-			goto done;
+			goto failed;
 	}
 
 	xocl_thread_stop(lro);
@@ -391,7 +391,9 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	(void) xocl_reinit_vmr(lro);
 
-done:
+	return 0;
+
+failed:
 	return err;
 }
 

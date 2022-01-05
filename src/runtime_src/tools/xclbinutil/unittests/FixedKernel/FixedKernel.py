@@ -79,7 +79,8 @@ def main():
                      "--dump-section", "GROUP_TOPOLOGY:JSON:" + outputGroupTopology,
                      "--dump-section", "GROUP_CONNECTIVITY:JSON:" + outputGroupConnectivity,
                      "--output", outputXCLBIN, 
-                     "--force"]
+                     "--force",
+                     "--trace"]
   execCmd(step, cmd)
 
   # Validate the contents of the various sections

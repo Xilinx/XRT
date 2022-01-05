@@ -25,6 +25,8 @@
 #include "core/common/config_reader.h"
 #include "core/pcie/linux/scan.h"
 #include "core/common/utils.h"
+#include "core/common/api/bo.h"
+#include "core/common/device.h"
 #include <dlfcn.h>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -110,20 +112,15 @@ namespace xma_core {
         for (int32_t d = 0; d < count; d++) {
             xclBufferHandle  bo_handle = 0;
             int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            //uint32_t  execBO_flags = (1<<31);
             char     *bo_data;
-            bo_handle = xclAllocBO(priv->dev_handle, 
-                                    execBO_size, 
-                                    0, 
-                                    XCL_BO_FLAGS_EXECBUF);
-            if (!bo_handle || bo_handle == NULLBO) 
+            bo_handle = priv->dev_handle.get_handle()->alloc_bo(execBO_size, XCL_BO_FLAGS_EXECBUF);
+            if (!bo_handle || bo_handle == NULLBO)
             {
                 xma_logmsg(XMA_ERROR_LOG, prefix.c_str(), "Initalization of plugin failed. Failed to alloc execbo");
                 return XMA_ERROR;
             }
-            bo_data = (char*)xclMapBO(priv->dev_handle, bo_handle, true);
+            bo_data = reinterpret_cast<char*>(priv->dev_handle.get_handle()->map_bo(bo_handle, true));
             memset((void*)bo_data, 0x0, execBO_size);
-
             priv->kernel_execbos.emplace_back(XmaHwExecBO{});
             XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
             dev_execbo.handle = bo_handle;
@@ -690,6 +687,28 @@ int32_t check_all_execbo(XmaSession s_handle) {
         }
     }
 
+    return XMA_SUCCESS;
+}
+
+int32_t xma_check_device_buffer(const XmaBufferObj* b_obj) {
+    if (!b_obj) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+
+    auto b_obj_priv = reinterpret_cast<XmaBufferObjPrivate*>(b_obj->private_do_not_touch);
+    if (!b_obj_priv) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj->dev_index < 0 || xrt_core::bo::group_id(b_obj_priv->xrt_bo) < 0) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");
+        return XMA_ERROR;
+    }
+    if (b_obj_priv->dummy != (void*)(((uint64_t)b_obj_priv) | signature)) {
+        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj is corrupted.\n");
+        return XMA_ERROR;
+    }
     return XMA_SUCCESS;
 }
 
