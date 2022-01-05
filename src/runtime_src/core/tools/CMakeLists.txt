@@ -10,7 +10,9 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
 endif()
 
-add_subdirectory(xbflash2)
+if(NOT WIN32)
+  add_subdirectory(xbflash2)
+endif()
 
 install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
