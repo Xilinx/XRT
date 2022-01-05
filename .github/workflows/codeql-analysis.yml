@@ -1,0 +1,53 @@
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+# ******** NOTE ********
+# We have attempted to detect the languages in your repository. Please check
+# the `language` matrix defined below to confirm you have the correct set of
+# supported CodeQL languages.
+#
+name: "CodeQL"
+
+on:
+  #schedule:
+  #  - cron: '33 8 * * 6'
+    
+  workflow_dispatch:  
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'cpp', 'python' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: ${{ matrix.language }}
+
+    # Build XRT for compiled languages
+    - if: matrix.language == 'cpp'
+      name: Build 
+      run: |
+       sudo apt update
+       sudo src/runtime_src/tools/scripts/xrtdeps.sh
+       ./build/build.sh -opt -verbose -driver
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1

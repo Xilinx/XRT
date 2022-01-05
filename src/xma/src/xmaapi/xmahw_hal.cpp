@@ -27,6 +27,7 @@
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
 #include "lib/xmahw_private.h"
+#include "core/common/device.h"
 #include <dlfcn.h>
 #include <iostream>
 #include <bitset>
@@ -37,25 +38,13 @@
 
 using namespace std;
 
-int load_xclbin_to_device(xclDeviceHandle dev_handle, const char *buffer)
-{
-    int rc;
-
-    xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "load_xclbin to device\n");
-    rc = xclLoadXclBin(dev_handle, (const xclBin*)buffer);
-    if (rc != 0)
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclLoadXclBin failed. rc=%d\n", rc);
-
-    return rc;
-}
-
 /* Public function implementation */
 int hal_probe(XmaHwCfg *hwcfg)
 {
     xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "Using HAL layer\n");
-    if (hwcfg == NULL) 
+    if (hwcfg == nullptr)
     {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is NULL\n");
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "ERROR: hwcfg is nullptr\n");
         return XMA_ERROR;
     }
 
@@ -78,8 +67,8 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t 
 bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
     std::bitset<MAX_XILINX_KERNELS> cu_mask_32bits(0xFFFFFFFF);
-    if (hwcfg == NULL) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is NULL\n");
+    if (hwcfg == nullptr) {
+        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is nullptr\n");
         return false;
     }
 
@@ -97,7 +86,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                        dev_index);
             return false;
         }
-        if (devXclbins[i].xclbin_name == NULL) {
+        if (devXclbins[i].xclbin_name == nullptr) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "No xclbin provided for dev_index = %d\n",
                        dev_index);
             return false;
@@ -115,33 +104,24 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         }
 
         hwcfg->devices.emplace_back(XmaHwDevice{});
-
         XmaHwDevice& dev_tmp1 = hwcfg->devices.back();
-
-        dev_tmp1.handle = xclOpen(dev_index, NULL, XCL_QUIET);
-        if (dev_tmp1.handle == NULL){
+        dev_tmp1.xrt_device = xrt::device(dev_index);
+        if (dev_tmp1.xrt_device.get_handle()->get_device_handle() == nullptr){
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Unable to open device  id: %d\n", dev_index);
             return false;
         }
-
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n", dev_tmp1.handle);
-        /* This is adding to start delay
-        rc = xclGetDeviceInfo2(dev_tmp1.handle, &dev_tmp1.info);
-        if (rc != 0)
-        {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "xclGetDeviceInfo2 failed for device id: %d, rc=%d\n", dev_index, rc);
-            return false;
-        }
-        */
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n", dev_tmp1.xrt_device.get_handle()->get_device_handle());   
 
-        /* Always attempt download xclbin */
-        rc = load_xclbin_to_device(dev_tmp1.handle, buffer);
-        if (rc != 0) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
-                        xclbin.c_str(), dev_index);
-            return false;
+        /* Always attempt download xclbin */     
+        try {
+            dev_tmp1.xrt_device.load_xclbin((const xclBin*)buffer);
         }
+         catch (const xrt_core::system_error&) {
+             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                 xclbin.c_str(), dev_index);
+             return false;
+         }    
 
         uuid_copy(dev_tmp1.uuid, info.uuid); 
         dev_tmp1.number_of_cus = info.number_of_kernels;
@@ -298,12 +278,15 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
         if (dev_tmp1.number_of_hardware_kernels > 0) {
             //Avoid virtual cu context as it takes 40 millisec
-            xclOpenContext(dev_tmp1.handle, info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
+            dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
             dev_tmp1.kernels[0].context_opened = true;
         } else {
             //Opening virtual CU context as some applications may use soft kernels only
             //But this takes 40 millisec
-            if (xclOpenContext(dev_tmp1.handle, info.uuid, -1, true) != 0) {
+            try {
+                dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, -1, true);
+            }
+            catch (const xrt_core::system_error&) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");
                 return false;
             }

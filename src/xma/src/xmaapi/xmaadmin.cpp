@@ -115,7 +115,7 @@ xma_admin_session_create(XmaAdminProperties *props)
         return nullptr;
     }
 
-    void* dev_handle = hwcfg->devices[hwcfg_dev_index].handle;
+    auto dev_handle = hwcfg->devices[hwcfg_dev_index].xrt_device;
     session->base.hw_session.dev_index = hwcfg->devices[hwcfg_dev_index].dev_index;
     session->base.hw_session.bank_index = -1;
 

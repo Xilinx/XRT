@@ -2,7 +2,7 @@
 /*
  * Xilinx HLS CU
  *
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -11,6 +11,7 @@
  */
 
 #include "xrt_cu.h"
+#include "xgq_cmd_ert.h"
 
 /* Control register bits and special behavior if any.
  * Bit 0: ap_start(Read/Set). Clear by CU when ap_ready assert.
@@ -75,14 +76,40 @@ static int cu_hls_peek_credit(void *core)
 	return cu_hls->credits;
 }
 
-static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
+static void cu_hls_xgq_start(struct xrt_cu_hls *cu_hls, u32 *data)
+{
+	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)data;
+	u32 num_reg = 0;
+	u32 i = 0;
+
+	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
+				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+	for (i = 0; i < num_reg; ++i) {
+		cu_write32(cu_hls, ARGS + i * 4, cmd->data[i]);
+	}
+}
+
+static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
+{
+	struct xgq_cmd_start_cuidx_kv *cmd = (struct xgq_cmd_start_cuidx_kv *)data;
+	u32 num_reg = 0;
+	u32 i = 0;
+
+	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx_kv)
+				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
+	for (i = 0; i < num_reg; ++i)
+		cu_write32(cu_hls, cmd->data[i], cmd->data[i + 1]);
+}
+
+static int cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 {
 	struct xrt_cu_hls *cu_hls = core;
-	size_t num_reg;
-	u32 i;
+	struct xgq_cmd_sq_hdr *hdr;
+	size_t num_reg = 0;
+	u32 i = 0;
 
 	if (kds_echo)
-		return;
+		return 0;
 
 	num_reg = sz / sizeof(u32);
 	switch (type) {
@@ -99,7 +126,17 @@ static void cu_hls_configure(void *core, u32 *data, size_t sz, int type)
 		for (i = 0; i < num_reg; i += 2)
 			cu_write32(cu_hls, data[i], data[i + 1]);
 		break;
+	case XGQ_CMD:
+		hdr = (struct xgq_cmd_sq_hdr *)data;
+		if (hdr->opcode == XGQ_CMD_OP_START_CUIDX)
+			cu_hls_xgq_start(cu_hls, data);
+		else if (hdr->opcode == XGQ_CMD_OP_START_CUIDX_KV)
+			cu_hls_xgq_start_kv(cu_hls, data);
+		else
+			return -EINVAL;
+		break;
 	}
+	return 0;
 }
 
 static void cu_hls_start(void *core)

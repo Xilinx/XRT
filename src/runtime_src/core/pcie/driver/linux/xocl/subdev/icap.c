@@ -1456,129 +1456,6 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	return err;
 }
 
-static int icap_create_subdev_cdma(struct platform_device *pdev, int inst_idx)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	u32 *cdma = xocl_rom_cdma_addr(xdev);
-	u32 num_cdma = 0;
-	int err = 0;
-	int i;
-
-	/* Some platforms doesn't support m2m CU */
-	if (!cdma)
-		return 0;
-
-	/* Maximum 4 m2m cus */
-	for (i = 0; i < 4; i++) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
-		struct xrt_cu_info info;
-
-		if (!cdma[i])
-			break;
-
-		memset(&info, 0, sizeof(info));
-
-		num_cdma++;
-		sprintf(info.kname, "m2m");
-		info.kname[sizeof(info.kname)-1] = '\0';
-		sprintf(info.iname, "m2m_%d", i + 1);
-		info.iname[sizeof(info.kname)-1] = '\0';
-
-		info.inst_idx = i + inst_idx;
-		info.addr = cdma[i];
-		info.num_res = subdev_info.num_res;
-		info.protocol = CTRL_HS;
-		info.intr_id = M2M_CU_ID;
-		info.is_m2m = 1;
-
-		subdev_info.res[0].start += info.addr;
-		subdev_info.res[0].end += info.addr;
-		subdev_info.priv_data = &info;
-		subdev_info.data_len = sizeof(info);
-		subdev_info.override_idx = info.inst_idx;
-
-		err = xocl_subdev_create(xdev, &subdev_info);
-		if (err)
-			ICAP_ERR(icap, "Create CU %s:%s failed. Skip",
-				 info.kname, info.iname);
-	}
-
-	return 0;
-}
-
-static int icap_create_subdev_cu(struct platform_device *pdev)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct ip_layout *ip_layout = icap->ip_layout;
-	struct xrt_cu_info info;
-	char kname[64];
-	char *kname_p;
-	int err = 0, i;
-	int inst = 0;
-
-	/* Let CU controller know the dynamic resources */
-	for (i = 0; i < ip_layout->m_count; ++i) {
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_CU;
-		struct ip_data *ip = &ip_layout->m_ip_data[i];
-		struct kernel_info *krnl_info;
-
-		if (ip->m_type != IP_KERNEL)
-			continue;
-
-		if ((~ip->m_base_address) == 0)
-			continue;
-
-		memset(&info, 0, sizeof(info));
-		/* NOTE: Only support 64 instences in subdev framework */
-
-		/* ip_data->m_name format "<kernel name>:<instance name>",
-		 * where instance name is so called CU name.
-		 */
-		strncpy(kname, ip->m_name, sizeof(kname));
-		kname[sizeof(kname)-1] = '\0';
-		kname_p = &kname[0];
-		strncpy(info.kname, strsep(&kname_p, ":"), sizeof(info.kname));
-		info.kname[sizeof(info.kname)-1] = '\0';
-		strncpy(info.iname, strsep(&kname_p, ":"), sizeof(info.iname));
-		info.iname[sizeof(info.kname)-1] = '\0';
-
-		krnl_info = xocl_query_kernel(xdev, info.kname);
-		if (!krnl_info) {
-			ICAP_WARN(icap, "%s has no metadata. try use default", kname);
-			/* Workaround for U30, maybe we can remove this in the future */
-			/*continue;*/
-		}
-
-		info.inst_idx = inst++;
-		info.addr = ip->m_base_address;
-		/* Workaround for U30, maybe we can remove this in the future */
-		info.size = (krnl_info) ? krnl_info->range : 0x1000;
-		if (krnl_info && (krnl_info->features & KRNL_SW_RESET))
-			info.sw_reset = true;
-		info.num_res = subdev_info.num_res;
-		info.intr_enable = ip->properties & IP_INT_ENABLE_MASK;
-		info.protocol = (ip->properties & IP_CONTROL_MASK) >> IP_CONTROL_SHIFT;
-		info.intr_id = (ip->properties & IP_INTERRUPT_ID_MASK) >> IP_INTERRUPT_ID_SHIFT;
-
-		subdev_info.res[0].start = ip->m_base_address;
-		subdev_info.res[0].end = ip->m_base_address + info.size - 1;
-		subdev_info.priv_data = &info;
-		subdev_info.data_len = sizeof(info);
-		subdev_info.override_idx = info.inst_idx;
-		err = xocl_subdev_create(xdev, &subdev_info);
-		if (err)
-			ICAP_ERR(icap, "Create CU %s failed. Skip", ip->m_name);
-	}
-
-	/* M2M CU (aka kdma/cdma) */
-	if (!M2M_CB(xdev))
-		icap_create_subdev_cdma(pdev, i);
-
-	return err;
-}
-
 // Create subdev for PS kernels
 static int icap_create_subdev_scu(struct platform_device *pdev)
 {
@@ -2471,7 +2348,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_clock_freq_topology(icap, xclbin);
 
 	icap_create_subdev_ip_layout(pdev);
-	icap_create_subdev_cu(pdev);
 
 	// Create scu subdev if SOFT_KERNEL section is found
 	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);

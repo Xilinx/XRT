@@ -1825,6 +1825,7 @@ struct xocl_intc_funcs {
 	int (*sel_ert_intr)(struct platform_device *pdev, int mode);
 	int (*csr_read32)(struct platform_device *pdev, u32 off);
 	void (*csr_write32)(struct platform_device *pdev, u32 val, u32 off);
+	void __iomem *(*get_csr_base)(struct platform_device *pdev);
 };
 #define	INTC_DEV(xdev)	\
 	(SUBDEV(xdev, XOCL_SUBDEV_INTC) ? \
@@ -1854,6 +1855,10 @@ struct xocl_intc_funcs {
 	(INTC_CB(xdev, sel_ert_intr) ? \
 	 INTC_OPS(xdev)->sel_ert_intr(INTC_DEV(xdev), mode) : \
 	 -ENODEV)
+#define xocl_intc_get_csr_base(xdev) \
+	(INTC_CB(xdev, get_csr_base) ? \
+	 INTC_OPS(xdev)->get_csr_base(INTC_DEV(xdev)) : \
+	 NULL)
 /* Only used in ERT sub-device polling mode */
 #define xocl_intc_ert_read32(xdev, off) \
 	(INTC_CB(xdev, csr_read32) ? \
@@ -1960,6 +1965,44 @@ struct xocl_config_gpio_funcs {
 	(CFG_GPIO_CB(xdev, gpio_cfg) ? \
 	 CFG_GPIO_OPS(xdev)->gpio_cfg(CFG_GPIO_DEV(xdev), val) : \
 	 -ENODEV)
+
+/* ert_ctrl call back */
+struct xocl_ert_ctrl_funcs {
+	       struct xocl_subdev_funcs common_funcs;
+	       int (* connect)(struct platform_device *pdev);
+	       void (* disconnect)(struct platform_device *pdev);
+	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
+	       u64 (* get_base)(struct platform_device *pdev);
+	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	};
+
+#define ERT_CTRL_DEV(xdev)     \
+	(SUBDEV(xdev, XOCL_SUBDEV_ERT_CTRL) ? \
+	 SUBDEV(xdev, XOCL_SUBDEV_ERT_CTRL)->pldev : NULL)
+#define ERT_CTRL_OPS(xdev)  \
+	(SUBDEV(xdev, XOCL_SUBDEV_ERT_CTRL) ? \
+	 (struct xocl_ert_ctrl_funcs *)SUBDEV(xdev, XOCL_SUBDEV_ERT_CTRL)->ops : NULL)
+#define ERT_CTRL_CB(xdev, cb)  \
+	(ERT_CTRL_DEV(xdev) && ERT_CTRL_OPS(xdev) && ERT_CTRL_OPS(xdev)->cb)
+#define xocl_ert_ctrl_connect(xdev) \
+	(ERT_CTRL_CB(xdev, connect) ? \
+	 ERT_CTRL_OPS(xdev)->connect(ERT_CTRL_DEV(xdev)) : \
+	 -ENODEV)
+#define xocl_ert_ctrl_disconnect(xdev) \
+	(ERT_CTRL_CB(xdev, disconnect) ? \
+	 ERT_CTRL_OPS(xdev)->disconnect(ERT_CTRL_DEV(xdev)) : \
+	 -ENODEV)
+#define xocl_ert_ctrl_is_version(xdev, major, minor) \
+	(ERT_CTRL_CB(xdev, is_version) ? \
+	 ERT_CTRL_OPS(xdev)->is_version(ERT_CTRL_DEV(xdev), major, minor) : \
+	 -ENODEV)
+#define xocl_ert_ctrl_get_base(xdev) \
+	(ERT_CTRL_CB(xdev, get_base) ? \
+	 ERT_CTRL_OPS(xdev)->get_base(ERT_CTRL_DEV(xdev)) : \
+	 -ENODEV)
+#define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
+	(ERT_CTRL_CB(xdev, setup_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2639,4 +2682,7 @@ void xocl_fini_xgq(void);
 
 int __init xocl_init_hwmon_sdm(void);
 void xocl_fini_hwmon_sdm(void);
+
+int __init xocl_init_ert_ctrl(void);
+void xocl_fini_ert_ctrl(void);
 #endif

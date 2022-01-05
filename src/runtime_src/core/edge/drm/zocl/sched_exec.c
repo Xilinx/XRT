@@ -3371,6 +3371,15 @@ static int watchdog_thread(void *data)
 		 *    we don't need a lock when checking the thread state.
 		 * 2. Other than TASK_DEAD, what else state should be monitor?
 		 */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+		if (zdev->exec && zdev->exec->cq_thread &&
+			zdev->exec->cq_thread->__state != TASK_DEAD)
+			cfg.cq_thread_run = true;
+
+		if (g_sched0.sched_thread &&
+			g_sched0.sched_thread->__state != TASK_DEAD)
+			cfg.sched_thread_run = true;
+#else
 		if (zdev->exec && zdev->exec->cq_thread &&
 			zdev->exec->cq_thread->state != TASK_DEAD)
 			cfg.cq_thread_run = true;
@@ -3378,6 +3387,7 @@ static int watchdog_thread(void *data)
 		if (g_sched0.sched_thread &&
 			g_sched0.sched_thread->state != TASK_DEAD)
 			cfg.sched_thread_run = true;
+#endif
 
 		watchdog->ops->config(watchdog, cfg);
 		msleep_interruptible(ZOCL_WATCHDOG_FREQ);
