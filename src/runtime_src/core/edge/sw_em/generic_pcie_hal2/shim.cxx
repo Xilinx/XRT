@@ -173,6 +173,7 @@ namespace xclcpuemhal2 {
     binaryCounter = 0;
     mReqCounter = 0;
     sock = nullptr;
+    aiesim_sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
