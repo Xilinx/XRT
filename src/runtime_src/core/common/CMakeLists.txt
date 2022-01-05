@@ -72,7 +72,9 @@ set_target_properties(xrt_coreutil PROPERTIES
 target_link_libraries(xrt_coreutil
   PRIVATE
   ${Boost_FILESYSTEM_LIBRARY}
-  ${Boost_SYSTEM_LIBRARY})
+  ${Boost_SYSTEM_LIBRARY}
+  INTERFACE
+  Boost::boost)
 
 # Targets linking with xrt_coreutil_static must also link with boost
 # libraries used by coreutil.  These type of link dependencies are
@@ -82,7 +84,8 @@ target_link_libraries(xrt_coreutil
 target_link_libraries(xrt_coreutil_static
   INTERFACE
   boost_filesystem
-  boost_system)
+  boost_system
+  Boost::boost)
 
 if (NOT WIN32)
   # Additional link dependencies for xrt_coreutil

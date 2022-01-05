@@ -45,3 +45,8 @@ set(@PROJECT_NAME@_SWEMU_LIBRARIES @PROJECT_NAME@::xrt_swemu)
 set(@PROJECT_NAME@_HWEMU_LIBRARIES @PROJECT_NAME@::xrt_hwemu)
 
 set(@PROJECT_NAME@_FOUND True)
+
+message(STATUS "Found @PROJECT_NAME@: ${@PROJECT_NAME@_CMAKE_DIR} (found version \"${@PROJECT_NAME@_VERSION}\")")
+
+# XRT is requiring Boost in its interface
+find_package(Boost REQUIRED)

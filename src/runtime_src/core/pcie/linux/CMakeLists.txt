@@ -55,6 +55,8 @@ target_link_libraries(xrt_core
   rt
   dl
   uuid
+  INTERFACE
+  Boost::boost
   )
 
 # Targets linking with xrt_core_static must also link with additional
@@ -71,6 +73,7 @@ target_link_libraries(xrt_core_static
   dl
   rt
   pthread
+  Boost::boost
   )
 
 install(TARGETS xrt_core
