@@ -409,12 +409,12 @@ struct drm_zocl_kds {
  * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
-	struct axlf 		*za_xclbin_ptr;
+	struct axlf		*za_xclbin_ptr;
 	uint32_t		za_flags;
 	int			za_ksize;
 	char			*za_kernels;
 	struct drm_zocl_kds	kds_cfg;
-	uint8_t			za_domain_id;
+	uint32_t		za_domain_id;
 };
 
 #define	ZOCL_MAX_NAME_LENGTH		32
