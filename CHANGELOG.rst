@@ -6,13 +6,16 @@ XRT ChangeLog
 Added
 .....
 
-* Added the xrt.ini profiling flags "device_counter" and "device_trace" 
+* Added the xrt.ini profiling flags "device_counter" and "device_trace".
+* xrt::run::set_arg and xrt::mailbox::set_arg both supporting setting arguments by name in addition to by index.
+* Fixed latency issue when using xrt::ip::read_register and xrt::ip::write_register per issue #6053.
+* Support M2M insertion for incompatible read-only kernel buffer object arguments.
 
 Removed
 .......
-* Removed deprecated streaming APIs from OpenCL
-* xrt.ini flags "profile," "timeline_trace," and "xrt_profile" no longer load xdp profiling functionality and no longer issue deprecation warning
-* Deprecating the xrt.ini profiling flags "opencl_summary," "data_transfer_trace," and "opencl_device_counter"
+* Removed deprecated streaming APIs from OpenCL.
+* xrt.ini flags "profile," "timeline_trace," and "xrt_profile" no longer load xdp profiling functionality and no longer issue deprecation warning.
+* Deprecated the xrt.ini profiling flags "opencl_summary," "data_transfer_trace," and "opencl_device_counter".
 
 2.12.0 (202120.2.12.x)
 ~~~~~~~~~~~~~~~~~~~~~~
