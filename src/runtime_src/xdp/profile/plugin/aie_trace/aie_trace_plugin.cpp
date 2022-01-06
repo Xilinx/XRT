@@ -144,11 +144,6 @@ namespace xdp {
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
       memoryCounterEventValues = {1020, 1020*1020};
     }
-    else if (counterScheme == "es2") {
-      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
-      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
-      memoryCounterEventValues = {0x3FF00};
-    }
   }
 
   AieTracePlugin::~AieTracePlugin()
@@ -1088,6 +1083,9 @@ namespace xdp {
       auto tiles = getTilesForTracing(handle);
       auto numCountersToRequest = numFlushCounters - coreCounterStartEvents.size();
 
+      // For consistency, always use ES1 counter values for flushing
+      ValueVector flushEventValues = {1020, 1020*1020};
+
       for (auto& tile : tiles) {
         auto& core = aieDevice->tile(tile.col, tile.row + 1).core();
 
@@ -1103,7 +1101,7 @@ namespace xdp {
           // Configure threshold and reset of counter
           XAie_Events counterEvent;
           perfCounter->getCounterEvent(mod, counterEvent);
-          perfCounter->changeThreshold(coreCounterEventValues.at(c));
+          perfCounter->changeThreshold(flushEventValues.at(c));
           perfCounter->changeRstEvent(mod, counterEvent);
 
           // Add the counter event to trace so it forces the flush
