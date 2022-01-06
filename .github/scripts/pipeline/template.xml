@@ -1,7 +1,11 @@
 <?xml version="1.0"?>
+
+<!-- For attaching any device to VM, virsh needs a .xml file which contains that device's bus, slot and function values. Template.xml file is being used for this purpose -->
+<!-- First template.xml file will be loaded with card's bus, slot and function values. Then, virsh attaches that card to VM using this template.xml file -->
+<!-- template.xml file will be edited in attach_cards.sh script -->
+
 <hostdev mode="subsystem" type="pci" managed="yes">
   <source>
     <address domain="0" bus="0" slot="0" function="1"/>
   </source>
 </hostdev>
-
