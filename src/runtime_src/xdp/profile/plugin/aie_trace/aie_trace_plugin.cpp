@@ -506,7 +506,7 @@ namespace xdp {
 
           // If no memory counters are used, then we need to broadcast the core counter
           if (memoryCounterStartEvents.empty())
-            memoryEvents.push_back(counterEvent);
+            memoryCrossEvents.push_back(counterEvent);
 
           if (perfCounter->start() != XAIE_OK) 
             break;
