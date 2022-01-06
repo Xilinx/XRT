@@ -826,8 +826,8 @@ namespace xdp {
   void VPStaticDatabase::addAIECounter(uint64_t deviceId, uint32_t i,
                                        uint16_t col, uint16_t r, uint8_t num,
                                        uint16_t start, uint16_t end,
-                                       uint8_t reset, double freq,
-                                       const std::string& mod,
+                                       uint8_t reset, uint32_t load,
+                                       double freq, const std::string& mod,
                                        const std::string& aieName)
   {
     std::lock_guard<std::mutex> lock(deviceLock) ;
@@ -835,7 +835,7 @@ namespace xdp {
     if (deviceInfo.find(deviceId) == deviceInfo.end())
       return ;
     deviceInfo[deviceId]->addAIECounter(i, col, r, num, start, end, reset,
-                                        freq, mod, aieName) ;
+                                        load, freq, mod, aieName) ;
   }
 
   void VPStaticDatabase::addAIECounterResources(uint64_t deviceId,
