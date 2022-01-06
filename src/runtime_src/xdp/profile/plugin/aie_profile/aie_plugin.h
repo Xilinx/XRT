@@ -32,6 +32,7 @@
 
 extern "C" {
 #include <xaiengine.h>
+#include <xaiengine/xaiegbl_params.h>
 }
 
 namespace xdp {
@@ -78,6 +79,10 @@ namespace xdp {
                                  const XAie_LocType loc,
                                  const XAie_Events event,
                                  const std::string metricSet);
+    uint32_t getCounterPayload(XAie_DevInst* aieDevInst, 
+                               uint16_t column, 
+                               uint16_t row, 
+                               uint16_t startEvent);
 
     void pollAIECounters(uint32_t index, void* handle);
     void endPoll();
