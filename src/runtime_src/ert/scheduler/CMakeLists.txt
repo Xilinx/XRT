@@ -81,7 +81,7 @@ endif(${ERT_BUILD_ALL} STREQUAL "yes")
 # HW emulation libsched_em
 ################################################################
 file(GLOB SCH_SRC_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/sched.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/sched_hw_emu.c"
   )
 
 SET_SOURCE_FILES_PROPERTIES(${SCH_SRC_FILES} PROPERTIES LANGUAGE CXX )
