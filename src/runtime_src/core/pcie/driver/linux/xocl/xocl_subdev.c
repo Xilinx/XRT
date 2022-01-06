@@ -1685,10 +1685,10 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		u64 offset_payload = 0;
 		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VMR_VSEC;
 
-		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_PAYLOAD,
+		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_VMR_PAYLOAD,
 			&bar_payload, &offset_payload, NULL);
 		if (ret) {
-			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_PAYLOAD");
+			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_VMR_PAYLOAD");
 			goto done;
 		}
 
@@ -1707,7 +1707,7 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 		subdev_info.res[1].start = offset_payload;
 		subdev_info.res[1].end = offset_payload + 0x7ffffff;
-		subdev_info.res[1].name = NODE_XGQ_PAYLOAD_BASE;
+		subdev_info.res[1].name = NODE_XGQ_VMR_PAYLOAD_BASE;
 
 		xocl_xdev_dbg(xdev,
 		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",

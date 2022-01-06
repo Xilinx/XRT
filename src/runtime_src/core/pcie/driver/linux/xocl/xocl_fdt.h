@@ -113,7 +113,7 @@
 #define NODE_PCIE "pcie"
 #define NODE_BARS "bars"
 #define NODE_XGQ_SQ_BASE "ep_xgq_mgmt_to_rpu_sq_pi_00"
-#define NODE_XGQ_PAYLOAD_BASE "ep_xgq_payload_mgmt_00"
+#define NODE_XGQ_VMR_PAYLOAD_BASE "ep_xgq_payload_mgmt_00"
 
 #define PROP_BARM_CTRL "axi_bram_ctrl"
 #define PROP_HWICAP "axi_hwicap"

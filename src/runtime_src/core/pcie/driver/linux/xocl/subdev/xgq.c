@@ -298,22 +298,22 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq)
 {
 	struct vmr_log log;
 
-	memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
+	xocl_memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
 		sizeof(xgq->xgq_vmr_shared_mem));
 
 	if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
 		u32 idx, log_idx = xgq->xgq_vmr_shared_mem.log_msg_index;
 
-		XGQ_DBG(xgq, "=== start dumping vmr log ===");
+		XGQ_WARN(xgq, "=== start dumping vmr log ===");
 		for (idx = 0; idx < VMR_LOG_MAX_RECS; idx++) {
-			memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
+			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
 				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
 				sizeof(log) * log_idx,
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
-			XGQ_DBG(xgq, "%s", log.log_buf); 
+			XGQ_WARN(xgq, "%s", log.log_buf); 
 		}
-		XGQ_DBG(xgq, "=== end dumping vmr log ===");
+		XGQ_WARN(xgq, "=== end dumping vmr log ===");
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
 	}
@@ -330,13 +330,12 @@ static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq)
  */
 static void xgq_stop_services(struct xocl_xgq_vmr *xgq)
 {
+
 	/* stop receiving incoming commands */
 	mutex_lock(&xgq->xgq_lock);
 	xgq->xgq_halted = true;
 	mutex_unlock(&xgq->xgq_lock);
 
-	/* dump device log immediately */
-	xgq_vmr_log_dump(xgq);
 #if 0	
 	/*TODO: disable interrupts */
 	if (!xgq->xgq_polling)
@@ -372,6 +371,13 @@ static int health_worker(void *data)
 		msleep(XOCL_XGQ_MSLEEP_1S * 10);
 
 		if (xgq_submitted_cmd_check(xgq)) {
+
+			/* If we see timeout cmd first time, dump log into dmesg */
+			if (!xgq->xgq_halted) {
+				xgq_vmr_log_dump(xgq);
+			}
+
+			/* then we stop service */
 			xgq_stop_services(xgq);
 		}
 
@@ -459,7 +465,7 @@ static int submit_cmd(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
 	}
 
 	/* write xgq cmd to SQ slot */
-	memcpy_toio((void __iomem *)slot_addr, &cmd->xgq_cmd_entry,
+	xocl_memcpy_toio((void __iomem *)slot_addr, &cmd->xgq_cmd_entry,
 		sizeof(cmd->xgq_cmd_entry));
 
 	xgq_notify_peer_produced(&xgq->xgq_queue);
@@ -1079,7 +1085,7 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 
 	return vmr_control_op(pdev,
-		xgq->xgq_boot_from_backup ?  XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
+		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
 static int xgq_collect_sensors(struct platform_device *pdev, int pid,
@@ -1176,6 +1182,13 @@ static ssize_t boot_from_backup_store(struct device *dev,
 	xgq->xgq_boot_from_backup = val ? true : false;
 	mutex_unlock(&xgq->xgq_lock);
 
+	/*
+	 * each time if we change the boot config, we should notify VMR
+	 * so that the next hot reset will reset the card correctly
+	 * Temporary disable the set due to a warm reboot might cause
+	 * the system to hung.
+	 * vmr_enable_multiboot(to_platform_device(dev));
+	 */
 	return count;
 }
 
@@ -1459,8 +1472,8 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 			xgq->xgq_sq_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}
-		if (!strncmp(res->name, NODE_XGQ_PAYLOAD_BASE,
-			strlen(NODE_XGQ_PAYLOAD_BASE))) {
+		if (!strncmp(res->name, NODE_XGQ_VMR_PAYLOAD_BASE,
+			strlen(NODE_XGQ_VMR_PAYLOAD_BASE))) {
 			xgq->xgq_payload_base = ioremap_nocache(res->start,
 				res->end - res->start + 1);
 		}

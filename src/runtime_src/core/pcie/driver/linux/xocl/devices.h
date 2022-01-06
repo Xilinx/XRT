@@ -3050,7 +3050,7 @@ struct xocl_subdev_map {
 		{					\
 			.start	= 0x0,			\
 			.end	= 0x0,			\
-	 		.name   = NODE_XGQ_PAYLOAD_BASE,\
+	 		.name   = NODE_XGQ_VMR_PAYLOAD_BASE,\
 			.flags  = IORESOURCE_MEM,	\
 		},					\
 	})
