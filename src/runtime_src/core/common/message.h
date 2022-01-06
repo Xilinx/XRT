@@ -19,25 +19,14 @@
 #include "core/common/config.h"
 #include "core/common/config_reader.h"
 #include "core/include/xrt.h"
+#include "core/include/experimental/xrt_message.h"
 #include <string>
 #include <cstdio>
 #include <vector>
 
 namespace xrt_core { namespace message {
 
-//modeled based on syslog severity.
-enum class severity_level : unsigned short
-{
-  emergency = xrtLogMsgLevel::XRT_EMERGENCY,
-  alert     = xrtLogMsgLevel::XRT_ALERT,
-  critical  = xrtLogMsgLevel::XRT_CRITICAL,
-  error     = xrtLogMsgLevel::XRT_ERROR,
-  warning   = xrtLogMsgLevel::XRT_WARNING,
-  notice    = xrtLogMsgLevel::XRT_NOTICE,
-  info      = xrtLogMsgLevel::XRT_INFO,
-  debug     = xrtLogMsgLevel::XRT_DEBUG
-};
-
+using severity_level = xrt::message::level;
 
 XRT_CORE_COMMON_EXPORT
 void
