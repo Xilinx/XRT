@@ -362,9 +362,9 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   int ret = 0;
 #else
-  xdp::hw_emu::flush_device(handle) ;
+  xdp::hw_emu::flush_device(handle);
   auto ret = drv->xclLoadXclBin(buffer);
-  xdp::hw_emu::update_device(handle) ;
+  xdp::hw_emu::update_device(handle);
 #endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);

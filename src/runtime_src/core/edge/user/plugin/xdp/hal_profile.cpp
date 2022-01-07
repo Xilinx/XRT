@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,13 +16,14 @@
 
 #include <functional>
 
-#include "plugin_loader.h"
-#include "hal_profile.h"
-#include "core/common/module_loader.h"
 #include "core/common/config_reader.h"
-#include "core/common/message.h"
-#include "core/common/utils.h"
 #include "core/common/dlfcn.h"
+#include "core/common/message.h"
+#include "core/common/module_loader.h"
+#include "core/common/utils.h"
+
+#include "hal_profile.h"
+#include "plugin_loader.h"
 
 namespace xdp {
 namespace hal {

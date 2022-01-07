@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -133,7 +133,6 @@ namespace trace {
       hal_emu_buffer_transfer_cb(m_is_write, false, m_fullname, m_id,
                                  m_buffer_id, m_size) ;
   }
-
 
 } // end namespace trace
 } // end namespace hw_emu

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,10 +16,10 @@
 
 #define XDP_SOURCE
 
+#include "core/common/config_reader.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/vp_base/vp_base_plugin.h"
 #include "xdp/profile/writer/vp_base/summary_writer.h"
-#include "core/common/config_reader.h"
 
 namespace xdp {
 
@@ -72,17 +72,17 @@ namespace xdp {
 
   uint64_t VPDatabase::getDeviceId(const std::string& sysfsPath)
   {
-    if (devices.find(sysfsPath) == devices.end()) {
+    if (devices.find(sysfsPath) == devices.end())
       throw std::runtime_error("Device not registered in database");
-    }
+
     return devices[sysfsPath] ;
   }
 
   uint64_t VPDatabase::addDevice(const std::string& sysfsPath)
   {
-    if(devices.find(sysfsPath) == devices.end()) {
+    if(devices.find(sysfsPath) == devices.end())
       devices[sysfsPath] = numDevices++;
-    }
+
     return devices[sysfsPath];
   }
 

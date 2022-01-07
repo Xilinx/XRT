@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,9 +46,8 @@ bool load()
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
       xrt_core::config::get_device_trace() != "off" ||
-      xrt_core::config::get_device_counters()) {
+      xrt_core::config::get_device_counters())
     xdp::hal::device_offload::load() ;
-  }
 
   if (xrt_core::config::get_aie_status())
     xdp::aie::debug::load();
@@ -102,9 +101,8 @@ bool load()
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
       xrt_core::config::get_device_trace() != "off" ||
-      xrt_core::config::get_device_counters()) {
+      xrt_core::config::get_device_counters())
     xdp::hal::hw_emu::device_offload::load() ;
-  }
 #endif
   return true ;
 }

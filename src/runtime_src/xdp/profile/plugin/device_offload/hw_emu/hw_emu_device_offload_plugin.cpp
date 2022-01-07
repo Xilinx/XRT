@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,7 +16,6 @@
 
 #define XDP_SOURCE
 
-//#include <iostream>
 #include <string>
 
 #include "core/common/message.h"

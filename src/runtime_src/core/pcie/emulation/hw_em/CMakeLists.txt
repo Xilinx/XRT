@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2")
 set(EM_PLUGIN_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generic_pcie_hal2/plugin/xdp")
