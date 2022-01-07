@@ -153,11 +153,5 @@ void ASM::showProperties()
     ProfileIP::showProperties();
 }
 
-bool ASM::hasTraceID (uint32_t index) const
-{
-    return (properties & 0x1) && (m_index == index);
-}
-
-
 }   // namespace xdp
 

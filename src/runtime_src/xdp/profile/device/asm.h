@@ -61,7 +61,6 @@ public:
     virtual size_t startCounter();
     virtual size_t stopCounter();
     virtual size_t readCounter(xclCounterResults& counterResult);
-    bool hasTraceID (uint32_t index) const;
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/); 
 

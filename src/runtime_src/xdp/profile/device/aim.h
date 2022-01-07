@@ -67,7 +67,6 @@ public:
     bool isHostMonitor() const ;
     bool isShellMonitor();
     bool has64bit() const ;
-    bool hasTraceID (uint32_t index) const;
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 
