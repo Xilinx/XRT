@@ -442,6 +442,12 @@ unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle,unsigned fla
   return drv->xclImportBO(boGlobalHandle,flags);
 }
 
+int xclCloseExportHandle(int ehdl)
+{
+  // Implement per sw_em requirements
+  return 0;
+}
+
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
     xclcpuemhal2::CpuemShim *drv = xclcpuemhal2::CpuemShim::handleCheck(handle);

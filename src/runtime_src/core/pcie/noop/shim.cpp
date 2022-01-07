@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -505,6 +505,14 @@ xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclImportBO() NOT IMPLEMENTED");
   return XRT_NULL_BO_EXPORT;
+}
+
+int
+xclCloseExportHandle(xclBufferExportHandle fd)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "xclCloseExportHandle() NOT IMPLEMENTED");
+  return 0;
 }
 
 int
