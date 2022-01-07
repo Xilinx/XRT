@@ -61,7 +61,7 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    virtual size_t readCounter(xclCounterResults& counterResult);
 
     XDP_EXPORT
     bool isHostMonitor() const ;
@@ -73,6 +73,9 @@ public:
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
+
+    inline uint64_t getSlotID() { return (AIM_SLOT_ID(getMIndex())); }
+
 private:
     uint8_t properties;
     uint8_t major_version;

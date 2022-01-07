@@ -60,7 +60,7 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    virtual size_t readCounter(xclCounterResults& counterResult);
 
     // Used to explicitly disable the monitor when kernel channels are used
     virtual void disable();
@@ -79,6 +79,7 @@ public:
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
 
+    inline uint64_t getSlotID() { return AM_SLOT_ID(getMIndex()); }
 private:
     uint8_t properties;
     uint8_t major_version;

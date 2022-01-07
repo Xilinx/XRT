@@ -94,13 +94,15 @@ size_t ASM::stopCounter()
     return 0;
 }
 
-size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
+size_t ASM::readCounter(xclCounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " ASM::readCounter " << std::endl;
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
+
+    uint64_t s = getSlotID();
 
     if(out_stream) {
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;

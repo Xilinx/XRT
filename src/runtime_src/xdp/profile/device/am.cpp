@@ -100,13 +100,15 @@ size_t AM::stopCounter()
     return 0;
 }
 
-size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
+size_t AM::readCounter(xclCounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
 
     if (!m_enabled)
         return 0;
+
+    uint64_t s = getSlotID();
 
     size_t size = 0;
     uint32_t sampleInterval = 0;

@@ -60,13 +60,15 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+    virtual size_t readCounter(xclCounterResults& counterResult);
     bool hasTraceID (uint32_t index) const;
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/); 
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
+
+    inline uint64_t getSlotID() { return (ASM_SLOT_ID(getMIndex())); }
 private:
     uint8_t properties;
     uint8_t major_version;
