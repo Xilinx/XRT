@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef OPENCL_DEVICE_OFFLOAD_PLUGIN_DOT_H
-#define OPENCL_DEVICE_OFFLOAD_PLUGIN_DOT_H
+#ifndef OPENCL_DEVICE_INFO_PLUGIN_DOT_H
+#define OPENCL_DEVICE_INFO_PLUGIN_DOT_H
 
 #include <memory>
 
@@ -26,13 +26,13 @@
 
 namespace xdp {
 
-  // This is the device offload plugin linked in from the OpenCL layer.
+  // This is the device info plugin linked in from the OpenCL layer.
   //  Now that we have a device_offload plugin for both hardware and
   //  hardware emulation, this plugin is only responsible for updating
   //  some information in the database necessary for guidance, summary,
   //  and trace only available at the OpenCL layer.  It no longer communicates
   //  with the actual device.
-  class OpenCLDeviceOffloadPlugin : public DeviceOffloadPlugin
+  class OpenCLDeviceInfoPlugin : public DeviceOffloadPlugin
   {
   private:
     // I have to keep a shared pointer to the platform to make sure
@@ -46,8 +46,8 @@ namespace xdp {
     XDP_EXPORT virtual void readTrace() ;
 
   public:
-    XDP_EXPORT OpenCLDeviceOffloadPlugin() ;
-    XDP_EXPORT virtual ~OpenCLDeviceOffloadPlugin() override ;
+    XDP_EXPORT OpenCLDeviceInfoPlugin() ;
+    XDP_EXPORT virtual ~OpenCLDeviceInfoPlugin() override ;
 
     // Virtual functions from XDPPlugin
     XDP_EXPORT virtual void writeAll(bool openNewFiles) ;

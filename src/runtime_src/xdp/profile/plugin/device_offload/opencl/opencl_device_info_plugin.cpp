@@ -32,7 +32,7 @@
 #include "xdp/profile/database/static_info/device_info.h"
 #include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/database/static_info/xclbin_info.h"
-#include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
+#include "xdp/profile/plugin/device_offload/opencl/opencl_device_info_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 // Anonymous namespace for helper functions used only in this file
@@ -103,7 +103,7 @@ namespace {
 
 namespace xdp {
 
-  OpenCLDeviceOffloadPlugin::OpenCLDeviceOffloadPlugin()
+  OpenCLDeviceInfoPlugin::OpenCLDeviceInfoPlugin()
     : DeviceOffloadPlugin()
   {
     // Software emulation currently has minimal device support for guidance
@@ -115,7 +115,7 @@ namespace xdp {
     platform = xocl::get_shared_platform() ;
   }
 
-  OpenCLDeviceOffloadPlugin::~OpenCLDeviceOffloadPlugin()
+  OpenCLDeviceInfoPlugin::~OpenCLDeviceInfoPlugin()
   {
     if (VPDatabase::alive())
       db->unregisterPlugin(this) ;
@@ -124,13 +124,13 @@ namespace xdp {
   // readTrace can be called from either the destructor or from a broadcast
   //  message from another plugin that needs the trace updated before it can
   //  progress.
-  void OpenCLDeviceOffloadPlugin::readTrace()
+  void OpenCLDeviceInfoPlugin::readTrace()
   {
     // Intentionally left blank so we don't call the base class function
     //  when called and we don't want to actually do anything
   }
 
-  void OpenCLDeviceOffloadPlugin::writeAll(bool openNewFiles)
+  void OpenCLDeviceInfoPlugin::writeAll(bool openNewFiles)
   {
     // Intentionally left blank so we don't call the base class function
     //  when called and we don't want to actually do anything
@@ -139,14 +139,14 @@ namespace xdp {
   // This function will only be called if an active device is going to
   //  be reprogrammed.  We can assume the device is good before the call
   //  and bad after this call (until the next update device)
-  void OpenCLDeviceOffloadPlugin::flushDevice(void* d)
+  void OpenCLDeviceInfoPlugin::flushDevice(void* d)
   {
     // Intentionally left blank so we don't call the base class function.
     //  This plugin no longer communicates with the actual device so
     //  there is no information to be flushed.
   }
 
-  void OpenCLDeviceOffloadPlugin::updateDevice(void* d)
+  void OpenCLDeviceInfoPlugin::updateDevice(void* d)
   {
     if (getFlowMode() == SW_EMU){
       updateSWEmulationGuidance() ;
@@ -183,7 +183,7 @@ namespace xdp {
     updateOpenCLInfo(deviceId) ;
   }
 
-  void OpenCLDeviceOffloadPlugin::updateOpenCLInfo(uint64_t deviceId)
+  void OpenCLDeviceInfoPlugin::updateOpenCLInfo(uint64_t deviceId)
   {
     // *******************************************************
     // OpenCL specific info 1: Argument lists for each monitor
@@ -301,7 +301,7 @@ namespace xdp {
     }
   }
 
-  void OpenCLDeviceOffloadPlugin::updateSWEmulationGuidance()
+  void OpenCLDeviceInfoPlugin::updateSWEmulationGuidance()
   {
     if (platform == nullptr)
       return ;
