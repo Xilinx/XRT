@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,6 +46,7 @@
 static constexpr uint32_t AP_START    = 0x1;
 static constexpr uint32_t AP_DONE     = 0x2;
 static constexpr uint32_t AP_IDLE     = 0x4;
+static constexpr uint32_t AP_CONTINUE = 0x10;
 
 static constexpr size_t ELEMENTS = 16;
 static constexpr size_t ARRAY_SIZE = 8;
@@ -105,7 +106,7 @@ struct job_type
     static size_t count=0;
     id = count++;
 
-    { 
+    {
       // Create kernel to run it once for preceeding of register map
       // Scoped to ensure automatic object are destructed before xrt::ip is created
       xrt::kernel kernel{device, xid, cu};
@@ -168,6 +169,9 @@ struct job_type
       }
       while (!(val & (AP_IDLE | AP_DONE)));
 
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
       if (stop)
         break;
     }
@@ -183,11 +187,14 @@ struct job_type
       ++runs;
       interrupt.wait();
 
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
       if (stop)
         break;
     }
   }
-    
+
 
   void
   run()

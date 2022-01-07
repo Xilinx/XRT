@@ -176,7 +176,32 @@ public:
     set_arg_at_index(index, &arg, sizeof(arg));
   }
 
+  /**
+   * set_arg - set named argument in the mailbox
+   *
+   * @param argnm
+   *   Name of kernel argument
+   * @param argvalue
+   *   Argument value
+   *
+   * Throws if specified argument name doesn't match kernel
+   * specification. Throws if argument value is incompatible with
+   * specified argument
+   */
+  template <typename ArgType>
+  void
+  set_arg(const std::string& argnm, ArgType&& argvalue)
+  {
+    auto index = get_arg_index(argnm);
+    set_arg(index, std::forward<ArgType>(argvalue));
+  }
+  
+
 private:
+  XCL_DRIVER_DLLESPEC
+  int
+  get_arg_index(const std::string& argnm) const;
+
   XCL_DRIVER_DLLESPEC
   void
   set_arg_at_index(int index, const void* value, size_t bytes);
