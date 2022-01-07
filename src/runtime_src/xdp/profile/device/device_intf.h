@@ -2,7 +2,7 @@
 #define _XDP_DEVICE_INTF_H_
 
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
 
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
