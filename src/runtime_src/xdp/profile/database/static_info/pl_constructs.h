@@ -100,17 +100,6 @@ namespace xdp {
     bool shellMonitor = false ;
     inline bool isShellMonitor() const { return shellMonitor ; }
 
-    // Because of the different stalls, AMs can produce up to 16 different
-    //  trace IDs in their trace packets.
-    constexpr static uint64_t numTraceIdsPerAM = 16 ;
-
-    // To differentiate between reads and writes, AIMs can produce up
-    //  to 2 different trace IDs in their trace packets.
-    constexpr static uint64_t numTraceIdsPerAIM = 2 ;
-
-    // ASMs only generate one type of trace ID in their trace packets.
-    constexpr static uint64_t numTraceIdsPerASM = 1 ;
-
     Monitor(DEBUG_IP_TYPE ty, uint64_t idx, const char* n,
             int32_t cuId = -1, int32_t memId = -1)
       : type(ty)
