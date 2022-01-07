@@ -25,7 +25,7 @@
 #include <string>
 #include <vector>
 
-// For the MIN_TRACE_IDs
+// For the SLOT_ID
 #include "core/include/xclperf.h"
 
 // For DEBUG_IP_TYPE
@@ -125,13 +125,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_AM) / numTraceIdsPerAM ;
+        slotIndex = AM_SLOT_ID(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_AIM) / numTraceIdsPerAIM ;
+        slotIndex = AIM_SLOT_ID(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_ASM) / numTraceIdsPerASM ;
+        slotIndex = ASM_SLOT_ID(idx);
         break ;
       default:
         // Should never be reached

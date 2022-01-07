@@ -233,13 +233,28 @@
 
 /************************ Trace IDs ************************************/
 
-#define MIN_TRACE_ID_AIM        0
-#define MAX_TRACE_ID_AIM        61
+#define MIN_TRACE_ID_AIM       0
+#define MAX_TRACE_ID_AIM       61
+/* To differentiate between reads and writes, AIMs can produce up
+ *  to 2 different trace IDs in their trace packets.
+ */
+#define NUM_TRACE_ID_PER_AIM   2
+#define AIM_SLOT_ID(x) ((x - MIN_TRACE_ID_AIM)/NUM_TRACE_ID_PER_AIM)
+
 #define MIN_TRACE_ID_AM        64
 #define MAX_TRACE_ID_AM        544
 #define MAX_TRACE_ID_AM_HWEM   94
+/* Because of the different stalls, AMs can produce up to 16 different
+ * trace IDs in their trace packets.
+ */
+#define NUM_TRACE_ID_PER_AM    16
+#define AM_SLOT_ID(x) ((x - MIN_TRACE_ID_AM)/NUM_TRACE_ID_PER_AM)
+
 #define MIN_TRACE_ID_ASM       576
 #define MAX_TRACE_ID_ASM       607
+// ASMs only generate one type of trace ID in their trace packets.
+#define NUM_TRACE_ID_PER_ASM   1
+#define ASM_SLOT_ID(x) ((x - MIN_TRACE_ID_ASM)/NUM_TRACE_ID_PER_ASM)
 
 /* Bit locations of trace flags */
 #define XAPM_READ_LAST                   6
