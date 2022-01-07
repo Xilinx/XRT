@@ -18,8 +18,6 @@
 #define XDP_PROFILE_HAL_PLUGIN_H_
 
 #include "core/common/config_reader.h"
-//#include "core/include/xclhal2.h"
-//#include "core/include/xclperf.h"
 
 namespace xdp {
 namespace hal {
