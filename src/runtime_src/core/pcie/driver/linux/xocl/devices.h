@@ -2928,7 +2928,8 @@ struct xocl_subdev_map {
 			XOCL_DSAFLAG_VERSAL,				\
 		.subdev_info = RES_USER_VERSAL_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
-		.board_name = "vck5000"					\
+		.board_name = "vck5000",				\
+		.vbnv       = "xilinx_vck5000"				\
 	}
 #define	XOCL_BOARD_VERSAL_MGMT_RAPTOR2					\
 	(struct xocl_board_private){					\
@@ -2938,7 +2939,8 @@ struct xocl_subdev_map {
 		.subdev_info = RES_MGMT_VSEC,				\
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_OSPI_VERSAL,			\
-		.board_name = "vck5000"					\
+		.board_name = "vck5000",				\
+		.vbnv       = "xilinx_vck5000"				\
 	}
 
 /*********************************VCK190 MGMTPF START*******************/
