@@ -621,7 +621,7 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
     // Check if the passed in image is absolute path
     if (boost::filesystem::exists(img)){
       if (boost::filesystem::extension(img).compare(".xsabin") != 0)
-        std::cout << "Warning: Development usage, this may damage the card. Proceed with caution"
+        std::cout << "Warning: Development usage, this may damage the card. Proceed with caution\n";
       path_list.push_back(img);
     }
     // Search through the installed shells and get the complete path
