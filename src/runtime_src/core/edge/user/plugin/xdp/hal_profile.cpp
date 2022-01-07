@@ -80,7 +80,11 @@ std::function<void (bool, bool, const char*, unsigned long long int,
   {
     if (hal_plugins_loaded) return ;
     hal_plugins_loaded = true ;
+#ifdef __HWEM__
+    xdp::hal_hw_emu_plugins::load() ;
+#else
     xdp::hal_hw_plugins::load() ;
+#endif
   }
 
   api_call_logger::api_call_logger(const char* function)

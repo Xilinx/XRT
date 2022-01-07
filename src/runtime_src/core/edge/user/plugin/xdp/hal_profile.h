@@ -63,13 +63,11 @@ template <typename Callable, typename ...Args>
 auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
-#ifndef __HWEM__
   loader load_object ;
   if (xrt_core::config::get_xrt_trace()) {
     generic_api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }
-#endif
   return f(std::forward<Args>(args)...) ;
 }
 
@@ -97,13 +95,11 @@ auto
 buffer_transfer_profiling_wrapper(const char* function, size_t size,
                                   bool isWrite, Callable&& f, Args&&...args)
 {
-#ifndef __HWEM__
   loader load_object ;
   if (xrt_core::config::get_xrt_trace()) {
     buffer_transfer_logger log_object(function, size, isWrite) ;
     return f(std::forward<Args>(args)...) ;
   }
-#endif
   return f(std::forward<Args>(args)...) ;
 }
 

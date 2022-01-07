@@ -3,6 +3,7 @@
 #
 set(EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}")
 set(COMMON_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user")
+set(XDP_PLUGIN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../user/plugin/xdp")
 set(AIE_HW_EM_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user/aie")
 set(AIE_HW_EM_CL_SRC_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/../user/aie/common_layer")
 
@@ -31,12 +32,22 @@ file(GLOB XRT_CORE_EDGE_USER_AIE_HW_EM_FILES
   "${AIE_HW_EM_CL_SRC_DIR}/*.cpp"
   )
 
+file(GLOB XDP_PLUGIN_HW_EM_FILES
+  "${XDP_PLUGIN_DIR}/hw_emu_device_offload.h"
+  "${XDP_PLUGIN_DIR}/hw_emu_device_offload.cpp"
+  "${XDP_PLUGIN_DIR}/plugin_loader.h"
+  "${XDP_PLUGIN_DIR}/plugin_loader.cpp"
+  "${XDP_PLUGIN_DIR}/hal_profile.h"
+  "${XDP_PLUGIN_DIR}/hal_profile.cpp"
+  )
+
 if (DEFINED XRT_AIE_BUILD)
   set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG -D__HWEM__ ${CMAKE_CXX_FLAGS}")
   add_library(core_edge_user_aie_object_hw_em OBJECT ${XRT_CORE_EDGE_USER_AIE_HW_EM_FILES})
 endif()
 
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0 -D__HWEM__)
+add_library(core_edgeuser_plugin_xdp_hw_em_objects OBJECT ${XDP_PLUGIN_HW_EM_FILES})
 
 # Bypass binary targets if clangtidy is enabled,
 # same targets are defined for DC
@@ -46,12 +57,14 @@ endif()
 
 if (DEFINED XRT_AIE_BUILD)
   add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
+    $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
     $<TARGET_OBJECTS:core_common_objects>
     $<TARGET_OBJECTS:core_edge_user_aie_object_hw_em>
     $<TARGET_OBJECTS:core_edge_common_objects>
     )
 else()
 add_library(xrt_hwemu SHARED ${EM_SRC_FILES}
+  $<TARGET_OBJECTS:core_edgeuser_plugin_xdp_hw_em_objects>
   $<TARGET_OBJECTS:core_common_objects>
   $<TARGET_OBJECTS:core_edge_common_objects>
   )

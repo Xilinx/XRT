@@ -54,6 +54,8 @@
 #include "plugin/xdp/aie_profile.h"
 #include "plugin/xdp/aie_debug.h"
 #include "plugin/xdp/pl_deadlock.h"
+#else
+#include "plugin/xdp/hw_emu_device_offload.h"
 #endif
 
 namespace {
@@ -1775,6 +1777,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     xdp::hal::flush_device(handle);
     xdp::aie::flush_device(handle);
     xdp::pl_deadlock::flush_device(handle);
+#else
+    xdp::hal::hw_emu::flush_device(handle);
 #endif
 
     int ret;
@@ -1817,13 +1821,15 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     }
 
 #ifndef __HWEM__
-    xdp::hal::update_device(handle) ;
+    xdp::hal::update_device(handle);
     xdp::aie::update_device(handle);
     xdp::aie::ctr::update_device(handle);
     xdp::aie::dbg::update_device(handle);
     xdp::pl_deadlock::update_device(handle);
 
     START_DEVICE_PROFILING_CB(handle);
+#else
+    xdp::hal::hw_emu::update_device(handle);
 #endif
     return 0;
   }

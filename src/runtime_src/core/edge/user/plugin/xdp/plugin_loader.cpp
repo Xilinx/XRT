@@ -14,20 +14,25 @@
  * under the License.
  */
 
+#include "core/common/config_reader.h"
+#include "core/common/message.h"
+
+#include "hal_profile.h"
 #include "plugin_loader.h"
 
+#ifndef __HWEM__
 #include "aie_debug.h"
 #include "aie_profile.h"
 #include "aie_trace.h"
-#include "hal_profile.h"
 #include "hal_device_offload.h"
 #include "noc_profile.h"
 #include "pl_deadlock.h"
 #include "sc_profile.h"
 #include "vart_profile.h"
-
-#include "core/common/config_reader.h"
-#include "core/common/message.h"
+#else
+// Only device offload supported for hardware emulation on edge
+#include "hw_emu_device_offload.h"
+#endif
 
 namespace xdp {
 namespace hal_hw_plugins {
@@ -35,6 +40,7 @@ namespace hal_hw_plugins {
 // This function is responsible for loading all of the HAL level HW XDP plugins
 bool load()
 {
+#ifndef __HWEM__
   if (xrt_core::config::get_xrt_trace())
     xdp::hal::load();
 
@@ -77,9 +83,31 @@ bool load()
     xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT",
                             msg) ;
   }
-
+#endif
   return true ;
 }
 
 } // end namespace hal_hw_plugins
+
+namespace hal_hw_emu_plugins {
+
+// This function is responsible for loading all of the Hardware Emulation
+//  profiling plugins based on the xrt.ini flags.
+bool load()
+{
+#ifdef __HWEM__
+  // Hardware emulation uses the same plugin as hardware for API trace
+  if (xrt_core::config::get_xrt_trace())
+    xdp::hal::load();
+
+  if (xrt_core::config::get_data_transfer_trace() != "off" ||
+      xrt_core::config::get_device_trace() != "off" ||
+      xrt_core::config::get_device_counters()) {
+    xdp::hal::hw_emu::device_offload::load() ;
+  }
+#endif
+  return true ;
+}
+
+} // end namespace hal_hw_emu_plugins
 } // end namespace xdp

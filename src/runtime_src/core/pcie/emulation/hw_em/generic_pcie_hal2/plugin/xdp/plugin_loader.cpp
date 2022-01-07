@@ -29,7 +29,9 @@ namespace hw_emu {
   {
     if (xrt_core::config::get_xrt_trace())
       xdp::hw_emu::trace::load() ;
-    if (xrt_core::config::get_device_trace() != "off")
+    if (xrt_core::config::get_data_transfer_trace() != "off" ||
+        xrt_core::config::get_device_trace() != "off" ||
+        xrt_core::config::get_device_counters())
       xdp::hw_emu::device_offload::load() ;
   }
 
