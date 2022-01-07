@@ -37,7 +37,7 @@ public:
 
   virtual size_t startCounter();
   virtual size_t stopCounter();
-  virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
+  virtual size_t readCounter(xclCounterResults& counterResult);
 
   virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/);
 

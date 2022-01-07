@@ -92,7 +92,7 @@ size_t IOCtlAIM::stopCounter()
   return 0;
 }
 
-size_t IOCtlAIM::readCounter(xclCounterResults& counterResults, uint32_t s)
+size_t IOCtlAIM::readCounter(xclCounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;
@@ -100,6 +100,8 @@ size_t IOCtlAIM::readCounter(xclCounterResults& counterResults, uint32_t s)
  
   if(out_stream)
     (*out_stream) << " IOCtlAIM::readCounter " << std::endl;
+
+  uint64_t s = getSlotID();
 
   counterResults.SampleIntervalUsec = 0 ;
 

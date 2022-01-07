@@ -91,7 +91,7 @@ size_t IOCtlAM::stopCounter()
   return 0;
 }
 
-size_t IOCtlAM::readCounter(xclCounterResults& counterResults, uint32_t s)
+size_t IOCtlAM::readCounter(xclCounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;
@@ -111,6 +111,8 @@ size_t IOCtlAM::readCounter(xclCounterResults& counterResults, uint32_t s)
                   << " Stall support : " << hasStall()
                   << std::endl;
   }
+
+  uint64_t s = getSlotID();
 
   struct am_counters counters = { 0 };
   ioctl(driver_FD, AM_IOC_READCNT, &counters);

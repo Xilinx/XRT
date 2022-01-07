@@ -92,7 +92,7 @@ size_t IOCtlASM::stopCounter()
   return 0;
 }
 
-size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
+size_t IOCtlASM::readCounter(xclCounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;
@@ -100,6 +100,8 @@ size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
  
   if(out_stream)
     (*out_stream) << " IOCtlASM::readCounter " << std::endl;
+
+  uint64_t s = getSlotID();
 
   struct asm_counters counter = { 0 };
   ioctl(driver_FD, ASM_IOC_READCNT, &counter);
