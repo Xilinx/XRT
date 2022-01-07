@@ -59,7 +59,7 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   _pt.add_child("host", pt);
 }
 
-void
+static void
 updateDataMapValue(std::map<std::string, size_t>& data_length_map,
                   const boost::property_tree::ptree& dev,
                   const std::string& key)
