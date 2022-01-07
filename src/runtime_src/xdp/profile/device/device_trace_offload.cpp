@@ -226,8 +226,7 @@ void DeviceTraceOffload::read_trace_fifo(bool)
 
   // Check if fifo is full
   if (!m_trbuf_full) {
-    auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-    auto fifo_size = GetDeviceTraceBufferSize(property);
+    auto fifo_size = dev_intf->getFifoSize();
 
     if (num_packets >= fifo_size)
       m_trbuf_full = true;
