@@ -22,6 +22,7 @@
 
 // 3rd Party Library - Include Files
 #include <string>
+#include <map>
 #include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
 
@@ -58,6 +59,16 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   _pt.add_child("host", pt);
 }
 
+void
+updateDataMapValue(std::map<std::string, size_t>& data_length_map,
+                  const boost::property_tree::ptree& dev,
+                  const std::string& key)
+{
+  if (data_length_map.find(key) == data_length_map.end())
+    data_length_map[key] = dev.get<std::string>(key).size();
+  else
+    data_length_map[key] = std::max(data_length_map[key], dev.get<std::string>(key).size());
+}
 
 void
 ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
@@ -109,13 +120,45 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   _output << "Devices present\n";
   const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
 
-  if(available_devices.empty())
+  if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 
-  for(auto& kd : available_devices) {
+  // Maps the data key to the maximum length amongst all devices
+  std::map<std::string, size_t> data_length_map;
+  for (auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
+    updateDataMapValue(data_length_map, dev, "bdf");
+    updateDataMapValue(data_length_map, dev, "vbnv");
+    updateDataMapValue(data_length_map, dev, "id");
+    updateDataMapValue(data_length_map, dev, "instance");
+  }
+
+  // Allocate the header strings
+  std::string bdf_header = "BDF";
+  std::string vnbv_header = "Shell";
+  std::string id_header = "Interface UUID";
+  std::string instance_header = "Device ID";
+  // Verify the headers are not longer than the longest data string
+  data_length_map["bdf"] = std::max(data_length_map["bdf"], bdf_header.size());
+  data_length_map["vbnv"] = std::max(data_length_map["vbnv"], vnbv_header.size());
+  data_length_map["id"] = std::max(data_length_map["id"], id_header.size());
+  // Generate the number of blanks required for equal spacing
+  std::string bdf_blanks = std::string(data_length_map["bdf"] - bdf_header.size(), ' ');
+  std::string vnbv_blanks = std::string(data_length_map["vbnv"] - vnbv_header.size(), ' ');
+  std::string id_blanks = std::string(data_length_map["id"] - id_header.size(), ' ');
+
+  // Output the data headers in a table format
+  _output << boost::format("  %s%s : %s%s %s%s %s\n") % bdf_header % bdf_blanks % vnbv_header % vnbv_blanks % id_header % id_blanks % instance_header;
+
+  // Output each devices data in a table format
+  for (auto& kd : available_devices) {
+    const boost::property_tree::ptree& dev = kd.second;
+
     std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-    _output << boost::format("  [%s] : [%s] [%s] [%s] %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % dev.get<std::string>("id") % dev.get<std::string>("instance", "") % note;
+    bdf_blanks = std::string(data_length_map["bdf"] - dev.get<std::string>("bdf").size(), ' ');
+    vnbv_blanks = std::string(data_length_map["vbnv"] - dev.get<std::string>("vbnv").size(), ' ');
+    id_blanks = std::string(data_length_map["id"] - dev.get<std::string>("id").size(), ' ');
+    _output << boost::format("  %s%s : %s%s %s%s %s %s\n") % dev.get<std::string>("bdf") % bdf_blanks % dev.get<std::string>("vbnv") % vnbv_blanks % dev.get<std::string>("id") % id_blanks % dev.get<std::string>("instance", "") % note;
   }
   _output << std::endl;
 }
