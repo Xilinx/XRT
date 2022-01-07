@@ -82,6 +82,7 @@ static int flash(po::variables_map vm, int bar, size_t baroff)
     std::vector <std::string> primary_file;
     int ret = 0;
     bool force = false;
+    bool dual_flash = false;
 
     sudoOrDie();
 
@@ -89,6 +90,8 @@ static int flash(po::variables_map vm, int bar, size_t baroff)
     try {
       bdf = vm["device"].as<std::string>();
       primary_file = vm["image"].as<std::vector<std::string>>();
+      if (primary_file.size() == 2)
+        dual_flash = true;
     } catch (...) {
       return -EINVAL;
     }
@@ -104,9 +107,9 @@ static int flash(po::variables_map vm, int bar, size_t baroff)
         return -ECANCELED;
 
     pcidev::pci_device dev(bdf, bar, baroff);
-    XSPI_Flasher xspi(&dev, !primary_file[1].empty());
+    XSPI_Flasher xspi(&dev, dual_flash);
 
-    if (primary_file[1].empty()) {
+    if (!dual_flash) {
         firmwareImage pri(primary_file[0].c_str());
         if (pri.fail())
             return -EINVAL;
@@ -189,7 +192,7 @@ static int qspips_flash(po::variables_map vm, int bar, size_t baroff)
       return -EINVAL;
     }
 
-    if (bin_files[0].empty()) {
+    if (!bin_files.size()) {
       std::cout << "Error: Please provide proper BIN file.\n";
       return -EINVAL;
     }
