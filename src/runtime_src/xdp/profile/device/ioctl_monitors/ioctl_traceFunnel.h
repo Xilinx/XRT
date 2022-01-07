@@ -30,6 +30,7 @@ class IOCtlTraceFunnel : public TraceFunnel
 public:
   IOCtlTraceFunnel(Device*  handle  /* XDP Device Abstraction handle : xrt or HAL device handle */
                   ,uint64_t index   /* Index of the IP in Debug_IP_Layout */
+                  ,uint64_t instIdx /* Instance Index of this Profile IP type */
                   ,debug_ip_data* data = nullptr);
 
   virtual ~IOCtlTraceFunnel();
@@ -43,6 +44,7 @@ public:
   virtual bool isOpened();
 
 protected:
+  uint64_t instance_index;
   int driver_FD = -1;
 };
 

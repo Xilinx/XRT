@@ -2,7 +2,7 @@
 #define _XDP_DEVICE_INTF_H_
 
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
 
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
@@ -132,24 +132,26 @@ class DeviceIntf {
     /** Trace S2MM Management
      */
     bool hasTs2mm() {
-      return (mPlTraceDma != nullptr);
+      return (!mPlTraceDmaList.empty());
     };
     size_t getNumberTS2MM() {
-      return (mPlTraceDma != nullptr) ? 1 : 0;
+      return mPlTraceDmaList.size();
     };
+    bool supportsCircBuf() {
+      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+    }
 
     XDP_EXPORT
-    void resetTS2MM();
-    TraceS2MM* getTs2mm() {return mPlTraceDma;};
+    void resetTS2MM(uint64_t index = 0);
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
+    void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm();
+    uint64_t getWordCountTs2mm(uint64_t index = 0);
     XDP_EXPORT
-    uint8_t  getTS2MmMemIndex();
+    uint8_t  getTS2MmMemIndex(uint64_t index = 0);
     XDP_EXPORT
-    void parseTraceData(void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
+    void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
 
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
@@ -195,9 +197,10 @@ class DeviceIntf {
 
     TraceFifoLite* mFifoCtrl    = nullptr;
     TraceFifoFull* mFifoRead    = nullptr;
-    TraceFunnel*   mTraceFunnel = nullptr;
 
-    TraceS2MM*     mPlTraceDma  = nullptr;
+    std::vector<TraceFunnel*> mTraceFunnelList;
+
+    std::vector<TraceS2MM*> mPlTraceDmaList;
     std::vector<TraceS2MM*> mAieTraceDmaList;
     DeadlockDetector*     mDeadlockDetector  = nullptr;
 
