@@ -355,66 +355,58 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 static int
 zocl_create_cu(struct drm_zocl_dev *zdev)
 {
-	struct ip_data *ip;
-	struct xrt_cu_info info;
-	char kname[64];
-	char *kname_p;
 	int err;
 	int i;
+	int num_cus;
+	struct xrt_cu_info *cu_info = NULL;
 
 	if (!zdev->ip)
 		return 0;
 
-	for (i = 0; i < zdev->ip->m_count; ++i) {
-		ip = &zdev->ip->m_ip_data[i];
+	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
+	if (!cu_info)
+		return -ENOMEM;
 
-		if (ip->m_type != IP_KERNEL)
-			continue;
+	num_cus = kds_ip_layout2cu_info(zdev->ip, cu_info, MAX_CUS);
+
+	for (i = 0; i < num_cus; ++i) {
 
 		/* Skip streaming kernel */
-		if (ip->m_base_address == -1)
+		if (cu_info[i].addr == -1)
 			continue;
 
-		info.num_res = 1;
-		info.addr = ip->m_base_address;
-		info.intr_enable = xclbin_intr_enable(ip->properties);
-		info.protocol = xclbin_protocol(ip->properties);
-		info.intr_id = xclbin_intr_id(ip->properties);
+		cu_info[i].num_res = 1;
 
-		switch (info.protocol) {
+		switch (cu_info[i].protocol) {
 		case CTRL_HS:
 		case CTRL_CHAIN:
 		case CTRL_NONE:
-			info.model = XCU_HLS;
+			cu_info[i].model = XCU_HLS;
 			break;
 		case CTRL_FA:
-			info.model = XCU_FA;
+			cu_info[i].model = XCU_FA;
 			break;
 		default:
+			kfree(cu_info);
 			return -EINVAL;
 		}
 
-		info.inst_idx = i;
-		/* ip_data->m_name format "<kernel name>:<instance name>",
-		 * where instance name is so called CU name.
-		 */
-		strcpy(kname, ip->m_name);
-		kname_p = &kname[0];
-		strcpy(info.kname, strsep(&kname_p, ":"));
-		strcpy(info.iname, strsep(&kname_p, ":"));
+		cu_info[i].inst_idx = i;
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
 		 */
-		err = subdev_create_cu(zdev, &info);
+		err = subdev_create_cu(zdev, &cu_info[i]);
 		if (err) {
 			DRM_ERROR("cannot create CU subdev");
 			goto err;
 		}
 	}
+	kfree(cu_info);
 
 	return 0;
 err:
+	kfree(cu_info);
 	subdev_destroy_cu(zdev);
 	return err;
 }

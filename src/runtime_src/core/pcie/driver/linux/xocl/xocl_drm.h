@@ -161,7 +161,7 @@ int xocl_init_unmgd(struct drm_xocl_unmgd *unmgd, uint64_t data_ptr,
 		        uint64_t size, u32 write);
 void xocl_finish_unmgd(struct drm_xocl_unmgd *unmgd);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0) || defined(RHEL_8_5_GE)
 extern const struct drm_gem_object_funcs xocl_gem_object_funcs;
 #endif
 

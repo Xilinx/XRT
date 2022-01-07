@@ -143,10 +143,8 @@ namespace xdp {
     {
       (db->getDynamicInfo()).addString(api) ;
     }
-    auto continuous_trace =
-      xrt_core::config::get_continuous_trace() ;
 
-    if (continuous_trace)
+    if (xrt_core::config::get_continuous_trace())
       XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
   }
 

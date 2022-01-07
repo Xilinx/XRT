@@ -42,6 +42,13 @@ struct tile_type
   uint16_t itr_mem_col;
   uint64_t itr_mem_addr;
   bool     is_trigger;
+
+  bool operator==(const tile_type &tile) const {
+    return (col == tile.col) && (row == tile.row);
+  }
+  bool operator<(const tile_type &tile) const {
+    return (col < tile.col) || ((col == tile.col) && (row < tile.row));
+  }
 };
 
 const int NON_EXIST_ID = -1;

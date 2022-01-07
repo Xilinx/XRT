@@ -26,7 +26,7 @@
 
 namespace xdp {
 
-  OpenCLTraceProfilingPlugin::OpenCLTraceProfilingPlugin() :
+  OpenCLTracePlugin::OpenCLTracePlugin() :
     XDPPlugin()
   {
     db->registerPlugin(this) ;
@@ -38,14 +38,11 @@ namespace xdp {
     (db->getStaticInfo()).addOpenedFile(writer->getcurrentFileName(), "VP_TRACE") ;
 
     // Continuous writing of opencl trace
-    continuous_trace =
-      xrt_core::config::get_continuous_trace() ;
-
-    if (continuous_trace)
+    if (xrt_core::config::get_continuous_trace()) 
       XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "VP_TRACE");
   }
 
-  OpenCLTraceProfilingPlugin::~OpenCLTraceProfilingPlugin()
+  OpenCLTracePlugin::~OpenCLTracePlugin()
   {
     if (VPDatabase::alive())
     {
@@ -60,7 +57,7 @@ namespace xdp {
     }
   }
 
-  void OpenCLTraceProfilingPlugin::emulationSetup()
+  void OpenCLTracePlugin::emulationSetup()
   {
     XDPPlugin::emulationSetup() ;
 

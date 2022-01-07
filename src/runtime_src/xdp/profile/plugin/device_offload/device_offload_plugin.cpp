@@ -21,6 +21,8 @@
 #include <cstring>
 
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/device_info.h"
+#include "xdp/profile/database/static_info/pl_constructs.h"
 #include "xdp/profile/plugin/device_offload/device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 #include "xdp/profile/plugin/vp_base/info.h"

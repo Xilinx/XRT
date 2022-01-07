@@ -1,9 +1,9 @@
 {
     "soft_kernel_metadata": {
-        "mpo_name": "my_kernel",
+        "mpo_name": "kernel0",
         "mpo_version": "0.0.0",
         "mpo_md5_value": "00000000000000000000000000000000",
-        "mpo_symbol_name": "my_kernel",
-        "m_num_instances": "3"
+        "mpo_symbol_name": "kernel0",
+        "m_num_instances": "1"
     }
 }

@@ -45,6 +45,7 @@ drv_common-y   := $(common_dir)/kds_core.o \
 		  $(common_dir)/cu_hls.o \
 		  $(common_dir)/fast_adapter.o \
 		  $(common_dir)/cu_plram.o \
+		  $(common_dir)/xgq_execbuf.o \
 		  $(common_dir)/xrt_xclbin.o
 
 xocl-y := \
@@ -54,6 +55,7 @@ xocl-y := \
 	../xocl_fdt.o \
 	../xocl_xclbin.o \
 	../xocl_debug.o \
+	../xocl_xgq.o \
 	../subdev/xdma.o \
 	../subdev/qdma.o \
 	../subdev/qdma4.o \
@@ -93,6 +95,9 @@ xocl-y := \
 	../subdev/accel_deadlock_detector.o \
 	../subdev/command_queue.o \
 	../subdev/cfg_gpio.o \
+	../subdev/hwmon_sdm.o \
+	../subdev/ert_ctrl.o \
+	../subdev/cu_xgq.o \
 	$(xocl_lib-y)	\
 	$(drv_common-y) \
 	xocl_drv.o	\

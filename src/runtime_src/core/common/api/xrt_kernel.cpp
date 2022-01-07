@@ -46,6 +46,8 @@
 #include "core/common/system.h"
 #include "core/common/xclbin_parser.h"
 
+#include <boost/format.hpp>
+
 #include <algorithm>
 #include <array>
 #include <bitset>
@@ -1767,7 +1769,7 @@ class run_impl
     return asetter.get();
   }
 
-  void
+  bool
   validate_ip_arg_connectivity(size_t argidx, int32_t grpidx)
   {
     // remove ips that don't meet requested connectivity
@@ -1778,11 +1780,11 @@ class run_impl
 
     // if no ips are left then error
     if (itr == ips.begin())
-      throw std::runtime_error("No compute units satisfy requested connectivity");
+      return false;
 
     // no ips were removed
     if (itr == ips.end())
-      return;
+      return true;
 
     // update the cumask to set remaining cus, note that removed
     // cus, while not erased, are no longer valid per move sematics
@@ -1793,6 +1795,24 @@ class run_impl
     // encoded in command packet.
     ips.erase(itr,ips.end());
     encode_cumasks = true;
+    return true;
+  }
+
+  xrt::bo
+  validate_bo_at_index(size_t index, const xrt::bo& bo)
+  {
+    if (validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo)))
+      return bo;
+
+    auto fmt = boost::format
+      ("Kernel %s has no compute units with connectivity required for global argument at index %d. "
+       "The argument is allocated in bank %d, the compute unit is connected to bank %d. "
+       "Allocating local copy of argument buffer in connected bank.")
+      % kernel->get_name() % index % xrt_core::bo::group_id(bo) % kernel->group_id(index);
+    xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", fmt.str());
+
+    // try m2m with local buffer
+    return xrt_core::bo::clone(bo, kernel->group_id(index));
   }
 
   // Clone the commmand packet of another run_impl
@@ -1994,9 +2014,9 @@ public:
   }
 
   void
-  set_arg_at_index(size_t index, const xrt::bo& bo)
+  set_arg_at_index(size_t index, const xrt::bo& argbo)
   {
-    validate_ip_arg_connectivity(index, xrt_core::bo::group_id(bo));
+    auto bo = validate_bo_at_index(index, argbo);
     auto& arg = kernel->get_arg(index);
     set_arg_value(arg, bo);
   }
@@ -2032,6 +2052,16 @@ public:
       XRT_DEBUGF("arg name(%s) index(%d) offset(0x%x) size(%d)", arg.name().c_str(), arg.index(), arg.offset(), arg.size());
       set_arg(arg, args);
     }
+  }
+
+  int
+  get_arg_index(const std::string& argnm) const
+  {
+    for (const auto& arg : kernel->get_args())
+      if (arg.name() == argnm)
+        return arg.index();
+
+    throw xrt_core::error(EINVAL, "No such kernel argument '" + argnm + "'");
   }
 
   // If this run object's cus were filtered compared to kernel cus
@@ -2814,6 +2844,13 @@ state() const
   });
 }
 
+int
+run::
+get_arg_index(const std::string& argnm) const
+{
+  return handle->get_arg_index(argnm);
+}
+
 void
 run::
 set_arg_at_index(int index, const void* value, size_t bytes)
@@ -2962,6 +2999,13 @@ mailbox::
 get_arg(int index) const
 {
   return handle->get_arg(index);
+}
+
+int
+mailbox::
+get_arg_index(const std::string& argnm) const
+{
+  return handle->get_arg_index(argnm);
 }
 
 void

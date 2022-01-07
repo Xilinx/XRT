@@ -136,6 +136,11 @@ struct xocl_ert_sched_privdata {
 	int			major;
 };
 
+struct xocl_ert_cq_privdata {
+	void __iomem            *cq_base;
+	uint32_t                 cq_range;
+};
+
 struct xocl_sysmon_privdata {
 	uint16_t		flags;
 };
@@ -272,6 +277,8 @@ enum {
 #define	XOCL_CFG_GPIO		"ert_cfg_gpio"
 #define	XOCL_COMMAND_QUEUE	"command_queue"
 #define	XOCL_XGQ		"xgq"
+#define	XOCL_HWMON_SDM		"hwmon_sdm"
+#define XOCL_ERT_CTRL           "ert_ctrl"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -329,6 +336,8 @@ enum subdev_id {
 	XOCL_SUBDEV_CFG_GPIO,
 	XOCL_SUBDEV_COMMAND_QUEUE,
 	XOCL_SUBDEV_XGQ,
+	XOCL_SUBDEV_HWMON_SDM,
+	XOCL_SUBDEV_ERT_CTRL,
 	XOCL_SUBDEV_NUM
 };
 
@@ -1711,12 +1720,6 @@ struct xocl_subdev_map {
 		.override_idx = -1,			\
 	}
 
-#define XOCL_RES_SCHEDULER_PRIV				\
-	((struct xocl_ert_sched_privdata) {		\
-		1,					\
-		1,					\
-	 })
-
 #define XOCL_RES_INTC_QDMA				\
 	((struct resource []) {				\
 		{					\
@@ -1750,16 +1753,33 @@ struct xocl_subdev_map {
 			},				\
 		})
 
+#define        XOCL_DEVINFO_ERT_CTRL			\
+	{                                               \
+		XOCL_SUBDEV_ERT_CTRL,                   \
+		XOCL_ERT_CTRL,                          \
+		XOCL_RES_COMMAND_QUEUE,                 \
+		ARRAY_SIZE(XOCL_RES_COMMAND_QUEUE),     \
+		NULL,                                   \
+		0,                                      \
+		.override_idx = -1,                     \
+	}
+
 #define	XOCL_DEVINFO_COMMAND_QUEUE			\
 	{						\
 		XOCL_SUBDEV_COMMAND_QUEUE,		\
 		XOCL_COMMAND_QUEUE,			\
-		XOCL_RES_COMMAND_QUEUE,			\
-		ARRAY_SIZE(XOCL_RES_COMMAND_QUEUE),	\
+		NULL,					\
+		0,					\
 		NULL,					\
 		0,					\
 		.override_idx = -1,			\
 	}	
+
+#define XOCL_RES_SCHEDULER_PRIV				\
+	((struct xocl_ert_sched_privdata) {		\
+		1,					\
+		1,					\
+	 })
 
 #define	XOCL_DEVINFO_ERT_USER				\
 	{						\
@@ -1770,6 +1790,15 @@ struct xocl_subdev_map {
 		&XOCL_RES_SCHEDULER_PRIV,		\
 		sizeof(struct xocl_ert_sched_privdata),	\
 		.level = XOCL_SUBDEV_LEVEL_BLD,		\
+		.override_idx = -1,			\
+	}
+
+#define	XOCL_DEVINFO_HWMON_SDM				\
+	{						\
+		XOCL_SUBDEV_HWMON_SDM,			\
+		XOCL_HWMON_SDM,				\
+		NULL,					\
+		0,					\
 		.override_idx = -1,			\
 	}
 
@@ -1856,6 +1885,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC_QDMA,				\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define	XOCL_BOARD_USER_QDMA						\
@@ -1871,6 +1901,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XDMA,				\
 			XOCL_DEVINFO_ICAP_USER,				\
 			XOCL_DEVINFO_INTC,				\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define	USER_RES_XDMA							\
@@ -1882,6 +1913,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define	USER_RES_XDMA_VERSAL						\
@@ -1892,7 +1924,8 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_PF_MAILBOX_USER_VERSAL,		\
 			XOCL_DEVINFO_MAILBOX_USER_VERSAL,		\
 		 	XOCL_DEVINFO_ICAP_USER,				\
-			XOCL_DEVINFO_INTC_VERSAL,				\
+			XOCL_DEVINFO_INTC_VERSAL,			\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define USER_RES_AWS_XDMA						\
@@ -1921,7 +1954,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER,				\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_COMMAND_QUEUE,			\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define	USER_RES_DSA52_U2					\
@@ -1935,7 +1968,7 @@ struct xocl_subdev_map {
 			XOCL_DEVINFO_XMC_USER_U2,			\
 			XOCL_DEVINFO_AF_USER,				\
 			XOCL_DEVINFO_INTC,				\
-			XOCL_DEVINFO_COMMAND_QUEUE,			\
+			XOCL_DEVINFO_ERT_CTRL,                          \
 		})
 
 #define USER_RES_SMARTN							\
@@ -3400,6 +3433,7 @@ struct xocl_subdev_map {
         XOCL_DEVINFO_XMC_USER_ARISTA_LB2_QDMA, \
         XOCL_DEVINFO_AF_USER,                  \
         XOCL_DEVINFO_INTC_QDMA,                \
+	XOCL_DEVINFO_ERT_CTRL,                  \
     })
 
 #define XOCL_BOARD_MGMT_ARISTA_LB2_QDMA                     \

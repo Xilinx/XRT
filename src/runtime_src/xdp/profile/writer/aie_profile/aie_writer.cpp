@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2021 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,8 +16,9 @@
 
 #include <vector>
 
-#include "xdp/profile/writer/aie_profile/aie_writer.h"
 #include "xdp/profile/database/database.h"
+#include "xdp/profile/database/static_info/aie_constructs.h"
+#include "xdp/profile/writer/aie_profile/aie_writer.h"
 
 namespace xdp {
 
@@ -52,6 +53,7 @@ namespace xdp {
          << "reset"        << ","
          << "value"        << ","
          << "timer"        << ","
+         << "payload"      << ","
          << std::endl;
 
     // Write all data elements
