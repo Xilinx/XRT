@@ -27,6 +27,7 @@
 
 #include "ioctl_am.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -112,7 +113,7 @@ size_t IOCtlAM::readCounter(xclCounterResults& counterResults)
                   << std::endl;
   }
 
-  uint64_t s = getSlotID();
+  uint64_t s = getAMSlotId(getMIndex());
 
   struct am_counters counters = { 0 };
   ioctl(driver_FD, AM_IOC_READCNT, &counters);

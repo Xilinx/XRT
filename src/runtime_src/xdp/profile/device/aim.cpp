@@ -65,6 +65,7 @@
 #define XDP_SOURCE
 
 #include "aim.h"
+#include "xdp/profile/device/utility.h"
 #include <bitset>
 
 namespace xdp {
@@ -135,7 +136,7 @@ size_t AIM::readCounter(xclCounterResults& counterResults)
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
-    uint64_t s = getSlotID();
+    uint64_t s = getAIMSlotId(getMIndex());
     
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters

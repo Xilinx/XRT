@@ -72,9 +72,6 @@ public:
 
     virtual void showProperties();
     virtual uint32_t getProperties() { return properties; }
-
-    inline uint64_t getSlotID() { return (AIM_SLOT_ID(getMIndex())); }
-
 private:
     uint8_t properties;
     uint8_t major_version;

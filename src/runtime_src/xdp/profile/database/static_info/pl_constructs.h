@@ -25,13 +25,11 @@
 #include <string>
 #include <vector>
 
-// For the SLOT_ID
-#include "core/include/xclperf.h"
-
 // For DEBUG_IP_TYPE
 #include "core/include/xclbin.h"
 
 #include "xdp/config.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -114,13 +112,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = AM_SLOT_ID(idx);
+        slotIndex = getAMSlotId(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = AIM_SLOT_ID(idx);
+        slotIndex = getAIMSlotId(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = ASM_SLOT_ID(idx);
+        slotIndex = getASMSlotId(idx);
         break ;
       default:
         // Should never be reached

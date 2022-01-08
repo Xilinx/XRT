@@ -48,7 +48,7 @@
 #define XSPC_SNAPSHOT_PC_OFFSET 0x200
 
 #include "asm.h"
-
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -102,7 +102,7 @@ size_t ASM::readCounter(xclCounterResults& counterResults)
     size_t size = 0;
     uint32_t sampleInterval = 0;
 
-    uint64_t s = getSlotID();
+    uint64_t s = getASMSlotId(getMIndex());
 
     if(out_stream) {
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;

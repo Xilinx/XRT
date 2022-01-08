@@ -52,6 +52,7 @@
 
 
 #include "am.h"
+#include "xdp/profile/device/utility.h"
 #include <bitset>
 
 namespace xdp {
@@ -108,7 +109,7 @@ size_t AM::readCounter(xclCounterResults& counterResults)
     if (!m_enabled)
         return 0;
 
-    uint64_t s = getSlotID();
+    uint64_t s = getAMSlotId(getMIndex());
 
     size_t size = 0;
     uint32_t sampleInterval = 0;

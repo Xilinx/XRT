@@ -27,6 +27,7 @@
 
 #include "ioctl_aim.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -101,7 +102,7 @@ size_t IOCtlAIM::readCounter(xclCounterResults& counterResults)
   if(out_stream)
     (*out_stream) << " IOCtlAIM::readCounter " << std::endl;
 
-  uint64_t s = getSlotID();
+  uint64_t s = getAIMSlotId(getMIndex());
 
   counterResults.SampleIntervalUsec = 0 ;
 
