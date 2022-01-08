@@ -296,7 +296,7 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 
 static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq)
 {
-	struct vmr_log log;
+	struct vmr_log log = { 0 };
 
 	xocl_memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
 		sizeof(xgq->xgq_vmr_shared_mem));
