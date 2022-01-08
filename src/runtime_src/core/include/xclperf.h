@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -230,31 +230,6 @@
 #define XAPM_DEBUG_METRIC_COUNTERS_PER_SLOT     4  //debug is only interested in 4 metric counters
 
 /************************ APM Trace Stream ************************************/
-
-/************************ Trace IDs ************************************/
-
-#define MIN_TRACE_ID_AIM       0
-#define MAX_TRACE_ID_AIM       61
-/* To differentiate between reads and writes, AIMs can produce up
- *  to 2 different trace IDs in their trace packets.
- */
-#define NUM_TRACE_ID_PER_AIM   2
-#define AIM_SLOT_ID(x) ((x - MIN_TRACE_ID_AIM)/NUM_TRACE_ID_PER_AIM)
-
-#define MIN_TRACE_ID_AM        64
-#define MAX_TRACE_ID_AM        544
-#define MAX_TRACE_ID_AM_HWEM   94
-/* Because of the different stalls, AMs can produce up to 16 different
- * trace IDs in their trace packets.
- */
-#define NUM_TRACE_ID_PER_AM    16
-#define AM_SLOT_ID(x) ((x - MIN_TRACE_ID_AM)/NUM_TRACE_ID_PER_AM)
-
-#define MIN_TRACE_ID_ASM       576
-#define MAX_TRACE_ID_ASM       607
-// ASMs only generate one type of trace ID in their trace packets.
-#define NUM_TRACE_ID_PER_ASM   1
-#define ASM_SLOT_ID(x) ((x - MIN_TRACE_ID_ASM)/NUM_TRACE_ID_PER_ASM)
 
 /* Bit locations of trace flags */
 #define XAPM_READ_LAST                   6
