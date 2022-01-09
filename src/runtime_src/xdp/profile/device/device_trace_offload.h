@@ -49,30 +49,23 @@ enum class OffloadThreadType {
 
 struct TraceBufferInfo {
   size_t   buf;
-  uint64_t size;
+  uint64_t buf_size;
+  uint64_t used_size;
   uint64_t offset;
   uint64_t address;
-  uint64_t old_wordcount;
+  uint64_t prv_wordcount;
   uint32_t rollover_count;
   bool     full;
   bool     offload_done;
   bool     big_trace_warn_done;
   
-
-#if 0
-    // Used to check read precondition in ts2mm
-    uint64_t m_wordcount_old = 0;
-    bool m_trace_warn_big_done = false;
-//    bool m_trbuf_full = false;
-//    bool trbuf_offload_done = false;
-#endif
-
   TraceBufferInfo()
     : buf(0),
-      size(0),
+      buf_size(0),
+      used_size(0),
       offset(0),
       address(0),
-      old_wordcount(0),
+      prv_wordcount(0),
       rollover_count(0),
       full(false),
       offload_done(false),
@@ -84,7 +77,6 @@ struct TraceBufferInfo {
 struct Ts2mmInfo {
   size_t   num_ts2mm;
   uint64_t full_buf_size;
-  uint64_t each_buf_size;
 
   std::vector<TraceBufferInfo> buffers;
 
@@ -94,15 +86,6 @@ struct Ts2mmInfo {
   uint64_t circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
   uint64_t circ_buf_cur_rate;
 
-#if 0
-  //Circular Buffer Tracking
-  bool use_circ_buf = false;
-  // 100 mb of trace per second
-  constexpr uint64_t circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
-  uint64_t circ_buf_cur_rate = 0;
-#endif
-  
-
   std::queue<std::unique_ptr<char[]>> data_queue;
   std::queue<uint64_t> size_queue;
   std::mutex process_queue_lock;
@@ -110,7 +93,6 @@ struct Ts2mmInfo {
   Ts2mmInfo()
     : num_ts2mm(0),
       full_buf_size(0),
-      each_buf_size(0),
       use_circ_buf(false),
       circ_buf_cur_rate(0)
   {}
@@ -135,7 +117,7 @@ public:
     void stop_offload();
 
     XDP_EXPORT
-    virtual bool read_trace_init(bool circ_buf = false);
+    virtual bool read_trace_init(bool circ_buf, const std::vector<uint64_t>&);
     XDP_EXPORT
     virtual void read_trace_end();
     XDP_EXPORT
@@ -156,7 +138,7 @@ public:
         return fifo_full;
       }
       bool isFull = false;
-      for(uint64_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
+      for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
         isFull |= ts2mm_info.buffers[i].full;
       }
       return isFull;
@@ -185,7 +167,7 @@ private:
     void read_trace_s2mm(bool force=true);
     uint64_t read_trace_s2mm_partial();
     bool config_s2mm_reader(uint64_t i, uint64_t wordCount);
-    bool init_s2mm(bool circ_buf);
+    bool init_s2mm(bool circ_buf, const std::vector<uint64_t> &);
     void reset_s2mm();
 
     bool should_continue();
