@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
