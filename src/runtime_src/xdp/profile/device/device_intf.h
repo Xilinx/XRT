@@ -142,14 +142,14 @@ class DeviceIntf {
     }
 
     XDP_EXPORT
-    void resetTS2MM(uint64_t index = 0);
+    void resetTS2MM(uint64_t index);
     XDP_EXPORT
     void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm(uint64_t index = 0);
+    uint64_t getWordCountTs2mm(uint64_t index);
     XDP_EXPORT
-    uint8_t  getTS2MmMemIndex(uint64_t index = 0);
+    uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
     void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
 
