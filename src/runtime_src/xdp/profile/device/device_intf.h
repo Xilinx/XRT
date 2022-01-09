@@ -49,9 +49,6 @@ namespace xdp {
 // Helper methods
 
 XDP_EXPORT
-uint64_t GetDeviceTraceBufferSize(uint32_t property);
-
-XDP_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
 
