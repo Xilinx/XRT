@@ -106,7 +106,6 @@ namespace xdp {
       EventType   coreTraceEndEvent;
       EventVector coreCounterStartEvents;
       EventVector coreCounterEndEvents;
-      EventVector coreCounterResetEvents;
       ValueVector coreCounterEventValues;
 
       EventVector memoryCounterStartEvents;

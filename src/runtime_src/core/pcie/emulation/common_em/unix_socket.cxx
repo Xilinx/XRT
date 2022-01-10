@@ -19,7 +19,7 @@
 
 #include "unix_socket.h"
 
-unix_socket::unix_socket(const std::string& sock_id,double timeout_insec,bool fatal_error)
+unix_socket::unix_socket(const std::string& env, const std::string& sock_id, double timeout_insec, bool fatal_error)
 {
   std::string socket = sock_id;
   server_started = false;
@@ -27,7 +27,7 @@ unix_socket::unix_socket(const std::string& sock_id,double timeout_insec,bool fa
   char* cUser = getenv("USER");
   if(cUser && !sock_id.compare("xcl_sock")) {
     std::string user = cUser;
-    char* c_sock_id = getenv("EMULATION_SOCKETID"); 
+    char* c_sock_id = getenv(env.c_str()); 
     if(c_sock_id ) {
       socket = c_sock_id;
     }
