@@ -41,6 +41,8 @@ namespace xclcpuemhal2 {
   const unsigned CpuemShim::CONTROL_AP_IDLE  = 4;
   const unsigned CpuemShim::CONTROL_AP_CONTINUE = 0x10;
   std::map<std::string, std::string> CpuemShim::mEnvironmentNameValueMap(xclemulation::getEnvironmentByReadingIni());
+
+  namespace bf = boost::filesystem;
 #define PRINTENDFUNC if (mLogStream.is_open()) mLogStream << __func__ << " ended " << std::endl;
 
   CpuemShim::CpuemShim(unsigned int deviceIndex, xclDeviceInfo2 &info, std::list<xclemulation::DDRBank>& DDRBankList, bool _unified, bool _xpr,
@@ -55,6 +57,7 @@ namespace xclcpuemhal2 {
     binaryCounter = 0;
     mReqCounter = 0;
     sock = nullptr;
+    aiesim_sock = nullptr;
     ci_msg.set_size(0);
     ci_msg.set_xcl_api(0);
     mCore = nullptr;
@@ -368,8 +371,11 @@ namespace xclcpuemhal2 {
     if(!simDontRun)
     {
       std::stringstream socket_id;
+      std::stringstream aiesim_sock_id;
       socket_id << deviceName << "_" << binaryCounter << "_" << getpid();
+      aiesim_sock_id << deviceName << "_aiesim" << binaryCounter << "_" << getpid();
       setenv("EMULATION_SOCKETID",socket_id.str().c_str(),true);
+      setenv("AIESIM_SOCKETID",aiesim_sock_id.str().c_str(),true);
 
       pid_t pid = fork();
       assert(pid >= 0);
@@ -496,7 +502,7 @@ namespace xclcpuemhal2 {
         exit(0);
       }
     }
-    sock = new unix_socket;
+    sock = new unix_socket("EMULATION_SOCKETID");
   }
 
   int CpuemShim::xclLoadXclBin(const xclBin *header)
@@ -530,6 +536,7 @@ namespace xclcpuemhal2 {
       }
     }
 
+    bool isVersal = false;
     std::string binaryDirectory("");
     launchDeviceProcess(debuggable,binaryDirectory);
 
@@ -543,10 +550,10 @@ namespace xclcpuemhal2 {
         mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       }
 
-    if( mFirstBinary )
-    {
-      mFirstBinary = false;
-    }
+      if( mFirstBinary )
+      {
+        mFirstBinary = false;
+      }
 
       char *xclbininmemory = reinterpret_cast<char*> (const_cast<xclBin*> (header));
 
@@ -697,6 +704,7 @@ namespace xclcpuemhal2 {
 
       //Extract EMULATION_DATA from XCLBIN
       if (emuData && (emuDataSize > 1)) {
+        isVersal = true;
         std::string emuDataFilePath = binaryDirectory + "/emuDataFile";
         std::ofstream os(emuDataFilePath);
         os.write(emuData.get(), emuDataSize);             
@@ -707,12 +715,29 @@ namespace xclcpuemhal2 {
 
       bool ack = true;
       bool verbose = false;
-      if(mLogStream.is_open())
+      if ( mLogStream.is_open() ) {
         verbose = true;
-      xclLoadBitstream_RPC_CALL(xclLoadBitstream,xmlFile,tempdlopenfilename,deviceDirectory,binaryDirectory,verbose);
-      if(!ack)
+      }
+
+      xclLoadBitstream_RPC_CALL(xclLoadBitstream, xmlFile, tempdlopenfilename, deviceDirectory, binaryDirectory, verbose);
+      if (!ack) {
         return -1;
+      }
     }
+
+    if (isVersal) {
+      std::string aieLibSimPath = binaryDirectory + "/aie/aie.libsim";
+      bf::path fp(aieLibSimPath);
+
+      // Setting the aiesim_sock to null when we have the aie.libsim which is ideally generated only for the x86sim target
+      // This determines the whether we are running the sw_emu interacting with the x86sim process or the aiesim process
+      if (bf::exists(fp) && !bf::is_empty(fp)) {
+        aiesim_sock = nullptr;
+      } else {
+        aiesim_sock = new unix_socket("AIESIM_SOCKETID");
+      }
+    }
+
     return 0;
   }
 
@@ -1254,7 +1279,7 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   /* check whether buffer is p2p or not*/
   bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get());
   std::string sFileName("");
-  xobj->base = xclAllocDeviceBuffer2(size,XCL_MEM_DEVICE_RAM,ddr,noHostMemory,sFileName);
+  xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, sFileName);
   xobj->filename = sFileName;
   xobj->size = size;
   xobj->userptr = NULL;
@@ -2005,6 +2030,7 @@ int CpuemShim::xrtGraphInit(void * gh) {
     return -1;
   auto graphhandle = ghPtr->getGraphHandle();
   auto graphname = ghPtr->getGraphName();
+
   xclGraphInit_RPC_CALL(xclGraphInit, graphhandle, graphname);
   if (!ack)
   {
