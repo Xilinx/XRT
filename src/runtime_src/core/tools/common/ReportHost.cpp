@@ -64,10 +64,13 @@ updateDataMapValue(std::map<std::string, size_t>& data_length_map,
                   const boost::property_tree::ptree& dev,
                   const std::string& key)
 {
-  if (data_length_map.find(key) == data_length_map.end())
+  auto itr = data_length_map.find(key);
+  if (itr == data_length_map.end())
     data_length_map[key] = dev.get<std::string>(key).size();
   else
-    data_length_map[key] = std::max(data_length_map[key], dev.get<std::string>(key).size());
+    // Set the value in the map to the maximum among the currently stored string length
+    // and the length of the string referenced by the key
+    (*itr).second = std::max((*itr).second, dev.get<std::string>(key).size());
 }
 
 void
