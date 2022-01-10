@@ -45,6 +45,8 @@
 
 #define CQ_STATUS_ADDR 0x58
 
+#define CTRL_XGQ_SLOT_SIZE          512	
+
 static uint16_t	g_ctrl_xgq_cid;
 
 struct ert_ctrl {
@@ -59,9 +61,26 @@ struct ert_ctrl {
 	struct mutex		 ec_xgq_lock;
 
 	/* ERT XGQ instances for CU */
-	void		       **ec_exgq;
+	void			**ec_exgq;
 	uint32_t		 ec_exgq_capacity;
+
+
+	uint64_t		timestamp;
+	uint32_t		cq_read_single;
+	uint32_t		cq_write_single;
+	uint32_t		cu_read_single;
+	uint32_t		cu_write_single;
+
+
+	uint32_t		h2h_access;
+	uint32_t		d2h_access;
+	uint32_t		h2d_access;
+	uint32_t		d2d_access;
+	uint32_t		d2cu_access;
+	uint32_t		data_integrity;	
 };
+
+static void ert_ctrl_submit_exit_cmd(struct ert_ctrl *ec);
 
 static ssize_t
 status_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -78,8 +97,111 @@ status_show(struct device *dev, struct device_attribute *attr, char *buf)
 };
 static DEVICE_ATTR_RO(status);
 
+static ssize_t mb_sleep_store(struct device *dev,
+	struct device_attribute *da, const char *buf, size_t count)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+	u32 go_sleep;
+
+	if (kstrtou32(buf, 10, &go_sleep) == -EINVAL || go_sleep > 2) {
+		xocl_err(&to_platform_device(dev)->dev,
+			"usage: echo 0 or 1 > mb_sleep");
+		return -EINVAL;
+	}
+
+	if (go_sleep) {
+		xocl_gpio_cfg(xdev, MB_WAKEUP_CLR);
+		ert_ctrl_submit_exit_cmd(ec);
+		xocl_gpio_cfg(xdev, MB_SLEEP);
+	} else
+		xocl_gpio_cfg(xdev, MB_WAKEUP);
+
+	return count;
+}
+
+static ssize_t mb_sleep_show(struct device *dev,
+			   struct device_attribute *attr, char *buf)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+
+	return sprintf(buf, "%d", xocl_gpio_cfg(xdev, MB_STATUS));
+}
+static DEVICE_ATTR_RW(mb_sleep);
+
+static ssize_t
+clock_timestamp_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%lld", ec->timestamp);
+};
+static DEVICE_ATTR_RO(clock_timestamp);
+
+static ssize_t
+cq_read_cnt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d", ec->cq_read_single);
+};
+static DEVICE_ATTR_RO(cq_read_cnt);
+
+static ssize_t
+cq_write_cnt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d", ec->cq_write_single);
+};
+static DEVICE_ATTR_RO(cq_write_cnt);
+
+static ssize_t
+cu_read_cnt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d", ec->cu_read_single);
+};
+static DEVICE_ATTR_RO(cu_read_cnt);
+
+static ssize_t
+cu_write_cnt_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d", ec->cu_write_single);
+};
+static DEVICE_ATTR_RO(cu_write_cnt);
+
+static ssize_t
+data_integrity_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+	uint32_t ret = 1;
+
+	ret &= ec->h2h_access;
+	ret &= ec->d2h_access;
+	ret &= ec->h2d_access;
+	ret &= ec->d2d_access;
+	ret &= ec->d2cu_access;
+	ret &= ec->data_integrity;
+
+	return sprintf(buf, "%d", ret);
+};
+static DEVICE_ATTR_RO(data_integrity);
+
 static struct attribute *ert_ctrl_attrs[] = {
 	&dev_attr_status.attr,
+	&dev_attr_mb_sleep.attr,
+	&dev_attr_clock_timestamp.attr,
+	&dev_attr_cq_read_cnt.attr,
+	&dev_attr_cq_write_cnt.attr,
+	&dev_attr_cu_read_cnt.attr,
+	&dev_attr_cu_write_cnt.attr,
+	&dev_attr_data_integrity.attr,
 	NULL,
 };
 
@@ -97,12 +219,115 @@ static inline void ert_ctrl_write32(uint32_t val, void __iomem *addr)
 	return iowrite32(val, addr);
 }
 
+static void ert_ctrl_init_access_test(struct ert_ctrl *ec)
+{
+	ec->h2h_access = 1;
+	ec->d2h_access = 1;
+	ec->h2d_access = 1;
+	ec->d2d_access = 1;
+	ec->d2cu_access = 1;
+	ec->data_integrity  = 1;
+}
+static inline void ert_ctrl_pre_process(struct ert_ctrl *ec, enum xgq_cmd_opcode opcode, void *slot_addr)
+{
+	int offset = 0;
+	u32 val, clear = 0;
+	u32 cnt = 10000000;
+
+	switch(opcode) {
+	case XGQ_CMD_OP_DATA_INTEGRITY:
+		ert_ctrl_init_access_test(ec);
+		for (offset = sizeof(struct xgq_cmd_data_integrity); offset < CTRL_XGQ_SLOT_SIZE; offset+=4) {
+			iowrite32(HOST_RW_PATTERN, (void __iomem *)(slot_addr + offset));
+
+			val = ioread32((void __iomem *)(slot_addr + offset));
+
+			if (val !=HOST_RW_PATTERN) {
+				ec->h2h_access = 0;
+				EC_ERR(ec, "Host <-> Host data integrity failed\n");
+				break;
+			}
+
+		}
+		iowrite32(clear, slot_addr + offsetof(struct xgq_cmd_data_integrity, draft));
+		iowrite32(cnt, slot_addr + offsetof(struct xgq_cmd_data_integrity, rw_count));
+		break;
+	default:
+		break;
+	}
+}
+
+
+static void ert_ctrl_post_process(struct ert_ctrl *ec, enum xgq_cmd_opcode opcode, void *resp)
+{
+	struct xgq_cmd_resp_clock_calib *clock_calib;
+	struct xgq_cmd_resp_access_valid *access_valid;
+	struct xgq_cmd_resp_data_integrity *integrity;
+
+	switch(opcode) {
+	case XGQ_CMD_OP_CLOCK_CALIB:
+		clock_calib = (struct xgq_cmd_resp_clock_calib *)resp;
+		ec->timestamp = clock_calib->timestamp;
+		break;
+	case XGQ_CMD_OP_ACCESS_VALID:
+		access_valid = (struct xgq_cmd_resp_access_valid *)resp;
+		ec->cq_read_single = access_valid->cq_read_single;
+		ec->cq_write_single = access_valid->cq_write_single;
+		ec->cu_read_single = access_valid->cu_read_single;
+		ec->cu_write_single = access_valid->cu_write_single;
+		break;
+	case XGQ_CMD_OP_DATA_INTEGRITY:
+		integrity = (struct xgq_cmd_resp_data_integrity *)resp;
+		ec->h2d_access = integrity->h2d_access;
+		ec->d2d_access = integrity->d2d_access;
+		ec->d2cu_access = integrity->d2cu_access;
+		ec->data_integrity = integrity->data_integrity;
+		break;
+	default:
+		break;
+	}
+}
+
+static inline void ert_ctrl_queue_integrity_test(uint64_t slot_addr)
+{
+	uint32_t cnt = 10000000;
+
+	while (--cnt) {
+		u32 pattern = 0xFFFFFFFF;
+		if (cnt % 2)
+			pattern = 0xFFFFFFFF;
+		else
+			pattern = 0x0;
+		
+		iowrite32(pattern, (void __iomem *)(slot_addr + offsetof(struct xgq_cmd_data_integrity, draft)));
+	}
+	iowrite32(cnt, (void __iomem *)(slot_addr + offsetof(struct xgq_cmd_data_integrity, rw_count)));
+}
+
+static inline void ert_ctrl_device_to_host_integrity_test(struct ert_ctrl *ec, uint64_t slot_addr)
+{
+	u32 offset = 0, val = 0;
+
+	for (offset = sizeof(struct xgq_cmd_data_integrity); offset < CTRL_XGQ_SLOT_SIZE; offset+=4) {
+		iowrite32(DEVICE_RW_PATTERN, (void __iomem *)(slot_addr + offset));
+
+		val = ioread32((void __iomem *)(slot_addr + offset));
+
+		if (val !=DEVICE_RW_PATTERN) {
+			ec->d2h_access = 0;
+			EC_ERR(ec, "Device -> Host data integrity failed\n");
+			break;
+		}
+
+	}
+}
+
 static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
 {
 	struct ert_ctrl *ec = container_of(ert, struct ert_ctrl, ec_ert);
 	struct xgq_cmd_sq_hdr *sq_hdr;
-	u64 timeout = 0;
-	u64 slot_addr = 0;
+	struct xgq_com_queue_entry cq_hdr;
+	u64 timeout = 0, slot_addr = 0;
 	bool is_timeout = false;
 	int ret = 0;
 
@@ -120,32 +345,87 @@ static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
 
 	sq_hdr = xcmd->info;
 	sq_hdr->cid = g_ctrl_xgq_cid++;
+
+	ert_ctrl_pre_process(ec, sq_hdr->opcode, (void *)slot_addr);
 	memcpy_toio((void __iomem *)slot_addr, xcmd->info, xcmd->isize);
+
 	xgq_notify_peer_produced(&ec->ec_ctrl_xgq);
+
+	if (sq_hdr->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
+		ert_ctrl_queue_integrity_test(slot_addr);
 
 	timeout = jiffies + ERT_CTRL_CMD_TIMEOUT;
 	while (!is_timeout) {
-		msleep(100);
+		usleep_range(100, 200);
 
 		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
 		if (!ret) {
 			memcpy_fromio(xcmd->response, (void __iomem *)slot_addr, xcmd->response_size);
+			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(struct xgq_com_queue_entry));
 			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
 			break;
 		}
 
 		is_timeout = (timeout < jiffies) ? true : false;
 	}
+
+	if (sq_hdr->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
+		ert_ctrl_device_to_host_integrity_test(ec, slot_addr);
+
 	mutex_unlock(&ec->ec_xgq_lock);
 
 	if (is_timeout) {
 		xcmd->status = KDS_TIMEOUT;
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 	} else {
+		ert_ctrl_post_process(ec, sq_hdr->opcode, &cq_hdr);
 		xcmd->status = KDS_COMPLETED;
 		xcmd->cb.notify_host(xcmd, xcmd->status);
 	}
 	xcmd->cb.free(xcmd);
+}
+
+
+static void ert_ctrl_submit_exit_cmd(struct ert_ctrl *ec)
+{
+	int ret = 0;
+	struct xgq_cmd_sq_hdr sq_hdr;
+	struct xgq_com_queue_entry cq_hdr;
+	u64 slot_addr = 0;
+	u64 timeout;
+	bool is_timeout = false;
+
+	mutex_lock(&ec->ec_xgq_lock);
+
+	ret = xgq_produce(&ec->ec_ctrl_xgq, &slot_addr);
+	if (ret) {
+		EC_ERR(ec, "XGQ produce failed: %d", ret);
+		mutex_unlock(&ec->ec_xgq_lock);
+		return;
+	}
+
+	sq_hdr.cid = g_ctrl_xgq_cid++;
+	sq_hdr.opcode = XGQ_CMD_OP_EXIT;
+	sq_hdr.state = 1;
+
+	memcpy_toio((void __iomem *)slot_addr, &sq_hdr, sizeof(struct xgq_cmd_sq_hdr));
+	xgq_notify_peer_produced(&ec->ec_ctrl_xgq);
+
+	timeout = jiffies + ERT_CTRL_CMD_TIMEOUT;
+	while (!is_timeout) {
+		usleep_range(100, 200);
+
+		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
+		if (!ret) {
+			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(struct xgq_com_queue_entry));
+			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
+			break;
+		}
+
+		is_timeout = (timeout < jiffies) ? true : false;
+	}
+
+	mutex_unlock(&ec->ec_xgq_lock);
 }
 
 static bool ert_ctrl_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
