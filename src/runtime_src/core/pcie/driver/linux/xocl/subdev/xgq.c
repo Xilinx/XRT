@@ -1289,6 +1289,32 @@ static ssize_t vmr_debug_level_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(vmr_debug_level);
 
+static ssize_t program_sc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+	int ret = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL) {
+		return -EINVAL;
+	}
+
+	/* request debug level change */
+	if (val) {
+		ret = vmr_control_op(to_platform_device(dev), XGQ_CMD_PROGRAM_SC);
+		if (ret) {
+			XGQ_ERR(xgq, "failed: %d", ret);
+			return -EINVAL;
+		}
+	}
+
+	XGQ_INFO(xgq, "done");
+
+	return count;
+}
+static DEVICE_ATTR_WO(program_sc);
+
 static ssize_t vmr_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1322,6 +1348,7 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_flush_default_only.attr,
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_debug_level.attr,
+	&dev_attr_program_sc.attr,
 	NULL,
 };
 

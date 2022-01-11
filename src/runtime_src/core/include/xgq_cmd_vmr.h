@@ -76,6 +76,7 @@ enum xgq_cmd_vmr_control_type {
 	XGQ_CMD_VMR_QUERY	= 0x0,
 	XGQ_CMD_BOOT_DEFAULT	= 0x1,
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
+	XGQ_CMD_PROGRAM_SC	= 0x3,
 };
 
 /**
