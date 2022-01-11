@@ -62,21 +62,12 @@ enum class test_status
 {
   passed = 0,
   warning = 1,
-  failed = 2,
-  skipped = 3
+  failed = 2
 };
 
-static std::string 
-get_test_status(test_status status)
-{
-  switch (status) {
-    case test_status::passed: return "passed"; break;
-    case test_status::warning: return "warning"; break;
-    case test_status::failed: return "failed"; break;
-    case test_status::skipped: return "skipped"; break;
-    case default: return ""; break;
-  }
-}
+static const std::string test_token_skipped = "SKIPPED";
+static const std::string test_token_failed = "FAILED";
+static const std::string test_token_passed = "PASSED";
 
 /*
  * mini logger to log errors, warnings and details produced by the test cases
@@ -106,7 +97,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
   if(!boost::filesystem::is_directory(fw_dir)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % fw_dir));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     return "";
   }
 
@@ -148,7 +139,7 @@ searchSSV2Xclbin(const std::string& logic_uuid,
     }
   }
   logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
-  _ptTest.put("status", Test_state::skip);
+  _ptTest.put("status", test_token_skipped);
   return "";
 }
 
@@ -183,7 +174,7 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   if(!boost::filesystem::is_directory(dsapath) && !boost::filesystem::is_directory(xsapath)) {
     logger(_ptTest, "Error", boost::str(boost::format("Failed to find '%s' or '%s'") % dsapath % xsapath));
     logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     return "";
   }
 
@@ -200,7 +191,7 @@ searchLegacyXclbin(const uint16_t vendor, const std::string& dev_name, const std
   }
 
   logger(_ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation") % xclbin));
-  _ptTest.put("status", test_status::);
+  _ptTest.put("status", test_token_skipped);
   return "";
 }
 
@@ -223,7 +214,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   } catch(...) {
     logger(_ptTest, "Error", "Unable to find device VBNV");
 
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     return;
   }
 
@@ -251,13 +242,13 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
   // At this time, this is determined by whether or not it delivers an accelerator (e.g., verify.xclbin)
   if(!logic_uuid.empty() && !boost::filesystem::exists(xclbinPath)) {
     logger(_ptTest, "Details", "Verify xclbin not available or shell partition is not programmed. Skipping validation.");
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
   //check if xclbin is present
   if (xclbinPath.empty() || !boost::filesystem::exists(xclbinPath)) {
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
@@ -287,7 +278,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
 
     if (test_map.find(py) == test_map.end()) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % py));
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       return;
     }
 
@@ -296,7 +287,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       return;
     }
 
@@ -309,19 +300,19 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     try {
       int exit_code = XBU::runScript("sh", xrtTestCasePath, args, "Running Test", "Test Duration", MAX_TEST_DURATION, os_stdout, os_stderr, true);
       if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_status::skipped);
+        _ptTest.put("status", test_token_skipped);
       }
       else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_status::passed);
+        _ptTest.put("status", test_token_passed);
       }
       else {
         logger(_ptTest, "Error", os_stdout.str());
         logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_status::failed);
+        _ptTest.put("status", test_token_failed);
       }
     } catch (const std::exception& e) {
       logger(_ptTest, "Error", e.what());
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
     }
   }
   else {
@@ -331,7 +322,7 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     if (!boost::filesystem::exists(xrt_path)) {
       logger(_ptTest, "Error", boost::str(boost::format("Failed to find %s") % xrtTestCasePath));
       logger(_ptTest, "Error", "Please check if the platform package is installed correctly");
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       return;
     }
     // log testcase path for debugging purposes
@@ -347,19 +338,19 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
         exit_code = XBU::runScript("python", xrtTestCasePath, args, "Running Test", "Test Duration:", MAX_TEST_DURATION, os_stdout, os_stderr, true);
 
       if (exit_code == EOPNOTSUPP) {
-        _ptTest.put("status", test_status::skipped);
+        _ptTest.put("status", test_token_skipped);
       }
       else if (exit_code == EXIT_SUCCESS) {
-        _ptTest.put("status", test_status::passed);
+        _ptTest.put("status", test_token_passed);
       }
       else {
         logger(_ptTest, "Error", os_stdout.str());
         logger(_ptTest, "Error", os_stderr.str());
-        _ptTest.put("status", test_status::failed);
+        _ptTest.put("status", test_token_failed);
       }
     } catch (const std::exception& e) {
       logger(_ptTest, "Error", e.what());
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
     }
   }
 
@@ -543,13 +534,13 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
 
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_P2P | mem_idx);
   if (boh == NULLBO) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
   char *boptr = (char *)xclMapBO(handle, boh, true);
   if (boptr == nullptr) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
     return false;
@@ -557,7 +548,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
 
   if(no_dma != 0) {
      if(!p2ptest_chunk_no_dma(handle, boh,  mem_size,  mem_idx)){
-       _ptTest.put("status", test_status::failed);
+       _ptTest.put("status", test_token_failed);
       logger(_ptTest, "Error", boost::str(boost::format("P2P failed  on memory index %d")  % mem_idx));
       free_unmap_bo(handle, boh, boptr, bo_size);
       return false;
@@ -565,7 +556,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
   } else {
     for(uint64_t c = 0; c < bo_size; c += chunk_size) {
       if(!p2ptest_chunk(handle, boptr + c, addr + c, chunk_size)) {
-        _ptTest.put("status", test_status::failed);
+        _ptTest.put("status", test_token_failed);
         logger(_ptTest, "Error", boost::str(boost::format("P2P failed at offset 0x%x, on memory index %d") % c % mem_idx));
         free_unmap_bo(handle, boh, boptr, bo_size);
         return false;
@@ -573,7 +564,7 @@ p2ptest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, std::
     }
   } 
   free_unmap_bo(handle, boh, boptr, bo_size);
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
   return true;
 }
 
@@ -586,20 +577,20 @@ m2m_alloc_init_bo(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, 
 {
   boh = xclAllocBO(handle, bo_size, 0, bank);
   if (boh == NULLBO) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return 1;
   }
   boptr = (char*) xclMapBO(handle, boh, true);
   if (boptr == nullptr) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
   }
   memset(boptr, pattern, bo_size);
   if(xclSyncBO(handle, boh, XCL_BO_SYNC_BO_TO_DEVICE, bo_size, 0)) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't sync BO");
     free_unmap_bo(handle, boh, boptr, bo_size);
     return 1;
@@ -637,7 +628,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   if(xclSyncBO(handle, bo_tgt, XCL_BO_SYNC_BO_FROM_DEVICE, bo_size, 0)) {
     free_unmap_bo(handle, bo_src, bo_src_ptr, bo_size);
     free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Unable to sync target BO");
     return bandwidth;
   }
@@ -649,7 +640,7 @@ m2mtest_bank(xclDeviceHandle handle, boost::property_tree::ptree& _ptTest, int b
   free_unmap_bo(handle, bo_tgt, bo_tgt_ptr, bo_size);
 
   if (!match) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Memory comparison failed");
     return bandwidth;
   }
@@ -718,12 +709,12 @@ search_and_program_xclbin(const std::shared_ptr<xrt_core::device>& dev, boost::p
 
     if(!boost::filesystem::exists(xclbinPath)) {
       logger(ptTest, "Details", boost::str(boost::format("%s not available. Skipping validation.") % xclbin));
-      ptTest.put("status", test_status::skipped);
+      ptTest.put("status", test_token_skipped);
       return false;
     }
 
     if(program_xclbin(dev->get_device_handle(), xclbinPath, ptTest) != 0) {
-      ptTest.put("status", test_status::failed);
+      ptTest.put("status", test_token_failed);
       return false;
     }
   }
@@ -738,13 +729,13 @@ bist_alloc_execbuf_and_wait(xclDeviceHandle handle, enum ert_cmd_opcode opcode, 
   xclBufferHandle boh = xclAllocBO(handle, bo_size, 0, XCL_BO_FLAGS_EXECBUF);
 
   if (boh == NULLBO) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't allocate BO");
     return false;
   }
   auto boptr = reinterpret_cast<char *>(xclMapBO(handle, boh, true));
   if (boptr == nullptr) {
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     logger(_ptTest, "Error", "Couldn't map BO");
     return false;
   }
@@ -821,7 +812,7 @@ ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle hand
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), go_sleep);
   auto mb_status = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   if (!mb_status) {
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       logger(_ptTest, "Error", "Failed to put ERT to sleep");
       return false;
   }
@@ -829,7 +820,7 @@ ert_validate(const std::shared_ptr<xrt_core::device>& _dev, xclDeviceHandle hand
   xrt_core::device_update<xrt_core::query::ert_sleep>(_dev.get(), wake_up);
   auto mb_sleep = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   if (mb_sleep) {
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       logger(_ptTest, "Error", "Failed to wake up ERT");
       return false;
   }
@@ -866,7 +857,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
 
   if (!auxDevice) {
       logger(_ptTest, "Details", "Aux power connector is not available on this board");
-      _ptTest.put("status", test_status::skipped);
+      _ptTest.put("status", test_token_skipped);
       return;
   }
 
@@ -875,7 +866,7 @@ auxConnectionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property
     logger(_ptTest, "Warning", "Aux power is not connected");
     logger(_ptTest, "Warning", "Device is not stable for heavy acceleration tasks");
   }
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
 }
 
 /*
@@ -893,7 +884,7 @@ pcieLinkTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree
     logger(_ptTest, "Warning", boost::str(boost::format("Please make sure that the device is plugged into Gen %dx%d, instead of Gen %dx%d. %s.")
                                           % max_speed % max_width % speed % width % "Lower performance maybe experienced"));
   }
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
 }
 
 /*
@@ -914,7 +905,7 @@ scVersionTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tre
     logger(_ptTest, "Warning", boost::str(boost::format("SC firmware version %s is running on the board, but SC firmware version %s is expected from the installed shell. %s.")
                                           % sc_ver % exp_sc_ver % "Please use xbmgmt examine to check the installed shell"));
   }
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
 }
 
 /*
@@ -932,7 +923,7 @@ verifyKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_
 void
 dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  _ptTest.put("status", test_status::skipped);
+  _ptTest.put("status", test_token_skipped);
   if(!search_and_program_xclbin(_dev, _ptTest)) {
     return;
   }
@@ -988,13 +979,13 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     xcldev::DMARunner runner(_dev->get_device_handle(), block_size, static_cast<unsigned int>(midx), totalSize);
     try {
       runner.run(run_details);
-      _ptTest.put("status", test_status::passed);
+      _ptTest.put("status", test_token_passed);
       std::string line;
       while(std::getline(run_details, line))
         logger(_ptTest, "Details", line);
     }
     catch (xrt_core::error& ex) {
-      _ptTest.put("status", test_status::failed);
+      _ptTest.put("status", test_token_failed);
       logger(_ptTest, "Error", ex.what());
     }
   }
@@ -1011,7 +1002,7 @@ bandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::proper
     name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
   } catch(...) {
     logger(_ptTest, "Error", "Unable to find device VBNV");
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
     return;
   }
   std::string testcase = (name.find("vck5000") != std::string::npos) ? "versal_23_bandwidth.py" : "23_bandwidth.py";
@@ -1046,17 +1037,17 @@ p2pTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   if(msg.find("Error") == 0) {
     logger(_ptTest, "Error", msg.substr(msg.find(':')+1));
-    _ptTest.put("status", "error");
+    _ptTest.put("status", test_token_failed);
     return;
   }
   else if(msg.find("Warning") == 0) {
     logger(_ptTest, "Warning", msg.substr(msg.find(':')+1));
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
   else if (!msg.empty()) {
     logger(_ptTest, "Details", msg);
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
@@ -1106,7 +1097,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 
   if(no_dma != 0) {
     logger(_ptTest, "Details", "Not supported on NoDMA platform");
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
@@ -1123,7 +1114,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   // which causes a hang. Skip m2mtest if this platform is installed
   if (m2m_enabled == 0 || name.find("_u250_xdma_201830_1") != std::string::npos) {
     logger(_ptTest, "Details", "M2M is not available");
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
@@ -1153,7 +1144,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
         return;
     }
   }
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
 }
 
 /*
@@ -1167,13 +1158,13 @@ hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost:
     shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(_dev);
   } catch(...) {
     logger(_ptTest, "Details", "Address translator IP is not available");
-    _ptTest.put("status", test_status::skipped);
+    _ptTest.put("status", test_token_skipped);
     return;
   }
 
   if (!shared_host_mem) {
       logger(_ptTest, "Details", "Host memory is not enabled");
-      _ptTest.put("status", test_status::skipped);
+      _ptTest.put("status", test_token_skipped);
       return;
   }
   runTestCase(_dev, "host_mem_23_bandwidth.py", _ptTest.get<std::string>("xclbin"), _ptTest);
@@ -1191,13 +1182,13 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
    ert_cfg_gpio = xrt_core::device_query<xrt_core::query::ert_sleep>(_dev);
   } catch(...) {
       logger(_ptTest, "Details", "ERT validate is not available");
-      _ptTest.put("status", test_status::skipped);
+      _ptTest.put("status", test_token_skipped);
       return;
   }
 
   if (ert_cfg_gpio < 0) {
       logger(_ptTest, "Details", "This platform does not support ERT validate feature");
-      _ptTest.put("status", test_status::skipped);
+      _ptTest.put("status", test_token_skipped);
       return;
   }
 
@@ -1208,14 +1199,14 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   XBU::xclbin_lock xclbin_lock(_dev);
 
   if (!clock_calibration(_dev, _dev->get_device_handle(), _ptTest))
-     _ptTest.put("status", test_status::failed);
+     _ptTest.put("status", test_token_failed);
 
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
-    _ptTest.put("status", test_status::failed);
+    _ptTest.put("status", test_token_failed);
 
   runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
 
-  _ptTest.put("status", test_status::passed);
+  _ptTest.put("status", test_token_passed);
 }
 
 /*
@@ -1288,10 +1279,10 @@ get_test_name(const std::string& input_name)
   };
 
   std::string input_name_lc = boost::algorithm::to_lower_copy(input_name);
-
-  if (old_name_to_new_name.find(input_name_lc) != old_name_to_new_name.end()){
-    std::cout << boost::format("\nWarning: %s is deprecated and will be removed. Replace usage with %s\n\n") % input_name % old_name_to_new_name[input_name_lc];
-    return old_name_to_new_name[input_name_lc];
+  auto name_itr = old_name_to_new_name.find(input_name_lc);
+  if (name_itr != old_name_to_new_name.end()){
+    std::cout << boost::format("\nWarning: %s is deprecated and will be removed. Replace usage with %s\n\n") % input_name % (*name_itr).second;
+    return (*name_itr).second;
   }
 
   return input_name_lc;
@@ -1304,7 +1295,7 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  if (test.get<test_status>("status", test_status::failed) == test_status::skipped) {
+  if (test.get<std::string>("status", "").compare(test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
@@ -1327,7 +1318,7 @@ static void
 pretty_print_test_run(const boost::property_tree::ptree& test,
                       test_status& status, std::ostream & _ostream)
 {
-  auto _status = test.get<test_status>("status");
+  auto _status = test.get<std::string>("status", "");
   std::string prev_tag = "";
   bool warn = false;
   bool error = false;
@@ -1337,7 +1328,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](std::string tag, std::string log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if((_status == test_status::skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if((_status.compare(test_token_skipped)) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else
@@ -1374,18 +1365,16 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   }
   catch(...) {}
 
-  std::string _status_string = get_test_status(_status);
-
   if(error) {
     status = test_status::failed;
   }
   else if(warn) {
-    _status_string.append(" with warnings");
+    _status.append(" with warnings");
     status = test_status::warning;
   }
 
-  boost::to_upper(_status_string);
-  redirect_log("", boost::str(boost::format("    %-22s: [%s]\n") % "Test Status" % _status_string));
+  boost::to_upper(_status);
+  redirect_log("", boost::str(boost::format("    %-22s: [%s]\n") % "Test Status" % _status));
   redirect_log("", "-------------------------------------------------------------------------------\n");
 }
 
@@ -1710,11 +1699,9 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   // Collect all of the tests of interests
   std::vector<TestCollection *> testObjectsToRun;
 
-  /*
-   * Iterate through the test suites and compare them against the desired user tests
-   * If a match is found enqueue the test suite to be executed
-   */
-  for (unsigned index = 0; index < testSuite.size(); ++index) {
+  // Iterate through the test suites and compare them against the desired user tests
+  // If a match is found enqueue the test suite to be executed
+  for (size_t index = 0; index < testSuite.size(); ++index) {
     // The all option enqueues all test suites not marked explicit
     if (testsToRun[0] == "all") {
       // Do not queue test suites that must be explicitly passed in
@@ -1735,10 +1722,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         break;
     }
 
-    /*
-     * Logic for individually defined tests
-     * Enqueue the matching test suites to be executed
-     */
+    // Logic for individually defined tests
+    // Enqueue the matching test suites to be executed
     std::string testSuiteName = get_test_name(testSuite[index].ptTest.get("name","<unknown>"));
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
