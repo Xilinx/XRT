@@ -22,6 +22,9 @@
 
 namespace xdp {
 
+  /*
+   * Writer for AIE tiles status
+   */
   class AIEDebugWriter : public VPWriter
   {
   public:
@@ -35,6 +38,9 @@ namespace xdp {
     uint64_t mDeviceIndex;
   };
 
+  /*
+   * Writer for AIE shim tiles status
+   */
   class AIEShimDebugWriter : public VPWriter
   {
   public:

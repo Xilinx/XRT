@@ -22,6 +22,10 @@
 
 namespace xdp {
 
+  /*
+   * Writer for AIE tiles status
+   */
+
   AIEDebugWriter::AIEDebugWriter(const char* fileName,
                const char* deviceName, uint64_t deviceIndex)
     : VPWriter(fileName)
@@ -42,6 +46,10 @@ namespace xdp {
       switchFiles();
     return true;
   }
+
+  /*
+   * Writer for AIE shim tiles status
+   */
 
   AIEShimDebugWriter::AIEShimDebugWriter(const char* fileName,
                const char* deviceName, uint64_t deviceIndex)
