@@ -143,15 +143,15 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   const std::string instance_header = "Device ID";
   // Verify the headers are not longer than the longest data string
   data_length_map["bdf"] = std::max(data_length_map["bdf"], bdf_header.size());
-  data_length_map["vbnv"] = std::max(data_length_map["vbnv"], vnbv_header.size());
+  data_length_map["vbnv"] = std::max(data_length_map["vbnv"], vbnv_header.size());
   data_length_map["id"] = std::max(data_length_map["id"], id_header.size());
   // Generate the number of blanks required for equal spacing
   std::string bdf_blanks = std::string(data_length_map["bdf"] - bdf_header.size(), ' ');
-  std::string vnbv_blanks = std::string(data_length_map["vbnv"] - vnbv_header.size(), ' ');
+  std::string vbnv_blanks = std::string(data_length_map["vbnv"] - vbnv_header.size(), ' ');
   std::string id_blanks = std::string(data_length_map["id"] - id_header.size(), ' ');
 
   // Output the data headers in a table format
-  _output << boost::format("  %s%s : %s%s %s%s %s\n") % bdf_header % bdf_blanks % vnbv_header % vnbv_blanks % id_header % id_blanks % instance_header;
+  _output << boost::format("  %s%s : %s%s %s%s %s\n") % bdf_header % bdf_blanks % vbnv_header % vbnv_blanks % id_header % id_blanks % instance_header;
 
   // Output each devices data in a table format
   for (auto& kd : available_devices) {
@@ -159,9 +159,9 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
 
     std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
     bdf_blanks = std::string(data_length_map["bdf"] - dev.get<std::string>("bdf").size(), ' ');
-    vnbv_blanks = std::string(data_length_map["vbnv"] - dev.get<std::string>("vbnv").size(), ' ');
+    vbnv_blanks = std::string(data_length_map["vbnv"] - dev.get<std::string>("vbnv").size(), ' ');
     id_blanks = std::string(data_length_map["id"] - dev.get<std::string>("id").size(), ' ');
-    _output << boost::format("  %s%s : %s%s %s%s %s %s\n") % dev.get<std::string>("bdf") % bdf_blanks % dev.get<std::string>("vbnv") % vnbv_blanks % dev.get<std::string>("id") % id_blanks % dev.get<std::string>("instance", "") % note;
+    _output << boost::format("  %s%s : %s%s %s%s %s %s\n") % dev.get<std::string>("bdf") % bdf_blanks % dev.get<std::string>("vbnv") % vbnv_blanks % dev.get<std::string>("id") % id_blanks % dev.get<std::string>("instance", "") % note;
   }
   _output << std::endl;
 }
