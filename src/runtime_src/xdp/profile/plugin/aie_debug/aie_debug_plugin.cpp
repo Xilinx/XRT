@@ -75,15 +75,10 @@ namespace xdp {
     // Stop the polling thread
     endPoll();
 
-    // Write out final version of file and unregister plugin
-    if (VPDatabase::alive()) {
-
     // Do not call writers here. Once shim is destroyed, writers do not have access to data
-    // for (auto w : writers)
-    //   w->write(false);
-
+    if (VPDatabase::alive())
       db->unregisterPlugin(this);
-    }
+
   }
 
   // Get tiles to debug
@@ -162,7 +157,7 @@ namespace xdp {
     return statusStr;
   }
 
-  void AIEDebugPlugin::pollAIERegisters(uint64_t index, void* handle)
+  void AIEDebugPlugin::pollAIERegisters(uint64_t index, void* handle, VPWriter* writer)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -312,9 +307,7 @@ namespace xdp {
       } // For graphs
 
       // Always write out latest debug/status file
-      for (auto w : writers) {
-        w->write(false);
-      }
+      writer->write(false);
 
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
     }
@@ -363,7 +356,7 @@ namespace xdp {
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
     // NOTE: This does not start the thread immediately.
-    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(deviceId, handle); } };
+    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(deviceId, handle, writer); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)

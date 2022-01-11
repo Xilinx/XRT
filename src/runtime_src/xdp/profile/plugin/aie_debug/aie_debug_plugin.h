@@ -52,7 +52,7 @@ namespace xdp {
 
   private:
     void getTilesForDebug(void* handle);
-    void pollAIERegisters(uint64_t index, void* handle);
+    void pollAIERegisters(uint64_t index, void* handle, VPWriter* writer);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
 
