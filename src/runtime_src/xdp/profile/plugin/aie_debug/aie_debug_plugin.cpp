@@ -67,7 +67,6 @@ namespace xdp {
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
 
-    mIndex = 0;
     mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
@@ -78,8 +77,10 @@ namespace xdp {
 
     // Write out final version of file and unregister plugin
     if (VPDatabase::alive()) {
-      for (auto w : writers)
-        w->write(false);
+
+    // Do not call writers here. Once shim is destroyed, writers do not have access to data
+    // for (auto w : writers)
+    //   w->write(false);
 
       db->unregisterPlugin(this);
     }
@@ -355,15 +356,14 @@ namespace xdp {
     std::string outputFile = "aie_status_" + deviceName + ".json";
 
     VPWriter* writer = new AIEDebugWriter(outputFile.c_str(),
-                                          deviceName.c_str(), mIndex);
+                                          deviceName.c_str(), deviceId);
     writers.push_back(writer);
     db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
-    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(mIndex, handle); } };
-
-    ++mIndex;
+    // NOTE: This does not start the thread immediately.
+    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(deviceId, handle); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
