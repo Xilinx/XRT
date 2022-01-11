@@ -157,7 +157,7 @@ namespace xdp {
     return statusStr;
   }
 
-  void AIEDebugPlugin::pollAIERegisters(uint64_t index, void* handle, VPWriter* writer)
+  void AIEDebugPlugin::pollDeadlock(uint64_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -306,10 +306,23 @@ namespace xdp {
         }
       } // For graphs
 
-      // Always write out latest debug/status file
-      writer->write(false);
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
+    }
+  }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
+  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* writer)
+  {
+    auto it = mThreadCtrlMap.find(handle);
+    if (it == mThreadCtrlMap.end())
+      return;
+    auto& should_continue = it->second;
+
+    while (should_continue) {
+      if (!(db->getStaticInfo().isDeviceReady(index)))
+        continue;
+
+      writer->write(false);
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
 
@@ -356,20 +369,32 @@ namespace xdp {
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
     // NOTE: This does not start the thread immediately.
-    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(deviceId, handle, writer); } };
+    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceId, handle); } };
+    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(deviceId, handle, writer); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
   {
-    // Ask thread to stop
+    // Ask threads to stop
     mThreadCtrlMap[handle] = false;
 
-    auto it = mThreadMap.find(handle);
-    if (it != mThreadMap.end()) {
-      it->second.join();
-      mThreadMap.erase(it);
-      mThreadCtrlMap.erase(handle);
+    {
+      auto it = mDeadlockThreadMap.find(handle);
+      if (it != mDeadlockThreadMap.end()) {
+        it->second.join();
+        mDeadlockThreadMap.erase(it);
+      }
     }
+
+    {
+      auto it = mDebugThreadMap.find(handle);
+      if (it != mDebugThreadMap.end()) {
+        it->second.join();
+        mDebugThreadMap.erase(it);
+      }
+    }
+
+    mThreadCtrlMap.erase(handle);
   }
 
   void AIEDebugPlugin::endPoll()
@@ -378,11 +403,15 @@ namespace xdp {
     for (auto& p : mThreadCtrlMap)
       p.second = false;
 
-    for (auto& t : mThreadMap)
+    for (auto& t : mDeadlockThreadMap)
+      t.second.join();
+
+    for (auto& t : mDebugThreadMap)
       t.second.join();
 
     mThreadCtrlMap.clear();
-    mThreadMap.clear();
+    mDeadlockThreadMap.clear();
+    mDebugThreadMap.clear();
   }
 
 } // end namespace xdp

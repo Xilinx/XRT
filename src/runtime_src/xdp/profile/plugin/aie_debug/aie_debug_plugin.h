@@ -52,9 +52,12 @@ namespace xdp {
 
   private:
     void getTilesForDebug(void* handle);
-    void pollAIERegisters(uint64_t index, void* handle, VPWriter* writer);
     void endPoll();
     std::string getCoreStatusString(uint32_t status);
+
+    // Threads used by this plugin
+    void pollDeadlock(uint64_t index, void* handle);
+    void writeDebug(uint64_t index, void* handle, VPWriter* writer);
 
   private:
     uint32_t mPollingInterval;
@@ -62,7 +65,8 @@ namespace xdp {
     // Thread control flags for each device handle
     std::map<void*,std::atomic<bool>> mThreadCtrlMap;
     // Threads mapped to device handles
-    std::map<void*,std::thread> mThreadMap;
+    std::map<void*,std::thread> mDeadlockThreadMap;
+    std::map<void*,std::thread> mDebugThreadMap;
     // Graphname -> coretiles
     std::map<std::string,std::vector<tile_type>> mGraphCoreTilesMap;
   };
