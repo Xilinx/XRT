@@ -811,8 +811,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     if (update.compare("all") == 0) {
       if (image.empty()) {
         auto_flash(working_device, flash_type);
+        return;
       }
-      return;
     }
 
     // All other cases have a specified image
