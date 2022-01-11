@@ -1603,12 +1603,15 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
-	if (ret < 0) {
+	if (ret == -ENODEV) {
+		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+	} else if (ret < 0) {
 		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
 		goto out;
 	}
 
-	if (xocl_ert_ctrl_is_version(xdev, 1, 0))
+	if (xocl_ert_ctrl_is_version(xdev, 1, 0) > 0)
 		ret = xocl_kds_update_xgq(xdev, cfg);
 	else
 		ret = xocl_kds_update_legacy(xdev, cfg);

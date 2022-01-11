@@ -344,7 +344,7 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define XOCL_VSEC_PLATFORM_INFO     0x52
 #define XOCL_VSEC_MAILBOX           0x53
 #define XOCL_VSEC_XGQ               0x54
-#define XOCL_VSEC_XGQ_PAYLOAD       0x55
+#define XOCL_VSEC_XGQ_VMR_PAYLOAD   0x55
 
 #define XOCL_VSEC_FLASH_TYPE_SPI_IP		0x0
 #define XOCL_VSEC_FLASH_TYPE_SPI_REG		0x1
@@ -2111,7 +2111,7 @@ struct xocl_pmc_funcs {
 #define	xocl_pmc_enable_reset(xdev) \
 	(PMC_CB(xdev) ? PMC_OPS(xdev)->enable_reset(PMC_DEV(xdev)) : -ENODEV)
 
-struct xocl_xgq_funcs {
+struct xocl_xgq_vmr_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
@@ -2128,11 +2128,11 @@ struct xocl_xgq_funcs {
 	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
 };
 #define	XGQ_DEV(xdev)						\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
-	SUBDEV(xdev, XOCL_SUBDEV_XGQ)->pldev : NULL)
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
+	SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR)->pldev : NULL)
 #define	XGQ_OPS(xdev)						\
-	(SUBDEV(xdev, XOCL_SUBDEV_XGQ) ? 			\
-	(struct xocl_xgq_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XGQ)->ops : NULL)
+	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
+	(struct xocl_xgq_vmr_funcs *)SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR)->ops : NULL)
 #define	XGQ_CB(xdev, cb)					\
 	(XGQ_DEV(xdev) && XGQ_OPS(xdev) && XGQ_OPS(xdev)->cb)
 #define	xocl_xgq_download_axlf(xdev, xclbin)			\

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  * Copyright (C) 2019 Samsung Semiconductor, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -19,13 +19,16 @@
 #include "shim.h"
 #include "xrt_mem.h"
 #include "xclfeatures.h"
+
 #include "core/common/config_reader.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/message.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "core/common/xclbin_parser.h"
+#include "core/common/xrt_profiling.h"
 #include "core/common/AlignedAllocator.h"
+
 #include "core/include/xcl_perfmon_parameters.h"
 
 #include <windows.h>
@@ -34,8 +37,6 @@
 #include <strsafe.h>
 #include <crtdefs.h>
 
-
-// To be simplified
 #include "core/pcie/driver/windows/alveo/include/XoclUser_INTF.h"
 
 #include <cstring>
@@ -1788,6 +1789,14 @@ xclImportBO(xclDeviceHandle handle, xclBufferExportHandle fd, unsigned flags)
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclImportBO() NOT IMPLEMENTED");
   return INVALID_HANDLE_VALUE;
+}
+
+int
+xclCloseExportHandle(xclBufferExportHandle)
+{
+  xrt_core::message::
+    send(xrt_core::message::severity_level::debug, "XRT", "xclCloseExportHandle() NOT IMPLEMENTED");
+  return 0;
 }
 
 int

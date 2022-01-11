@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -236,8 +236,7 @@ void DeviceTraceOffload::read_trace_fifo(bool)
 
   // Check if fifo is full
   if (!fifo_full) {
-    auto property = dev_intf->getMonitorProperties(XCL_PERF_MON_FIFO, 0);
-    auto fifo_size = GetDeviceTraceBufferSize(property);
+    auto fifo_size = dev_intf->getFifoSize();
 
     if (num_packets >= fifo_size)
       fifo_full = true;

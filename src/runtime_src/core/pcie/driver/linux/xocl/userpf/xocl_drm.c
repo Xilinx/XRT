@@ -569,7 +569,14 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 	}
 	drm_p->xdev = xdev_hdl;
 
+	/*
+	 * The pdev field was removed from drm_device starting from 5.14 and
+	 * should be skipped starting from that version.
+	 * https://github.com/torvalds/linux/commit/b347e04452ff6382ace8fba9c81f5bcb63be17a6
+	 */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
 	ddev->pdev = XDEV(xdev_hdl)->pdev;
+#endif
 
 	ret = drm_dev_register(ddev, 0);
 	if (ret) {
@@ -696,7 +703,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *group_topology = NULL;
-	u16	i;
+	int32_t	i;
 	int	err = 0;
 
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topology);
@@ -762,7 +769,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 	int err;
 	struct mem_topology *topology = NULL;
 	struct mem_topology *group_topology = NULL;
-	u16 i, ddr;
+	int32_t i, ddr;
 	uint64_t addr;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	struct xocl_mm_wrapper *wrapper;

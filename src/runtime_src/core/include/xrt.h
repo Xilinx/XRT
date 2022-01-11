@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -596,7 +596,8 @@ xclCopyBO(xclDeviceHandle handle, xclBufferHandle dstBoHandle,
  *
  * Export a BO for import into another device or Linux subsystem which
  * accepts DMA-BUF fd This operation is backed by Linux DMA-BUF
- * framework
+ * framework.  The file handle must be explicitly closed when no
+ * longer needed.
  */
 XCL_DRIVER_DLLESPEC
 xclBufferExportHandle
