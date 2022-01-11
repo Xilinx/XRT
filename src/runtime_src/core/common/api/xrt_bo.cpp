@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -142,6 +142,8 @@ public:
   static constexpr uint64_t no_addr = std::numeric_limits<uint64_t>::max();
   static constexpr int32_t no_group = std::numeric_limits<int32_t>::max();
   static constexpr bo::flags no_flags = static_cast<bo::flags>(std::numeric_limits<uint32_t>::max());
+  static constexpr xclBufferHandle null_bo = XRT_NULL_BO;
+  static constexpr xclBufferExportHandle null_export = XRT_NULL_BO_EXPORT;
 
 private:
   void
@@ -161,14 +163,15 @@ private:
   }
 
 protected:
-  // deliberately made protected, this is a file-scoped controlled API 
+  // deliberately made protected, this is a file-scoped controlled API
   std::shared_ptr<xrt_core::device> device;     // NOLINT device where bo is allocated
   std::vector<std::shared_ptr<bo_impl>> clones; // NOLINT local m2m clones if any
-  xclBufferHandle handle;                       // NOLINT driver bo handle
-  size_t size;                                  // NOLINT size of buffer
+  xclBufferHandle handle = null_bo;             // NOLINT driver bo handle
+  size_t size = 0;                              // NOLINT size of buffer
   mutable uint64_t addr = no_addr;              // NOLINT bo device address
   mutable int32_t grpid = no_group;             // NOLINT memory group index
   mutable bo::flags flags = no_flags;           // NOLINT flags per bo properties
+  mutable xclBufferExportHandle export_handle = null_export; // NOLINT export handle if exported
   bool free_bo;                                 // NOLINT should dtor free bo
 
 public:
@@ -211,6 +214,8 @@ public:
   virtual
   ~bo_impl()
   {
+    if (export_handle != null_export)
+      device->close_export_handle(export_handle);
     if (free_bo)
       device->free_bo(handle);
   }
@@ -228,7 +233,7 @@ public:
   {
     clones.push_back(std::move(clone));
   }
-  
+
   xclBufferHandle
   get_xcl_handle() const
   {
@@ -244,7 +249,10 @@ public:
   xclBufferExportHandle
   export_buffer() const
   {
-    return device->export_bo(handle);
+    if (export_handle == null_export)
+      export_handle = device->export_bo(handle);
+
+    return export_handle;
   }
 
   void
@@ -310,7 +318,7 @@ public:
       device->copy_bo(get_xcl_handle(), src->get_xcl_handle(), sz, dst_offset, src_offset);
       return;
     }
-      
+
     // revert to copying through host
     copy_through_host(src, sz, src_offset, dst_offset);
   }
@@ -474,7 +482,7 @@ public:
   buffer_kbuf(buffer_kbuf&&) = delete;
   buffer_kbuf& operator=(buffer_kbuf&) = delete;
   buffer_kbuf& operator=(buffer_kbuf&&) = delete;
-  
+
   void*
   get_hbuf() const override
   {
@@ -493,7 +501,7 @@ class buffer_import : public bo_impl
   void* hbuf;
 
 public:
-  // buffer_import() - Import the buffer 
+  // buffer_import() - Import the buffer
   //
   // @device:  device to import to
   // @ehdl:    export handle obtained by calling export_buffer
@@ -508,7 +516,7 @@ public:
     }
   }
 
-  // buffer_import() - Import the buffer from another process 
+  // buffer_import() - Import the buffer from another process
   //
   // @device:  device to import to
   // @pid:     process id of exporting process
@@ -542,7 +550,7 @@ public:
   buffer_import(buffer_import&&) = delete;
   buffer_import& operator=(buffer_import&) = delete;
   buffer_import& operator=(buffer_import&&) = delete;
-  
+
   bool
   is_imported() const override
   {
@@ -948,7 +956,7 @@ adjust_buffer_flags(xclDeviceHandle dhdl, xrt::bo::flags flags, xrt::memory_grou
     return adjust_buffer_flags(xrt::device{dhdl}, flags, grp);
   return static_cast<xrtBufferFlags>(flags);
 }
-  
+
 
 } // namespace
 

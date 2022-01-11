@@ -1367,9 +1367,9 @@ static int kds_fa_assign_cmdmem(struct kds_sched *kds)
 		ret = xrt_fa_cfg_update(cu_mgmt->xcus[i], bar_addr, dev_addr, vaddr, num_slots);
 		if (ret)
 			return ret;
-		bar_addr += size * num_slots;
-		dev_addr += size * num_slots;
-		vaddr += size * num_slots;
+		bar_addr += (u64)size * num_slots;
+		dev_addr += (u64)size * num_slots;
+		vaddr += (u64)size * num_slots;
 	}
 
 	return 0;

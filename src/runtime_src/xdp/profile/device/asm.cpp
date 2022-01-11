@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -48,7 +48,7 @@
 #define XSPC_SNAPSHOT_PC_OFFSET 0x200
 
 #include "asm.h"
-
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -94,13 +94,15 @@ size_t ASM::stopCounter()
     return 0;
 }
 
-size_t ASM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
+size_t ASM::readCounter(xclCounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " ASM::readCounter " << std::endl;
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
+
+    uint64_t s = getASMSlotId(getMIndex());
 
     if(out_stream) {
         (*out_stream) << "Reading AXI Stream Monitors.." << std::endl;
@@ -150,12 +152,6 @@ void ASM::showProperties()
     (*outputStream) << " ASM " << std::endl;
     ProfileIP::showProperties();
 }
-
-bool ASM::hasTraceID (uint32_t index) const
-{
-    return (properties & 0x1) && (m_index == index);
-}
-
 
 }   // namespace xdp
 

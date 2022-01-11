@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  * Author(s): Hem C. Neema
  *          : Min Ma
  * ZNYQ XRT Library layered on top of ZYNQ zocl kernel driver
@@ -1761,6 +1761,13 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
   if (!drv)
     return -EINVAL;
   return drv->xclImportBO(fd, flags);
+}
+
+int
+xclCloseExportHandle(int fd)
+{
+  //return close(fd) ? -errno : 0;
+  return 0;
 }
 
 static int

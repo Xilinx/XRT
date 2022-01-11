@@ -189,9 +189,10 @@ class ip_impl
   size_t
   address_range(const xrt::uuid& xid, const std::string& ipname) const
   {
+    constexpr auto default_address_range = 64_kb;
     auto xml_section = device->get_axlf_section(EMBEDDED_METADATA, xid);
     if (!xml_section.first)
-      return 0;
+      return default_address_range;
 
     // Normalize ipname to kernel name
     std::string kname(ipname.substr(0,ipname.find(":"))); 

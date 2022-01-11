@@ -80,25 +80,6 @@ namespace xdp {
 
 // Helper functions
 
-// Same as defined in vpl tcl
-// NOTE: This converts the property on the FIFO IP in debug_ip_layout
-//       to the corresponding FIFO depth.
-uint64_t GetDeviceTraceBufferSize(uint32_t property)
-{
-  switch(property) {
-    case 0 : return 8192;
-    case 1 : return 1024;
-    case 2 : return 2048;
-    case 3 : return 4096;
-    case 4 : return 16384;
-    case 5 : return 32768;
-    case 6 : return 65536;
-    case 7 : return 131072;
-    default : break;
-  }
-  return 8192;
-}
-
 // Get the user-specified trace buffer size by parsing
 // settings from xrt.ini
 uint64_t GetTS2MMBufSize(bool isAIETrace)
@@ -234,17 +215,6 @@ DeviceIntf::~DeviceIntf()
     return 0;
   }
 
-  void DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length)
-  {
-    std::string str = "";
-    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { str = mAimList[index]->getName(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { str = mAmList[index]->getName(); }
-    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { str = mAsmList[index]->getName(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { str = nocList[index]->getName(); }
-    strncpy(name, str.c_str(), length);
-    if(str.length() >= length) name[length-1] = '\0'; // required ??
-  }
-
   std::string DeviceIntf::getMonitorName(xclPerfMonType type, uint32_t index)
   {
     if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getName(); }
@@ -254,61 +224,28 @@ DeviceIntf::~DeviceIntf()
     return std::string("");
   }
 
-  std::string DeviceIntf::getTraceMonName(xclPerfMonType type, uint32_t index)
+  // Same as defined in vpl tcl
+  // NOTE: This converts the property on the FIFO IP in debug_ip_layout to the corresponding FIFO depth.
+  uint64_t DeviceIntf::getFifoSize()
   {
-    if (type == XCL_PERF_MON_MEMORY) {
-      for (auto& ip: mAimList) {
-        if (ip->hasTraceID(index))
-          return ip->getName();
-      }
+    if (nullptr == mFifoRead) {
+      return 0;
     }
-    if (type == XCL_PERF_MON_ACCEL) {
-      for (auto& ip: mAmList) {
-        if (ip->hasTraceID(index))
-          return ip->getName();
-      }
+    switch(mFifoRead->getProperties()) {
+      case 0 : return 8192;
+      case 1 : return 1024;
+      case 2 : return 2048;
+      case 3 : return 4096;
+      case 4 : return 16384;
+      case 5 : return 32768;
+      case 6 : return 65536;
+      case 7 : return 131072;
+      default : break;
     }
-    if (type == XCL_PERF_MON_STR) {
-      for (auto& ip: mAsmList) {
-        if (ip->hasTraceID(index))
-          return ip->getName();
-      }
-    }
-    return std::string("");
+    return 8192;
   }
 
-  uint32_t DeviceIntf::getTraceMonProperty(xclPerfMonType type, uint32_t index)
-  {
-    if (type == XCL_PERF_MON_MEMORY) {
-      for (auto& ip: mAimList) {
-        if (ip->hasTraceID(index))
-          return ip->getProperties();;
-      }
-    }
-    if (type == XCL_PERF_MON_ACCEL) {
-      for (auto& ip: mAmList) {
-        if (ip->hasTraceID(index))
-          return ip->getProperties();;
-      }
-    }
-    if (type == XCL_PERF_MON_STR) {
-      for (auto& ip: mAsmList) {
-        if (ip->hasTraceID(index))
-          return ip->getProperties();;
-      }
-    }
-    return 0;
-  }
-
-  uint32_t DeviceIntf::getMonitorProperties(xclPerfMonType type, uint32_t index)
-  {
-    if((type == XCL_PERF_MON_MEMORY) && (index < mAimList.size())) { return mAimList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_ACCEL)  && (index < mAmList.size()))  { return mAmList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_STR)    && (index < mAsmList.size())) { return mAsmList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_NOC)    && (index < nocList.size()))  { return nocList[index]->getProperties(); }
-    if((type == XCL_PERF_MON_FIFO)   && (mFifoRead != nullptr))    { return mFifoRead->getProperties(); }
-    return 0;
-  }
+  
 
   // ***************************************************************************
   // Counters
@@ -396,21 +333,18 @@ DeviceIntf::~DeviceIntf()
     size_t size = 0;
 
     // Read all Axi Interface Mons
-    uint32_t idx = 0;
     for(auto mon : mAimList) {
-        size += mon->readCounter(counterResults, idx++);
+        size += mon->readCounter(counterResults);
     }
 
     // Read all Accelerator Mons
-    idx = 0;
     for(auto mon : mAmList) {
-        size += mon->readCounter(counterResults, idx++);
+        size += mon->readCounter(counterResults);
     }
 
     // Read all Axi Stream Mons
-    idx = 0;
     for(auto mon : mAsmList) {
-        size += mon->readCounter(counterResults, idx++);
+        size += mon->readCounter(counterResults);
     }
 
     return size;
