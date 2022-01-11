@@ -378,10 +378,18 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;
 	struct resource *res = NULL;
 	void *hdl = NULL;
 	int err = 0;
+
+	/* If XOCL_DSAFLAG_MB_SCHE_OFF is set, we should not probe */
+	if (!ert_on) {
+		xocl_warn(&pdev->dev, "Disable ERT flag is set");
+		return -ENODEV;
+	}
 
 	ec = xocl_drvinst_alloc(&pdev->dev, sizeof(struct ert_ctrl));
 	if (!ec)
