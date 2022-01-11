@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -314,7 +314,7 @@ public:
   {
   public:
     /**
-     * @enum control_type - 
+     * @enum control_type -
      *
      * @details
      * See `xclbin.h`
@@ -399,7 +399,7 @@ public:
      * @return
      *  The size of this IP
      *
-     * The address range is a property of the kernel and 
+     * The address range is a property of the kernel and
      * as such only valid for for kernel compute units.
      *
      * For IPs that are not associated with a kernel, the
@@ -654,6 +654,16 @@ public:
   XCL_DRIVER_DLLESPEC
   std::string
   get_xsa_name() const;
+
+  /**
+   * get_fpga_device_name() - Get FPGA device name
+   *
+   * @return
+   *  Name of fpga device per XML metadata.
+   */
+  XCL_DRIVER_DLLESPEC
+  std::string
+  get_fpga_device_name() const;
 
   /**
    * get_uuid() - Get the uuid of the xclbin
