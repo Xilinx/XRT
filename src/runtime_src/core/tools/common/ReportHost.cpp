@@ -137,10 +137,10 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   }
 
   // Allocate the header strings
-  std::string bdf_header = "BDF";
-  std::string vnbv_header = "Shell";
-  std::string id_header = "Interface UUID";
-  std::string instance_header = "Device ID";
+  const std::string bdf_header = "BDF";
+  const std::string vbnv_header = "Shell";
+  const std::string id_header = "Platform UUID";
+  const std::string instance_header = "Device ID";
   // Verify the headers are not longer than the longest data string
   data_length_map["bdf"] = std::max(data_length_map["bdf"], bdf_header.size());
   data_length_map["vbnv"] = std::max(data_length_map["vbnv"], vnbv_header.size());
