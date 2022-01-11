@@ -322,36 +322,30 @@ static inline void ert_ctrl_device_to_host_integrity_test(struct ert_ctrl *ec, u
 	}
 }
 
-static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
+static inline
+int __ert_ctrl_submit(struct ert_ctrl *ec, struct xgq_cmd_sq_hdr *req, uint32_t req_size,
+			struct xgq_com_queue_entry *resp, uint32_t resp_size)
 {
-	struct ert_ctrl *ec = container_of(ert, struct ert_ctrl, ec_ert);
-	struct xgq_cmd_sq_hdr *sq_hdr;
 	struct xgq_com_queue_entry cq_hdr;
 	u64 timeout = 0, slot_addr = 0;
 	bool is_timeout = false;
 	int ret = 0;
 
 	mutex_lock(&ec->ec_xgq_lock);
-
 	ret = xgq_produce(&ec->ec_ctrl_xgq, &slot_addr);
 	if (ret) {
 		EC_ERR(ec, "XGQ produce failed: %d", ret);
-		xcmd->status = KDS_ERROR;
-		xcmd->cb.notify_host(xcmd, xcmd->status);
-		xcmd->cb.free(xcmd);
 		mutex_unlock(&ec->ec_xgq_lock);
-		return;
+		return ret;
 	}
+	req->cid = g_ctrl_xgq_cid++;
 
-	sq_hdr = xcmd->info;
-	sq_hdr->cid = g_ctrl_xgq_cid++;
-
-	ert_ctrl_pre_process(ec, sq_hdr->opcode, (void *)slot_addr);
-	memcpy_toio((void __iomem *)slot_addr, xcmd->info, xcmd->isize);
+	ert_ctrl_pre_process(ec, req->opcode, (void *)slot_addr);
+	memcpy_toio((void __iomem *)slot_addr, req, req_size);
 
 	xgq_notify_peer_produced(&ec->ec_ctrl_xgq);
 
-	if (sq_hdr->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
+	if (req->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
 		ert_ctrl_queue_integrity_test(slot_addr);
 
 	timeout = jiffies + ERT_CTRL_CMD_TIMEOUT;
@@ -360,72 +354,57 @@ static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
 
 		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
 		if (!ret) {
-			memcpy_fromio(xcmd->response, (void __iomem *)slot_addr, xcmd->response_size);
-			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(struct xgq_com_queue_entry));
+			memcpy_fromio(resp, (void __iomem *)slot_addr, resp_size);
+			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(cq_hdr));
 			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
 			break;
 		}
 
 		is_timeout = (timeout < jiffies) ? true : false;
+
+		if (is_timeout)
+			ret = -ETIMEDOUT;
 	}
 
-	if (sq_hdr->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
+	if (req->opcode == XGQ_CMD_OP_DATA_INTEGRITY)
 		ert_ctrl_device_to_host_integrity_test(ec, slot_addr);
 
 	mutex_unlock(&ec->ec_xgq_lock);
 
-	if (is_timeout) {
-		xcmd->status = KDS_TIMEOUT;
-		xcmd->cb.notify_host(xcmd, xcmd->status);
-	} else {
-		ert_ctrl_post_process(ec, sq_hdr->opcode, &cq_hdr);
+	if (!ret)
+		ert_ctrl_post_process(ec, req->opcode, &cq_hdr);
+
+	return ret;
+}
+static void ert_ctrl_submit(struct kds_ert *ert, struct kds_command *xcmd)
+{
+	struct ert_ctrl *ec = container_of(ert, struct ert_ctrl, ec_ert);
+	int ret = 0;
+
+	ret = __ert_ctrl_submit(ec, xcmd->info, xcmd->isize, xcmd->response, xcmd->response_size);
+
+	if (!ret) {
 		xcmd->status = KDS_COMPLETED;
-		xcmd->cb.notify_host(xcmd, xcmd->status);
+	} else {
+		if (ret == -ETIMEDOUT)
+			xcmd->status = KDS_TIMEOUT;
+		else if (ret == -ENOSPC)
+			xcmd->status = KDS_ERROR;
 	}
+	xcmd->cb.notify_host(xcmd, xcmd->status);
 	xcmd->cb.free(xcmd);
 }
 
 
 static void ert_ctrl_submit_exit_cmd(struct ert_ctrl *ec)
 {
-	int ret = 0;
 	struct xgq_cmd_sq_hdr sq_hdr;
-	struct xgq_com_queue_entry cq_hdr;
-	u64 slot_addr = 0;
-	u64 timeout;
-	bool is_timeout = false;
+	int ret = 0;
 
-	mutex_lock(&ec->ec_xgq_lock);
-
-	ret = xgq_produce(&ec->ec_ctrl_xgq, &slot_addr);
-	if (ret) {
-		EC_ERR(ec, "XGQ produce failed: %d", ret);
-		mutex_unlock(&ec->ec_xgq_lock);
-		return;
-	}
-
-	sq_hdr.cid = g_ctrl_xgq_cid++;
 	sq_hdr.opcode = XGQ_CMD_OP_EXIT;
 	sq_hdr.state = 1;
 
-	memcpy_toio((void __iomem *)slot_addr, &sq_hdr, sizeof(struct xgq_cmd_sq_hdr));
-	xgq_notify_peer_produced(&ec->ec_ctrl_xgq);
-
-	timeout = jiffies + ERT_CTRL_CMD_TIMEOUT;
-	while (!is_timeout) {
-		usleep_range(100, 200);
-
-		ret = xgq_consume(&ec->ec_ctrl_xgq, &slot_addr);
-		if (!ret) {
-			memcpy_fromio(&cq_hdr, (void __iomem *)slot_addr, sizeof(struct xgq_com_queue_entry));
-			xgq_notify_peer_consumed(&ec->ec_ctrl_xgq);
-			break;
-		}
-
-		is_timeout = (timeout < jiffies) ? true : false;
-	}
-
-	mutex_unlock(&ec->ec_xgq_lock);
+	ret = __ert_ctrl_submit(ec, &sq_hdr, sizeof(sq_hdr), NULL, 0);
 }
 
 static bool ert_ctrl_abort_sync(struct kds_ert *ert, struct kds_client *client, int cu_idx)
