@@ -703,7 +703,7 @@ int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
 int xocl_check_topology(struct xocl_drm *drm_p)
 {
 	struct mem_topology    *group_topology = NULL;
-	u16	i;
+	int32_t	i;
 	int	err = 0;
 
 	err = XOCL_GET_GROUP_TOPOLOGY(drm_p->xdev, group_topology);
@@ -769,7 +769,7 @@ int xocl_cleanup_mem_nolock(struct xocl_drm *drm_p)
 	int err;
 	struct mem_topology *topology = NULL;
 	struct mem_topology *group_topology = NULL;
-	u16 i, ddr;
+	int32_t i, ddr;
 	uint64_t addr;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	struct xocl_mm_wrapper *wrapper;

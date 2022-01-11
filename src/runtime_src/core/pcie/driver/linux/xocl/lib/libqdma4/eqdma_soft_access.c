@@ -4811,13 +4811,13 @@ int eqdma_read_reg_list(void *dev_hndl, uint8_t is_vf,
 		uint16_t *total_regs,
 		struct qdma_reg_data *reg_list)
 {
-	uint16_t reg_count = 0, i = 0, j = 0;
+	uint16_t reg_count = 0;
 	struct xreg_info *reg_info;
 	uint32_t num_regs =
 		sizeof(eqdma_config_regs)/
 		sizeof((eqdma_config_regs)[0]);
 	struct qdma_dev_attributes *dev_cap;
-	uint32_t reg_start_addr = 0;
+	uint32_t reg_start_addr = 0, i = 0, j = 0;
 	int reg_index = 0;
 	int rv = 0;
 

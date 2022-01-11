@@ -58,7 +58,7 @@ static DEFINE_MUTEX(res_mutex);
 
 void *qdma_calloc(uint32_t num_blocks, uint32_t size)
 {
-	return kzalloc(num_blocks * size, GFP_KERNEL);
+	return kzalloc((u64)num_blocks * size, GFP_KERNEL);
 }
 
 void qdma_memfree(void *memptr)
