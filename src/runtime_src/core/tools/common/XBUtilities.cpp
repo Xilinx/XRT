@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -96,7 +96,7 @@ XBUtilities::setVerbose(bool _bVerbose)
     verbose("Enabling Verbosity");
 }
 
-bool 
+bool
 XBUtilities::getVerbose()
 {
   return m_bVerbose;
@@ -136,13 +136,13 @@ XBUtilities::setForce(bool _bForce)
 {
   m_bForce = _bForce;
 
-  if (m_bForce) 
+  if (m_bForce)
     trace("Enabling force option");
   else
     trace("Disabling force option");
 }
 
-bool 
+bool
 XBUtilities::getForce()
 {
   return m_bForce;
@@ -308,7 +308,7 @@ XBUtilities::wrap_paragraphs( const std::string & unformattedString,
     // Add an indention
     if (iter != lines.begin() || indentFirstLine)
       formattedString += indention;
-    
+
     // Add formatted line
     formattedString += *iter;
 
@@ -346,7 +346,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...) 
+      } catch(...)
       {
         // The id wasn't added
       }
@@ -365,7 +365,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
        std::string pf = device->is_userpf() ? "user" : "mgmt";
        pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
      } catch(const xrt_core::query::exception&) {
-         // The instance wasn't added 
+         // The instance wasn't added
        }
 
     }
@@ -376,7 +376,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
   return pt;
 }
 
-/* 
+/*
  * currently edge supports only one device
  */
 static uint16_t
@@ -434,13 +434,13 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     dev = static_cast<uint16_t>(std::stoi(std::string(tokens[0]), nullptr, radix));
   }
   bus = static_cast<uint16_t>(std::stoi(std::string(tokens[1]), nullptr, radix));
-  
+
   // domain is not mandatory if it is "0000"
   if(tokens.size() > 2)
     domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
   uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
-  for (uint16_t i = 0; i < devices; i++) {
+  for (decltype(devices) i = 0; i < devices; i++) {
     std::shared_ptr<xrt_core::device> device;
     try{
       device = _inUserDomain ? xrt_core::get_userpf_device(i) : xrt_core::get_mgmtpf_device(i);
@@ -518,11 +518,11 @@ XBUtilities::collect_devices( const std::set<std::string> &_deviceBDFs,
           _deviceCollection.push_back( xrt_core::get_userpf_device(index) );
         else
           _deviceCollection.push_back( xrt_core::get_mgmtpf_device(index) );
-      } catch (...) { 
+      } catch (...) {
         /* If the device is not available, quietly ignore it
            Use case: when a device is being reset in parallel */
       }
-      
+
     }
 
     return;
@@ -546,11 +546,11 @@ XBUtilities::can_proceed(bool force)
 
   std::cout << "Are you sure you wish to proceed? [Y/n]: ";
 
-  if (force) 
+  if (force)
     std::cout << "Y (Force override)" << std::endl;
   else
     std::getline(std::cin, input);
-  
+
   // Ugh, the std::transform() produces windows compiler warnings due to
   // conversions from 'int' to 'char' in the algorithm header file
   boost::algorithm::to_lower(input);
@@ -585,7 +585,7 @@ XBUtilities::sudo_or_throw(const std::string& msg)
 }
 
 
-void 
+void
 XBUtilities::print_exception_and_throw_cancel(const xrt_core::error& e)
 {
   // Remove the type of error from the message.
@@ -596,7 +596,7 @@ XBUtilities::print_exception_and_throw_cancel(const xrt_core::error& e)
   throw xrt_core::error(std::errc::operation_canceled);
 }
 
-void 
+void
 XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
 {
   std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -738,7 +738,7 @@ static const std::map<uint64_t, std::string> oemid_map = {
   {0x2b79, "Google"}
 };
 
-std::string 
+std::string
 XBUtilities::parse_oem_id(const std::string& oemid)
 {
   uint64_t oem_id_val = 0;
@@ -760,17 +760,17 @@ static const std::map<std::string, std::string> clock_map = {
   {"SYSTEM_CLK", "System"},
 };
 
-std::string 
+std::string
 XBUtilities::parse_clock_id(const std::string& id)
 {
   auto clock_str = clock_map.find(id);
   if (clock_str != clock_map.end())
     return clock_str->second;
-  
+
   throw xrt_core::error(std::errc::invalid_argument);
 }
 
-uint64_t 
+uint64_t
 XBUtilities::string_to_bytes(std::string str)
 {
   boost::algorithm::trim(str);
@@ -801,7 +801,7 @@ XBUtilities::string_to_bytes(std::string str)
   uint64_t size = 0;
   try {
     size = std::stoll(str);
-  } 
+  }
   catch (const std::exception&) {
     //out of range, invalid argument ex
     throw xrt_core::error(std::errc::invalid_argument);
