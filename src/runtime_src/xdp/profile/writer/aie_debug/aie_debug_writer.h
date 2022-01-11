@@ -35,6 +35,19 @@ namespace xdp {
     uint64_t mDeviceIndex;
   };
 
+  class AIEShimDebugWriter : public VPWriter
+  {
+  public:
+    AIEShimDebugWriter(const char* fileName, const char* deviceName,
+                       uint64_t deviceIndex);
+
+    virtual bool write(bool openNewFile);
+
+  private:
+    std::string mDeviceName;
+    uint64_t mDeviceIndex;
+  };
+
 } // end namespace xdp
 
 #endif

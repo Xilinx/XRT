@@ -310,7 +310,7 @@ namespace xdp {
     }
   }
 
-  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* writer)
+  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* aie_writer, VPWriter* aieshim_writer)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -321,7 +321,8 @@ namespace xdp {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
 
-      writer->write(false);
+      aie_writer->write(false);
+      aieshim_writer->write(false);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
@@ -338,15 +339,15 @@ namespace xdp {
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
 
     std::string sysfspath(pathBuf);
-    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t device_id = db->addDevice(sysfspath); // Get the unique device Id
 
-    if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
+    if (!(db->getStaticInfo()).isDeviceReady(device_id)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, handle);
+      (db->getStaticInfo()).updateDevice(device_id, handle);
       {
         struct xclDeviceInfo2 info;
         if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+          (db->getStaticInfo()).setDeviceName(device_id, std::string(info.mName));
         }
       }
     }
@@ -357,20 +358,25 @@ namespace xdp {
     // Open the writer for this device
     struct xclDeviceInfo2 info;
     xclGetDeviceInfo2(handle, &info);
-    std::string deviceName { info.mName };
-    // Create and register writer and file
-    std::string outputFile = "aie_status_" + deviceName + ".json";
+    std::string devicename { info.mName };
 
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(),
-                                          deviceName.c_str(), deviceId);
-    writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    // Create and register aie status writer
+    std::string filename = "aie_status_" + devicename + ".json";
+    VPWriter* aie_writer = new AIEDebugWriter(filename.c_str(), devicename.c_str(), device_id);
+    writers.push_back(aie_writer);
+    db->getStaticInfo().addOpenedFile(aie_writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+
+    // Create and register aie shim status writer
+    filename = "aieshim_status_" + devicename + ".json";
+    VPWriter* aieshim_writer = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), device_id);
+    writers.push_back(aieshim_writer);
+    db->getStaticInfo().addOpenedFile(aieshim_writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
-    // NOTE: This does not start the thread immediately.
-    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceId, handle); } };
-    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(deviceId, handle, writer); } };
+    // NOTE: This does not start the threads immediately.
+    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(device_id, handle); } };
+    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(device_id, handle, aie_writer, aieshim_writer); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)

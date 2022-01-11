@@ -36,8 +36,27 @@ namespace xdp {
 
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
-    auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     fout << aieInfoStr << std::endl;
+
+    if (openNewFile)
+      switchFiles();
+    return true;
+  }
+
+  AIEShimDebugWriter::AIEShimDebugWriter(const char* fileName,
+               const char* deviceName, uint64_t deviceIndex)
+    : VPWriter(fileName)
+    , mDeviceName(deviceName)
+    , mDeviceIndex(deviceIndex)
+  {
+  }
+
+  bool AIEShimDebugWriter::write(bool openNewFile)
+  {
+    refreshFile();
+
+    auto xrtDevice = xrt::device((int)mDeviceIndex);
+    auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     fout << aieShimInfoStr << std::endl;
 
     if (openNewFile)
