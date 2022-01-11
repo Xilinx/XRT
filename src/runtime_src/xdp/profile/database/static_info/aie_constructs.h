@@ -37,13 +37,15 @@ namespace xdp {
     uint8_t resetEvent;
     uint16_t startEvent;
     uint16_t endEvent;
+    uint32_t payload;
     double clockFreqMhz;
     std::string module;
     std::string name;
 
     AIECounter(uint32_t i, uint16_t col, uint16_t r, uint8_t num, 
                uint16_t start, uint16_t end, uint8_t reset,
-               double freq, std::string mod, std::string aieName)
+               uint32_t load, double freq, const std::string& mod, 
+               const std::string& aieName)
       : id(i)
       , column(col)
       , row(r)
@@ -51,6 +53,7 @@ namespace xdp {
       , resetEvent(reset)
       , startEvent(start)
       , endEvent(end)
+      , payload(load)
       , clockFreqMhz(freq)
       , module(mod)
       , name(aieName)

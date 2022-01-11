@@ -449,6 +449,7 @@ namespace xclcpuemhal2 {
       size_t buf_size;
       unsigned int binaryCounter;
       unix_socket* sock;
+      unix_socket* aiesim_sock;
 
 
       uint64_t mRAMSize;

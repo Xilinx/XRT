@@ -393,6 +393,26 @@ class run
   }
 
   /**
+   * set_arg - set named argument
+   *
+   * @param argnm
+   *   Name of kernel argument
+   * @param argvalue
+   *   Argument value
+   *
+   * Throws if specified argument name doesn't match kernel
+   * specification. Throws if argument value is incompatible with
+   * specified argument
+   */
+  template <typename ArgType>
+  void
+  set_arg(const std::string& argnm, ArgType&& argvalue)
+  {
+    auto index = get_arg_index(argnm);
+    set_arg(index, std::forward<ArgType>(argvalue));
+  }
+
+  /**
    * udpdate_arg() - Asynchronous update of scalar kernel global argument
    *
    * @param index
@@ -498,6 +518,10 @@ public:
 
 private:
   std::shared_ptr<run_impl> handle;
+
+  XCL_DRIVER_DLLESPEC
+  int
+  get_arg_index(const std::string& argnm) const;
 
   XCL_DRIVER_DLLESPEC
   void

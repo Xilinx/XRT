@@ -197,22 +197,28 @@ source $PETALINUX/settings.sh
 if [[ $AARCH = $aarch64_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/zynqmp-common-v$PETALINUX_VER-final.bsp"
-    else
+    elif [[ -f $PETALINUX/../../bsp/internal/zynqmp/zynqmp-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp/zynqmp-common-v$PETALINUX_VER-final.bsp"
+    else
+    PETA_BSP="$PETALINUX/../../bsp/internal/zynqmp-common-v$PETALINUX_VER-final.bsp"
     fi
     YOCTO_MACHINE="zynqmp-generic"
 elif [[ $AARCH = $aarch32_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
-    else
+    elif [[ -f $PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/zynq/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
+    else
+    PETA_BSP="$PETALINUX/../../bsp/internal/zynq-rootfs-common-v$PETALINUX_VER-final.bsp"
     fi
     YOCTO_MACHINE="zynq-generic"
 elif [[ $AARCH = $versal_dir ]]; then
     if [[ -f $PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/release/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
-    else
+    elif [[ -f $PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v$PETALINUX_VER-final.bsp ]]; then
     PETA_BSP="$PETALINUX/../../bsp/internal/versal/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
+    else
+    PETA_BSP="$PETALINUX/../../bsp/internal/versal-rootfs-common-v$PETALINUX_VER-final.bsp"
     fi
     YOCTO_MACHINE="versal-generic"
 else

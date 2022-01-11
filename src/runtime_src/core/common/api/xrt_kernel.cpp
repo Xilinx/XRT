@@ -2054,6 +2054,16 @@ public:
     }
   }
 
+  int
+  get_arg_index(const std::string& argnm) const
+  {
+    for (const auto& arg : kernel->get_args())
+      if (arg.name() == argnm)
+        return arg.index();
+
+    throw xrt_core::error(EINVAL, "No such kernel argument '" + argnm + "'");
+  }
+
   // If this run object's cus were filtered compared to kernel cus
   // then update the command packet encoded cus.
   void
@@ -2834,6 +2844,13 @@ state() const
   });
 }
 
+int
+run::
+get_arg_index(const std::string& argnm) const
+{
+  return handle->get_arg_index(argnm);
+}
+
 void
 run::
 set_arg_at_index(int index, const void* value, size_t bytes)
@@ -2982,6 +2999,13 @@ mailbox::
 get_arg(int index) const
 {
   return handle->get_arg(index);
+}
+
+int
+mailbox::
+get_arg_index(const std::string& argnm) const
+{
+  return handle->get_arg_index(argnm);
 }
 
 void

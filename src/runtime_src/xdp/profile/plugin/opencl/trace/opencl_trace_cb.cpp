@@ -26,7 +26,7 @@
 
 namespace xdp {
 
-  static OpenCLTraceProfilingPlugin openclPluginInstance ;
+  static OpenCLTracePlugin openclPluginInstance ;
 
   static void log_function_start(const char* functionName,
 				 uint64_t queueAddress,

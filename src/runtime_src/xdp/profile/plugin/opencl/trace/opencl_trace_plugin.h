@@ -21,17 +21,15 @@
 
 namespace xdp {
 
-  class OpenCLTraceProfilingPlugin : public XDPPlugin
+  class OpenCLTracePlugin : public XDPPlugin
   {
-  private:
-    bool continuous_trace ;
 
   protected:
     virtual void emulationSetup() ;
 
   public:
-    OpenCLTraceProfilingPlugin() ;
-    ~OpenCLTraceProfilingPlugin() ;
+    OpenCLTracePlugin() ;
+    ~OpenCLTracePlugin() ;
   } ;
 
 }
