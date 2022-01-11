@@ -1289,7 +1289,8 @@ static uint32_t convert_mem_type(const char *name)
 static uint16_t icap_get_memidx(struct mem_topology *mem_topo, enum IP_TYPE ecc_type,
 	int idx)
 {
-	uint16_t memidx = INVALID_MEM_IDX, i, mem_idx = 0;
+	uint16_t memidx = INVALID_MEM_IDX, mem_idx = 0;
+	uint32_t i;
 	enum MEM_TYPE m_type, target_m_type;
 
 	/*
