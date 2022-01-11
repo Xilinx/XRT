@@ -162,7 +162,7 @@ namespace xdp {
     return statusStr;
   }
 
-  void AIEDebugPlugin::pollAIERegisters(uint32_t index, void* handle)
+  void AIEDebugPlugin::pollAIERegisters(uint64_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
