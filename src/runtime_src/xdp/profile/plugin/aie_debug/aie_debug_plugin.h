@@ -57,7 +57,6 @@ namespace xdp {
     std::string getCoreStatusString(uint32_t status);
 
   private:
-    uint32_t mIndex;
     uint32_t mPollingInterval;
 
     // Thread control flags for each device handle
