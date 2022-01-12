@@ -47,6 +47,7 @@
 #define XSPC_CURRENT_PC_OFFSET  0x100
 #define XSPC_SNAPSHOT_PC_OFFSET 0x200
 
+#define XDP_SOURCE
 #include "asm.h"
 #include "xdp/profile/device/utility.h"
 
@@ -154,4 +155,3 @@ void ASM::showProperties()
 }
 
 }   // namespace xdp
-
