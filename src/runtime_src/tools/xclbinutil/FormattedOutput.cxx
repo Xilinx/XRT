@@ -613,9 +613,9 @@ reportClocks( std::ostream & _ostream,
   }
 
   // the following information is from SYSTEM_METADATA section (system diagram json)
-  _ostream << std::endl;
-  _ostream << "System Clocks" << std::endl;
-  _ostream << "------" << std::endl;
+  _ostream << "\n"
+           << "System Clocks\n"
+           << "------\n";
   // system_diagram_metadata
   //   xsa
   //     clocks
@@ -668,14 +668,15 @@ reportClocks( std::ostream & _ostream,
     if (boost::iequals(sType, "RESERVED"))
       continue;
 
-    _ostream << boost::format("   %-15s %s\n") % "Name:" % sName;
-    _ostream << boost::format("   %-15s %s\n") % "Type:" % sType;
-    _ostream << boost::format("   %-15s %s MHz\n") % "Default Freq:" % sSpecFreq;
+    boost::format systemClockFmt("   %-15s %s %s\n");
+    _ostream << systemClockFmt % "Name:" % sName % "";
+    _ostream << systemClockFmt % "Type:" % sType % "";
+    _ostream << systemClockFmt % "Default Freq:" % sSpecFreq % "MHz";
 
-    // display requested and achived frequency only for scalable clocks 
+    // display requested and achieved frequency only for scalable clocks 
     if (boost::iequals(sType, "SCALABLE")) {
-      _ostream << boost::format("   %-15s %s MHz\n") % "Requested Freq:" % sRequestedFreq;
-      _ostream << boost::format("   %-15s %s MHz\n") % "Achieved Freq:" % sAchievedFreq;
+      _ostream << systemClockFmt % "Requested Freq:" % sRequestedFreq % "MHz";
+      _ostream << systemClockFmt % "Achieved Freq:" % sAchievedFreq % "MHz";
     }
 
     if (&ptClock != &clocks.back()) 
