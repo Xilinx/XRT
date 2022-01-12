@@ -1546,6 +1546,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+
+	/* Don't send config command if ERT doesn't present */
+	if (!XDEV(xdev)->kds.ert)
+		goto create_regular_cu;
+
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)
 		goto create_regular_cu;
@@ -1603,12 +1608,9 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
-	if (ret == -ENODEV) {
+	if (ret) {
 		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
-	} else if (ret < 0) {
-		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
-		goto out;
 	}
 
 	if (xocl_ert_ctrl_is_version(xdev, 1, 0) > 0)

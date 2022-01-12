@@ -218,7 +218,7 @@ static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
 	ret = xgq_attach(&ec->ec_ctrl_xgq, 0, 0, (u64)ec->ec_cq_base+4, 0, 0);
 	if (ret) {
 		EC_ERR(ec, "Ctrl XGQ attach failed, ret %d", ret);
-		return -ENODEV;
+		return ret;
 	}
 
 	ec->ec_ert.submit = ert_ctrl_submit;
