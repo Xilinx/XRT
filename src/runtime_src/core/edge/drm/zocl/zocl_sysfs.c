@@ -209,6 +209,29 @@ static ssize_t kds_skstat_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(kds_skstat);
 
+static ssize_t
+kds_interval_store(struct device *dev, struct device_attribute *da,
+	       const char *buf, size_t count)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+	u32 interval;
+
+	if (kstrtou32(buf, 10, &interval) == -EINVAL)
+		return -EINVAL;
+
+	zdev->kds.interval = interval;
+
+	return count;
+}
+
+static ssize_t
+kds_interval_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
+
+	return sprintf(buf, "%d\n", zdev->kds.interval);
+}
+static DEVICE_ATTR(kds_interval, 0644, kds_interval_show, kds_interval_store);
 
 static ssize_t kds_xrt_version_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -430,6 +453,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_kds_mode.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_custat_raw.attr,
+	&dev_attr_kds_interval.attr,
 	&dev_attr_memstat.attr,
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_errors.attr,

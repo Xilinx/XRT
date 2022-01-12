@@ -53,6 +53,12 @@ static char driver_date[9];
 
 extern int kds_mode;
 
+int enable_xgq_ert = 1;
+module_param(enable_xgq_ert, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(enable_xgq_ert, "0 = legacy ERT mode, 1 = XGQ ERT mode (default)");
+
+extern struct platform_driver zocl_ctrl_ert_driver;
+
 static const struct vm_operations_struct reg_physical_vm_ops = {
 #ifdef CONFIG_HAVE_IOREMAP_PROT
 	.access = generic_access_phys,
@@ -217,11 +223,10 @@ int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx)
 	return (i == zdev->num_apts) ? -EINVAL : i;
 }
 
-int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
+int subdev_create_cu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp)
 {
 	struct platform_device *pldev;
-	struct kernel_info *krnl_info;
-	struct resource res;
+	struct resource res = {};
 	int ret;
 
 	pldev = platform_device_alloc("CU", PLATFORM_DEVID_AUTO);
@@ -230,22 +235,22 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		return -ENOMEM;
 	}
 
-	krnl_info = zocl_query_kernel(zdev, info->kname);
-	if(!krnl_info) {
-		DRM_WARN("%s CU has no metadata, using default size",info->kname);
-		info->size = 0x10000;
-	}
-	else {
-		info->size = krnl_info->range;
-	}
-	/* hard code resource
-	 * TODO: maybe we should define resource in a header file
+	/*
+	 * Only on U30 and some Versal platforms, the res_start is not zero.
+	 * But the situations are different,
+	 *
+	 *     On U30, CUs are assigned to lower 4GB address space.
+	 * Host doesn't know the CU base address, which is 0x80000000,
+	 * but zocl get it from device tree and store it in res_start.
+	 *
+	 *     On Versal, CUs are assigned to above 4GB address space.
+	 * Host knows the CU base address from xclbin.
+	 * But on some specific shells, zocl will get base address in
+	 * device tree. "Or" operation still works in this case.
 	 */
-	/* zdev->res_start provides higher 32 bits address */
-	res.start = zdev->res_start + info->addr;
+	res.start = info->addr | zocl_get_zdev()->res_start;
 	res.end = res.start + info->size - 1;
 	res.flags = IORESOURCE_MEM;
-	res.parent = NULL;
 	ret = platform_device_add_resources(pldev, &res, 1);
 	if (ret) {
 		DRM_ERROR("Failed to add resource\n");
@@ -258,7 +263,7 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		goto err;
 	}
 
-	pldev->dev.parent = zdev->ddev->dev;
+	pldev->dev.parent = dev;
 
 	ret = platform_device_add(pldev);
 	if (ret) {
@@ -272,10 +277,11 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 	 */
 	ret = device_attach(&pldev->dev);
 	if (ret != 1) {
+		ret = -EINVAL;
 		DRM_ERROR("Failed to probe device\n");
 		goto err1;
 	}
-	zdev->cu_pldev[info->inst_idx] = pldev;
+	*pdevp = pldev;
 
 	return 0;
 err1:
@@ -285,17 +291,10 @@ err:
 	return ret;
 }
 
-void subdev_destroy_cu(struct drm_zocl_dev *zdev)
+void subdev_destroy_cu(struct platform_device *pdev)
 {
-	int i;
-
-	for (i = 0; i < MAX_CU_NUM; ++i) {
-		if (!zdev->cu_pldev[i])
-			continue;
-		platform_device_del(zdev->cu_pldev[i]);
-		platform_device_put(zdev->cu_pldev[i]);
-		zdev->cu_pldev[i] = NULL;
-	}
+	platform_device_del(pdev);
+	platform_device_put(pdev);
 }
 
 /**
@@ -590,7 +589,7 @@ static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
 	if (kds_mode == 1) {
-		zocl_destroy_client(dev->dev_private, &filp->driver_priv);
+		zocl_destroy_client(filp->driver_priv);
 		return;
 	}
 	else {
@@ -815,20 +814,17 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	subdev = zocl_find_pdev("ert_hw");
 	if (subdev) {
 		DRM_INFO("ert_hw found: 0x%llx\n", (uint64_t)(uintptr_t)subdev);
-		/* Trust device tree for now, but a better place should be
-		 * feature rom.
-		 */
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res) {
-			DRM_ERROR("The base address of CU is not found or 0\n");
-			return -EINVAL;
+		if (res) {
+			zdev->res_start = res->start;
 		}
 
-		zdev->res_start = res->start;
-		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
-		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
-		//Dont enable new kds for those devices
-		kds_mode = 0;
+		if (!enable_xgq_ert) {
+			zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
+			//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
+			//Dont enable new kds for those devices
+			kds_mode = 0;
+		}
 	}
 
 	subdev = zocl_find_pdev("reset_ps");
@@ -1014,43 +1010,58 @@ static struct platform_driver zocl_drm_private_driver = {
 	.probe			= zocl_drm_platform_probe,
 	.remove			= zocl_drm_platform_remove,
 	.driver			= {
-		.name		        = "zocl-drm",
+		.name	        = "zocl-drm",
 		.of_match_table	= zocl_drm_of_match,
 	},
 };
 
-static struct platform_driver *const drivers[] = {
-	&zocl_ert_driver,
+/*
+ * Drivers will be loaded in below order and unloaded in reverse order.
+ * Dependency b/w drivers needs to be solved here.
+ */
+static struct platform_driver *drivers[] = {
 	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
+	&zocl_drm_private_driver,
+	&zocl_csr_intc_driver,
+	&zocl_xgq_intc_driver,
+	&zocl_cu_xgq_driver,
+	&zocl_ctrl_ert_driver,
 };
 
 static int __init zocl_init(void)
 {
-	int ret;
+	int ret = 0, total = ARRAY_SIZE(drivers), i;
 
-	/* Make sure register sub device in the first place. */
-	ret = platform_register_drivers(drivers, ARRAY_SIZE(drivers));
-	if (ret < 0)
-		return ret;
+	/* HACK: fix ert driver. */
+	if (!enable_xgq_ert) {
+		for (i = 0; i < total && ret >= 0; i++) {
+			if (drivers[i] == &zocl_ctrl_ert_driver) {
+				drivers[i] = &zocl_ert_driver;
+				break;
+			}
+		}
+	}
 
-	ret = platform_driver_register(&zocl_drm_private_driver);
-	if (ret < 0)
-		goto err;
+	for (i = 0; i < total && ret >= 0; i++)
+		ret = platform_driver_register(drivers[i]);
+	if (ret >= 0)
+		return 0;
 
-	return 0;
-err:
-	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+	/* Failed to register some drivers, undo. */
+	while (--i >= 0)
+		platform_driver_unregister(drivers[i]);
 	return ret;
 }
 module_init(zocl_init);
 
 static void __exit zocl_exit(void)
 {
-	/* Remove zocl driver first, as it is using other driver */
-	platform_driver_unregister(&zocl_drm_private_driver);
-	platform_unregister_drivers(drivers, ARRAY_SIZE(drivers));
+	int i = ARRAY_SIZE(drivers);
+
+	while (--i >= 0)
+		platform_driver_unregister(drivers[i]);
 }
 module_exit(zocl_exit);
 

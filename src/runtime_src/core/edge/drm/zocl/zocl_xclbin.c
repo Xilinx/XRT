@@ -352,6 +352,18 @@ zocl_update_apertures(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+void zocl_destroy_cu(struct drm_zocl_dev *zdev)
+{
+	int i;
+
+	for (i = 0; i < MAX_CU_NUM; ++i) {
+		if (!zdev->cu_pldev[i])
+			continue;
+		subdev_destroy_cu(zdev->cu_pldev[i]);
+		zdev->cu_pldev[i] = NULL;
+	}
+}
+
 static int
 zocl_create_cu(struct drm_zocl_dev *zdev)
 {
@@ -359,6 +371,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 	int i;
 	int num_cus;
 	struct xrt_cu_info *cu_info = NULL;
+	struct kernel_info *krnl_info = NULL;
 
 	if (!zdev->ip)
 		return 0;
@@ -393,10 +406,22 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 
 		cu_info[i].inst_idx = i;
 
+		krnl_info = zocl_query_kernel(zdev, cu_info[i].kname);
+		if (!krnl_info) {
+			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
+			cu_info[i].args = NULL;
+			cu_info[i].num_args = 0;
+			cu_info[i].size = 0x10000;
+		} else {
+			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
+			cu_info[i].num_args = krnl_info->anums;
+			cu_info[i].size = krnl_info->range;
+		}
+
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
 		 */
-		err = subdev_create_cu(zdev, &cu_info[i]);
+		err = subdev_create_cu(zdev->ddev->dev, &cu_info[i], &zdev->cu_pldev[i]);
 		if (err) {
 			DRM_ERROR("cannot create CU subdev");
 			goto err;
@@ -407,7 +432,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 	return 0;
 err:
 	kfree(cu_info);
-	subdev_destroy_cu(zdev);
+	zocl_destroy_cu(zdev);
 	return err;
 }
 
@@ -835,7 +860,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  * before loading new bitstream/pdi
 			  */
 			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
-				subdev_destroy_cu(zdev);
+				zocl_destroy_cu(zdev);
 				if (zdev->aie) {
 					/*
 					 * Dont reset if aie is already in reset
@@ -1219,7 +1244,7 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev)
 	zdev->zdev_xclbin = NULL;
 
 	/* Delete CU devices if exist */
-	subdev_destroy_cu(zdev);
+	zocl_destroy_cu(zdev);
 }
 
 bool
