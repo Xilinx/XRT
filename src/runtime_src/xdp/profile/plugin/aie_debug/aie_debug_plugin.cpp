@@ -209,8 +209,8 @@ namespace xdp {
       }
     }
 
-    auto& should_continue = it->second;
-    while (should_continue) {
+    auto& shouldContinue = it->second;
+    while (shouldContinue) {
       // Wait until xclbin has been loaded and device has been updated in database
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
@@ -310,19 +310,19 @@ namespace xdp {
     }
   }
 
-  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* aie_writer, VPWriter* aieshim_writer)
+  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
       return;
-    auto& should_continue = it->second;
+    auto& shouldContinue = it->second;
 
-    while (should_continue) {
+    while (shouldContinue) {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
 
-      aie_writer->write(false);
-      aieshim_writer->write(false);
+      aieWriter->write(false);
+      aieshimWriter->write(false);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
@@ -339,15 +339,15 @@ namespace xdp {
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
 
     std::string sysfspath(pathBuf);
-    uint64_t device_id = db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
 
-    if (!(db->getStaticInfo()).isDeviceReady(device_id)) {
+    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(device_id, handle);
+      (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
         struct xclDeviceInfo2 info;
         if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(device_id, std::string(info.mName));
+          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
         }
       }
     }
@@ -362,21 +362,21 @@ namespace xdp {
 
     // Create and register aie status writer
     std::string filename = "aie_status_" + devicename + ".json";
-    VPWriter* aie_writer = new AIEDebugWriter(filename.c_str(), devicename.c_str(), device_id);
-    writers.push_back(aie_writer);
-    db->getStaticInfo().addOpenedFile(aie_writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    VPWriter* aieWriter = new AIEDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
+    writers.push_back(aieWriter);
+    db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Create and register aie shim status writer
     filename = "aieshim_status_" + devicename + ".json";
-    VPWriter* aieshim_writer = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), device_id);
-    writers.push_back(aieshim_writer);
-    db->getStaticInfo().addOpenedFile(aieshim_writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    VPWriter* aieshimWriter = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
+    writers.push_back(aieshimWriter);
+    db->getStaticInfo().addOpenedFile(aieshimWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
     // NOTE: This does not start the threads immediately.
-    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(device_id, handle); } };
-    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(device_id, handle, aie_writer, aieshim_writer); } };
+    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceID, handle); } };
+    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(deviceID, handle, aieWriter, aieshimWriter); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
