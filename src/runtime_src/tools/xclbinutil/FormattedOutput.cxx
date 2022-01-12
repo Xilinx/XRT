@@ -574,6 +574,8 @@ void
 reportClocks( std::ostream & _ostream,
               const std::vector<Section*> _sections)
 {
+  boost::property_tree::ptree ptEmpty;
+
   _ostream << "Scalable Clocks" << std::endl;
   _ostream << "------" << std::endl;
 
@@ -641,31 +643,31 @@ reportClocks( std::ostream & _ostream,
       boost::property_tree::ptree pt;
       pSection->getPayload(pt);
       if (!pt.empty()) {
-        boost::property_tree::ptree ptSysDiaMet = pt.get_child("system_diagram_metadata");
-        if (!ptSysDiaMet.empty()) {
-          ptXsa = ptSysDiaMet.get_child("xsa");
-        }
+        boost::property_tree::ptree ptSysDiaMet = pt.get_child("system_diagram_metadata", ptEmpty);
+        if (!ptSysDiaMet.empty()) 
+          ptXsa = ptSysDiaMet.get_child("xsa", ptEmpty);
       }
       break;
     }
   }
 
   auto clocks = XUtil::as_vector<boost::property_tree::ptree>(ptXsa,"clocks");
-  if (clocks.size() == 0) {
-    _ostream << "   No system clock data available."  << std::endl;
+  if (clocks.empty()) {
+    _ostream << "   No system clock data available.\n";
     return;
   }
 
   for (const auto & ptClock : clocks) {
-    std::string sName = ptClock.get<std::string>("orig_name");
-    std::string sType = ptClock.get<std::string>("type");
-    std::string sSpecFreq = ptClock.get<std::string>("spec_frequency");
-    std::string sRequestedFreq = ptClock.get<std::string>("requested_frequency");
-    std::string sAchievedFreq = ptClock.get<std::string>("achieved_frequency");
+    std::string sName = ptClock.get<std::string>("orig_name","");
+    std::string sType = ptClock.get<std::string>("type","");
+    std::string sSpecFreq = ptClock.get<std::string>("spec_frequency","");
+    std::string sRequestedFreq = ptClock.get<std::string>("requested_frequency","");
+    std::string sAchievedFreq = ptClock.get<std::string>("achieved_frequency","");
 
     // skip CPU clocks (type = RESERVED)
     if (boost::iequals(sType, "RESERVED"))
       continue;
+
     _ostream << boost::format("   %-15s %s\n") % "Name:" % sName;
     _ostream << boost::format("   %-15s %s\n") % "Type:" % sType;
     _ostream << boost::format("   %-15s %s MHz\n") % "Default Freq:" % sSpecFreq;
@@ -676,9 +678,8 @@ reportClocks( std::ostream & _ostream,
       _ostream << boost::format("   %-15s %s MHz\n") % "Achieved Freq:" % sAchievedFreq;
     }
 
-    if (&ptClock != &clocks.back()) {
+    if (&ptClock != &clocks.back()) 
       _ostream << std::endl;
-    }
   }
 }
 
