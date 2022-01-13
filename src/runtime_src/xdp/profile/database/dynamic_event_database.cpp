@@ -456,7 +456,8 @@ namespace xdp {
         return nullptr;
     }
     AIETraceDataType* traceData = aieTraceDataEntry[strmIndex];
-    aieTraceDataEntry[strmIndex] = nullptr;
+    aieTraceData[deviceId][strmIndex] = new AIETraceDataType; // assign new entry
+//    aieTraceDataEntry[strmIndex] = nullptr;
     return traceData;
   }
 
