@@ -1625,6 +1625,7 @@ static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
 
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 {
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	u64 offset;
 	int bar, ret;
 	u32 vtype;
@@ -1709,9 +1710,12 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		subdev_info.res[1].end = offset_payload + 0x7ffffff;
 		subdev_info.res[1].name = NODE_XGQ_VMR_PAYLOAD_BASE;
 
+		core->priv.flash_type = FLASH_TYPE_OSPI_XGQ;
+
 		xocl_xdev_dbg(xdev,
 		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",
 		    offset, bar, offset_payload, bar_payload);
+		xocl_xdev_dbg(xdev, "xdev flash_type %s", core->priv.flash_type);
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
 		if (ret) {

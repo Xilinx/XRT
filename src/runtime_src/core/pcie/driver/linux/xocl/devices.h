@@ -3057,6 +3057,12 @@ struct xocl_subdev_map {
 		},					\
 	})
 
+#define XOCL_PRIV_FLASH_XGQ				\
+	((struct xocl_flash_privdata) {			\
+		0,					\
+		FLASH_TYPE_OSPI_XGQ,			\
+	 })
+
 #define XOCL_DEVINFO_XGQ_VMR_VSEC			\
 	{						\
 		XOCL_SUBDEV_XGQ_VMR,			\
@@ -3065,6 +3071,7 @@ struct xocl_subdev_map {
 		ARRAY_SIZE(XOCL_RES_XGQ_VMR_VSEC),	\
 		.bar_idx = (char []){ 0, 0 },		\
 		.override_idx = -1,			\
+		.priv_data = &XOCL_PRIV_FLASH_XGQ	\
 	}
 
 
