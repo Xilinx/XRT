@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportHost.h"
 #include "XBUtilities.h"
+#include "Table2D.h"
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
@@ -57,20 +58,6 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
 
   // There can only be 1 root node
   _pt.add_child("host", pt);
-}
-
-static void
-updateDataMapValue(std::map<std::string, size_t>& data_length_map,
-                  const boost::property_tree::ptree& dev,
-                  const std::string& key)
-{
-  auto itr = data_length_map.find(key);
-  if (itr == data_length_map.end())
-    data_length_map[key] = dev.get<std::string>(key).size();
-  else
-    // Set the value in the map to the maximum among the currently stored string length
-    // and the length of the string referenced by the key
-    (*itr).second = std::max((*itr).second, dev.get<std::string>(key).size());
 }
 
 void
@@ -126,42 +113,19 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 
-  // Maps the data key to the maximum length amongst all devices
-  std::map<std::string, size_t> data_length_map;
+  Table2D::HeaderData bdf = {"BDF", Table2D::Justification::right};
+  Table2D::HeaderData colon = {":", Table2D::Justification::right};
+  Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
+  Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
+  Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
+  std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance};
+  Table2D device_table(table_headers);
+
   for (auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
-    updateDataMapValue(data_length_map, dev, "bdf");
-    updateDataMapValue(data_length_map, dev, "vbnv");
-    updateDataMapValue(data_length_map, dev, "id");
-    updateDataMapValue(data_length_map, dev, "instance");
+    std::vector<std::string> entry_data = {dev.get<std::string>("bdf"), ":", dev.get<std::string>("vbnv"), dev.get<std::string>("id"), dev.get<std::string>("instance")};
+    device_table.addEntry(entry_data);
   }
 
-  // Allocate the header strings
-  const std::string bdf_header = "BDF";
-  const std::string vbnv_header = "Shell";
-  const std::string id_header = "Platform UUID";
-  const std::string instance_header = "Device ID";
-  // Verify the headers are not longer than the longest data string
-  data_length_map["bdf"] = std::max(data_length_map["bdf"], bdf_header.size());
-  data_length_map["vbnv"] = std::max(data_length_map["vbnv"], vbnv_header.size());
-  data_length_map["id"] = std::max(data_length_map["id"], id_header.size());
-  // Generate the number of blanks required for equal spacing
-  std::string bdf_blanks = std::string(data_length_map["bdf"] - bdf_header.size(), ' ');
-  std::string vbnv_blanks = std::string(data_length_map["vbnv"] - vbnv_header.size(), ' ');
-  std::string id_blanks = std::string(data_length_map["id"] - id_header.size(), ' ');
-
-  // Output the data headers in a table format
-  _output << boost::format("  %s%s : %s%s %s%s %s\n") % bdf_header % bdf_blanks % vbnv_header % vbnv_blanks % id_header % id_blanks % instance_header;
-
-  // Output each devices data in a table format
-  for (auto& kd : available_devices) {
-    const boost::property_tree::ptree& dev = kd.second;
-
-    std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-    bdf_blanks = std::string(data_length_map["bdf"] - dev.get<std::string>("bdf").size(), ' ');
-    vbnv_blanks = std::string(data_length_map["vbnv"] - dev.get<std::string>("vbnv").size(), ' ');
-    id_blanks = std::string(data_length_map["id"] - dev.get<std::string>("id").size(), ' ');
-    _output << boost::format("  %s%s : %s%s %s%s %s %s\n") % dev.get<std::string>("bdf") % bdf_blanks % dev.get<std::string>("vbnv") % vbnv_blanks % dev.get<std::string>("id") % id_blanks % dev.get<std::string>("instance", "") % note;
-  }
-  _output << std::endl;
+  _output << device_table << std::endl;
 }
