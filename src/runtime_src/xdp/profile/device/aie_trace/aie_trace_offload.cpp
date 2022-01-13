@@ -63,7 +63,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
 
 AIETraceOffload::~AIETraceOffload()
 {
-  stopoffload();
+  stopOffload();
   if (offloadThread.joinable()) {
     offloadThread.join();
   }
