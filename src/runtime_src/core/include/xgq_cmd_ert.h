@@ -137,13 +137,34 @@ struct xgq_cmd_config_start {
 	uint32_t resvd:12;
 };
 
+/**
+ * struct xgq_cmd_clock_calib: xgq clock counter command
+ *
+ * This command would let ERT read the clock counter
+ */
+
 struct xgq_cmd_clock_calib {
 	struct xgq_cmd_sq_hdr hdr;
 };
 
+/**
+ * struct xgq_cmd_access_valid: ERT performance measurement
+ *
+ * This command would measure the performance number of ERT accessing peripherals
+ */
+
 struct xgq_cmd_access_valid {
 	struct xgq_cmd_sq_hdr hdr;
 };
+
+/**
+ * struct xgq_cmd_data_integrity: queue data integrity test
+ *
+ * @rw_count: the number of write operation remaining
+ * @draft:    the offset of read/write operation
+ *
+ * This command would let ERT test host/device accessibility
+ */
 
 struct xgq_cmd_data_integrity {
 	struct xgq_cmd_sq_hdr hdr;
@@ -268,6 +289,13 @@ struct xgq_cmd_resp_query_cu {
 	uint32_t rcode;
 };
 
+/**
+ * struct xgq_cmd_resp_clock_calib: query clock counter response
+ *
+ * @timestamp: the number of clock counter
+ *
+ */
+
 struct xgq_cmd_resp_clock_calib {
 	struct xgq_cmd_cq_hdr hdr;
 
@@ -279,6 +307,16 @@ struct xgq_cmd_resp_clock_calib {
 	};
 	uint32_t rcode;
 };
+
+/**
+ * struct xgq_cmd_resp_access_valid: query performance measurement response
+ *
+ * @cq_read_single: the cycle number of single queue read
+ * @cq_write_single: the cycle number of single queue write
+ * @cu_read_single: the cycle number of single CU read
+ * @cu_write_single: the cycle number of single CU write
+ *
+ */
 
 struct xgq_cmd_resp_access_valid {
 	struct xgq_cmd_cq_hdr hdr;
@@ -298,6 +336,16 @@ struct xgq_cmd_resp_access_valid {
 	};
 	uint32_t rcode;
 };
+
+/**
+ * struct xgq_cmd_resp_data_integrity: device accessibility response
+ *
+ * @h2d_access:     the result of host to device accessibility
+ * @d2d_access:     the result of device accessibility
+ * @d2cu_access:    the result of device to cu accessibility
+ * @data_integrity: the result of stress test
+ *
+ */
 
 struct xgq_cmd_resp_data_integrity {
 	struct xgq_cmd_cq_hdr hdr;
