@@ -36,7 +36,7 @@ public:
     bool server_started;
     void set_name(const std::string &sock_name) { name = sock_name;}
     std::string get_name() { return name;}
-    unix_socket(const std::string& sock_id="xcl_sock",double timeout_insec=300,bool fatal_error=true);
+    unix_socket(const std::string& env = "EMULATION_SOCKETID", const std::string& sock_id="xcl_sock",double timeout_insec=300,bool fatal_error=true);
     ~unix_socket()
     {
        server_started = false;

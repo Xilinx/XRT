@@ -218,7 +218,7 @@ static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
 	ret = xgq_attach(&ec->ec_ctrl_xgq, 0, 0, (u64)ec->ec_cq_base+4, 0, 0);
 	if (ret) {
 		EC_ERR(ec, "Ctrl XGQ attach failed, ret %d", ret);
-		return -ENODEV;
+		return ret;
 	}
 
 	ec->ec_ert.submit = ert_ctrl_submit;
@@ -378,10 +378,18 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;
 	struct resource *res = NULL;
 	void *hdl = NULL;
 	int err = 0;
+
+	/* If XOCL_DSAFLAG_MB_SCHE_OFF is set, we should not probe */
+	if (!ert_on) {
+		xocl_warn(&pdev->dev, "Disable ERT flag is set");
+		return -ENODEV;
+	}
 
 	ec = xocl_drvinst_alloc(&pdev->dev, sizeof(struct ert_ctrl));
 	if (!ec)

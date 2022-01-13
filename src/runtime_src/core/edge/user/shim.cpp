@@ -1768,7 +1768,8 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclCloseExportHandle(int fd)
 {
-  return close(fd) ? -errno : 0;
+  //return close(fd) ? -errno : 0;
+  return 0;
 }
 
 static int

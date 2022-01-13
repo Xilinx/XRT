@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,17 +15,17 @@
  */
 
 #include <fcntl.h>
-#include "xgq.h"
+#include "xgq_vmr.h"
 
 /**
- * @brief XGQ_Flasher::XGQ_Flasher
+ * @brief XGQ_VMR_Flasher::XGQ_VMR_Flasher
  */
-XGQ_Flasher::XGQ_Flasher(std::shared_ptr<xrt_core::device> dev)
+XGQ_VMR_Flasher::XGQ_VMR_Flasher(std::shared_ptr<xrt_core::device> dev)
     : m_device(std::move(dev))
 {
 }
 
-int XGQ_Flasher::xclUpgradeFirmware(std::istream& binStream)
+int XGQ_VMR_Flasher::xclUpgradeFirmware(std::istream& binStream)
 {
   binStream.seekg(0, binStream.end);
   auto total_size = static_cast<int>(binStream.tellg());
@@ -34,7 +34,7 @@ int XGQ_Flasher::xclUpgradeFirmware(std::istream& binStream)
   std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
 
   try {
-    auto fd = m_device->file_open("xgq", O_RDWR);
+    auto fd = m_device->file_open("xgq_vmr", O_RDWR);
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
     ssize_t ret = total_size;

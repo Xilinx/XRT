@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -102,7 +102,7 @@ struct softkernel_object
  *
  * This function treats group sections conditionally based on
  * xrt.ini settings
- */ 
+ */
 XRT_CORE_COMMON_EXPORT
 const axlf_section_header*
 get_axlf_section(const axlf* top, axlf_section_kind kind);
@@ -309,7 +309,7 @@ get_kernel_arguments(const axlf* top, const std::string& kname);
  * @kname : Name of kernel
  * Return: Properties for kernel extracted from XML meta data
  */
-XRT_CORE_COMMON_EXPORT 
+XRT_CORE_COMMON_EXPORT
 kernel_properties
 get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& kname);
 
@@ -320,7 +320,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
  * @kname : Name of kernel
  * Return: Properties for kernel extracted from XML meta data
  */
-XRT_CORE_COMMON_EXPORT 
+XRT_CORE_COMMON_EXPORT
 kernel_properties
 get_kernel_properties(const axlf* top, const std::string& kname);
 
@@ -369,6 +369,12 @@ get_project_name(const char* xml_data, size_t xml_size);
 XRT_CORE_COMMON_EXPORT
 std::string
 get_project_name(const axlf* top);
+
+/**
+ * get_project_name() - Get the project name from the XML
+ */
+std::string
+get_fpga_device_name(const char* xml_data, size_t xml_size);
 
 }} // xclbin, xrt_core
 

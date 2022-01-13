@@ -971,7 +971,7 @@ int qdma4_queue_service(unsigned long dev_hndl, unsigned long id, int budget,
 
 static u8 get_intr_vec_index(struct xlnx_dma_dev *xdev, u8 intr_type)
 {
-	u8 i = 0;
+	int i = 0;
 
 	for (i = 0; i < xdev->num_vecs; i++) {
 		if (xdev->dev_intr_info_list[i].intr_vec_map.intr_type ==

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -27,6 +27,7 @@
 
 #include "ioctl_asm.h"
 #include "core/pcie/driver/linux/include/profile_ioctl.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -92,7 +93,7 @@ size_t IOCtlASM::stopCounter()
   return 0;
 }
 
-size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
+size_t IOCtlASM::readCounter(xclCounterResults& counterResults)
 {
   if(!isOpened()) {
     return 0;
@@ -100,6 +101,8 @@ size_t IOCtlASM::readCounter(xclCounterResults& counterResults, uint32_t s)
  
   if(out_stream)
     (*out_stream) << " IOCtlASM::readCounter " << std::endl;
+
+  uint64_t s = getASMSlotId(getMIndex());
 
   struct asm_counters counter = { 0 };
   ioctl(driver_FD, ASM_IOC_READCNT, &counter);

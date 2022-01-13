@@ -174,22 +174,33 @@ namespace xdp {
   void DeviceOffloadPlugin::addOffloader(uint64_t deviceId,
                                          DeviceIntf* devInterface)
   {
-    // If offload via memory is requested, make sure the size requested
-    //  fits inside the chosen memory resource.
-    uint64_t trace_buffer_size = GetTS2MMBufSize() ;
+    uint64_t trace_buffer_size = 0;
+    std::vector<uint64_t> buf_sizes;
+
     if (devInterface->hasTs2mm()) {
-      Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex());
-      if(nullptr == memory) {
-        std::string msg = "Information about memory index " + std::to_string(devInterface->getTS2MmMemIndex()) 
-                           + " not found in given xclbin. So, cannot check availability of memory resource for device trace offload.";
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
-        return;
-      } else {
-        uint64_t memorySz = (memory->size) * 1024 ;
-        if (memorySz > 0 && trace_buffer_size > memorySz) {
-          trace_buffer_size = memorySz ;
-          std::string msg = "Trace buffer size is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
-          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
+      size_t num_ts2mm = devInterface->getNumberTS2MM();
+
+      trace_buffer_size = GetTS2MMBufSize();
+
+      uint64_t each_buffer_size = (1 == num_ts2mm) ? trace_buffer_size : ((trace_buffer_size / num_ts2mm) % 0xfffffffffffff000);
+      buf_sizes.resize(num_ts2mm, each_buffer_size);
+      for(size_t i = 0; i < num_ts2mm; i++) {
+        Memory* memory = (db->getStaticInfo()).getMemory(deviceId, devInterface->getTS2MmMemIndex(i));
+        if(nullptr == memory) {
+          std::string msg = "Information about memory index " + std::to_string(devInterface->getTS2MmMemIndex(i)) 
+                             + " not found in given xclbin. So, cannot check availability of memory resource for "
+                             + std::to_string(i) +
+                             + "th. TS2MM for device trace offload.";
+          xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
+          return;
+        } else {
+          uint64_t memorySz = (memory->size) * 1024 ;
+          if (memorySz > 0 && each_buffer_size > memorySz) {
+            buf_sizes[i] = memorySz ;
+            std::string msg = "Trace buffer size for " + std::to_string(i)
+                              + "th. TS2MM is too big for memory resource.  Using " + std::to_string(memorySz) + " instead." ;
+            xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg) ;
+          }
         }
       }
     }
@@ -200,14 +211,14 @@ namespace xdp {
     DeviceTraceOffload* offloader = 
       new DeviceTraceOffload(devInterface, logger,
                              trace_buffer_offload_interval_ms, // offload_sleep_ms
-                             trace_buffer_size);           // trbuf_size
+                             trace_buffer_size);           // trace buffer size
 
     // If trace is enabled, set up trace.  Otherwise just keep the offloader
     //  for reading the counters.
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
         xrt_core::config::get_device_trace() != "off") {
       bool init_successful =
-        offloader->read_trace_init(m_enable_circular_buffer) ;
+        offloader->read_trace_init(m_enable_circular_buffer, buf_sizes) ;
 
       if (!init_successful) {
         if (devInterface->hasTs2mm()) {
@@ -250,8 +261,7 @@ namespace xdp {
       offloader->start_offload(OffloadThreadType::TRACE);
       offloader->set_continuous();
       if (m_enable_circular_buffer) {
-        auto tdma = devInterface->getTs2mm() ;
-        if (tdma->supportsCircBuf()) {
+        if (devInterface->supportsCircBuf()) {
           uint64_t min_offload_rate = 0 ;
           uint64_t requested_offload_rate = 0 ;
           bool use_circ_buf =
