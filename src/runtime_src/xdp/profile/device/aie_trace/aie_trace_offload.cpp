@@ -53,7 +53,7 @@ AIETraceOffload::AIETraceOffload(void* handle, uint64_t id,
                  isPLIO(isPlio),
                  totalSz(totalSize),
                  numStream(numStrm),
-                 continuousTrace(false),
+                 traceContinuous(false),
                  offloadIntervalms(0),
                  bufferInitialized(false),
                  offloadStatus(AIEOffloadThreadStatus::IDLE)
