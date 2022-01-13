@@ -294,12 +294,8 @@ void AIETraceOffload::continuousOffload()
     std::this_thread::sleep_for(std::chrono::milliseconds(offloadIntervalms));
   }
 
-  // Do final forced reads
   readTrace();
-
   endReadTrace();
-
-  // Tell external plugin that offload has finished
   offloadFinished();
 }
 
