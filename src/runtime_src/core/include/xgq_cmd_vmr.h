@@ -126,9 +126,15 @@ struct xgq_cmd_data_payload {
 	uint64_t address;
 	uint32_t size;
 	uint32_t addr_type:4;
-	uint32_t flush_default_only:1;
-	uint32_t rsvd1:27;
+	uint32_t flush_type:4;
+	uint32_t rsvd1:24;
 	uint32_t pad1;
+};
+
+enum xgq_cmd_flush_type {
+	XGQ_CMD_FLUSH_DEFAULT		= 0x0,
+	XGQ_CMD_FLUSH_NO_BACKUP		= 0x1,
+	XGQ_CMD_FLUSH_TO_LEGACY		= 0x2,
 };
 
 /**
