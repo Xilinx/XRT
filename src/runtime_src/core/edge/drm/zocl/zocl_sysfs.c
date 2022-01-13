@@ -70,7 +70,7 @@ static ssize_t xclbinid_show(struct device *dev,
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	struct drm_zocl_domain *zocl_domain = NULL;
 	const char *raw_fmt = "%d %pUb\n";
-	ssize_t size;
+	ssize_t size = 0;
 	ssize_t count;
 	int i;
 
@@ -80,9 +80,8 @@ static ssize_t xclbinid_show(struct device *dev,
 		    !zocl_domain->zdev_xclbin->zx_uuid)
 			return 0;
 
-		count = sprintf(buf, raw_fmt, zocl_domain->domain_idx,
+		count = sprintf(buf+size, raw_fmt, zocl_domain->domain_idx,
 				zocl_domain->zdev_xclbin->zx_uuid);
-		buf += count;
 		size += count;
 	}
 
