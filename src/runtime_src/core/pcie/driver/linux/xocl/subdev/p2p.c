@@ -1343,8 +1343,12 @@ static ssize_t config_show(struct device *dev,
 
 	for (i = 0; i < P2P_BANK_CONF_NUM && p2p->bank_conf[i].size != 0; i++) {
 		char *tag = p2p->bank_conf[i].bank_tag;
-		count += snprintf(buf + count, PAGE_SIZE - count, "%d:%s:%ld\n", i,
+		int n = snprintf(buf + count, PAGE_SIZE - count, "%d:%s:%ld\n", i,
 			tag ? tag : "", p2p->bank_conf[i].size);
+
+		if (n < 0 || n >= PAGE_SIZE - count)
+			break; // Can't fit in
+		count += n;
 	}
 
 	mutex_unlock(&p2p->p2p_lock);

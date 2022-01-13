@@ -23,7 +23,7 @@
 
 #include "xspi.h"
 #include "xospiversal.h"
-#include "xgq.h"
+#include "xgq_vmr.h"
 #include "xqspips.h"
 #include "xmc.h"
 #include "firmware_image.h"

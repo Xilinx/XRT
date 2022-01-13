@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -52,6 +52,7 @@
 
 
 #include "am.h"
+#include "xdp/profile/device/utility.h"
 #include <bitset>
 
 namespace xdp {
@@ -100,13 +101,15 @@ size_t AM::stopCounter()
     return 0;
 }
 
-size_t AM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
+size_t AM::readCounter(xclCounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " AM::readCounter " << std::endl;
 
     if (!m_enabled)
         return 0;
+
+    uint64_t s = getAMSlotId(getMIndex());
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
@@ -289,14 +292,6 @@ void AM::showProperties()
     (*outputStream) << " AM " << std::endl;
     ProfileIP::showProperties();
 }
-
-bool AM::hasTraceID (uint32_t index) const
-{
-    // AMs have indices in multiples of 2
-    index = index - (index % 16);
-    return (properties & 0x1) && (m_index == index);
-}
-
 
 }   // namespace xdp
 

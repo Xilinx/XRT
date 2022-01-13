@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -211,13 +211,13 @@ public:
 
 // class ip_impl - wrap xclbin ip_data entry
 // Loosely IP_LAYOUT
-//  
+//
 // An xclbin::ip wraps an ip_data entry from the xclbin along
 // with connectivity data represeted as xclbin::arg objects.
 class xclbin::ip_impl
 {
 public: // purposely not a struct to match decl in xrt_xclbin.h
-  const ::ip_data* m_ip;            // 
+  const ::ip_data* m_ip;            //
   int32_t m_ip_layout_idx;          // index in IP_LAYOUT seciton
   size_t m_size = 0;                // address range of this ip (a kernel property)
   std::vector<xclbin::arg> m_args;  // index by argument index
@@ -282,7 +282,7 @@ public:
 };
 
 // class kernel_impl - wrap xclbin XML kernel entry
-//  
+//
 // The xclbin::kernel groups already constructed xclbin::ip objects
 // and stores xclbin::arg objects represeting each kernel argument. An
 // xclbin::arg object is a collection of memory connections and the
@@ -315,7 +315,7 @@ public:
       const auto& karginfo = m_arginfo[argidx];
 
       // OpenCL rtinfo argument
-      if (karginfo.index == xrt_core::xclbin::kernel_argument::no_index) 
+      if (karginfo.index == xrt_core::xclbin::kernel_argument::no_index)
         continue;
 
       // Sanity check
@@ -332,7 +332,7 @@ public:
         // set the address range size, which is a property of the kernel
         // when it should be a proeprty of the compute unit (ip_layout)
         cuimpl->set_size(m_properties.address_range);
-        
+
         // get cu argument at argidx, create if necessary when
         // argument at index is a scalar not part of connectivity
         auto cuarg = cuimpl->create_arg_if_new(argidx);  // xclbin::arg
@@ -375,6 +375,7 @@ class xclbin_impl
   {
     const xclbin_impl* m_ximpl;
     std::string m_project_name;           // <project name="foo">
+    std::string m_fpga_device_name;       // <device fpgaDevice="foo">
     std::vector<xclbin::mem> m_mems;
     std::vector<xclbin::ip> m_ips;
     std::vector<xclbin::kernel> m_kernels;
@@ -406,7 +407,7 @@ class xclbin_impl
     // Iterate the IP_LAYOUT section in the xclbin and create
     // xclbin::ip objects of each ip_data entry. Note, that xclbin::ip
     // objects construction also creates xclbin::arg objects based on
-    // CONNECTIVITY information from the xclbin.  
+    // CONNECTIVITY information from the xclbin.
     //
     // A pre-condition for this function is that init_mems() must have
     // been called.
@@ -416,7 +417,7 @@ class xclbin_impl
       auto ip_layout = ximpl->get_section<const ::ip_layout*>(IP_LAYOUT);
       if (!ip_layout)
         return {};
-      
+
       auto conn = ximpl->get_section<const ::connectivity*>(ASK_GROUP_CONNECTIVITY);
 
       std::vector<xclbin::ip> ips;
@@ -466,8 +467,17 @@ class xclbin_impl
         : "";
     }
 
+    static std::string
+    init_fpga_device_name(const xclbin_impl* ximpl)
+    {
+      auto xml = ximpl->get_axlf_section(EMBEDDED_METADATA);
+      return xml.first
+        ? xrt_core::xclbin::get_fpga_device_name(xml.first, xml.second)
+        : "";
+    }
+
     // init_mem_encoding() - compress memory indices
-    // 
+    //
     // Mapping from memory index to encoded index.  The compressed
     // indices facilitate small sized std::bitset for representing
     // kernel argument connectivity.
@@ -503,7 +513,7 @@ class xclbin_impl
           auto a2 = mb2.get_base_address();
           if (a1 > a2)
             return true;
-      
+
           // decreasing size
           auto s1 = mb1.get_size_kb();
           auto s2 = mb2.get_size_kb();
@@ -529,7 +539,7 @@ class xclbin_impl
         // process the range assigning same encoded index to all banks in group
         for (; itr != upper; ++itr)
           enc[(*itr).get_index()] = eidx;
-        
+
         ++eidx; // increment for next iteration
       }
 
@@ -541,13 +551,14 @@ class xclbin_impl
     xclbin_info(const xrt::xclbin_impl* impl)
       : m_ximpl(impl)
       , m_project_name(init_project_name(m_ximpl))
+      , m_fpga_device_name(init_fpga_device_name(m_ximpl))
       , m_mems(init_mems(m_ximpl))
       , m_ips(init_ips(m_ximpl, m_mems))
       , m_kernels(init_kernels(m_ximpl, m_ips))
       , m_membank_encoding(init_mem_encoding(m_mems))
     {}
   };
-  
+
   // cache of meta data extracted from xclbin
   mutable std::unique_ptr<xclbin_info> m_info;
 
@@ -621,7 +632,7 @@ public:
   {
     return reinterpret_cast<SectionType>(get_axlf_section(kind).first);
   }
-  
+
   template <typename SectionType>
   SectionType
   get_section_or_error(axlf_section_kind kind) const
@@ -676,7 +687,7 @@ public:
 
     return xclbin::ip{};
   }
-  
+
   const std::vector<xclbin::mem>&
   get_mems() const
   {
@@ -694,6 +705,13 @@ public:
   {
     return get_xclbin_info()->m_project_name;
   }
+
+  const std::string&
+  get_fpga_device_name() const
+  {
+    return get_xclbin_info()->m_fpga_device_name;
+  }
+
 };
 
 // class xclbin_full - Implementation of full xclbin
@@ -734,8 +752,8 @@ class xclbin_full : public xclbin_impl
       throw std::runtime_error("Invalid xclbin");
     m_top = tmp;
 
-    m_uuid = uuid(m_top->m_header.uuid); 
-    
+    m_uuid = uuid(m_top->m_header.uuid);
+
     const ::ip_layout* ip_layout = nullptr;
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
@@ -768,7 +786,7 @@ class xclbin_full : public xclbin_impl
   {
     init_axlf();
   }
-  
+
 public:
   explicit
   xclbin_full(const std::string& filename)
@@ -857,7 +875,7 @@ public:
     return m_top;
   }
 };
-  
+
 } // xrt
 
 ////////////////////////////////////////////////////////////////
@@ -903,7 +921,7 @@ get_ips() const
 {
   return handle ? handle->get_ips() : std::vector<xclbin::ip>{};
 }
-  
+
 xclbin::ip
 xclbin::
 get_ip(const std::string& name) const
@@ -924,6 +942,14 @@ get_xsa_name() const
 {
   return handle ? handle->get_xsa_name() : "";
 }
+
+std::string
+xclbin::
+get_fpga_device_name() const
+{
+  return handle ? handle->get_fpga_device_name() : "";
+}
+
 
 uuid
 xclbin::
@@ -1001,7 +1027,7 @@ get_cu(const std::string& nm) const
 {
   if (!handle)
     return {};
-  
+
   auto itr = std::find_if(handle->m_cus.begin(), handle->m_cus.end(),
                           [&nm](const auto& cu) {
                            return cu.get_name() == nm;
@@ -1152,7 +1178,7 @@ get_tag() const
   return handle ? reinterpret_cast<const char*>(handle->m_mem->m_tag) : "";
 }
 
-uint64_t  
+uint64_t
 xclbin::mem::
 get_base_address() const
 {
@@ -1165,8 +1191,8 @@ get_base_address() const
 
   return handle->m_mem->m_base_address;
 }
-  
-uint64_t  
+
+uint64_t
 xclbin::mem::
 get_size_kb() const
 {
@@ -1180,7 +1206,7 @@ get_size_kb() const
   return handle->m_mem->m_size;
 }
 
-bool  
+bool
 xclbin::mem::
 get_used() const
 {
@@ -1220,7 +1246,7 @@ send_exception_message(const char* msg)
 
 ////////////////////////////////////////////////////////////////
 // xrt_xclbin implementation of extension APIs not exposed to end-user
-// 
+//
 // Utility function for device class to verify that the C xclbin
 // handle is valid Needed when the C API for device tries to load an
 // xclbin using C pointer to xclbin
@@ -1495,4 +1521,3 @@ xrtXclbinUUID(xclDeviceHandle dhdl, xuid_t out)
   }
   return -1;
 }
-

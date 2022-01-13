@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Xilinx Inc - All rights reserved
+ * Copyright (C) 2019-2022 Xilinx Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -60,8 +60,7 @@ public:
 
     virtual size_t startCounter();
     virtual size_t stopCounter();
-    virtual size_t readCounter(xclCounterResults& counterResult, uint32_t index);
-    bool hasTraceID (uint32_t index) const;
+    virtual size_t readCounter(xclCounterResults& counterResult);
 
     virtual size_t triggerTrace(uint32_t traceOption /*startTrigger*/); 
 

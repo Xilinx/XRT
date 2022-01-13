@@ -779,11 +779,11 @@ command_queue_fetch(size_type slot_idx)
     }
 
     slot_cache[slot_idx] = val;
-#ifdef ERT_HW_EMU
-    slot->cu_idx = slot_idx-1;
-#else
+#if defined(ERT_BUILD_V30)
     addr_type addr = cu_section_addr(slot_addr);
     slot->cu_idx = read_reg(addr);
+#else
+    slot->cu_idx = slot_idx-1;
 #endif
     slot->opcode = opcode(val);
     slot->header_value = val;
@@ -842,12 +842,11 @@ cu_execution(size_type slot_idx)
 
   if (!cu_is_used(cu_idx)) {
     if (slot_cache[slot_idx] & AP_START) {
-#ifndef ERT_HW_EMU
       if (slot->opcode==ERT_EXEC_WRITE) // Out of order configuration
         configure_cu_ooo(cu_idx_to_addr(cu_idx),slot->regmap_addr,slot->regmap_size);
       else
         configure_cu(cu_idx_to_addr(cu_idx),slot->regmap_addr,slot->regmap_size);
-#endif
+
       cu_used(cu_idx);
       set_cu_info(cu_idx,slot_idx); // record which slot cu associated with
 

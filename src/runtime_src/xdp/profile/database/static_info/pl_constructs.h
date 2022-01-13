@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,13 +25,11 @@
 #include <string>
 #include <vector>
 
-// For the MIN_TRACE_IDs
-#include "core/include/xclperf.h"
-
 // For DEBUG_IP_TYPE
 #include "core/include/xclbin.h"
 
 #include "xdp/config.h"
+#include "xdp/profile/device/utility.h"
 
 namespace xdp {
 
@@ -100,17 +98,6 @@ namespace xdp {
     bool shellMonitor = false ;
     inline bool isShellMonitor() const { return shellMonitor ; }
 
-    // Because of the different stalls, AMs can produce up to 16 different
-    //  trace IDs in their trace packets.
-    constexpr static uint64_t numTraceIdsPerAM = 16 ;
-
-    // To differentiate between reads and writes, AIMs can produce up
-    //  to 2 different trace IDs in their trace packets.
-    constexpr static uint64_t numTraceIdsPerAIM = 2 ;
-
-    // ASMs only generate one type of trace ID in their trace packets.
-    constexpr static uint64_t numTraceIdsPerASM = 1 ;
-
     Monitor(DEBUG_IP_TYPE ty, uint64_t idx, const char* n,
             int32_t cuId = -1, int32_t memId = -1)
       : type(ty)
@@ -125,13 +112,13 @@ namespace xdp {
       //  monitor in hardware
       switch (ty) {
       case ACCEL_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_AM) / numTraceIdsPerAM ;
+        slotIndex = getAMSlotId(idx);
         break ;
       case AXI_MM_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_AIM) / numTraceIdsPerAIM ;
+        slotIndex = getAIMSlotId(idx);
         break ;
       case AXI_STREAM_MONITOR:
-        slotIndex = (idx - MIN_TRACE_ID_ASM) / numTraceIdsPerASM ;
+        slotIndex = getASMSlotId(idx);
         break ;
       default:
         // Should never be reached

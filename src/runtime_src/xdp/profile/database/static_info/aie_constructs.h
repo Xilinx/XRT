@@ -24,6 +24,10 @@
 
 namespace xdp {
 
+  /*
+   * Represents AIE counter configuration for a single counter
+   * Used to keep track of runtime configuration in aie profile and trace.
+   */
   struct AIECounter
   {
     uint32_t id;
@@ -93,7 +97,12 @@ namespace xdp {
 
   /*
    * AIE Config Writer Classes
+   * Following classes act as metadata storage and are filled during aie
+   * trace configuration. Since resource allocation happens at runtime,
+   * trace parsers need this data in form of aie_event_trace_config json.
    */
+
+  // Generic AIE Performance Counter
   class aie_cfg_counter
   {
     public:
@@ -104,6 +113,13 @@ namespace xdp {
       uint32_t counter_value = 0;
   };
 
+  /*
+   * Information common to core and memory modules within an aie tile
+   * Default event and mask values are derived from AIE architecture spec.
+   * 16 broadcast channels with default state being blocked.
+   * Broadcast metadata isn't used for trace processing and exists for consistency.
+   * 28,29 define core enable, disable events.
+   */
   class aie_cfg_base
   {
     public:
@@ -125,6 +141,12 @@ namespace xdp {
       aie_cfg_base(uint32_t count) : pc(count) {};
   };
 
+  /*
+   * Core Module has 4 Performance counters
+   * Group events 2,15,22,32,46,47,73,106,123 are defined in AIE architecture spec.
+   * Core trace uses pc trace mode so we just set that as default.
+   * "null" is a dummy string as port trace doesn't exist today.
+   */
   class aie_cfg_core : public aie_cfg_base
   {
   public:
@@ -146,12 +168,20 @@ namespace xdp {
     };
   };
 
+  /*
+   * Memory Module has 2 Performance counters.
+   * Group events exist for memory module but don't need to be defined.
+   * Memory trace uses time trace mode.
+   */
   class aie_cfg_memory : public aie_cfg_base
   {
   public:
     aie_cfg_memory() : aie_cfg_base(2) {};
   };
 
+  /*
+   * Abstracted AIE tile configuration for trace
+   */
   class aie_cfg_tile
   {
   public:
