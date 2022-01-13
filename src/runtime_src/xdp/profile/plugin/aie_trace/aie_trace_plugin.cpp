@@ -1283,9 +1283,7 @@ namespace xdp {
     }
     aieOffloaders.clear();
 
-    for(auto w : writers) {
-      w->write(openNewFiles);
-    }
+    XDPPlugin::endWrite(openNewFiles);
   }
 
 } // namespace xdp
