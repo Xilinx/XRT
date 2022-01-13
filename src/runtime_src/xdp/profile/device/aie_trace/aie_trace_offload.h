@@ -79,10 +79,11 @@ public:
     inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
     inline void setContinuousTrace() { traceContinuous = true; }
     inline bool continuousTrace()    { return traceContinuous; }
+    inline void setOffloadIntervalms(uint64_t v) { offloadIntervalms = v; }
 
     inline AIEOffloadThreadStatus getOffloadStatus() {
       std::lock_guard<std::mutex> lock(statusLock);
-      return status;
+      return offloadStatus;
     };
 
     // no circular buffer for now

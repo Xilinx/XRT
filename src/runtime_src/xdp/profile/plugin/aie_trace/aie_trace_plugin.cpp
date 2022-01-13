@@ -1061,7 +1061,7 @@ namespace xdp {
     // Continuous Trace Offload is supported only for PLIO flow
     if (continuousTrace && isPLIO) {
       aieTraceOffloader->setContinuousTrace();
-      aieTraceOffloader->setOffloadIntervalms();
+      aieTraceOffloader->setOffloadIntervalms(offloadIntervalms);
       aieTraceOffloader->startOffload();
     }
   }
