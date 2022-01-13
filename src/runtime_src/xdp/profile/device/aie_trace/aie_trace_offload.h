@@ -32,6 +32,7 @@ struct AIETraceBufferInfo
   uint64_t usedSz;
   uint64_t offset;
   bool     isFull;
+  bool     offloadDone;
 };
 
 struct AIETraceGmioDMAInst
@@ -39,6 +40,13 @@ struct AIETraceGmioDMAInst
   // C_RTS Shim DMA to where this GMIO object is mapped
   XAie_DmaDesc shimDmaInst;
   XAie_LocType gmioTileLoc;
+};
+
+enum class AIEOffloadThreadStatus {
+  IDLE,
+  RUNNING,
+  STOPPING,
+  STOPPED
 };
 
 class AIETraceOffload 
@@ -56,23 +64,26 @@ class AIETraceOffload
 
 public:
     XDP_EXPORT
-    virtual bool initReadTrace();
+    bool initReadTrace();
     XDP_EXPORT
-    virtual void endReadTrace();
-    XDP_EXPORT
-    virtual bool isTraceBufferFull();
-
-public:
-#if 0
-    bool traceBufferFull() {
-      return false;	// should take an argument
-//      return m_aie_trbuf_full;
-    }
-#endif
-
     void readTrace();
+    XDP_EXPORT
+    void endReadTrace();
+    XDP_EXPORT
+    bool isTraceBufferFull();
+    XDP_EXPORT
+    void startOffload();
+    XDP_EXPORT
+    void stopOffload();
 
-    AIETraceLogger* getAIETraceLogger() { return traceLogger; }
+    inline AIETraceLogger* getAIETraceLogger() { return traceLogger; }
+    inline void setContinuousTrace() { traceContinuous = true; }
+    inline bool continuousTrace()    { return traceContinuous; }
+
+    inline AIEOffloadThreadStatus getOffloadStatus() {
+      std::lock_guard<std::mutex> lock(statusLock);
+      return status;
+    };
 
     // no circular buffer for now
 
@@ -92,9 +103,20 @@ private:
     std::vector<AIETraceBufferInfo>  buffers;
     std::vector<AIETraceGmioDMAInst> gmioDMAInsts;
 
+    // Continuous Trace Offload (For PLIO)
+    bool traceContinuous;
+    uint64_t offloadIntervalms;
+    bool bufferInitialized;
+    std::mutex statusLock;
+    AIEOffloadThreadStatus offloadStatus;
+    std::thread offloadThread;
+
     uint64_t readPartialTrace(uint64_t);
     void configAIETs2mm(uint64_t wordCount);
-    //void offload_device_continuous();
+
+    void continuousOffload();
+    bool keepOffloading();
+    void offloadFinished();
 
     //Circular Buffer Tracking : Not for now
 };
