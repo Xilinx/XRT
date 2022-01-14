@@ -51,8 +51,6 @@ static char driver_date[9];
 #define VM_RESERVED (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
 
-extern int kds_mode;
-
 static const struct vm_operations_struct reg_physical_vm_ops = {
 #ifdef CONFIG_HAVE_IOREMAP_PROT
 	.access = generic_access_phys,
@@ -186,6 +184,13 @@ static void zocl_pr_domain_fini(struct drm_zocl_dev *zdev)
 	}
 }
 
+/**
+ * Initialize the aparture and allocate memory for it.
+ *
+ * @param	zdev: device structure
+ *
+ * @return	0 on success, Error code on failure.
+ */
 static int zocl_aperture_init(struct drm_zocl_dev *zdev)
 {
 	zdev->apertures = kcalloc(MAX_APT_NUM, sizeof(struct addr_aperture),
@@ -200,6 +205,12 @@ static int zocl_aperture_init(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+/**
+ * Cleanup the aparture
+ *
+ * @param	zdev: device structure
+ *
+ */
 static void zocl_aperture_fini(struct drm_zocl_dev *zdev)
 {
 	/* Free aperture memory */
@@ -236,9 +247,9 @@ static int get_reserved_mem_region(struct device *dev, struct resource *res)
 }
 
 /**
- * zocl_find_pdev - Find platform device by name
+ * Find platform device by name
  *
- * @name: device name
+ * @param	name: device name
  *
  * Returns a platform device. Returns NULL if not found.
  */
@@ -257,11 +268,11 @@ struct platform_device *zocl_find_pdev(char *name)
 }
 
 /**
- * update_cu_idx_in_apt - Set scheduler CU index in aperture
+ * Set scheduler CU index in aperture
  *
- * @zdev: zocl device struct
- * @apt_idx: aperture index in the IP_LAYOUT ordering
- * @cu_idx: CU index in the scheduler ordering
+ * @param	zdev:	zocl device struct
+ * @param	apt_idx: aperture index in the IP_LAYOUT ordering
+ * @param	cu_idx: CU index in the scheduler ordering
  *
  */
 void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx)
@@ -276,14 +287,13 @@ void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx)
 }
 
 /**
- * get_apt_index_by_addr - Get the index of the geiven phys address,
+ * Get the index of the geiven phys address,
  *		   if it is the start of an aperture
  *
- * @zdev: zocl device struct
- * @addr: physical address of the aperture
+ * @param	zdev: zocl device struct
+ * @param	addr: physical address of the aperture
  *
- * Returns the index if aperture was found.
- * Returns -EINVAL if not found.
+ * Returns the index if aperture was found, -EINVAL if not found.
  *
  */
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr)
@@ -300,14 +310,13 @@ int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr)
 }
 
 /**
- * get_apt_index_by_cu_idx - Get the index of the geiven phys address,
+ * Get the index of the geiven phys address,
  *		   if it is the start of an aperture
  *
- * @zdev: zocl device struct
- * @cu_idx: CU index
+ * @param	zdev:	zocl device struct
+ * @param	cu_idx: CU index
  *
- * Returns the index if aperture was found.
- * Returns -EINVAL if not found.
+ * Returns the index if aperture was found, -EINVAL if not found.
  *
  */
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx)
@@ -327,6 +336,14 @@ int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx)
 	return (i == zdev->num_apts) ? -EINVAL : i;
 }
 
+/**
+ * Create a new CU subdevice. And try to attach to the driver.
+ *
+ * @param	zdev: zocl Device Instance
+ * @param	info: CU related information
+ *
+ * @return	0 on success, Error code on failure.
+ */
 int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 {
 	struct platform_device *pldev;
@@ -347,6 +364,7 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 		goto err;
 	}
 
+	/* Fetch the kernel info from this domain for this CU */
 	krnl_info = zocl_query_kernel(domain, info->kname);
 	if(!krnl_info) {
 		DRM_WARN("%s CU has no metadata, using default size",info->kname);
@@ -363,12 +381,15 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 	res.end = res.start + info->size - 1;
 	res.flags = IORESOURCE_MEM;
 	res.parent = NULL;
+
+	/* add resources to a platform device */
 	ret = platform_device_add_resources(pldev, &res, 1);
 	if (ret) {
 		DRM_ERROR("Failed to add resource\n");
 		goto err;
 	}
 
+	/* add platform-specific data to this platform device */
 	ret = platform_device_add_data(pldev, info, sizeof(*info));
 	if (ret) {
 		DRM_ERROR("Failed to add data\n");
@@ -377,6 +398,7 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 
 	pldev->dev.parent = zdev->ddev->dev;
 
+	/* add a platform device to device hierarchy */
 	ret = platform_device_add(pldev);
 	if (ret) {
 		DRM_ERROR("Failed to add device\n");
@@ -402,6 +424,12 @@ err:
 	return ret;
 }
 
+/* This function destroy and remove the platform-level devices
+ * for all the CUs.
+ *
+ * @param	zdev: zocl Device Instance
+ *
+ */
 void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 {
 	int i;
@@ -409,7 +437,10 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 	for (i = 0; i < MAX_CU_NUM; ++i) {
 		if (!zdev->cu_pldev[i])
 			continue;
+
+		/* Remove the platform-level device */
 		platform_device_del(zdev->cu_pldev[i]);
+		/* Destroy the platform device */
 		platform_device_put(zdev->cu_pldev[i]);
 		zdev->cu_pldev[i] = NULL;
 	}
@@ -432,6 +463,12 @@ zocl_gem_create_object(struct drm_device *dev, size_t size)
 	return (&bo->gem_base);
 }
 
+/* This callback function release GEM buffer objects and free memory associated
+ * with it. This function is also responsable for free up the memory for BOs.
+ *
+ * @param	obj:	GEM buffer object
+ *
+ */
 void zocl_free_bo(struct drm_gem_object *obj)
 {
 	struct drm_zocl_bo *zocl_obj;
@@ -452,6 +489,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA) {
+			/* free resources associated with a CMA GEM object */
 			drm_gem_cma_free_object(obj);
 
 			/* Update memory usage statistics */
@@ -470,6 +508,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 				zocl_update_mem_stat(zdev, obj->size, -1,
 				    zocl_obj->mem_index);
 			}
+			/* release GEM buffer object resources */
 			drm_gem_object_release(obj);
 			kfree(zocl_obj);
 		}
@@ -478,6 +517,7 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	}
 
 	npages = obj->size >> PAGE_SHIFT;
+	/* release GEM buffer object resources */
 	drm_gem_object_release(obj);
 
 	if (zocl_obj->vmapping)
@@ -508,6 +548,13 @@ void zocl_free_bo(struct drm_gem_object *obj)
 	kfree(zocl_obj);
 }
 
+/* This function memory map for GEM objects.
+ *
+ * @param	flip:	file data structure
+ * @param	vma:	struct to a virtual memory area
+ *
+ * @return	0 on success, Error code on failure.
+ */
 static int
 zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 {
@@ -579,6 +626,11 @@ zocl_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 /* This function map two types of kernel address to user space.
  * The first type is pysical registers of a hardware IP, like CUs.
  * The second type is GEM buffer.
+ *
+ * @param	flip:	file data structure
+ * @param	vma:	struct to a virtual memory area
+ *
+ * @return	0 on success, Error code on failure.
  */
 static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 {
@@ -647,6 +699,13 @@ static int zocl_mmap(struct file *filp, struct vm_area_struct *vma)
 	return rc;
 }
 
+/**
+ * Registering callback for fault handler.
+ *
+ * @param	vmf:	vm page fault instance
+ *
+ * @return	VM_FAULT_NOPAGE on success, Error code on failure.
+ */
 static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma = vmf->vma;
@@ -680,22 +739,56 @@ static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 	return VM_FAULT_SIGBUS;
 }
 
+/**
+ * Driver callback when a new &struct drm_file is opened.
+ * This function will create a new client for this device
+ *
+ * @param	dev:	DRM device structure
+ * @param	flip:	DRM file private data
+ *
+ * @return	0 on success, Error code on failure.
+ */
 static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
 	return zocl_create_client(dev->dev_private, &filp->driver_priv);
 }
 
+/**
+ * Driver callback when a new &struct drm_file is closed.
+ * This function will cleanup driver-private data structures
+ * allocated in @open and destroy the client.
+ *
+ * @param	dev:	DRM device structure
+ * @param	flip:	DRM file private data
+ *
+ * @return	0 on success, Error code on failure.
+ */
 static void zocl_client_release(struct drm_device *dev, struct drm_file *filp)
 {
-	zocl_destroy_client(dev->dev_private, &filp->driver_priv);
-	return;
+	return zocl_destroy_client(dev->dev_private, &filp->driver_priv);
 }
 
+/**
+ * Register a poll callback function for this driver
+ *
+ * @param	flip:	file data structure
+ * @param	wait:	poll table
+ *
+ * @return	POLLIN on success, 0 on failure.
+ */
 static unsigned int zocl_poll(struct file *filp, poll_table *wait)
 {
 	return zocl_poll_client(filp, wait);
 }
 
+/**
+ * Initialize iommu domain for this device
+ *
+ * @param	zdev: zocl Device Instance
+ * @param	pdev: Platform Device Instance
+ *
+ * @return	0 on success, Error code on failure.
+ */
 static int zocl_iommu_init(struct drm_zocl_dev *zdev,
 		struct platform_device *pdev)
 {
@@ -850,7 +943,15 @@ static const struct of_device_id zocl_drm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, zocl_drm_of_match);
 
-/* init xilinx opencl drm platform */
+/*
+ *
+ * Initialization of Xilinx openCL DRM platform device.
+ *
+ * @param        pdev: Platform Device Instance
+ *
+ * @return       0 on success, Error code on failure.
+ *
+ */
 static int zocl_drm_platform_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *id;
@@ -917,7 +1018,6 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->ert = (struct zocl_ert_dev *)platform_get_drvdata(subdev);
 		//ert_hw is present only for PCIe + PS devices (ex: U30,VCK5000
 		//Dont enable new kds for those devices
-		kds_mode = 0;
 	}
 
 	subdev = zocl_find_pdev("reset_ps");
@@ -1031,12 +1131,21 @@ err_apt:
 	return ret;
 }
 
-/* exit xilinx opencl drm platform */
+/*
+ *
+ * Exit Xilinx openCL DRM platform device.
+ *
+ * @param        pdev: Platform Device Instance
+ *
+ * @return       0 on success, Error code on failure.
+ *
+ */
 static int zocl_drm_platform_remove(struct platform_device *pdev)
 {
 	struct drm_zocl_dev *zdev = platform_get_drvdata(pdev);
 	struct drm_device *drm = zdev->ddev;
 
+	/* Cleanup of iommu domain, if exists */
 	if (zdev->domain) {
 		iommu_detach_device(zdev->domain, drm->dev);
 		iommu_domain_free(zdev->domain);
