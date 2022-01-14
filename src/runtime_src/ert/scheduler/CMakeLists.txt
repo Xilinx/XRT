@@ -81,10 +81,10 @@ endif(${ERT_BUILD_ALL} STREQUAL "yes")
 # HW emulation libsched_em
 ################################################################
 file(GLOB SCH_SRC_FILES
-  "${CMAKE_CURRENT_SOURCE_DIR}/sched_hw_emu.c"
+  "${CMAKE_CURRENT_SOURCE_DIR}/scheduler.cpp"
   )
 
-SET_SOURCE_FILES_PROPERTIES(${SCH_SRC_FILES} PROPERTIES LANGUAGE CXX )
+#SET_SOURCE_FILES_PROPERTIES(${SCH_SRC_FILES} PROPERTIES LANGUAGE CXX )
 
 add_library(sch_objects OBJECT ${SCH_SRC_FILES})
 
@@ -106,6 +106,10 @@ install(TARGETS sched_em
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}
 )
+
+file(GLOB SCH_SRC_FILES
+  "${CMAKE_CURRENT_SOURCE_DIR}/scheduler_v30.cpp"
+  )
 
 add_library(sch_objects_v30 OBJECT ${SCH_SRC_FILES})
 
