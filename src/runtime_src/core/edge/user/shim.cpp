@@ -1768,8 +1768,7 @@ xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
 int
 xclCloseExportHandle(int fd)
 {
-  //return close(fd) ? -errno : 0;
-  return 0;
+  return close(fd) ? -errno : 0;
 }
 
 static int
@@ -2400,7 +2399,7 @@ xclUpdateSchedulerStat(xclDeviceHandle handle)
   return 1; // -ENOSYS;
 }
 
-int 
+int
 xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return -ENOSYS;

@@ -214,8 +214,15 @@ public:
   virtual
   ~bo_impl()
   {
-    if (export_handle != null_export)
-      device->close_export_handle(export_handle);
+    try {
+      if (export_handle != null_export)
+        device->close_export_handle(export_handle);
+    }
+    catch (const std::exception&) {
+      // close of the handle (file descriptor) failed,
+      // maybe it was already closed.  Simply ignore.
+    }
+
     if (free_bo)
       device->free_bo(handle);
   }
