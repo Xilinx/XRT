@@ -73,6 +73,9 @@ namespace xdp {
       // Runtime or compile-time specified trace metrics?
       bool runtimeMetrics = true;
 
+      bool continuousTrace;
+      uint64_t offloadIntervalms;
+
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;
 

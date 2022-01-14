@@ -65,7 +65,8 @@ namespace xdp {
       void*    buf = traceData->buffer[j];
       // We write 4 bytes at a time
       // Max chunk size should be multiple of 4
-      // If last chunk is not multiple of 4 then in worst case, 3 bytes of data will not be written
+      // If last chunk is not multiple of 4 then in worst case, 
+      // 3 bytes of data will not be written. But this is not possible, as we always write full packet.
       uint64_t bufferSz = (traceData->bufferSz[j] / 4);
       if(nullptr == buf) {
         fout << std::endl;
@@ -78,6 +79,7 @@ namespace xdp {
       }
     }
     fout << std::endl;
+    delete traceData;
 
 #if 0
     void*    buf = traceData->buffer;
