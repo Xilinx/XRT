@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,9 +27,6 @@ namespace xdp {
   // This plugin should be completely agnostic of what the host code profiling
   //  plugin is.  So, this should work with HAL profiling, OpenCL profiling, 
   //  LOP profiling, user events, and any other plugin.
-  // 
-  // This plugin is only responsible for trace.  It has no responsibility
-  //  to read counters unless it is in the service of trace.
   class HALDeviceOffloadPlugin : public DeviceOffloadPlugin
   {
   private:
@@ -42,12 +39,14 @@ namespace xdp {
 
     XDP_EXPORT virtual void readTrace() ;
 
+    // When trying to determine the path to the debug_ip_layout file,
+    //  we need to call the C-interface function xclGetDebugIPlayoutPath
+    //  function, which takes a preallocated char* and size.
+    constexpr static int maxPathLength = 512 ;
+
   public:
     XDP_EXPORT HALDeviceOffloadPlugin() ;
     XDP_EXPORT ~HALDeviceOffloadPlugin() ;
-
-    // Virtual functions from XDPPlugin
-    XDP_EXPORT virtual void writeAll(bool openNewFiles) ;
 
     // Virtual functions from DeviceOffloadPlugin
     XDP_EXPORT virtual void flushDevice(void* device) ;

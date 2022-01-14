@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2022 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -17,81 +17,66 @@
 #define XDP_SOURCE
 
 #include <string>
-#include <vector>
 
-// For HAL applications
 #include "core/common/message.h"
-#include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
 
-#include "xdp/profile/database/database.h"
-#include "xdp/profile/device/device_intf.h"
 #include "xdp/profile/device/hal_device/xdp_hal_device.h"
-#include "xdp/profile/plugin/device_offload/hal/hal_device_offload_plugin.h"
+#include "xdp/profile/database/database.h"
+#include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_plugin.h"
 #include "xdp/profile/plugin/vp_base/info.h"
-#include "xdp/profile/plugin/vp_base/utility.h"
-#include "xdp/profile/writer/device_trace/device_trace_writer.h"
+
+// Anonymous namespace for local helper functions
+namespace {
+
+  static std::string getDebugIPLayoutPath(void* handle)
+  {
+    constexpr int MAX_PATH_LENGTH = 512 ;
+
+    char pathBuf[MAX_PATH_LENGTH] ;
+    xclGetDebugIPlayoutPath(handle, pathBuf, MAX_PATH_LENGTH) ;
+    pathBuf[MAX_PATH_LENGTH-1] = '\0' ;  // In case of too long paths
+
+    std::string path(pathBuf) ;
+
+    if (path == "")
+      return path ;
+
+    // Full paths to the hardware emulation debug_ip_layout for different
+    //  xclbins on the same device are different.  On disk, they are laid
+    //  out as follows:
+    // .run/<pid>/hw_em/device_0/binary_0/debug_ip_layout
+    // .run/<pid>/hw_em/device_0/binary_1/debug_ip_layout
+    //  Since both of these should refer to the same device, we only use
+    //  the path up to the device name.
+    path = path.substr(0, path.find_last_of("/") - 1) ;// remove debug_ip_layout
+    path = path.substr(0, path.find_last_of("/") - 1) ;// remove binary_x
+    return path ;
+  }
+
+} // end anonymous namespace
 
 namespace xdp {
 
-  HALDeviceOffloadPlugin::HALDeviceOffloadPlugin() : DeviceOffloadPlugin()
+  HWEmuDeviceOffloadPlugin::HWEmuDeviceOffloadPlugin()
+    : DeviceOffloadPlugin()
   {
     db->registerInfo(info::device_offload) ;
-
-    // Open all of the devices that exist so we can keep our own pointer
-    //  to access them.
-    uint32_t index = 0 ;
-    void* handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    
-    while (handle != nullptr)
-    {
-      // First, keep track of all open handles
-      deviceHandles.push_back(handle) ;
-
-      // Second, add all the information and a writer for this device
-      char pathBuf[maxPathLength] ;
-      memset(pathBuf, 0, maxPathLength) ;
-      xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
-
-      std::string path(pathBuf) ;
-      if (path != "") {
-        addDevice(path) ;
-
-        // Now, keep track of the device ID for this device so we can use
-        //  our own handle
-        deviceIdToHandle[db->addDevice(path)] = handle ;
-      }
-
-      // Move on to the next device
-      ++index ;
-      handle = xclOpen(index, "/dev/null", XCL_INFO) ;
-    }
   }
 
-  HALDeviceOffloadPlugin::~HALDeviceOffloadPlugin()
+  HWEmuDeviceOffloadPlugin::~HWEmuDeviceOffloadPlugin()
   {
-    if (VPDatabase::alive())
-    {
-      // If we are destroyed before the database, we need to
-      //  do a final flush of our devices, then write
-      //  all of our writers, then finally unregister ourselves
-      //  from the database.
-
+    if (VPDatabase::alive()) {
       readTrace() ;
       readCounters() ;
-      XDPPlugin::endWrite(false);
+      XDPPlugin::endWrite(false) ;
       db->unregisterPlugin(this) ;
     }
 
     clearOffloaders();
-
-    for (auto h : deviceHandles)
-    {
-      xclClose(h) ;
-    }
   }
 
-  void HALDeviceOffloadPlugin::readTrace()
+  void HWEmuDeviceOffloadPlugin::readTrace()
   {
     for (auto o : offloaders) {
       auto offloader = std::get<0>(o.second) ;
@@ -100,16 +85,9 @@ namespace xdp {
     }
   }
 
-  // This function will only be called if an active device is going
-  //  to be reprogrammed.  We can assume the device is good.
-  void HALDeviceOffloadPlugin::flushDevice(void* handle)
+  void HWEmuDeviceOffloadPlugin::flushDevice(void* handle)
   {
-    // For HAL devices, the pointer passed in is an xrtDeviceHandle
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(handle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = getDebugIPLayoutPath(handle) ;
     if (path == "")
       return ;
     
@@ -125,23 +103,20 @@ namespace xdp {
     (db->getStaticInfo()).deleteCurrentlyUsedDeviceInterface(deviceId) ;
   }
 
-  void HALDeviceOffloadPlugin::updateDevice(void* userHandle)
+  void HWEmuDeviceOffloadPlugin::updateDevice(void* userHandle)
   {
-    // For HAL devices, the pointer passed in is an xrtDeviceHandle.
-    //  We will query information on that passed in handle, but we
-    //  should user our own locally opened handle to access the physical
-    //  device.
-    char pathBuf[maxPathLength] ;
-    memset(pathBuf, 0, maxPathLength) ;
-    xclGetDebugIPlayoutPath(userHandle, pathBuf, maxPathLength-1) ;
-
-    std::string path(pathBuf) ;
+    std::string path = getDebugIPLayoutPath(userHandle) ;
     if (path == "")
       return ;
 
     uint64_t deviceId = db->addDevice(path) ;
-    void* ownedHandle = deviceIdToHandle[deviceId] ;
-  
+    if (devicesSeen.find(deviceId) == devicesSeen.end()) {
+      devicesSeen.emplace(deviceId) ;
+      addDevice(path) ; // Base class functionality to add writer
+    }
+
+    // Clear out any previous interface we might have had for talking to this
+    //  particular device.
     clearOffloader(deviceId); 
 
     if (!(db->getStaticInfo()).validXclbin(userHandle)) {
@@ -161,8 +136,7 @@ namespace xdp {
     (db->getStaticInfo()).updateDevice(deviceId, userHandle) ;
     {
       struct xclDeviceInfo2 info ;
-      if (xclGetDeviceInfo2(userHandle, &info) == 0)
-      {
+      if (xclGetDeviceInfo2(userHandle, &info) == 0) {
         (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
       }
     }
@@ -174,11 +148,10 @@ namespace xdp {
       // If DeviceIntf is not already created, create a new one to communicate with physical device
       devInterface = new DeviceIntf() ;
       try {
-        devInterface->setDevice(new HalDevice(ownedHandle)) ;
+        devInterface->setDevice(new HalDevice(userHandle)) ;
         devInterface->readDebugIPlayout() ;      
       }
-      catch(std::exception& /*e*/)
-      {
+      catch(std::exception& /*e*/) {
         // Read debug IP layout could throw an exception
         delete devInterface ;
         return;
@@ -202,5 +175,5 @@ namespace xdp {
     (db->getStaticInfo()).setMaxReadBW(deviceId, devInterface->getMaxBwRead()) ;
     (db->getStaticInfo()).setMaxWriteBW(deviceId, devInterface->getMaxBwWrite());
   }
-  
+
 } // end namespace xdp

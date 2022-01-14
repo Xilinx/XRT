@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,18 @@
  * under the License.
  */
 
-#ifndef HAL_PLUGIN_LOADER_DOT_H
-#define HAL_PLUGIN_LOADER_DOT_H
-
 namespace xdp {
-namespace hal_hw_plugins {
+namespace hw_emu {
+namespace device_offload {
 
-  bool load();
+  void load() ;
+  void register_callbacks(void* handle) ;
+  void warning_callbacks() ;
 
-} // end namespace hal_hw_plugins
-namespace hal_hw_emu_plugins {
+} // end namespace device_offload
 
-  bool load();
+ void update_device(void* handle) ;
+ void flush_device(void* handle) ;
 
-} // end namespace hal_hw_em_plugins
+} // end namespace hw_emu
 } // end namespace xdp
-
-#endif

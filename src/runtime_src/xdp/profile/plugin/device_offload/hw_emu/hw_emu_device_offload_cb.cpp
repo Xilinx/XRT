@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2022 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,25 @@
  * under the License.
  */
 
-#ifndef HAL_PLUGIN_LOADER_DOT_H
-#define HAL_PLUGIN_LOADER_DOT_H
+#define XDP_SOURCE
+
+#include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_cb.h"
+#include "xdp/profile/plugin/device_offload/hw_emu/hw_emu_device_offload_plugin.h"
 
 namespace xdp {
-namespace hal_hw_plugins {
 
-  bool load();
+  static HWEmuDeviceOffloadPlugin hwEmuDeviceOffloadPluginInstance ;
 
-} // end namespace hal_hw_plugins
-namespace hal_hw_emu_plugins {
-
-  bool load();
-
-} // end namespace hal_hw_em_plugins
 } // end namespace xdp
 
-#endif
+extern "C"
+void updateDeviceHWEmu(void* handle)
+{
+  xdp::hwEmuDeviceOffloadPluginInstance.updateDevice(handle) ;
+}
+
+extern "C"
+void flushDeviceHWEmu(void* handle)
+{
+  xdp::hwEmuDeviceOffloadPluginInstance.flushDevice(handle) ;
+}

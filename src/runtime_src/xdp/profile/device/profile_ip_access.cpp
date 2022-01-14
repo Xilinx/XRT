@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2019-2022, Xilinx Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -16,6 +16,7 @@
  */
 
 #include "profile_ip_access.h"
+#include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
 
@@ -120,8 +121,8 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
     uint64_t absolute_offset = ip_base_address + offset;
 
     int read_size = device->read(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-//    size_t read_size = xDevice->xclRead(device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-    if (read_size < 0) {
+    // HW Emulation xclRead will always return -1 even on success
+    if (read_size < 0 && getFlowMode() == HW) {
         showWarning("xclRead failed");
         return read_size;
     }
@@ -144,8 +145,8 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
     uint64_t absolute_offset = ip_base_address + offset;
 
     int write_size = device->write(XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-//    size_t write_size = xclWrite(xrt_device_handle, XCL_ADDR_SPACE_DEVICE_PERFMON, absolute_offset, data, size);
-    if (write_size < 0) {
+    // HW Emulation xclWrite will always return -1 even on success
+    if (write_size < 0 && getFlowMode() == HW) {
         showWarning("xclWrite failed");
         return write_size;
     }
