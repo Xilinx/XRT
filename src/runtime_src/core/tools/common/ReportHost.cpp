@@ -128,4 +128,12 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   }
 
   _output << device_table << std::endl;
+
+  device_table.removeEntry(0);
+
+  _output << device_table << std::endl;
+
+  device_table.removeHeader("Shell");
+
+  _output << device_table << std::endl;
 }
