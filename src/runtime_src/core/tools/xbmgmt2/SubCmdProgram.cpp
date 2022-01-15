@@ -132,9 +132,7 @@ is_SC_fixed(unsigned int index)
   }
 }
 
-/*
- * Update SC firmware on the board
- */
+// Update SC firmware on the board
 static void 
 update_SC(unsigned int  index, const std::string& file)
 {
@@ -219,9 +217,7 @@ update_SC(unsigned int  index, const std::string& file)
 #endif 
 }
 
-/* 
- * Helper function for header info
- */
+// Helper function for header info
 static std::string 
 file_size(const std::string & _file) 
 {
@@ -239,9 +235,7 @@ file_size(const std::string & _file)
   return total_size + std::string(" bytes");
 }
 
-/* 
- * Helper function for header info
- */
+// Helper function for header info
 static std::pair<std::string, std::string> 
 deployment_path_and_filename(std::string file)
 {
@@ -260,9 +254,7 @@ deployment_path_and_filename(std::string file)
   return std::make_pair(dsafile, path);
 }
 
-/* 
- * Helper function for header info
- */
+// Helper function for header info
 static std::string 
 get_file_timestamp(const std::string & _file) 
 {
@@ -401,10 +393,9 @@ update_sc(unsigned int boardIdx, DSAInfo& candidate)
 }
 
 
-/* 
- * Flash shell and sc firmware
- * Helper method for auto_flash
- */
+
+// Flash shell and sc firmware
+// Helper method for auto_flash
 static bool  
 update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType flash_type)
 {
@@ -443,10 +434,8 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   return true;
 }
 
-/* 
- * Update shell and sc firmware on the device automatically 
- * Refactor code to support only 1 device. 
- */
+// Update shell and sc firmware on the device automatically 
+// Refactor code to support only 1 device. 
 static void 
 auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_FlasherType flashType, const std::string& image = "") 
 {
@@ -602,12 +591,7 @@ program_plp(const xrt_core::device* dev, const std::string& partition)
   std::cout << "Programmed shell successfully" << std::endl;
 }
 
-/**
- * @brief Create a list of images that are known to exist based on given names and paths
- * 
- * @param[in] image_list The list of images paths and names to be validated
- * @return std::vector<std::string> A list of known and valid images for flashing
- */
+// Create a list of images that are known to exist based on given names and paths
 static std::vector<std::string>
 find_flash_image_paths(const std::vector<std::string>& image_list)
 {
