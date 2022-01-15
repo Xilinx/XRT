@@ -41,7 +41,7 @@ class Table2D {
     /**
      * @brief Add a new header into the table. If entries already exist the column will have empty entries.
      * 
-     * @param header The header to be aded into the table
+     * @param header The header to be added into the table
      */
     void addHeader(const HeaderData& header);
     void addHeaders(const std::vector<HeaderData>& headers);
