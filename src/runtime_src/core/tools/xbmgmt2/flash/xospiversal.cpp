@@ -44,12 +44,12 @@ int XOSPIVER_Flasher::xclUpgradeFirmware(std::istream& binStream)
     if (!hdr)
         throw std::runtime_error("No PDI section in xclbin");
     ssize_t size = hdr->m_sectionSize;
-    auto data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) +
-        hdr->m_sectionOffset);
 
     std::cout << "INFO: ***PDI has " << size << " bytes" << std::endl;
 
 #ifdef __GNUC__
+    auto data = reinterpret_cast<const char*>(reinterpret_cast<const char*>(top) +
+        hdr->m_sectionOffset);
     auto fd = m_device->file_open("xfer_versal", O_RDWR);
     ret = write(fd.get(), data, size);
 #endif
