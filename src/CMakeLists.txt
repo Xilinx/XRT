@@ -19,7 +19,9 @@ include_directories(
   ${CMAKE_BINARY_DIR}/gen
   )
 
-set(CMAKE_CXX_STANDARD 14)
+if (NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif (NOT CMAKE_CXX_STANDARD)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 message("-- Host system processor is ${CMAKE_HOST_SYSTEM_PROCESSOR}")

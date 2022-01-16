@@ -33,7 +33,17 @@ find_package(Boost
 set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 include_directories(${Boost_INCLUDE_DIRS})
-add_compile_options("-DBOOST_LOCALE_HIDE_AUTO_PTR")
+add_compile_definitions("-DBOOST_LOCALE_HIDE_AUTO_PTR")
+
+# warning C4996: 'std::allocator<void>': warning STL4009:
+# std::allocator<void> is deprecated in C++17. You can define
+# _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING or
+# _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS to acknowledge that you have
+# received this warning.
+#
+# Per https://developercommunity.visualstudio.com/t/boost-asio-reports-stdallocator-is-deprecated-in-c/500588
+# the warning is bogus.  Remove defintion when fixed
+add_compile_definitions("_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING")
 
 INCLUDE (FindGTest)
 
