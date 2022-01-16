@@ -439,7 +439,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
   if(tokens.size() > 2)
     domain = static_cast<uint16_t>(std::stoi(std::string(tokens[2]), nullptr, radix));
 
-  uint64_t devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
+  auto devices = _inUserDomain ? xrt_core::get_total_devices(true).first : xrt_core::get_total_devices(false).first;
   for (decltype(devices) i = 0; i < devices; i++) {
     std::shared_ptr<xrt_core::device> device;
     try{
@@ -457,7 +457,7 @@ bdf2index(const std::string& bdfstr, bool _inUserDomain)
     };
 
     if (domain == std::get<0>(bdf) && bus == std::get<1>(bdf) && dev == std::get<2>(bdf) && cmp_func(func))
-      return i;
+      return static_cast<uint16_t>(i);
   }
 
   throw std::runtime_error(boost::str(boost::format("Specified device BDF '%s' not found") % bdfstr) + str_available_devs(_inUserDomain));

@@ -172,7 +172,7 @@ get_devices(boost::property_tree::ptree& pt);
  * Return: Pair of total devices and usable devices
  */
 XRT_CORE_COMMON_EXPORT
-std::pair<uint64_t, uint64_t>
+std::pair<device::id_type, device::id_type>
 get_total_devices(bool is_user);
 
 /**
