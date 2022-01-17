@@ -75,7 +75,7 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
   boost::property_tree::ptree s2mm_array;
   boost::property_tree::ptree empty_pt;
 
-  /* Extract FIFO SIZE/COUNT information */
+  // Extract FIFO SIZE/COUNT information
   auto fifo_len = pt.get_child("dma.fifo_len", empty_pt).begin();
   boost::property_tree::ptree channel;
   channel.put("fifo_size", fifo_len->second.data());
