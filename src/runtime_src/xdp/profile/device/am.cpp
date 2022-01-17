@@ -50,7 +50,7 @@
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XAM_64BIT_PROPERTY_MASK        0x8
 
-
+#define XDP_SOURCE
 #include "am.h"
 #include "xdp/profile/device/utility.h"
 #include <bitset>
@@ -88,7 +88,7 @@ size_t AM::startCounter()
 
     // Write original value after reset
     size += write(XAM_CONTROL_OFFSET, 4, &origRegValue);
-    
+
     return size;
 }
 
@@ -129,7 +129,7 @@ size_t AM::readCounter(xclCounterResults& counterResults)
                       << " Stall support : " << hasStall()
                       << std::endl;
     }
-        
+
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
     size += read(XAM_SAMPLE_OFFSET, 4, &sampleInterval);
@@ -233,9 +233,9 @@ size_t AM::triggerTrace(uint32_t traceOption /* starttrigger*/)
     // Set Stall trace control register bits
     // Bit 1 : CU (Always ON)  Bit 2 : INT  Bit 3 : STR  Bit 4 : Ext
     regValue = ((traceOption & XAM_TRACE_STALL_SELECT_MASK) >> 1) | 0x1 ;
-    size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue); 
+    size += write(XAM_TRACE_CTRL_OFFSET, 4, &regValue);
 
-    return size;    
+    return size;
 }
 
 void AM::disable()
@@ -294,4 +294,3 @@ void AM::showProperties()
 }
 
 }   // namespace xdp
-
