@@ -21,7 +21,10 @@
 #include <iomanip>
 #include <map>
 #include <functional>
-#include <getopt.h>
+
+#ifdef _WIN32
+# pragma warning( disable : 4267)
+#endif
 
 // For backward compatibility
 const char *subCmdDumpDesc = "Reads the image(s) for a given device for a given length and outputs the same to given file. It is applicable for only QSPIPS flash.";

@@ -13,17 +13,19 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#include "xspi.h"
 #include <iostream>
 #include <string>
+#include <fstream>
 #include <cassert>
-#include <climits>
 #include <cstring>
+#include <climits>
 #include <vector>
+#include <limits>
+#include <array>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "xspi.h"
 #include "pcidev.h"
 
 #ifdef WINDOWS
@@ -32,6 +34,12 @@
 
 #ifdef __GNUC__
 # define XSPI_UNUSED __attribute__((unused))
+#else
+# define XSPI_UNUSED
+#endif
+
+#ifdef _WIN32
+# pragma warning( disable : 4244 4245 4267 4456 4996 )
 #endif
 
 //#define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
@@ -39,7 +47,7 @@
 static const bool FOUR_BYTE_ADDRESSING = false;
 
 uint32_t MAX_NUM_SECTORS = 0;
-uint32_t selected_sector = -1;
+uint32_t selected_sector = std::numeric_limits<uint32_t>::max();
 
 //testing sizes.
 #define WRITE_DATA_SIZE 128
@@ -247,14 +255,14 @@ static bool TEST_MODE_MCS_ONLY = false;
 static const uint32_t CONTROL_REG_START_STATE =  XSP_CR_TRANS_INHIBIT_MASK | XSP_CR_MANUAL_SS_MASK |XSP_CR_RXFIFO_RESET_MASK
         | XSP_CR_TXFIFO_RESET_MASK | XSP_CR_ENABLE_MASK | XSP_CR_MASTER_MODE_MASK ;
 
-static void clearReadBuffer(unsigned size) {
-    for(unsigned i =0; i < size; ++i) {
+static void clearReadBuffer(unsigned int size) {
+    for(unsigned int i =0; i < size; ++i) {
         ReadBuffer[i] = 0;
     }
 }
 
-static void clearWriteBuffer(unsigned size) {
-    for(unsigned i =0; i < size; ++i) {
+static void clearWriteBuffer(unsigned int size) {
+    for(unsigned int i =0; i < size; ++i) {
         WriteBuffer[i] = 0;
     }
 }
@@ -270,6 +278,19 @@ static void stripe_data(uint8_t *intrlv_buf, uint8_t *buf0, uint8_t *buf1, uint3
         buf0[i/2] = (intrlv_buf[i] << 4) | (intrlv_buf[i+1] & 0x0F);
         buf1[i/2] = (intrlv_buf[i] & 0xF0) | (intrlv_buf[i+1] >> 4);
     }
+}
+
+/*
+ * Chronos sleep resolution on Windows is 1 ms which is exponentially bigger than
+ * the required sleep. This is a busy loop to mimick the accurate amount of sleep.
+ */
+static void delay(std::chrono::microseconds us)
+{
+	std::chrono::high_resolution_clock::time_point currTime;
+	const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+	do {
+		currTime = std::chrono::high_resolution_clock::now();
+	} while (std::chrono::duration<double>(currTime - startTime) < us);
 }
 
 XSPI_Flasher::~XSPI_Flasher()
@@ -290,12 +311,14 @@ XSPI_Flasher::XSPI_Flasher(pcidev::pci_device *dev, bool dualQSPI)
         flash_base = FLASH_BASE;
     mFlashDev = nullptr;
 
+#ifdef __GNUC__
     if (std::getenv("FLASH_VIA_USER") == NULL) {
         int fd = mDev->open("flash", O_RDWR);
         if (fd >= 0)
             mFlashDev = fdopen(fd, "r+");
         // If we can't open driver, we flash via the BAR mapping in user space
     }
+#endif
 
     if (mFlashDev != nullptr) {
         std::cout << "flashing via QSPI driver" << std::endl;
@@ -307,11 +330,11 @@ XSPI_Flasher::XSPI_Flasher(pcidev::pci_device *dev, bool dualQSPI)
     }
 }
 
-unsigned XSPI_Flasher::getSector(unsigned address) {
+unsigned int XSPI_Flasher::getSector(unsigned int address) {
     return (address >> 24) & 0xF;
 }
 
-bool XSPI_Flasher::setSector(unsigned address) {
+bool XSPI_Flasher::setSector(unsigned int address) {
     uint32_t sector = getSector(address);
     //Select sector before
     if(sector >= MAX_NUM_SECTORS) {
@@ -395,10 +418,10 @@ int XSPI_Flasher::xclTestXSpi(int index)
     //3. Testing simple read and write
     std::cout << "Testing read and write of 16 bytes" << std::endl;
 
-    //unsigned baseAddr = 0x007A0000;
-    unsigned baseAddr = 0;
-    unsigned Addr = 0;
-    unsigned AddressBytes = 3;
+    //unsigned int baseAddr = 0x007A0000;
+    unsigned int baseAddr = 0;
+    unsigned int Addr = 0;
+    unsigned int AddressBytes = 3;
     if(FOUR_BYTE_ADDRESSING) {
         AddressBytes = 4;
         writeRegister(ENTER_FOUR_BYTE_ADDR_MODE, 0, 0);
@@ -417,7 +440,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
 
     //First try erasing a sector and reading a
     //page (we should get FFFF ...)
-    for(unsigned sector = 2 ; sector <= 3; sector++)
+    for(unsigned int sector = 2 ; sector <= 3; sector++)
     {
         clearBuffers();
 
@@ -457,7 +480,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
     //first write 2 pages (using 4 128Mb writes) each to 2 sectors, and then read them
 
     //Write data
-    for(unsigned sector = 2 ; sector <= 3; sector++)
+    for(unsigned int sector = 2 ; sector <= 3; sector++)
     {
         if(!writeRegister(COMMAND_EXTENDED_ADDRESS_REG_WRITE, sector, 1))
             return false;
@@ -469,8 +492,8 @@ int XSPI_Flasher::xclTestXSpi(int index)
         for(int j = 0; j < 4; ++j)
         {
             clearBuffers();
-            for(unsigned i = 0; i < WRITE_DATA_SIZE; ++ i) {
-                WriteBuffer[i+ AddressBytes + 1] = j + sector + i; //some random data.
+            for(unsigned int i = 0; i < WRITE_DATA_SIZE; ++ i) {
+              WriteBuffer[i+ AddressBytes + 1] = static_cast<uint8_t>(j + sector + i); //some random data.
             }
 
             Addr = baseAddr + WRITE_DATA_SIZE*j;
@@ -486,7 +509,7 @@ int XSPI_Flasher::xclTestXSpi(int index)
     clearBuffers();
 
     //Read the data back, use 2 reads each of 128 bytes, twice to test 2 pages.
-    for(unsigned sector = 2 ; sector <= 3; sector++)
+    for(unsigned int sector = 2 ; sector <= 3; sector++)
     {
         //Select a sector (sector 2)
         if(!writeRegister(COMMAND_EXTENDED_ADDRESS_REG_WRITE, sector, 1))
@@ -560,8 +583,6 @@ int XSPI_Flasher::xclUpgradeFirmware1(std::istream& mcsStream1) {
     }
 
     return 0;
-
-    //}
 }
 
 
@@ -641,14 +662,13 @@ int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
     clearBuffers();
     recordList.clear();
 
-    std::string line;
     std::string startAddress;
     ELARecord record;
     bool endRecordFound = false;
 
     int lineno = 0;
     while (!mcsStream.eof() && !endRecordFound) {
-    lineno++;
+        lineno++;
         std::string line;
         std::getline(mcsStream, line);
         if (line.size() == 0) {
@@ -657,9 +677,9 @@ int XSPI_Flasher::parseMCS(std::istream& mcsStream) {
         if (line[0] != ':') {
             return -EINVAL;
         }
-        const unsigned dataLen = std::stoi(line.substr(1, 2), 0 , 16);
-        const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
-        const unsigned recordType = std::stoi(line.substr(7, 2), 0 , 16);
+        const unsigned int dataLen = std::stoi(line.substr(1, 2), 0 , 16);
+        const unsigned int address = std::stoi(line.substr(3, 4), 0, 16);
+        const unsigned int recordType = std::stoi(line.substr(7, 2), 0 , 16);
         switch (recordType) {
         case 0x00:
         {
@@ -751,48 +771,44 @@ int XSPI_Flasher::writeReg(unsigned RegOffset, unsigned value) {
 
 
 bool XSPI_Flasher::waitTxEmpty() {
-    long long delay = 0;
-    const timespec req = {0, 5000};
-    while (delay < 30000000000) {
+    std::chrono::high_resolution_clock::time_point currTime;
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+    do {
         uint32_t StatusReg = XSpi_GetStatusReg();
         if(StatusReg & XSP_SR_TX_EMPTY_MASK )
             return true;
         //If not empty, check how many bytes remain.
         uint32_t Data = XSpi_ReadReg(XSP_TFO_OFFSET);
         std::cout << std::hex << Data << std::dec << std::endl;
-        nanosleep(&req, 0);
-        delay += 5000;
-    }
-    std::cout << "Unable to get Tx Empty\n";
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+    } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
+
     return false;
 }
 
 bool XSPI_Flasher::isFlashReady() {
     uint32_t StatusReg;
-    const timespec req = {0, 5000};
-    long long delay = 0;
-    while (delay < 30000000000) {
-        //StatusReg = XSpi_GetStatusReg();
+    std::chrono::high_resolution_clock::time_point currTime;
+    const std::chrono::high_resolution_clock::time_point startTime = std::chrono::high_resolution_clock::now();
+    do {
         WriteBuffer[BYTE1] = COMMAND_STATUSREG_READ;
         bool status = finalTransfer(WriteBuffer, ReadBuffer, STATUS_READ_BYTES);
-        if( !status ) {
+        if( !status )
             return false;
-        }
-        //TODO: wait ?
         StatusReg = ReadBuffer[1];
-        if( (StatusReg & FLASH_SR_IS_READY_MASK) == 0) {
+        if((StatusReg & FLASH_SR_IS_READY_MASK) == 0)
             return true;
-        }
         //TODO: Try resetting. Uncomment next line?
         //XSpi_WriteReg(XSP_SRR_OFFSET, XSP_SRR_RESET_MASK);
-        nanosleep(&req, 0);
-        delay += 5000;
-    }
+        delay(std::chrono::microseconds(5));
+        currTime = std::chrono::high_resolution_clock::now();
+    } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
     std::cout << "Unable to get Flash Ready\n";
     return false;
 }
 
-bool XSPI_Flasher::sectorErase(unsigned Addr, unsigned erase_cmd) {
+bool XSPI_Flasher::sectorErase(unsigned int Addr, uint8_t erase_cmd) {
     if(!isFlashReady())
         return false;
 
@@ -933,7 +949,7 @@ bool XSPI_Flasher::writeBitstreamGuard(unsigned Addr) {
     }
 }
 
-bool XSPI_Flasher::clearBitstreamGuard(unsigned Addr) {
+bool XSPI_Flasher::clearBitstreamGuard(unsigned int Addr) {
     //Clear whatever was at bitstream guard location
     if(!mDualQSPI) {
         if (!prepareXSpi(0)) {
@@ -1083,7 +1099,7 @@ bool XSPI_Flasher::getFlashId()
     for (int i = 0; i < IDCODE_READ_BYTES; i++)
         ReadBuffer[i] = 0;
 
-    unsigned ffCount = 0;
+    unsigned int ffCount = 0;
     for (int i = 1; i < IDCODE_READ_BYTES; i++) {
         if ((unsigned int)ReadBuffer[i] == 0xff)
             ffCount++;
@@ -1106,9 +1122,9 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
 
     uint32_t SlaveSelectReg = 0;
     if(slave_index == 0)
-        SlaveSelectReg = ~0x01;
+      SlaveSelectReg = static_cast<uint32_t>(~0x01);
     else if(slave_index == 1)
-        SlaveSelectReg = ~0x02;
+      SlaveSelectReg = static_cast<uint32_t>(~0x02);
 
     /*
    * Enter a critical section from here to the end of the function since
@@ -1259,7 +1275,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
                 //read the data.
                 try {
                     Data = readReg(XSP_DRR_OFFSET);
-                } catch (const std::exception& ex) {
+                } catch (const std::exception&) {
                     return false;
                 }
 
@@ -1348,7 +1364,7 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
 }
 
 
-bool XSPI_Flasher::writePage(unsigned Addr, uint8_t writeCmd)
+bool XSPI_Flasher::writePage(unsigned int Addr, uint8_t writeCmd)
 {
     if(!isFlashReady())
         return false;
@@ -1409,7 +1425,7 @@ bool XSPI_Flasher::writePage(unsigned Addr, uint8_t writeCmd)
 
 }
 
-bool XSPI_Flasher::readPage(unsigned Addr, uint8_t readCmd)
+bool XSPI_Flasher::readPage(unsigned int Addr, uint8_t readCmd)
 {
     if(!isFlashReady())
         return false;
@@ -1453,7 +1469,7 @@ bool XSPI_Flasher::readPage(unsigned Addr, uint8_t readCmd)
         WriteBuffer[BYTE5] = (uint8_t) Addr;
     }
 
-    unsigned ByteCount = READ_DATA_SIZE;
+    unsigned int ByteCount = READ_DATA_SIZE;
 
     if (ReadCmd == COMMAND_DUAL_READ) {
         ByteCount += DUAL_READ_DUMMY_BYTES;
@@ -1492,7 +1508,7 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 #endif
 
     //Resetting selected_sector
-    selected_sector = -1;
+    selected_sector = std::numeric_limits<uint32_t>::max();
 
     XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
     XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();
@@ -1532,16 +1548,12 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
     std::cout << "Slave " << slave_sel << " ready" << std::endl;
 #endif
 
-    //TODO: Do we need this short delay still?
-    const timespec req = {0, 20000};
-    nanosleep(&req, 0);
+    delay(std::chrono::microseconds(20));
 
     return true;
 }
 
 int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record) {
-    //TODO: decrease the sleep time.
-    const timespec req = {0, 20000};
 
 #if defined(_debug)
     std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
@@ -1553,21 +1565,21 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
     int bufferIndex = 0;
     int pageIndex = 0;
     std::string prevLine("");
-    for (unsigned index = record.mDataCount; index > 0;) {
+    for (unsigned int index = record.mDataCount; index > 0;) {
         std::string line;
         std::getline(mcsStream, line);
         if(TEST_MODE)
             std::cout << line << std::endl;
-        const unsigned dataLen = std::stoi(line.substr(1, 2), 0 , 16);
+        const unsigned int dataLen = std::stoi(line.substr(1, 2), 0 , 16);
         index -= dataLen;
-        const unsigned recordType = std::stoi(line.substr(7, 2), 0 , 16);
+        const unsigned int recordType = std::stoi(line.substr(7, 2), 0 , 16);
         if (recordType != 0x00) {
             continue;
         }
         const std::string data = line.substr(9, dataLen * 2);
         // Write in byte swapped order
-        for (unsigned i = 0; i < data.length(); i += 2) {
-            unsigned value = std::stoi(data.substr(i, 2), 0, 16);
+        for (unsigned int i = 0; i < data.length(); i += 2) {
+            unsigned int value = std::stoi(data.substr(i, 2), 0, 16);
             buffer[bufferIndex++] = (unsigned char)value;
             assert(bufferIndex <= WRITE_DATA_SIZE);
 
@@ -1614,7 +1626,7 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
 #if defined(_debug)
             std::cout << "writing page " << pageIndex << std::endl;
 #endif
-            const unsigned address = std::stoi(line.substr(3, 4), 0, 16);
+            const unsigned int address = std::stoi(line.substr(3, 4), 0, 16);
             if(TEST_MODE) {
                 std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
                 std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;
@@ -1635,7 +1647,7 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
                 }
             }
             pageIndex++;
-            nanosleep(&req, 0);
+            delay(std::chrono::microseconds(20));
             bufferIndex = 0;
         }
         prevLine = line;
@@ -1649,8 +1661,8 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
             std::cout << prevLine << std::endl;
         }
 
-        const unsigned address = std::stoi(prevLine.substr(3, 4), 0, 16);
-        const unsigned dataLen = std::stoi(prevLine.substr(1, 2), 0 , 16);
+        const unsigned int address = std::stoi(prevLine.substr(3, 4), 0, 16);
+        const unsigned int dataLen = std::stoi(prevLine.substr(1, 2), 0 , 16);
 
         if(TEST_MODE)
             std::cout << address % WRITE_DATA_SIZE << " " << dataLen << std::endl;
@@ -1660,13 +1672,13 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
         if(!TEST_MODE) {
 
             //Fill unused half page to FF
-            for(unsigned i = bufferIndex; i < WRITE_DATA_SIZE; ++i) {
+            for(unsigned int i = bufferIndex; i < WRITE_DATA_SIZE; ++i) {
                 buffer[i] = 0xff;
             }
 
             if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
                 return -ENXIO;
-            nanosleep(&req, 0);
+            delay(std::chrono::microseconds(20));
             clearBuffers();
             {
                 //debug stuff
@@ -1683,8 +1695,6 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
 
 int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_addr)
 {
-    const timespec req = {0, 20000};
-
     //Now we can safely erase all subsectors
     int beatCount = 0;
     std::cout << "Erasing flash" << std::flush;
@@ -1705,7 +1715,7 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
                 std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
                 return -EINVAL;
             }
-            nanosleep(&req, 0); //Pause before next sector erase
+            delay(std::chrono::microseconds(20)); //Pause before next sector erase
         }
     }
     //New line after ...
@@ -1738,13 +1748,13 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
             std::cout << "\nERROR: Could not program the block" << std::endl;
             return -EINVAL;
         }
-        nanosleep(&req, 0);
+        delay(std::chrono::microseconds(20));
     }
     std::cout << std::endl;
     return 0;
 }
 
-bool XSPI_Flasher::readRegister(unsigned commandCode, unsigned bytes) {
+bool XSPI_Flasher::readRegister(uint8_t commandCode, unsigned int bytes) {
 
     if(!isFlashReady())
         return false;
@@ -1763,7 +1773,7 @@ bool XSPI_Flasher::readRegister(unsigned commandCode, unsigned bytes) {
     std::cout << "Printing output (with some extra bytes of readRegister cmd)" << std::endl;
 #endif
 
-    for(unsigned i = 0; i < 5; ++ i) //Some extra bytes, no harm
+    for(unsigned int i = 0; i < 5; ++ i) //Some extra bytes, no harm
     {
 #if defined(_debug)
         std::cout << i << " " << std::hex << (int)ReadBuffer[i] << std::dec << std::endl;
@@ -1781,7 +1791,7 @@ bool XSPI_Flasher::readRegister(unsigned commandCode, unsigned bytes) {
 
 //max 16 bits for nonvolative cfg register.
 //If extra_bytes == 0, then only the command is sent.
-bool XSPI_Flasher::writeRegister(unsigned commandCode, unsigned value, unsigned extra_bytes) {
+bool XSPI_Flasher::writeRegister(uint8_t commandCode, unsigned int value, unsigned int extra_bytes) {
     if(!isFlashReady())
         return false;
 
@@ -1853,26 +1863,7 @@ static int writeToFlash(std::FILE *flashDev, int slave,
 
     return ret;
 }
-#if 0
-static int readFromFlash(std::FILE *flashDev, int slave,
-    const unsigned int address, unsigned char *buf, size_t len)
-{
-    int ret = 0;
-    long addr = toAddr(slave, address);
 
-    ret = std::fseek(flashDev, addr, SEEK_SET);
-    if (ret)
-        return ret;
-
-    size_t read = std::fread(buf, 1, len, flashDev);
-    if (ferror(flashDev))
-        ret = -errno;
-    if (read != len)
-        ret = -EIO;
-
-    return ret;
-}
-#endif
 static int installBitstreamGuard(std::FILE *flashDev, uint32_t address, bool dual)
 {
     const size_t bitstream_guard_offset = 128;
@@ -2002,7 +1993,7 @@ static int splitMcsLine(std::string& line,
             unsigned int l = len * 2;
             std::string d = line.substr(9, len * 2);
             for (unsigned int i = 0; i < l; i += 2)
-                data.push_back(std::stoi(d.substr(i, 2), NULL, 16));
+                data.push_back(static_cast<unsigned char>(std::stoi(d.substr(i, 2), NULL, 16)));
         }
         break;
     case 1:
@@ -2080,7 +2071,7 @@ static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
                 // we're the 1st data in this page, updating the current addr
                 assert(pageOffset(currentAddr) == 0);
                 currentAddr |= addr;
-            } else if (pageOffset(currentAddr + buf.size()) != addr) {
+            } else if (pageOffset(currentAddr + static_cast<unsigned int>(buf.size())) != addr) {
                 std::cout << "MCS page offset is not contiguous, expecting 0x"
                     << std::hex << pageOffset(currentAddr) + buf.size()
                     << ", but, got 0x" << addr << std::dec << std::endl;
@@ -2141,21 +2132,21 @@ static int writeBitstream(std::FILE *flashDev, int index, unsigned int addr,
         len = std::min(len, buf.size() - i);
 
         std::cout << "." << std::flush;
-        ret = writeToFlash(flashDev, index, addr + i, buf.data() + i, len);
+        ret = writeToFlash(flashDev, index, addr + static_cast<unsigned int>(i), buf.data() + static_cast<unsigned int>(i), len);
     }
     std::cout << std::endl;
     return ret;
 }
 
 static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
-    int index, uint32_t addressShift, pcidev::pci_device *dev)
+    int index, uint32_t addressShift)
 {
     // Parse MCS data and write each contiguous chunk to flash.
     std::vector<unsigned char> buf;
     unsigned int curAddr = UINT_MAX;
     unsigned int nextAddr = 0;
-    bool store = true;
     int ret;
+    bool store = true;
 
     while (nextAddr != UINT_MAX) {
         std::cout << "Extracting bitstream from MCS data:" << std::endl;
@@ -2163,11 +2154,12 @@ static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
         if (ret)
             return ret;
         assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
-        if (store) {
-            store = false;
-        }
         std::cout << "Extracted " << buf.size() << " bytes from bitstream @0x"
             << std::hex << curAddr << std::dec << std::endl;
+
+        if (store) {
+          store = false;
+        }
 
         std::cout << "Writing bitstream to flash " << index << ":" << std::endl;
         ret = writeBitstream(mFlashDev, index, curAddr + addressShift, buf);
@@ -2185,7 +2177,7 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
     uint32_t bsGuardAddr;
 
     if (mcsStreamIsGolden(mcsStream))
-        return programXSpiDrv(mFlashDev, mcsStream, 0, 0, mDev);
+        return programXSpiDrv(mFlashDev, mcsStream, 0, 0);
 
     ret = bitstreamGuardAddress(bsGuardAddr, mDualQSPI);
     if (ret)
@@ -2197,7 +2189,7 @@ int XSPI_Flasher::upgradeFirmware1Drv(std::istream& mcsStream)
         return ret;
 
     // Write MCS
-    ret = programXSpiDrv(mFlashDev, mcsStream, 0, bitstreamGuardSize, mDev);
+    ret = programXSpiDrv(mFlashDev, mcsStream, 0, bitstreamGuardSize);
     if (ret)
         return ret;
 
@@ -2212,10 +2204,10 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
     uint32_t bsGuardAddr;
 
     if (mcsStreamIsGolden(mcsStream0)) {
-        ret = programXSpiDrv(mFlashDev, mcsStream0, 0, 0, mDev);
+        ret = programXSpiDrv(mFlashDev, mcsStream0, 0, 0);
         if (ret)
             return ret;
-        return programXSpiDrv(mFlashDev, mcsStream1, 1, 0, mDev);
+        return programXSpiDrv(mFlashDev, mcsStream1, 1, 0);
     }
 
     ret = bitstreamGuardAddress(bsGuardAddr, mDualQSPI);
@@ -2228,10 +2220,10 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
         return ret;
 
     // Write MCS
-    ret = programXSpiDrv(mFlashDev, mcsStream0, 0, bitstreamGuardSize, mDev);
+    ret = programXSpiDrv(mFlashDev, mcsStream0, 0, bitstreamGuardSize);
     if (ret)
         return ret;
-    ret = programXSpiDrv(mFlashDev, mcsStream1, 1, bitstreamGuardSize, mDev);
+    ret = programXSpiDrv(mFlashDev, mcsStream1, 1, bitstreamGuardSize);
     if (ret)
         return ret;
 

@@ -29,9 +29,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <sys/types.h>
-#include <getopt.h>
-#include <libgen.h>
-#include <unistd.h>
+#include "core/common/unistd.h"
 
 struct subCmd {
     std::function<int(po::variables_map)> handler;
@@ -50,11 +48,13 @@ const static std::vector<std::string> basic_subCmd =
 
 void sudoOrDie()
 {
+#ifndef _WIN32
     const char* SudoMessage = "ERROR: root privileges required.";
     if ((getuid() == 0) || (geteuid() == 0))
       return;
     std::cout << SudoMessage << std::endl;
     exit(-EPERM);
+#endif
 }
 
 bool canProceed()
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     try {
       po::store(parsed, vm);          // Can throw
       po::notify(vm);                 // Can throw
-    } catch (po::error& e) {
+    } catch (po::error&) {
       // Something bad happen with parsing our options
       printHelp(false);
     }

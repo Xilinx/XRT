@@ -20,7 +20,10 @@
 #include <iomanip>
 #include <map>
 #include <functional>
-#include <getopt.h>
+
+#ifdef _WIN32
+# pragma warning( disable : 4267)
+#endif
 
 // For backward compatibility
 const char *subCmdProgramDesc = "Updates the image(s) for a given device";

@@ -17,6 +17,10 @@
 #include <fstream>
 #include "firmware_image.h"
 
+#ifdef _WIN32
+# pragma warning( disable : 4458)
+#endif
+
 firmwareImage::firmwareImage(const char *file) :
     mBuf(nullptr)
 {

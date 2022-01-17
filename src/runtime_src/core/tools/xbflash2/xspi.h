@@ -56,7 +56,7 @@ private:
     bool waitTxEmpty();
     int macronixConfigure();
     bool isFlashReady();
-    bool sectorErase(unsigned Addr, unsigned erase_cmd);
+    bool sectorErase(unsigned int, uint8_t);
     bool writeBitstreamGuard(unsigned Addr);
     bool clearBitstreamGuard(unsigned Addr);
     bool bulkErase();
@@ -68,8 +68,8 @@ private:
     bool prepareXSpi(uint8_t slave_sel);
     int programRecord(std::istream& mcsStream, const ELARecord& record);
     int programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_addr);
-    bool readRegister(unsigned commandCode, unsigned bytes);
-    bool writeRegister(unsigned commandCode, unsigned value, unsigned bytes);
+    bool readRegister(uint8_t, unsigned int);
+    bool writeRegister(uint8_t, unsigned int, unsigned int bytes);
     bool setSector(unsigned address);
     unsigned getSector(unsigned address);
 

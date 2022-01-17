@@ -21,10 +21,12 @@ add_executable(${XBFLASH_NAME} ${XBFLASH_QSPI_SRC})
 
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost
-  REQUIRED COMPONENTS system program_options)
+  REQUIRED COMPONENTS filesystem system program_options)
 target_link_libraries(${XBFLASH_NAME}
       PRIVATE
-      ${Boost_LIBRARIES}
+      ${Boost_FILESYSTEM_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${Boost_PROGRAM_OPTIONS_LIBRARY}
       )
 
 set_target_properties(${XBFLASH_NAME} PROPERTIES INSTALL_RPATH "")
