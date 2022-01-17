@@ -99,6 +99,12 @@ ReportAieShim::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << fmt4("%d") % "Row" % tile.second.get<int>("row");
       if(tile.second.find("dma") != tile.second.not_found()) {
         _output << boost::format("    %s:\n") % "DMA";
+        _output << boost::format("        %s:\n") % "FIFO";
+        for(auto& node : tile.second.get_child("dma.fifo_info")) {
+          _output << fmt16("%s") % "Size" % node.second.get<std::string>("fifo_size");
+          _output << fmt16("%s") % "Count" % node.second.get<std::string>("fifo_count");
+        }
+
         _output << boost::format("        %s:\n") % "MM2S";
 
         _output << boost::format("            %s:\n") % "Channel";

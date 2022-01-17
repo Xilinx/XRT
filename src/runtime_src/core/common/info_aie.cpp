@@ -70,9 +70,19 @@ addnodelist(const std::string& search_str, const std::string& node_str,
 static void
 populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_dma)
 {
+  boost::property_tree::ptree fifo_len_pt;
   boost::property_tree::ptree mm2s_array;
   boost::property_tree::ptree s2mm_array;
   boost::property_tree::ptree empty_pt;
+
+  /* Extract FIFO SIZE/COUNT information */
+  auto fifo_len = pt.get_child("dma.fifo_len", empty_pt).begin();
+  boost::property_tree::ptree channel;
+  channel.put("fifo_size", fifo_len->second.data());
+  fifo_len++;
+  channel.put("fifo_count", fifo_len->second.data());
+  fifo_len_pt.push_back(std::make_pair("", channel));
+  pt_dma.add_child("dma.fifo_info", fifo_len_pt);
 
   auto queue_size = pt.get_child("dma.queue_size.mm2s", empty_pt).begin();
   auto queue_status = pt.get_child("dma.queue_status.mm2s", empty_pt).begin();
