@@ -482,6 +482,19 @@ struct spc_status
   }
 };
 
+struct get_slot_id
+{
+  using result_type = query::get_slot_id::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  {
+    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+
+    return xrt_core::debug_ip::get_spc_status(device, dbg_ip_data);
+  }
+};
+
 struct accel_deadlock_status
 {
   using result_type = query::accel_deadlock_status::result_type;
@@ -668,6 +681,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
+  emplace_func4_request<query::get_slot_id,		get_slot_id>();
 }
 
 struct X { X() { initialize_query_table(); } };

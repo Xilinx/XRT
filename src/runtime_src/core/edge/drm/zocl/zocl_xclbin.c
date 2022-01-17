@@ -22,8 +22,20 @@
 
 extern int kds_mode;
 
+
+/*
+ * Load xclbin using FPGA manager
+ *
+ * @param       zdev:    zocl device structure
+ * @param       data:   xclbin data buffer pointer
+ * @param       size:   xclbin data buffer size
+ * @param       flag:   FPGA Manager flags
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
-zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 flags)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size,
+		   u32 flags)
 {
 	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
@@ -39,6 +51,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 		return -ENXIO;
 	}
 
+	/* Allocate an FPGA image info struct */
 	info = fpga_image_info_alloc(dev);
 	if (!info)
 		return -ENOMEM;
@@ -47,6 +60,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 	info->buf = data;
 	info->count = size;
 
+	/* load FPGA from buffer */
 	err = fpga_mgr_load(fpga_mgr, info);
 	if (err == 0)
 		DRM_INFO("FPGA Manager load DONE");
@@ -58,6 +72,16 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 	return err;
 }
 
+/*
+ * Load partial bitstream to PR platform
+ *
+ * @param       zdev:   zocl device structure
+ * @param       buffer: xclbin data buffer pointer
+ * @param       length: xclbin data buffer size
+ * @param       domain: Target domain structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
 zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 		  struct drm_zocl_domain *domain)
@@ -87,6 +111,17 @@ zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
 	return err;
 }
 
+/*
+ * Load the bitstream. For PR platform load the partial bitstream and for FLAT
+ * platform load the full bitstream.
+ *
+ * @param       zdev:   zocl device structure
+ * @param       buffer: xclbin data buffer pointer
+ * @param       length: xclbin data buffer size
+ * @param       domain: Target domain structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
 zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 		   struct drm_zocl_domain *domain)
@@ -281,14 +316,20 @@ static inline u32 xclbin_intr_id(u32 prop)
 	return intr_id >> IP_INTERRUPT_ID_SHIFT;
 }
 
+/*
+ * Get the next free aparture index. If phy_addr is zero of an index then
+ * consider it as free index.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ * @return      valid index on success, Error code on failure.
+ */
 static int
 get_next_free_apt_index(struct drm_zocl_dev *zdev)
 {
 	int apt_idx;
 
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
-		/* If phy_addr doesn't have any non zero address,
-		 * consider it as free index */
 		if (zdev->apertures[apt_idx].addr == 0)
 			return apt_idx;
 	}
@@ -296,6 +337,13 @@ get_next_free_apt_index(struct drm_zocl_dev *zdev)
 	return -ENOSPC;
 }
 
+/*
+ * Always keep tract of max aperture index. This will help not to traverse
+ * maximum size of the aperture number always.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ */
 static void
 update_max_apt_number(struct drm_zocl_dev *zdev)
 {
@@ -308,6 +356,14 @@ update_max_apt_number(struct drm_zocl_dev *zdev)
 	}
 }
 
+/*
+ * Cleanup the apertures of a specific domain. Others will remain same without
+ * changing the index.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       domain_idx:	Specific domain index
+ *
+ */
 static void
 zocl_clean_aperture(struct drm_zocl_dev *zdev, int domain_idx)
 {
@@ -334,6 +390,11 @@ zocl_clean_aperture(struct drm_zocl_dev *zdev, int domain_idx)
  * address and allow user map one of the aperture to user space.
  *
  * The xclbin doesn't contain IP size. Use hardcoding size for now.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       domain:	Specific domain staructure
+ *
+ * @return      0 on success, Error code on failure.
  */
 static int
 zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
@@ -414,6 +475,14 @@ zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	return 0;
 }
 
+/*
+ * Get the next free CU index. If cu platform device is NULL of an index then
+ * consider it as free index.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ * @return      valid index on success, Error code on failure.
+ */
 static int
 zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
 {
@@ -427,6 +496,15 @@ zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
 	return -ENOSPC;
 }
 
+/*
+ * Destroy all the CUs belongs to a specific domain. All the other CUs remain
+ * same. There could be possibility of holes in the lists. But we should not
+ * change the index of existing CUs
+ *
+ * @param       zdev:		zocl device structure
+ * @param       domain_idx:	Specific domain index
+ *
+ */
 static void
 zocl_destroy_cu_domain(struct drm_zocl_dev *zdev, int domain_idx)
 {
@@ -441,13 +519,24 @@ zocl_destroy_cu_domain(struct drm_zocl_dev *zdev, int domain_idx)
 
 		info = dev_get_platdata(&pldev->dev);
 		if (info->domain_idx == domain_idx) {
+			/* Remove the platform-level device */
 			platform_device_del(pldev);
+			/* Destroy the platform device */
 			platform_device_put(pldev);
 			zdev->cu_pldev[i] = NULL;
 		}
 	}
 }
 
+/*
+ * Create the CUs for a specific domain. CUs for a specific domain may not be
+ * contigious. CU index will be assign based on the next free index.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       domain: Specific domain structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
 zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 {
@@ -491,6 +580,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 			goto err;
 		}
 
+		/* Get the next free CU index */
 		info.inst_idx = zocl_get_cu_inst_idx(zdev);
 		/* ip_data->m_name format "<kernel name>:<instance name>",
 		 * where instance name is so called CU name.
@@ -552,6 +642,12 @@ zocl_get_domain(struct drm_zocl_dev *zdev, uuid_t *id)
  * Note: this is only used under ert mode so that we do not need to
  * check context or cache XCLBIN metadata, which are done by host
  * XRT driver. Only if the same XCLBIN has been loaded, we skip loading.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       data:	xclbin buffer
+ * @param       domain: Specific domain structure
+ *
+ * @return      0 on success, Error code on failure.
  */
 int
 zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
@@ -752,7 +848,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin
 		}
 		vaddr = bo->cma_base.vaddr;
 		memcpy(vaddr,bsection_buffer,bsize);
-		
+
 		flags = zdev->fpga_mgr->flags;
 		zdev->fpga_mgr->flags |= FPGA_MGR_CONFIG_DMA_BUF;
 		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
@@ -835,6 +931,18 @@ zocl_xclbin_refcount(struct drm_zocl_domain *domain)
 	return domain->zdev_xclbin->zx_refcnt;
 }
 
+/*
+ * This function is the main entry point to load xclbin. It's takes an userspace
+ * pointer of xclbin and copy the xclbin data to kernel space. Then load that
+ * xclbin to the FPGA. It also initialize other modules like, memory, aie, CUs
+ * etc.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       axlf_obj:	xclbin userspace structure
+ * @param       client:		user space client attached to device
+ * 
+ * @return      0 on success, Error code on failure.
+ */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	struct sched_client_ctx *client)
@@ -1005,7 +1113,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  */
 			if (kds_mode == 1 &&
 				(zocl_xclbin_get_uuid(domain) != NULL)) {
-				zocl_destroy_cu_domain(zdev, domain->domain_idx);;
+				zocl_destroy_cu_domain(zdev, domain->domain_idx);
 				if (zdev->aie) {
 					/*
 					 * Dont reset if aie is already in reset

@@ -337,7 +337,8 @@ int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx)
 }
 
 /**
- * Create a new CU subdevice. And try to attach to the driver.
+ * Create a new CU subdevice. And try to attach to the driver. This will force
+ * cu probe to call.
  *
  * @param	zdev: zocl Device Instance
  * @param	info: CU related information
@@ -367,7 +368,8 @@ int subdev_create_cu(struct drm_zocl_dev *zdev, struct xrt_cu_info *info)
 	/* Fetch the kernel info from this domain for this CU */
 	krnl_info = zocl_query_kernel(domain, info->kname);
 	if(!krnl_info) {
-		DRM_WARN("%s CU has no metadata, using default size",info->kname);
+		DRM_WARN("%s CU has no metadata, using default size",
+			 info->kname);
 		info->size = 0x10000;
 	}
 	else {
