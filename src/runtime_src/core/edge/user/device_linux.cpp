@@ -482,16 +482,42 @@ struct spc_status
   }
 };
 
-struct get_slot_id
+struct get_xclbin_domain_id,
 {
-  using result_type = query::get_slot_id::result_type;
+  using result_type = query::get_xclbin_domain_id,::result_type;
 
   static result_type
-  get(const xrt_core::device* device, key_type key, const boost::any& dbg_ip_dt)
+  get(const xrt_core::device* device, key_type key, const boost::any& xclbinid)
   {
-    const auto dbg_ip_data = boost::any_cast<query::spc_status::debug_ip_data_type>(dbg_ip_dt);
+    const auto uuid_str = boost::any_cast<std::string>(xclbinid);
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("xclbinid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
 
-    return xrt_core::debug_ip::get_spc_status(device, dbg_ip_data);
+    result_type slot_id;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      tokenizer::iterator tok_it = tokens.begin();
+      slot_id = std::stoi(std::string(*tok_it++));
+      std::string uuid = std::string(*tok_it++);
+
+      if (boost::equal(uuid, uuid_str))
+	return slot_id;
+    }
+    return -1;
+
   }
 };
 
@@ -681,7 +707,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
-  emplace_func4_request<query::get_slot_id,		get_slot_id>();
+  emplace_func4_request<query::get_xclbin_domain_id,	get_xclbin_domain_id,>();
 }
 
 struct X { X() { initialize_query_table(); } };

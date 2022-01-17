@@ -92,7 +92,7 @@ static int zocl_pr_domain_init(struct drm_zocl_dev *zdev,
 	int i;
 
 
-	/* SAIF TODO : Need to update this function based on the device tree */
+	/* TODO : Need to update this function based on the device tree */
 	if (ZOCL_PLATFORM_ARM64) {
 		u64 pr_num;
 		if (of_property_read_u64(pdev->dev.of_node,
@@ -1054,7 +1054,7 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_apt;
 
-	/* SAIF TODO */
+	/* Initialzie Domain */
 	ret = zocl_pr_domain_init(zdev, pdev);
 	if (ret)
 		goto err_drm;

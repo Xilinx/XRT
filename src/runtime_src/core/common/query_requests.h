@@ -256,7 +256,7 @@ enum class key_type
   lapc_status,
   spc_status,
   accel_deadlock_status,
-  get_slot_id,
+  get_xclbin_domain_id,
 
   noop
 };
@@ -2762,13 +2762,13 @@ struct accel_deadlock_status : request
   get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
-struct get_slot_id : request
+struct get_xclbin_domain_id : request
 {
-  using result_type = uint32_t;
-  static const key_type key = key_type::get_slot_id;
+  using result_type = int;
+  static const key_type key = key_type::get_xclbin_domain_id;
 
   virtual boost::any
-  get(const xrt_core::device* device, const uuid xclbin_id) const = 0;
+  get(const xrt_core::device* device, const boost::any& xclbinid) const = 0;
 };
 
 } // query

@@ -20,9 +20,6 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-extern int kds_mode;
-
-
 /*
  * Load xclbin using FPGA manager
  *
@@ -488,7 +485,7 @@ zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
 {
 	int i;
 
-	/* SAIF TODO : Didn't think about efficient way till now */
+	/* TODO : Didn't think about efficient way till now */
 	for (i = 0; i < MAX_CU_NUM; ++i)
 		if (zdev->cu_pldev[i] == NULL)
 			return i;
@@ -759,6 +756,12 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	return ret;
 }
 
+/*
+ * Free the xclbin specific sections for this domain.
+ *
+ * @param       domain: Specific domain structure
+ *
+ */
 void zocl_free_sections(struct drm_zocl_domain *domain)
 {
 	if (domain->ip) {
@@ -1060,18 +1063,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		goto out0;
 	}
 
-#if 0
-	/* uuid is null means first time load xclbin */
-	if (zocl_xclbin_get_uuid(domain) != NULL) {
-		/* reset scheduler prior to load new xclbin */
-		if (kds_mode == 0) {
-			ret = sched_reset_exec(zdev->ddev);
-			if (ret)
-				goto out0;
-		}
-	}
-#endif
-
+	/* Free sections before load the new xclbin */
 	zocl_free_sections(domain);
 
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
@@ -1111,8 +1103,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  * cleanup previously loaded xclbin related data
 			  * before loading new bitstream/pdi
 			  */
-			if (kds_mode == 1 &&
-				(zocl_xclbin_get_uuid(domain) != NULL)) {
+			if (zocl_xclbin_get_uuid(domain) != NULL) {
 				zocl_destroy_cu_domain(zdev, domain->domain_idx);
 				if (zdev->aie) {
 					/*
@@ -1203,8 +1194,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret)
 		goto out0;
 
-	/* SAIF TODO : Question ? Need to discuss about the kernels. Currently considering
-	 * it as a domain specific. */
+	/* Kernels are domain specific. */
 	if (domain->kernels != NULL) {
 		vfree(domain->kernels);
 		domain->kernels = NULL;
@@ -1273,36 +1263,29 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	domain->zdev_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(domain, &axlf_head.m_header.uuid);
 
-	if (kds_mode == 1) {
-		/*
-		 * Invoking kernel thread (kthread), hence need
-		 * to call this outside of the atomic context
-		 */
-		write_unlock(&zdev->attr_rwlock);
+	/*
+	 * Invoking kernel thread (kthread), hence need
+	 * to call this outside of the atomic context
+	 */
+	write_unlock(&zdev->attr_rwlock);
 
-		/* SAIF TODO : Question ? Do we need to stop kds while loading a
-		 * xclbin. For my thoughts we don't need as old CUs are not
-		 * affected.
-		 * */
-		//(void) zocl_kds_reset(zdev);
-		/* Destroy the CUs specific for this domain */
-		zocl_destroy_cu_domain(zdev, domain->domain_idx);
+	/* Destroy the CUs specific for this domain */
+	zocl_destroy_cu_domain(zdev, domain->domain_idx);
 
-		/* Create the CUs for this domain */
-		ret = zocl_create_cu(zdev, domain);
-		if (ret) {
-			write_lock(&zdev->attr_rwlock);
-			goto out0;
-		}
-
-		ret = zocl_kds_update(zdev, domain, &axlf_obj->kds_cfg);
-		if (ret) {
-			write_lock(&zdev->attr_rwlock);
-			goto out0;
-		}
-
+	/* Create the CUs for this domain */
+	ret = zocl_create_cu(zdev, domain);
+	if (ret) {
 		write_lock(&zdev->attr_rwlock);
+		goto out0;
 	}
+
+	ret = zocl_kds_update(zdev, domain, &axlf_obj->kds_cfg);
+	if (ret) {
+		write_lock(&zdev->attr_rwlock);
+		goto out0;
+	}
+
+	write_lock(&zdev->attr_rwlock);
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
