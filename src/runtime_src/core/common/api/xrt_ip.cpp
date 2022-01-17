@@ -111,6 +111,13 @@ public:
     device->wait_ip_interrupt(handle);
     enable(); // re-enable interrupts
   }
+
+  std::cv_status
+  wait(const std::chrono::duration<int32_t, std::milli>& timeout) const
+  {
+    // Waits for interrupt, or return on timeout
+    return device->wait_ip_interrupt(handle, timeout.count());
+  }
 };
 
 // struct ip_impl - The internals of an xrt::ip
@@ -351,6 +358,17 @@ wait()
 {
   if (handle)
     handle->wait();
+}
+
+std::cv_status
+ip::interrupt::
+wait(const std::chrono::duration<int32_t, std::milli>& timeout) const
+{
+  if (handle)
+    return handle->wait(timeout);
+
+  return std::cv_status::timeout;
+  //Should it be error condition to throw and error out?
 }
 
 } // namespace xrt

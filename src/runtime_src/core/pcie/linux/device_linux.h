@@ -60,6 +60,9 @@ public:
   void
   wait_ip_interrupt(xclInterruptNotifyHandle) override;
 
+  std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
+
   xclBufferHandle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;
   ////////////////////////////////////////////////////////////////

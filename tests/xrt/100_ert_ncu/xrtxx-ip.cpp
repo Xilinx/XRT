@@ -47,6 +47,7 @@ static constexpr uint32_t AP_START    = 0x1;
 static constexpr uint32_t AP_DONE     = 0x2;
 static constexpr uint32_t AP_IDLE     = 0x4;
 static constexpr uint32_t AP_CONTINUE = 0x10;
+static constexpr uint32_t ADDR_ISR = 0x0C;
 
 static constexpr size_t ELEMENTS = 16;
 static constexpr size_t ARRAY_SIZE = 8;
@@ -65,6 +66,7 @@ usage()
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
   std::cout << "  [--seconds <number>]: number of seconds to run\n";
   std::cout << "  [--intr]: use IP interrupt notification\n";
+  std::cout << "  [--timeout]: timeout to use with IP interrupt notification\n";
   std::cout << "";
   std::cout << "* Program schedules a job per CU specified. Each jobs is repeated\n";
   std::cout << "* unless specified seconds have elapsed\n";
@@ -115,13 +117,15 @@ struct job_type
       auto grpid1 = kernel.group_id(1);
 
       const size_t data_size = ELEMENTS * ARRAY_SIZE;
-      a = xrt::bo(device, data_size*sizeof(unsigned long), grpid0);
+      //error from below: call of overloaded ‘bo(const xrt::device&, long unsigned int, int&)’ is ambiguous
+      //a = xrt::bo(device, data_size*sizeof(unsigned long), grpid0);
+      a = xrt::bo(device, data_size*sizeof(unsigned long), xrt::bo::flags::normal, grpid0);
       am = a.map();
       auto adata = reinterpret_cast<unsigned long*>(am);
       for (unsigned int i=0;i<data_size;++i)
         adata[i] = i;
 
-      b = xrt::bo(device, data_size*sizeof(unsigned long), grpid1);
+      b = xrt::bo(device, data_size*sizeof(unsigned long), xrt::bo::flags::normal, grpid1);
       bm = b.map();
       auto bdata = reinterpret_cast<unsigned long*>(bm);
       for (unsigned int j=0;j<data_size;++j)
@@ -195,6 +199,33 @@ struct job_type
     }
   }
 
+  void
+  run_intr(std::chrono::milliseconds& timeout)
+  {
+    auto interrupt = ip.create_interrupt_notify();
+
+    while (1) {
+      ip.write_register(0, AP_START);
+      ++runs;
+      auto ret = interrupt.wait(timeout);
+      if (ret == std::cv_status::timeout)
+        throw std::runtime_error("Timeout when waiting for CU interrupt");
+
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
+      //Clear ISR
+      auto rdata = ip.read_register();
+      ip.write_register(ADDR_ISR, rdata);
+      //Read/Clear driver interrupt counter
+      interrupt.wait();//This will return immediately after clearing the counter
+
+      //Check CU output here
+
+      if (stop)
+        break;
+    }
+  }
 
   void
   run()
@@ -253,6 +284,7 @@ run(int argc, char** argv)
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
+  int32_t timeout = -1;
 
   std::string cur;
   for (auto& arg : args) {
@@ -279,6 +311,8 @@ run(int argc, char** argv)
       secs = std::stoi(arg);
     else if (cur == "--cus")
       cus = std::stoi(arg);
+    else if (cur == "--timeout")
+      timeout = std::stoi(arg);
     else
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }

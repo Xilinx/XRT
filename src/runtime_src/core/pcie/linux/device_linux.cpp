@@ -33,6 +33,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <poll.h>
 #include <sys/syscall.h>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
@@ -1015,6 +1016,30 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
+std::cv_status
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
+{
+  struct pollfd pfd;
+  int32_t ret = 0;
+
+  pfd.fd = handle;
+  pfd.events = POLLIN;
+  //Checking for only one fd; Only of one CU
+  //Timeout value in milli seconds
+  ret = ::poll(&pfd, 1, timeout);
+  if (ret < 0)
+    throw error(errno, "wait_timeout: failed POSIX poll");
+
+  if (ret == 0) //Timeout occured
+    return std::cv_status::timeout;
+
+  if (pfd.revents & POLLIN) //Interrupt received
+    return std::cv_status::no_timeout;
+
+  throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
 xclBufferHandle

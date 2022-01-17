@@ -23,6 +23,7 @@
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
+# include <condition_variable>
 # include <cstdint>
 # include <string>
 #endif
@@ -108,6 +109,19 @@ public:
     XCL_DRIVER_DLLESPEC
     void
     wait();
+ 
+    /**
+     * wait() - Wait for interrupt or return on timeout
+     *
+     * Wait for interrupt from IP for timeout duration
+     * Timeout duration is in milliseconds
+     */
+    XCL_DRIVER_DLLESPEC
+    std::cv_status
+    wait(const std::chrono::duration<int32_t, std::milli>& timeout) const; 
+    //wait(std::chrono::milliseconds timeout);
+    //At lower level need timeout in int32_t type
+    //But chrono type millisec can be 45 bits
   };
  
 public:
