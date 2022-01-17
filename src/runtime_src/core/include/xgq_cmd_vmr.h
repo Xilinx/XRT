@@ -213,7 +213,11 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t boot_on_default:1;
 	uint16_t boot_on_backup:1;
 	uint16_t boot_on_recovery:1;
-	uint16_t resvd1:11;
+	uint16_t has_extfpt:1;
+	uint16_t has_ext_xsabin:1;
+	uint16_t has_ext_scfw:1;
+	uint16_t has_ext_sysdtb:1;
+	uint16_t resvd1:7;
 	uint16_t multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t flush_progress:7;

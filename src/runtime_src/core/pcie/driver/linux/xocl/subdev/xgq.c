@@ -295,29 +295,52 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 	return false;
 }
 
-static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq)
+static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_to_debug_log)
 {
 	struct vmr_log log = { 0 };
+
+	if (num_recs > VMR_LOG_MAX_RECS)
+		num_recs = VMR_LOG_MAX_RECS;
 
 	xocl_memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
 		sizeof(xgq->xgq_vmr_shared_mem));
 
+	/*
+	 * log_msg_index which is the oldest log in a ring buffer.
+	 * if we want to only dump num_recs, we start from
+	 * (log_msg_index + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS.
+	 */
 	if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
 		u32 idx, log_idx = xgq->xgq_vmr_shared_mem.log_msg_index;
 
-		XGQ_WARN(xgq, "=== start dumping vmr log ===");
-		for (idx = 0; idx < VMR_LOG_MAX_RECS; idx++) {
+		log_idx = (log_idx + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS;
+
+		if (!dump_to_debug_log)
+			XGQ_WARN(xgq, "=== start dumping vmr log ===");
+
+		for (idx = 0; idx < num_recs; idx++) {
 			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
 				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
 				sizeof(log) * log_idx,
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
-			XGQ_WARN(xgq, "%s", log.log_buf); 
+
+			if (dump_to_debug_log)
+				XGQ_DBG(xgq, "%s", log.log_buf); 
+			else
+				XGQ_WARN(xgq, "%s", log.log_buf); 
 		}
-		XGQ_WARN(xgq, "=== end dumping vmr log ===");
+
+		if (!dump_to_debug_log)
+			XGQ_WARN(xgq, "=== end dumping vmr log ===");
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
 	}
+}
+
+static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
+{
+	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
 }
 
 /*
@@ -375,7 +398,7 @@ static int health_worker(void *data)
 
 			/* If we see timeout cmd first time, dump log into dmesg */
 			if (!xgq->xgq_halted) {
-				xgq_vmr_log_dump(xgq);
+				xgq_vmr_log_dump_all(xgq);
 			}
 
 			/* then we stop service */
@@ -1342,7 +1365,6 @@ static ssize_t program_sc_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	/* request debug level change */
 	if (val) {
 		ret = vmr_control_op(to_platform_device(dev), XGQ_CMD_PROGRAM_SC);
 		if (ret) {
@@ -1356,6 +1378,23 @@ static ssize_t program_sc_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_WO(program_sc);
+
+static ssize_t vmr_debug_dump_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL) {
+		return -EINVAL;
+	}
+
+	xgq_vmr_log_dump(xgq, val, true);
+
+	return count;
+}
+static DEVICE_ATTR_WO(vmr_debug_dump);
+
 
 static ssize_t vmr_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1376,6 +1415,10 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
 	cnt += sprintf(buf + cnt, "MULTI_BOOT_OFFSET:0x%x\n", vmr_status->multi_boot_offset);
+	cnt += sprintf(buf + cnt, "HAS_EXTFPT:%d\n", vmr_status->has_extfpt);
+	cnt += sprintf(buf + cnt, "HAS_EXT_META_XSABIN:%d\n", vmr_status->has_fpt);
+	cnt += sprintf(buf + cnt, "HAS_EXT_SC_FW:%d\n", vmr_status->has_fpt);
+	cnt += sprintf(buf + cnt, "HAS_EXT_SYSTEM_DTB:%d\n", vmr_status->has_fpt);
 	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
 	cnt += sprintf(buf + cnt, "FLUSH_PROGRESS:%d\n", vmr_status->flush_progress);
 	mutex_unlock(&xgq->xgq_lock);
@@ -1390,8 +1433,9 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_flush_default_only.attr,
 	&dev_attr_flush_to_legacy.attr,
 	&dev_attr_vmr_status.attr,
-	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_program_sc.attr,
+	&dev_attr_vmr_debug_level.attr,
+	&dev_attr_vmr_debug_dump.attr,
 	NULL,
 };
 
