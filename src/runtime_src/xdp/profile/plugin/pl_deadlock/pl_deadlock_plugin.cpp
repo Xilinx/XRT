@@ -81,7 +81,8 @@ namespace xdp {
 
     while (should_continue) {
       if (deviceIntf->getDeadlockStatus()) {
-        std::string msg = "System Deadlock detected on device " + deviceName;
+        std::string msg = "System Deadlock detected on device " + deviceName +
+        ". Please manually terminate and debug the application.";
         xrt_core::message::send(severity_level::warning, "XRT", msg);
         return;
       }
@@ -140,8 +141,7 @@ namespace xdp {
 
     // Start the PL deadlock detection thread
     mThreadCtrlMap[handle] = true;
-    auto device_thread = std::thread(&PLDeadlockPlugin::pollDeadlock, this, handle, deviceId);
-    mThreadMap[handle] = std::move (device_thread);
+    mThreadMap[handle] = std::thread { [=] { pollDeadlock(handle, deviceId); } };
   }
-  
+
 } // end namespace xdp

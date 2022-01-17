@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,8 @@
 #include <mutex>
 #include <set>
 #include <vector>
+
+#include "plugin/xdp/device_offload.h"
 
 #define SEND_RESP2QDMA() \
     { \
@@ -1783,6 +1785,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     // Shim object is not deleted as part of closing device.
     // The core device must correspond to open and close, so
     // reset here rather than in destructor
+    xdp::hw_emu::flush_device(this);
     mCoreDevice.reset();
     device_handles::remove(this);
 
@@ -4013,16 +4016,16 @@ int Q2H_helper::poolingon_Qdma() {
 
 bool Q2H_helper::connect_sock() {
     std::string sock_name;
-    if(getenv("EMULATION_SOCKETID")) {
-        sock_name = "D2X_unix_sock_" + std::string(getenv("EMULATION_SOCKETID"));
+    if (getenv("EMULATION_SOCKETID")) {
+      sock_name = "D2X_unix_sock_" + std::string(getenv("EMULATION_SOCKETID"));
     } else {
-        sock_name = "D2X_unix_sock";
+      sock_name = "D2X_unix_sock";
     }
     if(Q2h_sock == NULL) {
-        Q2h_sock = new unix_socket(sock_name,5,false);
+      Q2h_sock = new unix_socket("EMULATION_SOCKETID", sock_name, 5, false);
     }
     else if (!Q2h_sock->server_started) {
-        Q2h_sock->start_server(5,false);
+      Q2h_sock->start_server(5,false);
     }
     return Q2h_sock->server_started;
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -238,6 +238,27 @@ namespace xdp {
     NativeAPIs.emplace("xrtXclbinGetUUID");
     NativeAPIs.emplace("xrtXclbinGetData");
     NativeAPIs.emplace("xrtXclbinUUID");
+    NativeAPIs.emplace("xrt::psrun::psrun");
+    NativeAPIs.emplace("xrt::psrun::start");
+    NativeAPIs.emplace("xrt::psrun::wait");
+    NativeAPIs.emplace("xrt::psrun::state");
+    NativeAPIs.emplace("xrt::psrun::set_event");
+    NativeAPIs.emplace("xrt::psrun::get_ert_packet");
+    NativeAPIs.emplace("xrt::pskernel::kernel");
+    NativeAPIs.emplace("xrt::pskernel::offset");
+    NativeAPIs.emplace("xrtPSKernelOpen");
+    NativeAPIs.emplace("xrtPSKernelOpenExclusive");
+    NativeAPIs.emplace("xrtPSKernelClose");
+    NativeAPIs.emplace("xrtPSRunOpen");
+    NativeAPIs.emplace("xrtPSKernelArgGroupId");
+    NativeAPIs.emplace("xrtPSKernelArgOffset");
+    NativeAPIs.emplace("xrtPSKernelRun");
+    NativeAPIs.emplace("xrtPSRunClose");
+    NativeAPIs.emplace("xrtPSRunState");
+    NativeAPIs.emplace("xrtPSRunWait");
+    NativeAPIs.emplace("xrtPSRunWaitFor");
+    NativeAPIs.emplace("xrtPSRunSetCalback");
+    NativeAPIs.emplace("xrtPSRunStart");
 
     HALAPIs.emplace("xclLoadXclbin") ;
     HALAPIs.emplace("xclProbe") ;
@@ -262,6 +283,8 @@ namespace xdp {
     HALAPIs.emplace("xclExecWait") ;
     HALAPIs.emplace("xclCloseContext") ;
     HALAPIs.emplace("xclGetBOProperties") ;
+    HALAPIs.emplace("xclRegWrite") ;
+    HALAPIs.emplace("xclRegRead") ;
   }
 
   void SummaryWriter::writeHeader()

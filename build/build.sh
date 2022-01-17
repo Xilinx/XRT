@@ -225,8 +225,14 @@ if [[ ! -z ${XRT_BOOST_INSTALL:+x} ]]; then
 fi
 
 # we pick microblaze toolchain from Vitis install
-if [[ -z ${XILINX_VITIS:+x} ]]; then
+if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
     export XILINX_VITIS=/proj/xbuilds/2019.2_released/installs/lin64/Vitis/2019.2
+    if [[ ! -d ${XILINX_VITIS} ]]; then
+        echo "****************************************************************"
+        echo "* XILINX_VITIS is undefined or not accessible                  *"
+        echo "* MicroBlaze firmware will not be built                        *"
+        echo "****************************************************************"
+    fi
 fi
 
 if [[ $dbg == 1 ]]; then

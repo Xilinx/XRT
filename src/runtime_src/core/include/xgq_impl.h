@@ -136,14 +136,16 @@ static inline uint32_t xgq_double_read32(uint64_t io_hdl, uint64_t addr, int is_
 #define XGQ_MAJOR			1
 #define XGQ_MINOR			0
 #define XGQ_MIN_NUM_SLOTS		2
+#define XGQ_VERSION			((XGQ_MAJOR<<16)+XGQ_MINOR)
+#define GET_XGQ_MAJOR(version)		(version>>16)
+#define GET_XGQ_MINOR(version)		(version&0xFFFF)
 
 /*
  * Meta data shared b/w client and server of XGQ
  */
 struct xgq_header {
 	uint32_t xh_magic; /* Always the first member */
-	uint16_t xh_minor;
-	uint16_t xh_major;
+	uint32_t xh_version;
 
 	/* SQ and CQ share the same num of slots. */
 	uint32_t xh_slot_num;
@@ -289,13 +291,13 @@ static inline void xgq_ring_write_consumed(uint64_t io_hdl, struct xgq_ring *rin
 static inline uint64_t xgq_ring_slot_ptr_produced(struct xgq_ring *ring)
 {
 	return ring->xr_slot_addr +
-	       ring->xr_slot_sz * (ring->xr_produced & (ring->xr_slot_num - 1));
+	       (uint64_t)ring->xr_slot_sz * (ring->xr_produced & (ring->xr_slot_num - 1));
 }
 
 static inline uint64_t xgq_ring_slot_ptr_consumed(struct xgq_ring *ring)
 {
 	return ring->xr_slot_addr +
-	       ring->xr_slot_sz * (ring->xr_consumed & (ring->xr_slot_num - 1));
+	       (uint64_t)ring->xr_slot_sz * (ring->xr_consumed & (ring->xr_slot_num - 1));
 }
 
 static inline int xgq_can_produce(struct xgq *xgq)
@@ -366,8 +368,7 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 		      n_slots, sizeof(struct xgq_com_queue_entry));
 
 	hdr.xh_magic = 0;
-	hdr.xh_major = XGQ_MAJOR;
-	hdr.xh_minor = XGQ_MINOR;
+	hdr.xh_version = XGQ_VERSION;
 	hdr.xh_slot_num = n_slots;
 	hdr.xh_sq_offset = xgq->xq_sq.xr_slot_addr - ring_addr;
 	hdr.xh_sq_slot_size = slot_size;
@@ -483,7 +484,7 @@ static inline int xgq_attach(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, u
 		return -EAGAIN;
 
 	xgq_copy_from_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(struct xgq_header));
-	if (hdr.xh_major != XGQ_MAJOR)
+	if (GET_XGQ_MAJOR(hdr.xh_version) != XGQ_MAJOR)
 		return -EOPNOTSUPP;
 
 	nslots = hdr.xh_slot_num;

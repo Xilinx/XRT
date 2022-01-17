@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022 Xilinx Inc - All rights reserved
  * Xilinx Debug & Profile (XDP) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -26,12 +26,13 @@
 
 namespace xdp {
 
-MMappedTraceFunnel::MMappedTraceFunnel(Device* handle, uint64_t index, debug_ip_data* data)
-                  : TraceFunnel(handle, index, data)
+MMappedTraceFunnel::MMappedTraceFunnel(Device* handle, uint64_t index, uint64_t instIdx, debug_ip_data* data)
+                  : TraceFunnel(handle, index, data),
+                    instance_index(instIdx)
 {
   // Open TraceFunnel Device Driver File
   std::string subDev("trace_funnel");
-  std::string driverFileName = getDevice()->getSubDevicePath(subDev, 0 /* a design can have atmost 1 TraceFunnel*/);
+  std::string driverFileName = getDevice()->getSubDevicePath(subDev, instance_index);
 
   driver_FD = open(driverFileName.c_str(), O_RDWR);
   if(-1 == driver_FD) {

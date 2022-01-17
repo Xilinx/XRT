@@ -432,35 +432,33 @@ namespace xdp {
   {
     std::lock_guard<std::mutex> lock(aieLock);
 
-    if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+    if (aieTraceData.find(deviceId) == aieTraceData.end()) {
       AIETraceDataVector newDataVector;
       aieTraceData[deviceId] = newDataVector;	// copy
       aieTraceData[deviceId].resize((db->getStaticInfo()).getNumAIETraceStream(deviceId));
     }
-    if(nullptr == aieTraceData[deviceId][strmIndex]) {
+    if (nullptr == aieTraceData[deviceId][strmIndex]) {
       aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
     }
     aieTraceData[deviceId][strmIndex]->buffer.push_back(buffer);
     aieTraceData[deviceId][strmIndex]->bufferSz.push_back(bufferSz);
-#if 0
-    aieTraceData[deviceId][strmIndex] = new AIETraceDataType;
-    aieTraceData[deviceId][strmIndex]->buffer = buffer;
-    aieTraceData[deviceId][strmIndex]->bufferSz = bufferSz;
-#endif
   }
 
   AIETraceDataType* VPDynamicDatabase::getAIETraceData(uint64_t deviceId, uint64_t strmIndex)
   {
     std::lock_guard<std::mutex> lock(aieLock) ;
 
-    if(aieTraceData.find(deviceId) == aieTraceData.end()) {
+    if (aieTraceData.find(deviceId) == aieTraceData.end()) {
         return nullptr;
     }
     auto aieTraceDataEntry = aieTraceData[deviceId];
-    if(aieTraceData[deviceId].size() == 0 || aieTraceDataEntry[strmIndex] == nullptr) {
+    if (0 == aieTraceData[deviceId].size() || nullptr == aieTraceDataEntry[strmIndex]) {
         return nullptr;
     }
-    return aieTraceDataEntry[strmIndex];
+    AIETraceDataType* traceData = aieTraceDataEntry[strmIndex];
+    aieTraceData[deviceId][strmIndex] = new AIETraceDataType; // assign new entry
+//    aieTraceDataEntry[strmIndex] = nullptr;
+    return traceData;
   }
 
   void VPDynamicDatabase::addPowerSample(uint64_t deviceId, double timestamp,

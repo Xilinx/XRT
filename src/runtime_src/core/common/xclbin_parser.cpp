@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -304,10 +304,10 @@ get_portname_width_map(const pt::ptree& xml_kernel)
 
     pwmap.emplace(nm, convert(dw));
   }
-  
+
   return pwmap;
 }
-  
+
 } // namespace
 
 namespace xrt_core { namespace xclbin {
@@ -354,7 +354,7 @@ address_to_memidx(const mem_topology* mem_topology, uint64_t address)
 {
   if (is_sw_emulation())
     return 0;  // default bank in software emulation
-  
+
   // Reserve look for preferred group id
   for (int idx = mem_topology->m_count-1; idx >= 0; --idx) {
     auto& mem = mem_topology->m_mem_data[idx];
@@ -897,7 +897,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
       , mailbox
       , get_address_range(xml_kernel.second)
       , sw_reset
-          
+
       , convert(xml_kernel.second.get<std::string>("<xmlattr>.workGroupSize", "0"))
       , get_xyz(xml_kernel.second, "compileWorkGroupSize")
       , get_xyz(xml_kernel.second, "maxWorkGroupSize")
@@ -907,7 +907,7 @@ get_kernel_properties(const char* xml_data, size_t xml_size, const std::string& 
 
   return kernel_properties{};
 }
-    
+
 kernel_properties
 get_kernel_properties(const axlf* top, const std::string& kname)
 {
@@ -1004,6 +1004,17 @@ get_project_name(const axlf* top)
   catch (const std::exception&) {
     return "";
   }
+}
+
+std::string
+get_fpga_device_name(const char* xml_data, size_t xml_size)
+{
+  pt::ptree xml_project;
+  std::stringstream xml_stream;
+  xml_stream.write(xml_data,xml_size);
+  pt::read_xml(xml_stream,xml_project);
+
+  return xml_project.get<std::string>("project.platform.device.<xmlattr>.fpgaDevice","");
 }
 
 }} // xclbin, xrt_core

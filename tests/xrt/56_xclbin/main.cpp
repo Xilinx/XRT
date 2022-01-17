@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,6 +24,9 @@
 #include "xrt/xrt_device.h"
 #include "xrt/xrt_kernel.h"
 #include "xrt/xrt_bo.h"
+
+// % g++ -g -std=c++14 -I$XILINX_XRT/include -L$XILINX_XRT/lib -o xclbin.exe main.cpp -lxrt_coreutil -luuid -pthread
+
 
 // This value is shared with worgroup size in kernel.cl
 static constexpr auto COUNT = 1024;
@@ -107,7 +110,8 @@ run_cpp(const std::string& xclbin_fnm)
   auto uuid = xclbin.get_uuid();
   std::cout << xclbin_fnm << "\n";
   std::cout << "xsa(" << xclbin.get_xsa_name() << ")\n";
-  std::cout << "uuid(" << uuid.to_string() << ")\n\n";
+  std::cout << "uuid(" << uuid.to_string() << ")\n";
+  std::cout << "fpga(" << xclbin.get_fpga_device_name() << ")\n\n";
 
   for (auto& kernel : xclbin.get_kernels())
     std::cout << kernel << '\n';
@@ -127,7 +131,7 @@ run_c(const std::string& xclbin_fnm)
   xrtXclbinFreeHandle(xhdl);
 }
 
-static int 
+static int
 run(int argc, char** argv)
 {
   if (argc < 3) {
@@ -187,6 +191,6 @@ main(int argc, char** argv)
   }
   catch (...) {
     std::cout << "TEST FAILED for unknown reason\n";
-    return EXIT_FAILURE; 
+    return EXIT_FAILURE;
   }
 }

@@ -1374,8 +1374,7 @@ submit_req:
 		s = &engine->sets[cidx_submit];
 		desc_cnt_submit = s->desc_set_offset;
 		engine->sets_ready--;
-		engine->sw_cidx = incr_ptr_idx(cidx_submit, 1,
-						       XDMA_DESC_SETS_MAX);
+		engine->sw_cidx = incr_ptr_idx(cidx_submit, 1, XDMA_DESC_SETS_MAX);
 		cidx_link = cidx_submit;
 		submit_cnt = desc_cnt_submit;
 
@@ -1409,9 +1408,8 @@ submit_req:
 		spin_unlock(&engine->desc_lock);
 
 		rv = queue_request(engine, engine->desc_bus +
-				   (cidx_submit * desc_set_depth *
-						   sizeof(struct xdma_desc)),
-						   desc_cnt_submit);
+				   ((u64)cidx_submit * desc_set_depth * sizeof(struct xdma_desc)),
+				   desc_cnt_submit);
 		desc_cnt_submit = 0;
 		spin_unlock(&engine->lock);
 		if (rv < 0) {
@@ -1429,6 +1427,7 @@ submit_req:
 
 	return 0;
 }
+
 static int xdma_process_requests(struct xdma_engine *engine,
 		struct xdma_request_cb *req)
 {
@@ -3587,7 +3586,7 @@ int xdma_performance_submit(struct xdma_dev *xdev, struct xdma_engine *engine)
 		desc_virt = req->desc_virt + i;
 		desc_bus += sizeof(struct xdma_desc);
 		/* Actual Data to perform DMA */
-		rc_bus_addr = buffer_bus + size_in_desc * i;
+		rc_bus_addr = buffer_bus + (u64)size_in_desc * i;
 
 		/* fill in descriptor entry with transfer details */
 		xdma_desc_set(desc_virt, rc_bus_addr, ep_addr, size_in_desc,

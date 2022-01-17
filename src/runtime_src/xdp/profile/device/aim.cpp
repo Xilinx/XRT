@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -65,6 +65,7 @@
 #define XDP_SOURCE
 
 #include "aim.h"
+#include "xdp/profile/device/utility.h"
 #include <bitset>
 
 namespace xdp {
@@ -127,23 +128,22 @@ size_t AIM::stopCounter()
     return size;
 }
 
-size_t AIM::readCounter(xclCounterResults& counterResults, uint32_t s /*index*/)
+size_t AIM::readCounter(xclCounterResults& counterResults)
 {
     if(out_stream)
         (*out_stream) << " AIM::readCounter " << std::endl;
 
     size_t size = 0;
     uint32_t sampleInterval = 0;
+
+    uint64_t s = getAIMSlotId(getMIndex());
     
     // Read sample interval register
     // NOTE: this also latches the sampled metric counters
     size += read(XAIM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    // Samples are taken almost immediately and it is assumed that the intervals are close to each other.
-    // So, only one sample interval reading is okay.
-    if (s==0 && getDevice()) {
-       counterResults.SampleIntervalUsec = static_cast<float>(sampleInterval / (getDevice()->getDeviceClock()));
-    }
+    // The sample interval in the counter results struct is never used,
+    //  so don't set it
 
     size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
     size += read(XAIM_SAMPLE_WRITE_TRANX_OFFSET, 4, &counterResults.WriteTranx[s]);
@@ -241,14 +241,6 @@ void AIM::showProperties()
     (*outputStream) << " AIM " << std::endl;
     ProfileIP::showProperties();
 }
-
-bool AIM::hasTraceID (uint32_t index) const
-{
-    // AIMs have indices in multiples of 2
-    index = index - (index % 2);
-    return (properties & 0x1) && (m_index == index);
-}
-
 
 }   // namespace xdp
 

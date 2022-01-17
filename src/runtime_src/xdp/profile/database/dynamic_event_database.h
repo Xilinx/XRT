@@ -39,17 +39,10 @@ namespace xdp {
   class VPDatabase ;
 
   // AIE Trace data type
-#if 0
-  struct AIETraceDataType {
-    void* buffer;
-    uint64_t bufferSz;
-  };
-#endif
   struct AIETraceDataType {
     std::vector<void*> buffer;
     std::vector<uint64_t> bufferSz;
   };
-//  typedef std::pair<void* /*buffer*/, uint64_t /*bufferSz*/> AIETraceDataType;
   typedef std::vector<AIETraceDataType*> AIETraceDataVector;
 
   // The Dynamic Database will own all VTFEvents and is responsible
@@ -123,6 +116,12 @@ namespace xdp {
     std::map<uint64_t, std::vector<uint64_t>> dependencyMap ;
 
     // For AIE Trace events
+    // Chunks of AIE Trace buffers from each stream mapped to device ID
+    /* aieTraceData : 
+     * Map of deviceId 
+     *     vs. 
+     * Vector of trace data (vectors of buffer chunks and their sizes) from all streams
+     */ 
     std::map<uint64_t, AIETraceDataVector> aieTraceData;
 
     // In order to reduce memory overhead, instead of each event holding

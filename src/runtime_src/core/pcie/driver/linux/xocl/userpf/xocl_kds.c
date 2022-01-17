@@ -524,6 +524,27 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
 		ret = 1; /* hack */
 		break;
+	case ERT_CLK_CALIB:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_CLK_CALIB;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_clock_calib_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_ACCESS_TEST_C:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_data_integrity_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_MB_VALIDATE:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_accessible_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
 		ret = -EINVAL;
@@ -715,7 +736,6 @@ out2:
 	 * xcmd and put gem object while notify host.
 	 */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
-
 	return ret;
 
 out1:
@@ -1546,6 +1566,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+
+	/* Don't send config command if ERT doesn't present */
+	if (!XDEV(xdev)->kds.ert)
+		goto create_regular_cu;
+
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)
 		goto create_regular_cu;
@@ -1603,12 +1628,16 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
-	if (ret < 0) {
-		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
+	if (ret == -ENODEV) {
+		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+	} else if (ret < 0) {
+		userpf_info(xdev, "ERT connect failed, ret %d\n", ret);
+		ret = -EINVAL;
 		goto out;
 	}
 
-	if (xocl_ert_ctrl_is_version(xdev, 1, 0))
+	if (xocl_ert_ctrl_is_version(xdev, 1, 0) > 0)
 		ret = xocl_kds_update_xgq(xdev, cfg);
 	else
 		ret = xocl_kds_update_legacy(xdev, cfg);

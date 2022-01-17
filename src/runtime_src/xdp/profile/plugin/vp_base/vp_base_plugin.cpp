@@ -114,8 +114,13 @@ namespace xdp {
     is_write_thread_active = true;
     while (writeCondWaitFor(std::chrono::seconds(interval))) {
       for (auto w : writers) {
-        if (w->write(true))
-          (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
+        if (0 != type.compare("AIE_EVENT_TRACE")) {
+          if (w->write(true)) {
+            (db->getStaticInfo()).addOpenedFile(w->getcurrentFileName().c_str(), type) ;
+          }
+        } else {
+          w->write(false);
+        }
       }
     }
 

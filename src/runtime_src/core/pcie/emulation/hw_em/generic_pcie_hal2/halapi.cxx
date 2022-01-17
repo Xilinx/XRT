@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2019 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,8 @@
 #include "shim.h"
 #include "core/common/system.h"
 #include "core/common/device.h"
+#include "plugin/xdp/device_offload.h"
+#include "plugin/xdp/hal_trace.h"
 
 int xclExportBO(xclDeviceHandle handle, unsigned int boHandle)
 {
@@ -38,10 +40,18 @@ unsigned int xclImportBO(xclDeviceHandle handle, int boGlobalHandle, unsigned fl
   return drv->xclImportBO(boGlobalHandle,flags);
 }
 
+int xclCloseExportHandle(int ehdl)
+{
+  // Implement per hw_em requirements
+  return 0;
+}
+
 int xclCopyBO(xclDeviceHandle handle, unsigned int dst_boHandle, unsigned int src_boHandle, size_t size, size_t dst_offset, size_t src_offset)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclCopyBO", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclCopyBO(dst_boHandle, src_boHandle, size, dst_offset, src_offset) : -ENODEV;
+  }) ;
 }
 
 int xclResetDevice(xclDeviceHandle handle, xclResetKind kind)
@@ -74,27 +84,36 @@ int xclUnlockDevice(xclDeviceHandle handle)
 size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst,
                  size_t size, size_t skip)
 {
+  return xdp::hw_emu::trace::buffer_transfer_profiling_wrapper("xclReadBO",
+                                                               size,
+                                                               false,
+                                                               [=]{
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -EINVAL;
+    return static_cast<size_t>(-EINVAL);
   return drv->xclReadBO(boHandle, dst, size, skip);
+  }) ;
 }
 
 unsigned int xclAllocBO(xclDeviceHandle handle, size_t size, int unused, unsigned flags)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclAllocBO", [=]{
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -EINVAL;
+    return static_cast<unsigned int>(-EINVAL);
   return drv->xclAllocBO(size, unused, flags);
+  }) ;
 }
 
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclMapBO", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return NULL;
+    return static_cast<void*>(nullptr);
   return drv->xclMapBO(boHandle, write);
+  }) ;
 }
 
 int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
@@ -107,42 +126,54 @@ int xclUnmapBO(xclDeviceHandle handle, unsigned int boHandle, void* addr)
 
 int xclSyncBO(xclDeviceHandle handle, unsigned int boHandle, xclBOSyncDirection dir, size_t size, size_t offset)
 {
+  return xdp::hw_emu::trace::buffer_transfer_profiling_wrapper("xclSyncBO",
+    size, (dir == XCL_BO_SYNC_BO_TO_DEVICE), [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -EINVAL;
+    return static_cast<int>(-EINVAL);
   return drv->xclSyncBO(boHandle, dir , size, offset);
+  });
 }
 
 size_t xclWriteBO(xclDeviceHandle handle, unsigned int boHandle, const void *src,
                   size_t size, size_t seek)
 {
+  return xdp::hw_emu::trace::buffer_transfer_profiling_wrapper("xclWriteBO",
+    size, true, [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -EINVAL;
+    return static_cast<size_t>(-EINVAL);
   return drv->xclWriteBO(boHandle, src, size, seek);
+  }) ;
 }
 void xclFreeBO(xclDeviceHandle handle, unsigned int boHandle)
 {
+  xdp::hw_emu::trace::profiling_wrapper("xclFreeBO", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return;
   drv->xclFreeBO(boHandle);
+  }) ;
 }
 
 int xclGetBOProperties(xclDeviceHandle handle, unsigned int boHandle, xclBOProperties *properties)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclGetBOProperties", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclGetBOProperties(boHandle, properties);
+  }) ;
 }
 
 int xclExecBuf(xclDeviceHandle handle, unsigned int cmdBO)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclExecBuf", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclExecBuf(cmdBO);
+  }) ;
 }
 
 int xclExecBufWithWaitList(xclDeviceHandle handle, unsigned int cmdBO, size_t num_bo_in_wait_list, unsigned int *bo_wait_list)
@@ -175,10 +206,12 @@ int xclRegisterEventNotify(xclDeviceHandle handle, unsigned int userInterrupt, i
 
 int xclExecWait(xclDeviceHandle handle, int timeoutMilliSec)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclExecWait", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
   return drv->xclExecWait(timeoutMilliSec) ;
+  }) ;
 }
 
 int xclUpgradeFirmware(xclDeviceHandle handle, const char *fileName)
@@ -206,6 +239,8 @@ unsigned xclProbe()
   //Ensure xclProbe is called only once as we load all the devices in the single go
   //xclProbe call happens during the load of the library, no need to explicit call
 
+  //return xdp::hw_emu::trace::profiling_wrapper("xclProbe", [=] {
+
   if (xclProbeCallCnt == 1) {
     return deviceIndex;
   }
@@ -213,7 +248,7 @@ unsigned xclProbe()
   std::vector<std::tuple<xclDeviceInfo2, std::list<xclemulation::DDRBank>, bool, bool, FeatureRomHeader, boost::property_tree::ptree> > devicesInfo;
   getDevicesInfo(devicesInfo);
   if(devicesInfo.size() == 0)
-    return 1;//old behavior
+    return static_cast<unsigned int>(1);//old behavior
   for(auto &it:devicesInfo)
   {
     xclDeviceInfo2 info = std::get<0>(it);
@@ -229,19 +264,23 @@ unsigned xclProbe()
 
   xclProbeCallCnt++;
   return deviceIndex;
+  //  }) ;
 }
 
 unsigned int xclAllocUserPtrBO(xclDeviceHandle handle, void *userptr, size_t size, unsigned flags)
 {
   //std::cout << "xclAllocUserPtrBO called.. " << handle << std::endl;
+  return xdp::hw_emu::trace::profiling_wrapper("xclAllocUserPtrBO", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return mNullBO;
+    return static_cast<unsigned int>(mNullBO);
   return drv->xclAllocUserPtrBO(userptr,size,flags);
+  }) ;
 }
 
 xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbosityLevel level)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclOpen", [=] {
   xclDeviceInfo2 info;
   std::strcpy(info.mName, "xilinx:pcie-hw-em:7v3:1.0");
   info.mMagic = 0X586C0C6C;
@@ -293,11 +332,13 @@ xclDeviceHandle xclOpen(unsigned deviceIndex, const char *logfileName, xclVerbos
     }
   }
   return (xclDeviceHandle *)handle;
+  }) ;
 }
 
 
 void xclClose(xclDeviceHandle handle)
 {
+  xdp::hw_emu::trace::profiling_wrapper("xclClose", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return ;
@@ -309,17 +350,21 @@ void xclClose(xclDeviceHandle handle)
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
   }
+  }) ;
 }
 
 int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclLoadXclbin", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
     return -1;
 #ifdef DISABLE_DOWNLOAD_XCLBIN
   int ret = 0;
 #else
+  xdp::hw_emu::flush_device(handle);
   auto ret = drv->xclLoadXclBin(buffer);
+  xdp::hw_emu::update_device(handle);
 #endif
   if (!ret) {
     auto device = xrt_core::get_userpf_device(drv);
@@ -329,22 +374,27 @@ int xclLoadXclBin(xclDeviceHandle handle, const xclBin *buffer)
 #endif
   }
   return ret;
+  }) ;
 }
 
 size_t xclWrite(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclWrite", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -1;
+    return static_cast<size_t>(-1);
   return drv->xclWrite(space, offset, hostBuf, size);
+  }) ;
 }
 
 size_t xclRead(xclDeviceHandle handle, xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclRead", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   if (!drv)
-    return -1;
+    return static_cast<size_t>(-1);
   return drv->xclRead(space, offset, hostBuf, size);
+  }) ;
 }
 
 
@@ -369,14 +419,18 @@ size_t xclGetDeviceTimestamp(xclDeviceHandle handle)
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclUnmgdPwrite", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : -ENODEV;
+  return drv ? drv->xclUnmgdPwrite(flags, buf, count, offset) : static_cast<ssize_t>(-ENODEV);
+  }) ;
 }
 
 ssize_t xclUnmgdPread(xclDeviceHandle handle, unsigned flags, void *buf, size_t count, uint64_t offset)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclUnmgdPread", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
-  return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : -ENODEV;
+  return drv ? drv->xclUnmgdPread(flags, buf, count, offset) : static_cast<ssize_t>(-ENODEV);
+  }) ;
 }
 
 
@@ -532,14 +586,18 @@ int xclGetSubdevPath(xclDeviceHandle handle,  const char* subdev,
 //Mapped CU register space for xclRegRead/Write()  
 int xclRegWrite(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t data)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclRegWrite", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclRegWrite(cu_index, offset, data) : -ENODEV;
+  }) ;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t cu_index, uint32_t offset, uint32_t *datap)
 {
+  return xdp::hw_emu::trace::profiling_wrapper("xclRegRead", [=] {
   xclhwemhal2::HwEmShim *drv = xclhwemhal2::HwEmShim::handleCheck(handle);
   return drv ? drv->xclRegRead(cu_index, offset, datap) : -ENODEV;
+  }) ;
 }
 
 int

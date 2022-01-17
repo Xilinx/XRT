@@ -47,6 +47,58 @@ enum class OffloadThreadType {
     CLOCK_TRAIN
 };
 
+struct TraceBufferInfo {
+  size_t   buf;
+  uint64_t buf_size;
+  uint64_t used_size;
+  uint64_t offset;
+  uint64_t address;
+  uint64_t prv_wordcount;
+  uint32_t rollover_count;
+  bool     full;
+  bool     offload_done;
+  bool     big_trace_warn_done;
+  
+  TraceBufferInfo()
+    : buf(0),
+      buf_size(0),
+      used_size(0),
+      offset(0),
+      address(0),
+      prv_wordcount(0),
+      rollover_count(0),
+      full(false),
+      offload_done(false),
+      big_trace_warn_done(false)
+  {}
+       
+};
+
+struct Ts2mmInfo {
+  size_t   num_ts2mm;
+  uint64_t full_buf_size;
+
+  std::vector<TraceBufferInfo> buffers;
+
+  //Circular Buffer Tracking
+  bool use_circ_buf;
+  // 100 mb of trace per second
+  uint64_t circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
+  uint64_t circ_buf_cur_rate;
+
+  std::queue<std::unique_ptr<char[]>> data_queue;
+  std::queue<uint64_t> size_queue;
+  std::mutex process_queue_lock;
+
+  Ts2mmInfo()
+    : num_ts2mm(0),
+      full_buf_size(0),
+      use_circ_buf(false),
+      circ_buf_cur_rate(0)
+  {}
+  
+};
+
 class DeviceTraceLogger;
 
 #define debug_stream \
@@ -64,9 +116,8 @@ public:
     XDP_EXPORT
     void stop_offload();
 
-public:
     XDP_EXPORT
-    virtual bool read_trace_init(bool circ_buf = false);
+    virtual bool read_trace_init(bool circ_buf, const std::vector<uint64_t>&);
     XDP_EXPORT
     virtual void read_trace_end();
     XDP_EXPORT
@@ -74,30 +125,34 @@ public:
     XDP_EXPORT
     void process_trace();
 
-public:
-    void set_trbuf_alloc_sz(uint64_t sz) {
-      m_trbuf_alloc_sz = sz;
-    };
-    bool trace_buffer_full() {
-      return m_trbuf_full;
-    };
     bool has_fifo() {
       return dev_intf->hasFIFO();
     };
+
     bool has_ts2mm() {
       return dev_intf->hasTs2mm();
     };
+
+    bool trace_buffer_full() {
+      if (has_fifo()) {
+        return fifo_full;
+      }
+      bool isFull = false;
+      for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
+        isFull |= ts2mm_info.buffers[i].full;
+      }
+      return isFull;
+    }
+
     void read_trace() {
       m_read_trace(true);
     };
-    DeviceTraceLogger* getDeviceTraceLogger() {
-      return deviceTraceLogger;
-    };
+
     bool using_circular_buffer( uint64_t& min_offload_rate,
                                 uint64_t& requested_offload_rate) {
-      min_offload_rate = m_circ_buf_min_rate;
-      requested_offload_rate = m_circ_buf_cur_rate;
-      return m_use_circ_buf;
+      min_offload_rate = ts2mm_info.circ_buf_min_rate;
+      requested_offload_rate = ts2mm_info.circ_buf_cur_rate;
+      return ts2mm_info.use_circ_buf;
     };
     inline OffloadThreadStatus get_status() {
       std::lock_guard<std::mutex> lock(status_lock);
@@ -107,63 +162,48 @@ public:
     inline void set_continuous(bool value = true) { continuous = value ; }
 
 private:
+    void read_trace_fifo(bool force=true);
+
+    void read_trace_s2mm(bool force=true);
+    uint64_t read_trace_s2mm_partial();
+    bool config_s2mm_reader(uint64_t i, uint64_t wordCount);
+    bool init_s2mm(bool circ_buf, const std::vector<uint64_t> &);
+    void reset_s2mm();
+
+    bool should_continue();
+    void train_clock_continuous();
+    void offload_device_continuous();
+    void offload_finished();
+    void process_trace_continuous();
+    
+    void read_leftover_circular_buf();
+
+protected:
+    DeviceIntf* dev_intf;
+    bool m_initialized = false;
+    // Default dma chunk size
+//    uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
+    bool m_debug = false; /* Enable Output stream for log */
+
+private:
+    DeviceTraceLogger* deviceTraceLogger;
+    std::function<void(bool)> m_read_trace;
+
+    bool fifo_full;
+
+    uint64_t sleep_interval_ms;
+    Ts2mmInfo ts2mm_info;
+
+    // Continuous offload
     std::mutex status_lock;
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
     std::thread process_thread;
     bool continuous = false ;
 
-    uint64_t sleep_interval_ms;
-    uint64_t m_trbuf_alloc_sz;
-protected:
-    DeviceIntf* dev_intf;
-private:
-    DeviceTraceLogger* deviceTraceLogger;
-    std::function<void(bool)> m_read_trace;
-    size_t m_trbuf = 0;
-    uint64_t m_trbuf_sz = 0;
-    uint64_t m_trbuf_offset = 0;
-    bool m_trbuf_full = false;
-    bool trbuf_offload_done = false;
-    uint64_t m_trbuf_addr = 0;
-    std::queue<std::unique_ptr<char[]>> m_data_queue;
-    std::queue<uint64_t> m_size_queue;
-    std::mutex process_queue_lock;
-
-protected:
-    bool m_initialized = false;
-    // Default dma chunk size
-    uint64_t m_trbuf_chunk_sz = MAX_TRACE_NUMBER_SAMPLES * TRACE_PACKET_SIZE;
-    bool m_debug = false; /* Enable Output stream for log */
-
-private:
-    void read_trace_fifo(bool force=true);
-    void read_trace_s2mm(bool force=true);
-    uint64_t read_trace_s2mm_partial();
-    bool config_s2mm_reader(uint64_t wordCount);
-    bool init_s2mm(bool circ_buf);
-    void reset_s2mm();
-    bool should_continue();
-    void train_clock_continuous();
-    void offload_device_continuous();
-    void offload_finished();
-    void process_trace_continuous();
-    void read_leftover_circular_buf();
-
     // Clock Training Params
     bool m_force_clk_train = true;
     std::chrono::time_point<std::chrono::system_clock> m_prev_clk_train_time;
-
-    //Circular Buffer Tracking
-    bool m_use_circ_buf = false;
-    uint32_t m_rollover_count = 0;
-    // 100 mb of trace per second
-    uint64_t m_circ_buf_min_rate = TS2MM_DEF_BUF_SIZE * 100;
-    uint64_t m_circ_buf_cur_rate = 0;
-
-    // Used to check read precondition in ts2mm
-    uint64_t m_wordcount_old = 0;
-    bool m_trace_warn_big_done = false;
 
     // Internal flag to end trace processing thread
     std::atomic<bool> m_process_trace;

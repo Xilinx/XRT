@@ -1625,6 +1625,7 @@ static inline int xocl_subdev_create_vsec_impl(xdev_handle_t xdev,
 
 int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 {
+	struct xocl_dev_core *core = (struct xocl_dev_core *)xdev;
 	u64 offset;
 	int bar, ret;
 	u32 vtype;
@@ -1683,12 +1684,12 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 	if (!ret) {
 		int bar_payload = 0; 
 		u64 offset_payload = 0;
-		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VSEC;
+		struct xocl_subdev_info subdev_info = XOCL_DEVINFO_XGQ_VMR_VSEC;
 
-		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_PAYLOAD,
+		ret = xocl_subdev_vsec(xdev, XOCL_VSEC_XGQ_VMR_PAYLOAD,
 			&bar_payload, &offset_payload, NULL);
 		if (ret) {
-			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_PAYLOAD");
+			xocl_xdev_err(xdev, "Found XGQ, but missed XGQ_VMR_PAYLOAD");
 			goto done;
 		}
 
@@ -1707,19 +1708,22 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 
 		subdev_info.res[1].start = offset_payload;
 		subdev_info.res[1].end = offset_payload + 0x7ffffff;
-		subdev_info.res[1].name = NODE_XGQ_RING_BASE;
+		subdev_info.res[1].name = NODE_XGQ_VMR_PAYLOAD_BASE;
+
+		core->priv.flash_type = FLASH_TYPE_OSPI_XGQ;
 
 		xocl_xdev_dbg(xdev,
 		    "VSEC XGQ Start 0x%llx, bar %d. XGQ Payload 0x%llx, bar %d",
 		    offset, bar, offset_payload, bar_payload);
+		xocl_xdev_dbg(xdev, "xdev flash_type %s", core->priv.flash_type);
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
 		if (ret) {
-			xocl_xdev_err(xdev, "Create XGQ subdev failed. %d", ret);
+			xocl_xdev_err(xdev, "Create VMR subdev failed. %d", ret);
 			goto done;
 		}
 
-		xocl_xdev_dbg(xdev, "VSEC XGQ created.");
+		xocl_xdev_dbg(xdev, "VSEC VMR created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);

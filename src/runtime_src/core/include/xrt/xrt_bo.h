@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -334,6 +334,13 @@ public:
    * process or another process. For multiprocess transfer, the exported
    * buffer must be transferred through a proper IPC facility to translate
    * the underlying file-descriptor properly into another process. 
+   *
+   * The lifetime of the exported buffer handle is associated with the
+   * exporting buffer (this).  The handle is disposed of when the
+   * exporting buffer is destructed.
+   *
+   * It is undefined behavior to use the export handle after the
+   * exporting buffer object has gone out of scope.
    */
   XCL_DRIVER_DLLESPEC
   xclBufferExportHandle
