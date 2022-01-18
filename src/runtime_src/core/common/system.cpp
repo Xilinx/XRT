@@ -177,7 +177,7 @@ get_mgmtpf_device(device::id_type id)
   return device;
 }
 
-std::pair<uint64_t, uint64_t>
+std::pair<device::id_type, device::id_type>
 get_total_devices(bool is_user)
 {
   return instance().get_total_devices(is_user);
