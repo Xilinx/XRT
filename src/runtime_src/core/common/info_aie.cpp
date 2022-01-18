@@ -84,11 +84,9 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
   // current_bd: mm2s: 0|0, s2mm: 0|0
   // fifo_len: 0|0
   auto fifo_info = pt.get_child("dma.fifo_len", empty_pt).begin();
-  boost::property_tree::ptree tmp_ptree;
-  tmp_ptree.put("fifo_counter0", fifo_info->second.data());
+  fifo_pt.put("fifo_counter0", fifo_info->second.data());
   fifo_info++;
-  tmp_ptree.put("fifo_counter1", fifo_info->second.data());
-  fifo_pt.push_back(std::make_pair("", tmp_ptree));
+  fifo_pt.put("fifo_counter1", fifo_info->second.data());
   pt_dma.add_child("dma.fifo_info", fifo_pt);
 
   auto queue_size = pt.get_child("dma.queue_size.mm2s", empty_pt).begin();
