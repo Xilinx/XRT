@@ -22,7 +22,10 @@
 #include <sys/mman.h>
 #endif
 
+#ifdef _WIN32
 #define MAP_FAILED ((void*)-1)
+#endif
+
 #define INVALID_ID ((uint16_t)-1)
 
 namespace pcidev {
