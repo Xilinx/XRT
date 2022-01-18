@@ -26,6 +26,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 // Generated include files
 #include "version.h"
