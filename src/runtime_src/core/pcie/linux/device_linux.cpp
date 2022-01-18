@@ -154,7 +154,7 @@ struct kds_cu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      /* TODO : For backward compartability changing the following value to 6 
+      /* TODO : For backward compartability changing the following logic
        * as the first column should represent the domain index */
       if (std::distance(tokens.begin(), tokens.end()) != 5) ||
 	(std::distance(tokens.begin(), tokens.end()) != 6)) {
