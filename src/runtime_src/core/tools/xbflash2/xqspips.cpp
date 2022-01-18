@@ -23,10 +23,14 @@
 #include <chrono>
 #include "xqspips.h"
 
-#include "unistd.h"
+#include "core/common/unistd.h"
 
 #ifdef WINDOWS
 #define __func__ __FUNCTION__
+#endif
+
+#ifdef _WIN32
+# pragma warning( disable : 4100 4244 )
 #endif
 
 #ifdef __GNUC__

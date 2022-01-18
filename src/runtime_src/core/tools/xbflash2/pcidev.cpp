@@ -17,12 +17,18 @@
 #include <cassert>
 #include <iostream>
 #include <cstring>
-#include <unistd.h>
+#include "core/common/unistd.h"
 #include <mutex>
 #include <sys/stat.h>
+#ifdef __GNUC__
 #include <sys/file.h>
 #include <linux/pci.h>
+#endif
 #include "pcidev.h"
+
+#ifdef _WIN32
+# pragma warning( disable : 4100 )
+#endif
 
 namespace pcidev {
 
@@ -56,6 +62,7 @@ open(const std::string& subdev, int flag)
 {
   int fd = -1;
 
+#ifdef __GNUC__
   // Open legacy subdevice node
   std::string file("/dev/xfpga/");
   file += subdev;
@@ -80,6 +87,7 @@ open(const std::string& subdev, int flag)
     std::cout << "Successfully opened " << file << std::endl;
     return fd;
   }
+#endif
 
   return fd;
 }
@@ -88,7 +96,8 @@ pci_device::
 pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string flash_type)
   : user_bar_index(ubar), flash_offset(flash_off), flash_type_str(flash_type)
 {
-	 
+
+#ifdef __GNUC__
   uint32_t pcmd = 0;
   char sysfsname[20] = {0};
   uint16_t dom = 0, b, d, f;
@@ -126,21 +135,25 @@ pci_device(const std::string& sysfs, int ubar, size_t flash_off, std::string fla
 
   if(::write(conf_handle, &pcmd, 4) < 0)
     throw std::runtime_error("Failed to write  " + conffile);
-  
+
   close(conf_handle);
+#endif
 }
 
 pci_device::
 ~pci_device()
 {
+#ifdef __GNUC__
   if (user_bar_map != MAP_FAILED)
     ::munmap(user_bar_map, user_bar_size);
+#endif
 }
 
 int
 pci_device::
 map_usr_bar()
 {
+#ifdef __GNUC__
   std::lock_guard<std::mutex> l(lock);
 
   if (user_bar_map != MAP_FAILED)
@@ -184,7 +197,7 @@ map_usr_bar()
       << strerror(err) << std::endl;
     return -err;
   }
-
+#endif
   return 0;
 }
 
@@ -192,8 +205,10 @@ void
 pci_device::
 close(int dev_handle)
 {
+#ifdef __GNUC__
   if (dev_handle != -1)
     (void)::close(dev_handle);
+#endif
 }
 
 

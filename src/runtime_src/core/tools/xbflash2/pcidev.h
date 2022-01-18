@@ -17,9 +17,12 @@
 #define _PCIDEV_H_
 
 #include <string>
-#include <sys/mman.h>
 #include <mutex>
+#ifdef __GNUC__
+#include <sys/mman.h>
+#endif
 
+#define MAP_FAILED ((void*)-1)
 #define INVALID_ID ((uint16_t)-1)
 
 namespace pcidev {

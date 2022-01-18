@@ -39,7 +39,7 @@
 #endif
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4245 4267 4456 4996 )
+# pragma warning( disable : 4244 4245 4189 )
 #endif
 
 //#define FLASH_BASE_ADDRESS BPI_FLASH_OFFSET
