@@ -67,7 +67,6 @@ namespace xdp {
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
 
-    mIndex = 0;
     mPollingInterval = xrt_core::config::get_aie_status_interval_us();
   }
 
@@ -76,13 +75,10 @@ namespace xdp {
     // Stop the polling thread
     endPoll();
 
-    // Write out final version of file and unregister plugin
-    if (VPDatabase::alive()) {
-      for (auto w : writers)
-        w->write(false);
-
+    // Do not call writers here. Once shim is destroyed, writers do not have access to data
+    if (VPDatabase::alive())
       db->unregisterPlugin(this);
-    }
+
   }
 
   // Get tiles to debug
@@ -161,7 +157,7 @@ namespace xdp {
     return statusStr;
   }
 
-  void AIEDebugPlugin::pollAIERegisters(uint32_t index, void* handle)
+  void AIEDebugPlugin::pollDeadlock(uint64_t index, void* handle)
   {
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())
@@ -213,8 +209,8 @@ namespace xdp {
       }
     }
 
-    auto& should_continue = it->second;
-    while (should_continue) {
+    auto& shouldContinue = it->second;
+    while (shouldContinue) {
       // Wait until xclbin has been loaded and device has been updated in database
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
@@ -310,12 +306,24 @@ namespace xdp {
         }
       } // For graphs
 
-      // Always write out latest debug/status file
-      for (auto w : writers) {
-        w->write(false);
-      }
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
+    }
+  }
 
-      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));     
+  void AIEDebugPlugin::writeDebug(uint64_t index, void* handle, VPWriter* aieWriter, VPWriter* aieshimWriter)
+  {
+    auto it = mThreadCtrlMap.find(handle);
+    if (it == mThreadCtrlMap.end())
+      return;
+    auto& shouldContinue = it->second;
+
+    while (shouldContinue) {
+      if (!(db->getStaticInfo().isDeviceReady(index)))
+        continue;
+
+      aieWriter->write(false);
+      aieshimWriter->write(false);
+      std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
 
@@ -331,15 +339,15 @@ namespace xdp {
     xclGetDebugIPlayoutPath(handle, pathBuf, PATH_LENGTH);
 
     std::string sysfspath(pathBuf);
-    uint64_t deviceId = db->addDevice(sysfspath); // Get the unique device Id
+    uint64_t deviceID = db->addDevice(sysfspath); // Get the unique device Id
 
-    if (!(db->getStaticInfo()).isDeviceReady(deviceId)) {
+    if (!(db->getStaticInfo()).isDeviceReady(deviceID)) {
       // Update the static database with information from xclbin
-      (db->getStaticInfo()).updateDevice(deviceId, handle);
+      (db->getStaticInfo()).updateDevice(deviceID, handle);
       {
         struct xclDeviceInfo2 info;
         if(xclGetDeviceInfo2(handle, &info) == 0) {
-          (db->getStaticInfo()).setDeviceName(deviceId, std::string(info.mName));
+          (db->getStaticInfo()).setDeviceName(deviceID, std::string(info.mName));
         }
       }
     }
@@ -350,33 +358,49 @@ namespace xdp {
     // Open the writer for this device
     struct xclDeviceInfo2 info;
     xclGetDeviceInfo2(handle, &info);
-    std::string deviceName { info.mName };
-    // Create and register writer and file
-    std::string outputFile = "aie_status_" + deviceName + ".json";
+    std::string devicename { info.mName };
 
-    VPWriter* writer = new AIEDebugWriter(outputFile.c_str(),
-                                          deviceName.c_str(), mIndex);
-    writers.push_back(writer);
-    db->getStaticInfo().addOpenedFile(writer->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+    // Create and register aie status writer
+    std::string filename = "aie_status_" + devicename + ".json";
+    VPWriter* aieWriter = new AIEDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
+    writers.push_back(aieWriter);
+    db->getStaticInfo().addOpenedFile(aieWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
+
+    // Create and register aie shim status writer
+    filename = "aieshim_status_" + devicename + ".json";
+    VPWriter* aieshimWriter = new AIEShimDebugWriter(filename.c_str(), devicename.c_str(), deviceID);
+    writers.push_back(aieshimWriter);
+    db->getStaticInfo().addOpenedFile(aieshimWriter->getcurrentFileName(), "AIE_RUNTIME_STATUS");
 
     // Start the AIE debug thread
     mThreadCtrlMap[handle] = true;
-    mThreadMap[handle] = std::thread { [=] { pollAIERegisters(mIndex, handle); } };
-
-    ++mIndex;
+    // NOTE: This does not start the threads immediately.
+    mDeadlockThreadMap[handle] = std::thread { [=] { pollDeadlock(deviceID, handle); } };
+    mDebugThreadMap[handle] = std::thread { [=] { writeDebug(deviceID, handle, aieWriter, aieshimWriter); } };
   }
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
   {
-    // Ask thread to stop
+    // Ask threads to stop
     mThreadCtrlMap[handle] = false;
 
-    auto it = mThreadMap.find(handle);
-    if (it != mThreadMap.end()) {
-      it->second.join();
-      mThreadMap.erase(it);
-      mThreadCtrlMap.erase(handle);
+    {
+      auto it = mDeadlockThreadMap.find(handle);
+      if (it != mDeadlockThreadMap.end()) {
+        it->second.join();
+        mDeadlockThreadMap.erase(it);
+      }
     }
+
+    {
+      auto it = mDebugThreadMap.find(handle);
+      if (it != mDebugThreadMap.end()) {
+        it->second.join();
+        mDebugThreadMap.erase(it);
+      }
+    }
+
+    mThreadCtrlMap.erase(handle);
   }
 
   void AIEDebugPlugin::endPoll()
@@ -385,11 +409,15 @@ namespace xdp {
     for (auto& p : mThreadCtrlMap)
       p.second = false;
 
-    for (auto& t : mThreadMap)
+    for (auto& t : mDeadlockThreadMap)
+      t.second.join();
+
+    for (auto& t : mDebugThreadMap)
       t.second.join();
 
     mThreadCtrlMap.clear();
-    mThreadMap.clear();
+    mDeadlockThreadMap.clear();
+    mDebugThreadMap.clear();
   }
 
 } // end namespace xdp
