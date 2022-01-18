@@ -271,6 +271,17 @@ read_clk_counter(void)
   return read_reg(ERT_CLK_COUNTER_ADDR);
 }
 
+static inline value_type
+rw_count_addr(addr_type slot_addr)
+{
+  return slot_addr + 0x8;
+}
+
+static inline value_type
+draft_addr(addr_type slot_addr)
+{
+  return slot_addr + 0xC;
+}
 
 inline static void
 setup_ert_base_addr()
@@ -318,14 +329,15 @@ setup_cu_queue()
 
     CTRL_DEBUGF(" XGQ MODE! cu_xgq_range %x ret %d\r\n", cu_xgq_range, ret);
     if (!ret) {
-
       for (cu_idx=0; cu_idx<num_cus; ++cu_idx) {
          struct xgq_cu *cu_xgq = &cu_xgqs[cu_idx];
          struct xgq *xgq = &xgqs[cu_idx];
          struct sched_cu *cu = &sched_cus[cu_idx];
+
          cu_xgq->offset = XGQ_OFFSET(xgq);
          cu_xgq->xgq_id = cu_idx;
          cu_xgq->csr_reg = STATUS_REGISTER_ADDR[cu_idx>>5];
+
          xgq_cu_init(cu_xgq, xgq, cu);
       }
     }
@@ -494,6 +506,141 @@ query_cu(struct sched_cmd *cmd)
   CTRL_DEBUGF("<------- query_cu \r\n");
   return ret;
 }
+
+static inline int32_t
+get_clk_counter(struct sched_cmd *cmd)
+{
+  int ret = 0;
+  struct xgq_cmd_resp_clock_calib resp_cmd = {0};
+
+  resp_cmd.timestamp = read_clk_counter();
+  
+  resp_cmd.rcode = ret;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_clock_calib));
+  return ret;
+}
+
+static inline void 
+repetition_write(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    write_reg(addr, 0x0);
+}
+
+static inline void 
+repetition_read(addr_type addr, value_type loop_cnt)
+{
+  while (loop_cnt--)
+    read_reg(addr);
+}
+
+static int32_t
+validate_mb(struct sched_cmd *cmd)
+{
+  int ret = 0;
+  value_type start_t, end_t, cnt = 1024;
+  struct xgq_cmd_resp_access_valid resp_cmd = {0};
+
+  start_t = read_clk_counter();
+  repetition_read(cmd->cc_addr, cnt);
+  end_t = read_clk_counter();
+  resp_cmd.cq_read_single = (end_t-start_t)/cnt;
+   
+  start_t = read_clk_counter();
+  repetition_write(cmd->cc_addr, cnt);
+  end_t = read_clk_counter();
+  resp_cmd.cq_write_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_read(sched_cus[0].cu_addr, cnt);
+  end_t = read_clk_counter();
+  resp_cmd.cu_read_single = (end_t-start_t)/cnt;
+
+  start_t = read_clk_counter();
+  repetition_write(sched_cus[0].cu_addr, cnt);
+  end_t = read_clk_counter();
+  resp_cmd.cu_write_single = (end_t-start_t)/cnt; 
+  
+  CTRL_DEBUGF("resp_cmd.cq_read_single %d\r\n",resp_cmd.cq_read_single);
+  CTRL_DEBUGF("resp_cmd.cq_write_single %d\r\n",resp_cmd.cq_write_single);
+  CTRL_DEBUGF("resp_cmd.cu_read_single %d\r\n",resp_cmd.cu_read_single);
+  CTRL_DEBUGF("resp_cmd.cu_write_single %d\r\n",resp_cmd.cu_write_single);    
+  resp_cmd.rcode = ret;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_access_valid));
+  return ret;
+}
+
+
+static int32_t
+data_integrity(struct sched_cmd *cmd)
+{
+  int ret = 0;
+  addr_type queue_addr = cmd->cc_addr;
+  struct xgq_cmd_resp_data_integrity resp_cmd = {0};
+  value_type cnt = 0;
+
+
+  // Read Write stress test
+  resp_cmd.data_integrity = 1;
+  while ((cnt = read_reg(rw_count_addr(queue_addr)))) {
+    value_type pattern = read_reg(draft_addr(queue_addr));
+    if (pattern != 0x0 && pattern != 0xFFFFFFFF) {
+      CTRL_DEBUGF("read undefined value = 0x%x\r\n",pattern);
+      resp_cmd.data_integrity = 0;
+    }
+  }
+
+  resp_cmd.h2d_access = 1;
+  resp_cmd.d2d_access = 1;
+  for (size_type offset=sizeof(struct xgq_cmd_data_integrity); offset<CTRL_XGQ_SLOT_SIZE; offset+=4) {
+    volatile value_type pattern = read_reg(queue_addr+offset);
+    if (pattern != HOST_RW_PATTERN) {
+      resp_cmd.h2d_access = 0;
+      CTRL_DEBUGF("h2d_access failed, pattern = 0x%x slot.slot_addr 0x%x\r\n",pattern,queue_addr+offset);
+      break;
+    }
+
+    write_reg(queue_addr+offset, DEVICE_RW_PATTERN);
+    pattern = read_reg(queue_addr+offset);
+
+    if (pattern != DEVICE_RW_PATTERN) {
+      resp_cmd.d2d_access = 0;
+      CTRL_DEBUGF("d2d_access failed, pattern = 0x%x slot.slot_addr 0x%x\r\n",pattern,queue_addr+offset);
+      break;
+    }
+  }
+
+  resp_cmd.d2cu_access = 1;
+  for (size_type i=0; i<num_cus; ++i) {
+    addr_type addr = sched_cus[i].cu_addr;
+    value_type val = read_reg(addr);
+    if (val != 0x4) {
+      resp_cmd.d2cu_access = 0;
+    }
+  }
+  resp_cmd.rcode = ret;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_data_integrity));
+  return ret;
+}
+
+
+static void
+exit_mb(struct sched_cmd *cmd)
+{
+  struct xgq_com_queue_entry resp_cmd = {0};
+
+  resp_cmd.rcode = 0;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
+  CTRL_DEBUGF("mb_sleep\r\n");
+#ifndef ERT_HW_EMU
+  mb_sleep();
+#endif
+  CTRL_DEBUGF("mb wakeup\r\n");
+}
 /**
  * Process special command.
  *
@@ -527,11 +674,22 @@ process_ctrl_command()
   case XGQ_CMD_OP_QUERY_CU:
     ret = query_cu(cmd);
     break;
+  case XGQ_CMD_OP_CLOCK_CALIB:
+    ret = get_clk_counter(cmd);
+    break;
+  case XGQ_CMD_OP_ACCESS_VALID:
+    ret = validate_mb(cmd);
+    break;
+  case XGQ_CMD_OP_DATA_INTEGRITY:
+    ret = data_integrity(cmd);
+    break;
+  case XGQ_CMD_OP_EXIT:
+    exit_mb(cmd);
+    break;
   default:
     ret = -EINVAL;
     break;
   }
-  CTRL_DEBUGF(" opcode 0x%x ret %d\r\n", opcode, ret);
 
   return ret;
 }

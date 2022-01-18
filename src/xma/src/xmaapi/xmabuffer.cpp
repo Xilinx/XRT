@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018, Xilinx Inc - All rights reserved
+ * Copyright (C) 2018-2022, Xilinx Inc - All rights reserved
  * Xilinx SDAccel Media Accelerator API
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -93,7 +93,7 @@ xma_frame_alloc(XmaFrameProperties *frame_props, bool dummy)
             frame->data[i].buffer = nullptr;
         } else {
             frame->data[i].buffer_type = XMA_HOST_BUFFER_TYPE;
-            frame->data[i].buffer = malloc(frame_props->width *
+            frame->data[i].buffer = malloc(static_cast<size_t>(frame_props->width) *
                                        frame_props->height);
         }
         frame->data[i].xma_device_buf = nullptr;
@@ -201,8 +201,8 @@ xma_device_buffer_free(XmaBufferObj *b_obj)
         return;
     }
     XmaBufferObjPrivate* b_obj_priv = (XmaBufferObjPrivate*) b_obj->private_do_not_touch;
-    b_obj_priv->dummy = nullptr;  
-    free(b_obj_priv);
+    b_obj_priv->dummy = nullptr;
+    delete b_obj_priv;
     b_obj->data = nullptr;
     b_obj->size = -1;
     b_obj->bank_index = -1;
@@ -554,7 +554,7 @@ xma_data_buffer_free(XmaDataBuffer *data)
                "%s() Free buffer %p\n", __func__, data);
     if (!data)
         return;
-        
+
     data->data.refcount--;
     if (data->data.refcount > 0)
         return;
@@ -579,4 +579,3 @@ xma_data_buffer_free(XmaDataBuffer *data)
     free(data);
     data = nullptr;
 }
-

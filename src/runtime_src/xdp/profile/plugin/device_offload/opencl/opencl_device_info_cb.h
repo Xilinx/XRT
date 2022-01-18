@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef DEVICE_OFFLOAD_CB_DOT_H
-#define DEVICE_OFFLOAD_CB_DOT_H
+#ifndef OPENCL_DEVICE_INFO_CB_DOT_H
+#define OPENCL_DEVICE_INFO_CB_DOT_H
 
 // These are the functions that are visible when the plugin is dynamically
 //  loaded.  They should be linked to callbacks in XRT via dlsym and then

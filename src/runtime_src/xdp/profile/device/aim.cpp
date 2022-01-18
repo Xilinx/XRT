@@ -142,11 +142,8 @@ size_t AIM::readCounter(xclCounterResults& counterResults)
     // NOTE: this also latches the sampled metric counters
     size += read(XAIM_SAMPLE_OFFSET, 4, &sampleInterval);
 
-    // Samples are taken almost immediately and it is assumed that the intervals are close to each other.
-    // So, only one sample interval reading is okay.
-    if (s==0 && getDevice()) {
-       counterResults.SampleIntervalUsec = static_cast<float>(sampleInterval / (getDevice()->getDeviceClock()));
-    }
+    // The sample interval in the counter results struct is never used,
+    //  so don't set it
 
     size += read(XAIM_SAMPLE_WRITE_BYTES_OFFSET, 4, &counterResults.WriteBytes[s]);
     size += read(XAIM_SAMPLE_WRITE_TRANX_OFFSET, 4, &counterResults.WriteTranx[s]);

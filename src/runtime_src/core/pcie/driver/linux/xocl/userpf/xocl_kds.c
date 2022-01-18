@@ -524,6 +524,27 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
 		ret = 1; /* hack */
 		break;
+	case ERT_CLK_CALIB:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_CLK_CALIB;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_clock_calib_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_ACCESS_TEST_C:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_data_integrity_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_MB_VALIDATE:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_accessible_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
 	default:
 		userpf_err(xdev, "Unsupport command\n");
 		ret = -EINVAL;
@@ -715,7 +736,6 @@ out2:
 	 * xcmd and put gem object while notify host.
 	 */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
-
 	return ret;
 
 out1:

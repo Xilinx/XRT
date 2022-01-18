@@ -22,11 +22,30 @@
 
 namespace xdp {
 
+  /*
+   * Writer for AIE tiles status
+   */
   class AIEDebugWriter : public VPWriter
   {
   public:
     AIEDebugWriter(const char* fileName, const char* deviceName,
                    uint64_t deviceIndex);
+
+    virtual bool write(bool openNewFile);
+
+  private:
+    std::string mDeviceName;
+    uint64_t mDeviceIndex;
+  };
+
+  /*
+   * Writer for AIE shim tiles status
+   */
+  class AIEShimDebugWriter : public VPWriter
+  {
+  public:
+    AIEShimDebugWriter(const char* fileName, const char* deviceName,
+                       uint64_t deviceIndex);
 
     virtual bool write(bool openNewFile);
 
