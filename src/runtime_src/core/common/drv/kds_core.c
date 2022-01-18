@@ -1188,16 +1188,6 @@ int kds_map_cu_addr(struct kds_sched *kds, struct kds_client *client,
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
-	/* SAIF TODO : We can't check this here. Because this doesn't
-	 * have any information regarding context.
-	 * Caller should make sure this */
-#if 0
-        /* client has opening context. xclbin should be locked */
-        if (!client->xclbin_id) {
-                kds_err(client, "client has no opening context\n");
-                return -EINVAL;
-        }
-#endif
 	if (idx >= cu_mgmt->num_cus) {
 		kds_err(client, "cu(%d) out of range\n", idx);
 		return -EINVAL;
@@ -1234,16 +1224,13 @@ insert_cu(struct kds_cu_mgmt *cu_mgmt, int i, struct xrt_cu *xcu)
 int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_cu_mgmt *cu_mgmt = &kds->cu_mgmt;
-#if 0
-	struct xrt_cu *prev_cu;
-#endif
 	int i;
 
 	if (cu_mgmt->num_cus >= MAX_CUS)
 		return -ENOMEM;
 
-	/* SAIF TODO : I believe, we don't need to sort the CUs.
-	 * For multi slot this is not possible. We will find a free slot and
+	/* 
+	 * For multi slot sorting CUs are not possible. We will find a free slot and
 	 * assign the CUs to that.
 	 */
 
@@ -1257,57 +1244,6 @@ int kds_add_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			return 0;
 		}
 	}
-
-#if 0
-	/* Determin CUs ordering:
-	 * Sort CU in interrupt ID increase order.
-	 * If interrupt ID is the same, sort CU in address
-	 * increase order.
-	 * This strategy is good for both legacy xclbin and latest xclbin.
-	 *
-	 * - For latest xclbin, the interrupt ID is from 0 ~ 127.
-	 *   -- One exception is if only 1 CU, the interrupt ID would be 1.
-	 *
-	 * Do NOT add code in KDS to check if xclbin is legacy. We don't
-	 * want to coupling KDS and xclbin parsing.
-	 */
-	if (cu_mgmt->num_cus == 0) {
-		insert_cu(cu_mgmt, 0, xcu);
-		++cu_mgmt->num_cus;
-		return 0;
-	}
-
-	/* Insertion sort */
-	for (i = cu_mgmt->num_cus; i > 0; i--) {
-		prev_cu = cu_mgmt->xcus[i-1];
-		if (prev_cu->info.intr_id < xcu->info.intr_id) {
-			insert_cu(cu_mgmt, i, xcu);
-			++cu_mgmt->num_cus;
-			return 0;
-		} else if (prev_cu->info.intr_id > xcu->info.intr_id) {
-			insert_cu(cu_mgmt, i, prev_cu);
-			continue;
-		}
-
-		// Same intr ID.
-		if (prev_cu->info.addr < xcu->info.addr) {
-			insert_cu(cu_mgmt, i, xcu);
-			++cu_mgmt->num_cus;
-			return 0;
-		} else if (prev_cu->info.addr > xcu->info.addr) {
-			insert_cu(cu_mgmt, i, prev_cu);
-			continue;
-		}
-
-	if (xcu->info.cu_idx >= MAX_CUS)
-		return -EINVAL;
-
-	if (i == 0) {
-		insert_cu(cu_mgmt, 0, xcu);
-		++cu_mgmt->num_cus;
-		return 0;
-	}
-#endif
 
 	return 0;
 }
@@ -1324,8 +1260,6 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 		if (cu_mgmt->xcus[i] != xcu)
 			continue;
 
-		/* SAIF TODO : We should not do this here */
-		//--cu_mgmt->num_cus;
 		cu_mgmt->xcus[i] = NULL;
 		cu_stat_write(cu_mgmt, usage[i], 0);
 	}

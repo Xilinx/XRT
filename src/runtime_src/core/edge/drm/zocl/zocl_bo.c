@@ -159,6 +159,16 @@ zocl_create_cma_mem(struct drm_device *dev, size_t size)
 	return bo;
 }
 
+/*
+ * This function allocates memory from the range allocator.
+ * Also try to allocate memory from the similer memory types.
+ *
+ * @param       zdev:   zocl device structure
+ * @param       size:	requested memory size
+ * @param       mem:	requested zocl memory structure
+ *
+ * @return	bo pointer on success, error code on failure
+ */
 static struct drm_zocl_bo *
 zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 {
@@ -191,7 +201,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	mutex_lock(&zdev->mm_lock);
 	do {
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
-			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev, size);
+			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev,
+									 size);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
 				mutex_unlock(&zdev->mm_lock);
@@ -202,7 +213,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 				return cma_bo;
 			}
 			DRM_WARN("Memory allocated from CMA region"
-					" whereas requested for reserved memory region\n");
+				" whereas requested for reserved memory region\n");
 		}
 		else {
 			err = drm_mm_insert_node_in_range(zdev->zm_drm_mm,
@@ -215,7 +226,6 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 			}
 		}
 
-		/* SAIF TODO : Need to revisit this concept (DDR/LPDDR) */
 		/* No memory left to this memory manager.
 		 * Try to allocate from similer memory manger link list
 		 */
@@ -253,7 +263,15 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	return bo;
 }
 
-/* This function retruns zocl memory for the given memory index */
+/*
+ * This function retruns zocl memory for the given memory index.
+ * Memory index is a pair of domain id and bank id.
+ *
+ * @param       zdev:    zocl device structure
+ * @param       domain:  domain specific structure
+ *
+ * @return	memory pointer on success, NULL on failure
+ */
 static struct zocl_mem *
 zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
 {
@@ -266,8 +284,15 @@ zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
 	return NULL;
 }
 
-/* This function retruns zocl memory for the given domain based on a 
-specific memory topology */
+/* This function retruns zocl memory for the given domain based on a
+ * specific memory topology
+ *
+ * @param       zdev:		zocl device structure
+ * @param       md:		memory topology structure
+ * @param       domain_idx:	domain index
+ *
+ * @return	memory pointer on success, NULL on failure
+ */
 static struct zocl_mem *
 zocl_get_memp_by_mem_data(struct drm_zocl_dev *zdev,
 		     struct mem_data *md, int domain_idx)
@@ -1049,31 +1074,6 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 		uint32_t index)
 {
-	/* SAIF TODO : Need to revisit this logic later */
-#if 0
-	int i, update_bank = zdev->num_mem;
-
-	/*
-	 * If the 'bank' passed in is a valid bank and its type is
-	 * PL-DDR or LPDDR , we update that bank usage. Otherwise, we go
-	 * through our bank list and find the CMA bank to update
-	 * its usage.
-	 */
-	if (bank < zdev->num_mem &&
-	    zdev->mem[bank].zm_type == ZOCL_MEM_TYPE_RANGE_ALLOC) {
-		update_bank = bank;
-	} else {
-		for (i = 0; i < zdev->num_mem; i++) {
-			if (zdev->mem[i].zm_used &&
-			    zdev->mem[i].zm_type == ZOCL_MEM_TYPE_CMA) {
-				update_bank = i;
-				break;
-			}
-		}
-	}
-
-	if (update_bank == zdev->num_mem)
-#endif
 	struct zocl_mem *mem = zocl_get_memp_by_mem_index(zdev, index);
 	if (!mem)
 		return;
@@ -1131,6 +1131,10 @@ static bool check_for_reserved_memory(uint64_t start_addr, size_t size)
  *
  * PL-DDR and LPDDR are managed by DRM MM Range Allocator;
  * CMA is managed by DRM CMA Allocator.
+ *
+ * @param       zdev:    zocl device structure
+ * @param       domain:  domain specific structure
+ *
  */
 void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 {
@@ -1170,7 +1174,8 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 
 		list_add_tail(&memp->link, &zdev->zm_list_head);
 
-		if (!check_for_reserved_memory(memp->zm_base_addr, memp->zm_size)) {
+		if (!check_for_reserved_memory(memp->zm_base_addr,
+					       memp->zm_size)) {
 			DRM_INFO("Memory %d is not reserved in device tree."
 					" Will allocate memory from CMA\n", i);
 			memp->zm_type = ZOCL_MEM_TYPE_CMA;
@@ -1196,7 +1201,6 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 			    (mm_end_addr - mm_start_addr));
 	}
 
-	/* SAIF TODO : This need to rethink */
 	/* Create a link list for similar memory manager for this domain */
 	for (i = 0; i < mtopo->m_count; i++) {
 		struct mem_data *md = &mtopo->m_mem_data[i];
@@ -1215,10 +1219,14 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 			if ((i == j) || !mtopo->m_mem_data[j].m_used)
 				continue;
 
-			tmp_memp = zocl_get_memp_by_mem_data(zdev, &mtopo->m_mem_data[j], domain->domain_idx);
-			if (strcmp(mtopo->m_mem_data[i].m_tag, mtopo->m_mem_data[j].m_tag) && 
+			tmp_memp = zocl_get_memp_by_mem_data(zdev,
+					&mtopo->m_mem_data[j],
+					domain->domain_idx);
+			if (strcmp(mtopo->m_mem_data[i].m_tag,
+				   mtopo->m_mem_data[j].m_tag) &&
 			    list_empty(&tmp_memp->zm_list)) {
-				list_add_tail(&memp->zm_list, &tmp_memp->zm_list);
+				list_add_tail(&memp->zm_list,
+					      &tmp_memp->zm_list);
 				memp = tmp_memp;
 			}
 		}
@@ -1227,6 +1235,14 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	mutex_unlock(&zdev->mm_lock);
 }
 
+/*
+ * Clean the memories for a specific domain. Other memory remain unchanged.
+ * This will not delete the memory manager.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       domain_idx:	domain index
+ *
+ */
 void zocl_clear_mem_domain(struct drm_zocl_dev *zdev, int domain_idx)
 {
 	struct zocl_mem *curr_mem;
@@ -1248,6 +1264,13 @@ done:
 	mutex_unlock(&zdev->mm_lock);
 }
 
+/*
+ * Clean all the memories for a specific device. This will also delete
+ * the memory manager.
+ *
+ * @param       zdev:	zocl device structure
+ *
+ */
 void zocl_clear_mem(struct drm_zocl_dev *zdev)
 {
 	struct zocl_mem *curr_mem;
@@ -1263,6 +1286,7 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev)
 		vfree(curr_mem);
 	}
 
+	/* clean up a drm_mm allocator. Free the memory */
 	if (zdev->zm_drm_mm) {
 		drm_mm_takedown(zdev->zm_drm_mm);
 		vfree(zdev->zm_drm_mm);

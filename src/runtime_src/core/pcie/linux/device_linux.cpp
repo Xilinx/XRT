@@ -154,12 +154,18 @@ struct kds_cu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      /* TODO : For backward compartability changing the following value to 6 
+       * as the first column should represent the domain index */
+      if (std::distance(tokens.begin(), tokens.end()) != 5) ||
+	(std::distance(tokens.begin(), tokens.end()) != 6)) {
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      if (std::distance(tokens.begin(), tokens.end()) == 6)
+        data.dom_index =std::stoi(std::string(*tok_it++));
+
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
       data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
