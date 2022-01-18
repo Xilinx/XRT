@@ -163,7 +163,7 @@ struct ishim
   { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
 
   virtual std::cv_status
-  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout)
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t)
   { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
   ////////////////////////////////////////////////////////////////
 
