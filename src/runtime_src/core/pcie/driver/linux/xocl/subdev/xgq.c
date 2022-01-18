@@ -1494,7 +1494,6 @@ static int xgq_ospi_open(struct inode *inode, struct file *file)
 		return -ENXIO;
 
 	file->private_data = xgq;
-
 	return 0;
 }
 
@@ -1503,7 +1502,6 @@ static int xgq_ospi_close(struct inode *inode, struct file *file)
 	struct xocl_xgq_vmr *xgq = file->private_data;
 
 	xocl_drvinst_close(xgq);
-
 	return 0;
 }
 
