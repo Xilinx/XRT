@@ -27,7 +27,7 @@
 /* Multiple xclbin context can be active under a single client.
  * Client should maintain all the active XCLBIN.
  */
-struct client_ctx {
+struct kds_client_ctx {
 	struct list_head          link;
 	void			 *xclbin_id;
 	int			  domain_idx;
@@ -61,7 +61,7 @@ struct kds_client {
 	struct pid	         *pid;
 	struct mutex		  lock;
 
-	struct client_ctx	 *ctx;
+	struct kds_client_ctx	 *ctx;
 	struct list_head          ctx_list;
 
 	struct list_head          graph_list;

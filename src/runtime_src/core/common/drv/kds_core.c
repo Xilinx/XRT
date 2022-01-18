@@ -1009,7 +1009,7 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 /* This function returns true if the given CU/SCU belongs to the current domain
  */
 static bool
-check_domain_cu(struct kds_sched *kds, struct client_ctx *cctx, u32 bit)
+check_domain_cu(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit)
 {
 	struct xrt_cu *xcu = NULL;
 
@@ -1027,7 +1027,7 @@ check_domain_cu(struct kds_sched *kds, struct client_ctx *cctx, u32 bit)
 
 static inline void
 _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
-		 struct client_ctx *cctx)
+		 struct kds_client_ctx *cctx)
 {
 	struct kds_ctx_info info;
 	u32 bit;
@@ -1071,7 +1071,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 
 void kds_fini_client(struct kds_sched *kds, struct kds_client *client)
 {
-	struct client_ctx *curr;
+	struct kds_client_ctx *curr;
 
         list_for_each_entry(curr, &client->ctx_list, link) {
 		/* Release client's resources */
@@ -1095,7 +1095,7 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 {
 	u32 cu_idx = info->cu_idx;
 	bool shared = (info->flags != CU_CTX_EXCLUSIVE);
-	struct client_ctx *cctx = (struct client_ctx *)info->curr_ctx;
+	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
 	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
@@ -1142,7 +1142,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		    struct kds_ctx_info *info)
 {
 	u32 cu_idx = info->cu_idx;
-	struct client_ctx *cctx = (struct client_ctx *)info->curr_ctx;
+	struct kds_client_ctx *cctx = (struct kds_client_ctx *)info->curr_ctx;
 	int i;
 
 	BUG_ON(!mutex_is_locked(&client->lock));
@@ -1551,7 +1551,7 @@ u32 kds_live_clients_nolock(struct kds_sched *kds, pid_t **plist)
 {
 	const struct list_head *ptr;
 	struct kds_client *client;
-	struct client_ctx *curr;
+	struct kds_client_ctx *curr;
 	pid_t *pl = NULL;
 	u32 count = 0;
 	u32 i = 0;

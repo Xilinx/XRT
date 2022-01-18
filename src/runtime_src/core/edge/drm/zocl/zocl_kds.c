@@ -121,7 +121,7 @@ zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
  */
 static void
 zocl_remove_client_context(struct drm_zocl_dev *zdev,
-			struct kds_client *client, struct client_ctx *cctx)
+			struct kds_client *client, struct kds_client_ctx *cctx)
 {
 	struct drm_zocl_domain *domain;
 	uuid_t *id = (uuid_t *)cctx->xclbin_id;
@@ -155,12 +155,12 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
  * @return      newly created context on success, Error code on failure.
  *
  */
-static struct client_ctx *
+static struct kds_client_ctx *
 zocl_create_client_context(struct drm_zocl_dev *zdev,
 			struct kds_client *client, uuid_t *id)
 {
 	struct drm_zocl_domain *domain;
-	struct client_ctx *cctx;
+	struct kds_client_ctx *cctx;
 	int ret;
 
 	/* Get the corresponding domain for this xclbin */
@@ -174,7 +174,7 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 		return NULL;
 
 	/* Allocate the new client context and store the xclbin */
-	cctx = vzalloc(sizeof(struct client_ctx));
+	cctx = vzalloc(sizeof(struct kds_client_ctx));
 	if (!cctx) {
 		(void) zocl_unlock_bitstream(domain, id);
 		return NULL;
@@ -202,10 +202,10 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
  * @return      existing context on success, NULL on failure.
  *
  */
-static struct client_ctx *
+static struct kds_client_ctx *
 zocl_check_exists_context(struct kds_client *client, uuid_t *id)
 {
-	struct client_ctx *curr;
+	struct kds_client_ctx *curr;
 
 	/* Find whether the xclbin is already loaded and the context is exists
 	 */
@@ -237,7 +237,7 @@ zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 {
 	struct kds_ctx_info info;
 	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
-	struct client_ctx *cctx;
+	struct kds_client_ctx *cctx;
 	uuid_t *id;
 	int ret;
 
@@ -295,7 +295,7 @@ zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	struct kds_ctx_info info;
 	void *uuid_ptr = (void *)(uintptr_t)args->uuid_ptr;
 	uuid_t *id;
-	struct client_ctx *cctx;
+	struct kds_client_ctx *cctx;
 	int ret;
 
 	id = vmalloc(sizeof(uuid_t));
@@ -510,7 +510,7 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
  *
  * @return      context on success, error core on failure.
  */
-static struct client_ctx *
+static struct kds_client_ctx *
 zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		    int cu_idx)
 {
@@ -533,7 +533,7 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 
 	domain = zdev->pr_domain[domain_idx];
 	if (domain) {
-		struct client_ctx *curr;
+		struct kds_client_ctx *curr;
 		mutex_lock(&domain->domain_xclbin_lock);
 		list_for_each_entry(curr, &client->ctx_list, link) {
 			if (uuid_equal(curr->xclbin_id,
@@ -782,7 +782,7 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 	struct kds_client *client = *priv;
 	struct kds_sched  *kds;
 	struct drm_device *ddev;
-	struct client_ctx *curr;
+	struct kds_client_ctx *curr;
 	struct drm_zocl_domain *domain;
 	int pid = pid_nr(client->pid);
 
