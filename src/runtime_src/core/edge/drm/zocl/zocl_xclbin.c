@@ -610,6 +610,14 @@ zocl_xclbin_same_uuid(struct drm_zocl_domain *domain, xuid_t *uuid)
 	    uuid_equal(uuid, zocl_xclbin_get_uuid(domain)));
 }
 
+/*
+ * Return the domain pointer for the given xclbin uuid as an Input.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      domian pointer on success, NULL on failure.
+ */
 struct drm_zocl_domain *
 zocl_get_domain(struct drm_zocl_dev *zdev, uuid_t *id)
 {
@@ -787,6 +795,18 @@ void zocl_free_sections(struct drm_zocl_domain *domain)
 	}
 }
 
+/*
+ * Load a bitstream, partial metadata or PDI to the FPGA from userspace pointer.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       axlf:		xclbin userspace header pointer
+ * @param       xclbin:		xclbin userspace buffer pointer
+ * @param       kind:		xclbin section type
+ * @param       domain:		Specific domain structure
+ *
+ * @return      0 on success, Error code on failure.
+ *
+ */
 static int
 zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin,
 	      enum axlf_section_kind kind, struct drm_zocl_domain *domain)
@@ -943,7 +963,7 @@ zocl_xclbin_refcount(struct drm_zocl_domain *domain)
  * @param       zdev:		zocl device structure
  * @param       axlf_obj:	xclbin userspace structure
  * @param       client:		user space client attached to device
- * 
+ *
  * @return      0 on success, Error code on failure.
  */
 int
@@ -1030,7 +1050,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
 			if (is_aie_only(axlf)) {
 				write_unlock(&zdev->attr_rwlock);
-				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
+				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
+							     client);
 				write_lock(&zdev->attr_rwlock);
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
@@ -1250,6 +1271,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	}
 
 	zocl_clear_mem_domain(zdev, domain->domain_idx);
+	/* Initialize the memory for the new xclbin */
 	zocl_init_mem(zdev, domain);
 
 	/* Createing AIE Partition */
@@ -1307,6 +1329,14 @@ zocl_xclbin_get_uuid(struct drm_zocl_domain *domain)
 	return domain->zdev_xclbin->zx_uuid;
 }
 
+/*
+ * Block the bitstream for this domain. This will increase reference count.
+ *
+ * @param       domain:	domain specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success, -EBUSY if already locked, Error code on failure.
+ */
 int
 zocl_xclbin_hold(struct drm_zocl_domain *domain, const uuid_t *id)
 {
@@ -1337,6 +1367,15 @@ zocl_xclbin_hold(struct drm_zocl_domain *domain, const uuid_t *id)
 	return 0;
 }
 
+/*
+ * Lock this bitstream for this domain. This will help to protect the domain
+ * for accidental update of new xclbin.
+ *
+ * @param       domain:	domain specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success, -EBUSY if already locked, Error code on failure.
+ */
 int zocl_lock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 {
 	int ret;
@@ -1348,6 +1387,15 @@ int zocl_lock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 	return ret;
 }
 
+/*
+ * Release this bitstream for this domain. Also decrease the reference count
+ * for this domain.
+ *
+ * @param       domain:	domain specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
 int
 zocl_xclbin_release(struct drm_zocl_domain *domain, const uuid_t *id)
 {
@@ -1376,6 +1424,15 @@ zocl_xclbin_release(struct drm_zocl_domain *domain, const uuid_t *id)
 	return 0;
 }
 
+/*
+ * Unlock this bitstream for this domain. This will help to reload a new xclbin
+ * for this domain.
+ *
+ * @param       domain:	domain specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
 int zocl_unlock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 {
 	int ret;
@@ -1387,6 +1444,14 @@ int zocl_unlock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 	return ret;
 }
 
+/*
+ * Set this uuid for this domain.
+ *
+ * @param       domain:	domain specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
 int
 zocl_xclbin_set_uuid(struct drm_zocl_domain *domain, void *uuid)
 {
@@ -1406,6 +1471,14 @@ zocl_xclbin_set_uuid(struct drm_zocl_domain *domain, void *uuid)
 	return 0;
 }
 
+/*
+ * Initialize the xclbin for this domain. Allocate necessery memory for the
+ * same.
+ *
+ * @param       domain:	domain specific structure
+ *
+ * @return      0 on success Error code on failure.
+ */
 int
 zocl_xclbin_init(struct drm_zocl_domain *domain)
 {
@@ -1425,6 +1498,15 @@ zocl_xclbin_init(struct drm_zocl_domain *domain)
 	return 0;
 }
 
+/*
+ * Cleanup the xclbin for this domain. Also destroy the CUs associated with this
+ * domain.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       domain:	domain specific structure
+ *
+ * @return      0 on success Error code on failure.
+ */
 void
 zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 {
@@ -1439,65 +1521,3 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 	/* Delete CU devices if exist for this domain */
 	zocl_destroy_cu_domain(zdev, domain->domain_idx);
 }
-
-bool
-zocl_xclbin_accel_adapter(int kds_mask)
-{
-	return kds_mask == ACCEL_ADAPTER;
-}
-
-bool
-zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev)
-{
-	u32 prop;
-	int i, count = 0;
-
-	/* if all of the interrupt id is 0, this xclbin is legacy */
-	for (i = 0; i < zdev->num_apts; i++) {
-		prop = zdev->apertures[i].prop;
-		if ((prop & IP_INTERRUPT_ID_MASK) == 0)
-			count++;
-	}
-
-	if (count < zdev->num_apts && count > 1) {
-		DRM_WARN("%d non-zero interrupt-id CUs out of %d CUs",
-		    count, zdev->num_apts);
-	}
-
-	return (count == zdev->num_apts);
-}
-
-u32
-zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx)
-{
-	u32 prop = zdev->apertures[idx].prop;
-
-	return xclbin_intr_id(prop);
-}
-
-#if 0
-/*
- * returns false if any of the cu doesnt support interrupt
- */
-bool
-zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
-{
-	struct ip_data *ip;
-	int i;
-
-	if (!zdev->ip)
-		return false;
-
-	for (i = 0; i < zdev->ip->m_count; ++i) {
-		ip = &zdev->ip->m_ip_data[i];
-		if (xclbin_protocol(ip->properties) == AP_CTRL_NONE) {
-			continue;
-		}
-		if (!(ip->properties & 0x1)) {
-			return false;
-		}
-	}
-
-	return true;
-}
-#endif

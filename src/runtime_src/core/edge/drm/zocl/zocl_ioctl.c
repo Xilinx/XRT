@@ -17,8 +17,6 @@
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 
-extern int kds_mode;
-
 /*
  * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
  */

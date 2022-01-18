@@ -18,7 +18,6 @@
 #include "zocl_sk.h"
 #include "kds_core.h"
 
-extern int kds_mode;
 extern int kds_echo;
 
 /* -KDS sysfs-- */
@@ -37,13 +36,6 @@ kds_echo_store(struct device *dev, struct device_attribute *da,
 	return store_kds_echo(&zdev->kds, buf, count, &kds_echo);
 }
 static DEVICE_ATTR(kds_echo, 0644, kds_echo_show, kds_echo_store);
-
-static ssize_t
-kds_mode_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", kds_mode);
-}
-static DEVICE_ATTR_RO(kds_mode);
 
 static ssize_t
 kds_stat_show(struct device *dev, struct device_attribute *attr, char *buf)
@@ -104,94 +96,6 @@ static ssize_t kds_numcus_show(struct device *dev,
 	return size;
 }
 static DEVICE_ATTR_RO(kds_numcus);
-
-/* SAIF TODO : Do we need this. Looks like this is for old KDS */
-#if 0
-static ssize_t kds_custat_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	struct zocl_cu *zcu = NULL;
-	ssize_t size = 0;
-	phys_addr_t paddr;
-	u32 usage;
-	int status;
-	int i;
-
-	if (!zdev)
-		return 0;
-
-	read_lock(&zdev->attr_rwlock);
-
-	if (!zdev->exec) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
-
-	for (i = 0; i < zdev->exec->num_cus; i++) {
-		zcu = &zdev->exec->zcu[i];
-		if (!zcu) {
-			read_unlock(&zdev->attr_rwlock);
-			return 0;
-		}
-
-		paddr = zocl_cu_get_paddr(zcu);
-		usage = zcu->usage;
-		status = zocl_cu_status_get(zcu);
-		/* Use %x for now. Needs to use a better approach when support
-		 * CU at higher than 4GB address range.
-		 */
-		size += sprintf(buf + size, "CU[@0x%llx] : %d status : %d\n",
-		    (uint64_t)paddr, usage, status);
-	}
-
-	read_unlock(&zdev->attr_rwlock);
-
-	return size;
-}
-static DEVICE_ATTR_RO(kds_custat);
-
-static ssize_t kds_stats_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
-	struct sched_exec_core *exec = zdev->exec;
-	int pending, running;
-	struct list_head *pos, *next;
-	struct sched_cmd *cmd;
-	struct ert_packet *pkg;
-	ssize_t sz;
-	int i;
-
-	if (!zdev || !zdev->exec)
-		return 0;
-
-	pending = atomic_read(&exec->scheduler->num_pending);
-	running = atomic_read(&exec->scheduler->num_running);
-	sz  = sprintf(buf,    "num_pending %d\n", atomic_read(&exec->scheduler->num_pending));
-	sz += sprintf(buf+sz, "num_running %d\n", atomic_read(&exec->scheduler->num_running));
-	sz += sprintf(buf+sz, "num_received %d\n", atomic_read(&exec->scheduler->num_received));
-	sz += sprintf(buf+sz, "num_notified %d\n", atomic_read(&exec->scheduler->num_notified));
-
-	if (running == 0)
-		return sz;
-
-	sz += sprintf(buf+sz, "running commands:\n");
-	list_for_each_safe(pos, next, &exec->scheduler->cq) {
-		cmd = list_entry(pos, struct sched_cmd, list);
-		pkg = cmd->packet;
-		sz += sprintf(buf+sz, " opcode %d\n", pkg->opcode);
-		sz += sprintf(buf+sz, " count %d\n", pkg->count);
-		sz += sprintf(buf+sz, " cu idx %d\n", pkg->data[0]);
-		for (i = 1; i < pkg->count; i++) {
-			sz += sprintf(buf+sz, " data: 0x%x\n", pkg->data[i]);
-		}
-	}
-
-	return sz;
-}
-static DEVICE_ATTR_RO(kds_stats);
-#endif
 
 static ssize_t kds_skstat_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -441,14 +345,9 @@ static DEVICE_ATTR_RO(errors);
 static struct attribute *zocl_attrs[] = {
 	&dev_attr_xclbinid.attr,
 	&dev_attr_kds_numcus.attr,
-#if 0 // OLD KDS SAIF TODO
-	&dev_attr_kds_custat.attr,
-	&dev_attr_kds_stats.attr,
-#endif
 	&dev_attr_kds_skstat.attr,
 	&dev_attr_kds_xrt_version.attr,
 	&dev_attr_kds_echo.attr,
-	&dev_attr_kds_mode.attr,
 	&dev_attr_kds_stat.attr,
 	&dev_attr_kds_custat_raw.attr,
 	&dev_attr_memstat.attr,

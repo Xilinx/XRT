@@ -38,9 +38,5 @@ int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_domain *domain);
 
 bool zocl_xclbin_accel_adapter(int kds_mask);
-bool zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev);
-u32  zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx);
-//SAIF TODO Delete this as this is related to old KDS
-//bool zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev);
 
 #endif /* _ZOCL_XCLBIN_H_ */

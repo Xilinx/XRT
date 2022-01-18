@@ -25,13 +25,16 @@ do {\
 	}\
 } while(0)
 
-int kds_mode = 1;
-module_param(kds_mode, int, (S_IRUGO|S_IWUSR));
-MODULE_PARM_DESC(kds_mode,
-		 "enable new KDS (0 = disable (default), 1 = enable)");
-
 int kds_echo = 0;
 
+/*
+ * Callback function for async dma operation. This will also clean the
+ * command memory.
+ *
+ * @param       arg:	kds command pointer
+ * @param       ret:    return value of the dma operation.
+ *
+ */
 static void zocl_kds_dma_complete(void *arg, int ret)
 {
 	struct kds_command *xcmd = (struct kds_command *)arg;
@@ -46,6 +49,17 @@ static void zocl_kds_dma_complete(void *arg, int ret)
 	kfree(dma_handle);
 }
 
+/*
+ * Copy the user space command to kds command. Also register the callback
+ * function for the DMA operation.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       flip:	DRM file private data
+ * @param       ecmd:	ERT command structure
+ * @param       xcmd:   KDS command structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int copybo_ecmd2xcmd(struct drm_zocl_dev *zdev, struct drm_file *filp,
 			    struct ert_start_copybo_cmd *ecmd,
 			    struct kds_command *xcmd)
@@ -95,6 +109,16 @@ zocl_ctx_to_info(struct drm_zocl_ctx *args, struct kds_ctx_info *info)
 		info->flags = CU_CTX_SHARED;
 }
 
+/*
+ * Remove the client context and free all the memeory.
+ * This function is also unlock the bitstrean for the domain associated with
+ * this context.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client structure
+ * @param       cctx:   Client context structure
+ *
+ */
 static void
 zocl_remove_client_context(struct drm_zocl_dev *zdev,
 			struct kds_client *client, struct client_ctx *cctx)
@@ -120,6 +144,17 @@ zocl_remove_client_context(struct drm_zocl_dev *zdev,
 	}
 }
 
+/*
+ * Create a new client context and lock the bitstrean for the domain
+ * associated with this context.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client structure
+ * @param       id:	XCLBIN id
+ *
+ * @return      newly created context on success, Error code on failure.
+ *
+ */
 static struct client_ctx *
 zocl_create_client_context(struct drm_zocl_dev *zdev,
 			struct kds_client *client, uuid_t *id)
@@ -158,6 +193,15 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
 	return cctx;
 }
 
+/*
+ * Check whether there is a active context for this xclbin in this kds client.
+ *
+ * @param       client:	KDS client structure
+ * @param       id:	XCLBIN id
+ *
+ * @return      existing context on success, NULL on failure.
+ *
+ */
 static struct client_ctx *
 zocl_check_exists_context(struct kds_client *client, uuid_t *id)
 {
@@ -176,6 +220,17 @@ zocl_check_exists_context(struct kds_client *client, uuid_t *id)
 	return curr;
 }
 
+/*
+ * Create a new context if no active context present for this xclbin and add
+ * it to the kds.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client structure
+ * @param       id:	XCLBIN id
+ *
+ * @return      0 on success, error core on failure.
+ *
+ */
 static int
 zocl_add_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		 struct drm_zocl_ctx *args)
@@ -223,6 +278,16 @@ out:
 	return ret;
 }
 
+/*
+ * Detele an existing context and remove it from the kds.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client structure
+ * @param       args:	userspace arguments
+ *
+ * @return      0 on success, error core on failure.
+ *
+ */
 static int
 zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		 struct drm_zocl_ctx *args)
@@ -353,6 +418,17 @@ zocl_open_ucu(struct drm_zocl_dev *zdev, struct kds_client *client,
 	return kds_open_ucu(kds, client, cu_idx);
 }
 
+/*
+ * This is an entry point for context ioctl. This function calls the
+ * appropoate function based on the requested operation from the userspace.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       data:	userspace arguments
+ * @param       flip:	DRM file private data
+ *
+ * @return      0 on success, error core on failure.
+ *
+ */
 int zocl_context_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -427,6 +503,12 @@ static void notify_execbuf(struct kds_command *xcmd, int status)
 }
 
 /* This function returns the corresponding context associated to the given CU
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client context
+ * @param       cu_idx:	CU index
+ *
+ * @return      context on success, error core on failure.
  */
 static struct client_ctx *
 zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
@@ -477,6 +559,12 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 /* Every CU is associated with a domain. And a client can open only one
  * context for a domain. Hence, from the CU we can validate whethe the
  * current context is valid or not.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       client:	KDS client context
+ * @param       xcmd:	KDS command structure
+ *
+ * @return      0 on success, error core on failure.
  */
 static int
 check_for_open_context(struct drm_zocl_dev *zdev, struct kds_client *client,
@@ -513,7 +601,16 @@ out:
 		return -EINVAL;
 }
 
-
+/*
+ * This function will create a kds command using the given parameters from the
+ * userspace and add that to the KDS.
+ *
+ * @param	zdev:   zocl device structure
+ * @param       data:	userspace arguments
+ * @param       flip:	DRM file private data
+ *
+ * @return      0 on success, error core on failure.
+ */
 int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 		       struct drm_file *filp)
 {
@@ -526,13 +623,6 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	struct kds_command *xcmd;
 	int ret = 0;
 
-#if 0
-	// SAIF TODO : We can't check this way now 
-	if (!client->xclbin_id) {
-		DRM_ERROR("The client has no opening context\n");
-		return -EINVAL;
-	}
-#endif
 	if (zdev->kds.bad_state) {
 		DRM_ERROR("KDS is in bad state\n");
 		return -EDEADLK;
@@ -603,11 +693,6 @@ int zocl_command_ioctl(struct drm_zocl_dev *zdev, void *data,
 	}
 
 	/* Check whether client has already Open Context for this Command */
-	/* SAIF TODO : Why can't we make use of context handler.
-	 * While opening a context we should return the context and ExecBuf
-	 * should be called with the same context. In that way it will be more
-	 * clear way to handle multiple context.
-	 */
 	if (check_for_open_context(zdev, client, xcmd) < 0) {
 		DRM_ERROR("The client has no opening context\n");
 		return -EINVAL;
@@ -642,6 +727,14 @@ uint zocl_poll_client(struct file *filp, poll_table *wait)
 	return POLLIN;
 }
 
+/*
+ * Create a new client and initialize it with KDS.
+ *
+ * @param	zdev:		zocl device structure
+ * @param       priv[output]:	new client pointer
+ *
+ * @return      0 on success, error core on failure.
+ */
 int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 {
 	struct kds_client *client;
@@ -677,6 +770,13 @@ out:
 	return ret;
 }
 
+/*
+ * Destroy the given client and delete it from the KDS.
+ *
+ * @param	zdev:	zocl device structure
+ * @param       priv:	client pointer
+ *
+ */
 void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 {
 	struct kds_client *client = *priv;

@@ -482,9 +482,9 @@ struct spc_status
   }
 };
 
-struct get_xclbin_domain_id,
+struct get_xclbin_domain_id
 {
-  using result_type = query::get_xclbin_domain_id,::result_type;
+  using result_type = query::get_xclbin_domain_id::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& xclbinid)
@@ -707,7 +707,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
-  emplace_func4_request<query::get_xclbin_domain_id,	get_xclbin_domain_id,>();
+  emplace_func4_request<query::get_xclbin_domain_id,	get_xclbin_domain_id>();
 }
 
 struct X { X() { initialize_query_table(); } };
