@@ -358,9 +358,9 @@ zocl_add_graph_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	if (!domain)
 		return -EINVAL;
 
-	mutex_lock(&domain->zdev_xclbin_lock);
+	mutex_lock(&domain->domain_xclbin_lock);
 	xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(domain);
-	mutex_unlock(&domain->zdev_xclbin_lock);
+	mutex_unlock(&domain->domain_xclbin_lock);
 
 	mutex_lock(&client->lock);
 	if (!uuid_equal(ctx_id, xclbin_id)) {
@@ -534,7 +534,7 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	domain = zdev->pr_domain[domain_idx];
 	if (domain) {
 		struct client_ctx *curr;
-		mutex_lock(&domain->zdev_xclbin_lock);
+		mutex_lock(&domain->domain_xclbin_lock);
 		list_for_each_entry(curr, &client->ctx_list, link) {
 			if (uuid_equal(curr->xclbin_id,
 				       zocl_xclbin_get_uuid(domain))) {
@@ -542,7 +542,7 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 				break;
 			}
 		}
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 
 		/* check matching context */
 		if (&curr->link != &client->ctx_list) {

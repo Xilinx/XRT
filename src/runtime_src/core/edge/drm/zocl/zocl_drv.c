@@ -123,7 +123,7 @@ static int zocl_pr_domain_init(struct drm_zocl_dev *zdev,
 		if (ret)
 			return ret;
 
-		mutex_init(&zocl_domain->zdev_xclbin_lock);
+		mutex_init(&zocl_domain->domain_xclbin_lock);
 
 		if (ZOCL_PLATFORM_ARM64) {
 			zocl_domain->pr_isolation_freeze = 0x0;
@@ -176,7 +176,7 @@ static void zocl_pr_domain_fini(struct drm_zocl_dev *zdev)
 		zocl_domain = zdev->pr_domain[i];
 		if (zocl_domain) {
 			zocl_free_sections(zocl_domain);
-			mutex_destroy(&zocl_domain->zdev_xclbin_lock);
+			mutex_destroy(&zocl_domain->domain_xclbin_lock);
 			zocl_xclbin_fini(zdev, zocl_domain);
 			kfree(zocl_domain);
 			zdev->pr_domain[i] = NULL;

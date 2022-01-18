@@ -627,12 +627,12 @@ zocl_get_domain(struct drm_zocl_dev *zdev, uuid_t *id)
 	for (i = 0; i < zdev->num_pr_domain; i++) {
 		zocl_domain = zdev->pr_domain[i];
 		if (zocl_domain) {
-			mutex_lock(&zocl_domain->zdev_xclbin_lock);
+			mutex_lock(&zocl_domain->domain_xclbin_lock);
 			if (zocl_xclbin_same_uuid(zocl_domain, id)) {
-				mutex_unlock(&zocl_domain->zdev_xclbin_lock);
+				mutex_unlock(&zocl_domain->domain_xclbin_lock);
 				return zocl_domain;
 			}
-			mutex_unlock(&zocl_domain->zdev_xclbin_lock);
+			mutex_unlock(&zocl_domain->domain_xclbin_lock);
 		}
 	}
 
@@ -673,12 +673,12 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 		return -EINVAL;
 	}
 
-	mutex_lock(&domain->zdev_xclbin_lock);
+	mutex_lock(&domain->domain_xclbin_lock);
 	/* Check unique ID */
 	if (zocl_xclbin_same_uuid(domain, &axlf_head->m_header.uuid)) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return ret;
 	}
 
@@ -730,7 +730,7 @@ out:
 	write_unlock(&zdev->attr_rwlock);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(domain),
 		ret);
-	mutex_unlock(&domain->zdev_xclbin_lock);
+	mutex_unlock(&domain->domain_xclbin_lock);
 	return ret;
 }
 
@@ -949,9 +949,9 @@ zocl_cache_xclbin(struct drm_zocl_domain *domain, struct axlf *axlf,
 int
 zocl_xclbin_refcount(struct drm_zocl_domain *domain)
 {
-	BUG_ON(!mutex_is_locked(&domain->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&domain->domain_xclbin_lock));
 
-	return domain->zdev_xclbin->zx_refcnt;
+	return domain->domain_xclbin->zx_refcnt;
 }
 
 /*
@@ -994,18 +994,18 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		return -EINVAL;
 	}
 
-	mutex_lock(&domain->zdev_xclbin_lock);
+	mutex_lock(&domain->domain_xclbin_lock);
 
 	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
 	    sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return -EFAULT;
 	}
 
 	if (memcmp(axlf_head.m_magic, "xclbin2", 8)) {
 		DRM_WARN("xclbin magic is invalid %s", axlf_head.m_magic);
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return -EINVAL;
 	}
 
@@ -1016,14 +1016,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	axlf = vmalloc(axlf_size);
 	if (!axlf) {
 		DRM_WARN("read xclbin fails: no memory");
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return -ENOMEM;
 	}
 
 	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
 		DRM_WARN("read xclbin: fail copy from user memory");
 		vfree(axlf);
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return -EFAULT;
 	}
 
@@ -1032,7 +1032,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret) {
 		DRM_WARN("read xclbin: fail the access check");
 		vfree(axlf);
-		mutex_unlock(&domain->zdev_xclbin_lock);
+		mutex_unlock(&domain->domain_xclbin_lock);
 		return -EFAULT;
 	}
 
@@ -1072,7 +1072,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		}
 	}
 
-	/* 1. We locked &zdev->zdev_xclbin_lock so that no new contexts
+	/* 1. We locked &zdev->domain_xclbin_lock so that no new contexts
 	 * can be opened and/or closed
 	 * 2. A opened context would lock bitstream and hold it.
 	 * 3. If all contexts are closed, new kds would make sure all
@@ -1282,7 +1282,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	/*
 	 * Remember xclbin_uuid for opencontext.
 	 */
-	domain->zdev_xclbin->zx_refcnt = 0;
+	domain->domain_xclbin->zx_refcnt = 0;
 	zocl_xclbin_set_uuid(domain, &axlf_head.m_header.uuid);
 
 	/*
@@ -1315,18 +1315,18 @@ out0:
 	vfree(axlf);
 	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(domain),
 		ret);
-	mutex_unlock(&domain->zdev_xclbin_lock);
+	mutex_unlock(&domain->domain_xclbin_lock);
 	return ret;
 }
 
 void *
 zocl_xclbin_get_uuid(struct drm_zocl_domain *domain)
 {
-	BUG_ON(!mutex_is_locked(&domain->zdev_xclbin_lock));
-	if (!domain->zdev_xclbin)
+	BUG_ON(!mutex_is_locked(&domain->domain_xclbin_lock));
+	if (!domain->domain_xclbin)
 		return NULL;
 
-	return domain->zdev_xclbin->zx_uuid;
+	return domain->domain_xclbin->zx_uuid;
 }
 
 /*
@@ -1352,7 +1352,7 @@ zocl_xclbin_hold(struct drm_zocl_domain *domain, const uuid_t *id)
 		DRM_WARN("NULL uuid to hold\n");
 		return -EINVAL;
 	}
-	BUG_ON(!mutex_is_locked(&domain->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&domain->domain_xclbin_lock));
 
 	if (!uuid_equal(id, xclbin_id)) {
 		DRM_ERROR("lock bitstream %pUb failed, on Domain: %pUb",
@@ -1360,9 +1360,9 @@ zocl_xclbin_hold(struct drm_zocl_domain *domain, const uuid_t *id)
 		return -EBUSY;
 	}
 
-	domain->zdev_xclbin->zx_refcnt++;
+	domain->domain_xclbin->zx_refcnt++;
 	DRM_INFO("bitstream %pUb locked, ref=%d",
-		 id, domain->zdev_xclbin->zx_refcnt);
+		 id, domain->domain_xclbin->zx_refcnt);
 
 	return 0;
 }
@@ -1380,9 +1380,9 @@ int zocl_lock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 {
 	int ret;
 
-	mutex_lock(&domain->zdev_xclbin_lock);
+	mutex_lock(&domain->domain_xclbin_lock);
 	ret = zocl_xclbin_hold(domain, id);
-	mutex_unlock(&domain->zdev_xclbin_lock);
+	mutex_unlock(&domain->domain_xclbin_lock);
 
 	return ret;
 }
@@ -1406,12 +1406,12 @@ zocl_xclbin_release(struct drm_zocl_domain *domain, const uuid_t *id)
 		return -EINVAL;
 	}
 
-	BUG_ON(!mutex_is_locked(&domain->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&domain->domain_xclbin_lock));
 
 	if (uuid_is_null(id)) /* force unlock all */
-		domain->zdev_xclbin->zx_refcnt = 0;
+		domain->domain_xclbin->zx_refcnt = 0;
 	else if (uuid_equal(xclbin_uuid, id))
-		--domain->zdev_xclbin->zx_refcnt;
+		--domain->domain_xclbin->zx_refcnt;
 	else {
 		DRM_WARN("unlock bitstream %pUb failed, on device: %pUb",
 			 id, xclbin_uuid);
@@ -1419,7 +1419,7 @@ zocl_xclbin_release(struct drm_zocl_domain *domain, const uuid_t *id)
 	}
 
 	DRM_INFO("bitstream %pUb unlocked, ref=%d",
-		 xclbin_uuid, domain->zdev_xclbin->zx_refcnt);
+		 xclbin_uuid, domain->domain_xclbin->zx_refcnt);
 
 	return 0;
 }
@@ -1437,9 +1437,9 @@ int zocl_unlock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 {
 	int ret;
 
-	mutex_lock(&domain->zdev_xclbin_lock);
+	mutex_lock(&domain->domain_xclbin_lock);
 	ret = zocl_xclbin_release(domain, id);
-	mutex_unlock(&domain->zdev_xclbin_lock);
+	mutex_unlock(&domain->domain_xclbin_lock);
 
 	return ret;
 }
@@ -1455,7 +1455,7 @@ int zocl_unlock_bitstream(struct drm_zocl_domain *domain, const uuid_t *id)
 int
 zocl_xclbin_set_uuid(struct drm_zocl_domain *domain, void *uuid)
 {
-	xuid_t *zx_uuid = domain->zdev_xclbin->zx_uuid;
+	xuid_t *zx_uuid = domain->domain_xclbin->zx_uuid;
 
 	if (zx_uuid) {
 		vfree(zx_uuid);
@@ -1467,7 +1467,7 @@ zocl_xclbin_set_uuid(struct drm_zocl_domain *domain, void *uuid)
 		return -ENOMEM;
 
 	uuid_copy(zx_uuid, uuid);
-	domain->zdev_xclbin->zx_uuid = zx_uuid;
+	domain->domain_xclbin->zx_uuid = zx_uuid;
 	return 0;
 }
 
@@ -1486,14 +1486,14 @@ zocl_xclbin_init(struct drm_zocl_domain *domain)
 
 	z_xclbin = vmalloc(sizeof(struct zocl_xclbin));
 	if (!z_xclbin) {
-		DRM_ERROR("Alloc zdev_xclbin failed: no memory\n");
+		DRM_ERROR("Alloc domain_xclbin failed: no memory\n");
 		return -ENOMEM;
 	}
 
 	z_xclbin->zx_refcnt = 0;
 	z_xclbin->zx_uuid = NULL;
 
-	domain->zdev_xclbin = z_xclbin;
+	domain->domain_xclbin = z_xclbin;
 
 	return 0;
 }
@@ -1510,13 +1510,13 @@ zocl_xclbin_init(struct drm_zocl_domain *domain)
 void
 zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_domain *domain)
 {
-	if (!domain->zdev_xclbin)
+	if (!domain->domain_xclbin)
 		return;
 
-	vfree(domain->zdev_xclbin->zx_uuid);
-	domain->zdev_xclbin->zx_uuid = NULL;
-	vfree(domain->zdev_xclbin);
-	domain->zdev_xclbin = NULL;
+	vfree(domain->domain_xclbin->zx_uuid);
+	domain->domain_xclbin->zx_uuid = NULL;
+	vfree(domain->domain_xclbin);
+	domain->domain_xclbin = NULL;
 
 	/* Delete CU devices if exist for this domain */
 	zocl_destroy_cu_domain(zdev, domain->domain_idx);

@@ -123,8 +123,8 @@ struct drm_zocl_domain {
 	int			 ksize;
 	char			*kernels;
 
-	struct zocl_xclbin	*zdev_xclbin;
-	struct mutex		 zdev_xclbin_lock;
+	struct zocl_xclbin	*domain_xclbin;
+	struct mutex		 domain_xclbin_lock;
 };
 
 struct drm_zocl_dev {

@@ -68,12 +68,12 @@ static ssize_t xclbinid_show(struct device *dev,
 
 	for (i = 0; i < zdev->num_pr_domain; i++) {
 		zocl_domain = zdev->pr_domain[i];
-		if (!zocl_domain || !zocl_domain->zdev_xclbin ||
-		    !zocl_domain->zdev_xclbin->zx_uuid)
+		if (!zocl_domain || !zocl_domain->domain_xclbin ||
+		    !zocl_domain->domain_xclbin->zx_uuid)
 			return 0;
 
 		count = sprintf(buf+size, raw_fmt, zocl_domain->domain_idx,
-				zocl_domain->zdev_xclbin->zx_uuid);
+				zocl_domain->domain_xclbin->zx_uuid);
 		size += count;
 	}
 

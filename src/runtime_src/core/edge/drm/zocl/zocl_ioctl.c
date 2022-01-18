@@ -18,7 +18,7 @@
 #include "zocl_error.h"
 
 /*
- * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
+ * read_axlf and ctx should be protected by domain_xclbin_lock exclusively.
  */
 int
 zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
@@ -38,7 +38,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
  *
  * When swaping xclbin, first call read_axlf_ioctl to download new xclbin, the
  * following conditions have to be true:
- *   -  When we lock the zdev_xclbin_lock, no more zocl_ctx/read_axlf
+ *   -  When we lock the domain_xclbin_lock, no more zocl_ctx/read_axlf
  *   -  If still have live context, we cannot swap xclbin
  *   -  If no live contexts, but still live cmds from previous closed context,
  *      we cannot swap xclbin.
@@ -49,7 +49,7 @@ zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
 
-	/* Do not acquire zdev_xclbin_lock like sched_xclbin_ctx().
+	/* Do not acquire domain_xclbin_lock like sched_xclbin_ctx().
 	 * New KDS would lock bitstream when open the fist context.
 	 * The lock bitstream would exclude read_axlf_ioctl().
 	 */
