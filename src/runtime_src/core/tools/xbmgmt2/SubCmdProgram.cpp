@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020,2021,2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -674,28 +674,20 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), 
-      "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
-    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), 
-      "The partition to be loaded.  Valid values:\n"
-      "  Name (and path) of the partition.")
-    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), 
-      "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
-      "  ALL   - All images will be updated\n"
-      "  SHELL - Platform image\n"
-      "  SC    - Satellite controller")
-    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), 
-      "The xclbin to be loaded.  Valid values:\n"
-      "  Name (and path) of the xclbin.")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(), 
-      "Specifies an image to use used to update the persistent device.  Value values:\n"
-      "  Name (and path) to the mcs image on disk\n"
-      "  Name (and path) to the xsabin image on disk")
-    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), 
-      "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not"
-      " be reverted for a golden image does not exist.")
-    ("help,h", boost::program_options::bool_switch(&help), 
-      "Help to use this sub-command")
+    ("device,d", boost::program_options::value<decltype(device)>(&device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.")
+    ("shell,s", boost::program_options::value<decltype(plp)>(&plp), "The partition to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the partition.")
+    ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
+                                                                         "  ALL   - All images will be updated\n"
+                                                                         "  SHELL - Platform image\n"
+                                                                         "  SC    - Satellite controller")
+    ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
+                                                                      "  Name (and path) of the xclbin.")
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Value values:\n"
+                                                                    "  Name (and path) to the mcs image on disk\n"
+                                                                    "  Name (and path) to the xsabin image on disk")
+    ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
+    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
@@ -739,7 +731,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     std::cout << "\nERROR: Device not specified.\n";
     std::cout << "\nList of available devices:" << std::endl;
     boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(auto& kd : available_devices) {
+    for (auto& kd : available_devices) {
       boost::property_tree::ptree& dev = kd.second;
       std::cout << boost::format("  [%s] : %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv");
     }
