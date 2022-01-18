@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Collect files outside of this directory
 file(GLOB XBUTIL_V2_BASE_FILES
@@ -23,6 +23,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "SubCmdConfigure.cpp"
+  "SubCmdJSON.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,16 +34,18 @@ SubCmd::SubCmd(const std::string & _name,
   , m_isHidden(false)
   , m_isDeprecated(false)
   , m_isPreliminary(false)
+  , m_defaultDeviceValid(true)
 {
   // Empty
 }
 
 void
 SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
-                   const boost::program_options::options_description & _optionHidden) const
+                   const boost::program_options::options_description & _optionHidden,
+                   bool removeLongOptDashes /*=false*/) const
 {
   boost::program_options::positional_options_description emptyPOD;
-  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD, m_globalOptions);
+  XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD, m_globalOptions, removeLongOptDashes);
 }
 
 void

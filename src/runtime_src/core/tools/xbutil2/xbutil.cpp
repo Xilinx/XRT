@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 #include "SubCmdValidate.h"
 #include "SubCmdAdvanced.h"
 #include "SubCmdConfigure.h"
+#include "SubCmdJSON.h"
 
 // Supporting tools
 #include "tools/common/XBMain.h"
@@ -45,6 +46,9 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
+
+    // Parse sub commands from json files
+    populateSubCommandsFromJSON(subCommands);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
