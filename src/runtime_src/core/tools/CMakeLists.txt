@@ -8,9 +8,6 @@ endif()
 add_subdirectory(xbutil2)
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
-endif()
-
-if(NOT XRT_EDGE)
   add_subdirectory(xbflash2)
 endif()
 
