@@ -156,7 +156,7 @@ struct kds_cu_info
 
       /* TODO : For backward compartability changing the following logic
        * as the first column should represent the domain index */
-      if ((std::distance(tokens.begin(), tokens.end()) != 5) ||
+      if ((std::distance(tokens.begin(), tokens.end()) != 5) &&
 	(std::distance(tokens.begin(), tokens.end()) != 6))
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
