@@ -145,6 +145,34 @@ out:
 	return ret;
 }
 
+int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags)
+{
+	int ret;
+	struct kds_ctx_info info;
+	struct kds_client *client = (struct kds_client *)client_hdl;
+
+	info.cu_idx = cu_idx;
+	info.flags = flags;
+
+	mutex_lock(&client->lock);
+	ret = kds_add_context(&zdev->kds, client, &info);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
+int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx)
+{
+	int ret;
+	struct kds_ctx_info info = {};
+	struct kds_client *client = (struct kds_client *)client_hdl;
+
+	info.cu_idx = cu_idx;
+	mutex_lock(&client->lock);
+	ret = kds_del_context(&zdev->kds, client, &info);
+	mutex_unlock(&client->lock);
+	return ret;
+}
+
 static int
 zocl_del_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 		 struct drm_zocl_ctx *args)
@@ -467,21 +495,19 @@ uint zocl_poll_client(struct file *filp, poll_table *wait)
 	return POLLIN;
 }
 
-int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
+int zocl_create_client(struct device *dev, void **client_hdl)
 {
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct kds_client *client;
 	struct kds_sched  *kds;
-	struct drm_device *ddev;
 	int ret = 0;
 
 	client = kzalloc(sizeof(*client), GFP_KERNEL);
 	if (!client)
 		return -ENOMEM;
 
-	ddev = zdev->ddev;
-
 	kds = &zdev->kds;
-	client->dev = ddev->dev;
+	client->dev = dev;
 	ret = kds_init_client(kds, client);
 	if (ret) {
 		kfree(client);
@@ -489,25 +515,23 @@ int zocl_create_client(struct drm_zocl_dev *zdev, void **priv)
 	}
 	INIT_LIST_HEAD(&client->graph_list);
 	spin_lock_init(&client->graph_list_lock);
-	*priv = client;
+	*client_hdl = client;
 
 out:
-	zocl_info(ddev->dev, "created KDS client for pid(%d), ret: %d\n",
+	zocl_info(dev, "created KDS client for pid(%d), ret: %d\n",
 		  pid_nr(task_tgid(current)), ret);
-
 	return ret;
 }
 
-void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
+void zocl_destroy_client(void *client_hdl)
 {
-	struct kds_client *client = *priv;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_sched  *kds;
-	struct drm_device *ddev;
 	int pid = pid_nr(client->pid);
 
-	ddev = zdev->ddev;
-
 	kds = &zdev->kds;
+
 	/* kds_fini_client should released resources hold by the client.
 	 * release xclbin_id and unlock bitstream if needed.
 	 */
@@ -518,9 +542,8 @@ void zocl_destroy_client(struct drm_zocl_dev *zdev, void **priv)
 		vfree(client->xclbin_id);
 	}
 
-	/* Make sure all resources of the client are released */
+	zocl_info(client->dev, "client exits pid(%d)\n", pid);
 	kfree(client);
-	zocl_info(ddev->dev, "client exits pid(%d)\n", pid);
 }
 
 int zocl_init_sched(struct drm_zocl_dev *zdev)

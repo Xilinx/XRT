@@ -1529,7 +1529,7 @@ scu_done(struct sched_cmd *cmd)
 	}
 
 	mutex_unlock(&sk->sk_lock);
-	SCHED_DEBUG("<- %s returns ret\n", __func__, ret);
+	SCHED_DEBUG("<- %s returns %d\n", __func__, ret);
 
 	return ret;
 
@@ -1540,7 +1540,7 @@ done:
 	zdev->exec->scu_status[mask_idx] ^= 1 << pos;
 
 	mutex_unlock(&sk->sk_lock);
-	SCHED_DEBUG("<- %s returns %d\n", __func__);
+	SCHED_DEBUG("<- %s returns %d\n", __func__, ret);
 
 	return ret;
 }
