@@ -2201,8 +2201,6 @@ int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
 
 int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
-  std::lock_guard<std::mutex> lk(mCuMapLock);
-
   if (ipIndex >= mCuMaps.size()) {
     xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
     return -EINVAL;
@@ -2211,20 +2209,23 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
   auto& cumap = mCuMaps[ipIndex];  // {base, size}
 
   if (cumap.first == nullptr) {
-    auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
-    uint32_t size = 0;
-    std::string errmsg;
-    mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
-    if (size <= 0) {
-      xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
-      return -EINVAL;
-    }
+    std::lock_guard<std::mutex> lk(mCuMapLock);
+    if (cumap.first == nullptr) {
+      auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
+      uint32_t size = 0;
+      std::string errmsg;
+      mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
+      if (size <= 0) {
+        xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
+        return -EINVAL;
+      }
 
-    void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
-                         MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
-    if (p != MAP_FAILED) {
-      cumap.first = static_cast<uint32_t*>(p);
-      cumap.second = size;
+      void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
+                          MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
+      if (p != MAP_FAILED) {
+        cumap.first = static_cast<uint32_t*>(p);
+        cumap.second = size;
+      }
     }
   }
 
