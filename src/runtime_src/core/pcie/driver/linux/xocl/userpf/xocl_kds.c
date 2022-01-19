@@ -1486,7 +1486,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 				max_off_idx = j;
 			}
 		}
-		cfg_cu->payload_size = max_off + cu_info[i].args[max_off_idx].size;
+		cfg_cu->payload_size = max_off + (cu_info[i].num_args ? (cu_info[i].args[max_off_idx].size) : 0);
 		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
 			  cu_info[i].kname, cu_info[i].iname);
 
