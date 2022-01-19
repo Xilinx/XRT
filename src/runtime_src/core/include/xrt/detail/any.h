@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+// Copyright (C) 2022 Xilinx, Inc. All rights reserved.
 
 #ifndef XRT_DETAIL_ANY_H
 #define XRT_DETAIL_ANY_H
