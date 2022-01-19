@@ -1028,6 +1028,7 @@ static struct platform_driver *drivers[] = {
 	&zocl_xgq_intc_driver,
 	&zocl_cu_xgq_driver,
 	&zocl_ctrl_ert_driver,
+	&zocl_rpu_channel_driver,
 };
 
 static int __init zocl_init(void)
