@@ -452,7 +452,7 @@ namespace xdp {
     fout << "COLUMN:<html>Number<br>Of Calls</html>,int,"
          << "Number of calls to API,\n" ;
     fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
-         << "Total execution time (in ms),NA,true,\n" ;
+         << "Total execution time (in ms),\n" ;
     fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
          << "Minimum execution time (in ms),\n";
     fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
@@ -470,7 +470,7 @@ namespace xdp {
     fout << "COLUMN:<html>Number<br>Of Calls</html>,int,"
          << "Number of calls to API,\n" ;
     fout << "COLUMN:<html>Total<br>Time (ms)</html>,float,"
-         << "Total execution time (in ms),NA,true,\n" ;
+         << "Total execution time (in ms),\n" ;
     fout << "COLUMN:<html>Minimum<br>Time (ms)</html>,float,"
          << "Minimum execution time (in ms),\n";
     fout << "COLUMN:<html>Average<br>Time (ms)</html>,float,"
