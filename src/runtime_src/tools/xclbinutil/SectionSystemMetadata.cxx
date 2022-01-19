@@ -17,6 +17,7 @@
 #include "SectionSystemMetadata.h"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/format.hpp>
 
 #include "XclBinUtilities.h"
 namespace XUtil = XclBinUtilities;
@@ -51,7 +52,7 @@ SectionSystemMetadata::marshalToJSON(char* _pDataSection,
   try {
     boost::property_tree::read_json(ss, _ptree);
   } catch (const std::exception & e) {
-    const std::string errMsg = boost::str(boost::format("ERROR: Bad JSON format detected while marshaling SYSTEM_METADATA (%s).") % e.what());
+    const std::string errMsg = (boost::format("ERROR: Bad JSON format detected while marshaling SYSTEM_METADATA (%s).") % e.what()).str();
     throw std::runtime_error(errMsg);
   }
 }
