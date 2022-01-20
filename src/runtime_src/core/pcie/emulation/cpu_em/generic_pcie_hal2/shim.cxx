@@ -27,7 +27,6 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/lexical_cast.hpp>
 
-
 namespace xclcpuemhal2 {
 
   std::map<unsigned int, CpuemShim*> devices;
@@ -802,7 +801,7 @@ namespace xclcpuemhal2 {
     return result;
   }
 
-  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags,bool noHostMemory,std::string &sFileName)
+  uint64_t CpuemShim::xclAllocDeviceBuffer2(size_t& size, xclMemoryDomains domain, unsigned flags, bool zeroCopy, std::string &sFileName)
   {
     if (mLogStream.is_open()) {
       mLogStream << __func__ <<" , "<<std::this_thread::get_id() << ", " << size <<", "<<domain<<", "<< flags <<std::endl;
@@ -837,10 +836,10 @@ namespace xclcpuemhal2 {
     }
 
     bool ack = false;
-    //   Memory Manager Has allocated aligned address,
-	//   size contains alignement + original size requested.
-	//   We are passing original size to device process for exact stats.
-    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer,result,size,noHostMemory);
+    // Memory Manager Has allocated aligned address,
+    // size contains alignement + original size requested.
+    // We are passing original size to device process for exact stats.
+    xclAllocDeviceBuffer_RPC_CALL(xclAllocDeviceBuffer, result, size, zeroCopy);
 
     if(!ack)
     {
@@ -1277,9 +1276,16 @@ uint64_t CpuemShim::xoclCreateBo(xclemulation::xocl_create_bo* info)
   auto xobj = std::make_unique<xclemulation::drm_xocl_bo>();
   xobj->flags=info->flags;
   /* check whether buffer is p2p or not*/
-  bool noHostMemory = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get());
+  bool isCacheable = xclemulation::is_cacheable(xobj.get());
+  bool memCheck = xclemulation::no_host_memory(xobj.get()) || xclemulation::xocl_bo_host_only(xobj.get());
+
+  // Moving to file handle mechanism, if the memory is either non-cacheable or opted for p2p or host_only
+  bool zeroCopy = (memCheck || !isCacheable) ? true : false;
+  if (mLogStream.is_open())
+    mLogStream << __func__ << ", " << std::this_thread::get_id() << ", isCacheable: " << isCacheable << ", memCheck: " << memCheck << ", zeroCopy: "<< zeroCopy << std::endl;
+
   std::string sFileName("");
-  xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, noHostMemory, sFileName);
+  xobj->base = xclAllocDeviceBuffer2(size, XCL_MEM_DEVICE_RAM, ddr, zeroCopy, sFileName);
   xobj->filename = sFileName;
   xobj->size = size;
   xobj->userptr = NULL;
