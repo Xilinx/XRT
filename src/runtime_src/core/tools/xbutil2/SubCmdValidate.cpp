@@ -1295,6 +1295,7 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
+  // If the status is anything other than skipped print the test name
   auto _status = test.get<std::string>("status", "");
   if (!boost::iequals(_status, test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
