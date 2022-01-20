@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  * Author(s) : Min Ma
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -18,9 +18,9 @@
 #ifndef _XQSPIPS_H_
 #define _XQSPIPS_H_
 
-#include <sys/stat.h>
-#include <list>
 #include <iostream>
+#include <list>
+#include <sys/stat.h>
 #include "pcidev.h"
 
 #define PAGE_SIZE 256

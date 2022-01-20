@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,16 +15,16 @@
  */
 
 #include <cassert>
-#include <iostream>
 #include <cstring>
-#include "core/common/unistd.h"
+#include <iostream>
 #include <mutex>
 #include <sys/stat.h>
-#ifdef __GNUC__
-#include <sys/file.h>
-#include <linux/pci.h>
-#endif
+#include "core/common/unistd.h"
 #include "pcidev.h"
+#ifdef __GNUC__
+#include <linux/pci.h>
+#include <sys/file.h>
+#endif
 
 #ifdef _WIN32
 # pragma warning( disable : 4100 )

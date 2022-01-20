@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  * Author: Sonal Santan, Ryan Radjabi, Chien-Wei Lan
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -20,10 +20,10 @@
 #define _XBFLASH2_H_
 #include <string>
 
+#include "firmware_image.h"
 #include "pcidev.h"
 #include "xspi.h"
 #include "xqspips.h"
-#include "firmware_image.h"
 
 // 3rd Party Library - Include Files
 #include <boost/program_options.hpp>

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#include <fstream>
 #include "firmware_image.h"
+#include <fstream>
 
 #ifdef _WIN32
 # pragma warning( disable : 4458)
@@ -44,4 +44,5 @@ firmwareImage::firmwareImage(const char *file) :
 firmwareImage::~firmwareImage()
 {
     delete[] mBuf;
+    mBuf = nullptr;
 }

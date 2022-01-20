@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -13,20 +13,20 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "xspi.h"
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <cassert>
-#include <cstring>
-#include <climits>
-#include <vector>
-#include <limits>
 #include <array>
+#include <cassert>
+#include <climits>
+#include <cstring>
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <vector>
 #include "pcidev.h"
+#include "xspi.h"
 
 #ifdef WINDOWS
 #define __func__ __FUNCTION__

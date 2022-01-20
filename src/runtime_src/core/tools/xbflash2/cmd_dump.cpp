@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,13 +14,13 @@
  * under the License.
  */
 
-#include "xbflash2.h"
-#include <string>
 #include <cstring>
-#include <iostream>
-#include <iomanip>
-#include <map>
 #include <functional>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <string>
+#include "xbflash2.h"
 
 #ifdef _WIN32
 # pragma warning( disable : 4267)
@@ -59,6 +59,7 @@ static int qspips_readback(po::variables_map vm, int bar, size_t baroff)
     }
 
     try {
+      //Optional arguments
       flash_type = vm["flash-part"].as<std::string>();
       soffset = vm["offset"].as<std::string>();
       if (!soffset.empty()) {
@@ -77,8 +78,7 @@ static int qspips_readback(po::variables_map vm, int bar, size_t baroff)
       return -EINVAL;
 
     std::cout << "Read out flash"
-        << " [0x" << std::hex << offset << ",0x" << offset+len
-        << "] on device " << bdf << " to " << output << std::dec << std::endl;
+          << boost::format("[0x%x, 0x%x] on device %s to %s\n") % offset % (offset+len) % bdf % output;
 
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);
     XQSPIPS_Flasher qspips(&dev);

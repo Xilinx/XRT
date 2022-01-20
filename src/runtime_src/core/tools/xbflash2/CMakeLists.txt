@@ -1,6 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
+
+find_package(Boost
+  REQUIRED COMPONENTS filesystem system program_options)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -8,7 +11,6 @@ include_directories(
   )
 
 file(GLOB XBFLASH_QSPI_FILES
-  "*.h"
   "*.cpp"
   )
 
@@ -20,8 +22,6 @@ set(XBFLASH_COMPONENT "xbflash2")
 add_executable(${XBFLASH_NAME} ${XBFLASH_QSPI_SRC})
 
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost
-  REQUIRED COMPONENTS filesystem system program_options)
 target_link_libraries(${XBFLASH_NAME}
       PRIVATE
       ${Boost_FILESYSTEM_LIBRARY}

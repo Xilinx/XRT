@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -22,14 +22,14 @@
 // If it works, don't change it.
 //
 
-#include "xbflash2.h"
 
-#include <iostream>
-#include <memory>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
+#include <memory>
 #include <sys/types.h>
 #include "core/common/unistd.h"
+#include "xbflash2.h"
 
 struct subCmd {
     std::function<int(po::variables_map)> handler;

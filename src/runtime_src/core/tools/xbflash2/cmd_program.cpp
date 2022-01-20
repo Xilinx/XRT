@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,12 +14,12 @@
  * under the License.
  */
 
-#include "xbflash2.h"
 #include <cstring>
-#include <iostream>
-#include <iomanip>
-#include <map>
 #include <functional>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include "xbflash2.h"
 
 #ifdef _WIN32
 # pragma warning( disable : 4267)
@@ -242,7 +242,8 @@ static int qspips_erase(po::variables_map vm, int bar, size_t baroff)
       soffset = vm["offset"].as<std::string>();
       if (!soffset.empty()) {
         std::stringstream sstream(soffset);
-        sstream >> offset;
+        if (offset != INVALID_OFFSET)
+          sstream >> offset;
       }
       slength = vm["length"].as<std::string>();
       if (!slength.empty()) {
@@ -258,8 +259,7 @@ static int qspips_erase(po::variables_map vm, int bar, size_t baroff)
     }
 
     std::cout << "About to erase flash"
-        << " [0x" << std::hex << offset << ",0x" << offset+len
-        << "] on device " << bdf << std::endl;
+        << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset+len) % bdf;
 
     if (offset + len > GOLDEN_BASE)
         std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,8 +16,8 @@
 #ifndef _PCIDEV_H_
 #define _PCIDEV_H_
 
-#include <string>
 #include <mutex>
+#include <string>
 #ifdef __GNUC__
 #include <sys/mman.h>
 #endif
