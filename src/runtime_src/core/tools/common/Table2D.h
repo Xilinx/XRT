@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef __SubCmd_h_
-#define __SubCmd_h_
+#ifndef __Table2D_h_
+#define __Table2D_h_
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // 3rd Party Library - Include Files
