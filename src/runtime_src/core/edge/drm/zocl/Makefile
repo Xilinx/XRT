@@ -59,6 +59,7 @@ zocl-y := \
 	zocl_ctrl_ert.o \
 	zocl_xgq.o \
 	zocl_cu_xgq.o \
+	zocl_rpu_channel.o \
 	zocl_csr_intc.o \
 	zocl_xgq_intc.o
 

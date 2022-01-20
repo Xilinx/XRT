@@ -288,6 +288,7 @@ void subdev_destroy_cu(struct platform_device *pdev);
 extern struct platform_driver zocl_cu_xgq_driver;
 extern struct platform_driver zocl_csr_intc_driver;
 extern struct platform_driver zocl_xgq_intc_driver;
+extern struct platform_driver zocl_rpu_channel_driver;
 extern struct platform_driver cu_driver;
 struct zocl_cu_ops {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
