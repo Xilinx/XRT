@@ -20,6 +20,7 @@
 #include "SubCmdExamine.h"
 #include "SubCmdAdvanced.h"
 #include "SubCmdDump.h"
+#include "SubCmdConfigure.h"
 
 // Supporting tools
 #include "tools/common/XBMain.h"
@@ -55,6 +56,7 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdAdvanced  >(false, false,  true));
     subCommands.emplace_back(std::make_shared<   SubCmdExamine  >(false, false, false));
     subCommands.emplace_back(std::make_shared<      SubCmdDump  >(false, false, false));
+    subCommands.emplace_back(std::make_shared< SubCmdConfigure  >(false, false, false));
   }
 
   const std::string executable = "xbmgmt";
