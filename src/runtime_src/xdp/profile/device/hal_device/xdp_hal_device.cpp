@@ -45,8 +45,10 @@ HalDevice::HalDevice(void* halDeviceHandle)
 
 HalDevice::~HalDevice()
 {
-  xrtDeviceClose(mXrtDeviceHandle);
-  mXrtDeviceHandle = nullptr;
+  if (mXrtDeviceHandle) {
+    xrtDeviceClose(mXrtDeviceHandle);
+    mXrtDeviceHandle = nullptr;
+  }
 }
 
 std::string HalDevice::getDebugIPlayoutPath()
