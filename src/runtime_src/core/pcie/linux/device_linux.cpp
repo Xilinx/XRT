@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1022,11 +1022,9 @@ std::cv_status
 device_linux::
 wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
 {
-  struct pollfd pfd;
+  struct pollfd pfd = {.fd=handle, .events=POLLIN};
   int32_t ret = 0;
 
-  pfd.fd = handle;
-  pfd.events = POLLIN;
   //Checking for only one fd; Only of one CU
   //Timeout value in milli seconds
   ret = ::poll(&pfd, 1, timeout);

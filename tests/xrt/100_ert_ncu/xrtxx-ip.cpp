@@ -47,7 +47,7 @@ static constexpr uint32_t AP_START    = 0x1;
 static constexpr uint32_t AP_DONE     = 0x2;
 static constexpr uint32_t AP_IDLE     = 0x4;
 static constexpr uint32_t AP_CONTINUE = 0x10;
-static constexpr uint32_t ADDR_ISR = 0x0C;
+static constexpr uint32_t ADDR_ISR    = 0x0C;
 
 static constexpr size_t ELEMENTS = 16;
 static constexpr size_t ARRAY_SIZE = 8;
@@ -55,6 +55,7 @@ static constexpr size_t MAXCUS = 8;
 
 static size_t compute_units = MAXCUS;
 static bool use_interrupt = false;
+static int32_t timeout = -1;
 
 static void
 usage()
@@ -200,14 +201,21 @@ struct job_type
   }
 
   void
-  run_intr(std::chrono::milliseconds& timeout)
+  run_intr(std::chrono::milliseconds timeout)
   {
     auto interrupt = ip.create_interrupt_notify();
 
     while (1) {
       ip.write_register(0, AP_START);
       ++runs;
-      auto ret = interrupt.wait(timeout);
+
+      uint32_t num_timeout = 0;
+      std::cv_status ret;
+      do {
+        ret = interrupt.wait(timeout);
+        ++num_timeout;
+      }
+      while (num_timeout < 100 && ret == std::cv_status::timeout);
       if (ret == std::cv_status::timeout)
         throw std::runtime_error("Timeout when waiting for CU interrupt");
 
@@ -215,7 +223,7 @@ struct job_type
       ip.write_register(0, AP_CONTINUE);
 
       //Clear ISR
-      auto rdata = ip.read_register();
+      auto rdata = ip.read_register(ADDR_ISR);
       ip.write_register(ADDR_ISR, rdata);
       //Read/Clear driver interrupt counter
       interrupt.wait();//This will return immediately after clearing the counter
@@ -230,7 +238,9 @@ struct job_type
   void
   run()
   {
-    if (use_interrupt)
+    if (use_interrupt && timeout > 0)
+      run_intr(std::chrono::milliseconds(timeout));
+    else if (use_interrupt)
       run_intr();
     else
       run_poll();
@@ -284,7 +294,6 @@ run(int argc, char** argv)
   size_t secs = 0;
   size_t jobs = 1;
   size_t cus  = 1;
-  int32_t timeout = -1;
 
   std::string cur;
   for (auto& arg : args) {
