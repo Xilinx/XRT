@@ -2,7 +2,7 @@
 /*
  * Xilinx CU driver for memory to memory BO copy
  *
- * Copyright (C) 2021 Xilinx, Inc.
+ * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
@@ -126,6 +126,7 @@ struct xocl_xgq_vmr {
 	bool 			xgq_polling;
 	bool 			xgq_boot_from_backup;
 	bool 			xgq_flush_default_only;
+	bool 			xgq_flush_to_legacy;
 	u32			xgq_intr_base;
 	u32			xgq_intr_num;
 	struct list_head	xgq_submitted_cmds;
@@ -294,29 +295,52 @@ static bool xgq_submitted_cmds_empty(struct xocl_xgq_vmr *xgq)
 	return false;
 }
 
-static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq)
+static void xgq_vmr_log_dump(struct xocl_xgq_vmr *xgq, int num_recs, bool dump_to_debug_log)
 {
 	struct vmr_log log = { 0 };
+
+	if (num_recs > VMR_LOG_MAX_RECS)
+		num_recs = VMR_LOG_MAX_RECS;
 
 	xocl_memcpy_fromio(&xgq->xgq_vmr_shared_mem, xgq->xgq_payload_base,
 		sizeof(xgq->xgq_vmr_shared_mem));
 
+	/*
+	 * log_msg_index which is the oldest log in a ring buffer.
+	 * if we want to only dump num_recs, we start from
+	 * (log_msg_index + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS.
+	 */
 	if (xgq->xgq_vmr_shared_mem.vmr_magic_no == VMR_MAGIC_NO) {
 		u32 idx, log_idx = xgq->xgq_vmr_shared_mem.log_msg_index;
 
-		XGQ_WARN(xgq, "=== start dumping vmr log ===");
-		for (idx = 0; idx < VMR_LOG_MAX_RECS; idx++) {
+		log_idx = (log_idx + VMR_LOG_MAX_RECS - num_recs) % VMR_LOG_MAX_RECS;
+
+		if (!dump_to_debug_log)
+			XGQ_WARN(xgq, "=== start dumping vmr log ===");
+
+		for (idx = 0; idx < num_recs; idx++) {
 			xocl_memcpy_fromio(&log.log_buf, xgq->xgq_payload_base +
 				xgq->xgq_vmr_shared_mem.log_msg_buf_off +
 				sizeof(log) * log_idx,
 				sizeof(log));
 			log_idx = (log_idx + 1) % VMR_LOG_MAX_RECS;
-			XGQ_WARN(xgq, "%s", log.log_buf); 
+
+			if (dump_to_debug_log)
+				XGQ_DBG(xgq, "%s", log.log_buf); 
+			else
+				XGQ_WARN(xgq, "%s", log.log_buf); 
 		}
-		XGQ_WARN(xgq, "=== end dumping vmr log ===");
+
+		if (!dump_to_debug_log)
+			XGQ_WARN(xgq, "=== end dumping vmr log ===");
 	} else {
 		XGQ_WARN(xgq, "vmr payload partition table is not available");
 	}
+}
+
+static void xgq_vmr_log_dump_all(struct xocl_xgq_vmr *xgq)
+{
+	xgq_vmr_log_dump(xgq, VMR_LOG_MAX_RECS, false);
 }
 
 /*
@@ -374,7 +398,7 @@ static int health_worker(void *data)
 
 			/* If we see timeout cmd first time, dump log into dmesg */
 			if (!xgq->xgq_halted) {
-				xgq_vmr_log_dump(xgq);
+				xgq_vmr_log_dump_all(xgq);
 			}
 
 			/* then we stop service */
@@ -532,6 +556,17 @@ static inline void remove_xgq_cid(struct xocl_xgq_vmr *xgq, int id)
 	mutex_unlock(&xgq->xgq_lock);
 }
 
+static enum xgq_cmd_flush_type inline get_flush_type(struct xocl_xgq_vmr *xgq)
+{
+
+	if (xgq->xgq_flush_to_legacy)
+		return XGQ_CMD_FLUSH_TO_LEGACY;
+	if (xgq->xgq_flush_default_only)
+		return XGQ_CMD_FLUSH_NO_BACKUP;
+
+	return XGQ_CMD_FLUSH_DEFAULT;
+}
+
 /*
  * Utilize shared memory between host and device to transfer data.
  */
@@ -571,7 +606,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	payload->address = memcpy_to_devices(xgq, buf, len);
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
-	payload->flush_default_only = xgq->xgq_flush_default_only;
+	payload->flush_type = get_flush_type(xgq);
 
 	/* set up hdr */
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1236,6 +1271,36 @@ static ssize_t flush_default_only_show(struct device *dev,
 }
 static DEVICE_ATTR(flush_default_only, 0644, flush_default_only_show, flush_default_only_store);
 
+static ssize_t flush_to_legacy_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL)
+		return -EINVAL;
+
+	mutex_lock(&xgq->xgq_lock);
+	xgq->xgq_flush_to_legacy = val ? true : false;
+	mutex_unlock(&xgq->xgq_lock);
+
+	return count;
+}
+
+static ssize_t flush_to_legacy_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	mutex_lock(&xgq->xgq_lock);
+	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flush_to_legacy);
+	mutex_unlock(&xgq->xgq_lock);
+
+	return cnt;
+}
+static DEVICE_ATTR(flush_to_legacy, 0644, flush_to_legacy_show, flush_to_legacy_store);
+
 static ssize_t polling_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -1300,7 +1365,6 @@ static ssize_t program_sc_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	/* request debug level change */
 	if (val) {
 		ret = vmr_control_op(to_platform_device(dev), XGQ_CMD_PROGRAM_SC);
 		if (ret) {
@@ -1314,6 +1378,23 @@ static ssize_t program_sc_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_WO(program_sc);
+
+static ssize_t vmr_debug_dump_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	u32 val = 0;
+
+	if (kstrtou32(buf, 10, &val) == -EINVAL) {
+		return -EINVAL;
+	}
+
+	xgq_vmr_log_dump(xgq, val, true);
+
+	return count;
+}
+static DEVICE_ATTR_WO(vmr_debug_dump);
+
 
 static ssize_t vmr_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1334,8 +1415,12 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "BOOT_ON_BACKUP:%d\n", vmr_status->boot_on_backup);
 	cnt += sprintf(buf + cnt, "BOOT_ON_RECOVERY:%d\n", vmr_status->boot_on_recovery);
 	cnt += sprintf(buf + cnt, "MULTI_BOOT_OFFSET:0x%x\n", vmr_status->multi_boot_offset);
-	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:0x%x\n", vmr_status->debug_level);
-	cnt += sprintf(buf + cnt, "FLUSH_PROGRESS:0x%x\n", vmr_status->flush_progress);
+	cnt += sprintf(buf + cnt, "HAS_EXTFPT:%d\n", vmr_status->has_extfpt);
+	cnt += sprintf(buf + cnt, "HAS_EXT_META_XSABIN:%d\n", vmr_status->has_ext_xsabin);
+	cnt += sprintf(buf + cnt, "HAS_EXT_SC_FW:%d\n", vmr_status->has_ext_scfw);
+	cnt += sprintf(buf + cnt, "HAS_EXT_SYSTEM_DTB:%d\n", vmr_status->has_ext_sysdtb);
+	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
+	cnt += sprintf(buf + cnt, "FLUSH_PROGRESS:%d\n", vmr_status->flush_progress);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;
@@ -1346,9 +1431,11 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
 	&dev_attr_flush_default_only.attr,
+	&dev_attr_flush_to_legacy.attr,
 	&dev_attr_vmr_status.attr,
-	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_program_sc.attr,
+	&dev_attr_vmr_debug_level.attr,
+	&dev_attr_vmr_debug_dump.attr,
 	NULL,
 };
 
