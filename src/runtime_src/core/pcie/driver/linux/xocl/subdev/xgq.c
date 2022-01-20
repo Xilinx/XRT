@@ -2,7 +2,7 @@
 /*
  * Xilinx CU driver for memory to memory BO copy
  *
- * Copyright (C) 2021 Xilinx, Inc.
+ * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: David Zhang <davidzha@xilinx.com>
  */
