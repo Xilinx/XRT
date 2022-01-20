@@ -13,6 +13,10 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
+
+#ifndef __SubCmd_h_
+#define __SubCmd_h_
+
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // 3rd Party Library - Include Files
 #include <vector>
@@ -94,3 +98,5 @@ class Table2D {
         return table.print(os);
     };
 };
+
+#endif
