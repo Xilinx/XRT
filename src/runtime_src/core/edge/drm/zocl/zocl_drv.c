@@ -580,7 +580,7 @@ static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
 static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
 	if (kds_mode == 1) {
-		return zocl_create_client(dev->dev_private, &filp->driver_priv);
+		return zocl_create_client(dev->dev, &filp->driver_priv);
 	} else {
 		return sched_create_client(dev, &filp->driver_priv);
 	}
