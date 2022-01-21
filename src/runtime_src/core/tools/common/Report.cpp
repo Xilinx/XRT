@@ -96,10 +96,8 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
     std::string reportName = getReportName();
     if (!reportName.empty()) {
       reportName[0] = static_cast<char>(std::toupper(reportName[0]));
-      std::cerr << reportName << std::endl;
     }
 
-    std::cerr << "  ERROR: " << e.what() << std::endl << std::endl;
-    // Fall through
+    throw std::runtime_error(boost::str(boost::format("Report: %s - %s\n\n") % reportName % e.what()));
   }
 }
