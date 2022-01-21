@@ -174,9 +174,9 @@ static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std:
         std::string jsonSectionName;
 
         if(exeName.compare("xbutil") == 0)
-            jsonSectionName("xbutil_sub_commands");
+            jsonSectionName = "xbutil_sub_commands";
         else
-            jsonSectionName("xbmgmt_sub_commands");
+            jsonSectionName = "xbmgmt_sub_commands";
 
         for (pt::ptree::value_type &JSONsubCmd : jtree.get_child(jsonSectionName))
         {

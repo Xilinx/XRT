@@ -39,6 +39,7 @@ int main( int argc, char** argv )
 {
   // -- Build the supported subcommands
   SubCmdsCollection subCommands;
+  const std::string executable = "xbutil";
 
   {
     // Syntax: SubCmdClass( IsHidden, IsDepricated, IsPreliminary)
@@ -47,7 +48,6 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
 
-    const std::string executable = "xbutil";
     // Parse sub commands from json files
     populateSubCommandsFromJSON(subCommands, executable);
 
