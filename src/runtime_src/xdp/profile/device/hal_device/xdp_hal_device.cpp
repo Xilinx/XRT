@@ -39,10 +39,17 @@ namespace xdp {
 HalDevice::HalDevice(void* halDeviceHandle)
           : Device(),
             mHalDevice(halDeviceHandle)
-{}
+{
+  mXrtDeviceHandle = xrtDeviceOpenFromXcl(mHalDevice);
+}
 
 HalDevice::~HalDevice()
-{}
+{
+  if (mXrtDeviceHandle) {
+    xrtDeviceClose(mXrtDeviceHandle);
+    mXrtDeviceHandle = nullptr;
+  }
+}
 
 std::string HalDevice::getDebugIPlayoutPath()
 {
@@ -125,7 +132,7 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
     return xclBufHandles.size();
   }
 
-  xrtBufferHandle boHandle = xrtBOAlloc(xrtDeviceOpenFromXcl(mHalDevice), size, flags, memoryIndex);
+  xrtBufferHandle boHandle = xrtBOAlloc(mXrtDeviceHandle, size, flags, memoryIndex);
   if(nullptr == boHandle) {
     throw std::bad_alloc();
   }
