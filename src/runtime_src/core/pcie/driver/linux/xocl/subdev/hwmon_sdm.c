@@ -91,7 +91,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 	int err = 0;
 	iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
                                 sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
-	strcpy(iter->dev_attr.attr.name, sysfs_name);
+	strcpy((char*)iter->dev_attr.attr.name, sysfs_name);
 	iter->dev_attr.attr.mode = S_IRUGO;
 	iter->dev_attr.show = hwmon_sensor_show;
 	iter->index = repo_id | (field_id << 4) | (buf_index << 8) | (len << 20);
