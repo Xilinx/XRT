@@ -83,16 +83,22 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
   // queue_status: mm2s: okay|okay, s2mm: okay|okay
   // current_bd: mm2s: 0|0, s2mm: 0|0
   // fifo_len: 0|0
-  auto fifo_info = pt.get_child("dma.fifo_len", empty_pt).begin();
-  fifo_pt.put("fifo_counter0", fifo_info->second.data());
-  fifo_info++;
-  fifo_pt.put("fifo_counter1", fifo_info->second.data());
-  pt_dma.add_child("dma.fifo_info", fifo_pt);
+  int id = 0;
+  for (const auto& node : pt.get_child("dma.fifo_len", empty_pt)) {
+    std::string counter_id = "Counter";
+    boost::property_tree::ptree fifo_counter;
+    counter_id += std::to_string(id++);
+    fifo_counter.put("counter_id", counter_id);
+    fifo_counter.put("counter_val", node.second.data());
+    fifo_pt.push_back(std::make_pair("", fifo_counter));
+  }
+
+  pt_dma.add_child("dma.fifo.counters", fifo_pt);
 
   auto queue_size = pt.get_child("dma.queue_size.mm2s", empty_pt).begin();
   auto queue_status = pt.get_child("dma.queue_status.mm2s", empty_pt).begin();
   auto current_bd = pt.get_child("dma.current_bd.mm2s", empty_pt).begin();
-  int id = 0;
+  id = 0;
 
   for (const auto& node : pt.get_child("dma.channel_status.mm2s", empty_pt)) {
     boost::property_tree::ptree channel;
