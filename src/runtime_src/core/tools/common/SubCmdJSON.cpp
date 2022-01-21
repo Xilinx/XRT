@@ -165,14 +165,20 @@ static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
     pathVec.emplace_back(env.substr(start, env.length() - start));
 }
 
-static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& jsonPath)
+static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& jsonPath, const std::string& exeName)
 {
     // parse JSON and add valid Sub Commands
     pt::ptree jtree;
     try {
         pt::read_json(jsonPath,jtree);
+        std::string jsonSectionName;
 
-        for (pt::ptree::value_type &JSONsubCmd : jtree.get_child("sub_commands"))
+        if(exeName.compare("xbutil") == 0)
+            jsonSectionName("xbutil_sub_commands");
+        else
+            jsonSectionName("xbmgmt_sub_commands");
+
+        for (pt::ptree::value_type &JSONsubCmd : jtree.get_child(jsonSectionName))
         {
             std::string subCmdName = JSONsubCmd.first;
             std::string subCmdDesc = JSONsubCmd.second.get<std::string>("cmd_description");
@@ -196,9 +202,9 @@ static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std:
     }
 }
 
-void populateSubCommandsFromJSON(SubCmdsCollection &subCmds)
+void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& exeName)
 {
-    auto envJson = std::getenv("XRT_XBUTIL_JSON");
+    auto envJson = std::getenv("XRT_SUBCOMMANDS_JSON");
     if(!envJson)
         return;
 
@@ -209,6 +215,6 @@ void populateSubCommandsFromJSON(SubCmdsCollection &subCmds)
     for(auto &path : jsonPaths)
     {
         if(boost::filesystem::exists(path))
-            __populateSubCommandsFromJSON(subCmds, path);
+            __populateSubCommandsFromJSON(subCmds, path, exeName);
     }
 }

@@ -12,6 +12,7 @@ file(GLOB XBUTIL_V2_BASE_FILES
   "../common/Report*.cpp"
   "../common/ProgressBar.cpp"
   "../common/Process.cpp"
+  "../common/SubCmdJSON.cpp"
 )
 
 # Collect local directory files
@@ -23,7 +24,6 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "SubCmdConfigure.cpp"
-  "SubCmdJSON.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"
@@ -86,6 +86,13 @@ target_link_libraries(${XBUTIL2_NAME}
 
 if (NOT WIN32)
   target_link_libraries(${XBUTIL2_NAME} PRIVATE pthread uuid dl)
+endif()
+
+# Package xrt sub commands json file for embedded builds
+# This file acts as sample json file and will be removed in future releases
+if (${XRT_NATIVE_BUILD} STREQUAL "no")
+  set(XRT_SUBCOMMANDS_JSON ../common/xrt_subcommands.json)
+  install(FILES ${XRT_SUBCOMMANDS_JSON} DESTINATION ${XRT_INSTALL_INCLUDE_DIR})
 endif()
 
 # Install our built executable

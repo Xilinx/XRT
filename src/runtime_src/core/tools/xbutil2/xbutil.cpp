@@ -21,11 +21,11 @@
 #include "SubCmdValidate.h"
 #include "SubCmdAdvanced.h"
 #include "SubCmdConfigure.h"
-#include "SubCmdJSON.h"
 
 // Supporting tools
 #include "tools/common/XBMain.h"
 #include "tools/common/SubCmd.h"
+#include "tools/common/SubCmdJSON.h"
 #include "common/error.h"
 
 // System include files
@@ -47,8 +47,9 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
 
+    const std::string executable = "xbutil";
     // Parse sub commands from json files
-    populateSubCommandsFromJSON(subCommands);
+    populateSubCommandsFromJSON(subCommands, executable);
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));
@@ -56,8 +57,6 @@ int main( int argc, char** argv )
 
     subCommands.emplace_back(std::make_shared< SubCmdAdvanced >(true,  false, true ));
   }
-
-  const std::string executable = "xbutil";
 
   for (auto & subCommand : subCommands) {
     subCommand->setExecutableName(executable);

@@ -39,6 +39,6 @@ class SubCmdJSON : public SubCmd {
 };
 
 using SubCmdsCollection = std::vector<std::shared_ptr<SubCmd>>;
-void populateSubCommandsFromJSON(SubCmdsCollection &subCmds);
+void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& exeName);
 
 #endif
