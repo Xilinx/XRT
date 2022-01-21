@@ -14,6 +14,7 @@
  * under the License.
  */
 #include <array>
+#include <boost/format.hpp>
 #include <cassert>
 #include <climits>
 #include <cstring>
@@ -249,9 +250,6 @@ static std::array<int,2> flashVendors = {
 };
 static int flashVendor = -1;
 
-static bool TEST_MODE = false;
-static bool TEST_MODE_MCS_ONLY = false;
-
 static const uint32_t CONTROL_REG_START_STATE =  XSP_CR_TRANS_INHIBIT_MASK | XSP_CR_MANUAL_SS_MASK |XSP_CR_RXFIFO_RESET_MASK
         | XSP_CR_TXFIFO_RESET_MASK | XSP_CR_ENABLE_MASK | XSP_CR_MASTER_MODE_MASK ;
 
@@ -323,10 +321,8 @@ XSPI_Flasher::XSPI_Flasher(pcidev::pci_device *dev, bool dualQSPI)
     if (mFlashDev != nullptr) {
         std::cout << "flashing via QSPI driver" << std::endl;
     } else {
-        std::cout << "flashing via QSPI controller located at 0x"
-            << std::hex <<flash_base << std::dec
-            << " on BAR" << dev->get_flash_bar_index()
-            << std::endl;
+        std::cout << "flashing via QSPI controller located at "
+            << boost::format("0x%x on BAR %d\n") % flash_base % dev->get_flash_bar_index();
     }
 }
 
@@ -339,7 +335,7 @@ bool XSPI_Flasher::setSector(unsigned int address) {
     //Select sector before
     if(sector >= MAX_NUM_SECTORS) {
         std::cout << "ERROR: Invalid sector encountered" << std::endl;
-        std::cout << "ERROR: Bad address 0x" << std::hex << address << std::dec << std::endl;
+        std::cout << "ERROR: Bad address " << boost::format("0x%x\n") % address;
         return false;
     } else if(sector == selected_sector) //Don't do anything if its already selected
         return true;
@@ -350,189 +346,6 @@ bool XSPI_Flasher::setSector(unsigned int address) {
         selected_sector = sector;
         return true;
     }
-}
-
-int XSPI_Flasher::xclTestXSpi(int index)
-{
-    TEST_MODE = true;
-
-    if(TEST_MODE_MCS_ONLY) {
-        //just test the mcs.
-        return 0;
-    }
-
-    //2 slaves present, set the slave index.
-    slave_index = index;
-
-    //print the IP (not of flash) control/status register.
-    uint32_t ControlReg = XSpi_GetControlReg();
-    uint32_t StatusReg = XSpi_GetStatusReg();
-    std::cout << "Boot IP Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
-
-    //Make sure it is ready to receive commands.
-    ControlReg = XSpi_GetControlReg();
-    ControlReg = CONTROL_REG_START_STATE;
-
-    XSpi_SetControlReg(ControlReg);
-    ControlReg = XSpi_GetControlReg();
-    StatusReg = XSpi_GetStatusReg();
-    std::cout << "Reset IP Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
-
-    //1. Testing idCode reads.
-    //--
-    std::cout << "Testing id code " << std::endl;
-    if(!getFlashId()) {
-        std::cout << "Exiting now, as could not get correct idcode" << std::endl;
-        exit(-EOPNOTSUPP);
-    }
-
-    std::cout << "id code successful (please verify the idcode output too" << std::endl;
-    std::cout << "Now reading various flash registers" << std::endl;
-
-    //2. Testing register reads.
-    //Using STATUS_READ_BYTES 2 for all, TODO ?
-    uint8_t Cmd = COMMAND_STATUSREG_READ;
-    std::cout << "Testing COMMAND_STATUSREG_READ" << std::endl;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing COMMAND_FLAG_STATUSREG_READ" << std::endl;
-    Cmd = COMMAND_FLAG_STATUSREG_READ;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing COMMAND_NON_VOLATILE_CFGREG_READ" << std::endl;
-    Cmd = COMMAND_NON_VOLATILE_CFGREG_READ;
-    readRegister(Cmd, 4);
-
-    std::cout << "Testing COMMAND_VOLATILE_CFGREG_READ" << std::endl;
-    Cmd = COMMAND_VOLATILE_CFGREG_READ;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing COMMAND_ENH_VOLATILE_CFGREG_READ" << std::endl;
-    Cmd = COMMAND_ENH_VOLATILE_CFGREG_READ;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing COMMAND_EXTENDED_ADDRESS_REG_READ" << std::endl;
-    Cmd = COMMAND_EXTENDED_ADDRESS_REG_READ;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    //3. Testing simple read and write
-    std::cout << "Testing read and write of 16 bytes" << std::endl;
-
-    //unsigned int baseAddr = 0x007A0000;
-    unsigned int baseAddr = 0;
-    unsigned int Addr = 0;
-    unsigned int AddressBytes = 3;
-    if(FOUR_BYTE_ADDRESSING) {
-        AddressBytes = 4;
-        writeRegister(ENTER_FOUR_BYTE_ADDR_MODE, 0, 0);
-    }else
-        writeRegister(EXIT_FOUR_BYTE_ADDR_MODE, 0, 0);
-
-    //Verify 3 or 4 byte addressing, 0th bit == 1 => 4 byte.
-    std::cout << "Testing COMMAND_FLAG_STATUSREG_READ" << std::endl;
-    Cmd = COMMAND_FLAG_STATUSREG_READ;
-    readRegister(Cmd, STATUS_READ_BYTES);
-
-    XSPI_UNUSED uint8_t WriteCmd = 0xff;
-    XSPI_UNUSED uint8_t ReadCmd = 0xff;
-
-    //Test the higher two sectors - first test erase.
-
-    //First try erasing a sector and reading a
-    //page (we should get FFFF ...)
-    for(unsigned int sector = 2 ; sector <= 3; sector++)
-    {
-        clearBuffers();
-
-        if(!writeRegister(COMMAND_EXTENDED_ADDRESS_REG_WRITE, sector, 1))
-            return false;
-
-        std::cout << "Testing COMMAND_EXTENDED_ADDRESS_REG_READ" << std::endl;
-        Cmd = COMMAND_EXTENDED_ADDRESS_REG_READ;
-        readRegister(Cmd, STATUS_READ_BYTES);
-
-        //Sector Erase will reset TX and RX FIFO
-        if(!sectorErase(Addr + baseAddr, COMMAND_4KB_SUBSECTOR_ERASE))
-            return false;
-
-        bool ready = isFlashReady();
-        if(!ready){
-            std::cout << "Unable to get flash ready" << std::endl;
-            return false;
-        }
-
-        //try faster read.
-        if(FOUR_BYTE_ADDRESSING) {
-            ReadCmd = FOUR_BYTE_QUAD_OUTPUT_FAST_READ;
-        }else
-            ReadCmd = COMMAND_QUAD_READ;
-
-        //if(!readPage(Addr, ReadCmd))
-        if(!readPage(Addr + baseAddr))
-            return false;
-    }
-
-    clearBuffers();
-    //---Erase test done
-
-
-    //---Now try writing and reading a page.
-    //first write 2 pages (using 4 128Mb writes) each to 2 sectors, and then read them
-
-    //Write data
-    for(unsigned int sector = 2 ; sector <= 3; sector++)
-    {
-        if(!writeRegister(COMMAND_EXTENDED_ADDRESS_REG_WRITE, sector, 1))
-            return false;
-
-        std::cout << "Testing COMMAND_EXTENDED_ADDRESS_REG_READ" << std::endl;
-        Cmd = COMMAND_EXTENDED_ADDRESS_REG_READ;
-        readRegister(Cmd, STATUS_READ_BYTES);
-
-        for(int j = 0; j < 4; ++j)
-        {
-            clearBuffers();
-            for(unsigned int i = 0; i < WRITE_DATA_SIZE; ++ i) {
-              WriteBuffer[i+ AddressBytes + 1] = static_cast<uint8_t>(j + sector + i); //some random data.
-            }
-
-            Addr = baseAddr + WRITE_DATA_SIZE*j;
-
-            if(!writePage(Addr)) {
-                std::cout << "Write page unsuccessful, returning" << std::endl;
-                return -ENXIO;
-            }
-        }
-
-    }
-
-    clearBuffers();
-
-    //Read the data back, use 2 reads each of 128 bytes, twice to test 2 pages.
-    for(unsigned int sector = 2 ; sector <= 3; sector++)
-    {
-        //Select a sector (sector 2)
-        if(!writeRegister(COMMAND_EXTENDED_ADDRESS_REG_WRITE, sector, 1))
-            return false;
-
-        std::cout << "Testing COMMAND_EXTENDED_ADDRESS_REG_READ" << std::endl;
-        Cmd = COMMAND_EXTENDED_ADDRESS_REG_READ;
-        readRegister(Cmd, STATUS_READ_BYTES);
-
-        //This read should be mix of a b c .. and Z Y X ...
-        for(int j = 0 ; j < 4; ++j)
-        {
-            clearBuffers();
-            Addr = baseAddr + WRITE_DATA_SIZE*j;
-            if(!readPage(Addr)) {
-                std::cout << "Read page unsuccessful, returning" << std::endl;
-                return -ENXIO;
-            }
-        }
-        std::cout << "Done reading sector: " << sector << std::endl;
-    }
-
-    return 0;
 }
 
 //Method for updating QSPI (expects 1 MCS files)
@@ -823,12 +636,6 @@ bool XSPI_Flasher::sectorErase(unsigned int Addr, uint8_t erase_cmd) {
     if(!writeEnable())
         return false;
 
-    if(TEST_MODE) {
-        std::cout << "Testing COMMAND_FLAG_STATUSREG_READ" << std::endl;
-        unsigned Cmd = COMMAND_FLAG_STATUSREG_READ;
-        readRegister(Cmd, STATUS_READ_BYTES);
-    }
-
     uint32_t ControlReg = XSpi_GetControlReg();
     ControlReg |= XSP_CR_RXFIFO_RESET_MASK ;
     ControlReg |= XSP_CR_TXFIFO_RESET_MASK;
@@ -1053,11 +860,6 @@ bool XSPI_Flasher::getFlashId()
         return false;
     }
 
-#if defined(_debug)
-    for (int i = 0; i < IDCODE_READ_BYTES; i++)
-        std::cout << "Idcode byte[" << i << "] " << std::hex << (int)ReadBuffer[i] << std::endl;
-#endif
-
     //Update flash vendor
     for (size_t i = 0; i < flashVendors.size(); i++)
         if(ReadBuffer[1] == flashVendors[i])
@@ -1134,10 +936,6 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     ControlReg = XSpi_GetControlReg();
     StatusReg = XSpi_GetStatusReg();
 
-    if(TEST_MODE)
-        std::cout << "Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
-
-
     /*
    * If configured as a master, be sure there is a slave select bit set
    * in the slave select register. If no slaves have been selected, the
@@ -1206,9 +1004,6 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     ControlReg = XSpi_GetControlReg();
     StatusReg = XSpi_GetStatusReg();
 
-    if(TEST_MODE)
-        std::cout << "Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
-
     if((StatusReg & (1<<10)) != 0) {
         std::cout << "status reg in error situation: 2 " << std::endl;
         return false;
@@ -1223,10 +1018,6 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
     ControlReg = XSpi_GetControlReg();
     ControlReg &= ~XSP_CR_TRANS_INHIBIT_MASK;
     XSpi_SetControlReg(ControlReg);
-
-    if(TEST_MODE)
-        std::cout << "Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
-
 
     //Data transfer to actual flash has already started happening here.
 
@@ -1255,9 +1046,6 @@ bool XSPI_Flasher::finalTransfer(uint8_t *SendBufPtr, uint8_t *RecvBufPtr, int B
             XSpi_SetControlReg(ControlReg | XSP_CR_TRANS_INHIBIT_MASK);
 
             ControlReg = XSpi_GetControlReg();
-
-            if(TEST_MODE)
-                std::cout << "Control/Status " << std::hex << ControlReg << "/" << StatusReg << std::dec << std::endl;
 
             /*
              * First get the data received as a result of the
@@ -1498,24 +1286,14 @@ bool XSPI_Flasher::readPage(unsigned int Addr, uint8_t readCmd)
 
 bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 {
-    if(TEST_MODE)
-        return true;
-
     //Set slave index
     slave_index = slave_sel;
-#if defined(_debug)
-    std::cout << "Slave select " << slave_sel  << std::endl;
-#endif
 
     //Resetting selected_sector
     selected_sector = std::numeric_limits<uint32_t>::max();
 
     XSPI_UNUSED uint32_t tControlReg = XSpi_GetControlReg();
     XSPI_UNUSED uint32_t tStatusReg = XSpi_GetStatusReg();
-
-#if defined(_debug)
-  std::cout << "Boot Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
-#endif
 
     //Reset IP
     XSpi_WriteReg(XSP_SRR_OFFSET, XSP_SRR_RESET_MASK);
@@ -1526,10 +1304,6 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 
     tControlReg = XSpi_GetControlReg();
     tStatusReg = XSpi_GetStatusReg();
-
-#if defined(_debug)
-  std::cout << "After setting start state, Control/Status " << std::hex << tControlReg << "/" << tStatusReg << std::dec << std::endl;
-#endif
     //--
 
     if(!getFlashId()) {
@@ -1544,21 +1318,13 @@ bool XSPI_Flasher::prepareXSpi(uint8_t slave_sel)
 	      }
     }
 
-#if defined(_debug)
-    std::cout << "Slave " << slave_sel << " ready" << std::endl;
-#endif
-
     delay(std::chrono::microseconds(20));
 
     return true;
 }
 
-int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record) {
-
-#if defined(_debug)
-    std::cout << "Programming block (" << std::hex << record.mStartAddress << ", " << record.mEndAddress << std::dec << ")" << std::endl;
-#endif
-
+int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record)
+{
     assert(mcsStream.tellg() < record.mDataPos);
     mcsStream.seekg(record.mDataPos, std::ios_base::beg);
     unsigned char* buffer = &WriteBuffer[READ_WRITE_EXTRA_BYTES];
@@ -1568,8 +1334,6 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
     for (unsigned int index = record.mDataCount; index > 0;) {
         std::string line;
         std::getline(mcsStream, line);
-        if(TEST_MODE)
-            std::cout << line << std::endl;
         const unsigned int dataLen = std::stoi(line.substr(1, 2), 0 , 16);
         index -= dataLen;
         const unsigned int recordType = std::stoi(line.substr(7, 2), 0 , 16);
@@ -1590,8 +1354,6 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
             //      }
             //      assert(bufferIndex <= WRITE_DATA_SIZE);
             //      unsigned value = std::stoi(data.substr(i, 2), 0, 16);
-            //      if(TEST_MODE)
-            //        std::cout << data.substr(i, 2);
             //      buffer[--bufferIndex] = (unsigned char)value;
             //      if ((bufferIndex % 4) == 0) {
             //        bufferIndex += 4;
@@ -1601,9 +1363,6 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
                 break;
             }
         }
-
-        if(TEST_MODE)
-            std::cout << std::endl;
 
 #if 0
         //Uncomment if byte swapping enabled.
@@ -1623,29 +1382,9 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
 
         assert(bufferIndex <= WRITE_DATA_SIZE);
         if (bufferIndex == WRITE_DATA_SIZE) {
-#if defined(_debug)
-            std::cout << "writing page " << pageIndex << std::endl;
-#endif
-            const unsigned int address = std::stoi(line.substr(3, 4), 0, 16);
-            if(TEST_MODE) {
-                std::cout << (address + dataLen) << " " << (pageIndex +1)*WRITE_DATA_SIZE << std::endl;
-                std::cout << record.mStartAddress << " " << record.mStartAddress + pageIndex*PAGE_SIZE;
-                std::cout << " " << address << std::endl;
-            } else {
-                if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                    return -ENXIO;
-                clearBuffers();
-                {
-                    //debug stuff
-#if defined(_debug)
-                    if(pageIndex == 0) {
-                        if(!readPage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                            return -ENXIO;
-                        clearBuffers();
-                    }
-#endif
-                }
-            }
+            if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
+                return -ENXIO;
+            clearBuffers();
             pageIndex++;
             delay(std::chrono::microseconds(20));
             bufferIndex = 0;
@@ -1655,40 +1394,22 @@ int XSPI_Flasher::programRecord(std::istream& mcsStream, const ELARecord& record
     }
     if (bufferIndex) {
         //Write the last page
-        if(TEST_MODE) {
-            std::cout << "writing final page " << pageIndex << std::endl;
-            std::cout << bufferIndex << std::endl;
-            std::cout << prevLine << std::endl;
-        }
-
+#if 0
         const unsigned int address = std::stoi(prevLine.substr(3, 4), 0, 16);
         const unsigned int dataLen = std::stoi(prevLine.substr(1, 2), 0 , 16);
 
-        if(TEST_MODE)
-            std::cout << address % WRITE_DATA_SIZE << " " << dataLen << std::endl;
-
         //assert( (address % WRITE_DATA_SIZE + dataLen) == bufferIndex);
-
-        if(!TEST_MODE) {
-
-            //Fill unused half page to FF
-            for(unsigned int i = bufferIndex; i < WRITE_DATA_SIZE; ++i) {
-                buffer[i] = 0xff;
-            }
-
-            if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                return -ENXIO;
-            delay(std::chrono::microseconds(20));
-            clearBuffers();
-            {
-                //debug stuff
-#if defined(_debug)
-                if(!readPage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
-                    return -ENXIO;
-                clearBuffers();
 #endif
-            }
+
+        //Fill unused half page to FF
+        for(unsigned int i = bufferIndex; i < WRITE_DATA_SIZE; ++i) {
+            buffer[i] = 0xff;
         }
+
+        if(!writePage(record.mStartAddress + pageIndex*WRITE_DATA_SIZE))
+            return -ENXIO;
+        delay(std::chrono::microseconds(20));
+        clearBuffers();
     }
     return 0;
 }
@@ -1710,7 +1431,6 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
 
         //Erase any subsectors in address range.
         for(uint32_t j = i->mStartAddress; j < i->mEndAddress; j+=0x1000) {
-            //std::cout << "DEBUG: Erasing subsector @ 0x" << std::hex << j << std::dec << std::endl;
             if(!sectorErase(j, COMMAND_4KB_SUBSECTOR_ERASE)) {
                 std::cout << "\nERROR: Failed to erase subsector!" << std::endl;
                 return -EINVAL;
@@ -1729,11 +1449,6 @@ int XSPI_Flasher::programXSpi(std::istream& mcsStream, uint32_t bitstream_shift_
         beatCount++;
         if(beatCount%20==0) {
             std::cout << "." << std::flush;
-        }
-
-        if(TEST_MODE) {
-            std::cout << "INFO: Start address 0x" << std::hex << recordList.front().mStartAddress << std::dec << "\n";
-            std::cout << "INFO: End address 0x" << std::hex << recordList.back().mEndAddress << std::dec << "\n";
         }
 
         bool ready = isFlashReady();
@@ -1769,15 +1484,8 @@ bool XSPI_Flasher::readRegister(uint8_t commandCode, unsigned int bytes) {
         return false;
     }
 
-#if defined(_debug)
-    std::cout << "Printing output (with some extra bytes of readRegister cmd)" << std::endl;
-#endif
-
     for(unsigned int i = 0; i < 5; ++ i) //Some extra bytes, no harm
     {
-#if defined(_debug)
-        std::cout << i << " " << std::hex << (int)ReadBuffer[i] << std::dec << std::endl;
-#endif
         ReadBuffer[i] = 0; //clear
     }
     //Reset the FIFO bit.
@@ -1883,8 +1591,8 @@ static int installBitstreamGuard(std::FILE *flashDev, uint32_t address, bool dua
             std::cout << "Failed to install bitstream guard: "
                 << ret << std::endl;
         } else {
-            std::cout << "Bitstream guard installed on flash @0x"
-                << std::hex << address << std::dec << std::endl;
+            std::cout << "Bitstream guard installed on flash "
+                << boost::format("0x%x\n") % address;
         }
     } else {
         ret = writeToFlash(flashDev, 0, address, buf1, sizeof(buf1));
@@ -1898,8 +1606,8 @@ static int installBitstreamGuard(std::FILE *flashDev, uint32_t address, bool dua
             std::cout << "Failed to install bitstream guard on flash 1: "
                 << ret << std::endl;
         } else {
-            std::cout << "Bitstream guard installed on both flashes @0x"
-                << std::hex << address << std::dec << std::endl;
+            std::cout << "Bitstream guard installed on both flashes "
+                << boost::format("@0x%x\n") % address;
         }
     }
 
@@ -2072,9 +1780,9 @@ static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
                 assert(pageOffset(currentAddr) == 0);
                 currentAddr |= addr;
             } else if (pageOffset(currentAddr + static_cast<unsigned int>(buf.size())) != addr) {
-                std::cout << "MCS page offset is not contiguous, expecting 0x"
-                    << std::hex << pageOffset(currentAddr) + buf.size()
-                    << ", but, got 0x" << addr << std::dec << std::endl;
+                std::cout << "MCS page offset is not contiguous, expecting "
+                    << boost::format("0x%x, but got 0x%x\n") %
+                       (pageOffset(currentAddr) + buf.size()) % addr;
                 return -EINVAL;
             }
             // keep adding data to existing buffer
@@ -2111,8 +1819,8 @@ static int mcsStreamToBin(std::istream& mcsStream, unsigned int& currentAddr,
     std::cout << std::endl;
 
     if (buf.size() > UINT_MAX) {
-        std::cout << "MCS bitstream is too large: 0x" << std::hex << buf.size()
-            << std::dec << " bytes" << std::endl;
+        std::cout << "MCS bitstream is too large: "
+            << boost::format("0x%x bytes\n") % buf.size();
         return -EINVAL;
     }
 
@@ -2154,8 +1862,7 @@ static int programXSpiDrv(std::FILE *mFlashDev, std::istream& mcsStream,
         if (ret)
             return ret;
         assert(nextAddr == UINT_MAX || pageOffset(nextAddr) == 0);
-        std::cout << "Extracted " << buf.size() << " bytes from bitstream @0x"
-            << std::hex << curAddr << std::dec << std::endl;
+        std::cout << boost::format("Extracted %d bytes from bitstream 0x%x") % buf.size() % curAddr;
 
         if (store) {
           store = false;

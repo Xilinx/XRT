@@ -16,6 +16,7 @@
  */
 
 #include <array>
+#include <boost/format.hpp>
 #include <cassert>
 #include <chrono>
 #include <cstring>
@@ -201,13 +202,6 @@
 #define XQSPIPSU_SELECT_MODE_DUALSPI    0x2U
 #define XQSPIPSU_SELECT_MODE_QUADSPI    0x4U
 
-#define printHEX(RegName, RegValue) \
-do { \
-    std::cout << RegName " 0x" << std::hex << RegValue << std::dec << std::endl; \
-} while(0);
-
-static bool TEST_MODE = false;
-
 static std::array<int,2> flashVendors = {
     MICRON_VENDOR_ID,
     MACRONIX_VENDOR_ID
@@ -298,8 +292,7 @@ uint32_t XQSPIPS_Flasher::readReg(unsigned RegOffset)
         assert(0);
         std::cout << "read reg ERROR" << std::endl;
     }
-    //std::cout << "Read 0x" << std::hex << RegOffset
-    //          << ": 0x" << value << std::dec << std::endl;
+    //std::cout << boost::format("Read 0x%x: 0x%x\n") % RegOffset % value;
     return value;
 }
 
@@ -310,8 +303,7 @@ int XQSPIPS_Flasher::writeReg(unsigned RegOffset, unsigned value)
         assert(0);
         std::cout << "write reg ERROR " << std::endl;
     }
-    //std::cout << "Write 0x" << std::hex << RegOffset
-    //          << ": 0x" << value << std::dec << std::endl;
+    //std::cout << boost::format("Write 0x%x: 0x%x\n") % RegOffset % value;
     return 0;
 }
 
@@ -333,10 +325,6 @@ uint32_t XQSPIPS_Flasher::selectSpiMode(uint8_t SpiMode)
             mask = XQSPIPSU_GENFIFO_MODE_SPI;
     }
 
-#if defined(_DEBUG)
-    printHEX("SPI Mode is:", (unsigned)SpiMode);
-#endif
-
     return mask;
 }
 
@@ -349,9 +337,6 @@ bool XQSPIPS_Flasher::waitGenFifoEmpty()
         if (StatusReg & XQSPIPSU_ISR_GENFIFOEMPTY_MASK) {
             return true;
         }
-#if defined(_DEBUG)
-        printHEX("Gen FIFO Not Empty", StatusReg);
-#endif
         delay(std::chrono::microseconds(5));
         currTime = std::chrono::high_resolution_clock::now();
     } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
@@ -368,9 +353,6 @@ bool XQSPIPS_Flasher::waitTxEmpty()
         if (StatusReg & XQSPIPSU_ISR_TXEMPTY_MASK) {
             return true;
         }
-#if defined(_DEBUG)
-        printHEX("TXD Not Empty", StatusReg);
-#endif
         delay(std::chrono::microseconds(5));
         currTime = std::chrono::high_resolution_clock::now();
     } while (std::chrono::duration<double>(currTime - startTime) < std::chrono::seconds(3));
@@ -388,28 +370,6 @@ void XQSPIPS_Flasher::program(std::istream& binStream, unsigned base)
     const unsigned int remain = total_size % PAGE_SIZE;
     unsigned int addr = 0;
     unsigned int size = 0;
-
-#if defined(_DEBUG)
-    std::cout << "Verify earse flash" << std::endl;
-    int mismatched = 0;
-    for (unsigned int page = 0; page <= pages; page++) {
-        addr = page * PAGE_SIZE;
-        size = page != pages ? PAGE_SIZE : remain;
-
-        readFlash(base + addr, size);
-        for (unsigned int i = 0; i < size; i++) {
-            if (0xFF != mReadBuffer[i]) {
-                mismatched = 1;
-            }
-        }
-
-        if (mismatched) {
-            std::cout << "Erase failed at page " << page << std::endl;
-            mismatched = 0;
-        }
-
-    }
-#endif
 
     std::cout << "Programming flash" << std::flush;
     int beatCount = 0;
@@ -594,11 +554,6 @@ int XQSPIPS_Flasher::xclUpgradeFirmware(std::istream& binStream, unsigned offset
         std::cout << "[ERROR]: Invalid argument" << std::endl;
         exit(-EINVAL);
     }
-    /* Test only */
-    //if (xclTestXQSpiPS(0))
-    //    return -1;
-    //else
-    //    return 0;
 
     initQSpiPS();
 
@@ -680,9 +635,6 @@ void XQSPIPS_Flasher::initQSpiPS()
 
     /* Disable GQSPI */
     XQSpiPS_Disable_GQSPI();
-
-    if (TEST_MODE)
-        std::cout << "Initialize GQSPI done" << std::endl;
 }
 
 void XQSPIPS_Flasher::resetQSpiPS()
@@ -711,14 +663,6 @@ void XQSPIPS_Flasher::resetQSpiPS()
     XQSpiPS_WriteReg(GQSPI_TX_THRESH_OFFSET, XQSPIPSU_TX_FIFO_THRESHOLD_RESET_VAL);
     XQSpiPS_WriteReg(GQSPI_RX_THRESH_OFFSET, XQSPIPSU_RX_FIFO_THRESHOLD_RESET_VAL);
     XQSpiPS_WriteReg(GQSPI_GF_THRESH_OFFSET, XQSPIPSU_GEN_FIFO_THRESHOLD_RESET_VAL);
-
-    if (TEST_MODE) {
-        printHEX("CFG Reg:", ConfigReg);
-        printHEX("TX Thresh Reg:", XQSpiPS_ReadReg(GQSPI_TX_THRESH_OFFSET));
-        printHEX("RX Thresh Reg:", XQSpiPS_ReadReg(GQSPI_RX_THRESH_OFFSET));
-        printHEX("GF Thresh Reg:", XQSpiPS_ReadReg(GQSPI_GF_THRESH_OFFSET));
-        std::cout << "Reset GQSPI done" << std::endl;
-    }
 }
 
 void XQSPIPS_Flasher::abortQSpiPS()
@@ -745,9 +689,6 @@ void XQSPIPS_Flasher::abortQSpiPS()
 
     /* Disable GQSPI */
     XQSpiPS_Disable_GQSPI();
-
-    if (TEST_MODE)
-        std::cout << "Abort QSPI done" << std::endl;
 }
 
 void XQSPIPS_Flasher::readRxFifo(xqspips_msg_t *msg, int32_t Size)
@@ -759,9 +700,6 @@ void XQSPIPS_Flasher::readRxFifo(xqspips_msg_t *msg, int32_t Size)
 
     while (mRxBytes != 0 && (Count < Size)) {
         Data = XQSpiPS_ReadReg(GQSPI_RXD_OFFSET);
-#if defined(_DEBUG)
-        printHEX("RX Data:", Data);
-#endif
         if (mRxBytes >= 4) {
             memcpy(msg->bufPtr, &Data, 4);
             msg->bufPtr += 4;
@@ -800,14 +738,7 @@ void XQSPIPS_Flasher::fillTxFifo(xqspips_msg_t *msg, int32_t Size)
         }
 
         XQSpiPS_WriteReg(GQSPI_TXD_OFFSET, Data);
-#if defined(_DEBUG)
-            printHEX("TX Data:", Data);
-#endif
     }
-
-#if defined(_DEBUG)
-        std::cout << "Fill Tx FIFO " << Count << " Bytes." << std::endl;
-#endif
 }
 
 void XQSPIPS_Flasher::setupTXRX(xqspips_msg_t *msg, uint32_t *GenFifoEntry)
@@ -862,10 +793,6 @@ void XQSPIPS_Flasher::sendGenFifoEntryCSAssert()
     GenFifoEntry |= XQSPIPSU_GENFIFO_CS_SETUP;
     /* Write GEN FIFO */
     XQSpiPS_WriteReg(GQSPI_GEN_FIFO_OFFSET, GenFifoEntry);
-
-#if defined(_DEBUG)
-        printHEX("Assert CS: expectd 0xf405, got", GenFifoEntry);
-#endif
 }
 
 void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
@@ -902,9 +829,6 @@ void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
     if (msg->byteCount < XQSPIPSU_GENFIFO_IMM_DATA_MASK) {
         GenFifoEntry &= ~XQSPIPSU_GENFIFO_IMM_DATA_MASK;
         GenFifoEntry |= msg->byteCount;
-#if defined(_DEBUG)
-        printHEX("GenFifo data:", GenFifoEntry);
-#endif
         XQSpiPS_WriteReg(GQSPI_GEN_FIFO_OFFSET, GenFifoEntry);
     } else {
 		/* Exponent entries */
@@ -918,9 +842,6 @@ void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
             if (tmpCount & XQSPIPSU_GENFIFO_EXP_START) {
                 GenFifoEntry &= ~XQSPIPSU_GENFIFO_IMM_DATA_MASK;
                 GenFifoEntry |= exponent;
-#if defined(_DEBUG)
-                printHEX("GenFifo data:", GenFifoEntry);
-#endif
                 XQSpiPS_WriteReg(GQSPI_GEN_FIFO_OFFSET, GenFifoEntry);
             }
             tmpCount = tmpCount >> 1;
@@ -932,16 +853,9 @@ void XQSPIPS_Flasher::sendGenFifoEntryData(xqspips_msg_t *msg)
         if (immData > 0) {
             GenFifoEntry &= ~XQSPIPSU_GENFIFO_IMM_DATA_MASK;
             GenFifoEntry |= immData;
-#if defined(_DEBUG)
-            printHEX("GenFifo data:", GenFifoEntry);
-#endif
             XQSpiPS_WriteReg(GQSPI_GEN_FIFO_OFFSET, GenFifoEntry);
         }
     }
-
-#if defined(_DEBUG)
-        std::cout << "Sent GenFifo Entry Data" << std::endl;
-#endif
 }
 
 void XQSPIPS_Flasher::sendGenFifoEntryCSDeAssert()
@@ -965,10 +879,6 @@ void XQSPIPS_Flasher::sendGenFifoEntryCSDeAssert()
 
     /* Write GEN FIFO */
     XQSpiPS_WriteReg(GQSPI_GEN_FIFO_OFFSET, GenFifoEntry);
-
-#if defined(_DEBUG)
-        printHEX("De-Assert CS: expectd 0xc004, got", GenFifoEntry);
-#endif
 }
 
 /**
@@ -1034,10 +944,6 @@ bool XQSPIPS_Flasher::finalTransfer(xqspips_msg_t *msg, uint32_t numMsg)
     }
 
     XQSpiPS_Disable_GQSPI();
-
-#if defined(_DEBUG)
-        std::cout << "Final transfer finished" << std::endl;
-#endif
     return true;
 }
 
@@ -1069,9 +975,6 @@ bool XQSPIPS_Flasher::isFlashReady()
         else
             StatusReg = mReadBuffer[0];
 
-#if defined(_DEBUG)
-        printHEX("Flash ready:", StatusReg);
-#endif
         if (!(StatusReg & FLASH_SR_BUSY_MASK)) {
             return true;
         }
@@ -1100,9 +1003,6 @@ bool XQSPIPS_Flasher::setWriteEnable()
 
     if (!finalTransfer(msgWriteEnable, 1))
         return false;
-
-    if (TEST_MODE)
-        std::cout << "Set write enable" << std::endl;
 
     return waitTxEmpty();
 }
@@ -1161,7 +1061,7 @@ bool XQSPIPS_Flasher::getFlashID()
         return false;
 
     for (int i = 0; i < IDCODE_READ_BYTES; i++) {
-        std::cout << "Idcode byte[" << i << "]=" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
+        std::cout << boost::format("Idcode byte[%d]=0x%x\n") % i % (int)mReadBuffer[i];
         mReadBuffer[i] = 0;
     }
 
@@ -1215,9 +1115,6 @@ bool XQSPIPS_Flasher::eraseSector(unsigned addr, uint32_t byteCount, uint8_t era
 
         addr += SECTOR_SIZE;
     }
-
-    if (TEST_MODE)
-        std::cout << "Erase Flash done " << byteCount << " bytes" << std::endl;
 
     return true;
 }
@@ -1318,9 +1215,6 @@ bool XQSPIPS_Flasher::readFlash(unsigned addr, uint32_t byteCount, uint8_t readC
     if (!finalTransfer(msgReadFlash, msgCnt))
         return false;
 
-    if (TEST_MODE)
-        std::cout << "Read Flash done " << byteCount << " bytes" << std::endl;
-
     return true;
 }
 
@@ -1379,9 +1273,6 @@ bool XQSPIPS_Flasher::writeFlash(unsigned addr, uint32_t byteCount, uint8_t writ
     if (!finalTransfer(msgWriteFlash, 2))
         return false;
 
-    if (TEST_MODE)
-        std::cout << "Write Flash done " << byteCount << " bytes" << std::endl;
-
     return true;
 }
 
@@ -1399,9 +1290,6 @@ bool XQSPIPS_Flasher::enterOrExitFourBytesMode(uint32_t enable)
 
     if (!isFlashReady())
         return false;
-
-    if (TEST_MODE)
-        std::cout << "Four Bytes Mode " << enable << std::endl;
 
     return true;
 }
@@ -1431,17 +1319,8 @@ bool XQSPIPS_Flasher::readFlashReg(unsigned commandCode, unsigned bytes)
         return false;
     }
 
-#if defined(_DEBUG)
-    std::cout << "Printing output (with some extra bytes of readFlashReg cmd)" << std::endl;
-#endif
-
     for(unsigned i = 0; i < bytes; ++ i) //Some extra bytes, no harm
-    {
-#if defined(_DEBUG)
-        std::cout << i << " " << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
-#endif
         mReadBuffer[i] = 0; //clear
-    }
 
     return Status;
 }
@@ -1484,103 +1363,4 @@ bool XQSPIPS_Flasher::writeFlashReg(unsigned commandCode, unsigned value, unsign
         return false;
 
     return Status;
-}
-
-int XQSPIPS_Flasher::xclTestXQSpiPS(int)
-{
-    TEST_MODE = false;
-
-    std::cout << ">>> Test XQSpiPS engine <<<" << std::endl;
-    initQSpiPS();
-
-    /* print the IP (not of flash) control/status register. */
-    uint32_t ConfigReg = XQSpiPS_GetConfigReg();
-    uint32_t StatusReg = XQSpiPS_GetStatusReg();
-    std::cout << "PS GQSPI Config/Status " << std::hex << ConfigReg << "/" << StatusReg << std::dec << std::endl;
-
-    /* Make sure it is ready to receive commands. */
-    resetQSpiPS();
-
-    XQSpiPS_Enable_GQSPI();
-    printHEX("GQSPI enable:", XQSpiPS_ReadReg(GQSPI_EN_OFFSET));
-
-    /* 1. idcode read */
-    std::cout << ">>> Testing read Flash ID" << std::endl;
-    if (!getFlashID()) {
-        std::cout << "[ERROR]: Could not get Flash ID" << std::endl;
-        exit(-EOPNOTSUPP);
-    }
-
-    std::cout << "id code successful (please verify the idcode output too)" << std::endl;
-    std::cout << ">>> Now reading various flash registers <<<" << std::endl;
-
-    /* 2. register read */
-    std::cout << "Testing READ_STATUS_CMD" << std::endl;
-    uint8_t Cmd = READ_STATUS_CMD;
-    readFlashReg(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing READ_FLAG_STATUS_CMD" << std::endl;
-    Cmd = READ_FLAG_STATUS_CMD;
-    readFlashReg(Cmd, STATUS_READ_BYTES);
-
-    std::cout << "Testing EXTADD_REG_RD" << std::endl;
-    Cmd = EXTADD_REG_RD;
-    readFlashReg(Cmd, STATUS_READ_BYTES);
-
-    /* 3. Testing simple read and write */
-    enterOrExitFourBytesMode(ENTER_4B);
-
-    std::cout << ">>> Testing simple read and write <<<" << std::endl;
-    unsigned int addr = 0;
-    unsigned int size = 0;
-    // Write/Read 16K + 100 bytes
-    //int total_size = 16 * 1024 + 100;
-    unsigned int total_size = 300;
-
-    unsigned int remain = total_size % PAGE_SIZE;
-    unsigned int pages = total_size / PAGE_SIZE;
-
-    std::cout << "Write " << total_size << " bytes" << std::endl;
-
-    std::cout << "earse flash" << std::endl;
-    eraseSector(0, total_size);
-    //eraseBulk();
-
-    std::cout << ">>>>>> Write " << std::endl;
-    for (unsigned int page = 0; page <= pages; page++) {
-        addr = page * PAGE_SIZE;
-	size = page != pages ? PAGE_SIZE : remain;
-
-        for (unsigned i = 0; i < size; i++) {
-            mWriteBuffer[i] = (uint8_t)i;
-        }
-
-        writeFlash(addr, size);
-    }
-
-    remain = total_size % 256;
-    pages = total_size / 256;
-
-    std::cout << ">>>>>> Verify data" << std::endl;
-    for (unsigned int page = 0; page <= pages; page++) {
-        addr = page * PAGE_SIZE;
-	size = page != pages ? PAGE_SIZE : remain;
-
-        readFlash(addr, size);
-
-        // Verify
-        for (unsigned i = 0; i < size; i++) {
-            std::cout << i << " 0x" << std::hex << (int)mReadBuffer[i] << std::dec << std::endl;
-            if (mReadBuffer[i] != (i % PAGE_SIZE)) {
-                std::cout << "Found mismatch" << std::endl;
-                return -1;
-            }
-        }
-    }
-    std::cout << ">>>>>> " << total_size << " bytes data correct!" << std::endl;
-
-    enterOrExitFourBytesMode(EXIT_4B);
-
-    std::cout << ">>> Test Passed <<<" << std::endl;
-    return 0;
 }

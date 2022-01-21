@@ -205,8 +205,8 @@ static int qspips_flash(po::variables_map vm, int bar, size_t baroff)
       std::cout << "Error: Please provide proper BIN file.\n";
       return -EINVAL;
     }
-    std::cout
-        << "About to program flash on device " << bdf << " at offset 0x" << std::hex << offset << std::dec << std::endl;
+    std::cout << "About to program flash on device "
+        << boost::format(" %s at offset 0x%x\n") % bdf % offset;
 
     if (!force && !canProceed())
         return -ECANCELED;

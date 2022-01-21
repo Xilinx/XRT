@@ -77,7 +77,6 @@ private:
     void clearBuffers(unsigned size);
 
     /* Flash functions */
-    int xclTestXQSpiPS(int device_index);
     bool getFlashID();
     bool isFlashReady();
     bool readFlashReg(unsigned commandCode, unsigned bytes);
