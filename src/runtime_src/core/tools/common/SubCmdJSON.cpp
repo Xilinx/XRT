@@ -182,6 +182,7 @@ static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std:
         {
             std::string subCmdName = JSONsubCmd.first;
             std::string subCmdDesc = JSONsubCmd.second.get<std::string>("cmd_description");
+
             std::vector<struct JSONCmd> subCmdOpts;
             for(pt::ptree::value_type &subCmdOpt : JSONsubCmd.second.get_child("cmd_options"))
             {
