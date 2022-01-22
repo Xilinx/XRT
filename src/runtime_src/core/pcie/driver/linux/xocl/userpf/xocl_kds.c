@@ -1421,8 +1421,9 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 	return 0;
@@ -1461,8 +1462,9 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config end failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 	return 0;
@@ -1534,8 +1536,9 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		if (ret)
 			break;
 
-		if (xcmd->status != KDS_COMPLETED) {
-			userpf_err(xdev, "Configure XGQ ERT failed");
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config CU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
 			ret = -EINVAL;
 			break;
 		}
@@ -1578,8 +1581,9 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Query CU(%d) failed", cu_idx);
+	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Query CU(%d) failed cstate(%d) rcode(%d)",
+			   cu_idx, resp->hdr.cstate, resp->rcode);
 		return -EINVAL;
 	}
 
