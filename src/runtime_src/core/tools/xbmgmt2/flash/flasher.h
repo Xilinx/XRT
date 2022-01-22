@@ -67,8 +67,19 @@ enum BoardInfoKey
 class Flasher
 {
 public:
+    enum E_FlasherType {
+        UNKNOWN,
+        SPI,
+        BPI,
+        QSPIPS,
+        OSPIVERSAL,
+        QSPIVERSAL,
+        OSPI_XGQ,
+    };
+
     Flasher(unsigned int index);
-    int upgradeFirmware(const std::string& typeStr, firmwareImage* primary, firmwareImage* secondary);
+    E_FlasherType getFlashType(std::string typeStr = "");
+    int upgradeFirmware(E_FlasherType flash_type, firmwareImage* primary, firmwareImage* secondary);
     int upgradeBMCFirmware(firmwareImage* bmc);
     void readBack(const std::string& output);
     bool isValid(void) { return m_device != nullptr; }
@@ -82,15 +93,7 @@ public:
     // uint16_t get_dsainfo_canidate(const std::string dsa, const std::string& id);
 
 private:
-    enum E_FlasherType {
-        UNKNOWN,
-        SPI,
-        BPI,
-        QSPIPS,
-        OSPIVERSAL,
-        QSPIVERSAL,
-        OSPI_XGQ,
-    };
+    
     const char *E_FlasherTypeStrings[4] = { "UNKNOWN", "SPI", "BPI", "QSPI_PS" };
     const char *getFlasherTypeText( E_FlasherType val ) { return E_FlasherTypeStrings[ val ]; }
     E_FlasherType typeStr_to_E_FlasherType(const std::string& typeStr); 
@@ -116,7 +119,6 @@ private:
         std::make_pair( "vega-4000", SPI )
         // No more flash type added here. Add them in devices.h please.
     };
-    E_FlasherType getFlashType(std::string typeStr = "");
 };
 
 #endif // FLASHER_H
