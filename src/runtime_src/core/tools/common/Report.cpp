@@ -76,6 +76,7 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
                             std::ostream & consoleStream,
                             boost::property_tree::ptree & pt) const
 {
+  // If an exception occurs while generating a report throw an error in the catch
   try {
     switch (schemaVersion) {
       case SchemaVersion::json_internal:
@@ -96,8 +97,10 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
     std::string reportName = getReportName();
     if (!reportName.empty()) {
       reportName[0] = static_cast<char>(std::toupper(reportName[0]));
+      std::cerr << reportName << std::endl;
     }
 
-    throw std::runtime_error(boost::str(boost::format("Report: %s - %s\n\n") % reportName % e.what()));
+    std::cerr << "  ERROR: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 }
