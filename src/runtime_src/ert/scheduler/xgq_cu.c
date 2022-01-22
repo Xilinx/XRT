@@ -95,6 +95,26 @@ inline int xgq_cu_process(struct xgq_cu *xc)
 		rc = cu_start(cu, cmd);
 #endif
 		break;
+	case XGQ_CMD_OP_START_CUIDX_KV:
+#ifdef ERT_DEVELOPER
+		if (!echo)
+			rc = cu_start_kv(cu, cmd);
+		else {
+			cu_set_status(cu, SCHED_AP_START);
+			cu_clear_status(cu, SCHED_AP_WAIT_FOR_INPUT);
+		}
+#else
+		rc = cu_start_kv(cu, cmd);
+#endif
+		break;
+    case XGQ_CMD_OP_INIT_CUIDX_KV:
+#ifdef ERT_DEVELOPER
+        if (!echo)
+            rc = cu_init_kv(cu, cmd);
+#else
+        rc = cu_init_kv(cu, cmd);
+#endif
+        break;
 	default:
 		rc = -ENOTTY;
 		break;
