@@ -69,9 +69,7 @@ static inline int cu_start(struct sched_cu *cu, struct sched_cmd *cu_cmd)
 	uint32_t arg_sz;
 	uint64_t dst = cu->cu_addr + SCHED_CU_ARG_OFFSET;
 
-
 	cmd_args(cu_cmd, &src, &arg_sz);
-
 
 	/* Arg size must be multiple of uint32_t. */
 	if (arg_sz & (sizeof(uint32_t) - 1))
@@ -82,6 +80,47 @@ static inline int cu_start(struct sched_cu *cu, struct sched_cmd *cu_cmd)
 		reg_write(dst + i, reg_read(src + i));
 
 	/* Kick off CU. */
+	reg_write(cu->cu_addr, SCHED_AP_START);
+
+	cu_set_status(cu, SCHED_AP_START);
+	cu_clear_status(cu, SCHED_AP_WAIT_FOR_INPUT);
+	return 0;
+}
+
+/* Initial CU arguments using XRT_CMD_OP_INIT_CUIDX_KV cmd. Expensive! */
+static inline int cu_init_kv(struct sched_cu *cu, struct sched_cmd *cu_cmd)
+{
+	uint32_t i;
+	uint64_t src;
+	uint32_t arg_sz;
+	uint64_t dst = cu->cu_addr;
+
+	cmd_kv_args(cu_cmd, &src, &arg_sz);
+
+	/* Arg size must be multiple of 2 * uint32_t. */
+	if (arg_sz & (sizeof(uint32_t) * 2 - 1))
+		return -EINVAL;
+
+	/* arguments are in a {offset : value} pairs list.
+     * reg_read(src + i) -> offset
+     * reg_read(src + i + sizeof(uint32_t)) -> value
+     */
+	for (i = 0; i < arg_sz; i += (2 * sizeof(uint32_t)))
+		reg_write(dst + reg_read(src + i), reg_read(src + i + sizeof(uint32_t)));
+
+	return 0;
+}
+
+/* Kick off CU using XRT_CMD_OP_START_CUIDX_KV cmd. Expensive! */
+static inline int cu_start_kv(struct sched_cu *cu, struct sched_cmd *cu_cmd)
+{
+    int ret;
+
+    ret = cu_init_kv(cu, cu_cmd);
+    if (ret)
+        return ret;
+
+    /* Kick off CU. */
 	reg_write(cu->cu_addr, SCHED_AP_START);
 
 	cu_set_status(cu, SCHED_AP_START);
