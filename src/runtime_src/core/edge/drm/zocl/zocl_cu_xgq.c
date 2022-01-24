@@ -529,6 +529,10 @@ static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_
 		zcu_xgq_dbg(zcu_xgq, "XGQ_CMD_OP_START_CUIDX received");
 		zcu_xgq_cmd_start_cuidx(zcu_xgq, cmd);
 		break;
+	case XGQ_CMD_OP_START_CUIDX_KV:
+		zcu_xgq_dbg(zcu_xgq, "XGQ_CMD_OP_START_CUIDX_KV received");
+		zcu_xgq_cmd_start_cuidx(zcu_xgq, cmd);
+		break;
 	default:
 		zcu_xgq_cmd_default(zcu_xgq, cmd);
 		break;

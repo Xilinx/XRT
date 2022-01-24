@@ -97,7 +97,11 @@ static void cu_hls_xgq_start_kv(struct xrt_cu_hls *cu_hls, u32 *data)
 
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx_kv)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
-	for (i = 0; i < num_reg; ++i)
+	/* data is a {offset : value} pairs list
+	 * cmd->data[i] -> offset
+	 * cmd->data[i+1] -> value
+	 */
+	for (i = 0; i < num_reg; i += 2)
 		cu_write32(cu_hls, cmd->data[i], cmd->data[i + 1]);
 }
 

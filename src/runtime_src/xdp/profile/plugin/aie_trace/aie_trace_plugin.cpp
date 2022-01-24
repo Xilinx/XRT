@@ -153,6 +153,11 @@ namespace xdp {
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM,                XAIE_EVENT_NONE_MEM};
       memoryCounterEventValues = {1020, 1020*1020};
     }
+    else if (counterScheme == "es2") {
+      memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
+      memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
+      memoryCounterEventValues = {0x3FF00};
+    }
   }
 
   AieTracePlugin::~AieTracePlugin()

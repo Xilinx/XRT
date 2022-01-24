@@ -494,6 +494,7 @@ static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
 	/* Shift payload 6 words up */
 	for (i = ecmd->extra_cu_masks; i < end; i++)
 		ecmd->data[i] = ecmd->data[i + 6];
+	ecmd->count -= 6;
 }
 
 static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd)
@@ -545,8 +546,25 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->isize = xgq_exec_convert_accessible_cmd(xcmd->info, ecmd);
 		ret = 1;
 		break;
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
+		if (!xocl_ps_sched_on(xdev) && ecmd->opcode == ERT_EXEC_WRITE) {
+			/* PS ERT is not sync with host. Have to skip 6 data */
+			userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		}
+		print_ecmd_info(ecmd);
+		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		xcmd->type = KDS_CU;
+		xcmd->opcode = OP_START;
+		xcmd->cu_mask[0] = kecmd->cu_mask;
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
+		xcmd->isize = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		ret = 1;
+		break;
 	default:
-		userpf_err(xdev, "Unsupport command\n");
+		userpf_err(xdev, "Unsupport command op(%d)\n", ecmd->opcode);
 		ret = -EINVAL;
 	}
 
@@ -1403,8 +1421,9 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 	return 0;
@@ -1443,8 +1462,9 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config end failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 	return 0;
@@ -1464,6 +1484,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 	for (i = 0; i < num_cus; i++) {
 		int max_off_idx = 0;
 		int max_off = 0;
+		int max_off_arg_size = 0;
 
 		client = kds->anon_client;
 		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
@@ -1486,7 +1507,20 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 				max_off_idx = j;
 			}
 		}
-		cfg_cu->payload_size = max_off + (cu_info[i].num_args ? (cu_info[i].args[max_off_idx].size) : 0);
+		/* This determines the XGQ slot size for CU/SCU etc. */
+		if (cu_info[i].num_args)
+			max_off_arg_size = cu_info[i].args[max_off_idx].size;
+		cfg_cu->payload_size = max_off + max_off_arg_size;
+		/*
+		 * Times 2 to make sure XGQ slot size is bigger than the size of
+		 * key-value pair commands, eg. ERT_START_KEY_VAL.
+		 *
+		 * TODO: XOCL XGQ should be able to splict a big command into
+		 * small sub commands. Before it is done, use this simple
+		 * approach.
+		 */
+		cfg_cu->payload_size = cfg_cu->payload_size * 2;
+
 		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
 			  cu_info[i].kname, cu_info[i].iname);
 
@@ -1502,8 +1536,9 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		if (ret)
 			break;
 
-		if (xcmd->status != KDS_COMPLETED) {
-			userpf_err(xdev, "Configure XGQ ERT failed");
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config CU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
 			ret = -EINVAL;
 			break;
 		}
@@ -1546,8 +1581,9 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Query CU(%d) failed", cu_idx);
+	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Query CU(%d) failed cstate(%d) rcode(%d)",
+			   cu_idx, resp->hdr.cstate, resp->rcode);
 		return -EINVAL;
 	}
 
