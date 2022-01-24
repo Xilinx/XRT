@@ -866,15 +866,14 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
   switch (type) {
   case 0:
 #ifndef XRT_EDGE
-    if (is_nodma(dhdl)) {
+    if (is_nodma(dhdl))
       return alloc_nodma(dhdl, sz, flags, grp);
-    } else if (is_sw_emulation()) {
+    else if (is_sw_emulation())
       // In DC scenario, for sw_emu, use the xclAllocBO and xclMapBO instead of xclAllocUserPtrBO, 
       // which helps to remove the extra copy in sw_emu.
       return alloc_kbuf(dhdl, sz, flags, grp);
-    } else {
+    else
       return alloc_hbuf(dhdl, xrt_core::aligned_alloc(get_alignment(), sz), sz, flags, grp);
-    }
 #endif
   case XCL_BO_FLAGS_CACHEABLE:
   case XCL_BO_FLAGS_SVM:
