@@ -673,7 +673,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	if (shm_acquire_data(xgq, &address)) {
 		ret = -EIO;
-		goto done;
+		goto acquire_failed;
 	}
 
 	/* set up payload */
@@ -697,7 +697,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
 		ret = -ENOMEM;
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -713,7 +713,10 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
@@ -722,13 +725,15 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	} else {
 		ret = len;
 	}
+
 done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
 	shm_release_data(xgq);
 
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+acquire_failed:
+	kfree(cmd);
 
 	return ret;
 }
@@ -762,7 +767,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return 0;
+		return -ENOMEM;
 	}
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
@@ -771,7 +776,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 
 	if (shm_acquire_log_page(xgq, &address)) {
 		ret = -EIO;
-		goto done;
+		goto acquire_failed;
 	}
 
 	payload = &(cmd->xgq_cmd_entry.log_payload);
@@ -787,7 +792,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -800,13 +805,14 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	ret = submit_cmd(xgq, cmd);
 	if (ret) {
 		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
-		/* return 0, because it is not a firewall trip */
-		ret = 0;
 		goto done;
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode;
 
@@ -825,18 +831,27 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		} else {
 			*fw_size = fw_result->count;
 			*fw = vmalloc(*fw_size);
+			if (*fw == NULL) {
+				XGQ_ERR(xgq, "vmalloc failed");
+				ret = -ENOMEM;
+				goto done;
+			}
 			memcpy_from_device(xgq, address, *fw, *fw_size);
 			ret = 0;
 			XGQ_INFO(xgq, "loading fw from vmr size %ld", *fw_size);
 		}
 	}
+
+
 done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
 	shm_release_log_page(xgq);
 
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+acquire_failed:
+	kfree(cmd);
+
 	return ret;
 }
 
@@ -856,7 +871,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return 0;
+		return -ENOMEM;
 	}
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
@@ -874,7 +889,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -893,15 +908,19 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
 
 done:
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	kfree(cmd);
+
 	return ret;
 }
 
@@ -947,7 +966,7 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -964,7 +983,10 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode;
 	if (ret) {
@@ -972,10 +994,10 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 	} 
 
 done:
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	kfree(cmd);
 
 	return ret;
 }
@@ -1071,7 +1093,7 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 	cmd = kmalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
 		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return 0;
+		return -ENOMEM;
 	}
 
 	memset(cmd, 0, sizeof(*cmd));
@@ -1092,7 +1114,7 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -1110,7 +1132,10 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode;
 	if (ret) {
@@ -1122,10 +1147,10 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 	}
 
 done:
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	kfree(cmd);
 
 	return ret;
 }
@@ -1226,7 +1251,7 @@ static int vmr_control_op(struct platform_device *pdev,
 	id = get_xgq_cid(xgq);
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -1243,7 +1268,10 @@ static int vmr_control_op(struct platform_device *pdev,
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode;
 
@@ -1254,10 +1282,10 @@ static int vmr_control_op(struct platform_device *pdev,
 	}
 
 done:
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	kfree(cmd);
 
 	return ret;
 }
@@ -1298,7 +1326,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 
 	if (shm_acquire_log_page(xgq, &address)) {
 		ret = -EIO;
-		goto done;
+		goto acquire_failed;
 	}
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
@@ -1313,7 +1341,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	if (id < 0) {
 		XGQ_ERR(xgq, "alloc cid failed: %d", id);
 		ret = id;
-		goto done;
+		goto cid_alloc_failed;
 	}
 	hdr->cid = id;
 
@@ -1330,7 +1358,10 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	}
 
 	/* wait for command completion */
-	wait_for_completion_interruptible(&cmd->xgq_cmd_complete);
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submit cmd killed");
+		goto done;
+	}
 
 	ret = cmd->xgq_cmd_rcode;
 
@@ -1341,12 +1372,13 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	}
 
 done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
 	shm_release_log_page(xgq);
 
-	if (cmd) {
-		remove_xgq_cid(xgq, id);
-		kfree(cmd);
-	}
+acquire_failed:
+	kfree(cmd);
 
 	return ret;
 }
