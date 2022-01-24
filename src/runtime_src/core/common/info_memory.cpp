@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -415,8 +415,8 @@ xclbin_info(const xrt_core::device * device)
 
 enum class cu_type 
 {
-  pl,
-  ps
+  pl, // programming logic
+  ps  // processor system
 };
 
 static std::string 
@@ -447,7 +447,7 @@ get_cu_status(uint32_t cu_status)
   if (cu_status & 0x10)
     bit_set.push_back("RESTART");
 
-  pt.put("bit_mask",	boost::str(boost::format("0x%x") % cu_status));
+  pt.put("bit_mask", boost::str(boost::format("0x%x") % cu_status));
   ptree_type ptSt_arr;
   for(auto& str : bit_set)
     ptSt_arr.push_back(std::make_pair("", ptree_type(str)));
@@ -468,7 +468,7 @@ scheduler_update_stat(const xrt_core::device *device)
     std::string xclbin_uuid = xrt_core::device_query<xq::xclbin_uuid>(dev);
     // dont open a context if xclbin_uuid is empty
     if(xclbin_uuid.empty())
-	    return;
+      return;
     auto uuid = xrt::uuid(xclbin_uuid);
     dev->open_context(uuid.get(), std::numeric_limits<unsigned int>::max(), true);
     auto at_exit = [] (auto dev, auto uuid) { dev->close_context(uuid.get(), std::numeric_limits<unsigned int>::max()); };
@@ -534,9 +534,9 @@ populate_cus(const xrt_core::device *device)
 
   for (auto& stat : cu_stats) {
     ptree_type pt_cu;
-    pt_cu.put( "name",           stat.name);
-    pt_cu.put( "base_address",   boost::str(boost::format("0x%x") % stat.base_addr));
-    pt_cu.put( "usage",          stat.usages);
+    pt_cu.put( "name", stat.name);
+    pt_cu.put( "base_address", boost::str(boost::format("0x%x") % stat.base_addr));
+    pt_cu.put( "usage", stat.usages);
     pt_cu.put( "type", enum_to_str(cu_type::pl));
     pt_cu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", pt_cu));
@@ -556,26 +556,25 @@ populate_cus(const xrt_core::device *device)
   for (auto& stat : scu_stats) {
     ptree_type pt_cu;
     std::string scu_name = "Illegal";
+    // This means something is wrong
+    // scu_name e.g. kernel_vcu_encoder:scu_34
     if (psk_inst >= ps_kernels.size()) {
       scu_name = stat.name;
-      //This means something is wrong
-      //scu_name e.g. kernel_vcu_encoder:scu_34
-    } else {
+    } 
+    else { // scu_name e.g. kernel_vcu_encoder_2
       scu_name = ps_kernels.at(psk_inst).pkd_sym_name;
       scu_name.append("_");
       scu_name.append(std::to_string(num_scu));
-      //scu_name e.g. kernel_vcu_encoder_2
     }
-    pt_cu.put( "name",           scu_name);
-    pt_cu.put( "base_address",   "0x0");
-    pt_cu.put( "usage",          stat.usages);
+    pt_cu.put( "name", scu_name);
+    pt_cu.put( "base_address", "0x0");
+    pt_cu.put( "usage", stat.usages);
     pt_cu.put( "type", enum_to_str(cu_type::ps));
     pt_cu.add_child( std::string("status"),	get_cu_status(stat.status));
     pt.push_back(std::make_pair("", pt_cu));
 
-    if (psk_inst >= ps_kernels.size()) {
+    if (psk_inst >= ps_kernels.size())
       continue;
-    }
     num_scu++;
     if (num_scu == ps_kernels.at(psk_inst).pkd_num_instances) {
       //Handled all instances of a PS Kernel, so next is a new PS Kernel
