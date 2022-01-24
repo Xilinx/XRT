@@ -1435,6 +1435,9 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
+
+	userpf_info(xdev, "Config start completed, num_cus(%d)\n",
+		    cfg_start->num_cus);
 	return 0;
 }
 
@@ -1476,6 +1479,7 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
+	userpf_info(xdev, "Config end completed\n");
 	return 0;
 }
 
@@ -1551,6 +1555,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 			ret = -EINVAL;
 			break;
 		}
+		userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
 	return ret;
@@ -1596,6 +1601,10 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 		return -EINVAL;
 	}
 
+	userpf_info(xdev, "Query CU(%d) completed\n", query_cu->cu_idx);
+	userpf_info(xdev, "xgq_id %d\n", resp->xgq_id);
+	userpf_info(xdev, "size %d\n", resp->size);
+	userpf_info(xdev, "offset 0x%x\n", resp->offset);
 	return 0;
 }
 
@@ -1651,15 +1660,17 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	}
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
-	XDEV(xdev)->kds.xgq_enable = true;
-	kfree(cu_info);
-	return 0;
+	XDEV(xdev)->kds.xgq_enable = (cfg.ert)? true : false;
+	goto out;
 
 create_regular_cu:
 	/* Regular CU directly talks to CU, without XGQ */
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 	XDEV(xdev)->kds.xgq_enable = false;
 
+out:
+	userpf_info(xdev, "scheduler config ert(%d)\n",
+		    XDEV(xdev)->kds.xgq_enable);
 	kfree(cu_info);
 	return ret;
 }
