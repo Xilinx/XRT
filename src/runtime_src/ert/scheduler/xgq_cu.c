@@ -21,6 +21,7 @@ inline void xgq_cu_init(struct xgq_cu *xc, struct xgq *q, struct sched_cu *cu)
 	xc->xc_cmd_running = 0;
 	cmd_set_addr(cmd, 0);
 	cmd_clear_header(cmd, 0);
+	cu_set_status(cu, SCHED_AP_IDLE);
 }
 
 static inline void xgq_cu_complete_cmd(struct xgq_cu *xc, int err)
@@ -53,7 +54,15 @@ inline int xgq_cu_process(struct xgq_cu *xc)
 		}
 	}
 	
-	if (likely(xc->xc_cmd_running || !cu_has_status(cu, SCHED_AP_WAIT_FOR_INPUT))) {
+/*     xc->xc_cmd_running    cu_has_status(cu, SCHED_AP_WAIT_FOR_INPUT)   cmd_is_valid(cmd)
+ *
+ *            true                          x                                   x
+ *
+ *              x                          false                              true
+ */
+
+	if (likely(xc->xc_cmd_running || 
+		(cmd_is_valid(cmd) && !cu_has_status(cu, SCHED_AP_WAIT_FOR_INPUT)))) {
 
 #ifdef ERT_DEVELOPER
 		if (!echo) {
