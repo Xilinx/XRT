@@ -80,10 +80,19 @@ enum xgq_cmd_vmr_control_type {
 };
 
 /**
+ * log page type
+ */
+enum xgq_cmd_log_page_type {
+	XGQ_CMD_LOG_AF		= 0x0,
+	XGQ_CMD_LOG_FW		= 0x1,
+};
+
+/**
  * struct xgq_cmd_log_payload: log_page request command
  *
  * @address:	pre-allocated log data, device writes log data at this address
  * @size:	size of pre-allocated log data
+ * @offset:	offset of returned device data
  * @pid:	log_page page id
  * @addr_type:	pre-allocated address type
  *
@@ -92,9 +101,11 @@ enum xgq_cmd_vmr_control_type {
 struct xgq_cmd_log_payload {
 	uint64_t address;
 	uint32_t size;
+	uint32_t offset;
 	uint32_t pid:16;
 	uint32_t addr_type:3;
 	uint32_t rsvd1:13;
+	uint32_t pad;
 };
 
 /**
@@ -202,6 +213,16 @@ struct xgq_cmd_cq_sensor_payload {
 };
 
 /**
+ * struct xgq_cmd_cq_log_page_payload: vmr log page completion payload
+ *
+ * @count:	how many data returned in bytes
+ */
+struct xgq_cmd_cq_log_page_payload {
+	uint32_t count;
+	uint32_t resvd1;
+};
+
+/**
  * struct xgq_cmd_cq_vmr_payload: vmr device status payload
  *
  * bitfields for indicting flash partition statistics.
@@ -220,7 +241,7 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t resvd1:7;
 	uint16_t multi_boot_offset;
 	uint32_t debug_level:3;
-	uint32_t flush_progress:7;
+	uint32_t program_progress:7;
 	uint32_t resvd2:22;
 };
 
@@ -241,6 +262,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_clock_payload		cq_clock_payload;
 		struct xgq_cmd_cq_sensor_payload	cq_sensor_payload;
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
+		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
 	};
 	uint32_t rcode;
 };
