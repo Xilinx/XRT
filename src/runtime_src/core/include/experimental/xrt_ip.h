@@ -118,10 +118,7 @@ public:
      */
     XCL_DRIVER_DLLESPEC
     std::cv_status
-    wait(const std::chrono::duration<int32_t, std::milli>& timeout) const; 
-    //wait(std::chrono::milliseconds timeout);
-    //At lower level need timeout in int32_t type (for poll)
-    //But chrono type millisec can be 45 bits
+    wait(const std::chrono::milliseconds& timeout) const; 
   };
  
 public:
