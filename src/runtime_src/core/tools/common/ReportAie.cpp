@@ -133,10 +133,10 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
 	if(tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
 
-          _output << boost::format("        %s:\n") % "FIFO";
+          _output << boost::format("%12s:\n") % "FIFO";
           for(auto& node : tile.second.get_child("dma.fifo.counters")) {
-            _output << fmt16("%s") % node.second.get<std::string>("counter_id")
-		    % node.second.get<std::string>("counter_val");
+            _output << fmt16("%s") % node.second.get<std::string>("index")
+		    % node.second.get<std::string>("count");
           }
 
           _output << boost::format("        %s:\n") % "MM2S";

@@ -85,11 +85,11 @@ populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::pt
   // fifo_len: 0|0
   int id = 0;
   for (const auto& node : pt.get_child("dma.fifo_len", empty_pt)) {
-    std::string counter_id = "Counter";
+    std::string index = "Counter";
     boost::property_tree::ptree fifo_counter;
-    counter_id += std::to_string(id++);
-    fifo_counter.put("counter_id", counter_id);
-    fifo_counter.put("counter_val", node.second.data());
+    index += std::to_string(id++);
+    fifo_counter.put("index", index);
+    fifo_counter.put("count", node.second.data());
     fifo_pt.push_back(std::make_pair("", fifo_counter));
   }
 
