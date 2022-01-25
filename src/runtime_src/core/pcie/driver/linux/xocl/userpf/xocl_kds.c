@@ -1376,6 +1376,15 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
 {
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+	struct xgq_com_queue_entry *resp = xcmd->response;
+
+	if (status != KDS_COMPLETED)
+		resp->hdr.cstate = XGQ_CMD_STATE_ABORTED;
+
+	if (status == KDS_ERROR)
+		resp->rcode = -ENOSPC;
+	else if (status == KDS_TIMEOUT)
+		resp->rcode = -ETIMEDOUT;
 
 	complete(&kds->comp);
 }
@@ -1510,7 +1519,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		/* This determines the XGQ slot size for CU/SCU etc. */
 		if (cu_info[i].num_args)
 			max_off_arg_size = cu_info[i].args[max_off_idx].size;
-		cfg_cu->payload_size = max_off + max_off_arg_size;
+		cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
 		/*
 		 * Times 2 to make sure XGQ slot size is bigger than the size of
 		 * key-value pair commands, eg. ERT_START_KEY_VAL.
