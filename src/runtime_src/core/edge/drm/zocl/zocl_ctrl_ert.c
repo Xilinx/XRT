@@ -9,19 +9,14 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
-#include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
-#include <linux/workqueue.h>
-#include <linux/completion.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-#include <linux/timer.h>
-#include <linux/delay.h>
+#include "zocl_lib.h"
 #include "zocl_drv.h"
 #include "xrt_cu.h"
 #include "xgq_cmd_ert.h"
 #include "xgq_impl.h"
-#include "zocl_util.h"
 #include "zocl_xgq.h"
 #include "zocl_cu_xgq.h"
 #include "zocl_ert_intc.h"
@@ -60,10 +55,6 @@
  * MB(W)
  */
 #define ZERT_HOST_INT_ENABLE		0x100
-
-#define ZERT_XGQ_SQ_REG			0X0
-#define ZERT_XGQ_SQ_INT_CONF_REG	0XC
-#define ZERT_XGQ_CQ_REG			0X100
 
 #define ERT_CQ_IRQ			0
 #define ERT_CU_IRQ			1
@@ -124,14 +115,6 @@ struct zocl_ctrl_ert_cu_xgq {
 	struct platform_device	*zcecx_pdev;
 };
 
-/* Config for INTC sub-dev. */
-struct zocl_ctrl_ert_intc {
-	size_t			zcei_num_irqs;
-	u32			*zcei_irqs;
-	resource_size_t		zcei_status_reg;
-	struct platform_device	*zcei_pdev;
-};
-
 struct zocl_ctrl_ert {
 	struct platform_device	*zce_pdev;
 
@@ -150,8 +133,7 @@ struct zocl_ctrl_ert {
 	struct zocl_ctrl_ert_cu *zce_cus;
 	resource_size_t		zce_max_cu_size;
 
-	struct zocl_ctrl_ert_intc zce_xgq_intc;
-	struct zocl_ctrl_ert_intc zce_cu_intc;
+	struct platform_device	*zce_xgq_intc;
 
 	bool			zce_config_completed;
 	bool			zce_echo_mode;
@@ -167,138 +149,6 @@ static inline void reg_write(void __iomem *base, u64 off, u32 val)
 static inline u32 reg_read(void __iomem *base, u64 off)
 {
 	return ioread32(base + off);
-}
-
-static void __iomem *zert_map_res(struct zocl_ctrl_ert *zert,
-				  struct resource *res, u64 *startp, size_t *szp)
-{
-	void __iomem *map = devm_ioremap(ZERT2DEV(zert), res->start, res->end - res->start + 1);
-
-	if (IS_ERR(map)) {
-		zert_err(zert, "Failed to map CTRL ERT resource: %ld", PTR_ERR(map));
-		return NULL;
-	}
-
-	if (startp)
-		*startp = res->start;
-	if (szp)
-		*szp = res->end - res->start + 1;
-	return map;
-}
-
-static void __iomem *zert_map_res_by_id(struct zocl_ctrl_ert *zert, int id,
-					u64 *startp, size_t *szp)
-{
-	struct resource *res = platform_get_resource(ZERT2PDEV(zert), IORESOURCE_MEM, id);
-
-	if (!res) {
-		zert_err(zert, "failed to find CTRL ERT resource ID (%d)", id);
-		return NULL;
-	}
-	zert_info(zert, "Found CTRL ERT resource (%d): %pR", id, res);
-
-	return zert_map_res(zert, res, startp, szp);
-}
-
-static void __iomem *zert_map_res_by_name(struct zocl_ctrl_ert *zert, const char *name,
-					  u64 *startp, size_t *szp)
-{
-	int ret = -EINVAL;
-	struct resource res = {};
-	struct device_node *np = NULL;
-
-	np = of_parse_phandle(ZERT2PDEV(zert)->dev.of_node, name, 0);
-	if (np)
-		ret = of_address_to_resource(np, 0, &res);
-	if (ret) {
-		zert_err(zert, "failed to find CTRL ERT resource (%s): %d", name, ret);
-		return NULL;
-	}
-	zert_info(zert, "Found CTRL ERT resource (%s): %pR", name, &res);
-
-	return zert_map_res(zert, &res, startp, szp);
-}
-
-static void fill_irq_res(struct resource *res, u32 irq, char *name)
-{
-	res->start = irq;
-	res->end = irq;
-	res->flags = IORESOURCE_IRQ;
-	res->name = name;
-}
-
-static void fill_iomem_res(struct resource *res, resource_size_t start,
-			   resource_size_t size, char *name)
-{
-	res->start = start;
-	res->end = start + size - 1;
-	res->flags = IORESOURCE_MEM;
-	res->name = name;
-}
-
-static void fill_reg_res(struct resource *res, resource_size_t start, char *name)
-{
-	fill_iomem_res(res, start, sizeof(u32), name);
-}
-
-static void zert_destroy_subdev(struct platform_device *pdev)
-{
-	platform_device_del(pdev);
-	platform_device_put(pdev);
-}
-
-static int zert_create_subdev(struct zocl_ctrl_ert *zert, char *devname,
-			      struct resource *res, size_t nres,
-			      void *info, size_t info_size,
-			      struct platform_device **pdevp)
-{
-	struct platform_device *pldev;
-	int ret;
-
-	pldev = platform_device_alloc(devname, PLATFORM_DEVID_AUTO);
-	if (!pldev) {
-		zert_err(zert, "Failed to alloc %s device", devname);
-		return -ENOMEM;
-	}
-
-	ret = platform_device_add_resources(pldev, res, nres);
-	if (ret) {
-		zert_err(zert, "Failed to add resource for %s device", devname);
-		goto err;
-	}
-
-	if (info) {
-		ret = platform_device_add_data(pldev, info, info_size);
-		if (ret) {
-			zert_err(zert, "Failed to add data for %s device", devname);
-			goto err;
-		}
-	}
-
-	pldev->dev.parent = ZERT2DEV(zert);
-
-	ret = platform_device_add(pldev);
-	if (ret) {
-		zert_err(zert, "Failed to create %s device", devname);
-		goto err;
-	}
-
-	ret = device_attach(&pldev->dev);
-	if (ret != 1) {
-		ret = -EINVAL;
-		zert_err(zert, "Failed to attach driver to %s device", devname);
-		goto err1;
-	}
-
-	*pdevp = pldev;
-
-	return 0;
-
-err1:
-	platform_device_del(pldev);
-err:
-	platform_device_put(pldev);
-	return ret;
 }
 
 static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *info)
@@ -405,7 +255,7 @@ static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 
 	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
 		if (cu->zcec_pdev) {
-			zert_destroy_subdev(cu->zcec_pdev);
+			zlib_destroy_subdev(cu->zcec_pdev);
 			cu->zcec_pdev = NULL;
 			BUG_ON(cu->zcec_xgq_idx != ZERT_INVALID_XGQ_ID);
 		}
@@ -425,21 +275,8 @@ static int zert_create_cu_xgq(struct zocl_ctrl_ert *zert, struct zocl_ctrl_ert_c
 	i = 0;
 	fill_irq_res(&res[i++], info->zcecx_irq, ZCX_RES_IRQ);
 	// Using XGQ IP
-	if (info->zcecx_xgq_reg) {
-		void __iomem *xgq;
-
-		/* HACK:
-		 * 1. enable CQ intr to host, should be removed when intr is always on.
-		 * 2. reset CQ to 0, should be replaced by resetting XGQ IP.
-		 */
-		xgq = devm_ioremap(ZERT2DEV(zert), info->zcecx_xgq_reg, PAGE_SIZE);
-		reg_write(xgq, ZERT_XGQ_SQ_INT_CONF_REG, 0x1);
-		reg_write(xgq, ZERT_XGQ_CQ_REG, 0);
-		devm_iounmap(ZERT2DEV(zert), xgq);
-
-		fill_reg_res(&res[i++], info->zcecx_xgq_reg + ZERT_XGQ_SQ_REG, ZCX_RES_SQ_PROD);
-		fill_reg_res(&res[i++], info->zcecx_xgq_reg + ZERT_XGQ_CQ_REG, ZCX_RES_CQ_PROD);
-	}
+	if (info->zcecx_xgq_reg)
+		fill_reg_res(&res[i++], info->zcecx_xgq_reg, ZCX_RES_XGQ_IP);
 	// Legacy CQ status
 	if (info->zcecx_cq_int_reg)
 		fill_reg_res(&res[i++], info->zcecx_cq_int_reg, ZCX_RES_CQ_PROD_INT);
@@ -449,7 +286,7 @@ static int zert_create_cu_xgq(struct zocl_ctrl_ert *zert, struct zocl_ctrl_ert_c
 	zci.zcxi_echo_mode = info->zcecx_echo_mode;
 	zci.zcxi_intc_pdev = info->zcecx_intc_pdev;
 
-	ret = zert_create_subdev(zert, CU_XGQ_DEV_NAME, res, i, &zci, sizeof(zci),
+	ret = zlib_create_subdev(ZERT2DEV(zert), CU_XGQ_DEV_NAME, res, i, &zci, sizeof(zci),
 				 &info->zcecx_pdev);
 	if (ret)
 		zert_err(zert, "Failed to create %s.%d device", CU_XGQ_DEV_NAME, info->zcecx_irq);
@@ -542,7 +379,7 @@ static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
 		xcu->zcecx_echo_mode = zert->zce_echo_mode;
 
 		/* intc for receiving interrupt from host. */
-		xcu->zcecx_intc_pdev = zert->zce_xgq_intc.zcei_pdev;
+		xcu->zcecx_intc_pdev = zert->zce_xgq_intc;
 
 		rc = zert_create_cu_xgq(zert, xcu);
 		if (rc) {
@@ -566,39 +403,8 @@ static void zert_destroy_cu_xgqs(struct zocl_ctrl_ert *zert)
 	for (i = 0; i < zert->zce_num_cu_xgqs; i++) {
 		xcu = &zert->zce_cu_xgqs[i];
 		if (xcu->zcecx_pdev)
-			zert_destroy_subdev(xcu->zcecx_pdev);
+			zlib_destroy_subdev(xcu->zcecx_pdev);
 		zert->zce_cu_xgqs[i].zcecx_pdev = NULL;
-	}
-}
-
-static int zert_create_intc(struct zocl_ctrl_ert *zert,
-			    struct zocl_ctrl_ert_intc *info, char *dev_name)
-{
-	int ret = 0, i = 0;
-	struct resource res[10] = {};
-
-	for (i = 0; i < info->zcei_num_irqs; i++)
-		fill_irq_res(&res[i], info->zcei_irqs[i], ZEI_RES_IRQ);
-
-	fill_iomem_res(&res[i++], info->zcei_status_reg, sizeof(struct zocl_ert_intc_status_reg),
-		       ZEI_RES_STATUS);
-
-	ret = zert_create_subdev(zert, dev_name, res, i, NULL, 0, &info->zcei_pdev);
-	if (ret)
-		zert_err(zert, "Failed to add resource for %s device", dev_name);
-
-	return ret;
-}
-
-static void zert_destroy_intc(struct zocl_ctrl_ert_intc *info)
-{
-	if (info->zcei_pdev) {
-		zert_destroy_subdev(info->zcei_pdev);
-		info->zcei_pdev = NULL;
-	}
-	if (info->zcei_irqs) {
-		kfree(info->zcei_irqs);
-		info->zcei_irqs = NULL;
 	}
 }
 
@@ -611,9 +417,10 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 	struct device_node *np = NULL;
 	struct zocl_ctrl_ert_cu_xgq *cuxgq = NULL;
 	struct resource res = {};
+	u32 *irqs = NULL;
 
 	/* Obtain shared ring buffer. */
-	zert->zce_cq = zert_map_res_by_name(zert, cq_res_name, &zert->zce_cq_start,
+	zert->zce_cq = zlib_map_res_by_name(ZERT2PDEV(zert), cq_res_name, &zert->zce_cq_start,
 					    &zert->zce_cq_size);
 	if (!zert->zce_cq) {
 		zert_err(zert, "failed to find ERT command queue");
@@ -642,25 +449,27 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 			zert_err(zert, "failed to find res for CU XGQ %d: %d", i, ret);
 			continue;
 		}
-		zert_err(zert, "Found CU XGQ @ %pR", &res);
 
 		cuxgq = &zert->zce_cu_xgqs[i];
 		cuxgq->zcecx_irq = of_irq_get(np, 0);
 		cuxgq->zcecx_xgq_reg = res.start;
 		/* Write to tail pointer will trigger interrupt. */
 		cuxgq->zcecx_cq_int_reg = 0;
+
+		zert_info(zert, "Found CU XGQ @ %pR on irq %d", &res, cuxgq->zcecx_irq);
 	}
 
 	/* Bring up XGQ INTC. */
-	zert->zce_xgq_intc.zcei_num_irqs = zert->zce_num_cu_xgqs;
-	zert->zce_xgq_intc.zcei_irqs = kzalloc(sizeof(u32) * zert->zce_xgq_intc.zcei_num_irqs,
-					       GFP_KERNEL);
-	if (zert->zce_xgq_intc.zcei_irqs) {
-		for (i = 0; i < zert->zce_num_cu_xgqs; i++)
-			zert->zce_xgq_intc.zcei_irqs[i] = zert->zce_cu_xgqs[i].zcecx_irq;
-		zert_create_intc(zert, &zert->zce_xgq_intc, ERT_XGQ_INTC_DEV_NAME);
-	} else {
+	irqs = kzalloc(sizeof(u32) * zert->zce_num_cu_xgqs, GFP_KERNEL);
+	if (!irqs) {
 		zert_err(zert, "Failed to alloc irq array for intc device");
+	} else {
+		for (i = 0; i < zert->zce_num_cu_xgqs; i++)
+			irqs[i] = zert->zce_cu_xgqs[i].zcecx_irq;
+		ret = zocl_ert_create_intc(ZERT2DEV(zert), irqs, i, 0, ERT_XGQ_INTC_DEV_NAME,
+					   &zert->zce_xgq_intc);
+		if (ret)
+			zert_err(zert, "Failed to create xgq intc device: %d", ret);
 	}
 
 	/* TODO: Bringup INTC sub-dev to handle interrupts for all CUs. */
@@ -671,20 +480,21 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 static int zert_mpsoc_init(struct zocl_ctrl_ert *zert)
 {
 	void __iomem *regs;
-	struct zocl_ctrl_ert_intc *intc;
 	u64 reg_start;
 	/* We support max 32 XGQs since we have only one interrupt line from host. */
 	const int max_xgq = 32;
+	u32 irq;
 	size_t i;
+	int ret;
 
 	/* Obtain CSR and CQ status registers. */
-	regs = zert_map_res_by_id(zert, ZERT_HW_RES, &reg_start, NULL);
+	regs = zlib_map_res_by_id(ZERT2PDEV(zert), ZERT_HW_RES, &reg_start, NULL);
 	if (!regs) {
 		zert_err(zert, "failed to find ERT registers");
 		return -EINVAL;
 	}
 	/* Obtain shared ring buffer. */
-	zert->zce_cq = zert_map_res_by_id(zert, ZERT_CQ_RES,
+	zert->zce_cq = zlib_map_res_by_id(ZERT2PDEV(zert), ZERT_CQ_RES,
 					  &zert->zce_cq_start, &zert->zce_cq_size);
 	if (!zert->zce_cq) {
 		zert_err(zert, "failed to find ERT command queue");
@@ -712,16 +522,11 @@ static int zert_mpsoc_init(struct zocl_ctrl_ert *zert)
 	}
 
 	/* Bringup INTC sub-dev to handle interrupts for all CU XGQs. */
-	intc = &zert->zce_xgq_intc;
-	intc->zcei_num_irqs = 1;
-	intc->zcei_irqs = kzalloc(sizeof(u32) * intc->zcei_num_irqs, GFP_KERNEL);
-	if (!intc->zcei_irqs) {
-		zert_err(zert, "Failed to alloc irq array for intc device");
-	} else {
-		intc->zcei_irqs[0] = platform_get_irq(ZERT2PDEV(zert), ERT_CQ_IRQ);
-		intc->zcei_status_reg = reg_start + ZERT_CQ_STATUS_REG;
-		zert_create_intc(zert, intc, ERT_CQ_INTC_DEV_NAME);
-	}
+	irq = platform_get_irq(ZERT2PDEV(zert), ERT_CQ_IRQ);
+	ret = zocl_ert_create_intc(ZERT2DEV(zert), &irq, 1, reg_start + ZERT_CQ_STATUS_REG,
+				   ERT_CSR_INTC_DEV_NAME, &zert->zce_xgq_intc);
+	if (ret)
+		zert_err(zert, "Failed to create xgq intc device: %d", ret);
 
 	return 0;
 }
@@ -757,15 +562,13 @@ static int zert_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	/* Init CQ. */
 	zert->zce_cu_xgq_ring_start = zert->zce_cq_start + sizeof(struct zocl_ert_cq);
 	zert->zce_cu_xgq_ring_size = zert->zce_cq_size - sizeof(struct zocl_ert_cq);
-	/* Init cmd queue */
-	memset_io(zert->zce_cq, 0, zert->zce_cq_size);
 	/* Remap CQ to just what we need. The rest will be passed onto CU XGQ drivers. */
 	devm_iounmap(ZERT2DEV(zert), zert->zce_cq);
 	zert->zce_cq = devm_ioremap(ZERT2DEV(zert), zert->zce_cq_start, sizeof(struct zocl_ert_cq));
-	/* Advertise CQ version */
+	/* Init header and advertise CQ version */
+	memset_io(zert->zce_cq, 0, sizeof(struct zocl_ert_cq));
 	iowrite32(ZERT_CQ_FMT_VER, &zert->zce_cq->zec_header.zcx_ver);
 
 	/* Bringup CTRL XGQ last */
@@ -791,15 +594,11 @@ static int zert_remove(struct platform_device *pdev)
 		zxgq_fini(zert->zce_ctrl_xgq_hdl);
 
 	zert_destroy_cus(zert);
-#if 0
-	zert_destroy_intc(&zert->zce_cu_intc);
-#endif
 	zert_destroy_cu_xgqs(zert);
 	kfree(zert->zce_cu_xgqs);
 	zert->zce_cu_xgqs = NULL;
 	zert->zce_num_cu_xgqs = 0;
-
-	zert_destroy_intc(&zert->zce_xgq_intc);
+	zocl_ert_destroy_intc(zert->zce_xgq_intc);
 
 	return 0;
 }

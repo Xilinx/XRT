@@ -138,8 +138,7 @@ struct zocl_cu_xgq {
 	u32			zxc_irq;
 	void __iomem		*zxc_ring;
 	size_t			zxc_ring_size;
-	void __iomem		*zxc_sq_prod;
-	void __iomem		*zxc_cq_prod;
+	void __iomem		*zxc_xgq_ip;
 	void __iomem		*zxc_cq_prod_int;
 #ifdef ZCU_XGQ_DEBUG
 	struct log_ring		zxc_log;
@@ -292,8 +291,7 @@ static void zcu_xgq_init_xgq(struct zocl_cu_xgq *zcu_xgq)
 	arg.zxia_intc_pdev = zcu_xgq->zxc_pdata->zcxi_intc_pdev;
 	if (ZCU_XGQ_MAX_SLOT_SIZE < arg.zxia_ring_slot_size)
 		arg.zxia_ring_slot_size = ZCU_XGQ_MAX_SLOT_SIZE;
-	arg.zxia_sq_prod = zcu_xgq->zxc_sq_prod;
-	arg.zxia_cq_prod = zcu_xgq->zxc_cq_prod;
+	arg.zxia_xgq_ip = zcu_xgq->zxc_xgq_ip;
 	arg.zxia_cq_prod_int = zcu_xgq->zxc_cq_prod_int;
 	arg.zxia_cmd_handler = zcu_xgq->zxc_pdata->zcxi_echo_mode ? NULL : zcu_xgq_cmd_handler;
 	arg.zxia_simple_cmd_hdr = ZCU_XGQ_FAST_PATH(zcu_xgq);
@@ -340,8 +338,7 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	zcu_xgq->zxc_sq_prod = zcu_xgq_map_res(zcu_xgq, ZCX_RES_SQ_PROD, NULL);
-	zcu_xgq->zxc_cq_prod = zcu_xgq_map_res(zcu_xgq, ZCX_RES_CQ_PROD, NULL);
+	zcu_xgq->zxc_xgq_ip = zcu_xgq_map_res(zcu_xgq, ZCX_RES_XGQ_IP, NULL);
 	zcu_xgq->zxc_cq_prod_int = zcu_xgq_map_res(zcu_xgq, ZCX_RES_CQ_PROD_INT, NULL);
 
 	zcu_xgq->zxc_zdev = zocl_get_zdev();

@@ -109,7 +109,7 @@ static int zintc_probe(struct platform_device *pdev)
 		zintc_err(zintc, "failed to find IRQ"); 
 		return -EINVAL;
 	}
-	/* We expect only one irq. */
+	/* TODO: We expect only one irq for now, needs to support 4. */
 	zintc->zei_irq = res->start;
 	zintc_info(zintc, "managing IRQ: %d", zintc->zei_irq); 
 
@@ -194,8 +194,7 @@ static struct zocl_ert_intc_drv_data zocl_csr_intc_drvdata = {
 };
 
 static const struct platform_device_id zocl_csr_intc_id_match[] = {
-	{ ERT_CQ_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
-	{ ERT_CU_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
+	{ ERT_CSR_INTC_DEV_NAME, (kernel_ulong_t)&zocl_csr_intc_drvdata },
 	{ /* end of table */ },
 };
 

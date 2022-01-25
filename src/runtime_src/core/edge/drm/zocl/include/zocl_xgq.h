@@ -28,8 +28,7 @@ struct zocl_xgq_init_args {
 	void __iomem		*zxia_ring;
 	size_t			zxia_ring_size;
 	size_t			zxia_ring_slot_size;
-	void __iomem		*zxia_sq_prod;
-	void __iomem		*zxia_cq_prod;
+	void __iomem		*zxia_xgq_ip;
 	void __iomem		*zxia_cq_prod_int;
 	zxgq_cmd_handler	zxia_cmd_handler;
 	bool			zxia_simple_cmd_hdr;
