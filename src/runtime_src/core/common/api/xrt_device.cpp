@@ -182,7 +182,7 @@ get_info(const xrt_core::device* device, xrt::info::device param, const xrt::det
   case xrt::info::device::pcie_info : // std::string
     return json_str(xrt_core::platform::pcie_info(device), abi);
   case xrt::info::device::dynamic_regions : // std::string
-    return json_str(xrt_core::memory::xclbin_info(device), abi);
+    return json_str(xrt_core::memory::dynamic_regions(device), abi);
   case xrt::info::device::aie : // std::string
     return json_str(xrt_core::aie::aie_core(device), abi);
   case xrt::info::device::aie_shim : // std::string
