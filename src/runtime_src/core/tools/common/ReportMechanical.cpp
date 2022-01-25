@@ -20,9 +20,6 @@
 
 #include "core/common/sensor.h"
 
-// 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
-
 void
 ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
