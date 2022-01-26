@@ -167,6 +167,9 @@ namespace xclemulation {
     return xocl_bo_dev_only(bo) || xocl_bo_p2p(bo) ;
   }
 
+  static inline bool is_cacheable(const struct drm_xocl_bo *bo) {
+    return (bo->flags & XCL_BO_FLAGS_CACHEABLE);
+  }  
 }
 
 /**

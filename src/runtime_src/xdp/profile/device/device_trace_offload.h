@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -189,7 +189,10 @@ private:
     DeviceTraceLogger* deviceTraceLogger;
     std::function<void(bool)> m_read_trace;
 
-    bool fifo_full;
+    // When using a FIFO for offload, if the FIFO fills up, we cannot
+    //  read from it again (circular buffer in FIFO is not supported).
+    //  The fifo_full flag will keep track if we have seen the FIFO full.
+    bool fifo_full = false;
 
     uint64_t sleep_interval_ms;
     Ts2mmInfo ts2mm_info;

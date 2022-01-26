@@ -1295,7 +1295,9 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  if (test.get<std::string>("status", "").compare(test_token_skipped)) {
+  // If the status is anything other than skipped print the test name
+  auto _status = test.get<std::string>("status", "");
+  if (!boost::iequals(_status, test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
@@ -1328,7 +1330,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](std::string tag, std::string log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if((_status.compare(test_token_skipped)) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if(boost::iequals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else
