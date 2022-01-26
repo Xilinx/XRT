@@ -115,18 +115,6 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  if(xdp::isEdge()) {
-    xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
-    if(NULLBO == boHandle) {
-      throw std::bad_alloc();
-    }
-    xclBufHandles.push_back(boHandle);
-
-    void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
-    mMappedBO.push_back(ptr);
-    return xclBufHandles.size();
-  }
-
   auto bobj = xrt::bo(mHalDevice, size, flags, memoryIndex);
   xrt_bos.push_back(bobj);
   mMappedBO.push_back(bobj.map());
@@ -135,13 +123,9 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
 
 void HalDevice::free(size_t id)
 {
-  if(!id) return;
-  size_t boIndex = id - 1;
+//  if(!id) return;
+//  size_t boIndex = id - 1;
 
-  if(xdp::isEdge()) {
-    xclFreeBO(mHalDevice, xclBufHandles[boIndex]);
-    return;
-  }
 }
 
 void* HalDevice::map(size_t id)
@@ -163,11 +147,6 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   size_t boIndex = id - 1;
   xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
 
-  if(xdp::isEdge()) {
-    xclSyncBO(mHalDevice, xclBufHandles[boIndex], dir, size, offset);
-    return;
-  }
-
   xrt_bos[boIndex].sync(dir, size, offset);
 }
 
@@ -175,11 +154,6 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
 {
   if(!id) return 0;
   size_t boIndex = id - 1;
-
-  if(xdp::isEdge()) {
-    xclBOProperties p;
-    return (!xclGetBOProperties(mHalDevice, xclBufHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
-  }
 
   return xrt_bos[boIndex].address();
 }
