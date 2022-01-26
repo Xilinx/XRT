@@ -1905,15 +1905,34 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
  *       if any of this procedure fails due to fatal error, a hot reset warning
  *       will be reported.
  */
-void xocl_reinit_vmr(xdev_handle_t xdev)
+void xocl_reload_vmr(xdev_handle_t xdev)
 {
-	int rc = 0;
+	if (!xocl_enable_vmr_boot(xdev))
+		(void) xocl_download_apu_firmware(xdev);
+}
 
-	rc = xocl_pmc_enable_reset(xdev);
-	if (rc == -ENODEV)
-		xocl_vmr_enable_multiboot(xdev);
+int xocl_enable_vmr_boot(xdev_handle_t xdev)
+{
+	int err = 0;
 
-	(void) xocl_download_apu_firmware(xdev);
+	/*
+	 * set reboot config to expected offset (A/B boot).
+	 */
+	err = xocl_vmr_enable_multiboot(xdev);
+	if (err && err != -ENODEV) {
+		xocl_xdev_warn(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
+	} 
+
+	/*
+	 * set reset signal 
+	 */
+	err = xocl_pmc_enable_reset(xdev);
+	if (err && err != ENODEV) {
+		xocl_xdev_err(xdev, "config pmc reset register failed. err: %d", err);
+		return err;
+	}
+
+	return 0;
 }
 
 int xocl_ioaddr_to_baroff(xdev_handle_t xdev_hdl, resource_size_t io_addr,
