@@ -7,7 +7,4 @@ install(FILES ReportMemory.py         DESTINATION ${XRT_INSTALL_PYTHON_DIR})
 install(FILES ReportPower.py          DESTINATION ${XRT_INSTALL_PYTHON_DIR})
 install(FILES XBUtil.py               DESTINATION ${XRT_INSTALL_PYTHON_DIR})
 
-install (PROGRAMS 
-  xbtop.py 
-  DESTINATION ${XRT_INSTALL_BIN_DIR}
-  RENAME "xbtop")
+install (PROGRAMS xbtop DESTINATION ${XRT_INSTALL_BIN_DIR})

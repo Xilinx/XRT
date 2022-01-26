@@ -82,8 +82,7 @@ def indented_print(term, lock, buf_list, loc_x, loc_y):
     with lock:
         for i, val in enumerate(buf_list):
             term.location(loc_x, loc_y + i)
-            print(buf_list[i], end='')
-            sys.stdout.flush()
+            print(buf_list[i], flush=True, end='')
 
 def print_section_heading(term, lock, heading, loc_y):
     with lock:
@@ -99,8 +98,7 @@ def clear_rows(term, lock, start_row, num_lines):
     with lock:
         for row in range(start_row, start_row + num_lines):
             term.location(0, row)
-            print(ERASELINE,  end='')
-            sys.stdout.flush()
+            print(ERASELINE,  flush=True, end='')
 
 
 def progress_bar(percent, width=24):
@@ -109,7 +107,7 @@ def progress_bar(percent, width=24):
                 b"\xe2\x96\xaf".decode("utf-8")]
     completed = math.floor(width * (percent / 100))
 
-    bar = fg.green;
+    bar = fg.green
     for index in range(0, width):
         if index < completed:
             bar += segments[0]
@@ -133,7 +131,7 @@ def pad_string(padded_string, padding_width, alignment):
             if len(padded_string) < padding_width :
                 padded_string = " " + padded_string
         if len(padded_string) >= padding_width:
-            break;
+            break
 
     return padded_string
 
