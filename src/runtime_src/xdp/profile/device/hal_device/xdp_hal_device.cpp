@@ -40,20 +40,10 @@ HalDevice::HalDevice(void* halDeviceHandle)
           : Device(),
             mHalDevice(halDeviceHandle)
 {
-//  mXrtDeviceHandle = xrtDeviceOpenFromXcl(mHalDevice);
 }
 
 HalDevice::~HalDevice()
 {
-#if 0
-  if (mXrtDeviceHandle) {
-    xrtDeviceClose(mXrtDeviceHandle);
-    mXrtDeviceHandle = nullptr;
-  }
-  for(auto& e: xrt_bo) {
-    delete e;
-  }
-#endif
 }
 
 std::string HalDevice::getDebugIPlayoutPath()
@@ -137,23 +127,10 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
     return xclBufHandles.size();
   }
 
-//  xrt::bo *bobj = new xrt::bo(mHalDevice, size, flags, memoryIndex);
   auto bobj = xrt::bo(mHalDevice, size, flags, memoryIndex);
   xrt_bo.push_back(bobj);
   mMappedBO.push_back(bobj.map());
   return xrt_bo.size();
-
-#if 0
-  xrtBufferHandle boHandle = xrtBOAlloc(mXrtDeviceHandle, size, flags, memoryIndex);
-  if(nullptr == boHandle) {
-    throw std::bad_alloc();
-  }
-  xrtBufHandles.push_back(boHandle);
-
-  void* ptr = xrtBOMap(boHandle);
-  mMappedBO.push_back(ptr);
-  return xrtBufHandles.size();
-#endif
 }
 
 void HalDevice::free(size_t id)
@@ -165,9 +142,6 @@ void HalDevice::free(size_t id)
     xclFreeBO(mHalDevice, xclBufHandles[boIndex]);
     return;
   }
-
-  // nothing to do
-//  xrtBOFree(xrtBufHandles[boIndex]);
 }
 
 void* HalDevice::map(size_t id)
@@ -194,8 +168,6 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   }
 
   xrt_bo[boIndex].sync(dir, size, offset);
-//  xrt_bo[boIndex]->sync(dir, size, offset);
-//  xrtBOSync(xrtBufHandles[boIndex], dir, size, offset);
 }
 
 uint64_t HalDevice::getDeviceAddr(size_t id)
@@ -209,8 +181,6 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   }
 
   return xrt_bo[boIndex].address();
-//  return xrt_bo[boIndex]->address();
-//  return xrtBOAddress(xrtBufHandles[boIndex]);
 }
 
 double HalDevice::getMaxBwRead()
