@@ -21,7 +21,6 @@
 #include "SubCmdValidate.h"
 #include "SubCmdAdvanced.h"
 #include "SubCmdConfigure.h"
-#include "SubCmdTop.h"
 
 // Supporting tools
 #include "tools/common/XBMain.h"
@@ -46,7 +45,6 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdProgram  >(false, false, false));
     subCommands.emplace_back(std::make_shared<    SubCmdReset  >(false,  false, false));
     subCommands.emplace_back(std::make_shared< SubCmdConfigure >(false,  false, false));
-    subCommands.emplace_back(std::make_shared<      SubCmdTop  >(false,  false, false));
 
 #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     subCommands.emplace_back(std::make_shared< SubCmdValidate >(false,  false, false));

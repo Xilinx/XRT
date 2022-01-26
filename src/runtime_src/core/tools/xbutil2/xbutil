@@ -38,6 +38,7 @@ declare -A LEGACY_COMMANDS=( \
         ["status"]="XBUTIL" \
         ["m2mtest"]="XBUTIL" \
         ["flash"]="XBUTIL" \
+        ["top"]="XBUTIL" \
         ["p2p"]="XBUTIL" \
         ["host_mem"]="XBUTIL" \
         ["scheduler"]="XBUTIL" \

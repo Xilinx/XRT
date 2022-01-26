@@ -272,10 +272,10 @@ value_to_mac_addr(const uint64_t mac_addr_value)
 {
   // Any bits higher than position 48 will be ignored
   // If any are set throw an error as they cannot be placed into the mac address
-  if ((mac_addr_value & 0xFFFF000000000000) != 0){
-    std::string err_msg = boost::str(boost::format("Mac address exceed IP4 maximum value: 0x%1$X") % mac_addr_value);
-    throw std::runtime_error(err_msg);
-  }
+  // if ((mac_addr_value & 0xFFFF000000000000) != 0){
+  //   std::string err_msg = boost::str(boost::format("Mac address exceed IP4 maximum value: 0x%1$X") % mac_addr_value);
+  //   throw std::runtime_error(err_msg);
+  // }
 
   std::string mac_addr = boost::str(boost::format("%02X:%02X:%02X:%02X:%02X:%02X")
                                           % ((mac_addr_value >> (5 * 8)) & 0xFF)
