@@ -278,4 +278,30 @@ XBUtilities::runScript( const std::string & env,
 
   return exitCode;
 }
+
+unsigned int
+XBUtilities::
+runPythonScript(std::vector<std::string>& script_with_args)
+{
+  auto envPath = findEnvPath("python");
+
+  // Execute the python script and capture the outputs
+  boost::process::ipstream ip_stdout;
+  boost::process::ipstream ip_stderr;
+  boost::process::child runningProcess( envPath, 
+                                        script_with_args, 
+                                        boost::process::std_out > ip_stdout,
+                                        boost::process::std_err > ip_stderr);
+  // boost::process::ipstream::rdbuf() gives conversion error in
+  // 1.65.1 Base class is constructed with underlying buffer so just
+  // use std::istream::rdbuf() instead.
+  std::istream& istr_stdout = ip_stdout;
+  std::istream& istr_stderr = ip_stderr;
+
+  // Update the return buffers
+  std::cout << istr_stdout.rdbuf();
+  std::cerr << istr_stderr.rdbuf();
+  
+  return runningProcess.exit_code();
+}
 #endif

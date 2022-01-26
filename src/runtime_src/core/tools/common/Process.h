@@ -31,6 +31,10 @@ namespace XBUtilities {
                std::ostringstream & os_stdout,
                std::ostringstream & os_stderr,
                bool erasePassFailMessage);
+  
+  unsigned int
+    runPythonScript(
+                     std::vector<std::string>& script_with_args);
 };
 
 #endif

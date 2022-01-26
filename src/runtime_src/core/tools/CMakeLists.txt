@@ -10,6 +10,8 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
 endif()
 
+add_subdirectory(xbtop)
+
 install (PROGRAMS "./common/xball" DESTINATION ${XRT_INSTALL_BIN_DIR})
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   if (NOT WIN32)

@@ -23,6 +23,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "SubCmdValidate.cpp"
   "SubCmdAdvanced.cpp"
   "SubCmdConfigure.cpp"
+  "SubCmdTop.cpp"
   "OO_Clock.cpp"
   "OO_MemRead.cpp"
   "OO_MemWrite.cpp"
