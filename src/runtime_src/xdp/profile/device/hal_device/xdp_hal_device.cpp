@@ -128,9 +128,9 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   }
 
   auto bobj = xrt::bo(mHalDevice, size, flags, memoryIndex);
-  xrt_bo.push_back(bobj);
+  xrt_bos.push_back(bobj);
   mMappedBO.push_back(bobj.map());
-  return xrt_bo.size();
+  return xrt_bos.size();
 }
 
 void HalDevice::free(size_t id)
@@ -148,7 +148,8 @@ void* HalDevice::map(size_t id)
 {
   if(!id) return nullptr;
   size_t boIndex = id - 1;
-  return mMappedBO[boIndex];
+  return xrt_bos[boIndex].map();
+//  return mMappedBO[boIndex];
 }
 
 void HalDevice::unmap(size_t)
@@ -167,7 +168,7 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
     return;
   }
 
-  xrt_bo[boIndex].sync(dir, size, offset);
+  xrt_bos[boIndex].sync(dir, size, offset);
 }
 
 uint64_t HalDevice::getDeviceAddr(size_t id)
@@ -180,7 +181,7 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
     return (!xclGetBOProperties(mHalDevice, xclBufHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
   }
 
-  return xrt_bo[boIndex].address();
+  return xrt_bos[boIndex].address();
 }
 
 double HalDevice::getMaxBwRead()
