@@ -1920,14 +1920,14 @@ int xocl_enable_vmr_boot(xdev_handle_t xdev)
 	 */
 	err = xocl_vmr_enable_multiboot(xdev);
 	if (err && err != -ENODEV) {
-		xocl_xdev_warn(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
+		xocl_xdev_info(xdev, "config vmr multi-boot failed. err: %d. continue to reset.", err);
 	} 
 
 	/*
 	 * set reset signal 
 	 */
 	err = xocl_pmc_enable_reset(xdev);
-	if (err && err != ENODEV) {
+	if (err && err != -ENODEV) {
 		xocl_xdev_err(xdev, "config pmc reset register failed. err: %d", err);
 		return err;
 	}
