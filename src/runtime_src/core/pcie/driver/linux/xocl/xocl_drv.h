@@ -2359,7 +2359,8 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
-void xocl_reinit_vmr(xdev_handle_t xdev_hdl);
+int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
+void xocl_reload_vmr(xdev_handle_t xdev_hdl);
 
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);

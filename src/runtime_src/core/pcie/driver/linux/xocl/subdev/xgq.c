@@ -828,6 +828,9 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 			XGQ_ERR(xgq, "need to alloc %d for device data", 
 				fw_result->count);
 			ret = -ENOSPC;
+		} else if (fw_result->count == 0) {
+			XGQ_ERR(xgq, "fw size cannot be zero");
+			ret = -EINVAL;
 		} else {
 			*fw_size = fw_result->count;
 			*fw = vmalloc(*fw_size);
