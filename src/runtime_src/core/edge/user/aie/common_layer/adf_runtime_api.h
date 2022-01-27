@@ -1,3 +1,4 @@
+// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /**
 * Copyright (C) 2021 Xilinx, Inc
 *
@@ -18,6 +19,7 @@
 
 #include "adf_api_config.h"
 #include "adf_api_message.h"
+#include "adf_aie_control_api.h"
 
 #include <queue>
 #include <vector>
@@ -67,6 +69,7 @@ private:
 
     std::vector<XAie_LocType> coreTiles;
     std::vector<XAie_LocType> iterMemTiles;
+    std::vector<int> asyncNotFirstTimePorts; // For AIE2, maintain a list of portIds already configured for asyn RTP
 };
 
 class gmio_api
@@ -82,7 +85,7 @@ public:
     err_code enqueueBD(uint64_t address, size_t size);
 #endif
     err_code wait();
-
+    err_code enqueueTask(std::vector<dma_api::buffer_descriptor> bdParams, uint32_t repeatCount, bool enableTaskCompleteToken);
 private:
     /// GMIO shim DMA physical configuration compiled by the AIE compiler
     const gmio_config* pGMIOConfig;

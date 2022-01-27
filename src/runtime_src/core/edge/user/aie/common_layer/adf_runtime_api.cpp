@@ -1,3 +1,4 @@
+// 67d7842dbbe25473c3c32b93c0da8047785f30d78e8a024de1b57352245f9689
 /**
 * Copyright (C) 2021 Xilinx, Inc
 *
@@ -32,12 +33,14 @@ namespace adf
 /********************************* Statics & Constants *********************************/
 
 static constexpr short INVALID_TILE_COORD = 0xFF;
-
 static constexpr int ACQ_WRITE = 0;
 static constexpr int ACQ_READ = 1;
 static constexpr int REL_READ = 1;
 static constexpr int REL_WRITE = 0;
-
+static constexpr int AIE_ML_REL_WRITE = -1;
+static constexpr int AIE_ML_ASYNC_REL = 1;
+static constexpr int AIE_ML_ASYNC_ACQ = -1; //negative lock value -> acquire_greater_equal
+static constexpr int AIE_ML_ASYNC_ACQ_FIRST_TIME = 0;
 static constexpr unsigned LOCK_TIMEOUT = 0x7FFFFFFF;
 
 
@@ -120,9 +123,11 @@ err_code graph_api::run()
         XAie_SubmitTransaction(config_manager::s_pDevInst, nullptr);
 
         //Trigger event XAIE_EVENT_BROADCAST_A_8_PL in shim_tile at column 0 by writing to Event_Generate. The resources have been acquired by aiecompiler.
+        // In case of multi-partition flow still XAie_TileLoc(0, 0) will be used to generate event trigger, but here (0,0) indicates the relative
+        // tile location i.e. absolute bottom left tile post translation by partition start column is always 0,0.
         XAie_EventGenerate(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, XAIE_EVENT_BROADCAST_A_8_PL);
 
-        // Waiting for 250 cycles to reset the core enable event
+        // Waiting for 150 cycles to reset the core enable event
         unsigned long long StartTime, CurrentTime = 0;
         driverStatus |= XAie_ReadTimer(config_manager::s_pDevInst, XAie_TileLoc(0, 0), XAIE_PL_MOD, (u64*)(&StartTime));
         do {
@@ -385,6 +390,21 @@ err_code graph_api::update(const rtp_config* pRTPConfig, const void* pValue, siz
     int8_t acquireVal = (pRTPConfig->isAsync ? XAIE_LOCK_WITH_NO_VALUE : ACQ_WRITE); //Versal
     int8_t releaseVal = REL_READ; //Versal
 
+    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    {
+        if (pRTPConfig->isAsync)
+        {
+            auto it = std::find (asyncNotFirstTimePorts.begin(), asyncNotFirstTimePorts.end(), pRTPConfig->portId);
+            if (it != asyncNotFirstTimePorts.end())
+                acquireVal = AIE_ML_ASYNC_ACQ;
+            else
+            {
+                acquireVal = AIE_ML_ASYNC_ACQ_FIRST_TIME;
+                asyncNotFirstTimePorts.push_back(pRTPConfig->portId);
+            }
+        }
+    }
+
     ///////////////////////////// RTP update operation //////////////////////////////
 
     infoMsg("Updating RTP value to port " + pRTPConfig->portName);
@@ -488,6 +508,14 @@ err_code graph_api::read(const rtp_config* pRTPConfig, void* pValue, size_t numB
     XAie_LocType selectorTile = XAie_TileLoc(pRTPConfig->selectorColumn, pRTPConfig->selectorRow + numReservedRows + 1);
     XAie_LocType pingTile = XAie_TileLoc(pRTPConfig->pingColumn, pRTPConfig->pingRow + numReservedRows + 1);
     XAie_LocType pongTile = XAie_TileLoc(pRTPConfig->pongColumn, pRTPConfig->pongRow + numReservedRows + 1);
+
+    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) //modification to accommodate AIEML semaphore
+    {
+        if (pRTPConfig->isAsync)
+            acquireVal = AIE_ML_ASYNC_ACQ;
+        else
+            releaseVal = AIE_ML_REL_WRITE;
+    }
 
     ///////////////////////////// RTP read operation //////////////////////////////
 
@@ -631,7 +659,10 @@ err_code gmio_api::enqueueBD(uint64_t address, size_t size)
     driverStatus |= XAie_DmaSetAddrLen(&shimDmaInst, (u64)address, (u32)size);
 #endif
 
-    driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
+    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIEML) // AIEML (note AIE1 XAIE_LOCK_WITH_NO_VALUE is -1, which does not work for AIEML)
+        driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, 0), XAie_LockInit(bdNumber, 0));
+    else
+        driverStatus |= XAie_DmaSetLock(&shimDmaInst, XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE), XAie_LockInit(bdNumber, XAIE_LOCK_WITH_NO_VALUE));
 
     driverStatus |= XAie_DmaEnableBd(&shimDmaInst);
 
@@ -678,6 +709,226 @@ err_code gmio_api::wait()
     }
 
     return err_code::ok;
+}
+
+/************************************ dma_api ************************************/
+
+static uint8_t relativeToAbsoluteRow(int tileType, uint8_t row)
+{
+    uint8_t absoluteRow = row;
+    if (tileType == 0) //aie tile
+        absoluteRow += (1 + config_manager::s_num_reserved_rows);
+    else if (tileType == 2) //memory_tile
+        absoluteRow += 1;
+    return absoluteRow;
+}
+
+err_code dma_api::configureBdWaitQueueEnqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, std::vector<uint8_t> bdIds, std::vector<dma_api::buffer_descriptor> bdParams)
+{
+    int status = (int)err_code::ok;
+
+    if (config_manager::s_pDevInst->DevProp.DevGen == XAIE_DEV_GEN_AIE)
+        return errorMsg(err_code::internal_error, "ERROR: adf::dma_api::enqueueTask: Does not support AIE architecture.");
+
+    if (bdParams.empty())
+        return errorMsg(err_code::internal_error, "ERROR: adf::dma_api::enqueueTask: Empty buffer descriptors.");
+
+    if (bdIds.size() != bdParams.size())
+        return errorMsg(err_code::internal_error, "ERROR: adf::dma_api::enqueueTask: The number of BD IDs and the number of BDs are different.");
+
+    // configure BD
+    for (int i = 0; i < bdParams.size(); i++)
+        status |= (int)configureBD(tileType, column, row, bdIds[i], bdParams[i]);
+
+    //wait task queue
+    status |= (int)waitDMAChannelTaskQueue(tileType, column, row, dir, channel);
+
+    //start queue
+    status |= (int)enqueueTask(tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, bdIds[0]);
+
+    return (err_code)status;
+}
+
+err_code dma_api::configureBD(int tileType, uint8_t column, uint8_t row, uint8_t bdId, const dma_api::buffer_descriptor& bdParam)
+{
+    int driverStatus = XAIE_OK; //0
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "dma_api::configureBD" << std::endl).str());
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    XAie_DmaDesc dmaInst;
+    driverStatus |= XAie_DmaDescInit(config_manager::s_pDevInst, &dmaInst, tileLoc);
+
+    //address, length, stepsize, wrap, 
+    std::vector<XAie_DmaDimDesc> dimDescs;
+    for (int j = 0; j < bdParam.stepsize.size(); j++)
+    {
+        XAie_DmaDimDesc dimDesc;
+        dimDesc.AieMlDimDesc = { bdParam.stepsize[j], ((j < bdParam.wrap.size()) ? bdParam.wrap[j] : 0) };
+        dimDescs.push_back(dimDesc);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "D" << j << " stepsize " << bdParam.stepsize[j] << ", wrap " << ((j < bdParam.wrap.size()) ? bdParam.wrap[j] : 0)).str());
+    }
+    XAie_DmaTensor dims = { (uint8_t)dimDescs.size(), dimDescs.data() };
+    driverStatus |= XAie_DmaSetMultiDimAddr(&dmaInst, &dims, bdParam.address, bdParam.length);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "address " << std::hex << bdParam.address << std::dec << ", length " << bdParam.length).str());
+
+    //zero padding
+    for (int j = 0; j < bdParam.padding.size(); j++)
+    {
+        driverStatus |= XAie_DmaSetZeroPadding(&dmaInst, j, DMA_ZERO_PADDING_BEFORE, bdParam.padding[j].first);
+        driverStatus |= XAie_DmaSetZeroPadding(&dmaInst, j, DMA_ZERO_PADDING_AFTER, bdParam.padding[j].second);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "D" << j << " zero before " << bdParam.padding[j].first << ", zero after " << bdParam.padding[j].second).str());
+    }
+
+    //packet id
+    if (bdParam.enable_packet)
+    {
+        driverStatus |= XAie_DmaSetPkt(&dmaInst, { .PktId = bdParam.packet_id,.PktType = 0 });
+        driverStatus |= XAie_DmaSetOutofOrderBdId(&dmaInst, bdParam.out_of_order_bd_id);
+    }
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "enable packet " << bdParam.enable_packet << ", packet id " << (uint16_t)bdParam.packet_id << ", out_of_order_bd_id " << (uint16_t)bdParam.out_of_order_bd_id).str());
+
+    //tlast suppress
+    if (bdParam.tlast_suppress)
+        driverStatus |= XAie_DmaTlastDisable(&dmaInst);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "tlast suppress " << bdParam.tlast_suppress).str());
+
+    //iteration
+    if (bdParam.iteration_stepsize > 0 || bdParam.iteration_wrap > 0 || bdParam.iteration_current > 0)
+        driverStatus |= XAie_DmaSetBdIteration(&dmaInst, bdParam.iteration_stepsize, bdParam.iteration_wrap, bdParam.iteration_current);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "iteration stepsize " << bdParam.iteration_stepsize << ", iteration wrap " << bdParam.iteration_wrap << ", iteration current " << (uint16_t)bdParam.iteration_current).str());
+
+    //enable compression
+    if (bdParam.enable_compression)
+        driverStatus |= XAie_DmaEnableCompression(&dmaInst);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "enable compression " << bdParam.enable_compression).str());
+
+    //lock
+    if (bdParam.lock_acq_enable)
+        driverStatus |= XAie_DmaSetLock(&dmaInst, XAie_LockInit(bdParam.lock_acq_id, bdParam.lock_acq_value), XAie_LockInit(bdParam.lock_rel_id, bdParam.lock_rel_value));
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "lock_acq_enable " << bdParam.lock_acq_enable << ", lock_acq_id " << (uint16_t)bdParam.lock_acq_id << ", lock_acq_value " << (int)bdParam.lock_acq_value << ", lock_rel_id " << (uint16_t)bdParam.lock_rel_id << ", lock_rel_value " << (int)bdParam.lock_rel_value).str());
+
+    //burst length
+    if (tileLoc.Row == 0) //shim tile
+    {
+        driverStatus |= XAie_DmaSetAxi(&dmaInst, 0 /*Smid*/, bdParam.burst_length /*BurstLen*/, 0 /*Qos*/, 0 /*Cache*/, 0 /*Secure*/);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "burst length " << (uint16_t)bdParam.burst_length).str());
+    }
+
+    //next bd
+    if (bdParam.use_next_bd)
+    {
+        driverStatus |= XAie_DmaSetNextBd(&dmaInst, bdParam.next_bd, XAIE_ENABLE);
+        debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "next bd " << (uint16_t)bdParam.next_bd).str());
+    }
+
+    //valid bd
+    driverStatus |= XAie_DmaEnableBd(&dmaInst);
+
+    //write bd
+    driverStatus |= XAie_DmaWriteBd(config_manager::s_pDevInst, &dmaInst, tileLoc, bdId);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaWriteBd " << (uint16_t)bdId << std::endl).str());
+
+    // Update status after using AIE driver
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::configureBD: AIE driver error.");
+
+    return err_code::ok;
+}
+
+err_code dma_api::enqueueTask(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+{
+    int driverStatus = XAIE_OK; //0
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+
+    //start queue
+    driverStatus |= XAie_DmaChannelSetStartQueue(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, startBdId, repeatCount, enableTaskCompleteToken);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_DmaChannelSetStartQueue " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir
+        << ", startBD " << (uint16_t)startBdId << ", repeat count " << repeatCount << ", enable task complete token " << enableTaskCompleteToken << std::endl).str());
+
+    // Update status after using AIE driver
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::enqueueTask: AIE driver error.");
+
+    return err_code::ok;
+}
+
+err_code dma_api::waitDMAChannelTaskQueue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+    int driverStatus = XAIE_OK; //0
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_DmaGetPendingBdCount " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir << std::endl).str());
+
+    u8 numPendingBDs = 4;
+    while (numPendingBDs > 3)
+    {
+        //FIXME this driver API plus one if there is a BD running, what's needed us just the queue size register
+        driverStatus |= XAie_DmaGetPendingBdCount(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, &numPendingBDs);
+    }
+
+    // Update status after using AIE driver
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::waitDMAChannelTaskQueue: AIE driver error.");
+
+    return err_code::ok;
+}
+
+err_code dma_api::waitDMAChannelDone(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+    int driverStatus = XAIE_OK; //0
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_DmaWaitForDone " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row << ", channel " << (uint16_t)channel << ", dir " << dir << std::endl).str());
+
+    while (XAie_DmaWaitForDone(config_manager::s_pDevInst, tileLoc, channel, (XAie_DmaDirection)dir, 0) != XAIE_OK) {}
+
+    // Update status after using AIE driver
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::dma_api::waitDMAChannelDone: AIE driver error.");
+
+    return err_code::ok;
+}
+
+/************************************ lock_api ************************************/
+
+err_code lock_api::initializeLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+{
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    int driverStatus = XAie_LockSetValue(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, initVal));
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockSetValue " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
+        << ", lock id " << lockId << ", value " << (uint16_t)initVal << std::endl).str());
+
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::lock_api::initializeLock: AIE driver error.");
+    else
+        return err_code::ok;
+}
+
+err_code lock_api::acquireLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+{
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "To call XAie_LockAcquire " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
+        << ", lock id " << lockId << ", acquire value " << (uint16_t)acqVal << std::endl).str());
+    int driverStatus = XAie_LockAcquire(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, acqVal), LOCK_TIMEOUT);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockAcquire " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
+        << ", lock id " << lockId << ", acquire value " << (uint16_t)acqVal << std::endl).str());
+
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::lock_api::acquireLock: XAieTile_LockAcquire timeout or AIE driver error.");
+    else
+        return err_code::ok;
+}
+
+err_code lock_api::releaseLock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+{
+    XAie_LocType tileLoc = XAie_TileLoc(column, relativeToAbsoluteRow(tileType, row));
+    int driverStatus = XAie_LockRelease(config_manager::s_pDevInst, tileLoc, XAie_LockInit(lockId, relVal), LOCK_TIMEOUT);
+    debugMsg(static_cast<std::stringstream &&>(std::stringstream() << "XAie_LockRelease " << "col " << (uint16_t)tileLoc.Col << ", row " << (uint16_t)tileLoc.Row
+        << ", lock id " << lockId << ", release value " << (uint16_t)relVal << std::endl).str());
+
+    if (driverStatus != AieRC::XAIE_OK)
+        return errorMsg(err_code::aie_driver_error, "ERROR: adf::lock_api::releaseLock: AIE driver error.");
+    else
+        return err_code::ok;
 }
 
 }
