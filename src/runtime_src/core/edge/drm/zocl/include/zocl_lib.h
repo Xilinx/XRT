@@ -22,6 +22,8 @@ void __iomem *zlib_map_res(struct device *dev, struct resource *res, u64 *startp
 void __iomem *zlib_map_res_by_id(struct platform_device *pdev, int id, u64 *startp, size_t *szp);
 void __iomem *zlib_map_res_by_name(struct platform_device *pdev,
 				   const char *name, u64 *startp, size_t *szp);
+void __iomem *zlib_map_phandle_res_by_name(struct platform_device *pdev,
+					   const char *name, u64 *startp, size_t *szp);
 int zlib_create_subdev(struct device *dev, const char *devname, struct resource *res, size_t nres,
 		       void *info, size_t info_size, struct platform_device **pdevp);
 void zlib_destroy_subdev(struct platform_device *pdev);

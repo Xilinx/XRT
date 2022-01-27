@@ -44,9 +44,23 @@ void __iomem *zlib_map_res_by_id(struct platform_device *pdev, int id, u64 *star
 	return zlib_map_res(dev, res, startp, szp);
 }
 
-
 void __iomem *zlib_map_res_by_name(struct platform_device *pdev,
 				   const char *name, u64 *startp, size_t *szp)
+{
+	struct device *dev = &pdev->dev;
+	struct resource *res = platform_get_resource_byname(pdev, IORESOURCE_MEM, name);
+
+	if (!res) {
+		zocl_err(dev, "failed to find resource (%s)", name);
+		return NULL;
+	}
+	zocl_info(dev, "Found resource (%s): %pR", name, res);
+
+	return zlib_map_res(dev, res, startp, szp);
+}
+
+void __iomem *zlib_map_phandle_res_by_name(struct platform_device *pdev,
+					   const char *name, u64 *startp, size_t *szp)
 {
 	int ret = -EINVAL;
 	struct resource res = {};
