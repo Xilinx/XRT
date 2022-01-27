@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,6 +34,7 @@
 #include <map>
 #include <string>
 #include <sys/syscall.h>
+#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -126,6 +127,120 @@ struct bdf
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
+};
+
+struct sdm_sensor_info
+{
+  using result_type = query::sdm_sensor_info::result_type;
+  using data_type = query::sdm_sensor_info::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type, const boost::any& reqType)
+  {
+    const auto req_type = boost::any_cast<query::sdm_sensor_info::req_type>(reqType);
+    auto pdev = get_pcidev(device);
+    std::string parent_path = pdev->get_sysfs_path("", "hwmon");
+    result_type output;
+    std::string errmsg;
+    std::string path;
+    bool found = false;
+
+    boost::filesystem::path render_dirs(parent_path);
+    if (boost::filesystem::is_directory(render_dirs)) {
+      boost::filesystem::recursive_directory_iterator end_iter;
+      for(boost::filesystem::recursive_directory_iterator iter(render_dirs); iter != end_iter; ++iter) {
+        std::string name;
+        std::string f_name = iter->path().filename().string();
+        if (boost::filesystem::is_directory(iter->path()) && boost::algorithm::starts_with(f_name, "hwmon")) {
+          path = "hwmon/" + f_name;
+          pdev->sysfs_get("", path + "/name", errmsg, name);
+          if (errmsg.empty()) {
+            if (boost::algorithm::contains(name, "xilinx_vck5000_gen4x8_xdma_base_1"))
+            {
+              found = true;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    if (!found) {
+      return output;
+    }
+
+    int input;
+    std::string label;
+    data_type data;
+
+    std::string start[5] = {"curr", "in", "power", "temp", "fan"};
+    std::string end[5] = {"label", "input", "max", "average", "highest"};
+    std::string underscore = "_";
+    std::string slash = "/";
+    int sid = 0;
+    std::vector<int> target_sysfs;
+
+    switch(req_type) {
+      case CURRENT_REQ:
+      case VOLTAGE_REQ:
+      case POWER_REQ:
+      case THERMAL_REQ: //thermal means temp readings
+      case MECHANICAL_REQ: //mechanical means fan readings
+        target_sysfs.push_back(req_type);
+        break;
+      case ELECTRICAL_REQ: //electrical combines curr + volt + power readings
+        target_sysfs.push_back(0);
+        target_sysfs.push_back(1);
+        target_sysfs.push_back(2);
+        break;
+    }
+
+    for (size_t i = 0; i < target_sysfs.size(); i++) {
+      sid = target_sysfs[i];
+      bool next_id = false;
+      int start_id = 1;
+      int end_id = 0;
+      std::string type = start[sid];
+
+      if (!strcmp(type.c_str(), "in"))
+        start_id = 0;
+
+      while (!next_id) {
+        end_id = 0;
+        data.label = "N/A";
+        data.input = -1;
+        data.max = -1;
+        data.average = -1;
+        data.highest = -1;
+        std::string tmp = type + std::to_string(start_id);
+        while (end_id < 5) {
+          if (end_id == 0) {
+	    pdev->sysfs_get("", path + slash + tmp + underscore + end[end_id], errmsg, label);
+	    if (errmsg.empty()) {
+                  data.label = label;
+	    } else {
+		  //go and read next sysfs node
+                  next_id = true;
+		  end_id = 5;
+	    }
+          } else {
+	    pdev->sysfs_get<int>("", path + slash + tmp + underscore + end[end_id], errmsg, input, EINVAL);
+	    if (errmsg.empty()) {
+                  if (end_id == 1) data.input = input;
+                  else if (end_id == 2) data.max = input;
+                  else if (end_id == 3) data.average = input;
+                  else if (end_id == 4) data.highest = input;
+	    }
+          }
+          end_id++;
+        } //while(end_id)
+        if (strcmp((data.label).c_str(), "N/A"))
+          output.push_back(data);
+        start_id++;
+      } //while (!next_id)
+   } //for()
+    return output;
+  } //get()
 };
 
 struct kds_cu_info
@@ -848,7 +963,6 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
-  emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
@@ -857,6 +971,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,                    lapc_status>();
   emplace_func4_request<query::spc_status,                     spc_status>();
   emplace_func4_request<query::accel_deadlock_status,          accel_deadlock_status>();
+  emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
 }
 
 struct X { X() { initialize_query_table(); }};

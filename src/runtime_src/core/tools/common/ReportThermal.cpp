@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -23,16 +23,16 @@
 #include <boost/property_tree/json_parser.hpp>
 
 void
-ReportThermal::getPropertyTreeInternal( const xrt_core::device * _pDevice, 
+ReportThermal::getPropertyTreeInternal( const xrt_core::device * _pDevice,
                                               boost::property_tree::ptree &_pt) const
 {
-  // Defer to the 20202 format.  If we ever need to update JSON data, 
+  // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
   getPropertyTree20202(_pDevice, _pt);
 }
 
-void 
-ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice, 
+void
+ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice,
                                            boost::property_tree::ptree &_pt) const
 {
   xrt::device device(_pDevice->get_device_id());
@@ -41,9 +41,9 @@ ReportThermal::getPropertyTree20202( const xrt_core::device * _pDevice,
   boost::property_tree::read_json(ss, _pt);
 }
 
-void 
+void
 ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
-                            const boost::property_tree::ptree& _pt, 
+                            const boost::property_tree::ptree& _pt,
                             const std::vector<std::string>& /*_elementsFilter*/,
                             std::ostream & _output) const
 {
@@ -53,16 +53,22 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << "Thermals\n";
   const boost::property_tree::ptree& thermals = _pt.get_child("thermals", empty_ptree);
 
+  _output << boost::format("  %-23s: %6s\n") % "Temperature" % "Celcius";
   for(auto& kv : thermals) {
     const boost::property_tree::ptree& pt_temp = kv.second;
-    if(!pt_temp.get<bool>("is_present", false))
-      continue;
+    if(pt_temp.get<bool>("data_driven", false)) {
+      thermals_present = true;
+      _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("label") % pt_temp.get<std::string>("instantaneous");
+    } else {
+      if(!pt_temp.get<bool>("is_present", false))
+        continue;
 
-    thermals_present = true;
-    _output << boost::format("  %-23s: %s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
+      thermals_present = true;
+      _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
+    }
   }
 
-  if(!thermals_present) 
+  if(!thermals_present)
     _output << "  No temperature sensors are present" << std::endl;
 
   _output << std::endl;

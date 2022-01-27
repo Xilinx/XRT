@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,16 @@
 #include <boost/format.hpp>
 
 struct debug_ip_data;
+
+enum sdr_req_type
+{
+  CURRENT_REQ     = 0,
+  VOLTAGE_REQ     = 1,
+  POWER_REQ       = 2,
+  THERMAL_REQ     = 3,
+  MECHANICAL_REQ  = 4,
+  ELECTRICAL_REQ  = 5,
+};
 
 namespace xrt_core {
 
@@ -82,6 +92,7 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
   xocl_errors,
@@ -818,6 +829,24 @@ struct debug_ip_layout_raw : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct sdm_sensor_info : request
+{
+  struct data {
+    std::string label;
+    int input;
+    int max;
+    int average;
+    int highest;
+  };
+  using result_type = std::vector<struct data>;
+  using req_type = int; //Identifies the type of sensor request.
+  using data_type = struct data;
+  static const key_type key = key_type::sdm_sensor_info;
+
+  virtual boost::any
+  get(const device*, const boost::any& req_type) const = 0;
 };
 
 struct kds_cu_info : request
