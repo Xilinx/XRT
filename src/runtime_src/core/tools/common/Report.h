@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -57,7 +57,7 @@ class Report {
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
 
-  void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  bool getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Child methods that need to be implemented
  protected:

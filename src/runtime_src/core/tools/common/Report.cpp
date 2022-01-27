@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -69,7 +69,7 @@ Report::Report(const std::string & _reportName,
 }
 
 
-void 
+bool 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
                             SchemaVersion schemaVersion,
                             const std::vector<std::string> & elementFilter,
@@ -101,6 +101,7 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
     }
 
     std::cerr << "  ERROR: " << e.what() << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
+    return false;
   }
+  return true;
 }
