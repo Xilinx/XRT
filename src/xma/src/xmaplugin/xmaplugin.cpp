@@ -467,44 +467,12 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
         lk.unlock();
         itr++;
     }
-
-    // Setup ert_start_kernel_cmd 
-    ert_start_kernel_cmd *cu_cmd = 
-        (ert_start_kernel_cmd*)priv1->kernel_execbos[bo_idx].data;
-    cu_cmd->state = ERT_CMD_STATE_NEW;
-    if (kernel_tmp1->soft_kernel) {
-        cu_cmd->opcode = ERT_SK_START;
-    } else {
-        cu_cmd->opcode = ERT_START_CU;
-    }
-    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
-
-    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
-
-    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
-    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
-    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+            
+    priv1->kernel_execbos[bo_idx].xrt_run =  xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+    ert_start_kernel_cmd* cu_cmd =
+        reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
-    memcpy(&cu_cmd->data[3], src, regmap_size);
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
-
-    if (kernel_tmp1->arg_start > 0) {
-        //uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start / 4);
-        uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start >> 2);
-        for (uint32_t i = 3; i < tmp_int1; i++) {
-            cu_cmd->data[i] = 0;
-        }
-    }
-
-    if (kernel_tmp1->kernel_channels) {
-        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
-        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
-        cu_cmd->data[8] = 0;//clear out the output
-        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d", s_handle.channel_id);
-    }
-    
-    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
-    cu_cmd->count = (regmap_size >> 2) + 4;
+    memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
 
     //With KDS2.0 ensure no outstanding command
     if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
@@ -515,25 +483,25 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
     }
 
     if (priv1->num_cu_cmds != 0) {
-#ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-	/* This is no longer supported by new KDS implementation. */
-        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
-                        priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                        "Failed to submit kernel start with xclExecBuf");
-            priv1->execbo_locked = false;
-            if (return_code) *return_code = XMA_ERROR;
-            return cmd_obj_error;
-        }
+//#ifdef __GNUC__
+//# pragma GCC diagnostic push
+//# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+//#endif
+//	/* This is no longer supported by new KDS implementation. */
+//        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
+//                        priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
+//#ifdef __GNUC__
+//# pragma GCC diagnostic pop
+//#endif
+//            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+//                        "Failed to submit kernel start with xclExecBuf");
+//            priv1->execbo_locked = false;
+//            if (return_code) *return_code = XMA_ERROR;
+//            return cmd_obj_error;
+//        }
     } else {
         try {
-            priv1->dev_handle.get_handle()->exec_buf(priv1->kernel_execbos[bo_idx].handle);
+            priv1->kernel_execbos[bo_idx].xrt_run.start();//start Kernel
         }
         catch (const xrt_core::system_error&) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
@@ -543,7 +511,6 @@ XmaCUCmdObj xma_plg_schedule_work_item(XmaSession s_handle,
             return cmd_obj_error;
         }
     }
-    priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
     cmd_obj_default(cmd_obj);
@@ -710,43 +677,12 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
         itr++;
     }
 
-    // Setup ert_start_kernel_cmd 
-    ert_start_kernel_cmd *cu_cmd = 
-        (ert_start_kernel_cmd*)priv1->kernel_execbos[bo_idx].data;
-    cu_cmd->state = ERT_CMD_STATE_NEW;
-    if (kernel_tmp1->soft_kernel) {
-        cu_cmd->opcode = ERT_SK_START;
-    } else {
-        cu_cmd->opcode = ERT_START_CU;
-    }
-    cu_cmd->extra_cu_masks = 3;//XMA now supports 128 CUs
-
-    cu_cmd->cu_mask = kernel_tmp1->cu_mask0;
-
-    cu_cmd->data[0] = kernel_tmp1->cu_mask1;
-    cu_cmd->data[1] = kernel_tmp1->cu_mask2;
-    cu_cmd->data[2] = kernel_tmp1->cu_mask3;
+    priv1->kernel_execbos[bo_idx].xrt_run = xrt::run(priv1->kernel_execbos[bo_idx].xrt_kernel);
+    ert_start_kernel_cmd* cu_cmd =
+        reinterpret_cast<ert_start_kernel_cmd*>(priv1->kernel_execbos[bo_idx].xrt_run.get_ert_packet());
     // Copy reg_map into execBO buffer 
-    memcpy(&cu_cmd->data[3], src, regmap_size);
-    xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "Dev# %d; Kernel: %s; Regmap size used is: %d", dev_tmp1->dev_index, kernel_tmp1->name, regmap_size);
+    memcpy(&cu_cmd->data + cu_cmd->extra_cu_masks, src, regmap_size);
 
-    if (kernel_tmp1->arg_start > 0) {
-        //uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start / 4);
-        uint32_t tmp_int1 = 3 + (kernel_tmp1->arg_start >> 2);
-        for (uint32_t i = 3; i < tmp_int1; i++) {
-            cu_cmd->data[i] = 0;
-        }
-    }
-    if (kernel_tmp1->kernel_channels) {
-        // XMA will write @ 0x10 and XRT read @ 0x14 to generate interupt and capture in execbo
-        cu_cmd->data[7] = s_handle.channel_id;//0x10 == 4th integer;
-        cu_cmd->data[8] = 0;//clear out the output
-        xma_logmsg(XMA_DEBUG_LOG, XMAPLUGIN_MOD, "This is dataflow kernel. Using channel id: %d", s_handle.channel_id);
-    }
-    
-    // Set count to size in 32-bit words + 4; Three extra_cu_mask are present
-    cu_cmd->count = (regmap_size >> 2) + 4;
-    
     //With KDS2.0 ensure no outstanding command
     if (priv1->num_cu_cmds != 0 && !g_xma_singleton->kds_old) {
         xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD, "Session id: %d, type: %s. Unexpected error. Outstanding cmd found.", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str());
@@ -756,25 +692,25 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
     }
 
     if (priv1->num_cu_cmds != 0) {
-#ifdef __GNUC__
-# pragma GCC diagnostic push
-# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-	/* This is no longer supported by new KDS implementation. */
-        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
-                        priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
-#ifdef __GNUC__
-# pragma GCC diagnostic pop
-#endif
-            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
-                        "Failed to submit kernel start with xclExecBuf");
-            priv1->execbo_locked = false;
-            if (return_code) *return_code = XMA_ERROR;
-            return cmd_obj_error;
-        }
+//#ifdef __GNUC__
+//# pragma GCC diagnostic push
+//# pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+//#endif
+//	/* This is no longer supported by new KDS implementation. */
+//        if (xclExecBufWithWaitList(priv1->dev_handle.get_handle()->get_device_handle(),
+//                        priv1->kernel_execbos[bo_idx].handle, 1, &priv1->last_execbo_handle) != 0) {
+//#ifdef __GNUC__
+//# pragma GCC diagnostic pop
+//#endif
+//            xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
+//                        "Failed to submit kernel start with xclExecBuf");
+//            priv1->execbo_locked = false;
+//            if (return_code) *return_code = XMA_ERROR;
+//            return cmd_obj_error;
+//        }
     } else {
         try {
-            priv1->dev_handle.get_handle()->exec_buf(priv1->kernel_execbos[bo_idx].handle);
+            priv1->kernel_execbos[bo_idx].xrt_run.start();//start Kernel
         }
         catch (const xrt_core::system_error&) {
             xma_logmsg(XMA_ERROR_LOG, XMAPLUGIN_MOD,
@@ -784,7 +720,6 @@ XmaCUCmdObj xma_plg_schedule_cu_cmd(XmaSession s_handle,
             return cmd_obj_error;
         }
     }
-    priv1->last_execbo_handle = priv1->kernel_execbos[bo_idx].handle;
 
     XmaCUCmdObj cmd_obj;
     cmd_obj_default(cmd_obj);

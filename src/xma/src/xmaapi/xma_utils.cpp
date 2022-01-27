@@ -64,8 +64,8 @@ namespace xma_core {
         { ert_cmd_state::ERT_CMD_STATE_MAX, "MAX"}
     };
 
-    std::string get_cu_cmd_state(ert_start_kernel_cmd *cu_cmd) {
-        auto it = cu_cmdMap.find((ert_cmd_state)cu_cmd->state);
+    std::string get_cu_cmd_state(ert_cmd_state state) {
+        auto it = cu_cmdMap.find(state);
         if (it == cu_cmdMap.end()) {
             return std::string("invalid");
         }
@@ -109,22 +109,15 @@ namespace xma_core {
     }
 
     int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, const std::string& prefix) {
-        for (int32_t d = 0; d < count; d++) {
-            xclBufferHandle  bo_handle = 0;
-            int       execBO_size = MAX_EXECBO_BUFF_SIZE;
-            char     *bo_data;
-            bo_handle = priv->dev_handle.get_handle()->alloc_bo(execBO_size, XCL_BO_FLAGS_EXECBUF);
-            if (!bo_handle || bo_handle == NULLBO)
-            {
-                xma_logmsg(XMA_ERROR_LOG, prefix.c_str(), "Initalization of plugin failed. Failed to alloc execbo");
-                return XMA_ERROR;
-            }
-            bo_data = reinterpret_cast<char*>(priv->dev_handle.get_handle()->map_bo(bo_handle, true));
-            memset((void*)bo_data, 0x0, execBO_size);
+        for (int32_t d = 0; d < count; d++) {  
             priv->kernel_execbos.emplace_back(XmaHwExecBO{});
             XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
-            dev_execbo.handle = bo_handle;
-            dev_execbo.data = bo_data;
+            std::string cu_name = std::string(reinterpret_cast<char*>(priv->kernel_info->name));
+            int pos = cu_name.find(":");
+            std::string kernel_name = cu_name.substr(0, pos);
+            std::string inst_name = cu_name.substr(pos + 1);
+            std::string updated_cu_name = kernel_name + ":{" + inst_name + "}";
+            dev_execbo.xrt_kernel = xrt::kernel(priv->dev_handle, priv->dev_handle.get_xclbin_uuid(), updated_cu_name);
         }
         return XMA_SUCCESS;
     }
@@ -550,46 +543,51 @@ int32_t check_all_execbo(XmaSession s_handle) {
             for (i = 0; i < num_execbo; i++) {
                 auto& ebo = priv1->kernel_execbos[i];
                 if (ebo.in_use) {
-                    ert_start_kernel_cmd *cu_cmd = 
-                        (ert_start_kernel_cmd*)ebo.data;
-                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                    ert_start_kernel_cmd * cu_cmd_pkt =
+                        reinterpret_cast<ert_start_kernel_cmd*>(ebo.xrt_run.get_ert_packet());// only for PS Kernels, will be removed after PS kernel migration to xrt::kernel   
+                    if (!cu_cmd_pkt) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "check_all_execbo : Invalid ert_start_kernel_cmd\n");
+                        return XMA_ERROR;
+                    }
+                    auto cu_state = ebo.xrt_run.state();
+                    if (cu_state == ERT_CMD_STATE_COMPLETED) {
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
                         }
                         notify_execbo_is_free = true;
                         ebo.in_use = false;
-                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        //cu_cmd->state = ERT_CMD_STATE_MAX;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         priv1->num_cu_cmds--;
-                    } else if (cu_cmd->state == ERT_CMD_STATE_SKERROR) {
+                    } else if (cu_state == ERT_CMD_STATE_SKERROR) {
                         //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd->return_code);
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd_pkt->return_code);
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
                         }
                         notify_execbo_is_free = true;
                         ebo.in_use = false;
-                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        //cu_cmd->state = ERT_CMD_STATE_MAX;
                         auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         itr_tmp1.first->second.cmd_finished = true;
-                        itr_tmp1.first->second.return_code = cu_cmd->return_code;
+                        itr_tmp1.first->second.return_code = cu_cmd_pkt->return_code;
                         itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
                         priv1->num_cu_cmds--;
-                    } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
-                    	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
-                    	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
-                    	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
+                    } else if (cu_state == ERT_CMD_STATE_ERROR ||
+                        cu_state == ERT_CMD_STATE_ABORT ||
+                        cu_state == ERT_CMD_STATE_TIMEOUT ||
+                        cu_state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_state).c_str());
                         std::string err_tmp("XMA FATAL: Session id: ");
                         err_tmp.append(std::to_string(s_handle.session_id));
                         err_tmp.append(", type: ");
                         err_tmp.append(xma_core::get_session_name(s_handle.session_type));
                         err_tmp.append("; Unexpected ERT_CMD_STATE. state=");
-                        err_tmp.append(xma_core::get_cu_cmd_state(cu_cmd));
+                        err_tmp.append(xma_core::get_cu_cmd_state(cu_state));
                         throw std::runtime_error(err_tmp);
                     }
                 }
@@ -610,24 +608,29 @@ int32_t check_all_execbo(XmaSession s_handle) {
                 int32_t val = *ebo_it;
                 auto& ebo = priv1->kernel_execbos[val];
                 if (ebo.in_use) {
-                    ert_start_kernel_cmd *cu_cmd = 
-                        (ert_start_kernel_cmd*)ebo.data;
-                    if (cu_cmd->state == ERT_CMD_STATE_COMPLETED) {
+                    ert_start_kernel_cmd *cu_cmd_pkt = 
+                        reinterpret_cast<ert_start_kernel_cmd*>(ebo.xrt_run.get_ert_packet());// only for PS Kernels, will be removed after PS kernel migration to xrt::kernel 
+                    if (!cu_cmd_pkt) {
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "check_all_execbo : Invalid ert_start_kernel_cmd\n");
+                        return XMA_ERROR;
+                    }
+                    auto cu_state = ebo.xrt_run.state();                    
+                    if (cu_state == ERT_CMD_STATE_COMPLETED) {
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
                         }
                         ebo.in_use = false;
-                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        //cu_cmd->state = ERT_CMD_STATE_MAX;
                         notify_work_item_done_1plus = true;
                         notify_execbo_is_free = true;
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         priv1->num_cu_cmds--;
                         //priv1->execbo_lru.emplace_back(val);Let's not reuse execbo immediately after completion
                         ebo_it = priv1->execbo_to_check.erase(ebo_it);
-                    } else if (cu_cmd->state == ERT_CMD_STATE_SKERROR) {
+                    } else if (cu_state == ERT_CMD_STATE_SKERROR) {
                         //If PS Kernel error, add cmd obj to CU_error_cmds map; Right now this is only for PS Kernels
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd->return_code);
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, PS Kernel error code: %d", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), cu_cmd_pkt->return_code);
                         if (s_handle.session_type < XMA_ADMIN) {
                             priv1->kernel_complete_count++;
                             priv1->kernel_complete_total++;
@@ -635,26 +638,26 @@ int32_t check_all_execbo(XmaSession s_handle) {
                         notify_execbo_is_free = true;
                         notify_work_item_done_1plus = true;
                         ebo.in_use = false;
-                        cu_cmd->state = ERT_CMD_STATE_MAX;
+                        //cu_cmd->state = ERT_CMD_STATE_MAX;
                         auto itr_tmp1 = priv1->CU_error_cmds.emplace(ebo.cu_cmd_id1, std::move(priv1->CU_cmds[ebo.cu_cmd_id1]));
                         priv1->CU_cmds.erase(ebo.cu_cmd_id1);
                         itr_tmp1.first->second.cmd_finished = true;
-                        itr_tmp1.first->second.return_code = cu_cmd->return_code;
+                        itr_tmp1.first->second.return_code = cu_cmd_pkt->return_code;
                         itr_tmp1.first->second.cmd_state = xma_cmd_state::psk_error;
                         priv1->num_cu_cmds--;
                         ebo_it = priv1->execbo_to_check.erase(ebo_it);
-                    } else if (cu_cmd->state == ERT_CMD_STATE_ERROR ||
-                    	       cu_cmd->state == ERT_CMD_STATE_ABORT ||
-                    	       cu_cmd->state == ERT_CMD_STATE_TIMEOUT ||
-                    	       cu_cmd->state >= ERT_CMD_STATE_NORESPONSE) {
+                    } else if (cu_state == ERT_CMD_STATE_ERROR || 
+                        cu_state == ERT_CMD_STATE_ABORT ||
+                        cu_state == ERT_CMD_STATE_TIMEOUT ||
+                        cu_state >= ERT_CMD_STATE_NORESPONSE) {
                         //Check for invalid/error execo state
-                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_cmd).c_str());
+                        xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Session id: %d, type: %s, Unexpected ERT_CMD_STATE. state=%s", s_handle.session_id, xma_core::get_session_name(s_handle.session_type).c_str(), xma_core::get_cu_cmd_state(cu_state).c_str());
                         std::string err_tmp("XMA FATAL: Session id: ");
                         err_tmp.append(std::to_string(s_handle.session_id));
                         err_tmp.append(", type: ");
                         err_tmp.append(xma_core::get_session_name(s_handle.session_type));
                         err_tmp.append("; Unexpected ERT_CMD_STATE. state=");
-                        err_tmp.append(xma_core::get_cu_cmd_state(cu_cmd));
+                        err_tmp.append(xma_core::get_cu_cmd_state(cu_state));
                         throw std::runtime_error(err_tmp);
                     } else {
                         ebo_it++;
