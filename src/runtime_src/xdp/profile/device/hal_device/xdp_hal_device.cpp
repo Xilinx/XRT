@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -40,15 +40,10 @@ HalDevice::HalDevice(void* halDeviceHandle)
           : Device(),
             mHalDevice(halDeviceHandle)
 {
-  mXrtDeviceHandle = xrtDeviceOpenFromXcl(mHalDevice);
 }
 
 HalDevice::~HalDevice()
 {
-  if (mXrtDeviceHandle) {
-    xrtDeviceClose(mXrtDeviceHandle);
-    mXrtDeviceHandle = nullptr;
-  }
 }
 
 std::string HalDevice::getDebugIPlayoutPath()
@@ -120,47 +115,20 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  if(xdp::isEdge()) {
-    xclBufferHandle boHandle = xclAllocBO(mHalDevice, size, 0, flags);
-    if(NULLBO == boHandle) {
-      throw std::bad_alloc();
-    }
-    xclBufHandles.push_back(boHandle);
-
-    void* ptr = xclMapBO(mHalDevice, boHandle, true /* write */);
-    mMappedBO.push_back(ptr);
-    return xclBufHandles.size();
-  }
-
-  xrtBufferHandle boHandle = xrtBOAlloc(mXrtDeviceHandle, size, flags, memoryIndex);
-  if(nullptr == boHandle) {
-    throw std::bad_alloc();
-  }
-  xrtBufHandles.push_back(boHandle);
-
-  void* ptr = xrtBOMap(boHandle);
-  mMappedBO.push_back(ptr);
-  return xrtBufHandles.size();
+  xrt_bos.push_back(xrt::bo(mHalDevice, size, flags, memoryIndex));
+  return xrt_bos.size();
 }
 
-void HalDevice::free(size_t id)
+void HalDevice::free(size_t)
 {
-  if(!id) return;
-  size_t boIndex = id - 1;
-
-  if(xdp::isEdge()) {
-    xclFreeBO(mHalDevice, xclBufHandles[boIndex]);
-    return;
-  }
-
-  xrtBOFree(xrtBufHandles[boIndex]);
+  return;
 }
 
 void* HalDevice::map(size_t id)
 {
   if(!id) return nullptr;
   size_t boIndex = id - 1;
-  return mMappedBO[boIndex];
+  return xrt_bos[boIndex].map();
 }
 
 void HalDevice::unmap(size_t)
@@ -174,12 +142,7 @@ void HalDevice::sync(size_t id, size_t size, size_t offset, direction d, bool )
   size_t boIndex = id - 1;
   xclBOSyncDirection dir = (d == direction::DEVICE2HOST) ? XCL_BO_SYNC_BO_FROM_DEVICE : XCL_BO_SYNC_BO_TO_DEVICE;
 
-  if(xdp::isEdge()) {
-    xclSyncBO(mHalDevice, xclBufHandles[boIndex], dir, size, offset);
-    return;
-  }
-
-  xrtBOSync(xrtBufHandles[boIndex], dir, size, offset);
+  xrt_bos[boIndex].sync(dir, size, offset);
 }
 
 uint64_t HalDevice::getDeviceAddr(size_t id)
@@ -187,12 +150,7 @@ uint64_t HalDevice::getDeviceAddr(size_t id)
   if(!id) return 0;
   size_t boIndex = id - 1;
 
-  if(xdp::isEdge()) {
-    xclBOProperties p;
-    return (!xclGetBOProperties(mHalDevice, xclBufHandles[boIndex], &p)) ? p.paddr : ((uint64_t)-1);
-  }
-
-  return xrtBOAddress(xrtBufHandles[boIndex]);
+  return xrt_bos[boIndex].address();
 }
 
 double HalDevice::getMaxBwRead()

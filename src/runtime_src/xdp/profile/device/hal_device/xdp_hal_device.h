@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,29 +20,15 @@
 
 #include<vector>
 #include "core/include/xrt.h"
-#include "core/include/experimental/xrt_bo.h"
+#include "core/include/xrt/xrt_bo.h"
 #include "xdp/profile/device/xdp_base_device.h"
 
 namespace xdp {
 
-#if 0
-  union BufferHandleStoreType {
-    std::vector<xrtBufferHandle> xrtBufHandles;
-    std::vector<xclBufferHandle> xclBufHandles;
-
-    BufferHandleStoreType() {}
-    ~BufferHandleStoreType() {}
-  };
-#endif
-
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
-  xrtDeviceHandle mXrtDeviceHandle;
-  std::vector<void*>  mMappedBO;
-  std::vector<xrtBufferHandle> xrtBufHandles;
-  std::vector<xclBufferHandle> xclBufHandles;
-//  BufferHandleStoreType mBufHandleStore;
+  std::vector<xrt::bo> xrt_bos;
 
 public:
   HalDevice(void* halDeviceHandle);
