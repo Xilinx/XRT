@@ -28,9 +28,7 @@ namespace xdp {
 class HalDevice : public xdp::Device
 {
   xclDeviceHandle mHalDevice;
-  std::vector<void*>  mMappedBO;
   std::vector<xrt::bo> xrt_bos;
-  std::vector<xclBufferHandle> xclBufHandles;
 
 public:
   HalDevice(void* halDeviceHandle);

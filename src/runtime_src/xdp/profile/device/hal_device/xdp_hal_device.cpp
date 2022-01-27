@@ -115,17 +115,13 @@ size_t HalDevice::alloc(size_t size, uint64_t memoryIndex)
   uint64_t flags = memoryIndex;
   flags |= XCL_BO_FLAGS_CACHEABLE;
 
-  auto bobj = xrt::bo(mHalDevice, size, flags, memoryIndex);
-  xrt_bos.push_back(bobj);
-  mMappedBO.push_back(bobj.map());
+  xrt_bos.push_back(xrt::bo(mHalDevice, size, flags, memoryIndex));
   return xrt_bos.size();
 }
 
-void HalDevice::free(size_t id)
+void HalDevice::free(size_t)
 {
-//  if(!id) return;
-//  size_t boIndex = id - 1;
-
+  return;
 }
 
 void* HalDevice::map(size_t id)
@@ -133,7 +129,6 @@ void* HalDevice::map(size_t id)
   if(!id) return nullptr;
   size_t boIndex = id - 1;
   return xrt_bos[boIndex].map();
-//  return mMappedBO[boIndex];
 }
 
 void HalDevice::unmap(size_t)
