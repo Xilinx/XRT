@@ -109,6 +109,10 @@ SYSTEM_DTB_ADDR="0x40000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
 
+# this address needs to be in sync with VMR
+METADATA_ADDR="0x7FBD0000"
+METADATA_BUFFER_LEN=131072
+
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -192,6 +196,7 @@ all:
         { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
         { load=0x20000000, file=$BUILD_DIR/boot.scr }
+        { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
     }
 }
 EOF
@@ -230,6 +235,14 @@ if [[ "X$XILINX_VITIS" == "X" ]]; then
   exit 1;
 fi
 BOOTGEN=$XILINX_VITIS/bin/bootgen
+
+#
+# Generate metadata.dat
+#
+METADATA="$BUILD_DIR/metadata.dat"
+cat $IMAGE $IMAGES_DIR/rootfs.cpio.gz | md5sum | awk '{print $1}' >$METADATA.tmp
+cat $IMAGES_DIR/rootfs.manifest >>$METADATA.tmp
+dd if=$METADATA.tmp of=$METADATA bs=1 count=$METADATA_BUFFER_LEN
 
 #
 # Generate pdi
