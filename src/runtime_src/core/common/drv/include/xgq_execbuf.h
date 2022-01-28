@@ -18,6 +18,8 @@
 
 int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 					struct ert_start_kernel_cmd *ecmd);
+int xgq_exec_convert_start_kv_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
+				     struct ert_start_kernel_cmd *ecmd);
 int xgq_exec_convert_clock_calib_cmd(struct xgq_cmd_clock_calib *xgq_cmd,
 					struct ert_packet *ecmd);
 int xgq_exec_convert_accessible_cmd(struct xgq_cmd_access_valid *xgq_cmd,

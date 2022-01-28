@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -546,11 +546,11 @@ public:
   getSysfsPath(const std::string& subdev, const std::string& entry)
   {
     if (!m_ops->mGetSysfsPath)
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
     constexpr size_t max_path = 256;
     char path_buf[max_path];
     if (m_ops->mGetSysfsPath(m_handle, subdev.c_str(), entry.c_str(), path_buf, max_path)) {
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
     }
     path_buf[max_path - 1] = '\0';
     std::string sysfs_path = std::string(path_buf);
@@ -561,11 +561,11 @@ public:
   getSubdevPath(const std::string& subdev, uint32_t idx)
   {
     if (!m_ops->mGetSubdevPath)
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
     constexpr size_t max_path = 256;
     char path_buf[max_path];
     if (m_ops->mGetSubdevPath(m_handle, subdev.c_str(), idx, path_buf, max_path)) {
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
     }
     path_buf[max_path - 1] = '\0';
     std::string path = std::string(path_buf);
@@ -576,12 +576,12 @@ public:
   getDebugIPlayoutPath()
   {
     if(!m_ops->mGetDebugIPlayoutPath)
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
 
-    const size_t maxLen = 512;
+    constexpr size_t maxLen = 512;
     char path[maxLen];
     if(m_ops->mGetDebugIPlayoutPath(m_handle, path, maxLen)) {
-      return hal::operations_result<std::string>();
+      return hal::operations_result<std::string>("");
     }
     path[maxLen - 1] = '\0';
     std::string pathStr(path);

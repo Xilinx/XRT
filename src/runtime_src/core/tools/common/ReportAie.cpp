@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2020-2021 Xilinx, Inc
+  Copyright (C) 2020-2022 Xilinx, Inc
  
   Licensed under the Apache License, Version 2.0 (the "License"). You may
   not use this file except in compliance with the License. A copy of the
@@ -132,6 +132,13 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
 
 	if(tile.second.find("dma") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "DMA";
+
+          _output << boost::format("%12s:\n") % "FIFO";
+          for(auto& node : tile.second.get_child("dma.fifo.counters")) {
+            _output << fmt16("%s") % node.second.get<std::string>("index")
+		    % node.second.get<std::string>("count");
+          }
+
           _output << boost::format("        %s:\n") % "MM2S";
 
           _output << boost::format("            %s:\n") % "Channel";
@@ -155,7 +162,7 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
             _output << fmt16("%s") % "Current BD" % node.second.get<std::string>("current_bd");
             _output << std::endl;
           }
-        } 
+        }
 
         if(tile.second.find("locks") != tile.second.not_found()) {
           _output << boost::format("    %s:\n") % "Locks";

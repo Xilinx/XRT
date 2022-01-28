@@ -528,6 +528,13 @@ static int load_firmware_from_disk(struct platform_device *pdev, char **fw_buf,
 	return err;
 }
 
+static int load_firmware_from_vmr(struct platform_device *pdev,
+	char **fw_buf, size_t *fw_len)
+{
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
+	return xocl_vmr_load_firmware(xdev, fw_buf, fw_len);
+}
+
 static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 {
 	char *buf = NULL;
@@ -539,6 +546,8 @@ static int load_firmware(struct platform_device *pdev, char **fw, size_t *len)
 		ret = load_firmware_from_disk(pdev, &buf, &size, "dsabin");
 	if (ret)
 		ret = load_firmware_from_flash(pdev, &buf, &size);
+	if (ret)
+		ret = load_firmware_from_vmr(pdev, &buf, &size);
 	if (ret) {
 		xocl_err(&pdev->dev, "can't load firmware, give up");
 		return ret;

@@ -600,8 +600,11 @@ static void *ert_ctrl_setup_xgq(struct platform_device *pdev, int id, u64 offset
 	xx_info.xi_sq_prod_int = xocl_intc_get_csr_base(xdev) + CQ_STATUS_ADDR;
 	ec->ec_exgq[id] = xocl_xgq_init(&xx_info);
 	if (IS_ERR(ec->ec_exgq[id])) {
+		void *err_ret = ec->ec_exgq[id];
+
+		ec->ec_exgq[id] = NULL;
 		EC_ERR(ec, "Initial xocl XGQ failed");
-		return ec->ec_exgq[id];
+		return err_ret;
 	}
 
 done:

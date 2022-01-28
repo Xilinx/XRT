@@ -2126,6 +2126,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
 	int (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
 	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
+	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
 #define	XGQ_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_XGQ_VMR) ? 			\
@@ -2162,6 +2163,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_collect_temp_sensors(xdev, buf, len)		\
 	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
 	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
+#define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
+	(XGQ_CB(xdev, vmr_load_firmware) ?			\
+	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
@@ -2355,7 +2359,8 @@ int xocl_xrt_version_check(xdev_handle_t xdev_hdl,
 int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
-void xocl_reinit_vmr(xdev_handle_t xdev_hdl);
+int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
+void xocl_reload_vmr(xdev_handle_t xdev_hdl);
 
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name);
