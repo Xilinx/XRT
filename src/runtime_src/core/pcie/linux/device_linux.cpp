@@ -232,6 +232,7 @@ struct sdm_sensor_info
     auto pdev = get_pcidev(device);
     const std::string target_dir = "hwmon";
     const std::string target_file = "name";
+    const std::string target_platform = "xilinx_vck5000_gen4x8_xdma_base_1";
     const std::string slash = "/";
     std::string parent_path = pdev->get_sysfs_path("", target_dir);
     std::string path;
@@ -254,14 +255,10 @@ struct sdm_sensor_info
         std::string name;
         std::string errmsg;
         pdev->sysfs_get("", target_dir + slash + f_name + slash + target_file, errmsg, name);
-        if (errmsg.empty())
+        if (errmsg.empty() && name.compare(target_platform))
         {
-          //if (!strcmp(name.c_str(), "xilinx_vck5000_gen4x8_xdma_base_1"))
-          if (boost::algorithm::contains(name, "u50"))
-          {
-            path = target_dir + slash + f_name;
-            break;
-          }
+          path = target_dir + slash + f_name;
+          break;
         }
       }
       ++iter;
@@ -271,7 +268,6 @@ struct sdm_sensor_info
       return result_type();
 
     return get_sdm_sensors(device, req_type, path);
-
   } //get()
 };
 
