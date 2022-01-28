@@ -29,6 +29,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_P2P.cpp"
   "OO_AieRegRead.cpp"
   "OO_HostMem.cpp"
+  "OO_BOStats.cpp"
 )
 
 # Merge the files into one collection
