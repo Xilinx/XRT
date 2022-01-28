@@ -31,19 +31,24 @@
 
 struct debug_ip_data;
 
-enum sdr_req_type
-{
-  CURRENT_REQ     = 0,
-  VOLTAGE_REQ     = 1,
-  POWER_REQ       = 2,
-  THERMAL_REQ     = 3,
-  MECHANICAL_REQ  = 4,
-  ELECTRICAL_REQ  = 5,
-};
-
 namespace xrt_core {
 
 namespace query {
+
+/**
+ * enum class sdr_req_type - request ids for specific sensor query requests
+ *
+ * Use request ids in this table to identify the desired sensor query request.
+ */
+enum class sdr_req_type
+{
+  current     = 0,
+  voltage     = 1,
+  power       = 2,
+  thermal     = 3,
+  mechanical  = 4,
+  electrical  = 5,
+};
 
 /**
  * enum class key_type - keys for specific query requests
@@ -833,16 +838,16 @@ struct debug_ip_layout_raw : request
 
 struct sdm_sensor_info : request
 {
-  struct data {
+  struct sensor_data {
     std::string label;
-    int input;
-    int max;
-    int average;
-    int highest;
+    uint32_t input;
+    uint32_t max;
+    uint32_t average;
+    uint32_t highest;
   };
-  using result_type = std::vector<struct data>;
-  using req_type = int; //Identifies the type of sensor request.
-  using data_type = struct data;
+  using result_type = std::vector<struct sensor_data>;
+  using req_type = sdr_req_type;
+  using data_type = struct sensor_data;
   static const key_type key = key_type::sdm_sensor_info;
 
   virtual boost::any

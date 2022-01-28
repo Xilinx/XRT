@@ -134,13 +134,69 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
 namespace xrt_core { namespace sensor {
 
 ptree_type
+read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
+                            std::vector<xq::sdm_sensor_info::data_type> voltage,
+                            std::vector<xq::sdm_sensor_info::data_type> power)
+{
+  ptree_type root;
+  ptree_type sensor_array;
+  ptree_type pt;
+
+  pt.put("data_driven", true);
+  std::string val;
+  for (const auto& curr : current)
+  {
+    pt.put("label", curr.label);
+    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(curr.input));
+    pt.put("max", xrt_core::utils::format_base10_shiftdown3(curr.max));
+    pt.put("average", xrt_core::utils::format_base10_shiftdown3(curr.average));
+    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(curr.highest));
+    pt.put("current.is_present", true);
+    pt.put("voltage.is_present", false);
+    pt.put("power.is_present", false);
+    sensor_array.push_back(std::make_pair("", pt));
+  }
+  for (const auto& tmp : voltage)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    pt.put("voltage.is_present", true);
+    pt.put("current.is_present", false);
+    pt.put("power.is_present", false);
+    sensor_array.push_back(std::make_pair("", pt));
+  }
+  for (const auto& tmp : power)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown6(tmp.input));
+    pt.put("max", xrt_core::utils::format_base10_shiftdown6(tmp.max));
+    pt.put("average", xrt_core::utils::format_base10_shiftdown6(tmp.average));
+    pt.put("highest", xrt_core::utils::format_base10_shiftdown6(tmp.highest));
+    pt.put("power.is_present", true);
+    pt.put("voltage.is_present", false);
+    pt.put("current.is_present", false);
+    sensor_array.push_back(std::make_pair("", pt));
+    if (!strcmp((tmp.label).c_str(), "POWER"))
+      val = xrt_core::utils::format_base10_shiftdown6(tmp.input);
+  }
+  root.add_child("power_rails", sensor_array);
+  root.put("power_consumption_watts", val);
+  root.put("power_consumption_max_watts", "NA");
+  root.put("power_consumption_warning", "NA");
+
+  return root;
+}
+
+ptree_type
 read_legacy_electrical(const xrt_core::device * device)
 {
   ptree_type root;
   ptree_type sensor_array;
   ptree_type pt;
 
-  sensor_array.push_back(std::make_pair("", pt.put("data_driven", false)));
   sensor_array.push_back(std::make_pair("", pt.put("is_present", "true")));
   sensor_array.push_back(std::make_pair("", 
     populate_sensor<xq::v12v_aux_millivolts, xq::v12v_aux_milliamps>(device, "12v_aux", "12 Volts Auxillary")));
@@ -222,79 +278,51 @@ read_legacy_electrical(const xrt_core::device * device)
 ptree_type
 read_electrical(const xrt_core::device * device)
 {
-  ptree_type root;
   ptree_type sensor_array;
-  ptree_type pt;
   bool is_data_driven = true;
 
   try {
-    auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, (int)CURRENT_REQ);
-    auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, (int)VOLTAGE_REQ);
-    auto power  = xrt_core::device_query<xq::sdm_sensor_info>(device, (int)POWER_REQ);
-    if (current.empty() ^ voltage.empty() ^ power.empty()) {
-      sensor_array.push_back(std::make_pair("", pt.put("data_driven", false)));
+    auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::current);
+    auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::voltage);
+    auto power  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::power);
+    //Check for any of these data is available
+    if (!current.empty() || !voltage.empty() || !power.empty())
+      return read_data_driven_electrical(current, voltage, power);
+    else
       is_data_driven = false;
-    }
-    else {
-      pt.put("data_driven", true);
-      std::string val;
-      for(size_t i = 0; i < current.size(); i++)
-      {
-        auto tmp = current[i];
-        pt.put("label", tmp.label);
-        pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-        pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-        pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-        pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-        pt.put("current.is_present", true);
-        pt.put("voltage.is_present", false);
-        pt.put("power.is_present", false);
-        sensor_array.push_back(std::make_pair("", pt));
-      }
-      for(size_t i = 0; i < voltage.size(); i++)
-      {
-        auto tmp = voltage[i];
-        pt.put("label", tmp.label);
-        pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-        pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-        pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-        pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-        pt.put("voltage.is_present", true);
-        pt.put("current.is_present", false);
-        pt.put("power.is_present", false);
-        sensor_array.push_back(std::make_pair("", pt));
-      }
-      for(size_t i = 0; i < power.size(); i++)
-      {
-        auto tmp = power[i];
-        pt.put("label", tmp.label);
-        pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown6(tmp.input));
-        pt.put("max", xrt_core::utils::format_base10_shiftdown6(tmp.max));
-        pt.put("average", xrt_core::utils::format_base10_shiftdown6(tmp.average));
-        pt.put("highest", xrt_core::utils::format_base10_shiftdown6(tmp.highest));
-        pt.put("power.is_present", true);
-        pt.put("voltage.is_present", false);
-        pt.put("current.is_present", false);
-        sensor_array.push_back(std::make_pair("", pt));
-        if (!strcmp((tmp.label).c_str(), "POWER"))
-          val = xrt_core::utils::format_base10_shiftdown6(tmp.input);
-      }
-      root.add_child("power_rails", sensor_array);
-      root.put("power_consumption_watts", val);
-      root.put("power_consumption_max_watts", "NA");
-      root.put("power_consumption_warning", "NA");
-    }
   }
   catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    sensor_array.push_back(std::make_pair("", pt.put("error_msg", ex.what())));
+    sensor_array.push_back(std::make_pair("", sensor_array.put("error_msg", ex.what())));
   }
 
   if (!is_data_driven)
     return read_legacy_electrical(device);
 
+  return sensor_array;
+}
+
+ptree_type
+read_data_driven_thermals(std::vector<xq::sdm_sensor_info::data_type> output)
+{
+  ptree_type thermal_array;
+  ptree_type pt;
+  ptree_type root;
+
+  pt.put("data_driven", true);
+  for(const auto& tmp : output)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    thermal_array.push_back(std::make_pair("", pt));
+  }
+
+  root.add_child("thermals", thermal_array);
   return root;
 }
 
@@ -303,8 +331,8 @@ read_legacy_thermals(const xrt_core::device * device)
 {
   ptree_type thermal_array;
   ptree_type pt;
+  ptree_type root;
 
-  thermal_array.push_back(std::make_pair("", pt.put("data_driven", false)));
   //--- pcb ----------
   thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_card_top_front>(device, "pcb_top_front", "PCB Top Front")));
   thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_card_top_rear>(device, "pcb_top_rear", "PCB Top Rear")));
@@ -321,7 +349,8 @@ read_legacy_thermals(const xrt_core::device * device)
   thermal_array.push_back(std::make_pair("", populate_temp<xq::int_vcc_temp>(device, "int_vcc", "Int Vcc")));
   thermal_array.push_back(std::make_pair("", populate_temp<xq::hbm_temp>(device, "fpga_hbm", "FPGA HBM")));
 
-  return thermal_array;
+  root.add_child("thermals", thermal_array);
+  return root;
 }
 
 ptree_type
@@ -331,50 +360,61 @@ read_thermals(const xrt_core::device * device)
   ptree_type thermal_array;
   ptree_type pt;
   bool is_data_driven = true;
+  std::vector <xq::sdm_sensor_info::data_type> output;
 
   try {
-    auto output  = xrt_core::device_query<xq::sdm_sensor_info>(device, (int)THERMAL_REQ);
-    if (output.size() == 0)
+    output  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::thermal);
+    if (output.empty())
       is_data_driven = false;
-    else {
-      pt.put("data_driven", true);
-      for(size_t i = 0; i < output.size(); i++)
-      {
-        auto tmp = output[i];
-        pt.put("label", tmp.label);
-        pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-        pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-        pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-        pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-        thermal_array.push_back(std::make_pair("", pt));
-      }
-    }
   }
   catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    thermal_array.push_back(std::make_pair("", pt.put("error_msg", ex.what())));
+    thermal_array.push_back(std::make_pair("", thermal_array.put("error_msg", ex.what())));
+    root.add_child("thermals", thermal_array);
+    return root;
   }
 
-  if (!is_data_driven)
-    thermal_array = read_legacy_thermals(device);
+  if (is_data_driven)
+    return read_data_driven_thermals(output);
+  else
+    return read_legacy_thermals(device);
+}
 
-  root.add_child("thermals", thermal_array);
+ptree_type
+read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
+{
+  ptree_type root;
+  ptree_type fan_array;
+  ptree_type pt;
 
+  pt.put("data_driven", true);
+  for(const auto& tmp : output)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", tmp.input);
+    pt.put("max", tmp.max);
+    pt.put("average", tmp.average);
+    pt.put("highest", tmp.highest);
+    fan_array.push_back(std::make_pair("", pt));
+  }
+
+  root.add_child("fans", fan_array);
   return root;
 }
 
 ptree_type
 read_legacy_mechanical(const xrt_core::device * device)
 {
+  ptree_type root;
   ptree_type fan_array;
   ptree_type pt;
 
-  fan_array.push_back(std::make_pair("", pt.put("data_driven", false)));
   fan_array.push_back(std::make_pair("", populate_fan(device, "fpga_fan_1", "FPGA Fan 1")));
 
-  return fan_array;
+  root.add_child("fans", fan_array);
+  return root;
 }
 
 ptree_type
@@ -382,39 +422,27 @@ read_mechanical(const xrt_core::device * device)
 {
   ptree_type root;
   ptree_type fan_array;
-  ptree_type pt;
   bool is_data_driven = true;
+  std::vector <xq::sdm_sensor_info::data_type> output;
 
   try {
-    auto output  = xrt_core::device_query<xq::sdm_sensor_info>(device, (int)MECHANICAL_REQ);
+    output  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::mechanical);
     if (output.empty())
       is_data_driven = false;
-    else {
-      pt.put("data_driven", true);
-      for(size_t i = 0; i < output.size(); i++)
-      {
-        auto tmp = output[i];
-        pt.put("label", tmp.label);
-        pt.put("instantaneous", tmp.input);
-        pt.put("max", tmp.max);
-        pt.put("average", tmp.average);
-        pt.put("highest", tmp.highest);
-        fan_array.push_back(std::make_pair("", pt));
-      }
-    }
   }
   catch(const xrt_core::query::no_such_key&) {
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    fan_array.push_back(std::make_pair("", pt.put("error_msg", ex.what())));
+    fan_array.push_back(std::make_pair("", fan_array.put("error_msg", ex.what())));
+    root.add_child("fans", fan_array);
+    return root;
   }
 
-  if (!is_data_driven)
-    fan_array = read_legacy_mechanical(device);
-  
-  root.add_child("fans", fan_array);
-  return root;
+  if (is_data_driven)
+    return read_data_driven_mechanical(output);
+  else
+    return read_legacy_mechanical(device);
 }
 
 }} // sensor,xrt
