@@ -73,122 +73,39 @@ install_recipes()
 
 config_versal_project()
 {
-    # remove following unused packages from rootfs sothat its size would fit in QSPI
-
-    sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_tcl.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_opencl-headers.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_resize-part.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_htop.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_iperf3.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_meson.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-package-management.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_dnf.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_python3.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_package-feed-uris.*//g' project-spec/configs/rootfs_config
+    VERSAL_PROJECT_DIR=$1
+    APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
+    # copy rootfs configs
+    cp $APU_RECIPES_DIR/rootfs_config $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
     # Configure u-boot to pick dtb from address 0x40000
-    UBOOT_USER_SCRIPT=u-boot_custom.cfg
-    echo "CONFIG_XILINX_OF_BOARD_DTB_ADDR=0x40000" > project-spec/meta-user/recipes-bsp/u-boot/files/$UBOOT_USER_SCRIPT
-    echo "SRC_URI += \"file://${UBOOT_USER_SCRIPT}\"" >> project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
+    UBOOT_USER_SCRIPT=$APU_RECIPES_DIR/u-boot_custom.cfg
+    cp $UBOOT_USER_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/files
+    echo "SRC_URI += \"file://u-boot_custom.cfg\"" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
 
     # Configure kernel
-    echo "CONFIG_SUSPEND=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
-    echo "CONFIG_PM=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
-    echo "CONFIG_SPI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
-    echo "CONFIG_DRM_XLNX_DSI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    BSP_CFG=$APU_RECIPES_DIR/bsp.cfg
+    cp $BSP_CFG $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx
 
     # Configure inittab for getty
-    INIT_TAB_FILE=project-spec/meta-user/recipes-core/sysvinit/sysvinit-inittab_%.bbappend
-    if [ ! -d $(dirname "$INIT_TAB_FILE") ]; then
-        mkdir -p $(dirname "$INIT_TAB_FILE")
+    INIT_TAB_FILE=$APU_RECIPES_DIR/sysvinit-inittab_%.bbappend
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit ]; then
+        mkdir -p $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
     fi
-cat << EOF > $INIT_TAB_FILE
-do_install:append(){
-  echo "UL0:12345:respawn:/bin/start_getty 115200 ttyUL0 vt102" >> \${D}\${sysconfdir}/inittab
-}
-EOF
+    cp $INIT_TAB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
 
     # Create startup script to write to sysfs entry to indicate apu booted
-    SERVICE_FILE=project-spec/meta-user/recipes-apps/apu-boot/files/apu-boot.service
-    BB_FILE=project-spec/meta-user/recipes-apps/apu-boot/apuboot.bb
-    INIT_SCRIPT=project-spec/meta-user/recipes-apps/apu-boot/files/apu-boot
+    SERVICE_FILE=$APU_RECIPES_DIR/apu-boot.service
+    BB_FILE=$APU_RECIPES_DIR/apu-boot.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/apu-boot
 
-    petalinux-create -t apps --template install -n apu-boot --enable
+    $PETA_BIN/petalinux-config --silentconfig
+    $PETA_BIN/petalinux-create -t apps --template install -n apu-boot --enable
 
-    # Create service file
-cat << EOF > $SERVICE_FILE
-[Unit]
-Description=apu-boot
- 
-[Service]
-ExecStart=/usr/bin/apu-boot
-StandardOutput=journal+console
- 
-[Install]
-WantedBy=multi-user.target
-EOF
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
 
-    # Create script to check apu boot
-    /bin/rm -rf $INIT_SCRIPT
-cat << EOF > $INIT_SCRIPT
-#!/bin/sh
-if [ -e /sys/bus/platform/devices/rpu-channel/ready ]; then
-	echo 1 > /sys/bus/platform/devices/rpu-channel/ready
-fi
-EOF
-
-    # Recreate bb file
-    /bin/rm -rf $BB_FILE
-cat << EOF > $BB_FILE
-SUMMARY = "apu-boot application"
-SECTION = "PETALINUX/apps"
-LICENSE = "MIT"
- 
-LIC_FILES_CHKSUM = "file://\${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
- 
-SRC_URI = "file://apu-boot \
-        file://apu-boot.service \
-"
- 
-S = "\${WORKDIR}"
- 
-FILESEXTRAPATHS:prepend := "\${THISDIR}/files:"
- 
-inherit update-rc.d systemd
- 
-INITSCRIPT_NAME = "apu-boot"
-INITSCRIPT_PARAMS = "start 99 S ."
- 
-SYSTEMD_PACKAGES = "\${PN}"
-SYSTEMD_SERVICE:\${PN} = "apu-boot.service"
-SYSTEMD_AUTO_ENABLE:\${PN}="enable"
- 
-do_install() {
-        if \${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
-                install -d \${D}\${sysconfdir}/init.d/
-                install -m 0755 \${WORKDIR}/apu-boot \${D}\${sysconfdir}/init.d/
-        fi
- 
-        install -d \${D}\${bindir}
-        install -m 0755 \${WORKDIR}/apu-boot \${D}\${bindir}/
-        install -d \${D}\${systemd_system_unitdir}
-        install -m 0644 \${WORKDIR}/apu-boot.service \${D}\${systemd_system_unitdir}
-}
- 
-FILES:\${PN} += "\${@bb.utils.contains('DISTRO_FEATURES','sysvinit','\${sysconfdir}/*', '', d)}"
-EOF
- 
 }
 
 # --- End internal functions
@@ -356,7 +273,7 @@ echo " * Performing PetaLinux Build (from: ${PWD})"
 if [[ $full == 1 ]]; then
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
-    config_versal_project
+    config_versal_project .
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
