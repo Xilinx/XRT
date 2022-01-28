@@ -116,8 +116,7 @@ public:
   wait(const std::chrono::milliseconds& timeout) const
   {
     // Waits for interrupt, or return on timeout
-    int32_t int_timeout = static_cast<int32_t>(timeout.count());
-    return device->wait_ip_interrupt(handle, int_timeout);
+    return device->wait_ip_interrupt(handle, static_cast<int32_t>(timeout.count()));
   }
 };
 
@@ -368,8 +367,7 @@ wait(const std::chrono::milliseconds& timeout) const
   if (handle)
     return handle->wait(timeout);
 
-  return std::cv_status::timeout;
-  //Should it be error condition to throw and error out?
+  return std::cv_status::no_timeout;
 }
 
 } // namespace xrt
