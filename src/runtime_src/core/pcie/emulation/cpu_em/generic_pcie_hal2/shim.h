@@ -32,6 +32,8 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 #include "core/common/query_requests.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include "swscheduler.h"
 #include <stdarg.h>
@@ -66,6 +68,7 @@ namespace xclcpuemhal2 {
       // Helper functions - added for kernel debug
       int dumpXML(const xclBin* header, std::string& fileLocation) ;
       bool parseIni(unsigned int& debugPort) ;
+      void getCuRangeIdx(const axlf* top);
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
   public:
       // HAL2 RELATED member functions start
@@ -161,6 +164,11 @@ namespace xclcpuemhal2 {
       int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex) const;
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
+
+      int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
+      int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
+      int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
+      
       bool isImported(unsigned int _bo)
       {
         if (mImportedBOs.find(_bo) != mImportedBOs.end())
@@ -474,7 +482,7 @@ namespace xclcpuemhal2 {
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
       std::map<key_type, std::string> mQueryTable;
-
+      std::map<std::string, uint64_t> mCURangeMap;
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;
       SWScheduler* mSWSch;
