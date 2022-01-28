@@ -255,7 +255,7 @@ struct sdm_sensor_info
         std::string name;
         std::string errmsg;
         pdev->sysfs_get("", target_dir + slash + f_name + slash + target_file, errmsg, name);
-        if (errmsg.empty() && name.compare(target_platform))
+        if (errmsg.empty() && !name.compare(target_platform))
         {
           path = target_dir + slash + f_name;
           break;

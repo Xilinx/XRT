@@ -141,9 +141,10 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
   ptree_type root;
   ptree_type sensor_array;
   ptree_type pt;
+  std::string val;
 
   pt.put("data_driven", true);
-  std::string val;
+  // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& curr : current)
   {
     pt.put("label", curr.label);
@@ -151,11 +152,14 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("max", xrt_core::utils::format_base10_shiftdown3(curr.max));
     pt.put("average", xrt_core::utils::format_base10_shiftdown3(curr.average));
     pt.put("highest", xrt_core::utils::format_base10_shiftdown3(curr.highest));
+	// these fields are also needed to differentiate between sensor types
     pt.put("current.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("power.is_present", false);
     sensor_array.push_back(std::make_pair("", pt));
   }
+
+  // iterate over current data, store to ptree by converting to Volts from milli Volts
   for (const auto& tmp : voltage)
   {
     pt.put("label", tmp.label);
@@ -163,11 +167,14 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
     pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
     pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+	// these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", true);
     pt.put("current.is_present", false);
     pt.put("power.is_present", false);
     sensor_array.push_back(std::make_pair("", pt));
   }
+
+  // iterate over current data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
     pt.put("label", tmp.label);
@@ -175,6 +182,7 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("max", xrt_core::utils::format_base10_shiftdown6(tmp.max));
     pt.put("average", xrt_core::utils::format_base10_shiftdown6(tmp.average));
     pt.put("highest", xrt_core::utils::format_base10_shiftdown6(tmp.highest));
+	// these fields are also needed to differentiate between sensor types
     pt.put("power.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("current.is_present", false);
