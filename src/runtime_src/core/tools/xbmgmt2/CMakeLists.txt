@@ -22,7 +22,6 @@ file(GLOB XBMGMT_V2_SUBCMD_FILES
   "SubCmdAdvanced.cpp"
   "SubCmdDump.cpp"
   "SubCmdConfigure.cpp"
-  "OO_*.cpp"
   "Report*.cpp"
   "flash/*.cpp"
 )
