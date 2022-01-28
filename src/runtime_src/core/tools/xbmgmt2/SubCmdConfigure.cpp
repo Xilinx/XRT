@@ -291,7 +291,7 @@ update_device_conf(xrt_core::device* device, const std::string& value, config_ty
  * set data retention
  */
 static void 
-memory_retention(xrt_core::device* device, mem_type, bool enable)
+memory_retention(xrt_core::device* device, bool enable)
 {
   XBU::sudo_or_throw("Updating memory retention requires sudo");
   auto value = xrt_core::query::data_retention::value_type(enable);
@@ -307,7 +307,6 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     std::vector<std::string> devices;
     std::string path = "";
     std::string retention = "";
-    bool ddr = false;
     bool help = false;
     // Hidden options
     bool daemon = false;
@@ -318,19 +317,31 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     std::string temp_override = "";
     std::string cs_reset = "";
     bool showx = false;
-    bool hbm = false;
+
+    // Options previously under the load config command
+    po::options_description loadConfigOptions("Load Config Options");
+    loadConfigOptions.add_options()
+      ("input", boost::program_options::value<decltype(path)>(&path),"INI file with the memory configuration")
+    ;
+
+    // Options previously under the config command
+    po::options_description configOptions("Config Options");
+    configOptions.add_options()
+      ("retention", boost::program_options::value<decltype(retention)>(&retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
+    ;
 
     po::options_description commonOptions("Common Options");
     commonOptions.add_options()
         ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-        ("input", boost::program_options::value<decltype(path)>(&path),"INI file with the memory configuration")
-        ("retention", boost::program_options::value<decltype(retention)>(&retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
-        ("ddr", boost::program_options::bool_switch(&ddr), "Enable DDR memory for retention")
         ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
     ;
 
-    po::options_description hiddenOptions("Hidden Options");
-    hiddenOptions.add_options()
+    commonOptions.add(loadConfigOptions);
+    commonOptions.add(configOptions);
+
+    // Hidden options previously under the config command
+    po::options_description configHiddenOptions("Hidden Options");
+    configHiddenOptions.add_options()
         ("daemon", boost::program_options::bool_switch(&daemon), "<add description>")
         ("host", boost::program_options::value<decltype(host)>(&host), "ip or hostname for peer")
         ("security", boost::program_options::value<decltype(security)>(&security), "<add description>")
@@ -339,13 +350,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         ("cs_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "<add description>")
         ("cs_reset", boost::program_options::value<decltype(cs_reset)>(&cs_reset), "<add description>")
         ("showx", boost::program_options::bool_switch(&showx), "<add description>")
-        ("hbm", boost::program_options::bool_switch(&hbm), "<add description>")
     ;
 
-    boost::program_options::positional_options_description positionalOptions;
-    positionalOptions.
-        add("input", 1 /* max_count */)
-    ;
+    po::options_description hiddenOptions("Hidden Options");
+    hiddenOptions.add(configHiddenOptions);
 
     po::options_description allOptions("All Options");
     allOptions.add(commonOptions);
@@ -363,6 +371,15 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
         throw xrt_core::error(std::errc::operation_canceled);
     }
 
+    // Ensure mutual exclusion amongst the load config and config options
+    for (auto& loadConfigOption : loadConfigOptions.options()) {
+      for (auto& configOption : configOptions.options()) {
+        conflictingOptions(vm, loadConfigOption->long_name(), configOption->long_name());
+      }
+      for (auto& configHiddenOption : configHiddenOptions.options()) {
+        conflictingOptions(vm, loadConfigOption->long_name(), configHiddenOption->long_name());
+      }
+    }
 
     // Check the options
     // -- process "help" option -----------------------------------------------
@@ -429,14 +446,10 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Option:showx
     if (showx) {
         XBU::verbose("Sub command: --showx");
-        //show daemon config
         if(daemon)
             show_daemon_conf();
 
-        //show device config
-        for (const auto& dev : deviceCollection)
-            show_device_conf(dev.get());
-
+        show_device_conf(workingDevice.get());
         return;
     }
 
@@ -485,16 +498,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
             throw xrt_core::error(std::errc::operation_canceled);
         }
 
-        // Validate the memory type
-        auto mem = mem_type::unknown;
-        if (ddr)
-            mem = mem_type::ddr;
-        else if (hbm)
-            mem = mem_type::hbm;
-        else
-            throw xrt_core::system_error(EINVAL, "Please specify a memory type: ddr or hbm");
-
-        memory_retention(workingDevice.get(), mem, enableRetention);
+        memory_retention(workingDevice.get(), enableRetention);
         // Memory retention was updated!
         is_something_updated = true;
     }
