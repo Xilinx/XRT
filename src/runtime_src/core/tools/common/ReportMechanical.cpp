@@ -21,12 +21,11 @@
 
 namespace qr = xrt_core::query;
 
-// 3rd Party Library - Include Files
-#include <boost/property_tree/json_parser.hpp>
+#include "core/common/sensor.h"
 
 void
 ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice,
-                                              boost::property_tree::ptree &_pt) const
+                                           boost::property_tree::ptree &_pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
@@ -35,16 +34,10 @@ ReportMechanical::getPropertyTreeInternal( const xrt_core::device * _pDevice,
 
 void
 ReportMechanical::getPropertyTree20202( const xrt_core::device * _pDevice,
-                                           boost::property_tree::ptree &_pt) const
+                                        boost::property_tree::ptree &_pt) const
 {
-  xrt::device device(_pDevice->get_device_id());
-  boost::property_tree::ptree pt_mechanical;
-  std::stringstream ss;
-  ss << device.get_info<xrt::info::device::mechanical>();
-  boost::property_tree::read_json(ss, pt_mechanical);
-
   // There can only be 1 root node
-  _pt.add_child("mechanical", pt_mechanical);
+  _pt.add_child("mechanical", xrt_core::sensor::read_mechanical(_pDevice));
 }
 
 void
