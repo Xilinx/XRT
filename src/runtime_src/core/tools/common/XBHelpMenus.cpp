@@ -664,8 +664,11 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       continue;
 
     boost::property_tree::ptree ptReport;
-    // AND the test status. If any of the reports had an exception the test status must show a failure
-    is_report_output_valid &= report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+    try {
+      report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+    } catch (const std::exception& e) {
+      is_report_output_valid = false;
+    }
 
     // Only support 1 node on the root
     if (ptReport.size() > 1)
@@ -745,9 +748,12 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
         if((!is_mfg && !is_ready) && !is_recovery)
           continue;
         boost::property_tree::ptree ptReport;
-        // AND the test status with the previous results. If any of the previous reports or the below reports had an exception
-        // the test status must show a failure
-        is_report_output_valid &= report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        try {
+          report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        } catch (const std::exception& e) {
+          is_report_output_valid = false;
+        }
+        
 
         // Only support 1 node on the root
         if (ptReport.size() > 1)

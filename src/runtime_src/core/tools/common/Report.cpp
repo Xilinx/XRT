@@ -69,7 +69,7 @@ Report::Report(const std::string & _reportName,
 }
 
 
-bool 
+void 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
                             SchemaVersion schemaVersion,
                             const std::vector<std::string> & elementFilter,
@@ -101,7 +101,6 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
     }
 
     std::cerr << "  ERROR: " << e.what() << std::endl;
-    return false;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
-  return true;
 }

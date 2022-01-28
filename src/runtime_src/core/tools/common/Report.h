@@ -57,7 +57,7 @@ class Report {
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
 
-  bool getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
+  void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
  // Child methods that need to be implemented
  protected:
