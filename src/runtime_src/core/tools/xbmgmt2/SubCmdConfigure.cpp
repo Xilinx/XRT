@@ -372,10 +372,14 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     }
 
     // Ensure mutual exclusion amongst the load config and config options
+    // TODO Once all of the config options are incorporated into the load config file
+    // the config options should be removed
     for (auto& loadConfigOption : loadConfigOptions.options()) {
+      // For common options
       for (auto& configOption : configOptions.options()) {
         conflictingOptions(vm, loadConfigOption->long_name(), configOption->long_name());
       }
+      // For hidden options
       for (auto& configHiddenOption : configHiddenOptions.options()) {
         conflictingOptions(vm, loadConfigOption->long_name(), configHiddenOption->long_name());
       }
