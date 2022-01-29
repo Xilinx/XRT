@@ -31,14 +31,16 @@ namespace xq = xrt_core::query;
 namespace {
 // Saves voltage-current pair of a sensor into a boost::property_tree
 // Converts mV and mA into V and A before adding to the tree
-// 
+//
 // @tparam QRVoltage voltage query for a sensor; query::noop if query DNE
 // @tparam QRCurrent current query for the same sensor; query::noop if query DNE
 // @param loc_id human readable sensor identifier
 // @desc description about the sensor
 template <typename QRVoltage, typename QRCurrent>
 static ptree_type
-populate_sensor(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
+populate_sensor(const xrt_core::device * device,
+                const std::string& loc_id,
+                const std::string& desc)
 {
   ptree_type pt;
   pt.put("id", loc_id);
@@ -65,13 +67,15 @@ populate_sensor(const xrt_core::device * device, const std::string& loc_id, cons
   }
   pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(current));
   pt.put("current.is_present", current != 0 ? "true" : "false");
-  
+
   return pt;
 }
 
 template <typename QueryRequestType>
 static ptree_type
-populate_temp(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
+populate_temp(const xrt_core::device * device,
+              const std::string& loc_id,
+              const std::string& desc)
 {
   ptree_type pt;
   uint64_t temp_C = 0;
@@ -81,17 +85,17 @@ populate_temp(const xrt_core::device * device, const std::string& loc_id, const 
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
   }
-  
+
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("temp_C", temp_C);
   pt.put("is_present", temp_C != 0 ? "true" : "false");
-  
+
   return pt;
 }
 
 /**
- * device query returns a level which 
+ * device query returns a level which
  * need to be converted to human readable power in watts
  * 0 -> 75W
  * 1 -> 150W
@@ -105,7 +109,9 @@ lvl_to_power_watts(uint64_t lvl)
 }
 
 static ptree_type
-populate_fan(const xrt_core::device * device, const std::string& loc_id, const std::string& desc)
+populate_fan(const xrt_core::device * device,
+             const std::string& loc_id,
+             const std::string& desc)
 {
   ptree_type pt;
   uint64_t temp_C = 0;
@@ -119,13 +125,13 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
   catch (const std::exception& ex) {
     pt.put("error_msg", ex.what());
   }
-  
+
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("critical_trigger_temp_C", temp_C);
   pt.put("speed_rpm", rpm);
   pt.put("is_present", xq::fan_fan_presence::to_string(is_present));
-  
+
   return pt;
 }
 
@@ -133,10 +139,22 @@ populate_fan(const xrt_core::device * device, const std::string& loc_id, const s
 
 namespace xrt_core { namespace sensor {
 
+/*
+ * _data_driven_*(): Sensor data driven model APIs
+ *   data_driven functions are used when accessing sensor data
+ *   without it's name and it is not static.
+ *   The data is being accessed from hwmon driver's sysfs nodes, which
+ *   are registered by xrt client device driver.
+ * Input:
+ *   Input to these functions are vector of "structure sensor_data" type.
+ * Output:
+ *   This function iterates over the input vector and prepares property tree.
+ *   Converts mV, mA & mW into V, A & W before adding to the tree
+ */
 ptree_type
-read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
-                            std::vector<xq::sdm_sensor_info::data_type> voltage,
-                            std::vector<xq::sdm_sensor_info::data_type> power)
+read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& current,
+                            const std::vector<xq::sdm_sensor_info::data_type>& voltage,
+                            const std::vector<xq::sdm_sensor_info::data_type>& power)
 {
   ptree_type root;
   ptree_type sensor_array;
@@ -156,7 +174,7 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("current.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("power.is_present", false);
-    sensor_array.push_back(std::make_pair("", pt));
+    sensor_array.push_back({"", pt});
   }
 
   // iterate over current data, store to ptree by converting to Volts from milli Volts
@@ -171,7 +189,7 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("voltage.is_present", true);
     pt.put("current.is_present", false);
     pt.put("power.is_present", false);
-    sensor_array.push_back(std::make_pair("", pt));
+    sensor_array.push_back({"", pt});
   }
 
   // iterate over current data, store to ptree by converting to watts.
@@ -186,7 +204,7 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
     pt.put("power.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("current.is_present", false);
-    sensor_array.push_back(std::make_pair("", pt));
+    sensor_array.push_back({"", pt});
     if (!strcmp((tmp.label).c_str(), "POWER"))
       val = xrt_core::utils::format_base10_shiftdown6(tmp.input);
   }
@@ -199,67 +217,175 @@ read_data_driven_electrical(std::vector<xq::sdm_sensor_info::data_type> current,
 }
 
 ptree_type
+read_data_driven_thermals(std::vector<xq::sdm_sensor_info::data_type> output)
+{
+  ptree_type thermal_array;
+  ptree_type pt;
+  ptree_type root;
+
+  pt.put("data_driven", true);
+  // iterate over temperature data, store to ptree by converting to Celcius
+  for(const auto& tmp : output)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    thermal_array.push_back({"", pt});
+  }
+
+  root.add_child("thermals", thermal_array);
+  return root;
+}
+
+ptree_type
+read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
+{
+  ptree_type root;
+  ptree_type fan_array;
+  ptree_type pt;
+
+  pt.put("data_driven", true);
+  // iterate over temperature data, store it into property_tree
+  for(const auto& tmp : output)
+  {
+    pt.put("label", tmp.label);
+    pt.put("instantaneous", tmp.input);
+    pt.put("max", tmp.max);
+    pt.put("average", tmp.average);
+    pt.put("highest", tmp.highest);
+    fan_array.push_back({"", pt});
+  }
+
+  root.add_child("fans", fan_array);
+  return root;
+}
+
+/*
+ * *_legacy_*() functions:
+ *
+ * Use these functions to get sensor data using their name.
+ * Input:
+ *   device handle
+ * Output:
+ *   Access sensor data using it's name & proper device handle.
+ *   Store the retrieved sensor data into boost::property_tree
+ *   and return the same.
+ */
+
+ptree_type
+read_legacy_mechanical(const xrt_core::device * device)
+{
+  ptree_type root;
+  ptree_type fan_array;
+  ptree_type pt;
+
+  fan_array.push_back({"", populate_fan(device, "fpga_fan_1", "FPGA Fan 1")});
+
+  root.add_child("fans", fan_array);
+  return root;
+}
+
+ptree_type
+read_legacy_thermals(const xrt_core::device * device)
+{
+  ptree_type thermal_array;
+  ptree_type pt;
+  ptree_type root;
+
+  //--- pcb ----------
+  thermal_array.push_back({"",
+	populate_temp<xq::temp_card_top_front>(device, "pcb_top_front", "PCB Top Front")});
+  thermal_array.push_back({"",
+	populate_temp<xq::temp_card_top_rear>(device, "pcb_top_rear", "PCB Top Rear")});
+  thermal_array.push_back({"",
+	populate_temp<xq::temp_card_bottom_front>(device, "pcb_bottom_front", "PCB Bottom Front")});
+
+  //--- cage ----------
+  thermal_array.push_back({"",
+	populate_temp<xq::cage_temp_0>(device, "cage_temp_0", "Cage0")});
+  thermal_array.push_back({"",
+	populate_temp<xq::cage_temp_1>(device, "cage_temp_1", "Cage1")});
+  thermal_array.push_back({"",
+	populate_temp<xq::cage_temp_2>(device, "cage_temp_2", "Cage2")});
+  thermal_array.push_back({"",
+	populate_temp<xq::cage_temp_3>(device, "cage_temp_3", "Cage3")});
+
+  // --- fpga, vccint, hbm -------------
+  thermal_array.push_back({"",
+	populate_temp<xq::temp_fpga>(device, "fpga0", "FPGA")});
+  thermal_array.push_back({"",
+	populate_temp<xq::int_vcc_temp>(device, "int_vcc", "Int Vcc")});
+  thermal_array.push_back({"",
+	populate_temp<xq::hbm_temp>(device, "fpga_hbm", "FPGA HBM")});
+
+  root.add_child("thermals", thermal_array);
+  return root;
+}
+
+ptree_type
 read_legacy_electrical(const xrt_core::device * device)
 {
   ptree_type root;
   ptree_type sensor_array;
   ptree_type pt;
 
-  sensor_array.push_back(std::make_pair("", pt.put("is_present", "true")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v12v_aux_millivolts, xq::v12v_aux_milliamps>(device, "12v_aux", "12 Volts Auxillary")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v12v_pex_millivolts, xq::v12v_pex_milliamps>(device, "12v_pex", "12 Volts PCI Express")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v3v3_pex_millivolts, xq::v3v3_pex_milliamps>(device, "3v3_pex", "3.3 Volts PCI Express")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v3v3_aux_millivolts, xq::v3v3_aux_milliamps>(device, "3v3_aux", "3.3 Volts Auxillary")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::int_vcc_millivolts, xq::int_vcc_milliamps>(device, "vccint", "Internal FPGA Vcc")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::int_vcc_io_millivolts, xq::int_vcc_io_milliamps>(device, "vccint_io", "Internal FPGA Vcc IO")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::ddr_vpp_bottom_millivolts, xq::noop>(device, "ddr_vpp_btm", "DDR Vpp Bottom")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::ddr_vpp_top_millivolts, xq::noop>(device, "ddr_vpp_top", "DDR Vpp Top")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v5v5_system_millivolts, xq::noop>(device, "5v5_system", "5.5 Volts System")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v1v2_vcc_top_millivolts, xq::noop>(device, "1v2_top", "Vcc 1.2 Volts Top")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v1v2_vcc_bottom_millivolts, xq::noop>(device, "vcc_1v2_btm", "Vcc 1.2 Volts Bottom")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v1v8_millivolts, xq::noop>(device, "1v8_top", "1.8 Volts Top")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v0v9_vcc_millivolts, xq::noop>(device, "0v9_vcc", "0.9 Volts Vcc")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v12v_sw_millivolts, xq::noop>(device, "12v_sw", "12 Volts SW")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::mgt_vtt_millivolts, xq::noop>(device, "mgt_vtt", "Mgt Vtt")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v3v3_vcc_millivolts, xq::noop>(device, "3v3_vcc", "3.3 Volts Vcc")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::hbm_1v2_millivolts, xq::noop>(device, "hbm_1v2", "1.2 Volts HBM")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v2v5_vpp_millivolts, xq::noop>(device, "vpp2v5", "Vpp 2.5 Volts")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v12_aux1_millivolts, xq::noop>(device, "12v_aux1", "12 Volts Aux1")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::noop, xq::vcc1v2_i_milliamps>(device, "vcc1v2_i", "Vcc 1.2 Volts i")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::noop, xq::v12_in_i_milliamps>(device, "v12_in_i", "V12 in i")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::noop, xq::v12_in_aux0_i_milliamps>(device, "v12_in_aux0_i", "V12 in Aux0 i")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::noop, xq::v12_in_aux1_i_milliamps>(device, "v12_in_aux1_i", "V12 in Aux1 i")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::vcc_aux_millivolts, xq::noop>(device, "vcc_aux", "Vcc Auxillary")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::vcc_aux_pmc_millivolts, xq::noop>(device, "vcc_aux_pmc", "Vcc Auxillary Pmc")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::vcc_ram_millivolts, xq::noop>(device, "vcc_ram", "Vcc Ram")));
-  sensor_array.push_back(std::make_pair("", 
-    populate_sensor<xq::v0v9_int_vcc_vcu_millivolts, xq::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")));
+  sensor_array.push_back({"", pt.put("is_present", "true")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v12v_aux_millivolts, xq::v12v_aux_milliamps>(device, "12v_aux", "12 Volts Auxillary")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v12v_pex_millivolts, xq::v12v_pex_milliamps>(device, "12v_pex", "12 Volts PCI Express")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v3v3_pex_millivolts, xq::v3v3_pex_milliamps>(device, "3v3_pex", "3.3 Volts PCI Express")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v3v3_aux_millivolts, xq::v3v3_aux_milliamps>(device, "3v3_aux", "3.3 Volts Auxillary")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::int_vcc_millivolts, xq::int_vcc_milliamps>(device, "vccint", "Internal FPGA Vcc")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::int_vcc_io_millivolts, xq::int_vcc_io_milliamps>(device, "vccint_io", "Internal FPGA Vcc IO")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::ddr_vpp_bottom_millivolts, xq::noop>(device, "ddr_vpp_btm", "DDR Vpp Bottom")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::ddr_vpp_top_millivolts, xq::noop>(device, "ddr_vpp_top", "DDR Vpp Top")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v5v5_system_millivolts, xq::noop>(device, "5v5_system", "5.5 Volts System")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v1v2_vcc_top_millivolts, xq::noop>(device, "1v2_top", "Vcc 1.2 Volts Top")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v1v2_vcc_bottom_millivolts, xq::noop>(device, "vcc_1v2_btm", "Vcc 1.2 Volts Bottom")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v1v8_millivolts, xq::noop>(device, "1v8_top", "1.8 Volts Top")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v0v9_vcc_millivolts, xq::noop>(device, "0v9_vcc", "0.9 Volts Vcc")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v12v_sw_millivolts, xq::noop>(device, "12v_sw", "12 Volts SW")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::mgt_vtt_millivolts, xq::noop>(device, "mgt_vtt", "Mgt Vtt")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v3v3_vcc_millivolts, xq::noop>(device, "3v3_vcc", "3.3 Volts Vcc")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::hbm_1v2_millivolts, xq::noop>(device, "hbm_1v2", "1.2 Volts HBM")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v2v5_vpp_millivolts, xq::noop>(device, "vpp2v5", "Vpp 2.5 Volts")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v12_aux1_millivolts, xq::noop>(device, "12v_aux1", "12 Volts Aux1")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::noop, xq::vcc1v2_i_milliamps>(device, "vcc1v2_i", "Vcc 1.2 Volts i")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::noop, xq::v12_in_i_milliamps>(device, "v12_in_i", "V12 in i")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::noop, xq::v12_in_aux0_i_milliamps>(device, "v12_in_aux0_i", "V12 in Aux0 i")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::noop, xq::v12_in_aux1_i_milliamps>(device, "v12_in_aux1_i", "V12 in Aux1 i")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::vcc_aux_millivolts, xq::noop>(device, "vcc_aux", "Vcc Auxillary")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::vcc_aux_pmc_millivolts, xq::noop>(device, "vcc_aux_pmc", "Vcc Auxillary Pmc")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::vcc_ram_millivolts, xq::noop>(device, "vcc_ram", "Vcc Ram")});
+  sensor_array.push_back({"",
+    populate_sensor<xq::v0v9_int_vcc_vcu_millivolts, xq::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")});
   root.add_child("power_rails", sensor_array);
 
   std::string max_power_watts;
@@ -283,12 +409,25 @@ read_legacy_electrical(const xrt_core::device * device)
   return root;
 }
 
+/*
+ * read_<>() functions are top level functions are being called from tools/common driver.
+ * Job is to get all the requested sensor information stored into boost::property_tree.
+ * All these functions follow below steps:
+ *   1) It first check if the sensor data can be accessed in data driven model.
+ *      Uses xrt query "sdm_sensor_info" to get the sensors of data driven mode.
+ *   2) If the received sensor list is not empty then it calls _data_driven_<>() functions
+ *      and stores the data into property_tree.
+ *      If received list is empty goto step (3)
+ *   3) If the received sensors list is empty then it calls _legacy_<>() functions
+ *      to access the sensors using their property like name.
+ */
 ptree_type
 read_electrical(const xrt_core::device * device)
 {
   ptree_type sensor_array;
   bool is_data_driven = true;
 
+  //Check if requested sensor data can be retrieved in data driven model.
   try {
     auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::current);
     auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::voltage);
@@ -303,62 +442,13 @@ read_electrical(const xrt_core::device * device)
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    sensor_array.push_back(std::make_pair("", sensor_array.put("error_msg", ex.what())));
+    sensor_array.push_back({"", sensor_array.put("error_msg", ex.what())});
   }
 
   if (!is_data_driven)
     return read_legacy_electrical(device);
 
   return sensor_array;
-}
-
-ptree_type
-read_data_driven_thermals(std::vector<xq::sdm_sensor_info::data_type> output)
-{
-  ptree_type thermal_array;
-  ptree_type pt;
-  ptree_type root;
-
-  pt.put("data_driven", true);
-  for(const auto& tmp : output)
-  {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-    thermal_array.push_back(std::make_pair("", pt));
-  }
-
-  root.add_child("thermals", thermal_array);
-  return root;
-}
-
-ptree_type
-read_legacy_thermals(const xrt_core::device * device)
-{
-  ptree_type thermal_array;
-  ptree_type pt;
-  ptree_type root;
-
-  //--- pcb ----------
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_card_top_front>(device, "pcb_top_front", "PCB Top Front")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_card_top_rear>(device, "pcb_top_rear", "PCB Top Rear")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_card_bottom_front>(device, "pcb_bottom_front", "PCB Bottom Front")));
-
-  //--- cage ----------
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::cage_temp_0>(device, "cage_temp_0", "Cage0")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::cage_temp_1>(device, "cage_temp_1", "Cage1")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::cage_temp_2>(device, "cage_temp_2", "Cage2")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::cage_temp_3>(device, "cage_temp_3", "Cage3")));
-
-  // --- fpga, vccint, hbm -------------
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::temp_fpga>(device, "fpga0", "FPGA")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::int_vcc_temp>(device, "int_vcc", "Int Vcc")));
-  thermal_array.push_back(std::make_pair("", populate_temp<xq::hbm_temp>(device, "fpga_hbm", "FPGA HBM")));
-
-  root.add_child("thermals", thermal_array);
-  return root;
 }
 
 ptree_type
@@ -370,8 +460,9 @@ read_thermals(const xrt_core::device * device)
   bool is_data_driven = true;
   std::vector <xq::sdm_sensor_info::data_type> output;
 
+  //Check if requested sensor data can be retrieved in data driven model.
   try {
-    output  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::thermal);
+    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::thermal);
     if (output.empty())
       is_data_driven = false;
   }
@@ -379,7 +470,7 @@ read_thermals(const xrt_core::device * device)
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    thermal_array.push_back(std::make_pair("", thermal_array.put("error_msg", ex.what())));
+    thermal_array.push_back({"", thermal_array.put("error_msg", ex.what())});
     root.add_child("thermals", thermal_array);
     return root;
   }
@@ -391,41 +482,6 @@ read_thermals(const xrt_core::device * device)
 }
 
 ptree_type
-read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
-{
-  ptree_type root;
-  ptree_type fan_array;
-  ptree_type pt;
-
-  pt.put("data_driven", true);
-  for(const auto& tmp : output)
-  {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", tmp.input);
-    pt.put("max", tmp.max);
-    pt.put("average", tmp.average);
-    pt.put("highest", tmp.highest);
-    fan_array.push_back(std::make_pair("", pt));
-  }
-
-  root.add_child("fans", fan_array);
-  return root;
-}
-
-ptree_type
-read_legacy_mechanical(const xrt_core::device * device)
-{
-  ptree_type root;
-  ptree_type fan_array;
-  ptree_type pt;
-
-  fan_array.push_back(std::make_pair("", populate_fan(device, "fpga_fan_1", "FPGA Fan 1")));
-
-  root.add_child("fans", fan_array);
-  return root;
-}
-
-ptree_type
 read_mechanical(const xrt_core::device * device)
 {
   ptree_type root;
@@ -433,8 +489,9 @@ read_mechanical(const xrt_core::device * device)
   bool is_data_driven = true;
   std::vector <xq::sdm_sensor_info::data_type> output;
 
+  //Check if requested sensor data can be retrieved in data driven model.
   try {
-    output  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::mechanical);
+    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::mechanical);
     if (output.empty())
       is_data_driven = false;
   }
@@ -442,7 +499,7 @@ read_mechanical(const xrt_core::device * device)
     is_data_driven = false;
   }
   catch (const std::exception& ex) {
-    fan_array.push_back(std::make_pair("", fan_array.put("error_msg", ex.what())));
+    fan_array.push_back({"", fan_array.put("error_msg", ex.what())});
     root.add_child("fans", fan_array);
     return root;
   }

@@ -838,6 +838,15 @@ struct debug_ip_layout_raw : request
 
 struct sdm_sensor_info : request
 {
+  /*
+   * struct sensor_data: used to store sensor information and
+   * each sensor contains following information.
+   *  label    : name
+   *  input    : instantaneous value
+   *  max      : maximum value
+   *  average  : average value
+   *  highest  : highest value (used for temperature sensors)
+   */
   struct sensor_data {
     std::string label;
     uint32_t input;
@@ -845,9 +854,9 @@ struct sdm_sensor_info : request
     uint32_t average;
     uint32_t highest;
   };
-  using result_type = std::vector<struct sensor_data>;
+  using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
-  using data_type = struct sensor_data;
+  using data_type = sensor_data;
   static const key_type key = key_type::sdm_sensor_info;
 
   virtual boost::any
