@@ -27,7 +27,8 @@ namespace hw_emu {
   //  options and loading the appropriate debug/profile plugins.
   void load()
   {
-    if (xrt_core::config::get_xrt_trace())
+    if (xrt_core::config::get_xrt_trace() ||
+        xrt_core::config::get_host_trace_once())
       xdp::hw_emu::trace::load() ;
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
         xrt_core::config::get_device_trace() != "off" ||

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -36,15 +36,14 @@ namespace hal_hw_plugins {
 // This function is responsible for loading all of the HAL level HW XDP plugins
 bool load()
 {
-  if (xrt_core::config::get_xrt_trace()) {
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::config::get_host_trace_once())
     xdp::hal::load() ;
-  }
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
       xrt_core::config::get_device_trace() != "off" ||
-      xrt_core::config::get_device_counters()) {
+      xrt_core::config::get_device_counters())
     xdp::hal::device_offload::load();
-  }
 
   if (xrt_core::config::get_aie_status())
     xdp::aie::debug::load();

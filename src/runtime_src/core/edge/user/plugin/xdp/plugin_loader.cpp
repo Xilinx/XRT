@@ -41,7 +41,8 @@ namespace hal_hw_plugins {
 bool load()
 {
 #ifndef __HWEM__
-  if (xrt_core::config::get_xrt_trace())
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::config::get_host_trace_once())
     xdp::hal::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
@@ -96,7 +97,8 @@ bool load()
 {
 #ifdef __HWEM__
   // Hardware emulation uses the same plugin as hardware for API trace
-  if (xrt_core::config::get_xrt_trace())
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::config::get_host_trace_once())
     xdp::hal::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
