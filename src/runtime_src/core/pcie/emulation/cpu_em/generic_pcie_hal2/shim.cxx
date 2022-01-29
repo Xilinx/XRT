@@ -504,25 +504,22 @@ namespace xclcpuemhal2 {
     sock = new unix_socket("EMULATION_SOCKETID");
   }
 
-  void CpuemShim::getCuRangeIdx(const axlf* top)  {
-   
-   auto xclbin_object = new xrt::xclbin(top);
-   std::string instance_name = "";
-   for (const auto& kernel : xclbin_object->get_kernels())
-    {
+  void CpuemShim::getCuRangeIdx() {
+    std::string instance_name = "";
+    for (const auto& kernel : m_xclbin.get_kernels()) {
       // get properties of each kernel object
       auto props = xrt_core::xclbin_int::get_properties(kernel);
       //get CU's of each kernel object.iterate over CU's to get arguments
-      for (const auto& cu : kernel.get_cus())
-      {
-        instance_name = cu.get_name();
-        if (props.address_range != 0 && !props.name.empty() && !instance_name.empty())
-        {
-          mCURangeMap[instance_name] = props.address_range;
+      if (props.address_range != 0 && !props.name.empty()) {
+        for (const auto& cu : kernel.get_cus()) {
+          instance_name = cu.get_name();
+          if (!instance_name.empty())
+            mCURangeMap[instance_name] = props.address_range;
         }
       }
     }
   }
+
   int CpuemShim::xclLoadXclBin(const xclBin *header)
   {
     if(mLogStream.is_open()) mLogStream << __func__ << " begin " << std::endl;
@@ -596,6 +593,7 @@ namespace xclcpuemhal2 {
       }
       else if (!memcmp(xclbininmemory,"xclbin2",7)) {
         auto top = reinterpret_cast<const axlf*>(header);
+	m_xclbin = xrt::xclbin{top};
         if (auto sec = xclbin::get_axlf_section(top,BITSTREAM)) {
           sharedlib = xclbininmemory + sec->m_sectionOffset;
           sharedliblength = sec->m_sectionSize;
@@ -610,7 +608,7 @@ namespace xclcpuemhal2 {
           emuDataSize = sec->m_sectionSize;        
           emuData = std::unique_ptr<char[]>(new char[emuDataSize]);
           memcpy(emuData.get(), xclbininmemory + sec->m_sectionOffset, emuDataSize);
-          getCuRangeIdx(top);
+          getCuRangeIdx();
         }
 	      //Extract CONNECTIVITY section from XCLBIN       
         if (auto sec = xrt_core::xclbin::get_axlf_section(top, CONNECTIVITY)) {
@@ -922,23 +920,21 @@ namespace xclcpuemhal2 {
     PRINTENDFUNC;
     return size;
   }
-
-  int CpuemShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
-  {
-    if (mLogStream.is_open()) {
-      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
-    }
+  
+  bool CpuemShim::isValidCu(uint32_t cu_index) {  
     // get sorted cu addresses to match up with cu_index
     const auto& cuidx2addr = mCoreDevice->get_cus();
-    //mLogStream << __func__ << " , cuidx2addr :  " << cuidx2addr << std::endl;
     if (cu_index >= cuidx2addr.size()) {
-      std::string strMsg = "ERROR: [SW-EMU 20] xclRegRW - invalid CU index: " + std::to_string(cu_index);
+      std::string strMsg = "ERROR: [SW-EMU 20] invalid CU index: " + std::to_string(cu_index);
       mLogStream << __func__ << strMsg << std::endl;
-      return -EINVAL;
+      return false;
     }
+    return true;
+  }
 
+  uint64_t CpuemShim::getCuAddRange(uint32_t cu_index) {
     uint64_t cuAddRange = 64 * 1024;
-    for (auto cuInfo : mCURangeMap) {
+    for (const auto& cuInfo : mCURangeMap) {
       std::string instName = cuInfo.first;
       int cuIdx = static_cast<int>(cu_index);
       int tmpCuIdx = xclIPName2Index(instName.c_str());
@@ -946,20 +942,38 @@ namespace xclcpuemhal2 {
       if (tmpCuIdx == cuIdx) {
         cuAddRange = cuInfo.second;
         mLogStream << __func__ << " , cuAddRange :  " << cuAddRange << std::endl;
-      }
-    
+      }  
     }
-
+    return cuAddRange;	  
+  }
+  
+  bool CpuemShim::isValidOffset(uint32_t offset, uint64_t cuAddRange) { 
     if (offset >= cuAddRange || (offset & (sizeof(uint32_t) - 1)) != 0) {
       std::string strMsg = "ERROR: [SW-EMU 21] xclRegRW - invalid CU offset: " + std::to_string(offset);
       mLogStream << __func__ << strMsg << std::endl;
-      return -EINVAL;
+      return false;
     }
-
+    return true;
+  }
+  
+  int CpuemShim::xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap)
+  {
+    if (mLogStream.is_open())
+      mLogStream << __func__ << ", " << std::this_thread::get_id() << ", " << "CU Idx : " << cu_index << " Offset : " << offset << " Datap : " << (*datap) << std::endl;
+  
+    if (!isValidCu(cu_index))
+      return -EINVAL;
+  
+    const auto& cuidx2addr = mCoreDevice->get_cus();
+	
+    uint64_t cuAddRange = getCuAddRange(cu_index);
+	
+    if (!isValidOffset(offset, cuAddRange))
+      return -EINVAL;	
+  
     const unsigned REG_BUFF_SIZE = 0x4;
     std::array<char, REG_BUFF_SIZE> buff;
     uint64_t baseAddr = cuidx2addr[cu_index];
-    mLogStream << __func__ << " , offset : " << offset << "baseAddr :  " << baseAddr << std::endl;
     if (rd) {
       size_t size=4;
       xclRegRead_RPC_CALL(xclRegRead,baseAddr,offset,buff.data(),size,0,0);
@@ -970,7 +984,7 @@ namespace xclcpuemhal2 {
       uint32_t * tmp_buff = reinterpret_cast<uint32_t*>(buff.data());
       tmp_buff[0] = *datap;
       xclRegWrite_RPC_CALL(xclRegWrite,baseAddr,offset,tmp_buff,0,0);
-    }
+    }	
     return 0;
   }
 

@@ -68,7 +68,7 @@ namespace xclcpuemhal2 {
       // Helper functions - added for kernel debug
       int dumpXML(const xclBin* header, std::string& fileLocation) ;
       bool parseIni(unsigned int& debugPort) ;
-      void getCuRangeIdx(const axlf* top);
+      void getCuRangeIdx();
       static std::map<std::string, std::string> mEnvironmentNameValueMap;
   public:
       // HAL2 RELATED member functions start
@@ -165,6 +165,9 @@ namespace xclcpuemhal2 {
       //Get CU index from IP_LAYOUT section for corresponding kernel name
       int xclIPName2Index(const char *name);
 
+      bool isValidCu(uint32_t cu_index);
+      uint64_t getCuAddRange(uint32_t cu_index);
+      bool isValidOffset(uint32_t offset, uint64_t cuAddRange);
       int xclRegRW(bool rd, uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegRead(uint32_t cu_index, uint32_t offset, uint32_t *datap);
       int xclRegWrite(uint32_t cu_index, uint32_t offset, uint32_t data);
@@ -483,6 +486,7 @@ namespace xclcpuemhal2 {
       boost::property_tree::ptree mPlatformData;
       std::map<key_type, std::string> mQueryTable;
       std::map<std::string, uint64_t> mCURangeMap;
+      xrt::xclbin m_xclbin;
       std::set<unsigned int > mImportedBOs;
       exec_core* mCore;
       SWScheduler* mSWSch;
