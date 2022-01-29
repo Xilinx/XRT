@@ -69,13 +69,6 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
 };
 
 XRT_CORE_UNUSED
-static bool
-is_sw_emulation()
-{
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
-  return swem;
-}
 
 static std::vector<char>
 read_xclbin(const std::string& fnm)
