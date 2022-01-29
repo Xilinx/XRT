@@ -84,8 +84,8 @@ get_sdm_sensors(const xrt_core::device* device,
     query::sdm_sensor_info::data_type data;
     std::vector<int> target_sysfs;
     //All device sensors are stored in hwmon sysfs nodes with starts & ends as follows.
-    std::vector<std::string> start {"curr", "in", "power", "temp", "fan"};
-    std::vector<std::string> end {"label", "input", "max", "average", "highest"};
+    std::array<std::string, 5> start = {"curr", "in", "power", "temp", "fan"};
+    std::array<std::string, 5> end = {"label", "input", "max", "average", "highest"};
     int max_end_types = end.size();
 
     switch(req_type) {
