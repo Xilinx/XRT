@@ -111,16 +111,22 @@ OO_BOStats::execute(const SubCmdOptions& _options) const
   try{
     auto mem_stat_char = xrt_core::device_query<xrt_core::query::memstat>(device);
     std::vector<std::string> mem_stat;
+
+    //Convert vector of char from query cmd into vector of strings separated by null char separated by null char
     boost::split(mem_stat, mem_stat_char, boost::is_any_of(boost::as_array("\n\0")));
     bool found = false;
 
+    //Skip DDR usage info by looking for line with string "BO Stats Below"
+    //Following that are BO stats. BO type, size in KB and num of BOs fields separated by blank space
     for (auto& line: mem_stat) {
       if (line.empty())
         continue;
 
       if (found) {
+        //Capture BOStat fields separated by blank space
         std::vector<std::string> bo_info;
         boost::split(bo_info, line, boost::is_any_of("\t "));
+        //Expected fileds are BO type, size in KB and Num of BOs
         if (bo_info.size() != 3)
           throw xrt_core::error((boost::format("ERROR: Unexpected format in BO Stats. Line: %s") % line).str());
 
@@ -130,6 +136,8 @@ OO_BOStats::execute(const SubCmdOptions& _options) const
           % bo_info[2].substr(0, bo_info[2].length()-3)));
         continue;
       }
+
+      //Skip DDR usage stats at begining by looking for beloe string
       if (line.find("BO Stats Below") != std::string::npos)
         found = true;
     }
