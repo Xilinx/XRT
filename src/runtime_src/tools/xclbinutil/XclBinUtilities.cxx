@@ -42,6 +42,7 @@
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/env.hpp>
+#include <boost/asio/io_service.hpp>
 #endif
 
 
