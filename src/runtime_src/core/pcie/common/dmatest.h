@@ -85,8 +85,8 @@ namespace xcldev {
                 return future0.get();
             }
 
-            unsigned len = ((e - b) < count) ? 1 : (e - b)/count;
-            const auto ajust_e = b + len * std::min(count, len);
+            auto len = ((e - b) < count) ? 1 : (e - b)/count;
+            const auto ajust_e = b + len * std::min(count, (unsigned)len);
             std::vector<std::future<int>> threads;
             while (b < ajust_e) {
                 threads.push_back(std::async(std::launch::async, &DMARunner::runSyncWorker, this, b, b + len, dir));
