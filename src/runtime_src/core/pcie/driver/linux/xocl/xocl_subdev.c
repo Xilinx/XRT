@@ -2013,25 +2013,47 @@ failed:
 
 static struct resource *__xocl_get_res_byname(struct platform_device *pdev,
 						unsigned int type,
-						const char *name)
+						const char *name, int idx)
 {
 	int i = 0;
 	struct resource *res;
+	int count = -1;
+
+	if (idx < 0)
+		return NULL;
 
 	for (res = platform_get_resource(pdev, type, i);
 		res;
 		res = platform_get_resource(pdev, type, ++i)) {
 		if (!strncmp(res->name, name, strlen(name)))
+			count++;
+		if (count == idx)
 			return res;
 	}
 
 	return NULL;
 }
 
+int xocl_count_iores_byname(struct platform_device *pdev, char *name)
+{
+	int nr = 0;
+
+	while (__xocl_get_res_byname(pdev, IORESOURCE_MEM, name, nr))
+		nr++;
+
+	return nr;
+}
+
+struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
+				       char *name, int idx)
+{
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, idx);
+}
+
 struct resource *xocl_get_iores_byname(struct platform_device *pdev,
 				       char *name)
 {
-	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	return __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, 0);
 }
 
 void __iomem *xocl_devm_ioremap_res(struct platform_device *pdev,
@@ -2048,7 +2070,7 @@ void __iomem *xocl_devm_ioremap_res_byname(struct platform_device *pdev,
 {
 	struct resource *res;
 
-	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name);
+	res = __xocl_get_res_byname(pdev, IORESOURCE_MEM, name, 0);
 	return devm_ioremap_resource(&pdev->dev, res);
 }
 
@@ -2056,7 +2078,7 @@ int xocl_get_irq_byname(struct platform_device *pdev, char *name)
 {
 	struct resource *r;
 
-	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name);
+	r = __xocl_get_res_byname(pdev, IORESOURCE_IRQ, name, 0);
 	return r? r->start : -ENXIO;
 }
 

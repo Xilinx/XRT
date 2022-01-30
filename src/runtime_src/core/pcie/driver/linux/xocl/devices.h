@@ -279,6 +279,7 @@ enum {
 #define	XOCL_XGQ_VMR		"xgq_vmr"
 #define	XOCL_HWMON_SDM		"hwmon_sdm"
 #define XOCL_ERT_CTRL           "ert_ctrl"
+#define XOCL_ERT_CTRL_VERSAL    "ert_ctrl.versal"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -2916,6 +2917,7 @@ struct xocl_subdev_map {
 #define	XOCL_BOARD_VERSAL_USER_RAPTOR2					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_MB_SCHE_OFF |			\
 			XOCL_DSAFLAG_VERSAL,				\
 		.subdev_info = RES_USER_VERSAL_VSEC,			\
 		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
@@ -2924,6 +2926,7 @@ struct xocl_subdev_map {
 #define	XOCL_BOARD_VERSAL_USER_RAPTOR2_ES3				\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
+			XOCL_DSAFLAG_MB_SCHE_OFF |			\
 			XOCL_DSAFLAG_VERSAL_ES3 |			\
 			XOCL_DSAFLAG_VERSAL,				\
 		.subdev_info = RES_USER_VERSAL_VSEC,			\
