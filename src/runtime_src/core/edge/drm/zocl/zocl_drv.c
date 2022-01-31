@@ -746,7 +746,7 @@ static vm_fault_t zocl_bo_fault(struct vm_fault *vmf)
  */
 static int zocl_client_open(struct drm_device *dev, struct drm_file *filp)
 {
-	return zocl_create_client(dev->dev_private, &filp->driver_priv);
+	return zocl_create_client(dev->dev, &filp->driver_priv);
 }
 
 /**
