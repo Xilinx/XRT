@@ -240,11 +240,9 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 	xgq_arg.zxia_ring = chan->mem_base + ZRPU_CHANNEL_XGQ_BUFFER;
 	xgq_arg.zxia_ring_size = ZRPU_CHANNEL_XGQ_BUFFER_SIZE;
 	xgq_arg.zxia_ring_slot_size = ZRPU_CHANNEL_XGQ_SLOT_SIZE;
-#if 0	/* TODO: Wait for XGQ IP fix on the shell */
 	xgq_arg.zxia_irq = irq;
 	xgq_arg.zxia_intc_pdev = chan->intc_pdev;
 	xgq_arg.zxia_xgq_ip = chan->xgq_base;
-#endif
 	xgq_arg.zxia_cmd_handler = zchan_cmd_handler;
 	chan->xgq_hdl = zxgq_init(&xgq_arg);
 	if (!chan->xgq_hdl) {
