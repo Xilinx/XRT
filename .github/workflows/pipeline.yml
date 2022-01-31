@@ -118,6 +118,8 @@ jobs:
         source /opt/xilinx/xrt/setup.sh
         xbutil validate -d --verbose --batch
         xbutil examine -d
+        echo "Running 'Verify Kernel' testcase"
+        xbutil validate -r 'Verify kernel'
     - name: Drivers reloading
       timeout-minutes: 10
       run: |
