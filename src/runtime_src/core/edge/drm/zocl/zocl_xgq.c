@@ -173,12 +173,19 @@ static void zxgq_req_receiver_noop(struct work_struct *work)
 static void zxgq_req_receiver(struct work_struct *work)
 {
 	int rc = 0;
+	int loop_cnt = 0;
 	struct xgq_cmd_sq_hdr *cmd = NULL;
 	struct zocl_xgq *zxgq = container_of(work, struct zocl_xgq, zx_worker);
 
 	zxgq_info(zxgq, "XGQ thread started");
 
 	while (!zxgq->zx_worker_stop) {
+		/* Avoid large number of incoming requests leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
+
 		rc = zxgq_fetch_request(zxgq, &cmd);
 		if (unlikely(rc == -ENOENT)) {
 			if (ZXGQ_IS_INTR_ENABLED(zxgq)) {

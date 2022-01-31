@@ -420,8 +420,8 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 	u32 *irqs = NULL;
 
 	/* Obtain shared ring buffer. */
-	zert->zce_cq = zlib_map_res_by_name(ZERT2PDEV(zert), cq_res_name, &zert->zce_cq_start,
-					    &zert->zce_cq_size);
+	zert->zce_cq = zlib_map_phandle_res_by_name(ZERT2PDEV(zert), cq_res_name,
+						    &zert->zce_cq_start, &zert->zce_cq_size);
 	if (!zert->zce_cq) {
 		zert_err(zert, "failed to find ERT command queue");
 		return -EINVAL;

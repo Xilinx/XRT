@@ -186,8 +186,8 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, chan);
 
 	/* Discover and init shared ring buffer. */
-	chan->mem_base = zlib_map_res_by_name(ZCHAN2PDEV(chan), mem_res_name,
-					      &chan->mem_start, &chan->mem_size);
+	chan->mem_base = zlib_map_phandle_res_by_name(ZCHAN2PDEV(chan), mem_res_name,
+						      &chan->mem_start, &chan->mem_size);
 	if (!chan->mem_base) {
 		zchan_err(chan, "failed to find channel buffer");
 		return -EINVAL;
