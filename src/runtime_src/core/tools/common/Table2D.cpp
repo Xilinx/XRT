@@ -22,152 +22,68 @@
 #include <algorithm>
 #include <boost/format.hpp>
 
-const std::string no_data_string = "N/A";
-
-Table2D::Table2D() : m_entry_count(0)
-{
-}
-
-Table2D::Table2D(const std::vector<HeaderData>& headers) : m_entry_count(0)
-{
-    addHeaders(headers);
-}
-
-void
-Table2D::addHeader(const HeaderData& header)
-{
-    // Format the header into a table data struct
-    ColumnData column;
-    column.header = header;
-    // Populate the header with the appropriate amount of N/A
-    column.entry_slices = std::vector<std::string>();
-    for (size_t entry_count = 0; entry_count < m_entry_count; entry_count++)
-        column.entry_slices.push_back(no_data_string);
-    m_table.push_back(column);
-}
-
-void
-Table2D::addHeaders(const std::vector<HeaderData>& headers)
+Table2D::Table2D(const std::vector<HeaderData>& headers)
 {
     for (auto& header : headers)
         addHeader(header);
 }
 
-bool
-Table2D::removeHeader(const std::string& header)
-{
-    // Search through each clumn looking for a matching header
-    for (size_t column_index = 0; column_index < m_table.size(); ++column_index) {
-        // If a matching header is found remove the entire column
-        if (m_table[column_index].header.name.compare(header) == 0) {
-            m_table.erase(m_table.begin() + column_index);
-            return true;
-        }
-    }
-    // Return false when no match is found
-    return false;
-}
-
-size_t
+void
 Table2D::addEntry(const std::vector<std::string>& entry)
 {
-    // Keep track of each new entry
-    ++m_entry_count;
-
     if (entry.size() < m_table.size())
-        std::cout << "Warning: Given entry data is smaller than table. Later values will be " << no_data_string << "\n";
+        throw std::runtime_error("Table2D - Entry data is smaller than table.\n");
     else if (entry.size() > m_table.size())
-        std::cout << "Warning: Given entry data is larger than table. Later values will not be appended.\n";
-
-    // Determine the maximum number of elements to add from the entry
-    const size_t vector_size = std::max(entry.size(), m_table.size());
+        throw std::runtime_error("Table2D - Entry data is larger than table.\n");
 
     // Iterate through the entry data and the table adding the table entry elements in order
-    for (size_t i = 0; i < vector_size; ++i) {
+    for (size_t i = 0; i < entry.size(); ++i) {
         auto& column = m_table[i];
-        if (i < entry.size()) {
-            column.entry_slices.push_back(entry[i]);
-        }
-        else
-            column.entry_slices.push_back(no_data_string);
+        column.max_element_size = std::max(column.max_element_size, entry[i].size());
+        column.data.push_back(entry[i]);
     }
-
-    // Return the actual index of the newly added entry
-    return m_entry_count - 1;
-}
-
-std::vector<size_t>
-Table2D::addEntries(const std::vector<std::vector<std::string>>& entries)
-{
-    std::vector<size_t> entries_indicies;
-    for (auto& entry : entries)
-        entries_indicies.push_back(addEntry(entry));
-    return entries_indicies;
 }
 
 void
-Table2D::removeEntry(size_t entry_index)
+Table2D::appendToOutput(std::string& output, const ColumnData& column, const std::string& data)
 {
-    // Verify the index is valid
-    if (entry_index >= m_entry_count)
-        throw xrt_core::error(boost::str(boost::format(
-            "ERROR: Table2D - Given index: %d is larger than data table: %d") % entry_index % m_entry_count));
-    // Remove appropriate row element from each column
-    for (auto& column : m_table)
-        column.entry_slices.erase(column.entry_slices.begin() + entry_index);
+    // Format for table data
+    boost::format fmt("%s%s%s  ");
+    size_t left_blanks = 0;
+    size_t right_blanks = 0;
+    getBlankSizes(column, data.size(), left_blanks, right_blanks);
+    output.append(boost::str(fmt % std::string(left_blanks, ' ') % data % std::string(right_blanks, ' ')));
 }
 
 std::ostream&
 Table2D::print(std::ostream& os)
 {
-    // Stores each row of the table
-    std::vector<std::string> output;
+    // Iterate through each row and column of the table to format the output
+    // Add one to account for the header row
+    for(size_t row = 0; row < m_table[0].data.size() + 1; row++) {
+        std::string output_line;
+        for (size_t col = 0; col < m_table.size(); col++) {
+            auto& column = m_table[col];
 
-    // Add an empty string for each entry plus a header row
-    for (size_t i = 0; i < m_entry_count + 1; i++)
-        output.push_back("");
-
-    // Iterate through the table columns while adding each element to the appropriate row
-    for (auto& column : m_table) {
-        size_t left_blanks = 0;
-        size_t right_blanks = 0;
-
-        auto& header = column.header;
-
-        // Find the largest string in the column and use it for justification
-        size_t max_string_size = header.name.size();
-        for(auto& entry : column.entry_slices)
-            max_string_size = std::max(entry.size(), max_string_size);
-
-        // Add header for current entry to the top row
-        getBlankSizes(max_string_size, header.justification, header.name.size(), left_blanks, right_blanks);
-        output[0].append(boost::str(boost::format("%s%s%s  ") % std::string(left_blanks, ' ') % header.name % std::string(right_blanks, ' ')));
-
-        // Iterate through each entry in the data column and append the data to the appropriate row
-        auto& entry_slices = column.entry_slices;
-        for (size_t i = 0; i < entry_slices.size(); ++i) {
-            auto& entry = entry_slices[i];
-            getBlankSizes(max_string_size, header.justification, entry.size(), left_blanks, right_blanks);
-            // Plus one as the 0 element is the header row
-            output[i + 1].append(boost::str(boost::format("%s%s%s  ") % std::string(left_blanks, ' ') % entry % std::string(right_blanks, ' ')));
+            // For the first row add the headers
+            if (row == 0)
+                appendToOutput(output_line, column, column.header.name);
+            // For all other output lines add the entry associated with the current row/col index
+            else
+                // Minus 1 to account for the first row being the headers
+                appendToOutput(output_line, column, column.data[row - 1]);
         }
-    }
-
-    // Add a newline to each output row
-    // Place row into the output stream
-    for (auto& output_line : output) {
         output_line.append("\n");
         os << output_line;
     }
-
     return os;
 }
 
 void
-Table2D::getBlankSizes(size_t max_string_size, Justification justification, size_t string_size, size_t& left_blanks, size_t& right_blanks)
+Table2D::getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks)
 {
-    const size_t required_buffer = max_string_size - string_size;
-    switch (justification) {
+    const size_t required_buffer = col_data.max_element_size - string_size;
+    switch (col_data.header.justification) {
         case Justification::left:
             left_blanks = required_buffer;
             right_blanks = 0;
@@ -184,4 +100,15 @@ Table2D::getBlankSizes(size_t max_string_size, Justification justification, size
                 ++left_blanks;
             break;
     }
+}
+
+void
+Table2D::addHeader(const HeaderData& header)
+{
+    // Format the header into a table data struct
+    ColumnData column;
+    column.header = header;
+    column.max_element_size = header.name.size();
+    column.data = std::vector<std::string>();
+    m_table.push_back(column);
 }
