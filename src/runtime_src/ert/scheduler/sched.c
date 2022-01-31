@@ -713,7 +713,7 @@ process_ctrl_command()
     ret = identify_xgq(cmd);
     break;
   default:
-    ret = -EINVAL;
+    ret = -ENOTTY;
     break;
   }
 
