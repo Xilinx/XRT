@@ -75,8 +75,21 @@ config_versal_project()
 {
     VERSAL_PROJECT_DIR=$1
     APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
-    # copy rootfs configs
-    cp $APU_RECIPES_DIR/rootfs_config $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+
+    # Add necessary rootfs configs
+    sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_gdb=y is.*/CONFIG_gdb=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_strace is.*/CONFIG_strace=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_perf is.*/CONFIG_perf=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_valgrind is.*/CONFIG_valgrind=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_vim is.*/CONFIG_vim=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_lrzsz is.*/CONFIG_lrzsz=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ldd is.*/CONFIG_ldd=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_binutils is.*/CONFIG_binutils=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ai-engine-driver is.*/CONFIG_ai-engine-driver=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ADD_EXTRA_USERS is.*/CONFIG_ADD_EXTRA_USERS="petalinux:petalinux;"/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ROOTFS_ROOT_PASSWD=\"root\".*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    echo "CONFIG_ROOTFS_ROOT_PASSWD=\"root\"" >> $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
     # Configure u-boot to pick dtb from address 0x40000
     UBOOT_USER_SCRIPT=$APU_RECIPES_DIR/u-boot_custom.cfg
@@ -99,8 +112,10 @@ config_versal_project()
     BB_FILE=$APU_RECIPES_DIR/apu-boot.bb
     INIT_SCRIPT=$APU_RECIPES_DIR/apu-boot
 
-    $PETA_BIN/petalinux-config --silentconfig
-    $PETA_BIN/petalinux-create -t apps --template install -n apu-boot --enable
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n apu-boot --enable
+    fi
 
     cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
     cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot
