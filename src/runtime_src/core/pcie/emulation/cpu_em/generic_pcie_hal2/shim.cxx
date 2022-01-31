@@ -508,14 +508,14 @@ namespace xclcpuemhal2 {
     std::string instance_name = "";
     for (const auto& kernel : m_xclbin.get_kernels()) {
       // get properties of each kernel object
-      auto props = xrt_core::xclbin_int::get_properties(kernel);
+      const auto& props = xrt_core::xclbin_int::get_properties(kernel);
       //get CU's of each kernel object.iterate over CU's to get arguments
-      if (props.address_range != 0 && !props.name.empty()) {
-        for (const auto& cu : kernel.get_cus()) {
-          instance_name = cu.get_name();
-          if (!instance_name.empty())
-            mCURangeMap[instance_name] = props.address_range;
-        }
+      if (props.address_range != 0 && !props.name.empty())
+        continue;       
+      for (const auto& cu : kernel.get_cus()) {
+        instance_name = cu.get_name();
+        if (!instance_name.empty())
+          mCURangeMap[instance_name] = props.address_range;
       }
     }
   }
