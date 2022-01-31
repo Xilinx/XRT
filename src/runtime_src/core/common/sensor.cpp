@@ -135,10 +135,6 @@ populate_fan(const xrt_core::device * device,
   return pt;
 }
 
-} //unnamed namespace
-
-namespace xrt_core { namespace sensor {
-
 /*
  * _data_driven_*(): Sensor data driven model APIs
  *   data_driven functions are used when accessing sensor data
@@ -151,15 +147,13 @@ namespace xrt_core { namespace sensor {
  *   This function iterates over the input vector and prepares property tree.
  *   Converts mV, mA & mW into V, A & W before adding to the tree
  */
-ptree_type
+static ptree_type
 read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& current,
                             const std::vector<xq::sdm_sensor_info::data_type>& voltage,
                             const std::vector<xq::sdm_sensor_info::data_type>& power)
 {
-  ptree_type root;
   ptree_type sensor_array;
   ptree_type pt;
-  std::string val;
 
   pt.put("data_driven", true);
   // iterate over current data, store to ptree by converting to Amps from milli Amps
@@ -192,6 +186,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     sensor_array.push_back({"", pt});
   }
 
+  std::string bd_power;
   // iterate over current data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
@@ -206,18 +201,19 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("current.is_present", false);
     sensor_array.push_back({"", pt});
     if (!strcmp((tmp.label).c_str(), "POWER"))
-      val = xrt_core::utils::format_base10_shiftdown6(tmp.input);
+      bd_power = xrt_core::utils::format_base10_shiftdown6(tmp.input);
   }
+  ptree_type root;
   root.add_child("power_rails", sensor_array);
-  root.put("power_consumption_watts", val);
+  root.put("power_consumption_watts", bd_power);
   root.put("power_consumption_max_watts", "NA");
   root.put("power_consumption_warning", "NA");
 
   return root;
 }
 
-ptree_type
-read_data_driven_thermals(std::vector<xq::sdm_sensor_info::data_type> output)
+static ptree_type
+read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& output)
 {
   ptree_type thermal_array;
   ptree_type pt;
@@ -239,7 +235,7 @@ read_data_driven_thermals(std::vector<xq::sdm_sensor_info::data_type> output)
   return root;
 }
 
-ptree_type
+static ptree_type
 read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
 {
   ptree_type root;
@@ -274,12 +270,11 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
  *   and return the same.
  */
 
-ptree_type
+static ptree_type
 read_legacy_mechanical(const xrt_core::device * device)
 {
   ptree_type root;
   ptree_type fan_array;
-  ptree_type pt;
 
   fan_array.push_back({"", populate_fan(device, "fpga_fan_1", "FPGA Fan 1")});
 
@@ -287,11 +282,10 @@ read_legacy_mechanical(const xrt_core::device * device)
   return root;
 }
 
-ptree_type
+static ptree_type
 read_legacy_thermals(const xrt_core::device * device)
 {
   ptree_type thermal_array;
-  ptree_type pt;
   ptree_type root;
 
   //--- pcb ----------
@@ -324,10 +318,9 @@ read_legacy_thermals(const xrt_core::device * device)
   return root;
 }
 
-ptree_type
+static ptree_type
 read_legacy_electrical(const xrt_core::device * device)
 {
-  ptree_type root;
   ptree_type sensor_array;
   ptree_type pt;
 
@@ -386,7 +379,6 @@ read_legacy_electrical(const xrt_core::device * device)
     populate_sensor<xq::vcc_ram_millivolts, xq::noop>(device, "vcc_ram", "Vcc Ram")});
   sensor_array.push_back({"",
     populate_sensor<xq::v0v9_int_vcc_vcu_millivolts, xq::noop>(device, "0v9_vccint_vcu", "0.9 Volts Vcc Vcu")});
-  root.add_child("power_rails", sensor_array);
 
   std::string max_power_watts;
   std::string power_watts;
@@ -402,12 +394,19 @@ read_legacy_electrical(const xrt_core::device * device)
     power_watts = "N/A";
     warning = "N/A";
   }
+
+  ptree_type root;
+  root.add_child("power_rails", sensor_array);
   root.put("power_consumption_max_watts", max_power_watts);
   root.put("power_consumption_watts", power_watts);
   root.put("power_consumption_warning", warning);
 
   return root;
 }
+
+} //unnamed namespace
+
+namespace xrt_core { namespace sensor {
 
 /*
  * read_<>() functions are top level functions are being called from tools/common driver.
@@ -429,9 +428,9 @@ read_electrical(const xrt_core::device * device)
 
   //Check if requested sensor data can be retrieved in data driven model.
   try {
-    auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::current);
-    auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::voltage);
-    auto power  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::power);
+    auto current  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::current);
+    auto voltage  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::voltage);
+    auto power  = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::power);
     //Check for any of these data is available
     if (!current.empty() || !voltage.empty() || !power.empty())
       return read_data_driven_electrical(current, voltage, power);
@@ -462,7 +461,7 @@ read_thermals(const xrt_core::device * device)
 
   //Check if requested sensor data can be retrieved in data driven model.
   try {
-    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::thermal);
+    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
     if (output.empty())
       is_data_driven = false;
   }
@@ -491,7 +490,7 @@ read_mechanical(const xrt_core::device * device)
 
   //Check if requested sensor data can be retrieved in data driven model.
   try {
-    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdr_req_type::mechanical);
+    output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
     if (output.empty())
       is_data_driven = false;
   }

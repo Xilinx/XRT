@@ -36,21 +36,6 @@ namespace xrt_core {
 namespace query {
 
 /**
- * enum class sdr_req_type - request ids for specific sensor query requests
- *
- * Use request ids in this table to identify the desired sensor query request.
- */
-enum class sdr_req_type
-{
-  current     = 0,
-  voltage     = 1,
-  power       = 2,
-  thermal     = 3,
-  mechanical  = 4,
-  electrical  = 5,
-};
-
-/**
  * enum class key_type - keys for specific query requests
  *
  * Use keys in this table to identify the desired query request.  Use
@@ -838,6 +823,21 @@ struct debug_ip_layout_raw : request
 
 struct sdm_sensor_info : request
 {
+  /**
+   * enum class sdr_req_type - request ids for specific sensor query requests
+   *
+   * Use request ids in this table to identify the desired sensor query request.
+   */
+  enum class sdr_req_type
+  {
+    current     = 0,
+    voltage     = 1,
+    power       = 2,
+    thermal     = 3,
+    mechanical  = 4,
+    electrical  = 5,
+  };
+
   /*
    * struct sensor_data: used to store sensor information and
    * each sensor contains following information.

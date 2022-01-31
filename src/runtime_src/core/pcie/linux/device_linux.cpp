@@ -76,94 +76,94 @@ get_pcidev(const xrt_core::device* device)
 
 static query::sdm_sensor_info::result_type
 get_sdm_sensors(const xrt_core::device* device,
-                const query::sdr_req_type req_type,
+                const query::sdm_sensor_info::sdr_req_type req_type,
                 const std::string path)
 {
-    auto pdev = get_pcidev(device);
-    query::sdm_sensor_info::result_type output;
-    query::sdm_sensor_info::data_type data;
-    std::vector<int> target_sysfs;
-    //All device sensors are stored in hwmon sysfs nodes with starts & ends as follows.
-    std::array<std::string, 5> start = {"curr", "in", "power", "temp", "fan"};
-    std::array<std::string, 5> end = {"label", "input", "max", "average", "highest"};
-    int max_end_types = end.size();
+  auto pdev = get_pcidev(device);
+  query::sdm_sensor_info::result_type output;
+  query::sdm_sensor_info::data_type data;
+  std::vector<int> target_sysfs;
+  //All device sensors are stored in hwmon sysfs nodes with starts & ends as follows.
+  std::array<std::string, 5> start = {"curr", "in", "power", "temp", "fan"};
+  std::array<std::string, 5> end = {"label", "input", "max", "average", "highest"};
+  int max_end_types = end.size();
 
-    switch(req_type) {
-      case query::sdr_req_type::current:
-      case query::sdr_req_type::voltage:
-      case query::sdr_req_type::power:
-      case query::sdr_req_type::thermal: //temperature readings
-      case query::sdr_req_type::mechanical: //fan readings
-        target_sysfs.push_back((int)req_type);
-        break;
-      case query::sdr_req_type::electrical:
-        //electrical combines curr + volt + power readings
-        target_sysfs.push_back(0);
-        target_sysfs.push_back(1);
-        target_sysfs.push_back(2);
-        break;
-    }
+  switch(req_type) {
+    case query::sdm_sensor_info::sdr_req_type::current:
+    case query::sdm_sensor_info::sdr_req_type::voltage:
+    case query::sdm_sensor_info::sdr_req_type::power:
+    case query::sdm_sensor_info::sdr_req_type::thermal: //temperature readings
+    case query::sdm_sensor_info::sdr_req_type::mechanical: //fan readings
+      target_sysfs.push_back((int)req_type);
+      break;
+    case query::sdm_sensor_info::sdr_req_type::electrical:
+      //electrical combines curr + volt + power readings
+      target_sysfs.push_back(0);
+      target_sysfs.push_back(1);
+      target_sysfs.push_back(2);
+      break;
+  }
 
-    //Iterate over hwmon sysfs nodes based on sensor request type.
-    for (const auto& sid : target_sysfs) {
-      bool next_id = false;
-      //All sensor sysfs nodes starts with 1 as starting index.
-      int start_id = 1;
-      int end_id = 0;
-      std::string type = start[sid];
+  //Iterate over hwmon sysfs nodes based on sensor request type.
+  for (const auto& sid : target_sysfs) {
+    bool next_id = false;
+    //All sensor sysfs nodes starts with 1 as starting index.
+    int start_id = 1;
+    int end_id = 0;
+    std::string type = start[sid];
 
-      //voltage sensor sysfs node starts with "in" with 0 as starting index.
-      if (!type.compare("in"))
-        start_id = 0;
+    //voltage sensor sysfs node starts with "in" with 0 as starting index.
+    if (!type.compare("in"))
+      start_id = 0;
 
-      while (!next_id) {
-        end_id = 0;
-        data.label = "N/A";
-        data.input = 0;
-        data.max = 0;
-        data.average = 0;
-        data.highest = 0;
-        /*
-         * Forming sysfs node as /<start>[start_id]_.
-         * Example: /in0_ or /curr1_ or /power1_ or /temp1_ in 1st iteration.
-         * start_id will be incremented till next_id become true.
-         * So, next iteration will be /in1_ or /curr2_ or /power2_ or /temp2_.
-         * Similarly, end string of sysfs node name will be retrieved using end[].
-         */
-        const auto slash = "/";
-        const auto underscore = "_";
-        std::string tmp = slash + type + std::to_string(start_id) + underscore;
-        while (end_id < max_end_types) {
-          if (end_id == 0) {
-            std::string errmsg;
-            std::string label;
-	    pdev->sysfs_get("", path + tmp + end[end_id], errmsg, label);
-	    if (errmsg.empty()) {
-                  data.label = label;
-	    } else {
-		  //go and read next sysfs node
-                  next_id = true;
-		  end_id = max_end_types;
-	    }
+    while (!next_id) {
+      end_id = 0;
+      data.label = "N/A";
+      data.input = 0;
+      data.max = 0;
+      data.average = 0;
+      data.highest = 0;
+      /*
+       * Forming sysfs node as /<start>[start_id]_.
+       * Example: /in0_ or /curr1_ or /power1_ or /temp1_ in 1st iteration.
+       * start_id will be incremented till next_id become true.
+       * So, next iteration will be /in1_ or /curr2_ or /power2_ or /temp2_.
+       * Similarly, end string of sysfs node name will be retrieved using end[].
+       */
+      const auto slash = "/";
+      const auto underscore = "_";
+      std::string tmp = slash + type + std::to_string(start_id) + underscore;
+      while (end_id < max_end_types) {
+        if (end_id == 0) {
+          std::string errmsg;
+          std::string label;
+          pdev->sysfs_get("", path + tmp + end[end_id], errmsg, label);
+          if (errmsg.empty()) {
+            data.label = label;
           } else {
-            std::string errmsg;
-            uint32_t input = 0;
-	    pdev->sysfs_get<uint32_t>("", path + tmp + end[end_id], errmsg, input, EINVAL);
-	    if (errmsg.empty()) {
-                  if (end_id == 1) data.input = input;
-                  else if (end_id == 2) data.max = input;
-                  else if (end_id == 3) data.average = input;
-                  else if (end_id == 4) data.highest = input;
-	    }
+            //go and read next sysfs node
+            next_id = true;
+            end_id = max_end_types;
           }
-          end_id++;
-        } //while (end_id < max)
-        if (data.label.compare("N/A"))
-          output.push_back(data);
-        start_id++;
-      } //while (!next_id)
-   } //for()
-    return output;
+        } else {
+          std::string errmsg;
+          uint32_t input = 0;
+          pdev->sysfs_get<uint32_t>("", path + tmp + end[end_id], errmsg, input, EINVAL);
+          if (errmsg.empty()) {
+            if (end_id == 1) data.input = input;
+            else if (end_id == 2) data.max = input;
+            else if (end_id == 3) data.average = input;
+            else data.highest = input;
+          }
+        }
+        end_id++;
+      } //while (end_id < max)
+      if (data.label.compare("N/A"))
+        output.push_back(data);
+      start_id++;
+    } //while (!next_id)
+  } //for()
+  return output;
 }
 
 static std::vector<uint64_t> 
@@ -220,6 +220,10 @@ struct bdf
   }
 };
 
+/*
+ * sdm_sensor_info query request used to access sensor information from
+ * hwmon sysfs directly. It is a data driven approach.
+ */
 struct sdm_sensor_info
 {
   using result_type = query::sdm_sensor_info::result_type;
@@ -228,11 +232,11 @@ struct sdm_sensor_info
   static result_type
   get(const xrt_core::device* device, key_type, const boost::any& reqType)
   {
-    const query::sdr_req_type req_type = boost::any_cast<query::sdm_sensor_info::req_type>(reqType);
+    const query::sdm_sensor_info::sdr_req_type req_type = boost::any_cast<query::sdm_sensor_info::req_type>(reqType);
     auto pdev = get_pcidev(device);
     const std::string target_dir = "hwmon";
     const std::string target_file = "name";
-    const std::string target_platform = "xilinx_vck5000_gen4x8_xdma_base_1";
+    const std::string target_name = "hwmon_sdm";
     const std::string slash = "/";
     std::string parent_path = pdev->get_sysfs_path("", target_dir);
     std::string path;
@@ -255,7 +259,7 @@ struct sdm_sensor_info
         std::string name;
         std::string errmsg;
         pdev->sysfs_get("", target_dir + slash + f_name + slash + target_file, errmsg, name);
-        if (errmsg.empty() && !name.compare(target_platform))
+        if (errmsg.empty() && !name.compare(target_name))
         {
           path = target_dir + slash + f_name;
           break;
