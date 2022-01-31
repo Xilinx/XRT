@@ -75,6 +75,51 @@ Dumping the output of programmed system image
     xbmgmt dump --device 0000:b3:00.0 --config -o /tmp/config_dump.ini
 
 
+xbmgmt configure
+~~~~~~~~~~~
+
+The ``xbmgmt configure`` command provides advanced options for configuring a device
+
+**The supported options**
+
+Configuring a device's memory settings with a premade image
+
+.. code-block:: shell
+
+    xbmgmt dump [--device| -d] <management bdf> [--input] <filename with .ini extension>
+
+
+Enabling/Disabling memory retention on a device
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --retention [ENABLE|DISABLE]
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device 
+    
+    - <management bdf> : The Bus:Device.Function of the device of interest
+
+
+- The ``--input`` specifies an INI file with the memory configuration.
+- The ``--retention`` option enables / disables memory retention.
+
+
+**Example commands** 
+
+
+.. code-block:: shell
+
+      
+    #Configure a device's memory settings using an image
+    xbmgmt configure --device 0000:b3:00.0 -o /tmp/memory_config.ini
+    
+    #Enable a device's memory retention 
+    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
+
+
 xbmgmt examine
 ~~~~~~~~~~~~~~
 
