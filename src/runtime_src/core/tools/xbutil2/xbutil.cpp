@@ -15,24 +15,24 @@
  */
 
 // Sub Commands
+#include "SubCmdAdvanced.h"
+#include "SubCmdConfigure.h"
 #include "SubCmdExamine.h"
 #include "SubCmdProgram.h"
 #include "SubCmdReset.h"
 #include "SubCmdValidate.h"
-#include "SubCmdAdvanced.h"
-#include "SubCmdConfigure.h"
 
 // Supporting tools
-#include "tools/common/XBMain.h"
+#include "common/error.h"
 #include "tools/common/SubCmd.h"
 #include "tools/common/SubCmdJSON.h"
-#include "common/error.h"
+#include "tools/common/XBMain.h"
 
 // System include files
 #include <boost/filesystem.hpp>
-#include <string>
-#include <iostream>
 #include <exception>
+#include <iostream>
+#include <string>
 
 // Program entry
 int main( int argc, char** argv )

@@ -16,17 +16,16 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "XBMain.h"
-
-#include "XBUtilities.h"
 #include "SubCmd.h"
 #include "XBHelpMenus.h"
+#include "XBMain.h"
+#include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 #include <cstdlib>
 
 namespace po = boost::program_options;

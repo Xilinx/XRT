@@ -42,7 +42,7 @@ SubCmd::SubCmd(const std::string & _name,
 void
 SubCmd::printHelp( const boost::program_options::options_description & _optionDescription,
                    const boost::program_options::options_description & _optionHidden,
-                   bool removeLongOptDashes /*=false*/) const
+                   bool removeLongOptDashes) const
 {
   boost::program_options::positional_options_description emptyPOD;
   XBUtilities::report_subcommand_help(m_executableName, m_subCmdName, m_longDescription,  m_exampleSyntax, _optionDescription, _optionHidden, emptyPOD, m_globalOptions, removeLongOptDashes);

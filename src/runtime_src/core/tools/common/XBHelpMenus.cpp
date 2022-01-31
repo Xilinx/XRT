@@ -107,7 +107,7 @@ isPositional(const std::string &_name,
 std::string 
 XBUtilities::create_usage_string( const boost::program_options::options_description &_od,
                                   const boost::program_options::positional_options_description & _pod,
-                                  bool removeLongOptDashes /*=false*/)
+                                  bool removeLongOptDashes)
 {
   const static int SHORT_OPTION_STRING_SIZE = 2;
   std::stringstream buffer;
@@ -164,11 +164,9 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       if (option->semantic()->is_required() == true) 
         continue;
 
-      std::string completeOptionName;
-      if (removeLongOptDashes)
-        completeOptionName = option->long_name();
-      else
-        completeOptionName = option->canonical_display_name(po::command_line_style::allow_long);
+      
+      const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
+				option->canonical_display_name(po::command_line_style::allow_long);
       buffer << " [" << completeOptionName << "]";
     }
   }
@@ -347,10 +345,8 @@ create_option_format_name(const boost::program_options::option_description * _op
   if ((longName.size() > 2) && (longName[0] == '-') && (longName[1] == '-')) {
     if (!optionDisplayName.empty()) 
       optionDisplayName += ", ";
-    if (removeLongOptDashes)
-      optionDisplayName += _option->long_name();
-    else
-      optionDisplayName += longName;
+
+    optionDisplayName += removeLongOptDashes ? _option->long_name() : longName;
   }
 
   if (_reportParameter && !_option->format_parameter().empty()) 
@@ -364,7 +360,7 @@ XBUtilities::report_option_help( const std::string & _groupName,
                                  const boost::program_options::options_description& _optionDescription,
                                  const boost::program_options::positional_options_description & _positionalDescription,
                                  bool _bReportParameter,
-                                 bool removeLongOptDashes /*=false*/)
+                                 bool removeLongOptDashes)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -406,7 +402,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const boost::program_options::options_description &_optionHidden,
                                      const boost::program_options::positional_options_description & _positionalDescription,
                                      const boost::program_options::options_description &_globalOptions,
-                                     bool removeLongOptDashes /*=false*/)
+                                     bool removeLongOptDashes)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code

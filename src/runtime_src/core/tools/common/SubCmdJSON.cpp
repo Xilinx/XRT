@@ -21,28 +21,28 @@
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
-#include "xrt.h"
-#include "core/common/system.h"
 #include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
+#include "core/common/system.h"
+#include "xrt.h"
 
 
 // 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 
 // System - Include Files
-#include <iostream>
-#include <fstream>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
@@ -165,26 +165,40 @@ static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
     pathVec.emplace_back(env.substr(start, env.length() - start));
 }
 
-static void __populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& jsonPath, const std::string& exeName)
+/*
+ * This function parses JSON file whose path is set using 'XRT_SUBCOMMANDS_JSON'
+ * env variable and adds valid commands to command list.
+ * Sample JSON file can be found at -
+ * src\runtime_src\core\tools\common\xrt_subcommands.json
+ *
+ * Executable under which subcommands are populated acts just like a wrapper and
+ * underlying application is invoked with respective command line options passed
+ * as arguments, 'application' is one of the node entry for each sub command option.
+ */
+static void populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const std::string& jsonPath, const std::string& exeName)
 {
     // parse JSON and add valid Sub Commands
     pt::ptree jtree;
     try {
         pt::read_json(jsonPath,jtree);
-        std::string jsonSectionName;
 
-        if(exeName.compare("xbutil") == 0)
-            jsonSectionName = "xbutil_sub_commands";
-        else
-            jsonSectionName = "xbmgmt_sub_commands";
+	pt::ptree exetree;
+	// check exsistence of tree node for execuatble passed(eg: xbutil)
+	try {
+            exetree = jtree.get_child(exeName);
+	} catch (std::exception &e) {
+            throw std::runtime_error("Error: No JSON branch for executable '" + exeName + "'");
+	}
 
-        for (pt::ptree::value_type &JSONsubCmd : jtree.get_child(jsonSectionName))
+	// iterate over various sub commands
+        for (pt::ptree::value_type &JSONsubCmd : exetree.get_child("sub_commands"))
         {
             std::string subCmdName = JSONsubCmd.first;
-            std::string subCmdDesc = JSONsubCmd.second.get<std::string>("cmd_description");
+            std::string subCmdDesc = JSONsubCmd.second.get<std::string>("description");
 
             std::vector<struct JSONCmd> subCmdOpts;
-            for(pt::ptree::value_type &subCmdOpt : JSONsubCmd.second.get_child("cmd_options"))
+	    // collect all the valid options of sub command
+            for(pt::ptree::value_type &subCmdOpt : JSONsubCmd.second.get_child("options"))
             {
                 struct JSONCmd cmd;
                 cmd.parentName = subCmdName;
@@ -215,7 +229,7 @@ void populateSubCommandsFromJSON(SubCmdsCollection &subCmds, const std::string& 
 
     for(auto &path : jsonPaths)
     {
-        if(boost::filesystem::exists(path))
-            __populateSubCommandsFromJSON(subCmds, path, exeName);
+        if(boost::filesystem::is_regular_file(path))
+            populateSubCommandsFromJSONHelper(subCmds, path, exeName);
     }
 }
