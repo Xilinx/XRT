@@ -64,6 +64,11 @@ namespace xma_core {
         { ert_cmd_state::ERT_CMD_STATE_MAX, "MAX"}
     };
 
+    /// <summary>
+    /// get_cu_cmd_state() - Returns string format of ert_cmd_state, used for logging purpose.
+    /// </summary>
+    /// <param name="state"></param>
+    /// <returns></returns>
     std::string get_cu_cmd_state(ert_cmd_state state) {
         auto it = cu_cmdMap.find(state);
         if (it == cu_cmdMap.end()) {
@@ -72,6 +77,11 @@ namespace xma_core {
         return it->second;
     }
 
+    /// <summary>
+    /// get_session_name() - Returns XMA session name for the given input of XmaSessionType.
+    /// </summary>
+    /// <param name="eSessionType"></param>
+    /// <returns></returns>
     std::string get_session_name(XmaSessionType eSessionType) {
         auto it = sessionMap.find(eSessionType);
         if (it == sessionMap.end()) {
@@ -80,6 +90,14 @@ namespace xma_core {
         return it->second;
     }
 
+    /// <summary>
+    /// finalize_ddr_index() - Allows user selected default ddr bank per XMA session.
+    /// </summary>
+    /// <param name="kernel_info"></param>
+    /// <param name="req_ddr_index"></param>
+    /// <param name="ddr_index"></param>
+    /// <param name="prefix"></param>
+    /// <returns></returns>
     int32_t finalize_ddr_index(XmaHwKernel* kernel_info, int32_t req_ddr_index, int32_t& ddr_index, const std::string& prefix) {
         ddr_index = INVALID_M1;
         if (kernel_info->soft_kernel) {
@@ -108,20 +126,43 @@ namespace xma_core {
         return XMA_ERROR;
     }
 
+    /// <summary>
+    /// create_session_execbo() : Creates XmaHwExecBO object with xrt::Kernel.
+    /// </summary>
+    /// <param name="priv"></param>
+    /// <param name="count"></param>
+    /// <param name="prefix"></param>
+    /// <returns></returns>
     int32_t create_session_execbo(XmaHwSessionPrivate *priv, int32_t count, const std::string& prefix) {
-        for (int32_t d = 0; d < count; d++) {  
-            priv->kernel_execbos.emplace_back(XmaHwExecBO{});
-            XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
-            std::string cu_name = std::string(reinterpret_cast<char*>(priv->kernel_info->name));
-            int pos = cu_name.find(":");
-            std::string kernel_name = cu_name.substr(0, pos);
-            std::string inst_name = cu_name.substr(pos + 1);
-            std::string updated_cu_name = kernel_name + ":{" + inst_name + "}";
-            dev_execbo.xrt_kernel = xrt::kernel(priv->dev_handle, priv->dev_handle.get_xclbin_uuid(), updated_cu_name);
+        try {
+            for (int32_t d = 0; d < count; d++) {
+                priv->kernel_execbos.emplace_back(XmaHwExecBO{});
+                XmaHwExecBO& dev_execbo = priv->kernel_execbos.back();
+                std::string cu_name = std::string(reinterpret_cast<char*>(priv->kernel_info->name));
+                auto pos = cu_name.find(":");
+                if (pos == std::string::npos){
+                    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo - Invalid cu name %s\n", cu_name);
+                    return XMA_ERROR;
+                }
+                std::string kernel_name = cu_name.substr(0, pos);
+                std::string inst_name = cu_name.substr(pos + 1);
+                std::string updated_cu_name = kernel_name + ":{" + inst_name + "}";
+                dev_execbo.xrt_kernel = xrt::kernel(priv->dev_handle, priv->dev_handle.get_xclbin_uuid(), updated_cu_name);
+            }
+            return XMA_SUCCESS;
         }
-        return XMA_SUCCESS;
+        catch (const xrt_core::system_error&) {
+            xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo failed.");
+            return XMA_ERROR;
+        }
     }
 
+    /// <summary>
+    /// check_plugin_version() - Checks Plugin version.
+    /// </summary>
+    /// <param name="plugin_main_ver"></param>
+    /// <param name="plugin_sub_ver"></param>
+    /// <returns></returns>
     int32_t check_plugin_version(int32_t plugin_main_ver, int32_t plugin_sub_ver) {
         if ((plugin_main_ver == XMA_LIB_MAIN_VER && plugin_sub_ver < XMA_LIB_SUB_VER) || plugin_main_ver < XMA_LIB_MAIN_VER) {
             xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "Invalid plugin version. Expected plugin version is: %d.%d", XMA_LIB_MAIN_VER, XMA_LIB_SUB_VER);
@@ -186,6 +227,10 @@ is_sw_emulation()
   return swem;
 }
 
+/// <summary>
+/// load_libxrt() - Loads required XRT Libraries.
+/// </summary>
+/// <returns></returns>
 int32_t
 load_libxrt()
 {
@@ -319,6 +364,9 @@ load_libxrt()
     return XMA_ERROR;
 }
 
+/// <summary>
+/// get_system_info() - Used for logging of XMA System info.
+/// </summary>
 void get_system_info() {
     static auto verbosity = xrt_core::config::get_verbosity();
     XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
@@ -408,6 +456,9 @@ void get_system_info() {
     g_xma_singleton->log_msg_list_locked = false;
 }
 
+/// <summary>
+/// get_session_cmd_load() - Used for logging of XMA session info.
+/// </summary>
 void get_session_cmd_load() {
     static auto verbosity = xrt_core::config::get_verbosity();
     XmaLogLevelType level = (XmaLogLevelType) std::min({(uint32_t)XMA_INFO_LOG, (uint32_t)verbosity});
@@ -451,6 +502,12 @@ void get_session_cmd_load() {
     xma_logmsg(level, "XMA-Session-Stats", "--------\n");
 }
 
+/// <summary>
+/// get_cu_index() -  Returns cu index for the given cu name.
+/// </summary>
+/// <param name="dev_index"></param>
+/// <param name="cu_name1"></param>
+/// <returns></returns>
 int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
     //singleton should be locked before calling this function
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
@@ -490,6 +547,12 @@ int32_t get_cu_index(int32_t dev_index, char* cu_name1) {
     return -1;
 }
 
+/// <summary>
+/// get_default_ddr_index() - Returns default ddr index for the given cu index.
+/// </summary>
+/// <param name="dev_index"></param>
+/// <param name="cu_index"></param>
+/// <returns></returns>
 int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
     //singleton should be locked before calling this function
     XmaHwCfg *hwcfg = &g_xma_singleton->hwcfg;
@@ -529,6 +592,11 @@ int32_t get_default_ddr_index(int32_t dev_index, int32_t cu_index) {
     }
 }
 
+/// <summary>
+/// check_all_execbo() -  Checks status of xrt::run objects.
+/// </summary>
+/// <param name="s_handle"></param>
+/// <returns></returns>
 int32_t check_all_execbo(XmaSession s_handle) {
     //NOTE: execbo lock must be already obtained
     //Check only for commands in-progress in this sessions else too much checking will waste CPU cycles
@@ -693,6 +761,11 @@ int32_t check_all_execbo(XmaSession s_handle) {
     return XMA_SUCCESS;
 }
 
+/// <summary>
+/// xma_check_device_buffer() - Checks the given XmaBufferObj is valid or not.
+/// </summary>
+/// <param name="b_obj"></param>
+/// <returns></returns>
 int32_t xma_check_device_buffer(const XmaBufferObj* b_obj) {
     if (!b_obj) {
         xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "xma_check_device_buffer failed. XMABufferObj failed allocation\n");

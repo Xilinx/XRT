@@ -315,8 +315,7 @@ xma_plg_buffer_read(XmaSession s_handle,
 int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 {
     auto priv1 = reinterpret_cast<XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
-    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
-    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    //std::cout << "Debug - " << __func__ << "; " << __LINE__ << std::endl;    
     int32_t num_execbo = priv1->num_execbo_allocated;
     if (priv1->execbo_lru.size() == 0) {
         int32_t i;
@@ -332,8 +331,6 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
         priv1->execbo_lru.pop_back();
         XmaHwExecBO* execbo_tmp1 = &priv1->kernel_execbos[val];
         execbo_tmp1->in_use = true;
-        execbo_tmp1->cu_index = kernel_tmp1->cu_index;
-        execbo_tmp1->session_id = s_handle.session_id;
         priv1->execbo_to_check.emplace_back(val);
         return val;
     }
@@ -343,8 +340,7 @@ int32_t xma_plg_execbo_avail_get(XmaSession s_handle)
 int32_t xma_plg_execbo_avail_get2(XmaSession s_handle)
 {
     auto priv1 = reinterpret_cast<XmaHwSessionPrivate*>(s_handle.hw_session.private_do_not_use);
-    //std::cout << "Sarab: Debug - " << __func__ << "; " << __LINE__ << std::endl;
-    XmaHwKernel* kernel_tmp1 = priv1->kernel_info;
+    //std::cout << "Debug - " << __func__ << "; " << __LINE__ << std::endl;
     int32_t num_execbo = priv1->num_execbo_allocated;
     int32_t i; 
     int32_t rc = -1;
@@ -358,8 +354,6 @@ int32_t xma_plg_execbo_avail_get2(XmaSession s_handle)
         }
         if (found) {
             execbo_tmp1->in_use = true;
-            execbo_tmp1->cu_index = kernel_tmp1->cu_index;
-            execbo_tmp1->session_id = s_handle.session_id;
             rc = i;
             break;
         }

@@ -100,8 +100,6 @@ typedef struct XmaHwExecBO
     xrt::kernel xrt_kernel;
     xrt::run xrt_run;
     bool        in_use = false;
-    int32_t     cu_index = -1;
-    int32_t     session_id = -1;
     uint32_t    cu_cmd_id1 = 0;//Counter
     int32_t     cu_cmd_id2 = 0;//Random num
 } XmaHwExecBO;
