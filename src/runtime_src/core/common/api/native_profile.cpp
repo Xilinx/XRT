@@ -87,7 +87,7 @@ api_call_logger(const char* function)
   //  host_trace was specified
   static bool s_load_native =
     (xrt_core::config::get_native_xrt_trace() ||
-     xrt_core::config::get_host_trace_once()) ? load() : false;
+     xrt_core::utils::load_host_trace()) ? load() : false;
   if (s_load_native) return;
 
 }

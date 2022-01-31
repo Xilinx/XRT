@@ -21,6 +21,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 
 namespace xdp {
 namespace plugins {
@@ -46,7 +47,7 @@ namespace plugins {
     }
 
     if (xrt_core::config::get_opencl_trace() ||
-        xrt_core::config::get_host_trace_once()) {
+        xrt_core::utils::load_host_trace()) {
       xocl::profile::load_xdp_opencl_counters() ;
       xdp::opencl_trace::load() ;
     }

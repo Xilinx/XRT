@@ -292,24 +292,13 @@ get_profile_api()
 inline bool
 get_host_trace()
 {
+  // The host_trace switch is intended to turn on only one layer of host trace,
+  // either OpenCL level, Native XRT level, or HAL level.  If the user
+  // sets host_trace=true in the xrt.ini file, then the level of trace that
+  // will be enabled is the level at which the host application is written.
+
   static bool value = detail::get_bool_value("Debug.host_trace", false);
   return value;
-}
-
-inline bool
-get_host_trace_once()
-{
-  static bool called = false;
-
-  // host_trace is a generic switch that should enable one layer of 
-  //  trace (either OpenCL level, Native XRT API level, or HAL level).
-  //  Whichever function is called from the host code first should enable
-  //  that level of trace.  Therefore, an OpenCL application will only
-  //  enable OpenCL trace, a Native XRT API application will only enable
-  //  Native XRT trace, and a HAL level application will only enable HAL trace.
-  bool result = get_host_trace() && !called;
-  called = true ;
-  return result ;
 }
 
 inline bool
