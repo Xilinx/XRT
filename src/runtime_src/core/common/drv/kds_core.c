@@ -107,8 +107,11 @@ ssize_t show_kds_scustat_raw(struct kds_sched *kds, char *buf)
 	for (j = 0; j < MAX_SLOT; ++j) {
 		for (i = 0; i < MAX_CUS; ++i) {
 			xcu = scu_mgmt->xcus[i];
+			if (!xcu)
+				continue;
+
 			/* Show the CUs as per slot order */
-			if (!xcu && (xcu->info.slot_idx != j))
+			if (xcu->info.slot_idx != j)
 				continue;
 
 			sz += scnprintf(buf+sz, PAGE_SIZE - sz, cu_fmt, j,
@@ -1544,7 +1547,10 @@ void kds_cus_irq_enable(struct kds_sched *kds, bool enable)
 
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
-		if (!xcu && (!xcu->info.intr_enable))
+		if (!xcu)
+			continue;
+
+		if (!xcu->info.intr_enable)
 			continue;
 
 		xcu->configure_irq(xcu, enable);
