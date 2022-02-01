@@ -121,7 +121,7 @@ public:
    * enqueueing an operation.
    *
    * Returned futures implicitly convert to an event and as such
-   * enqueuue return values can be stored in an event container if
+   * enqueue return values can be stored in an event container if
    * necessary.
    *
    * The event object is not needed where the typed future can be
