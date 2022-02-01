@@ -1544,10 +1544,10 @@ void kds_cus_irq_enable(struct kds_sched *kds, bool enable)
 
 	for (i = 0; i < MAX_CUS; i++) {
 		xcu = cu_mgmt->xcus[i];
-		if (!xcus && (!xcus->info.intr_enable))
+		if (!xcu && (!xcu->info.intr_enable))
 			continue;
 
-		xcus->configure_irq(xcus, enable);
+		xcu->configure_irq(xcu, enable);
 	}
 }
 
