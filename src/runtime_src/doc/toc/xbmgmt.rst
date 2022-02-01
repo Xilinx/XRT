@@ -41,7 +41,7 @@ Configuring a device's memory settings with a premade image
 
 .. code-block:: shell
 
-    xbmgmt dump [--device| -d] <management bdf> [--input] <filename with .ini extension>
+    xbmgmt configure [--device| -d] <management bdf> [--input] <filename with .ini extension>
 
 
 Enabling/Disabling memory retention on a device

@@ -201,7 +201,7 @@ show_device_conf(xrt_core::device* device)
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Security level" % sec_level;
   }
-  catch (...) {
+  catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
@@ -209,7 +209,7 @@ show_device_conf(xrt_core::device* device)
     auto scaling_enabled = xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Runtime clock scaling enabled" % scaling_enabled;
   }
-  catch (...) {
+  catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30
   }
 
@@ -217,7 +217,7 @@ show_device_conf(xrt_core::device* device)
     auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_power_override>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold power override" % scaling_override;
   }
-  catch (...) {
+  catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30
   }
 
@@ -225,7 +225,7 @@ show_device_conf(xrt_core::device* device)
     auto scaling_override = xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(device);
     std::cout << boost::format("  %-33s: %s\n") % "Scaling threshold temp override" % scaling_override;
   }
-  catch (...) {
+  catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for u30
   }
 
@@ -234,7 +234,7 @@ show_device_conf(xrt_core::device* device)
     auto data_retention = xrt_core::query::data_retention::to_bool(value);
     std::cout << boost::format("  %-33s: %s\n") % "Data retention" % (data_retention ? "enabled" : "disabled");
   }
-  catch (...) {
+  catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
   }
 
