@@ -1055,7 +1055,8 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
                                         boost::process::std_err > data_stderr,
                                         boost::this_process::environment(),
                                         svc);
-  svc.run();   // Block until the process completes
+  svc.run();   
+  runningProcess.wait();
 
   // Update the return buffers
   os_stdout << data_stdout.get();
@@ -1069,6 +1070,7 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
                                                         "     Cmd: %s %s\n"
                                                         "  StdOut: %s\n"
                                                         "  StdErr: %s\n")
+                                          % exitCode 
                                           % cmd.string() % boost::algorithm::join(args, " ")
                                           % os_stdout.str()
                                           % os_stderr.str());
