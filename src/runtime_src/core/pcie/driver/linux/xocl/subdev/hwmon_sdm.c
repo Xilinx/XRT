@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: Rajkumar Rampelli <rajkumar@xilinx.com>
  *
@@ -15,14 +15,25 @@
  * GNU General Public License for more details.
  */
 
-#include "../xocl_drv.h"
-#include "xgq_resp_parser.h"
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
 #include <linux/string.h>
 
+#include "xgq_resp_parser.h"
+#include "../xocl_drv.h"
+
 #define SYSFS_COUNT_PER_SENSOR	4
 #define SYSFS_NAME_LEN		20
+
+int refresh_interval = 60;
+module_param(refresh_interval, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(refresh_interval,
+	"Interval (in sec) after which refresh thread is run for updating sensors in hwmon sysfs.");
+
+int refresh_check = 1;
+module_param(refresh_check, int, (S_IRUGO|S_IWUSR));
+MODULE_PARM_DESC(refresh_check,
+	"Enable refresh thread that updates the sensor readings in hwmon sysfs node. (0 = disable, 1 = enable)");
 
 struct xocl_hwmon_sdm {
 	struct platform_device  *pdev;
@@ -32,13 +43,82 @@ struct xocl_hwmon_sdm {
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
+	struct task_struct      *poll_thread;
+	struct xocl_thread_arg  thread_arg;
 };
 
 #define SDM_BUF_IDX_INCR(buf_index, len, buf_len) \
         ((buf_index + len > buf_len) ? -EINVAL : (buf_index + len))
 
+static int sdr_get_id(enum xgq_sdr_repo_type repo_type);
 static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_sysfs);
-static int sdr_get_id(uint8_t repo_type);
+static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create_sysfs);
+
+static int refresh_check_cb(void *data)
+{
+	struct platform_device *pdev = (struct platform_device *)data;
+
+	if (!refresh_check)
+		return 0;
+
+	hwmon_sdm_get_sensors_list(pdev, false);
+
+	return 0;
+}
+
+static int hwmon_sdm_refresh_thread(void *data)
+{
+	struct xocl_thread_arg *thread_arg = data;
+
+	while (!kthread_should_stop()) {
+		msleep_interruptible(thread_arg->interval);
+
+		if (thread_arg->thread_cb)
+			thread_arg->thread_cb(thread_arg->arg);
+	}
+	xocl_info(thread_arg->dev, "%s exit.", thread_arg->name);
+	return 0;
+}
+
+static int hwmon_sdm_thread_start(struct xocl_hwmon_sdm *core)
+{
+	if (core->poll_thread) {
+		xocl_info(&core->pdev->dev, "%s already created", core->thread_arg.name);
+		return 0;
+	}
+
+	core->poll_thread = kthread_run(hwmon_sdm_refresh_thread, &core->thread_arg,
+		core->thread_arg.name);
+
+	if(IS_ERR(core->poll_thread)) {
+		xocl_err(&core->pdev->dev, "ERROR! %s create", core->thread_arg.name);
+		core->poll_thread = NULL;
+		return -ENOMEM;
+	}
+
+	core->thread_arg.dev = &core->pdev->dev;
+
+	return 0;
+}
+
+static int hwmon_sdm_thread_stop(struct xocl_hwmon_sdm *core)
+{
+	int ret;
+
+	if (!core->poll_thread)
+		return 0;
+
+	ret = kthread_stop(core->poll_thread);
+	core->poll_thread = NULL;
+
+	xocl_info(&core->pdev->dev, "%s stop ret = %d\n", core->thread_arg.name, ret);
+	if(ret != -EINTR) {
+		xocl_info(&core->pdev->dev, "%s has terminated", core->thread_arg.name);
+		ret = 0;
+	}
+
+	return ret;
+}
 
 static ssize_t hwmon_sensor_show(struct device *dev,
                                  struct device_attribute *da, char *buf)
@@ -107,7 +187,7 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 	return err;
 }
 
-static int sdr_get_id(uint8_t repo_type)
+static int sdr_get_id(enum xgq_sdr_repo_type repo_type)
 {
 	int id = 0;
 
@@ -452,6 +532,8 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	hwmon_sdm_thread_stop(sdm);
+
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
@@ -462,16 +544,17 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 
 static int hwmon_sdm_probe(struct platform_device *pdev)
 {
-	struct xocl_hwmon_sdm *hwmon_sdm;
+	struct xocl_hwmon_sdm *sdm;
 	int err = 0;
 
-	hwmon_sdm = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_hwmon_sdm));
-	if (!hwmon_sdm)
+	sdm = xocl_drvinst_alloc(&pdev->dev, sizeof(struct xocl_hwmon_sdm));
+	if (!sdm)
 		return -ENOMEM;
 
-	platform_set_drvdata(pdev, hwmon_sdm);
-	hwmon_sdm->pdev = pdev;
-	hwmon_sdm->supported = true;
+	platform_set_drvdata(pdev, sdm);
+	sdm->pdev = pdev;
+	sdm->supported = true;
+	mutex_init(&sdm->sdm_lock);
 
 	/* create hwmon sysfs nodes */
 	err = create_hwmon_sysfs(pdev);
@@ -480,15 +563,25 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 		goto failed;
 	}
 
+	sdm->thread_arg.thread_cb = refresh_check_cb;
+	sdm->thread_arg.arg = pdev;
+	sdm->thread_arg.interval = refresh_interval * 1000;
+	sdm->thread_arg.name = "hwmon_sdm refresh thread";
+	err = hwmon_sdm_thread_start(sdm);
+	if (err) {
+		xocl_info(&pdev->dev, "Failing to start thread %s, err: %d", sdm->thread_arg.name, err);
+		goto failed;
+	}
+
 	xocl_info(&pdev->dev, "hwmon_sdm driver probe is successful");
-	return 0;
+	return err;
 
 failed:
 	hwmon_sdm_remove(pdev);
 	return err;
 }
 
-static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
+static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create_sysfs)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
@@ -518,7 +611,7 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev)
 	ret = xocl_xgq_collect_temp_sensors(xdev, sdm->sensor_data[repo_id],
                                         resp_size);
 	if (!ret) {
-		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, true);
+		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
 		if (!ret)
 			sdm->sensor_data_avail[repo_id] = true;
 	} else {

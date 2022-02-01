@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -2169,7 +2169,7 @@ struct xocl_xgq_vmr_funcs {
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev);
+	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2179,9 +2179,9 @@ struct xocl_sdm_funcs {
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
 	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
-#define	xocl_hwmon_sdm_get_sensors_list(xdev)			\
+#define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
-	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev)) : -ENODEV)
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
