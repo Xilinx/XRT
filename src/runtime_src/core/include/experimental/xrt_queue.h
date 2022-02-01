@@ -225,7 +225,7 @@ public:
   {
     using value_type = decltype(c());
     std::packaged_task<value_type()> task{[cc = std::move(c)] { return cc(); }};
-    std::shared_future<value_type> f{task.get_future()};
+    std::shared_future f{task.get_future()};
     add_task(std::move(task));
     return f;
   }
