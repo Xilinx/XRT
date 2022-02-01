@@ -932,11 +932,14 @@ int zocl_kds_update(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot,
 	// Default supporting interrupt mode
 	zdev->kds.cu_intr_cap = 1;	
 
-	for (i = 0; i < zdev->kds.cu_mgmt.num_cus; i++) {
+	for (i = 0; i < MAX_CUS; i++) {
 		struct xrt_cu *xcu;
 		int apt_idx;
 
 		xcu = zdev->kds.cu_mgmt.xcus[i];
+		if (!xcu)
+			continue;
+
 		apt_idx = get_apt_index_by_addr(zdev, xcu->info.addr); 
 		if (apt_idx < 0) {
 			DRM_ERROR("CU address %llx is not found in XCLBIN\n",
