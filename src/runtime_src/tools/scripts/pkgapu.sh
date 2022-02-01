@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # This script creates rpm and deb packages for Versal APU firmware and Built-in PS Kernels.
