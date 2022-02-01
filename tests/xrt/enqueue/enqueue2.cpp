@@ -270,7 +270,7 @@ struct job_type
      */
 
     // sync q0:a0 when q0:r0 is done
-    ea[0] = q0.enqueue([this]() { sync(a[0], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[0] = q0.enqueue([this] { sync(a[0], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // sync q1:a1 when q0:r0 and q1:r1 are done
     q1.enqueue(er[0]);
