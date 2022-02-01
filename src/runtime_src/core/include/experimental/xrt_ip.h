@@ -111,10 +111,16 @@ public:
     wait();
  
     /**
-     * wait() - Wait for interrupt or return on timeout
+     * wait() - Wait for interrupt or timeout to occur
      *
-     * Wait for interrupt from IP for timeout duration
-     * Timeout duration is in milliseconds
+     * @param timeout
+     *   Timout in milliseconds.
+     * @return
+     *   std::cv_status::timeout if the timeout specified expired, 
+     *   std::cv_status::no_timeout otherwise.
+     * 
+     * Blocks the current thread until an interrupt is received from the IP,  or 
+     * until after the specified timeout duration
      */
     XCL_DRIVER_DLLESPEC
     std::cv_status
