@@ -90,7 +90,7 @@ class queue
     // @c : callable object, a std::packaged_task
     template <typename Callable>
     task(Callable&& c)
-      : m_content(new task_holder<Callable>(std::forward<Callable>(c)))
+      : m_content(new task_holder(std::forward<Callable>(c)))
     {}
 
     task&
