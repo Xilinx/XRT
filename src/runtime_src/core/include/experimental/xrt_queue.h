@@ -272,7 +272,7 @@ public:
   enqueue(xrt::queue::event ev)
   {
     std::packaged_task<void()> task([evc = xrt::queue::event{std::move(ev)}]() { evc.wait(); });
-    std::shared_future<void> f{task.get_future()};
+    std::shared_future f{task.get_future()};
     add_task(std::move(task));
     return f;
   }
