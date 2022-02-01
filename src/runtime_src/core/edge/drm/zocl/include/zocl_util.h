@@ -12,16 +12,10 @@
 #ifndef _ZOCL_UTIL_H_
 #define _ZOCL_UTIL_H_
 
+#include "zocl_lib.h"
 #include "kds_core.h"
 #include "zocl_error.h"
 #include "zynq_ioctl.h"
-
-#define zocl_err(dev, fmt, args...)     \
-	dev_err(dev, "%s: "fmt, __func__, ##args)
-#define zocl_info(dev, fmt, args...)    \
-	dev_info(dev, "%s: "fmt, __func__, ##args)
-#define zocl_dbg(dev, fmt, args...)     \
-	dev_dbg(dev, "%s: "fmt, __func__, ##args)
 
 #define _4KB	0x1000
 #define _8KB	0x2000

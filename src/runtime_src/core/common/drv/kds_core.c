@@ -157,7 +157,6 @@ static int kds_polling_thread(void *data)
 	int loop_cnt = 0;
 	int cu_idx;
 
-	printk("kds polling thread is running\n");
 	while (!kds->polling_stop) {
 		busy_cnt = 0;
 		for (cu_idx = 0; cu_idx < num_cus; cu_idx++) {
@@ -183,7 +182,6 @@ static int kds_polling_thread(void *data)
 
 		wait_event_interruptible(kds->wait_queue, kds_wake_up_poll(kds));
 	}
-	printk("kds polling thread is stopped\n");
 
 	return 0;
 }
