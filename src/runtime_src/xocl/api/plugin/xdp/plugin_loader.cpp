@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -21,6 +21,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 
 namespace xdp {
 namespace plugins {
@@ -45,7 +46,8 @@ namespace plugins {
       xocl::profile::load_xdp_opencl_counters() ;
     }
 
-    if (xrt_core::config::get_opencl_trace()) {
+    if (xrt_core::config::get_opencl_trace() ||
+        xrt_core::utils::load_host_trace()) {
       xocl::profile::load_xdp_opencl_counters() ;
       xdp::opencl_trace::load() ;
     }

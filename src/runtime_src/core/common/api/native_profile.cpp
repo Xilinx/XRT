@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -81,10 +81,15 @@ api_call_logger::
 api_call_logger(const char* function)
   : m_funcid(0), m_fullname(function)
 {
-  // Since all api_call_logger objects exist inside the profiling_wrapper
-  // we don't need to check the config reader here (it's done already)
-  static bool s_load_native = load() ;
-  if (s_load_native) return ;
+  // With the addition of the generic "host_trace" feature, we have to
+  //  check if we should load the plugin.  We only want to load it if
+  //  native_xrt_trace is specified or if we are the topmost layer and
+  //  host_trace was specified
+  static bool s_load_native =
+    (xrt_core::config::get_native_xrt_trace() ||
+     xrt_core::utils::load_host_trace()) ? load() : false;
+  if (s_load_native) return;
+
 }
 
 generic_api_call_logger::
