@@ -666,7 +666,7 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
     boost::property_tree::ptree ptReport;
     try {
       report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       is_report_output_valid = false;
     }
 
@@ -750,7 +750,7 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
         boost::property_tree::ptree ptReport;
         try {
           report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
-        } catch (const std::exception& e) {
+        } catch (const std::exception&) {
           is_report_output_valid = false;
         }
         
