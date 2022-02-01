@@ -105,21 +105,22 @@ q5: (r[6]) a[5]
 
 ****************************************************************/
 
-
+#include "xclbin.h"
 #include "xrt.h"
-#include "xrt/xrt_kernel.h"
+
 #include "xrt/xrt_bo.h"
 #include "xrt/xrt_device.h"
-#include "experimental/xrt_queue.h"
-#include "xclbin.h"
+#include "xrt/xrt_kernel.h"
 
+#include "experimental/xrt_queue.h"
+
+#include <atomic>
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <list>
 #include <thread>
-#include <atomic>
-#include <iostream>
 #include <vector>
-#include <cstdlib>
 
 #ifdef _WIN32
 # pragma warning ( disable : 4267 )
@@ -274,58 +275,58 @@ struct job_type
 
     // sync q1:a1 when q0:r0 and q1:r1 are done
     q1.enqueue(er[0]);
-    ea[1] = q1.enqueue([this]() { sync(a[1], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[1] = q1.enqueue([this] { sync(a[1], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // sync q2:a2 when q1:r1 is done
     q2.enqueue(er[1]);
-    ea[2] = q2.enqueue([this]() { sync(a[2], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[2] = q2.enqueue([this] { sync(a[2], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // async q3:a3 when q0:r2 is done
     q3.enqueue(er[2]);
-    ea[3] = q3.enqueue([this]() { sync(a[3], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[3] = q3.enqueue([this] { sync(a[3], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // sync q4:a4 when q1:r3 and q4:r4 are done
     q4.enqueue(er[3]);
-    ea[4] = q4.enqueue([this]() { sync(a[4], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[4] = q4.enqueue([this] { sync(a[4], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // sync q5:a5 when q4:r6 is done
     q5.enqueue(er[6]);
-    ea[5] = q5.enqueue([this]() { sync(a[5], XCL_BO_SYNC_BO_TO_DEVICE); });
+    ea[5] = q5.enqueue([this] { sync(a[5], XCL_BO_SYNC_BO_TO_DEVICE); });
 
     // run q0:r0 when q0:a0, q1:a1, q0:r2 are done
     q0.enqueue(ea[1]);
-    er[0] = q0.enqueue([this]() { r[0](a[0],a[1],o[0],ELEMENTS); r[0].wait(); });
+    er[0] = q0.enqueue([this] { r[0](a[0],a[1],o[0],ELEMENTS); r[0].wait(); });
 
     // run q1:r1 when q1:a1, q2:a2, q1:r3 are done
     q1.enqueue(ea[2]);
-    er[1] = q1.enqueue([this]() { r[1](a[1],a[2],o[1],ELEMENTS); r[1].wait(); });
+    er[1] = q1.enqueue([this] { r[1](a[1],a[2],o[1],ELEMENTS); r[1].wait(); });
 
     // run q0:r2 when q3:a3, q0:r0, q0:r5 are done
     q0.enqueue(ea[3]);
-    er[2] = q0.enqueue([this]() {r[2](a[1],o[0],o[2],ELEMENTS); r[2].wait(); });
+    er[2] = q0.enqueue([this] {r[2](a[1],o[0],o[2],ELEMENTS); r[2].wait(); });
 
     // run q1:r3 when q4:a4, q1:r1, q0:r5 are done
     q1.enqueue(ea[4]);
     q1.enqueue(er[5]);
-    er[3] = q1.enqueue([this]() {r[3](a[4],o[1],o[3],ELEMENTS); r[3].wait(); });
+    er[3] = q1.enqueue([this] {r[3](a[4],o[1],o[3],ELEMENTS); r[3].wait(); });
 
     // run q4:r4 when q4:a4, q1:r1, q4:r6 are done
     q4.enqueue(er[1]);
-    er[4] = q4.enqueue([this]() {r[4](a[4],o[1],o[4],ELEMENTS); r[4].wait(); });
+    er[4] = q4.enqueue([this] {r[4](a[4],o[1],o[4],ELEMENTS); r[4].wait(); });
 
     // run q0:r5 when q0:r2, q1:r3, q0:o5 are done
     q0.enqueue(er[3]);
-    er[5] = q0.enqueue([this]() {r[5](o[2],o[3],o[5],ELEMENTS); r[5].wait(); });
+    er[5] = q0.enqueue([this] {r[5](o[2],o[3],o[5],ELEMENTS); r[5].wait(); });
 
     // run q4:r6 when q5:a5, q4:r4, q4:o6 are done
     q4.enqueue(ea[5]);
-    er[6] = q4.enqueue([this]() {r[6](a[5],o[4],o[6],ELEMENTS); r[6].wait(); });
+    er[6] = q4.enqueue([this] {r[6](a[5],o[4],o[6],ELEMENTS); r[6].wait(); });
 
     // sync q0:o5 when q0:r5 is done
-    eo[5] = q0.enqueue([this]() { sync(o[5],XCL_BO_SYNC_BO_FROM_DEVICE); });
+    eo[5] = q0.enqueue([this] { sync(o[5],XCL_BO_SYNC_BO_FROM_DEVICE); });
 
     // sync q4:o6 when q4:r6 is done
-    q4.enqueue([this]() { sync(o[6],XCL_BO_SYNC_BO_FROM_DEVICE); });
+    q4.enqueue([this] { sync(o[6],XCL_BO_SYNC_BO_FROM_DEVICE); });
   }
 
   void
