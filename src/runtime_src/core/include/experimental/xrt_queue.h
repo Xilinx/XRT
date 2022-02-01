@@ -102,7 +102,7 @@ class queue
 
     operator bool() const
     {
-      return m_content;
+      return m_content != nullptr;
     }
 
     void

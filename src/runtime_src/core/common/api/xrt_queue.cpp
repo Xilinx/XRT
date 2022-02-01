@@ -74,7 +74,7 @@ class queue_impl
 
 public:
   queue_impl()
-    : m_worker({ [this] { run(); } });
+    : m_worker(std::thread(&queue_impl::run, this))
   {}
 
   // Shut down worker thread
