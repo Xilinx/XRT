@@ -234,8 +234,8 @@ struct job_type
   void
   enqueue()
   {
-    // Create a lambda for the synchronous sync operation
-    // The lambda is enqueued and executed asynchrnously
+    // Create a lambda for the synchronous sync operation.
+    // The lambda is enqueued and executed asynchronously
     static auto sync = [] (xrt::bo& bo, xclBOSyncDirection dir) {
                          return bo.sync(dir);
                        };
