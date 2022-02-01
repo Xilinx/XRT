@@ -57,7 +57,7 @@ class queue_impl
 
       // exclusive synchronized region
       {
-        std::unique_lock<std::mutex> lk(m_mutex);
+        std::unique_lock lk(m_mutex);
         m_work.wait(lk, [this] { return m_stop || !m_queue.empty(); });
 
         if (m_stop)
