@@ -74,14 +74,14 @@ class queue_impl
 
 public:
   queue_impl()
-    : m_worker(std::thread(&queue_impl::run, this))
+    : m_worker([this] { run(); })
   {}
 
   // Shut down worker thread
   ~queue_impl()
   {
     {
-      std::lock_guard<std::mutex> lk(m_mutex);
+      std::lock_guard lk(m_mutex);
       m_stop = true;
       m_work.notify_one();
     }
@@ -92,7 +92,7 @@ public:
   void
   enqueue(queue::task&& t)
   {
-    std::lock_guard<std::mutex> lk(m_mutex);
+    std::lock_guard lk(m_mutex);
     m_queue.push(std::move(t));
     m_work.notify_one();
   }

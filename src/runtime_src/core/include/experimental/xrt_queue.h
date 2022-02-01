@@ -46,7 +46,7 @@ class queue
 {
   friend class queue_impl;
 
-  // class task - wraps a typed callable operation
+  // class task - type erased callable operation
   //
   // A task wraps a callers typed operation such that it
   // can be inserted into a queue.
@@ -79,11 +79,8 @@ class queue
     std::unique_ptr<task_iholder> m_content;
 
   public:
-    task() : m_content(nullptr)
-    {}
-
-    task(task&& rhs) : m_content(std::move(rhs.m_content))
-    {}
+    task() = default;
+    task(task&& rhs) = default;
 
     // task() - task constructor for synchronous operation
     //
@@ -94,11 +91,7 @@ class queue
     {}
 
     task&
-    operator=(task&& rhs)
-    {
-      m_content = std::move(rhs.m_content);
-      return *this;
-    }
+    operator=(task&& rhs) = default;
 
     operator bool() const
     {
@@ -154,14 +147,9 @@ public:
     std::shared_ptr<event_iholder> m_content;
 
   public:
-    event() : m_content(nullptr)
-    {}
-
-    event(event&& rhs) : m_content(std::move(rhs.m_content))
-    {}
-
-    event(const event& rhs) : m_content(rhs.m_content)
-    {}
+    event() = default;
+    event(event&& rhs) = default;
+    event(const event& rhs) = default;
 
     // event() - event constructor for std::shared_future
     //
@@ -172,11 +160,7 @@ public:
     {}
 
     event&
-    operator=(event&& rhs)
-    {
-      m_content = std::move(rhs.m_content);
-      return *this;
-    }
+    operator=(event&& rhs) = default;
 
     operator bool() const
     {
@@ -248,10 +232,7 @@ public:
   auto
   enqueue(std::shared_future<ValueType> sf)
   {
-    std::packaged_task<void()> task([evc = xrt::queue::event{std::move(sf)}]() { evc.wait(); });
-    std::shared_future f{task.get_future()};
-    add_task(std::move(task));
-    return f;
+    return enqueue([evc = xrt::queue::event{std::move(sf)}] { evc.wait(); });
   }
 
   /**
@@ -271,10 +252,7 @@ public:
   auto
   enqueue(xrt::queue::event ev)
   {
-    std::packaged_task<void()> task([evc = xrt::queue::event{std::move(ev)}]() { evc.wait(); });
-    std::shared_future f{task.get_future()};
-    add_task(std::move(task));
-    return f;
+    return enqueue([evc = std::move(ev)] { evc.wait(); });
   }
 
 public:
@@ -283,6 +261,7 @@ public:
   {
     return m_impl.get();
   }
+
 private:
   std::shared_ptr<queue_impl> m_impl;
 };
@@ -292,6 +271,5 @@ private:
 #else
 # error xrt_enqueue is only implemented for C++
 #endif // __cplusplus
-
 
 #endif
