@@ -27,6 +27,9 @@ else
 
   # First handle the gathering of all options unique to each command
   switch($commandWord)
+    case "configure":
+      set programOptions="--input --retention ${commonSubCommands}"
+      breaksw
     case "dump":
       set programOptions="--flash -f --config -c --output -o ${commonSubCommands}"
       breaksw
@@ -88,6 +91,12 @@ else
       set programOptions=""
       breaksw
     case "--image":
+      set programOptions=""
+      breaksw
+    case "--input":
+      set programOptions=""
+      breaksw
+    case "--retention":
       set programOptions=""
       breaksw
     # do not modify the option list if the argument is not required

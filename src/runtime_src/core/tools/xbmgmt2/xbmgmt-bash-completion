@@ -45,6 +45,10 @@ _command_word_xbmgmt_completion()
       ;;
     --image)
       ;;
+    --input)
+      ;;
+    --retention)
+      ;;
     *)
       # The format of the compgen commands options is seperated from the current word using a --.
       # The -- character signifies the end of command options. All following arguments are positional.
@@ -63,7 +67,7 @@ _xbmgmt_completion()
   case ${COMP_CWORD} in
     # Case for command after xbutil
     1)
-      commandWordOptions="dump examine program reset ${commonSubCommands}"
+      commandWordOptions="configure dump examine program reset ${commonSubCommands}"
       _command_word_xbmgmt_completion "${commandWordOptions}"
       ;;
     # Case for options after the above command is entered
@@ -74,6 +78,10 @@ _xbmgmt_completion()
       commonSubCommands="--device -d ${commonSubCommands}"
       # Once a command is identified the options will always be the same
       case ${commandWord} in
+        "configure")
+          configureOptions="--input --retention ${commonSubCommands}"
+          _command_word_xbmgmt_completion "${configureOptions}"
+          ;;
         "dump")
           dumpOptions="--flash -f --config -c --output -o ${commonSubCommands}"
           _command_word_xbmgmt_completion "${dumpOptions}"
