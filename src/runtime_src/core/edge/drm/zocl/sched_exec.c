@@ -3136,9 +3136,12 @@ get_packet_size(struct ert_packet *packet)
 	case ERT_EXIT:
 	case ERT_ABORT:
 		SCHED_DEBUG("abort or stop cmd");
+		payload = 0;
+		break;
 
 	default:
 		payload = 0;
+		break;
 	}
 
 	SCHED_DEBUG("<- %s", __func__);
