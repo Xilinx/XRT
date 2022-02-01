@@ -45,6 +45,7 @@ install_recipes()
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+        echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
@@ -105,6 +106,7 @@ config_versal_project()
     echo "CONFIG_SUSPEND=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
     echo "CONFIG_PM=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
     echo "CONFIG_SPI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_DRM_XLNX_DSI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
 
     # Configure inittab for getty
     INIT_TAB_FILE=project-spec/meta-user/recipes-core/sysvinit/sysvinit-inittab_%.bbappend
@@ -112,7 +114,7 @@ config_versal_project()
         mkdir -p $(dirname "$INIT_TAB_FILE")
     fi
 cat << EOF > $INIT_TAB_FILE
-do_install_append(){
+do_install:append(){
   echo "UL0:12345:respawn:/bin/start_getty 115200 ttyUL0 vt102" >> \${D}\${sysconfdir}/inittab
 }
 EOF
