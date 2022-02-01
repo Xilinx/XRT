@@ -362,7 +362,7 @@ run(const xrt::device& device, const xrt::kernel& kernel, size_t num_jobs, size_
   std::vector<std::future<size_t>> jobs;
   jobs.reserve(num_jobs);
 
-  stop = (seconds == 0) ? true : false;
+  stop = seconds == 0;
 
   for (int i=0; i<num_jobs; ++i)
     jobs.emplace_back(std::async(std::launch::async, run_async, device, kernel));
