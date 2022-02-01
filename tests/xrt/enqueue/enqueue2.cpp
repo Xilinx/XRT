@@ -15,7 +15,7 @@ by wrapping the synchronous sync operation in a callable lambda which
 is then enqueued.
 
 The event graph consist of input buffers a[0..5], kernel run objects
-r[0..6], and output buffers o[0..6].  The grap is run in a loop with
+r[0..6], and output buffers o[0..6].  The graph is run in a loop with
 event dependencies controlling the execution order.
 
     a[0]  a[1]  a[2]
