@@ -61,6 +61,7 @@ static int refresh_check_cb(void *data)
 	if (!refresh_check)
 		return 0;
 
+	xocl_dbg(&pdev->dev, "refresh_check_cb() update sensors");
 	hwmon_sdm_get_sensors_list(pdev, false);
 
 	return 0;
@@ -554,7 +555,6 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, sdm);
 	sdm->pdev = pdev;
 	sdm->supported = true;
-	mutex_init(&sdm->sdm_lock);
 
 	/* create hwmon sysfs nodes */
 	err = create_hwmon_sysfs(pdev);
