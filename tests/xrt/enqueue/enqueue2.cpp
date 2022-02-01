@@ -63,7 +63,7 @@ o[6] : r[6]
 
 This example uses xrt::queue which is an in-order synchronous queue,
 meaning enqueued operations are executed asynchronously from enqueuing
-thead but synchronously and in order within the queue.
+thread but synchronously and in order within the queue.
 
 In order to implement concurrent execution of multiple jobs, several
 queues are needed.  Each queue executes independently of one another,
