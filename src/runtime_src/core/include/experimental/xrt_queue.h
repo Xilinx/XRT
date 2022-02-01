@@ -135,7 +135,7 @@ public:
       virtual void wait() const = 0;
     };
 
-    // Wrap tyoed future
+    // Wrap typed future
     template <typename ValueType>
     struct event_holder : public event_iholder
     {
