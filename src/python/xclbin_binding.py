@@ -22,13 +22,10 @@ import os
 import ctypes
 
 if os.environ.get('XCL_EMULATION_MODE') == 'hw_emu':
-    print("## in xclbin hw emu case ## ")
     libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_hwemu.so")
 elif os.environ.get('XCL_EMULATION_MODE') == 'sw_emu':
-    print("## in xclbin sw emu case ## ")
     libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_swemu.so") 
 else:
-    print("## in xclbin else case ## ")
     libc = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so")
 
 
