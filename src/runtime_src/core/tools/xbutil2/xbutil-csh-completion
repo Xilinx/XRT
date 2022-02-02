@@ -49,9 +49,6 @@ else
 
   # If the current word requires an argument, clear the option list
   switch($currentWord)
-    case "--device":
-      set programOptions=""
-      breaksw
     case "-d":
       set programOptions=""
       breaksw
