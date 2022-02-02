@@ -44,6 +44,10 @@ namespace pt = boost::property_tree;
 #include <fstream>
 #include <iostream>
 
+#ifdef _WIN32
+# pragma warning( disable : 4996 )
+#endif
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 
 SubCmdJSON::SubCmdJSON(bool _isHidden, bool _isDepricated, bool _isPreliminary, std::string& name, std::string& desc, std::vector<struct JSONCmd>& _subCmdOptions)
@@ -155,9 +159,9 @@ SubCmdJSON::execute(const SubCmdOptions& _options) const
 static void collectJsonPaths(std::vector<std::string> &pathVec, std::string env)
 {
     char del = ':';
-    int start = 0;
-    int end = env.find(del);
-    while (end != -1) {
+    size_t start = 0;
+    size_t end = env.find(del);
+    while (end != std::string::npos) {
         pathVec.emplace_back(env.substr(start, end - start));
         start = end + 1;
         end = env.find(del, start);
@@ -187,7 +191,7 @@ static void populateSubCommandsFromJSONHelper(SubCmdsCollection &subCmds, const 
 	try {
             exetree = jtree.get_child(exeName);
 	} catch (std::exception &e) {
-            throw std::runtime_error("Error: No JSON branch for executable '" + exeName + "'");
+            throw std::runtime_error("Error: No JSON branch for executable '" + exeName + "'\n" + e.what());
 	}
 
 	// iterate over various sub commands
