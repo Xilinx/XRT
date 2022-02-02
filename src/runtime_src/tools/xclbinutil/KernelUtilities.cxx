@@ -579,7 +579,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
   // Validate kernel's last argument
   auto args = XUtil::as_vector<boost::property_tree::ptree>(kernels[0], "args");
   if (args.back().get<std::string>("type") != "xrtHandles*")
-    throw std::runtime_error("Error: Last kernel argument isn't a xrtHandle pointer."
+    throw std::runtime_error("Error: Last kernel argument isn't a xrtHandle pointer.\n"
                              "Shared Library: '" + kernelLibrary + "'\n"
                              "Kernel Function: '" + kernels[0].get<std::string>("signature"));
 }
