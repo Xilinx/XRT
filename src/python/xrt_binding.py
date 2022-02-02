@@ -26,7 +26,16 @@ from numbers import Integral
 from xclbin_binding import *
 from ert_binding import *
 
-libcore = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so", mode=ctypes.RTLD_GLOBAL)
+if os.environ.get('XCL_EMULATION_MODE') == 'hw_emu':
+    print("## in hw emu case ## ")
+    libcore = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_hwemu.so", mode=ctypes.RTLD_GLOBAL)
+elif os.environ.get('XCL_EMULATION_MODE') == 'sw_emu':
+    print("## in sw emu case ## ")
+    libcore = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_swemu.so", mode=ctypes.RTLD_GLOBAL) 
+else:
+    print("## in else case ## ")
+    libcore = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_core.so", mode=ctypes.RTLD_GLOBAL)
+ 
 libcoreutil = ctypes.CDLL(os.environ['XILINX_XRT'] + "/lib/libxrt_coreutil.so", mode=ctypes.RTLD_GLOBAL)
 
 xclDeviceHandle = ctypes.c_void_p
