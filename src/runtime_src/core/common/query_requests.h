@@ -835,7 +835,6 @@ struct sdm_sensor_info : request
     power       = 2,
     thermal     = 3,
     mechanical  = 4,
-    electrical  = 5,
   };
 
   /*
@@ -849,10 +848,10 @@ struct sdm_sensor_info : request
    */
   struct sensor_data {
     std::string label;
-    uint32_t input;
-    uint32_t max;
-    uint32_t average;
-    uint32_t highest;
+    uint32_t input {};
+    uint32_t max {};
+    uint32_t average {};
+    uint32_t highest {};
   };
   using result_type = std::vector<sensor_data>;
   using req_type = sdr_req_type;
