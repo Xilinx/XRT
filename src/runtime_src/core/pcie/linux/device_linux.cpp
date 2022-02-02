@@ -991,6 +991,7 @@ initialize_query_table()
   emplace_sysfs_get<query::xocl_errors>                        ("", "xocl_errors");
 
   emplace_func0_request<query::pcie_bdf,                       bdf>();
+  emplace_func0_request<query::kds_cu_info,                    kds_cu_info>();
   emplace_func0_request<query::instance,                       instance>();
 
   emplace_func4_request<query::aim_counter,                    aim_counter>();
