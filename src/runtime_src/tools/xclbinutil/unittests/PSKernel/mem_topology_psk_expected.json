@@ -1,0 +1,14 @@
+{
+    "mem_topology": {
+        "m_count": "1",
+        "m_mem_data": [
+            {
+                "m_type": "MEM_PS_KERNEL",
+                "m_used": "1",
+                "m_sizeKB": "0x0",
+                "m_tag": "MEM_PS_KERNEL",
+                "m_base_address": "0x0"
+            }
+        ]
+    }
+}

@@ -194,10 +194,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
                            bool isFixedPS,
                            boost::property_tree::ptree& ptEmbeddedData)
 {
-  // -- Validate destination
-  if (ptEmbeddedData.empty())
-    throw std::runtime_error("Embedded Metadata section is empty");
-
   boost::property_tree::ptree ptEmpty;
 
   XUtil::TRACE_PrintTree("Embedded Data XML", ptEmbeddedData);
@@ -337,13 +333,13 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     throw std::runtime_error("Missing kernel name");
 
   // Transform the sections into something more manageable
-  boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout");
+  const boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout", ptEmpty);
   auto ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
-  const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology");
+  const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology", ptEmpty);
   auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
 
-  boost::property_tree::ptree& ptConnectivity = ptConnectivityRoot.get_child("connectivity");
+  const boost::property_tree::ptree& ptConnectivity = ptConnectivityRoot.get_child("connectivity", ptEmpty);
   auto connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
 
   // -- Create the kernel instances
