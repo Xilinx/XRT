@@ -18,7 +18,6 @@
 // Local - Include Files
 #include "ReportHost.h"
 #include "XBUtilities.h"
-#include "Table2D.h"
 #include "core/common/system.h"
 
 // 3rd Party Library - Include Files
@@ -58,6 +57,7 @@ ReportHost::getPropertyTree20202( const xrt_core::device * /*_pDevice*/,
   // There can only be 1 root node
   _pt.add_child("host", pt);
 }
+
 
 void
 ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
@@ -109,22 +109,13 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   _output << "Devices present\n";
   const boost::property_tree::ptree& available_devices = _pt.get_child("host.devices", empty_ptree);
 
-  if (available_devices.empty())
+  if(available_devices.empty())
     _output << "  0 devices found" << std::endl;
-
-  Table2D::HeaderData bdf = {"BDF", Table2D::Justification::right};
-  Table2D::HeaderData colon = {":", Table2D::Justification::right};
-  Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
-  Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
-  Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
-  std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance};
-  Table2D device_table(table_headers);
-
-  for (auto& kd : available_devices) {
+  
+  for(auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
-    std::vector<std::string> entry_data = {dev.get<std::string>("bdf"), ":", dev.get<std::string>("vbnv"), dev.get<std::string>("id"), dev.get<std::string>("instance")};
-    device_table.addEntry(entry_data);
+    std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+    _output << boost::format("  [%s] : %s %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % dev.get<std::string>("instance", "") % note;
   }
-
-  _output << device_table << std::endl;
+  _output << std::endl;
 }

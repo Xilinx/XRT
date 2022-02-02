@@ -354,7 +354,7 @@ XBUtilities::get_available_devices(bool inUserDomain)
       try { //2RP
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
-          pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
+          pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
       } catch(...) {
         // The id wasn't added
       }
