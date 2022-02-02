@@ -1128,7 +1128,6 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 			return -EINVAL;
 		}
 		/* a special handling for m2m cu :( */
-		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			test_and_set_bit(i, client->cu_bitmap);
@@ -1171,7 +1170,6 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 		}
 		--cctx->virt_cu_ref;
 		/* a special handling for m2m cu :( */
-		/* SAIF TODO */
 		if (kds->cu_mgmt.num_cdma && !cctx->virt_cu_ref) {
 			i = kds->cu_mgmt.num_cus - kds->cu_mgmt.num_cdma;
 			if (!test_and_clear_bit(i, client->cu_bitmap)) {
@@ -1678,7 +1676,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		 */
 
 		/* Insertion sort */
-		for (j = i; j >= 0; j--) {
+		for (j = num_cus; j >= 0; j--) {
 			struct xrt_cu_info *prev_info;
 
 			if (j == 0) {
@@ -1706,7 +1704,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 				cu_info[j].cu_idx = j;
 				num_cus++;
 				break;
-			} else if (prev_info->intr_id > info.intr_id) {
+			} else if (prev_info->addr > info.addr) {
 				memcpy(&cu_info[j], prev_info, sizeof(info));
 				cu_info[j].cu_idx = j;
 				continue;
