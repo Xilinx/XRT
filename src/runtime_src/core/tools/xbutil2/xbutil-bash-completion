@@ -68,8 +68,7 @@ _xbutil_completion()
   case ${COMP_CWORD} in
     # Case for command after xbutil
     1)
-      commandWordOptions="program validate examine configure reset ${commonSubCommands}"
-      _command_word_xbutil_completion "${commandWordOptions}"
+      options="program validate examine configure reset ${commonSubCommands}"
       ;;
     # Case for options after the above command is entered
     *)
@@ -98,9 +97,9 @@ _xbutil_completion()
         *)
           ;;
       esac
-      _command_word_xbutil_completion "${options}"
       ;;
   esac
+  _command_word_xbutil_completion "${options}"
 }
 
 source /usr/share/bash-completion/bash_completion

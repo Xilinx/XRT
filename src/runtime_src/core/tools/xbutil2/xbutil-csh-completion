@@ -1,6 +1,6 @@
 #!/bin/csh -f
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # parse out required variables
@@ -9,15 +9,17 @@ set list = "$COMMAND_LINE"
 set commandWord = `echo $list | awk 'BEGIN{FS=" "}{print $2}'`
 # Get the number of arguments. This script turns spaces into commas to count
 # the number of commands. It only really matters for the first couple
-set argsplit=(`echo "$list" | sed -e "s/ /,/g"`)
-set argsplit=(`echo "$argsplit" | sed "s/[a-zA-Z']//g"`)
-set commandCount = (`echo $argsplit | awk '{print length($0)}'`)
+set argsplit=(`echo "$list" | sed -e "s/ /@/g"`)
+set argsplit=(`echo "$argsplit" | sed "s/[^a-zA-Z@/']//g"`)
+set argsplit_counter=(`echo "$argsplit" | sed "s/[a-zA-Z/']//g"`)
+set commandCount = (`echo $argsplit_counter | awk '{print length($0)}'`)
+set previousWord = `echo $argsplit | awk 'BEGIN{FS="@"}{NF=NF-1;print $NF}'`
 # This is the word on the righthand side
-set currentWord = `echo $list | awk 'BEGIN{FS=" "}{print $NF}'`
+set currentWord = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
+
 
 # The options for the current command line statement
 set programOptions = ""
-
 # Handle the default xbutil options first
 if($commandCount == "1") then
     set programOptions="program validate examine configure reset"
@@ -48,43 +50,38 @@ else
   endsw
 
   # If the current word requires an argument, clear the option list
-  switch($currentWord)
-    case "-d":
+  switch($previousWord)
+    case "device":
+    case "d":
+      set programOptions=(`xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p'`)
+      breaksw
+    case "user":
+    case "u":
+      set dir = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
+      if ($dir != "") then
+        if (! -d $dir) then
+          set dir=(`echo "$dir" | grep --perl-regexp '.+[/]|[/].+[/]' --only-matching`)
+        endif
+      endif
+      set programOptions=`ls $dir`
+      breaksw
+    case "format":
+    case "f":
+      set programOptions="JSON JSON-2020.2"
+      breaksw
+    case "output":
+    case "o":
       set programOptions=""
       breaksw
-    case "--user":
-      set programOptions=""
-      breaksw
-    case "-u":
-      set programOptions=""
-      breaksw
-    case "--run":
-      set programOptions=""
-      breaksw
-    case "--format":
-      set programOptions=""
-      breaksw
-    case "-f":
-      set programOptions=""
-      breaksw
-    case "--output":
-      set programOptions=""
-      breaksw
-    case "-o":
-      set programOptions=""
-      breaksw
-    case "--report":
-      set programOptions=""
-      breaksw
-    case "--type":
-      set programOptions=""
-      breaksw
-    case "-t":
+    case "type":
+    case "t":
       set programOptions=""
       breaksw
     # -r shorthand applies to multiple commands under xbutil and requires additional processing
     # Assuming we want to add something here one day
-    case "-r":
+    case "report":
+    case "run":
+    case "r"
       set programOptions=""
       breaksw
     # do not modify the option list if the argument is not required
