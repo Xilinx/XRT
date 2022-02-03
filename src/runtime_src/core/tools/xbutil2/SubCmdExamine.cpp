@@ -55,6 +55,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportBOStats.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
@@ -68,6 +69,7 @@ namespace po = boost::program_options;
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
+    std::make_shared<ReportBOStats>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),
