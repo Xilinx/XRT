@@ -21,10 +21,10 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/ini_parser.hpp>
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -61,8 +61,8 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
     : SubCmd("configure",
              "Advanced options for configuring a device")
 {
-  const std::string longDescription = "Advanced options for configuring a device";
-  setLongDescription(longDescription);
+  const std::string long_description = "Advanced options for configuring a device";
+  setLongDescription(long_description);
   setExampleSyntax("");
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
@@ -80,17 +80,16 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
 // host_ip = x.x.x.x
 static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
 {
-  boost::property_tree::ptree ptRoot;
-  boost::property_tree::ini_parser::read_ini(path, ptRoot);
-  static boost::property_tree::ptree emptyTree;
+  boost::property_tree::ptree pt_root;
+  boost::property_tree::ini_parser::read_ini(path, pt_root);
+  static boost::property_tree::ptree empty_tree;
 
-  const boost::property_tree::ptree PtDevice =
-    ptRoot.get_child("Device", emptyTree);
+  const boost::property_tree::ptree pt_device = pt_root.get_child("Device", empty_tree);
 
-  if (PtDevice.empty())
-    throw std::runtime_error("No [Device] section in the config file");
+  if (pt_device.empty())
+    throw std::runtime_error(boost::str(boost::format("No [Device] section in the config file. Config File: %s") % path));
 
-  for (auto& key : PtDevice) {
+  for (auto& key : pt_device) {
     if (!key.first.compare("mailbox_channel_disable")) {
       xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(_dev.get(), key.second.get_value<std::string>());
       continue;
@@ -194,7 +193,7 @@ show_device_conf(xrt_core::device* device)
     }
   }
   catch (const std::exception& ex) {
-    std::cout << ex.what() << "\n";
+    std::cerr << ex.what() << "\n";
   }
 
   try {
@@ -305,17 +304,17 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // -- Retrieve and parse the subcommand options -----------------------------
     // Common options
     std::vector<std::string> devices;
-    std::string path = "";
-    std::string retention = "";
+    std::string path;
+    std::string retention;
     bool help = false;
     // Hidden options
     bool daemon = false;
-    std::string host = "";
-    std::string security = "";
-    std::string clk_scale = "";
-    std::string power_override = "";
-    std::string temp_override = "";
-    std::string cs_reset = "";
+    std::string host;
+    std::string security;
+    std::string clk_scale;
+    std::string power_override;
+    std::string temp_override;
+    std::string cs_reset;
     bool showx = false;
 
     // Options previously under the load config command
@@ -374,15 +373,14 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Ensure mutual exclusion amongst the load config and config options
     // TODO Once all of the config options are incorporated into the load config file
     // the config options should be removed
-    for (auto& loadConfigOption : loadConfigOptions.options()) {
+    for (const auto& loadConfigOption : loadConfigOptions.options()) {
       // For common options
-      for (auto& configOption : configOptions.options()) {
+      for (const auto& configOption : configOptions.options())
         conflictingOptions(vm, loadConfigOption->long_name(), configOption->long_name());
-      }
+
       // For hidden options
-      for (auto& configHiddenOption : configHiddenOptions.options()) {
+      for (const auto& configHiddenOption : configHiddenOptions.options())
         conflictingOptions(vm, loadConfigOption->long_name(), configHiddenOption->long_name());
-      }
     }
 
     // Check the options
