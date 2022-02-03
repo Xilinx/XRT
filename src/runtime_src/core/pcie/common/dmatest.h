@@ -77,7 +77,7 @@ namespace xcldev {
             return result;
         }
 
-        int runSync(xclBOSyncDirection dir, unsigned count) const {
+        int runSync(xclBOSyncDirection dir, unsigned int count) const {
             auto b = mBOList.begin();
             const auto e = mBOList.end();
             if (count == 1) {
@@ -85,7 +85,7 @@ namespace xcldev {
                 return future0.get();
             }
 
-            auto len = ((e - b) < count) ? 1 : (e - b)/count;
+            unsigned int len = ((e - b) < count) ? 1 : (e - b)/count;
             const auto ajust_e = b + len * std::min<unsigned int>(count, len);
             std::vector<std::future<int>> threads;
             while (b < ajust_e) {
