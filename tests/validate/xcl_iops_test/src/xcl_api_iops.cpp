@@ -43,7 +43,8 @@ struct krnl_info {
 };
 
 bool verbose = false;
-barrier barrier;
+barrier bo_barrier;
+barrier exec_barrier;
 struct krnl_info krnl = {"hello", false};
 
 static void printHelp() {
@@ -117,9 +118,10 @@ double runTest(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>>& 
 void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info>> &cmds,
         int bank, int expected_cmds)
 {
+    int i = 0;
     int rsz;
 
-    for (int i = 0; i < expected_cmds; i++) {
+    for (i = 0; i < expected_cmds; i++) {
         task_info cmd;
         cmd.boh = xclAllocBO(handle, 20, 0, bank);
         if (cmd.boh == NULLBO) {
@@ -162,7 +164,18 @@ void fillCmdVector(xclDeviceHandle handle, std::vector<std::shared_ptr<task_info
         cmd.ecmd->data[rsz] = boh_addr >> 32;
 
         cmds.push_back(std::make_shared<task_info>(cmd));
+        /* 
+         * If it is a small memory bank, allocate buffer might failed in some threads.
+         * Thus we use barrier to wait other threads to allocate output
+         * and command buffers to make sure each thread can have similar number of commands.
+         */
+        bo_barrier.wait();
     }
+
+    /* Needs to sync with other threads even this one cannot allocate expected number of buffers */
+    for (;i < expected_cmds; i++)
+        bo_barrier.wait();
+
     //std::cout << "Allocated commands, expect " << expected_cmds << ", created " << cmds.size() << std::endl;
 }
 
@@ -216,11 +229,14 @@ void runTestThread(arg_t &arg)
 
     fillCmdVector(handle, cmds, bank, arg.queueLength);
 
-    barrier.wait();
+    exec_barrier.wait();
 
-    double duration = runTest(handle, cmds, arg.total, arg);
+    if (cmds.size() == 0)
+        arg.total = 0;
+    else
+        double duration = runTest(handle, cmds, arg.total, arg);
 
-    barrier.wait();
+    exec_barrier.wait();
 
     for (auto& cmd : cmds) {
         xclFreeBO(handle, cmd->boh);
@@ -236,7 +252,8 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
     std::thread threads[threadNumber];
     std::vector<arg_t> arg(threadNumber);
 
-    barrier.init(threadNumber + 1);
+    exec_barrier.init(threadNumber + 1);
+    bo_barrier.init(threadNumber);
 
     for (int i = 0; i < threadNumber; i++) {
         arg[i].thread_id = i;
@@ -248,11 +265,11 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
     }
 
     /* Wait threads to prepare to start */
-    barrier.wait();
+    exec_barrier.wait();
     auto start = Clock::now();
 
     /* Wait threads done */
-    barrier.wait();
+    exec_barrier.wait();
     auto end = Clock::now();
 
     for (int i = 0; i < threadNumber; i++)
@@ -262,6 +279,12 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
     int overallCommands = 0;
     double duration;
     for (int i = 0; i < threadNumber; i++) {
+        /* For some special case, memory bank is too small to allocate buffers.
+         * Return not support error code if a thread has 0 command buffer.
+         */
+        if (arg[i].total == 0)
+            return EOPNOTSUPP;
+
         if (verbose) {
             duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
             std::cout << "Thread " << arg[i].thread_id
@@ -348,7 +371,10 @@ int _main(int argc, char* argv[])
             return EXIT_SUCCESS;
         }
     }
-        testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total);
+    if (testMultiThreads(device_str, xclbin_fn, threadNumber, queueLength, total)) {
+        std::cout << "\nNOT SUPPORTED" << std::endl;
+        return EOPNOTSUPP;
+    }
 
     return 0;
 }
