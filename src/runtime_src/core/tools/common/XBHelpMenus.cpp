@@ -578,8 +578,12 @@ XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollec
   VectorPairStrings reportDescriptionCollection;
 
   // Add the report names and description
-  for (const auto & report : _reportCollection) 
+  for (const auto & report : _reportCollection) {
+    // Skip hidden reports
+    if (!XBU::getShowHidden() && report->isHidden()) 
+      continue;
     reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
+  }
 
   // 'verbose' option
   if (_addAllOption) 

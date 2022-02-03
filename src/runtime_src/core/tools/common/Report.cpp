@@ -57,17 +57,32 @@ Report::getSchemaDescription(SchemaVersion _schemaVersion)
   return getSchemaDescription(SchemaVersion::unknown);
 }
 
-
 Report::Report(const std::string & _reportName,
                const std::string & _shortDescription,
                bool _isDeviceRequired)
   : m_reportName(_reportName)
   , m_shortDescription(_shortDescription)
   , m_isDeviceRequired(_isDeviceRequired)
+  , m_isHidden(false)
+  , m_isDeprecated(false)
+  , m_isPreliminary(false)
 {
   // Empty
 }
 
+Report::Report(const std::string & _reportName,
+               const std::string & _shortDescription,
+               bool _isDeviceRequired,
+               bool _isHidden)
+  : m_reportName(_reportName)
+  , m_shortDescription(_shortDescription)
+  , m_isDeviceRequired(_isDeviceRequired)
+  , m_isHidden(_isHidden)
+  , m_isDeprecated(false)
+  , m_isPreliminary(false)
+{
+  // Empty
+}
 
 void 
 Report::getFormattedReport( const xrt_core::device *pDevice, 
