@@ -78,7 +78,6 @@ namespace xdp {
     // Do not call writers here. Once shim is destroyed, writers do not have access to data
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
-
   }
 
   // Get tiles to debug
@@ -321,8 +320,8 @@ namespace xdp {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
 
-      aieWriter->write(false);
-      aieshimWriter->write(false);
+      aieWriter->write(false, handle);
+      aieshimWriter->write(false, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
@@ -381,6 +380,10 @@ namespace xdp {
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
   {
+    // Last chance at writing status reports
+    for (auto w : writers)
+      w->write(false, handle);
+ 
     // Ask threads to stop
     mThreadCtrlMap[handle] = false;
 
