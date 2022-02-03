@@ -1021,9 +1021,10 @@ int kds_init_client(struct kds_sched *kds, struct kds_client *client)
 }
 
 /* This function returns true if the given CU/SCU belongs to the current slot
+ * per the kds context argument.
  */
 static bool
-check_slot_cu(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit)
+is_cu_in_ctx_slot(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit)
 {
 	struct xrt_cu *xcu = NULL;
 
@@ -1036,7 +1037,6 @@ check_slot_cu(struct kds_sched *kds, struct kds_client_ctx *cctx, u32 bit)
 		return true;
 
 	return false;
-
 }
 
 static inline void
@@ -1059,7 +1059,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this CU belongs to current slot */
-		if (check_slot_cu(kds, cctx, bit)) {
+		if (is_cu_in_ctx_slot(kds, cctx, bit)) {
 			info.cu_idx = bit;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
@@ -1070,7 +1070,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this SCU belongs to current slot */
-		if (check_slot_cu(kds, cctx, bit + MAX_CUS)) {
+		if (is_cu_in_ctx_slot(kds, cctx, bit + MAX_CUS)) {
 			info.cu_idx = bit + MAX_CUS;
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);

@@ -54,7 +54,7 @@ enum kds_type {
 struct kds_ctx_info {
 	u32		  cu_idx;
 	u32		  flags;
-	void		 *curr_ctx;
+	void		 *curr_ctx; // Holds the current context ptr for kds
 };
 
 /* TODO: PS kernel is very different with FPGA kernel.

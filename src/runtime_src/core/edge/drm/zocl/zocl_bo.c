@@ -201,8 +201,8 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 	mutex_lock(&zdev->mm_lock);
 	do {
 		if (mem->zm_type == ZOCL_MEM_TYPE_CMA) {
-			struct drm_zocl_bo *cma_bo = zocl_create_cma_mem(dev,
-									 size);
+			struct drm_zocl_bo *cma_bo =
+				zocl_create_cma_mem(dev, size);
 			if (!IS_ERR(cma_bo)) {
 				/* Get the memory from CMA memory region */
 				mutex_unlock(&zdev->mm_lock);
@@ -264,7 +264,7 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
 }
 
 /*
- * This function retruns zocl memory for the given memory index.
+ * This function returns zocl memory for the given memory index.
  * Memory index is a pair of slot id and bank id.
  *
  * @param       zdev:    	zocl device structure
@@ -273,18 +273,17 @@ zocl_create_range_mem(struct drm_device *dev, size_t size, struct zocl_mem *mem)
  * @return	memory pointer on success, NULL on failure
  */
 static struct zocl_mem *
-zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
+zocl_get_mem_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
 {
 	struct zocl_mem *curr_mem = NULL;
 	list_for_each_entry(curr_mem, &zdev->zm_list_head, link)
 		if (curr_mem->zm_mem_idx == mem_index)
 			return curr_mem;
 
-
 	return NULL;
 }
 
-/* This function retruns zocl memory for the given slot based on a
+/* This function returns zocl memory for the given slot based on a
  * specific memory topology
  *
  * @param       zdev:		zocl device structure
@@ -295,7 +294,7 @@ zocl_get_memp_by_mem_index(struct drm_zocl_dev *zdev, u32 mem_index)
  */
 static struct zocl_mem *
 zocl_get_memp_by_mem_data(struct drm_zocl_dev *zdev,
-		     struct mem_data *md, int slot_idx)
+		     struct mem_data *md, u32 slot_idx)
 {
 	struct zocl_mem *memp = NULL;
 
@@ -339,7 +338,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 	} else {
 		/* We are allocating from a separate mem Index, i.e. PL-DDR or LPDDR */
 		unsigned int mem_index = GET_MEM_INDEX(user_flags);
-		struct zocl_mem *mem = zocl_get_memp_by_mem_index(zdev, mem_index);
+		struct zocl_mem *mem = zocl_get_mem_by_mem_index(zdev, mem_index);
 		if (mem == NULL)
 			return ERR_PTR(-ENOMEM);
 
@@ -450,7 +449,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	mem_index = GET_MEM_INDEX(args->flags);
-	mem = zocl_get_memp_by_mem_index(zdev, mem_index);
+	mem = zocl_get_mem_by_mem_index(zdev, mem_index);
 	if (!mem) {
 		DRM_ERROR("Invalid memory index");
 		return -EINVAL;
@@ -1071,7 +1070,7 @@ void zocl_free_host_bo(struct drm_gem_object *gem_obj)
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size, int count,
 		uint32_t index)
 {
-	struct zocl_mem *mem = zocl_get_memp_by_mem_index(zdev, index);
+	struct zocl_mem *mem = zocl_get_mem_by_mem_index(zdev, index);
 	if (!mem)
 		return;
 
@@ -1257,7 +1256,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
  * @param       slot_idx:	slot index
  *
  */
-void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, int slot_idx)
+void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, u32 slot_idx)
 {
 	struct zocl_mem *curr_mem = NULL;
 	struct zocl_mem *next = NULL;

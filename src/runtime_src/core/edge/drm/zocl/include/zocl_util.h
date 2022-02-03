@@ -61,7 +61,7 @@ struct addr_aperture {
 	size_t		size;
 	u32		prop;
 	int		cu_idx;
-	int		slot_idx;
+	u32		slot_idx;
 };
 
 enum zocl_mem_type {
@@ -100,7 +100,7 @@ struct aie_metadata {
 };
 
 struct drm_zocl_slot {
-	int			 slot_idx;
+	u32			 slot_idx;
 	struct mem_topology	*topology;
 	struct ip_layout	*ip;
 	struct debug_ip_layout	*debug_ip;

@@ -362,7 +362,7 @@ update_max_apt_number(struct drm_zocl_dev *zdev)
  *
  */
 static void
-zocl_clean_aperture(struct drm_zocl_dev *zdev, int slot_idx)
+zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
 {
 	int apt_idx = 0;
 	struct addr_aperture *apt = NULL;
@@ -375,7 +375,7 @@ zocl_clean_aperture(struct drm_zocl_dev *zdev, int slot_idx)
 			apt->size = 0;
 			apt->prop = 0;
 			apt->cu_idx = -1;
-			apt->slot_idx = -1;
+			apt->slot_idx = 0xFFFF;
 		}
 	}
 
@@ -503,7 +503,7 @@ zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
  *
  */
 static void
-zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, int slot_idx)
+zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, u32 slot_idx)
 {
 	struct platform_device *pldev = NULL;
 	struct xrt_cu_info *info = NULL;

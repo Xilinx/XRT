@@ -545,7 +545,7 @@ zocl_get_cu_context(struct drm_zocl_dev *zdev, struct kds_client *client,
 	struct kds_sched *kds = &zdev->kds;
 	struct drm_zocl_slot *slot = NULL;
 	struct kds_cu_mgmt *cu_mgmt = NULL;
-	int slot_idx = -1;
+	u32 slot_idx = 0xFFFF;
 
 	if (!kds)
 		return NULL;

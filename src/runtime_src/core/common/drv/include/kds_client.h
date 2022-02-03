@@ -30,10 +30,10 @@
 struct kds_client_ctx {
 	struct list_head          link;
 	void			 *xclbin_id;
-	int			  slot_idx;
-	int			  num_ctx;
-	int			  num_scu_ctx;
-	int			  virt_cu_ref;
+	u32			  slot_idx;
+	u32			  num_ctx;
+	u32			  num_scu_ctx;
+	u32			  virt_cu_ref;
 };
 
 /**
