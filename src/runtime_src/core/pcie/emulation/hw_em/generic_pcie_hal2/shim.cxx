@@ -536,8 +536,8 @@ namespace xclhwemhal2 {
     //CR-1116870 Changes Start
 
     auto projectName = xrt_core::xclbin::get_project_name(args.m_top);
-    auto xclbin_object = std::make_unique<xrt::xclbin>(args.m_top);
-    auto fpgaDeviceName = xclbin_object->get_fpga_device_name();
+    xrt::xclbin xclbin_object{args.m_top};
+    auto fpgaDeviceName = xclbin_object.get_fpga_device_name();
 
     //New DRC check for Versal Platforms
     if (!fpgaDeviceName.empty() && fpgaDeviceName.find("versal:") != std::string::npos) {
@@ -554,7 +554,7 @@ namespace xclhwemhal2 {
 
     std::string instance_name = "";
     auto base_address = 0;
-    for (const auto& kernel : xclbin_object->get_kernels())
+    for (const auto& kernel : xclbin_object.get_kernels())
     {
       // get properties of each kernel object
       auto props = xrt_core::xclbin_int::get_properties(kernel);
