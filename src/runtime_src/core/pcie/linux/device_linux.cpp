@@ -857,6 +857,10 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,                    lapc_status>();
   emplace_func4_request<query::spc_status,                     spc_status>();
   emplace_func4_request<query::accel_deadlock_status,          accel_deadlock_status>();
+
+  emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
+  emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
+  emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -77,7 +77,8 @@ PYBIND11_MODULE(pyxrt, m) {
         .value("platform", xrt::info::device::platform)
         .value("pcie_info", xrt::info::device::pcie_info)
         .value("host", xrt::info::device::host)
-        .value("dynamic_regions", xrt::info::device::dynamic_regions);
+        .value("dynamic_regions", xrt::info::device::dynamic_regions)
+        .value("vmr", xrt::info::device::vmr);
 /*
  *
  * XRT:: UUID (needed since UUID classes passed outside of objects)
@@ -140,6 +141,8 @@ PYBIND11_MODULE(pyxrt, m) {
                                  return d.get_info<xrt::info::device::host>();
                              case xrt::info::device::dynamic_regions:
                                  return d.get_info<xrt::info::device::dynamic_regions>();
+                             case xrt::info::device::vmr:
+                                 return d.get_info<xrt::info::device::vmr>();
                              default:
                                  return std::string("NA");
                              }

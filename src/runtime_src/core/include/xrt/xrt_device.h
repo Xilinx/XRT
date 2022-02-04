@@ -90,6 +90,8 @@ namespace info {
  *  AIE shim information of the device (std::string)
  * @var dynamic_regions
  *  Information about xclbin on the device (std::string)
+ * @var vmr
+ *  Information about vmr on the device (std::string)
  */
 enum class device : unsigned int {
   bdf,
@@ -109,7 +111,8 @@ enum class device : unsigned int {
   host,
   aie,
   aie_shim,
-  dynamic_regions
+  dynamic_regions,
+  vmr
 };
 
 /// @cond
@@ -134,6 +137,7 @@ XRT_INFO_PARAM_TRAITS(device::host, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie_shim, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
+XRT_INFO_PARAM_TRAITS(device::vmr, std::string);
 /// @endcond
 
 } // info

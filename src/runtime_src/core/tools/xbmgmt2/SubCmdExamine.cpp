@@ -41,6 +41,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportVmrStatus.h"
 #include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
@@ -53,7 +54,8 @@ static const ReportCollection fullReportCollection = {
     std::make_shared<ReportMechanical>(),
     std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
-    std::make_shared<ReportCmcStatus>()
+    std::make_shared<ReportCmcStatus>(),
+    std::make_shared<ReportVmrStatus>()
   #endif
 };
 

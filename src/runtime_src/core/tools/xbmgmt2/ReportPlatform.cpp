@@ -95,6 +95,21 @@ mac_addresses(const xrt_core::device * dev)
   return ptree;
 }
 
+static boost::property_tree::ptree
+get_boot_info(const xrt_core::device * dev)
+{
+  boost::property_tree::ptree ptree;
+  try {
+    auto def = xrt_core::device_query<xrt_core::query::boot_partition>(dev);
+    ptree.add("default", def == 0 ? "ACTIVE" : "INACTIVE");
+    ptree.add("backup", def == 0 ? "INACTIVE" : "ACTIVE");
+  }
+  catch (const xrt_core::query::exception&) { 
+    // only available for versal devices
+  }
+  return ptree;
+}
+
 /*
  * helper function for getPropertyTree20202()
  */
@@ -270,6 +285,10 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   if(!macs.empty())
     pt_platform.put_child("macs", macs);
 
+  auto pt_boot = get_boot_info(device);
+  if (!pt_boot.empty())
+    pt_platform.put_child("bootable_partition", pt_boot);
+
   // There can only be 1 root node
   pt.add_child("platform", pt_platform);
 }
@@ -360,6 +379,14 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }
       _output << std::endl;
+  }
+
+  const auto& partition = _pt.get_child("platform.bootable_partition", pt_empty);
+  if(!partition.empty()) {
+    _output << "Bootable Partitions:" << std::endl;
+    _output << fmtBasic % "Default" % partition.get<std::string>("default");
+    _output << fmtBasic % "Backup" % partition.get<std::string>("backup");
+    _output << std::endl;
   }
 
   //PLPs installed on the system
