@@ -2158,8 +2158,8 @@ struct xocl_xgq_vmr_funcs {
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
 #define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
-	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
+	(XGQ_CB(xdev, xgq_collect_sensors_by_id) ?		\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)

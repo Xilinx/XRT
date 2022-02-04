@@ -19,6 +19,7 @@
 #include <linux/hwmon-sysfs.h>
 #include <linux/string.h>
 
+#include "xgq_cmd_vmr.h"
 #include "xgq_resp_parser.h"
 #include "../xocl_drv.h"
 
