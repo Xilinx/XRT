@@ -2124,8 +2124,8 @@ struct xocl_xgq_vmr_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
-	int (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
-	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
+	int (*xgq_collect_sensors_by_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
 #define	XGQ_DEV(xdev)						\
@@ -2157,12 +2157,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_bdinfo_sensors(xdev, buf, len)		\
+#define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
 	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
-#define	xocl_xgq_collect_temp_sensors(xdev, buf, len)		\
-	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
+	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
