@@ -85,7 +85,7 @@ namespace xcldev {
                 return future0.get();
             }
 
-            unsigned int len = ((e - b) < count) ? 1 : (e - b)/count;
+            unsigned int len = (((unsigned int)(e - b)) < count) ? 1 : ((unsigned int)(e - b))/count;
             const auto ajust_e = b + len * std::min<unsigned int>(count, len);
             std::vector<std::future<int>> threads;
             while (b < ajust_e) {
