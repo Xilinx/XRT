@@ -2,13 +2,16 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
-PROJECT(query)
-set(TESTNAME "query")
+set(TESTNAME "000_verify")
+PROJECT(${TESTNAME})
 
-include(../../CMake/utils.cmake)
+find_package(XRT)
 
-add_executable(${TESTNAME} main.cpp)
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_coreutil_LIBRARY})
+set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
+
+add_executable(${TESTNAME} hello.cpp)
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_xilinxopencl_LIBRARY})
+target_include_directories(${TESTNAME} PRIVATE ${XRT_INCLUDE_DIRS})
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)

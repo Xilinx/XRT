@@ -99,10 +99,6 @@ int main(int argc, char** argv)
   
   int test_num = 1;
   bool bitstream = false;
-  if (argc != 2){
-    printf("test-cl.exe <inputfile>\n");
-    return EXIT_FAILURE;
-  }
 
   // Connect to first platform$
   //

@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
-PROJECT(abort)
-set(TESTNAME "abort")
+set(TESTNAME "009_mmult1")
+PROJECT(${TESTNAME})
 
 include(../../CMake/utils.cmake)
 
-add_executable(abort main.cpp)
-target_link_libraries(abort PRIVATE ${xrt_coreutil_LIBRARY})
+add_executable(${TESTNAME} test-cl.cpp)
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_xilinxopencl_LIBRARY})
 
 if (NOT WIN32)
-  target_link_libraries(abort PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
 if (DEFINED ENV{XCLBIN_CREATION})
@@ -24,8 +24,8 @@ if (DEFINED ENV{XCLBIN_CREATION})
 
   # xrt_create_xo is a macro defined in utils.cmake for generating xo file
   xrt_create_xo(
-    "${CMAKE_CURRENT_SOURCE_DIR}/ksrc/loop_vadd.cpp"
-    "--hls.pre_tcl;${CMAKE_CURRENT_SOURCE_DIR}/ksrc/runPre.tcl;-k;loop_vadd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/mmult1.cl"
+    ""
     "kernel"
   )
   # xrt_create_xclbin is macro defined in utils.cmake for generating xclbin
@@ -35,5 +35,5 @@ if (DEFINED ENV{XCLBIN_CREATION})
   )
 endif()
 
-install(TARGETS abort
+install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})

@@ -1,4 +1,8 @@
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+PROJECT(perf_IOPS)
 set(TESTNAME "perf_IOPS")
+
+include(../../CMake/utils.cmake)
 
 add_executable(xrt_api_iops xrt_api_iops.cpp)
 target_link_libraries(xrt_api_iops PRIVATE ${xrt_coreutil_LIBRARY})
