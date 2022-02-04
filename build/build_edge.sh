@@ -76,6 +76,30 @@ config_versal_project()
     VERSAL_PROJECT_DIR=$1
     APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
 
+    sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_xrt-dev.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_tcl.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-headers.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_iperf3.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_python3.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_package-feed-uris.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_dnf.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_kernel-devsrc.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_resize-part.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_htop.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_meson.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_imagefeature-package-management.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    #sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+
+
+
     # Add necessary rootfs configs
     sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
     sed -i 's/.*CONFIG_gdb=y is.*/CONFIG_gdb=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
