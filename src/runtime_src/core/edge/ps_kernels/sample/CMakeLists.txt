@@ -14,20 +14,18 @@ file(GLOB SRC_FILES
 
 set(CMAKE_CXX_FLAGS "-DXAIE_DEBUG ${CMAKE_CXX_FLAGS}")
 add_definitions(-DXCLHAL_MAJOR_VER=1 -DXCLHAL_MINOR_VER=0)
-add_library(trace_configure SHARED ${SRC_FILES})
+add_library(sample SHARED ${SRC_FILES})
 
-set_target_properties(trace_configure PROPERTIES VERSION ${XRT_VERSION_STRING}
+set_target_properties(sample PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
-target_link_libraries(trace_configure
+target_link_libraries(sample
     PRIVATE
     xrt_coreutil
     xrt_core
-    metal
-    xaiengine
 )
 
-install (TARGETS trace_configure
+install (TARGETS sample 
   EXPORT xrt-targets
   LIBRARY DESTINATION ${PS_KERNEL_INSTALL_DIR}
 )

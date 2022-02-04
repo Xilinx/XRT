@@ -32,7 +32,7 @@
 namespace XUtil = XclBinUtilities;
 
 std::vector<std::string> 
-dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
+dataMineExportedFunctionsObjdump(const std::string &elfLibrary) 
   // Sample output being parsed: 
   // /proj/xcohdstaff1/stephenr/github/XRT/WIP/src/runtime_src/tools/xclbinutil/unittests/PSKernel/pskernel.so:     file format elf64-little
   // DYNAMIC SYMBOL TABLE:
@@ -45,6 +45,7 @@ dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
   // 0000000000003500 g    DF .text  00000000000005c4  Base        kernel0(float*, float*, float*, int, int, float, float*, xrtHandles*)
   // 00000000000030f0 g    DF .text  000000000000040c  Base        kernel0_fini(xrtHandles*)
   // 0000000000003ac4 g    DF .text  00000000000001e8  Base        kernel0_init(void*, unsigned char const*)
+{
 
   // Call objdump to get the collection of functions
   boost::filesystem::path objdumpPath = "/usr/bin/objdump";    // Assume it is in a known location
@@ -63,8 +64,16 @@ dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
   const std::vector<std::string> cmdOptions = {"--wide", "--section=.text", "-T", "-C", elfLibrary};
   std::ostringstream os_stdout;
   std::ostringstream os_stderr;
-  XUtil::exec(objdumpPath, cmdOptions, true /*throw exception*/, os_stdout, os_stdout);
+
+  // Build the command line
+  std::string cmdLine = objdumpPath.string();
+  for (const auto & option : cmdOptions)
+    cmdLine += " " + option;
+
+  XUtil::TRACE("Cmd: " + cmdLine);
+  XUtil::exec(objdumpPath, cmdOptions, true /*throw exception*/, os_stdout, os_stderr);
                                                                                       
+  XUtil::TRACE("Parsing results from the objdump cmd");
   std::vector<std::string> entries;
   std::string output = os_stdout.str();
   boost::split(entries, output, boost::is_any_of("\n"), boost::token_compress_on);
@@ -102,6 +111,8 @@ dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
 
     kernelSignatures.push_back(functionSig);
   }
+
+  XUtil::TRACE("Finished populating kernel signatures");
   return kernelSignatures;
 }
 
@@ -109,6 +120,7 @@ dataMineExportedFunctionsObjdump(const std::string &elfLibrary) {
 
 std::vector<std::string> 
 XclBinUtilities::dataMineExportedFunctions(const std::string &elfLibrary) {
+  XUtil::TRACE("Examining PSKernel: '" + elfLibrary + "'");
   if ( !boost::filesystem::exists( elfLibrary ) )
     throw std::runtime_error("Error: The PS library file does not exist: '" + elfLibrary + "'");
 
@@ -118,6 +130,7 @@ XclBinUtilities::dataMineExportedFunctions(const std::string &elfLibrary) {
   if (kernelSignatures.empty())
     throw std::runtime_error("Error: No global exported functions were found in the library: '" + elfLibrary + "'");
 
+  XUtil::TRACE("Finished examining the PSKernel library");
   return kernelSignatures;
 }
 
