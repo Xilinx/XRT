@@ -2255,7 +2255,7 @@ int xcldev::device::testM2m()
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get<int>("", "kds_numcdmas", errmsg, m2m_enabled, 0);
+    dev->sysfs_get<int>("", "m2m", errmsg, m2m_enabled, 0);
 
     // Workaround:
     // u250_xdma_201830_1 falsely shows that m2m is available

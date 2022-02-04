@@ -1106,7 +1106,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   XBU::xclbin_lock xclbin_lock(_dev);
-  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
+  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::m2m>(_dev);
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
   // Workaround:
