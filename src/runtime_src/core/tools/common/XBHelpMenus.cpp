@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -655,6 +655,7 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
     ptRoot.add_child("schema_version", ptSchemaVersion);
   }
 
+  bool is_report_output_valid = true;
 
   // -- Process the reports that don't require a device
   boost::property_tree::ptree ptSystem;
@@ -663,7 +664,11 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       continue;
 
     boost::property_tree::ptree ptReport;
-    report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+    try {
+      report->getFormattedReport(nullptr, schemaVersion, elementFilter, consoleStream, ptReport);
+    } catch (const std::exception&) {
+      is_report_output_valid = false;
+    }
 
     // Only support 1 node on the root
     if (ptReport.size() > 1)
@@ -743,7 +748,12 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
         if((!is_mfg && !is_ready) && !is_recovery)
           continue;
         boost::property_tree::ptree ptReport;
-        report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        try {
+          report->getFormattedReport(device.get(), schemaVersion, elementFilter, consoleStream, ptReport);
+        } catch (const std::exception&) {
+          is_report_output_valid = false;
+        }
+        
 
         // Only support 1 node on the root
         if (ptReport.size() > 1)
@@ -774,5 +784,9 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       // Do nothing
       break;
   }
+
+  // If any the data reports failed to generate with an exception throw an operation cancelled but output everything
+  if(!is_report_output_valid)
+    throw xrt_core::error(std::errc::operation_canceled);
 }
 

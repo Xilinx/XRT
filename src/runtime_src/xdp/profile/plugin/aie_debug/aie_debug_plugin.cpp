@@ -61,9 +61,13 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+  bool AIEDebugPlugin::live = false;
+
   AIEDebugPlugin::AIEDebugPlugin() 
       : XDPPlugin()
   {
+    AIEDebugPlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
 
@@ -78,6 +82,13 @@ namespace xdp {
     // Do not call writers here. Once shim is destroyed, writers do not have access to data
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
+
+    AIEDebugPlugin::live = false;
+  }
+
+  bool AIEDebugPlugin::alive()
+  {
+    return AIEDebugPlugin::live;
   }
 
   // Get tiles to debug
