@@ -5,5 +5,5 @@
 
 # Enable autocompletion for the xbutil and xbmgmt commands
 alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xbutil-csh-completion
-complete xbutil 'p/*/`__xbutil_completion_csh`/'
+complete xbutil 'n/-u/d/' 'n/--user/d/' 'n/-o/d/' 'n/--output/d/' 'p/*/`__xbutil_completion_csh`/'
 echo Autocomplete enabled for the xbutil command

@@ -53,17 +53,11 @@ else
   switch($previousWord)
     case "device":
     case "d":
-      set programOptions=(`xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p'`)
+      set programOptions=(`xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p'` | tr -s '\n' ' ')
       breaksw
     case "user":
     case "u":
-      set dir = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
-      if ($dir != "") then
-        if (! -d $dir) then
-          set dir=(`echo "$dir" | grep --perl-regexp '.+[/]|[/].+[/]' --only-matching`)
-        endif
-      endif
-      set programOptions=`ls $dir`
+      set programOptions=""
       breaksw
     case "format":
     case "f":
@@ -75,14 +69,20 @@ else
       breaksw
     case "type":
     case "t":
-      set programOptions=""
+      set programOptions="hot"
       breaksw
     # -r shorthand applies to multiple commands under xbutil and requires additional processing
     # Assuming we want to add something here one day
     case "report":
     case "run":
     case "r"
-      set programOptions=""
+      if ($commandWord == "validate") then
+        set programOptions=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+      else if ($commandWord == "examine") then
+        set programOptions=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+      else
+        set programOptions=""
+      endif
       breaksw
     # do not modify the option list if the argument is not required
     default:

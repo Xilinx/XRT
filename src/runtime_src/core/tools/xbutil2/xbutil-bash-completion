@@ -18,12 +18,16 @@ _command_word_xbutil_completion()
   currentWord=${COMP_WORDS[COMP_CWORD]}
   # The previous word is used 
   previousWord=${COMP_WORDS[COMP_CWORD-1]}
+
+  _get_comp_words_by_ref -n : currentWord previousWord
+
   # Each defined case requires an argument so no reply is given
   # All other cases default to using `compgen` output to format COMPREPLY
   case ${previousWord} in
     -d|--device)
       BDFs=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
       COMPREPLY=( $(compgen -W "$BDFs" -- ${currentWord}) )
+      __ltrim_colon_completions "$currentWord"
       ;;
     -u|--user)
       _filedir
@@ -102,8 +106,13 @@ _xbutil_completion()
   _command_word_xbutil_completion "${options}"
 }
 
+_xbutil_completion_t()
+{
+  COMPREPLY=($(compgen -W "hello:world testing:test" -- ${currentWord}))
+}
+
 source /usr/share/bash-completion/bash_completion
-complete -F _xbutil_completion xbutil
+complete -F _xbutil_completion_t xbutil
 echo Autocomplete enabled for the xbutil command
 
 # ex: filetype=sh
