@@ -227,8 +227,8 @@ struct xrt_cu_info {
 	bool			 sw_reset;
 	struct xrt_cu_arg	*args;
 	u32			 num_args;
-	char			 iname[32];
-	char			 kname[32];
+	char			 iname[64];
+	char			 kname[64];
 	void			*xgq;
 };
 
