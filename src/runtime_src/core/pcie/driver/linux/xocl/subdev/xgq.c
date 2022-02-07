@@ -1335,6 +1335,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
 	payload->size = len;
+	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
 	payload->pid = pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
