@@ -498,7 +498,7 @@ static inline int ert_ctrl_alloc_ert_xgq(struct ert_ctrl *ec, int num)
 	if (num <= ec->ec_exgq_capacity)
 		return 0;
 
-	tmp = kzalloc(sizeof(void *) * num, GFP_KERNEL);
+	tmp = kzalloc(sizeof(ec->ec_exgq[0]) * num, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 
