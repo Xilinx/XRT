@@ -5,5 +5,7 @@
 
 # Enable autocompletion for the xbutil and xbmgmt commands
 alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xbutil-csh-completion
-complete xbutil 'n/-u/d/' 'n/--user/d/' 'n/-o/d/' 'n/--output/d/' 'p/*/`__xbutil_completion_csh`/'
+# TCSH is very unfriendly when performing file completions inside the aliased script
+# to get around this we add certain options that default to file/directory searches here
+complete xbutil 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'p/*/`__xbutil_completion_csh`/'
 echo Autocomplete enabled for the xbutil command
