@@ -786,6 +786,7 @@ static struct drm_driver zocl_driver = {
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
 	.gem_prime_mmap            = drm_gem_prime_mmap,
+	.gem_prime_vunmap          = drm_gem_cma_prime_vunmap,
 	.ioctls                    = zocl_ioctls,
 	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
 	.fops                      = &zocl_driver_fops,
