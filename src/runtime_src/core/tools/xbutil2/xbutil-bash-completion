@@ -13,51 +13,54 @@
 _command_word_xbutil_completion()
 {
   # Command word is used to specify further options as the command expands
-  commandWord=${COMP_WORDS[1]}
+  local commandWord=${COMP_WORDS[1]}
   # Get the righthand most word on the command line
-  currentWord=${COMP_WORDS[COMP_CWORD]}
+  local cur=${COMP_WORDS[COMP_CWORD]}
   # The previous word is used 
-  previousWord=${COMP_WORDS[COMP_CWORD-1]}
+  local prev=${COMP_WORDS[COMP_CWORD-1]}
 
-  _get_comp_words_by_ref -n : currentWord previousWord
+  # The BDFs (for devices) contain colons which breaks the autocomplete
+  # to get around this a helper function removes colons and helps parse the current and previous
+  # words
+  _get_comp_words_by_ref -n : cur prev
 
   # Each defined case requires an argument so no reply is given
   # All other cases default to using `compgen` output to format COMPREPLY
-  case ${previousWord} in
+  case ${prev} in
     -d|--device)
       BDFs=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
-      COMPREPLY=( $(compgen -W "$BDFs" -- ${currentWord}) )
-      __ltrim_colon_completions "$currentWord"
+      COMPREPLY=( $(compgen -W "$BDFs" -- $cur) )
+      __ltrim_colon_completions "$cur"
       ;;
     -u|--user)
       _filedir
       ;;
     -f|--format)
-      COMPREPLY=( $(compgen -W "JSON JSON-2020.2" -- ${currentWord}) )
+      COMPREPLY=( $(compgen -W "JSON JSON-2020.2" -- $cur) )
       ;;
     -o|--output)
       _filedir
       ;;
     -t|--type)
-      COMPREPLY=( $(compgen -W "hot" -- ${currentWord}) )
+      COMPREPLY=( $(compgen -W "hot" -- $cur) )
       ;;
     # The -r option is used for multiple commands so extra processing is needed in here
     -r|--report|--run)
       case ${commandWord} in
         "validate")
           runs=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
-          COMPREPLY=( $(compgen -W "$runs" -- ${currentWord}) )
+          COMPREPLY=( $(compgen -W "$runs" -- $cur) )
           ;;
         "examine")
           reports=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
-          COMPREPLY=( $(compgen -W "$reports" -- ${currentWord}) )
+          COMPREPLY=( $(compgen -W "$reports" -- $cur) )
           ;;
       esac
       ;;
     *)
       # The format of the compgen commands options is seperated from the current word using a --.
       # The -- character signifies the end of command options. All following arguments are positional.
-      COMPREPLY=($(compgen -W "$1" -- ${currentWord}))
+      COMPREPLY=($(compgen -W "$1" -- $cur))
       ;;
   esac
 }
@@ -106,13 +109,8 @@ _xbutil_completion()
   _command_word_xbutil_completion "${options}"
 }
 
-_xbutil_completion_t()
-{
-  COMPREPLY=($(compgen -W "hello:world testing:test" -- ${currentWord}))
-}
-
 source /usr/share/bash-completion/bash_completion
-complete -F _xbutil_completion_t xbutil
+complete -F _xbutil_completion xbutil
 echo Autocomplete enabled for the xbutil command
 
 # ex: filetype=sh
