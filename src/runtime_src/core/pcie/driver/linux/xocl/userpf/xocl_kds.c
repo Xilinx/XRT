@@ -473,7 +473,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	if (kds->xgq_enable)
 		return true;
 
-	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+	if ((kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
 		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
@@ -1633,6 +1633,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
 		goto create_regular_cu;
+
+	if (!cfg.ert) {
+		XDEV(xdev)->kds.ert_disable = true;
+		goto create_regular_cu;
+	}
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)
