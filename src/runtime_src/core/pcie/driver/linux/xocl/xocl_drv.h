@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@Xilinx.com
  *          Jan Stephan <j.stephan@hzdr.de>
@@ -2124,8 +2124,8 @@ struct xocl_xgq_vmr_funcs {
 		enum data_kind kind);
 	int (*xgq_download_apu_firmware)(struct platform_device *pdev);
 	int (*vmr_enable_multiboot)(struct platform_device *pdev);
-	int (*xgq_collect_bdinfo_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
-	int (*xgq_collect_temp_sensors)(struct platform_device *pdev, char *buf, uint32_t len);
+	int (*xgq_collect_sensors_by_id)(struct platform_device *pdev, char *buf,
+                                     uint8_t id, uint32_t len);
 	int (*vmr_load_firmware)(struct platform_device *pdev, char **fw, size_t *fw_size);
 };
 #define	XGQ_DEV(xdev)						\
@@ -2157,19 +2157,16 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_vmr_enable_multiboot(xdev) 			\
 	(XGQ_CB(xdev, vmr_enable_multiboot) ?			\
 	XGQ_OPS(xdev)->vmr_enable_multiboot(XGQ_DEV(xdev)) : -ENODEV)
-#define	xocl_xgq_collect_bdinfo_sensors(xdev, buf, len)		\
-	(XGQ_CB(xdev, xgq_collect_bdinfo_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_bdinfo_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
-#define	xocl_xgq_collect_temp_sensors(xdev, buf, len)		\
-	(XGQ_CB(xdev, xgq_collect_temp_sensors) ?		\
-	XGQ_OPS(xdev)->xgq_collect_temp_sensors(XGQ_DEV(xdev), buf, len) : -ENODEV)
+#define	xocl_xgq_collect_sensors_by_id(xdev, buf, id, len)		\
+	(XGQ_CB(xdev, xgq_collect_sensors_by_id) ?		\
+	XGQ_OPS(xdev)->xgq_collect_sensors_by_id(XGQ_DEV(xdev), buf, id, len) : -ENODEV)
 #define	xocl_vmr_load_firmware(xdev, fw, fw_size)		\
 	(XGQ_CB(xdev, vmr_load_firmware) ?			\
 	XGQ_OPS(xdev)->vmr_load_firmware(XGQ_DEV(xdev), fw, fw_size) : -ENODEV)
 
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
-	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev);
+	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2179,9 +2176,9 @@ struct xocl_sdm_funcs {
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
 	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
-#define	xocl_hwmon_sdm_get_sensors_list(xdev)			\
+#define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
-	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev)) : -ENODEV)
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1

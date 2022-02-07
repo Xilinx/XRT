@@ -1387,14 +1387,10 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_bdinfo_sensors(struct platform_device *pdev, char *buf, uint32_t len)
+static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
+									 uint8_t id, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO, buf, len);
-}
-
-static int xgq_collect_temp_sensors(struct platform_device *pdev, char *buf, uint32_t len)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP, buf, len);
+	return xgq_collect_sensors(pdev, id, buf, len);
 }
 
 /* sysfs */
@@ -1889,8 +1885,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
-	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,
+	.xgq_collect_sensors_by_id = xgq_collect_sensors_by_id,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 
