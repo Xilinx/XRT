@@ -793,10 +793,8 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 	void *hdl = NULL;
 
 	ec = platform_get_drvdata(pdev);
-	if (!ec) {
-		EC_ERR(ec, "ec is null");
+	if (!ec)
 		return -EINVAL;
-	}
 
 	if (ec->ec_connected)
 		ert_ctrl_disconnect(pdev);
