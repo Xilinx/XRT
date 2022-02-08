@@ -7,11 +7,15 @@
 set list = "$COMMAND_LINE"
 # The command word associated with this xbutil invocation
 set commandWord = `echo $list | awk 'BEGIN{FS=" "}{print $2}'`
-# Get the number of arguments. This script turns spaces into commas to count
-# the number of commands. It only really matters for the first couple
+# Get the number of arguments. This script turns spaces into ampersands to count
+# the number of commands. This script is NOT space in path name friendly.
 set argsplit=(`echo "$list" | sed -e "s/ /@/g"`)
+# All non essential characters are removed here (Like hypens) so all definitions below do not have hyphens!
 set argsplit=(`echo "$argsplit" | sed "s/[^a-zA-Z0-9@/']//g"`)
+# Remove all alphanumeric characters and leave only the ampersands for word count
 set argsplit_counter=(`echo "$argsplit" | sed "s/[a-zA-Z0-9/']//g"`)
+# The number of characters left (which is only ampersands) determines the number of words in the argument list.
+# In case it was missed above this is not a space friendly script.
 set commandCount = (`echo $argsplit_counter | awk '{print length($0)}'`)
 set previousWord = `echo $argsplit | awk 'BEGIN{FS="@"}{NF=NF-1;print $NF}'`
 # This is the word on the righthand side
@@ -19,11 +23,13 @@ set currentWord = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
 
 
 # The options for the current command line statement
-set programOptions = "--verbose --batch --force --help -h --version --device -d"
+set programOptions = "--verbose --batch --force --help -h --version"
 # Handle the default xbutil options first
 if($commandCount == "1") then
     set programOptions="${programOptions} program validate examine configure reset"
 else
+  set commonSubCommands="--device -d ${programOptions}"
+
   # First handle the gathering of all options unique to each command
   switch($commandWord)
     case "program":
