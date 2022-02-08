@@ -10,8 +10,8 @@ set commandWord = `echo $list | awk 'BEGIN{FS=" "}{print $2}'`
 # Get the number of arguments. This script turns spaces into commas to count
 # the number of commands. It only really matters for the first couple
 set argsplit=(`echo "$list" | sed -e "s/ /@/g"`)
-set argsplit=(`echo "$argsplit" | sed "s/[^a-zA-Z@/']//g"`)
-set argsplit_counter=(`echo "$argsplit" | sed "s/[a-zA-Z/']//g"`)
+set argsplit=(`echo "$argsplit" | sed "s/[^a-zA-Z0-9@/']//g"`)
+set argsplit_counter=(`echo "$argsplit" | sed "s/[a-zA-Z0-9/']//g"`)
 set commandCount = (`echo $argsplit_counter | awk '{print length($0)}'`)
 set previousWord = `echo $argsplit | awk 'BEGIN{FS="@"}{NF=NF-1;print $NF}'`
 # This is the word on the righthand side
@@ -19,30 +19,27 @@ set currentWord = `echo $argsplit | awk 'BEGIN{FS="@"}{print $NF}'`
 
 
 # The options for the current command line statement
-set programOptions = ""
+set programOptions = "--verbose --batch --force --help -h --version --device -d"
 # Handle the default xbutil options first
 if($commandCount == "1") then
-    set programOptions="program validate examine configure reset"
-# All other commands enter into this case
+    set programOptions="${programOptions} program validate examine configure reset"
 else
-  set commonSubCommands="--verbose --batch --force --help -h --version --device -d"
-
   # First handle the gathering of all options unique to each command
   switch($commandWord)
     case "program":
-      set programOptions="${commonSubCommands} --user -u"
+      set programOptions="${programOptions} --user -u"
       breaksw
     case "validate":
-      set programOptions="${commonSubCommands} --run -r --format -f --output -o"
+      set programOptions="${programOptions} --run -r --format -f --output -o --path -p"
       breaksw
     case "examine":
-      set programOptions="${commonSubCommands} --report -r --format -f --output -o"
+      set programOptions="${programOptions} --report -r --format -f --output -o"
       breaksw
     case "configure":
-      set programOptions="${commonSubCommands} --host-mem --p2p --size"
+      set programOptions="${programOptions} --host-mem --p2p --size"
       breaksw
     case "reset":
-      set programOptions="${commonSubCommands} --type -t"
+      set programOptions="${programOptions} --type -t"
       breaksw
     # Return an empty reply if an invalid command is entered
     default:
@@ -50,36 +47,36 @@ else
   endsw
 
   # If the current word requires an argument, clear the option list
+  # If an option is "missing" from this list check the wrapper. It is most likely defined there as a 
+  # file search completion
   switch($previousWord)
     case "device":
     case "d":
       set programOptions=(`xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p'`)
       breaksw
-    case "user":
-    case "u":
-      set programOptions=""
-      breaksw
     case "format":
     case "f":
       set programOptions="JSON JSON-2020.2"
-      breaksw
-    case "output":
-    case "o":
-      set programOptions=""
       breaksw
     case "type":
     case "t":
       set programOptions="hot"
       breaksw
+    case "p2p":
+      set programOptions="ENABLE DISABLE VALIDATE"
+      breaksw
+    case "hostmem":
+      set programOptions="ENABLE DISABLE"
+      breaksw
     # -r shorthand applies to multiple commands under xbutil and requires additional processing
     # Assuming we want to add something here one day
     case "report":
     case "run":
-    case "r"
+    case "r":
       if ($commandWord == "validate") then
-        set programOptions=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+        set programOptions=(`xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p'`)
       else if ($commandWord == "examine") then
-        set programOptions=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+        set programOptions=(`xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p'`)
       else
         set programOptions=""
       endif
