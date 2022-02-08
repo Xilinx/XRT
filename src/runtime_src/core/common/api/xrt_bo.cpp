@@ -869,7 +869,7 @@ alloc(xclDeviceHandle dhdl, size_t sz, xrtBufferFlags flags, xrtMemoryGroup grp)
     if (is_nodma(dhdl))
       return alloc_nodma(dhdl, sz, flags, grp);
     else if (is_sw_emulation())
-      // In DC scenario, for sw_emu, use the xclAllocBO and xclMapBO instead of xclAllocUserPtrBO, 
+      // In DC scenario, for sw_emu, use the xclAllocBO and xclMapBO instead of xclAllocUserPtrBO,
       // which helps to remove the extra copy in sw_emu.
       return alloc_kbuf(dhdl, sz, flags, grp);
     else
@@ -1108,6 +1108,25 @@ address() const
 {
   return xdp::native::profiling_wrapper("xrt::bo::address", [this]{
     return handle->get_address();
+  });
+}
+
+
+memory_group
+bo::
+get_memory_group() const
+{
+  return xdp::native::profiling_wrapper("xrt::bo::memory_group", [this]{
+    return handle->get_group_id();
+  });
+}
+
+bo::flags
+bo::
+get_flags() const
+{
+  return xdp::native::profiling_wrapper("xrt::bo::get_flags", [this]{
+    return handle->get_flags();
   });
 }
 

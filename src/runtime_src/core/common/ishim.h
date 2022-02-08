@@ -27,6 +27,7 @@
 #include "experimental/xrt-next.h"
 
 #include <stdexcept>
+#include <condition_variable>
 
 // Internal shim function forward declarations
 int xclUpdateSchedulerStat(xclDeviceHandle handle);
@@ -159,6 +160,10 @@ struct ishim
 
   virtual void
   wait_ip_interrupt(xclInterruptNotifyHandle)
+  { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
+
+  virtual std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t)
   { throw xrt_core::error(std::errc::not_supported,"wait_ip_interrupt()"); }
   ////////////////////////////////////////////////////////////////
 

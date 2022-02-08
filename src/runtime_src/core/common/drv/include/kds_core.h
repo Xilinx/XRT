@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -54,6 +54,7 @@ enum kds_type {
 struct kds_ctx_info {
 	u32		  cu_idx;
 	u32		  flags;
+	void		 *curr_ctx; // Holds the current context ptr for kds
 };
 
 /* TODO: PS kernel is very different with FPGA kernel.

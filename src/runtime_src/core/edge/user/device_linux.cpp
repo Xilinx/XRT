@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -263,19 +263,20 @@ struct kds_cu_info
 
     result_type cuStats;
     // stats e.g.
-    // 0,vadd:vadd_1,0x1400000,0x4,0
-    // 1,vadd:vadd_2,0x1500000,0x4,0
-    // 2,mult:mult_1,0x1800000,0x4,0
+    // 0,0,vadd:vadd_1,0x1400000,0x4,0
+    // 0,1,vadd:vadd_2,0x1500000,0x4,0
+    // 0.2,mult:mult_1,0x1800000,0x4,0
     for (auto& line : stats) {
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      if (std::distance(tokens.begin(), tokens.end()) != 6)
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
-      data_type data;
+      data_type data = { 0 };
       constexpr int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      data.slot_index = std::stoi(std::string(*tok_it++));
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
       data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
@@ -286,6 +287,45 @@ struct kds_cu_info
     }
 
     return cuStats;
+  }
+};
+
+struct get_xclbin_data
+{
+  using result_type = query::get_xclbin_data::result_type;
+  using data_type = query::get_xclbin_data::data_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("xclbinid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    result_type xclbin_data;
+    // xclbin_uuid e.g.
+    // 0 <uuid_slot_0>
+    // 1 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      data_type data = { 0 };
+      tokenizer::iterator tok_it = tokens.begin();
+      data.slot_index = std::stoi(std::string(*tok_it++));
+      data.uuid = std::string(*tok_it++);
+
+      xclbin_data.push_back(std::move(data));
+    }
+
+    return xclbin_data;
   }
 };
 
@@ -660,6 +700,7 @@ initialize_query_table()
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();
+  emplace_func0_request<query::get_xclbin_data,         get_xclbin_data>();
 
   emplace_func4_request<query::aim_counter,             aim_counter>();
   emplace_func4_request<query::am_counter,              am_counter>();

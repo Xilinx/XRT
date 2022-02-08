@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2021-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -23,6 +23,7 @@
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
+# include <condition_variable>
 # include <cstdint>
 # include <string>
 #endif
@@ -108,6 +109,22 @@ public:
     XCL_DRIVER_DLLESPEC
     void
     wait();
+ 
+    /**
+     * wait() - Wait for interrupt or timeout to occur
+     *
+     * @param timeout
+     *   Timout in milliseconds.
+     * @return
+     *   std::cv_status::timeout if the timeout specified expired, 
+     *   std::cv_status::no_timeout otherwise.
+     * 
+     * Blocks the current thread until an interrupt is received from the IP,  or 
+     * until after the specified timeout duration
+     */
+    XCL_DRIVER_DLLESPEC
+    std::cv_status
+    wait(const std::chrono::milliseconds& timeout) const; 
   };
  
 public:
