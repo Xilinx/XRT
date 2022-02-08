@@ -70,6 +70,7 @@ namespace xdp {
     virtual bool isRunSummaryWriter() { return false ; }
     // Return false to indicate no data was written
     virtual bool write(bool openNewFile = true) = 0 ;
+    virtual bool write(bool /*openNewFile*/, void* /*handle*/) {return false;}
     virtual bool isDeviceWriter() { return false ; } 
     virtual DeviceIntf* device() { return nullptr ; } 
     virtual bool isSameDevice(void* /*handle*/) { return false ; }
