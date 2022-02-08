@@ -28,41 +28,51 @@ _command_word_xbutil_completion()
   # All other cases default to using `compgen` output to format COMPREPLY
   case ${prev} in
     -d|--device)
-      BDFs=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
-      COMPREPLY=( $(compgen -W "$BDFs" -- $cur) )
-      __ltrim_colon_completions "$cur"
+      options=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
       ;;
     -u|--user)
       _filedir
+      options=""
       ;;
     -f|--format)
-      COMPREPLY=( $(compgen -W "JSON JSON-2020.2" -- $cur) )
+      options="JSON JSON-2020.2"
       ;;
     -o|--output)
       _filedir
+      options=""
       ;;
     -t|--type)
-      COMPREPLY=( $(compgen -W "hot" -- $cur) )
+      options="hot"
+      ;;
+    -p|--path)
+      _filedir
+      options=""
+      ;;
+    --p2p)
+      options="ENABLE DISABLE VALIDATE"
+      ;;
+    --host-mem)
+      options="ENABLE DISABLE"
       ;;
     # The -r option is used for multiple commands so extra processing is needed in here
     -r|--report|--run)
       case ${commandWord} in
         "validate")
-          runs=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
-          COMPREPLY=( $(compgen -W "$runs" -- $cur) )
+          options=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
           ;;
         "examine")
-          reports=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
-          COMPREPLY=( $(compgen -W "$reports" -- $cur) )
+          options=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
           ;;
       esac
       ;;
     *)
       # The format of the compgen commands options is seperated from the current word using a --.
       # The -- character signifies the end of command options. All following arguments are positional.
-      COMPREPLY=($(compgen -W "$1" -- $cur))
+      options=$1
       ;;
   esac
+  COMPREPLY+=($(compgen -W "$options" -- $cur))
+  __ltrim_colon_completions "$cur"
 }
 
 # The main function populating the COMPREPLY
@@ -89,7 +99,7 @@ _xbutil_completion()
           options="--user -u ${commonSubCommands}"
           ;;
         "validate")
-          options="--run -r --format -f --output -o ${commonSubCommands}"
+          options="--run -r --format -f --output -o --path -p ${commonSubCommands}"
           ;;
         "examine")
           options="--report -r --format -f --output -o ${commonSubCommands}"
@@ -102,6 +112,7 @@ _xbutil_completion()
           ;;
         # Return an empty reply if an invalid command is entered
         *)
+          options=""
           ;;
       esac
       ;;
