@@ -85,6 +85,7 @@ enum xgq_cmd_vmr_control_type {
 enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_AF		= 0x0,
 	XGQ_CMD_LOG_FW		= 0x1,
+	XGQ_CMD_LOG_XCLBIN	= 0x2,
 };
 
 /**

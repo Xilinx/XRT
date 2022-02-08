@@ -328,6 +328,10 @@ void *zxgq_init(struct zocl_xgq_init_args *arg)
 	} else {
 		sqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_SQ_PROD);
 		cqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_CQ_PROD);
+		/* note: apply this when XGQ is reserved.
+		cqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_SQ_PROD);
+		sqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_CQ_PROD);
+		*/
 		/* Reset sq/cq tail pointer. */
 		conf = ioread32(arg->zxia_xgq_ip + ZXGQ_IP_CQ_CONF);
 		iowrite32(conf | ZXGQ_IP_RESET, arg->zxia_xgq_ip + ZXGQ_IP_CQ_CONF);
