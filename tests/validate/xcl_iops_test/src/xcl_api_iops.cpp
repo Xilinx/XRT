@@ -280,13 +280,13 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
     /* calculate performance */
     int overallCommands = 0;
     double duration;
-    std::ios_base::fmtflags f(cout.flags());
+    std::ios_base::fmtflags f(std::cout.flags());
     for (int i = 0; i < threadNumber; i++) {
         /* For some special case, memory bank is too small to allocate buffers.
          * Return not support error code if a thread has 0 command buffer.
          */
         if (arg[i].total == 0) {
-            cout.flags(f); // restore format
+            std::cout.flags(f); // restore format
             return EOPNOTSUPP;
         }
 
@@ -307,7 +307,7 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
               << " IOPS: " << (overallCommands * 1000000.0 / duration)
               << " (" << krnl.name << ")"
               << std::endl;
-    cout.flags(f); // restore format
+    std::cout.flags(f); // restore format
     return 0;
 }
 
