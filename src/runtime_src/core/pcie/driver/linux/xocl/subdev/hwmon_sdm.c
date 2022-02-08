@@ -169,19 +169,19 @@ static int sdr_get_id(int repo_type)
 
 	switch(repo_type) {
 		case SDR_TYPE_BDINFO:
-			id = XGQ_CMD_SENSOR_PID_BDINFO;
+			id = XGQ_CMD_SENSOR_SID_BDINFO;
 			break;
 		case SDR_TYPE_TEMP:
-			id = XGQ_CMD_SENSOR_PID_TEMP;
+			id = XGQ_CMD_SENSOR_SID_TEMP;
 			break;
 		case SDR_TYPE_VOLTAGE:
-			id = XGQ_CMD_SENSOR_PID_VOLTAGE;
+			id = XGQ_CMD_SENSOR_SID_VOLTAGE;
 			break;
 		case SDR_TYPE_CURRENT:
-			id = XGQ_CMD_SENSOR_PID_CURRENT;
+			id = XGQ_CMD_SENSOR_SID_CURRENT;
 			break;
 		case SDR_TYPE_POWER:
-			id = XGQ_CMD_SENSOR_PID_POWER;
+			id = XGQ_CMD_SENSOR_SID_POWER;
 			break;
 		default:
 			id = -EINVAL;
