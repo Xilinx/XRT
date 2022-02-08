@@ -1725,6 +1725,19 @@ out:
 	return ret;
 }
 
+int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
+			  struct struct ip_layout *ip_layout,
+			  struct struct ps_kernel_node *ps_kernel)
+{
+	userpf_err(xdev, "minm ----\n");
+	return 0;
+}
+
+void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd)
+{
+	userpf_err(xdev, "minm ----\n");
+}
+
 /* The xocl_kds_update function should be called after xclbin is
  * downloaded. Do not use this function in other place.
  */
