@@ -814,6 +814,56 @@ static int zocl_iommu_init(struct drm_zocl_dev *zdev,
 	return 0;
 }
 
+static int zocl_gem_prime_mmap(struct drm_gem_object *obj,
+		struct vm_area_struct *vma)
+{
+	struct drm_zocl_bo *zocl_obj;
+	zocl_obj = to_zocl_bo(obj);
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+	return drm_gem_prime_mmap(obj, vma);
+#else
+	if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA)
+		return drm_gem_cma_prime_mmap(obj, vma);
+	else
+		return drm_gem_prime_mmap(obj, vma);
+#endif
+}
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
+void *zocl_gem_prime_vmap(struct drm_gem_object *obj)
+{
+	struct drm_zocl_bo *zocl_obj = to_zocl_bo(obj);;
+
+	if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA)
+		return drm_gem_cma_prime_vmap(obj);
+	else
+		return zocl_obj->vmapping;
+}
+
+void zocl_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
+{
+
+}
+#else
+int zocl_gem_prime_vmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+{
+	struct drm_zocl_bo *zocl_obj = to_zocl_bo(obj);
+
+	if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA)
+		return drm_gem_cma_vmap(obj, map);
+	else {
+		dma_buf_map_set_vaddr(map, zocl_obj->vmapping);
+		return 0;
+	}
+}
+
+void zocl_gem_prime_vunmap(struct drm_gem_object *obj, struct dma_buf_map *map)
+{
+
+}
+#endif
+
 const struct vm_operations_struct zocl_bo_vm_ops = {
 	.fault = zocl_bo_fault,
 	.open  = drm_gem_vm_open,
@@ -890,8 +940,8 @@ static struct drm_driver zocl_driver = {
 
 	.gem_vm_ops                = &zocl_bo_vm_ops,
 	.gem_prime_get_sg_table    = drm_gem_cma_prime_get_sg_table,
-	.gem_prime_vmap            = drm_gem_cma_prime_vmap,
-	.gem_prime_vunmap          = drm_gem_cma_prime_vunmap,
+	.gem_prime_vmap            = zocl_gem_prime_vmap,
+	.gem_prime_vunmap          = zocl_gem_prime_vunmap,
 	.gem_prime_export          = drm_gem_prime_export,
 #endif
 
@@ -900,7 +950,7 @@ static struct drm_driver zocl_driver = {
 	.prime_fd_to_handle        = drm_gem_prime_fd_to_handle,
 	.gem_prime_import          = zocl_gem_import,
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
-	.gem_prime_mmap            = drm_gem_prime_mmap,
+	.gem_prime_mmap            = zocl_gem_prime_mmap,
 	.ioctls                    = zocl_ioctls,
 	.num_ioctls                = ARRAY_SIZE(zocl_ioctls),
 	.fops                      = &zocl_driver_fops,
@@ -914,7 +964,7 @@ const struct drm_gem_object_funcs zocl_gem_object_funcs = {
 	.free = zocl_free_bo,
 	.vm_ops = &zocl_bo_vm_ops,
 	.get_sg_table = drm_gem_cma_get_sg_table,
-	.vmap = drm_gem_cma_vmap,
+	.vmap = zocl_gem_prime_vmap,
 	.export = drm_gem_prime_export,
 };
 #endif
