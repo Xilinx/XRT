@@ -112,6 +112,27 @@ struct xgq_cmd_log_payload {
 	uint64_t address;
 	uint32_t size;
 	uint32_t offset;
+	uint32_t pid:16;
+	uint32_t addr_type:3;
+	uint32_t rsvd1:13;
+	uint32_t pad;
+};
+
+/**
+ * struct xgq_cmd_sensor_payload: sensor_page request command
+ *
+ * @address:	pre-allocated sensor data, device writes sensor data at this address
+ * @size:	size of pre-allocated sensor data
+ * @offset:	offset of returned device data
+ * @pid:	sensor request id
+ * @addr_type:	pre-allocated address type
+ *
+ * This payload is used for sensor data report.
+ */
+struct xgq_cmd_sensor_payload {
+	uint64_t address;
+	uint32_t size;
+	uint32_t offset;
 	uint32_t aid:8;
 	uint32_t pid:8;
 	uint32_t addr_type:3;
@@ -184,12 +205,12 @@ struct xgq_cmd_vmr_control_payload {
 struct xgq_cmd_sq {
 	struct xgq_cmd_sq_hdr hdr;
 	union {
-		struct xgq_cmd_log_payload 		log_payload;
-		struct xgq_cmd_clock_payload 		clock_payload;
-		struct xgq_cmd_data_payload 		pdi_payload;
-		struct xgq_cmd_data_payload 		xclbin_payload;
-		struct xgq_cmd_log_payload 		sensor_payload;
-		struct xgq_cmd_vmr_control_payload 	vmr_control_payload;
+		struct xgq_cmd_log_payload		log_payload;
+		struct xgq_cmd_clock_payload		clock_payload;
+		struct xgq_cmd_data_payload		pdi_payload;
+		struct xgq_cmd_data_payload		xclbin_payload;
+		struct xgq_cmd_sensor_payload		sensor_payload;
+		struct xgq_cmd_vmr_control_payload	vmr_control_payload;
 	};
 };
 

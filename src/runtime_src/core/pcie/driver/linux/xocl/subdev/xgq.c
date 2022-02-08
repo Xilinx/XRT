@@ -1312,7 +1312,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
-	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sensor_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	u32 address = 0;
 	int ret = 0;
