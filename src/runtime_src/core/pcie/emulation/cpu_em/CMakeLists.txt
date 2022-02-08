@@ -34,6 +34,7 @@ add_library(xrt_swemu SHARED ${CURR_SOURCE}
 add_library(xrt_swemu_static STATIC ${CURR_SOURCE}
   $<TARGET_OBJECTS:sw_emu_objects>
   $<TARGET_OBJECTS:core_common_objects>
+  $<TARGET_OBJECTS:common_em_objects>
   )
 
 set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
@@ -51,12 +52,11 @@ target_link_libraries(xrt_swemu
   )
 
 target_link_libraries(xrt_swemu_static
-  PRIVATE
+  INTERFACE
   boost_filesystem
   boost_system
   ${PROTOBUF_LIBRARY}
   xrt_coreutil_static
-  common_em
   rt
   uuid
   )
