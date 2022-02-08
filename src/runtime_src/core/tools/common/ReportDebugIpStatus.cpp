@@ -790,7 +790,7 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
   _output << "\nDebug IP Status \n  Number of IPs found :: " 
           << num_debug_ips << std::endl; // Total count with the IPs actually shown
 
-  if(0 == num_debug_ips) {
+  if (0 == num_debug_ips) {
     return;
   }
 
