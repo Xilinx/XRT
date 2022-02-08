@@ -1,6 +1,6 @@
 # bash completion for xbmgmt                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # Generates the command word options dependant on the previous word
