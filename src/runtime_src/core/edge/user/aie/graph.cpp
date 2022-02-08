@@ -414,8 +414,10 @@ xclGraphOpen(xclDeviceHandle dhdl, const uuid_t xclbin_uuid, const char* name, x
 void
 xclGraphClose(xclGraphHandle ghdl)
 {
-  auto graph = get_graph(ghdl);
-  graphs.erase(graph.get());
+  if (!graphs.empty()) {
+    auto graph = get_graph(ghdl);
+    graphs.erase(graph.get());
+  }
 }
 
 void
