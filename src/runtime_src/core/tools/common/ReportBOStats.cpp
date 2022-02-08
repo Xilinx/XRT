@@ -23,31 +23,30 @@
 #include <string>
 #include <boost/format.hpp>
 #include <boost/range/as_array.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace xq = xrt_core::query;
 
 void
-ReportBOStats::getPropertyTreeInternal( const xrt_core::device * _pDevice,
-                                     boost::property_tree::ptree &_pt) const
+ReportBOStats::getPropertyTreeInternal( const xrt_core::device * pDevice,
+                                     boost::property_tree::ptree & pt) const
 {
   // Defer to the 20202 format.  If we ever need to update JSON data,
   // Then update this method to do so.
-  getPropertyTree20202(_pDevice, _pt);
+  getPropertyTree20202(pDevice, pt);
 }
 
 void
-ReportBOStats::getPropertyTree20202( const xrt_core::device * _pDevice,
-                                  boost::property_tree::ptree &_pt) const
+ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
+                                  boost::property_tree::ptree & pt) const
 {
-  boost::property_tree::ptree pt;
-
-  if (!m_is_user) //Report is only for user pf
-    return;
+  boost::property_tree::ptree pt1;
+  boost::property_tree::ptree pt2_list;
 
   try {
-    pt.put("device", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(_pDevice)));
+    pt1.put("device", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(pDevice)));
 
-    auto mem_stat_char = xrt_core::device_query<xrt_core::query::memstat>(_pDevice);
+    auto mem_stat_char = xrt_core::device_query<xrt_core::query::memstat>(pDevice);
     std::vector<std::string> mem_stat;
 
     //Convert vector of char from query cmd into vector of strings separated by null char separated by null char
@@ -88,9 +87,11 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * _pDevice,
         
         boost::property_tree::ptree bo_pt;
         bo_pt.put("type", bo_info[0].substr(1, bo_info[0].length()-2));
-        bo_pt.put("size", bo_info[1].substr(0, bo_info[1].length()-2));
-        bo_pt.put("num", bo_info[2].substr(0, bo_info[2].length()-3));
-        pt.add_child("bo", bo_pt);
+        bo_pt.put("mem_used", bo_info[1].substr(0, bo_info[1].length()-2));
+        bo_pt.put("mem_used_unit", bo_info[1].substr(bo_info[1].length()-2, 2));
+        bo_pt.put("count", bo_info[2].substr(0, bo_info[2].length()-3));
+        //pt1.add_child("bo", bo_pt);
+        pt2_list.push_back(std::make_pair("", bo_pt));
         continue;
       }
 
@@ -103,30 +104,34 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * _pDevice,
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
+  pt1.add_child("all_bos", pt2_list);
   // There can only be 1 root node
-  _pt.add_child("bostats", pt);
+  pt.add_child("bostats", pt1);
 }
 
 
 void
-ReportBOStats::writeReport(const xrt_core::device* /*_pDevice*/,
-                        const boost::property_tree::ptree& _pt,
-                        const std::vector<std::string>& /*_elementsFilter*/,
-                        std::ostream & _output) const
+ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
+                        const boost::property_tree::ptree& pt,
+                        const std::vector<std::string>& /*elementsFilter*/,
+                        std::ostream & output) const
 {
-  boost::property_tree::ptree empty_ptree;
-  boost::format entfmt("BO type: %-11s, Total size(KB): %-8s, Num of BOs: %-5s");
+  boost::format entfmt("BO type: %-11s, Mem usage(%s): %-8s, BO count: %-5s");
 
-  for(auto& kv : _pt.get_child("bostats")) {
-    if (kv.first == "bo") {
+
+  boost::property_tree::json_parser::write_json(output, pt, true);
+
+  for(auto& kv : pt.get_child("bostats.all_bos")) {
+    //if (kv.first == "bo") {
       const boost::property_tree::ptree& v = kv.second;
 
-      _output << boost::str(entfmt 
+      output << boost::str(entfmt 
         % v.get<std::string>("type")
-        % v.get<std::string>("size")
-        % v.get<std::string>("num"));
-      _output << std::endl;
-    }
+        % v.get<std::string>("mem_used_unit")
+        % v.get<std::string>("mem_used")
+        % v.get<std::string>("count"));
+      output << std::endl;
+    //}
   }
-  _output << std::endl;
+  output << std::endl;
 }

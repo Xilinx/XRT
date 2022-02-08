@@ -64,8 +64,6 @@ Report::Report(const std::string & _reportName,
   , m_shortDescription(_shortDescription)
   , m_isDeviceRequired(_isDeviceRequired)
   , m_isHidden(false)
-  , m_isDeprecated(false)
-  , m_isPreliminary(false)
 {
   // Empty
 }
@@ -78,8 +76,6 @@ Report::Report(const std::string & _reportName,
   , m_shortDescription(_shortDescription)
   , m_isDeviceRequired(_isDeviceRequired)
   , m_isHidden(_isHidden)
-  , m_isDeprecated(false)
-  , m_isPreliminary(false)
 {
   // Empty
 }
