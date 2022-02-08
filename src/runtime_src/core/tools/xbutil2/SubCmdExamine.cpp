@@ -62,6 +62,7 @@ namespace po = boost::program_options;
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
+    std::make_shared<ReportBOStats>(),
     std::make_shared<ReportMemory>(),
     std::make_shared<ReportHost>(),
     std::make_shared<ReportDynamicRegion>(),
@@ -69,7 +70,6 @@ namespace po = boost::program_options;
     std::make_shared<ReportAsyncError>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
-    std::make_shared<ReportBOStats>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
     std::make_shared<ReportElectrical>(),

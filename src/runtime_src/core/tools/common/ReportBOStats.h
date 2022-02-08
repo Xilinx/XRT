@@ -21,16 +21,14 @@
 #include "Report.h"
 
 class ReportBOStats: public Report {
- private:
-  bool m_is_user;
  public:
-  ReportBOStats(bool is_user = true) : Report("bo-stats", "Usage stats of all BO types", true /*device required*/, true /*isHidden*/) { /*empty*/ m_is_user = is_user;};
+  ReportBOStats() : Report("bo-stats", "Usage stats of all BO types", true /*device required*/, true /*isHidden*/) { /*empty*/ };
 
  // Child methods that need to be implemented
  public:
-  virtual void getPropertyTreeInternal(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void getPropertyTree20202(const xrt_core::device * _pDevice, boost::property_tree::ptree &_pt) const;
-  virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& _pt, const std::vector<std::string>& _elementsFilter, std::ostream & _output) const;
+  virtual void getPropertyTreeInternal(const xrt_core::device * pDevice, boost::property_tree::ptree & pt) const;
+  virtual void getPropertyTree20202(const xrt_core::device * pDevice, boost::property_tree::ptree & pt) const;
+  virtual void writeReport(const xrt_core::device* pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& elementsFilter, std::ostream & output) const;
 };
 
 #endif

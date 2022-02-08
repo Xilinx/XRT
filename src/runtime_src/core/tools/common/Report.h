@@ -57,8 +57,6 @@ class Report {
   const std::string & getShortDescription() const { return m_shortDescription; };
   bool isDeviceRequired() const { return m_isDeviceRequired; };
   bool isHidden() const { return m_isHidden; };
-  bool isDeprecated() const { return m_isDeprecated; };
-  bool isPreliminary() const { return m_isPreliminary; };
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
@@ -83,8 +81,6 @@ class Report {
    bool m_isDeviceRequired;
 
    bool m_isHidden;
-   bool m_isDeprecated;
-   bool m_isPreliminary;
 };
 
 
