@@ -549,7 +549,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
   }
   _pt.add_child("debug_ips", dbg_ip_list_pt);
   
-  return false;
+  return true;
 }
 
 
