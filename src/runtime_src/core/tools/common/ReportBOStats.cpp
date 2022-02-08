@@ -23,7 +23,7 @@
 #include <string>
 #include <boost/format.hpp>
 #include <boost/range/as_array.hpp>
-#include <boost/property_tree/json_parser.hpp>
+//#include <boost/property_tree/json_parser.hpp>
 
 namespace xq = xrt_core::query;
 
@@ -119,7 +119,7 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
   boost::format entfmt("BO type: %-11s, Mem usage(%s): %-8s, BO count: %-5s");
 
 
-  boost::property_tree::json_parser::write_json(output, pt, true);
+  //boost::property_tree::json_parser::write_json(output, pt, true);
 
   for(auto& kv : pt.get_child("bostats.all_bos")) {
     //if (kv.first == "bo") {
