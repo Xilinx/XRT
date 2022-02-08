@@ -24,53 +24,12 @@
 #include "xclbin.h"
 
 
-typedef struct XmaIpLayout
-{
-    std::string  kernel_name;
-    uint64_t     base_addr;
-    bool         soft_kernel;
-    bool         kernel_channels;
-    uint32_t     max_channel_id;
-    int32_t      arg_start;
-    int32_t      regmap_size;
-    uint32_t     reserved[16];
-} XmaIpLayout;
-
-typedef struct XmaMemTopology
-{
-    uint8_t       m_type;
-    uint8_t       m_used;
-    uint64_t      m_size;
-    uint64_t      m_base_address;
-    std::string   m_tag;
-} XmaMemTopology;
-
-typedef struct XmaAXLFConnectivity
-{
-    int32_t arg_index;
-    int32_t m_ip_layout_index;
-    int32_t mem_data_index;
-} XmaAXLFConnectivity;
-
 typedef struct XmaXclbinInfo
 {
-    std::string         xclbin_name;
-    uint16_t            freq_list[MAX_KERNEL_FREQS];
-    std::vector<XmaIpLayout> ip_layout;
-    std::vector<uint64_t> cu_addrs_sorted;//Addrs sorted to determine cu masks
-    std::vector<XmaMemTopology> mem_topology;
-    std::vector<XmaAXLFConnectivity> connectivity;
-    uint32_t            number_of_hardware_kernels;
-    uint32_t            number_of_kernels;
-    uint32_t            number_of_mem_banks;
-    uint32_t            number_of_connections;
     bool                has_mem_groups;
-    //uint64_t bitmap based on MAX_DDR_MAP=64
     uint64_t            ip_ddr_mapping[MAX_XILINX_KERNELS];
-    //For execbo:
-    //uint32_t    num_ips;
-    uuid_t      uuid;
-    uint32_t    reserved[32];
+    const connectivity* conn_axlf;
+    const ip_layout* ip_axlf;
 } XmaXclbinInfo;
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name);

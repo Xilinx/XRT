@@ -28,6 +28,7 @@
 #include "lib/xmaxclbin.h"
 #include "lib/xmahw_private.h"
 #include "core/common/device.h"
+#include "core/common/xclbin_parser.h"
 #include <dlfcn.h>
 #include <iostream>
 #include <bitset>
@@ -111,7 +112,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             return false;
         }
         dev_tmp1.dev_index = dev_index;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "xclOpen handle = %p\n", dev_tmp1.xrt_device.get_handle()->get_device_handle());   
+        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Device handle = %p\n", dev_tmp1.xrt_device.get_handle()->get_device_handle());   
 
         /* Always attempt download xclbin */     
         try {
@@ -123,159 +124,72 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
              return false;
          }    
 
-        uuid_copy(dev_tmp1.uuid, info.uuid); 
-        dev_tmp1.number_of_cus = info.number_of_kernels;
-        dev_tmp1.number_of_mem_banks = info.number_of_mem_banks;
-        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
-                        xclbin.c_str(), dev_index);
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
-            return false;
-        }
-        if (dev_tmp1.number_of_mem_banks > MAX_DDR_MAP) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks\n", MAX_DDR_MAP);
-            return false;
-        }
-        dev_tmp1.kernels.reserve(dev_tmp1.number_of_cus);
-        dev_tmp1.ddrs.reserve(dev_tmp1.number_of_mem_banks);
-        dev_tmp1.number_of_hardware_kernels = info.number_of_hardware_kernels;
-
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; DDRs are:", dev_index);
-        auto& xma_mem_topology = info.mem_topology;
-        for (uint32_t d = 0; d < info.number_of_mem_banks; d++) {
-            dev_tmp1.ddrs.emplace_back(XmaHwMem{});
-            XmaHwMem& tmp1 = dev_tmp1.ddrs.back();
-            memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            xma_mem_topology[d].m_tag.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
-
-            tmp1.base_address = xma_mem_topology[d].m_base_address;
-            tmp1.size_kb = xma_mem_topology[d].m_size;
-            tmp1.size_mb = tmp1.size_kb / 1024;
-            tmp1.size_gb = tmp1.size_mb / 1024;
-            if (xma_mem_topology[d].m_used == 1 &&
-                tmp1.size_kb != 0 &&
-                (xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR3 || 
-                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DDR4 ||
-                xma_mem_topology[d].m_type == MEM_TYPE::MEM_DRAM ||
-                xma_mem_topology[d].m_type == MEM_TYPE::MEM_HBM)
-                ) {
-                tmp1.in_use = true;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - size: %lu KB", d, (char*)tmp1.name, tmp1.size_kb);
-            } else {
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tMEM# %d - %s - Unused/Unused Type", d, (char*)tmp1.name);
-
-            }
-        }
-
+        const axlf* xclbin_ax = reinterpret_cast<const axlf*>(buffer);      
+        std::vector<uint64_t> cu_addrs_sorted = xrt_core::xclbin::get_cus(info.ip_axlf, false);
+        uuid_copy(dev_tmp1.uuid, xclbin_ax->m_header.uuid);
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; CUs are:", dev_index);
-        for (uint32_t d = 0; d < info.number_of_kernels; d++) {
+        for (int32_t d = 0; d < info.ip_axlf->m_count; d++) {
+            if (info.ip_axlf->m_ip_data[d].m_type != IP_KERNEL)
+                continue;
+            auto kernel_name = std::string((char*)info.ip_axlf->m_ip_data[d].m_name);
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            info.ip_layout[d].kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME-1);
-
-            tmp1.base_address = info.ip_layout[d].base_addr;
+            kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME - 1);
             tmp1.cu_index = (int32_t)d;
-            if (info.ip_layout[d].soft_kernel) {
+            //Allow default ddr_bank of -1; When CU is not connected to any ddr
+            // TODO: Removed this code and handle it using xrt::kernel
+            xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank, info.has_mem_groups);
+            //XMA now supports multiple DDR Banks per Kernel
+            tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d]; 
+            for (int32_t c = 0; c < info.conn_axlf->m_count; c++)
+            {
+                if (info.conn_axlf->m_connection[c].m_ip_layout_index == (int32_t)d) {
+                    tmp1.CU_arg_to_mem_info.emplace(info.conn_axlf->m_connection[c].arg_index, info.conn_axlf->m_connection[c].mem_data_index);
+                }
+            }
+            if (tmp1.default_ddr_bank < 0) {
+                xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "\tCU# %d - %s - default DDR bank: NONE", d, (char*)tmp1.name);
+            }
+            else {
+                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\tCU# %d - %s - default DDR bank:%d", d, (char*)tmp1.name, tmp1.default_ddr_bank);
+            }
+        }
+        dev_tmp1.number_of_hardware_kernels = dev_tmp1.kernels.size();
+        uint32_t num_soft_kernels = 0;
+        //Handle soft kernels just like another hardware IP_Layout kernel
+        //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
+        auto soft_kernels = xrt_core::xclbin::get_softkernels(xclbin_ax);
+        for (auto& sk : soft_kernels) {
+            if (num_soft_kernels + sk.ninst > MAX_XILINX_SOFT_KERNELS) {
+                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d soft kernels per device ", MAX_XILINX_SOFT_KERNELS);
+                throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_SOFT_KERNELS) + " soft kernels per device");
+            }
+            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %s, symbol name = %s, num of instances = %d ", sk.mpo_name.c_str(), sk.mpo_version.c_str(), sk.symbol_name.c_str(), sk.ninst);
+            std::string str_tmp1;
+            for (uint32_t ind = 0; ind < sk.ninst; ind++) {
+                dev_tmp1.kernels.emplace_back(XmaHwKernel{});
+                XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
+                memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
+                str_tmp1 = std::string(sk.mpo_name);
+                str_tmp1 += "_";
+                str_tmp1 += std::to_string(ind);
+                str_tmp1.copy((char*)tmp1.name, MAX_KERNEL_NAME - 1);             
                 tmp1.soft_kernel = true;
                 tmp1.default_ddr_bank = 0;
-            } else {
-                tmp1.arg_start = info.ip_layout[d].arg_start;
-                tmp1.regmap_size = info.ip_layout[d].regmap_size;
-
-                if (info.ip_layout[d].kernel_channels) {
-                    tmp1.kernel_channels = true;
-                    tmp1.max_channel_id = info.ip_layout[d].max_channel_id;
-                }
-                //Allow default ddr_bank of -1; When CU is not connected to any ddr
-                xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank, info.has_mem_groups);
-
-                //XMA now supports multiple DDR Banks per Kernel
-                tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
-                for(uint32_t c = 0; c < info.number_of_connections; c++)
-                {
-                    auto& xma_conn = info.connectivity[c];
-                    if (xma_conn.m_ip_layout_index == (int32_t)d) {
-                        tmp1.CU_arg_to_mem_info.emplace(xma_conn.arg_index, xma_conn.mem_data_index);
-                        //Assume that this mem is definetly in use
-                        if ((uint32_t)xma_conn.mem_data_index < dev_tmp1.number_of_mem_banks && xma_conn.mem_data_index > 0) {
-                            dev_tmp1.ddrs[xma_conn.mem_data_index].in_use = true;
-                        }
-                    }
-                }
-
-                if (tmp1.default_ddr_bank < 0) {
-                    xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank: NONE", d, (char*)tmp1.name);
-                } else {
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - default DDR bank:%d", d, (char*)tmp1.name, tmp1.default_ddr_bank);
-                }
-                /* Not to open context on all CUs
-                Will open during session_create
-                if (xclOpenContext(dev_tmp1.handle, info.uuid, d, true) != 0) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open context to this CU\n");
-                    return false;
-                }
-                */
+                tmp1.cu_index = dev_tmp1.number_of_hardware_kernels + ind;
+                num_soft_kernels++;
             }
         }
 
-        std::bitset<MAX_XILINX_KERNELS> cu_mask;
-        uint64_t base_addr1 = 0;
-        uint32_t cu_index_ert = 0;
-        for (uint32_t d1 = 0; d1 < info.number_of_hardware_kernels; d1++) {
-            base_addr1 = dev_tmp1.kernels[d1].base_address;
-            //uint64_t cu_mask = 1;
-            cu_mask.reset();
-            cu_mask.set(0);
-            cu_index_ert = 0;
-
-            for (uint32_t d2 = 0; d2 < info.number_of_hardware_kernels; d2++) {
-                if (base_addr1 == info.cu_addrs_sorted[d2]) {
-                    break;
-                }
-                cu_mask = cu_mask << 1;
-                cu_index_ert++;
-                /*
-                if (d1 != d2) {
-                    if (dev_tmp1.kernels[d2].base_address < base_addr1) {
-                        cu_mask = cu_mask << 1;
-                        cu_index_ert++;
-                    }
-                }
-                */
-            }
-            dev_tmp1.kernels[d1].cu_index_ert = cu_index_ert;
-            //dev_tmp1.kernels[d1].cu_mask0 = cu_mask & 0xFFFFFFFF;
-            //dev_tmp1.kernels[d1].cu_mask1 = ((uint64_t)(cu_mask >> 32)) & 0xFFFFFFFF;
-            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask & cu_mask_32bits).to_ulong();
-            cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask & cu_mask_32bits).to_ulong();
-            cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask & cu_mask_32bits).to_ulong();
-            cu_mask = cu_mask >> 32;
-            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask & cu_mask_32bits).to_ulong();
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask0: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask0);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask1: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask1);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask2: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask2);
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\tCU# %d - %s - cu_mask3: 0x%x", d1, (char*)dev_tmp1.kernels[d1].name, dev_tmp1.kernels[d1].cu_mask3);
+        dev_tmp1.number_of_cus = dev_tmp1.kernels.size();     
+        if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
+                xclbin.c_str(), dev_index);
+            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
+            return false;
         }
-
-        cu_mask.reset();
-        cu_mask.set(0);
-        std::bitset<MAX_XILINX_KERNELS> cu_mask_tmp;
-        for (uint32_t d1 = info.number_of_hardware_kernels; d1 < info.number_of_kernels; d1++) {
-            cu_mask_tmp = cu_mask;
-            dev_tmp1.kernels[d1].cu_mask0 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
-            cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask1 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
-            cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask2 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
-            cu_mask_tmp = cu_mask_tmp >> 32;
-            dev_tmp1.kernels[d1].cu_mask3 = (cu_mask_tmp & cu_mask_32bits).to_ulong();
-
-            cu_mask = cu_mask << 1;
-        }
-
+        
         if (dev_tmp1.number_of_hardware_kernels > 0) {
             //Avoid virtual cu context as it takes 40 millisec
             //dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
@@ -284,7 +198,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
             //Opening virtual CU context as some applications may use soft kernels only
             //But this takes 40 millisec
             try {
-                dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, -1, true);
+                dev_tmp1.xrt_device.get_handle()->open_context(dev_tmp1.uuid, -1, true);
             }
             catch (const xrt_core::system_error&) {
                 xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Failed to open virtual CU context\n");

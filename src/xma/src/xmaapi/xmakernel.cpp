@@ -147,16 +147,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
         return nullptr;
     }
 
-    if (kernel_info->kernel_channels) {
-        if (session->base.channel_id > (int32_t)kernel_info->max_channel_id) {
-            xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD,
-                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, session->base.channel_id);
-            
-            free(session);
-            return nullptr;
-        }
-    }
-
     // Call the plugins initialization function with this session data
     //Sarab: Check plugin compatibility to XMA
     int32_t xma_main_ver = -1;
@@ -177,7 +167,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
         return nullptr;
     }
 
-    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
     // Allocate the private data
     session->base.plugin_data =
         calloc(session->kernel_plugin->plugin_data_size, sizeof(uint8_t));
@@ -205,18 +194,6 @@ xma_kernel_session_create(XmaKernelProperties *props)
     std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
 
-    if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
-        try {
-            dev_handle.get_handle()->open_context(dev_tmp1.uuid, kernel_info->cu_index_ert, true);
-        }
-        catch (const xrt_core::system_error&) {
-            xma_logmsg(XMA_ERROR_LOG, XMA_KERNEL_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
-            free(session->base.plugin_data);
-            free(session);
-            delete priv1;
-            return nullptr;
-        }
-    }
     session->base.session_id = g_xma_singleton->num_of_sessions + 1;
     xma_logmsg(XMA_INFO_LOG, XMA_KERNEL_MOD,
                 "XMA session channel_id: %d; session_id: %d\n", session->base.channel_id, session->base.session_id);
