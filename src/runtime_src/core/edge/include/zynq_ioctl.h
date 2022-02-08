@@ -2,7 +2,7 @@
 /*
  * A GEM style CMA backed memory manager for ZynQ based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -409,10 +409,11 @@ struct drm_zocl_kds {
  * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
-	struct axlf 		*za_xclbin_ptr;
+	struct axlf		*za_xclbin_ptr;
 	uint32_t		za_flags;
 	int			za_ksize;
 	char			*za_kernels;
+	uint32_t		za_slot_id;
 	struct drm_zocl_kds	kds_cfg;
 };
 

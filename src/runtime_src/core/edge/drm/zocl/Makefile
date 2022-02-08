@@ -37,7 +37,6 @@ drv_common-y   := $(common_dir)/kds_core.o \
 
 zocl-y := \
 	$(drv_common-y) \
-	sched_exec.o \
 	zocl_sysfs.o \
 	zocl_ioctl.o \
 	zocl_ert.o \
@@ -53,11 +52,11 @@ zocl-y := \
 	zocl_sk.o \
 	zocl_kds.o \
 	cu.o \
-	zocl_generic_cu.o \
 	zocl_error.o \
 	zocl_aie.o \
 	zocl_ctrl_ert.o \
 	zocl_xgq.o \
+	zocl_lib.o \
 	zocl_cu_xgq.o \
 	zocl_rpu_channel.o \
 	zocl_csr_intc.o \

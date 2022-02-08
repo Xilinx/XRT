@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -256,6 +256,7 @@ enum class key_type
   lapc_status,
   spc_status,
   accel_deadlock_status,
+  get_xclbin_data,
 
   noop
 };
@@ -823,6 +824,7 @@ struct debug_ip_layout_raw : request
 struct kds_cu_info : request
 {
   struct data {
+    uint32_t slot_index;
     uint32_t index;
     std::string name;
     uint64_t base_addr;
@@ -2758,6 +2760,21 @@ struct accel_deadlock_status : request
 
   virtual boost::any
   get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
+};
+
+struct get_xclbin_data : request
+{
+  struct xclbin_data {
+    uint32_t	slot_index;
+    std::string uuid;
+  };
+
+  using result_type = std::vector<struct xclbin_data>;
+  using data_type = struct xclbin_data;
+  static const key_type key = key_type::get_xclbin_data;
+
+  virtual boost::any
+  get(const xrt_core::device* device) const = 0;
 };
 
 } // query

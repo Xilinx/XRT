@@ -42,6 +42,7 @@
 #include <boost/process.hpp>
 #include <boost/process/child.hpp>
 #include <boost/process/env.hpp>
+#include <boost/asio/io_service.hpp>
 #endif
 
 
@@ -1042,23 +1043,24 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
                       std::ostringstream & os_stdout,
                       std::ostringstream & os_stderr)
 {
-  boost::process::ipstream ip_stdout;
-  boost::process::ipstream ip_stderr;
+  //boost::process::ipstream ip_stdout;
+  //boost::process::ipstream ip_stderr;
+  std::future<std::string> data_stdout;
+  std::future<std::string> data_stderr;
+
+  boost::asio::io_service svc;
   boost::process::child runningProcess( cmd.string(), 
                                         args, 
-                                        boost::process::std_out > ip_stdout,
-                                        boost::process::std_err > ip_stderr,
-                                        boost::this_process::environment());
+                                        boost::process::std_out > data_stdout,
+                                        boost::process::std_err > data_stderr,
+                                        boost::this_process::environment(),
+                                        svc);
+  svc.run();   
   runningProcess.wait();
-  // boost::process::ipstream::rdbuf() gives conversion error in
-  // 1.65.1 Base class is constructed with underlying buffer so just
-  // use std::istream::rdbuf() instead.
-  std::istream& istr_stdout = ip_stdout;
-  std::istream& istr_stderr = ip_stderr;
 
   // Update the return buffers
-  os_stdout << istr_stdout.rdbuf();
-  os_stderr << istr_stderr.rdbuf();
+  os_stdout << data_stdout.get();
+  os_stderr << data_stderr.get();
 
   // Obtain the exit code from the running process
   int exitCode = runningProcess.exit_code();
@@ -1068,6 +1070,7 @@ XclBinUtilities::exec(const boost::filesystem::path &cmd,
                                                         "     Cmd: %s %s\n"
                                                         "  StdOut: %s\n"
                                                         "  StdErr: %s\n")
+                                          % exitCode 
                                           % cmd.string() % boost::algorithm::join(args, " ")
                                           % os_stdout.str()
                                           % os_stderr.str());

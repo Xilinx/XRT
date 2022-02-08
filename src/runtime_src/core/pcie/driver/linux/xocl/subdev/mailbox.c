@@ -932,11 +932,18 @@ static void chan_worker(struct work_struct *work)
 	while (!test_bit(MBXCS_BIT_STOP, &ch->mbc_state)) {
 		if (ch->mbc_cur_msg) {
 			/*
-			 * Fast poll when we have outstanding msg. This will not last long
-			 * since outstanding msg will be removed shortly either because we
-			 * finish processing it or it's time'd out.
+			 * For Tx, we always try to send data out asap if we
+			 * know there is data, so do busy poll here
+			 * For Rx, we insert a short sleep for throttling since
+			 * we don't know whether the peer is sending malicious
+			 * data or not.
+			 * This consideration is only for mgmt. If mgmt doesn't
+			 * care and just wants to process whatever the data is
+			 * and achieve fastest transfer speed, then we can do busy
+			 * poll for Rx also when there is data. 
 			 */
-			chan_sleep(ch, false);
+			if (is_rx_chan(ch))
+				chan_sleep(ch, false);
 		} else {
 			/*
 			 * Nothing to do, sleep until we're woken up, but see the devil in
