@@ -489,7 +489,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	if (kds->xgq_enable)
 		return true;
 
-	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+	if ((kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
 		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
@@ -1304,8 +1304,10 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	 * - protocol
 	 */
 	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
+	if (!ip_layout)
+		goto done;
+
 	num_cus = kds_ip_layout2cu_info(ip_layout, cu_info, num_info);
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
 
 	/*
 	 * Get CU metadata from XML,
@@ -1339,6 +1341,8 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
 	}
 
+done:
+	XOCL_PUT_IP_LAYOUT(xdev);
 	return num_cus;
 }
 
@@ -1519,8 +1523,16 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
 	struct kds_command *xcmd = NULL;
+	xuid_t *xclbin_id = NULL;
 	int ret = 0;
 	int i = 0, j = 0;
+
+	/* TODO: ICAP will pass UUID to KDS, instead of fetch it */
+	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (ret) {
+		userpf_err(xdev, "Unable to get on device uuid %d", ret);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < num_cus; i++) {
 		int max_off_idx = 0;
@@ -1529,8 +1541,10 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 
 		client = kds->anon_client;
 		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
-		if (!xcmd)
+		if (!xcmd) {
+			XOCL_PUT_XCLBIN_ID(xdev);
 			return -ENOMEM;
+		}
 
 		cfg_cu = xcmd->info;
 		cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
@@ -1565,6 +1579,8 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
 			  cu_info[i].kname, cu_info[i].iname);
 
+		memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
+
 		xcmd->cb.notify_host = xocl_kds_xgq_notify;
 		xcmd->cb.free = kds_free_command;
 		xcmd->priv = kds;
@@ -1586,6 +1602,7 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
+	XOCL_PUT_XCLBIN_ID(xdev);
 	return ret;
 }
 
@@ -1652,6 +1669,11 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
 		goto create_regular_cu;
+
+	if (!cfg.ert) {
+		XDEV(xdev)->kds.ert_disable = true;
+		goto create_regular_cu;
+	}
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)

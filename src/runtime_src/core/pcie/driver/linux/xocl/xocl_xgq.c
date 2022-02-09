@@ -128,7 +128,7 @@ int xocl_xgq_get_response(void *xgq_handle, int id)
 	if (xgq->xx_num_client == 1)
 		goto unlock_and_out;
 
-	xocl_xgq_read_queue((u32 *)&resp, (u32 __iomem *)addr, sizeof(resp));
+	xocl_xgq_read_queue((u32 *)&resp, (u32 __iomem *)addr, sizeof(resp)/4);
 
 unlock_and_out:
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
@@ -171,8 +171,10 @@ void *xocl_xgq_init(struct xocl_xgq_info *info)
 	ret = xgq_attach(&xgq->xx_xgq, 0, 0, (u64)xgq->xx_addr,
 			 (u64)(uintptr_t)info->xi_sq_prod,
 			 (u64)(uintptr_t)info->xi_cq_prod);
-	if (ret)
+	if (ret) {
+		kfree(xgq);
 		return (ERR_PTR(-ENODEV));
+	}
 
 #if 0
 	printk("sq prod 0x%llx\n", (u64)(uintptr_t)info->xi_sq_prod);
