@@ -148,12 +148,10 @@ debug_ip_layout*
 DebugIpStatusCollector::getDebugIpLayout()
 {
   if (0 == map.size()) {
-    std::cout << " INFO: Debug IP Data is not present in the bitstream loaded on device." << std::endl;
     return nullptr;
   }
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
   if (0 == dbgIpLayout->m_count) {
-    std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
     return nullptr;
   }
   return dbgIpLayout;
@@ -528,8 +526,6 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
         // No need to show these Debug IP types
         continue;
       default:
-        std::cout << "Found invalid IP in debug ip layout with type "
-                << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
         return false;
     }
   }
