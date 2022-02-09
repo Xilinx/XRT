@@ -75,11 +75,15 @@ namespace xdp {
   using severity_level = xrt_core::message::severity_level;
   using module_type = xrt_core::edge::aie::module_type;
 
+  bool AieTracePlugin::live = false;
+
   AieTracePlugin::AieTracePlugin()
                 : XDPPlugin(),
                   continuousTrace(false),
                   offloadIntervalms(0)
   {
+    AieTracePlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_trace);
 
@@ -177,6 +181,7 @@ namespace xdp {
     for(auto h : deviceHandles) {
       xclClose(h);
     }
+    AieTracePlugin::live = false;
   }
 
   // Convert broadcast ID to event ID
@@ -364,6 +369,11 @@ namespace xdp {
       xaiefal::Logger::get().setLogLevel(xaiefal::LogLevel::DEBUG);
 
     return metricSet;
+  }
+
+  bool AieTracePlugin::alive()
+  {
+    return AieTracePlugin::live;
   }
 
   std::vector<tile_type> AieTracePlugin::getTilesForTracing(void* handle)

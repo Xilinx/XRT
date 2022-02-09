@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -93,6 +93,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+  setIsDefaultDevValid(false);
 }
 
 void

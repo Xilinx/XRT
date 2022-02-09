@@ -3351,6 +3351,12 @@ ssize_t xdma_xfer_fastpath(void *dev_hndl, int channel, bool write, u64 ep_addr,
 			       (unsigned long)(&engine->regs->control_w1c) -
 			       (unsigned long)(&engine->regs));
 	}
+	if (!dma_mapped) {
+                pci_unmap_sg(xdev->pdev, sgt->sgl, sgt->orig_nents,
+                             engine->dir);
+                sgt->nents = 0;
+        }
+
 	if (ret < 0)
 		return ret;
 

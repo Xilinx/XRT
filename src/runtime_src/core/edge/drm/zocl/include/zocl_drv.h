@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -127,7 +127,7 @@ struct drm_zocl_bo {
 	};
 	struct drm_mm_node            *mm_node;
 	struct drm_zocl_exec_metadata  metadata;
-	unsigned int                   bank;
+	unsigned int                   mem_index;
 	uint32_t                       flags;
 	unsigned int                   user_flags;
 };
@@ -167,20 +167,20 @@ zocl_bo_execbuf(const struct drm_zocl_bo *bo)
 }
 
 static inline struct kernel_info *
-zocl_query_kernel(struct drm_zocl_dev *zdev, const char *name)
+zocl_query_kernel(struct drm_zocl_slot *slot, const char *name)
 {
 	struct kernel_info *kernel;
 	int off = 0;
 
-	while (off < zdev->ksize) {
-		kernel = (struct kernel_info *)(zdev->kernels + off);
+	while (off < slot->ksize) {
+		kernel = (struct kernel_info *)(slot->kernels + off);
 		if (!strcmp(kernel->name, name))
 			break;
 		off += sizeof(struct kernel_info);
 		off += sizeof(struct argument_info) * kernel->anums;
 	}
 
-	if (off < zdev->ksize)
+	if (off < slot->ksize)
 		return kernel;
 
 	return NULL;
@@ -216,15 +216,16 @@ int zocl_iommu_unmap_bo(struct drm_device *dev, struct drm_zocl_bo *bo);
 
 int zocl_init_sysfs(struct device *dev);
 void zocl_fini_sysfs(struct device *dev);
-void zocl_free_sections(struct drm_zocl_dev *zdev);
+void zocl_free_sections(struct drm_zocl_slot *slot);
 void zocl_free_bo(struct drm_gem_object *obj);
 void zocl_drm_free_bo(struct drm_zocl_bo *bo);
 struct drm_zocl_bo *zocl_drm_create_bo(struct drm_device *dev,
 		uint64_t unaligned_size, unsigned user_flags);
 void zocl_update_mem_stat(struct drm_zocl_dev *zdev, u64 size,
 		int count, uint32_t bank);
-void zocl_init_mem(struct drm_zocl_dev *zdev, struct mem_topology *mtopo);
+void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot);
 void zocl_clear_mem(struct drm_zocl_dev *zdev);
+void zocl_clear_mem_slot(struct drm_zocl_dev *zdev, u32 slot_idx);
 int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		void *aie_res);
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);
@@ -275,7 +276,6 @@ zocl_get_zdev(void)
 {
 	return platform_get_drvdata(zocl_find_pdev("zyxclmm_drm"));
 }
-
 int get_apt_index_by_addr(struct drm_zocl_dev *zdev, phys_addr_t addr);
 int get_apt_index_by_cu_idx(struct drm_zocl_dev *zdev, int cu_idx);
 void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
@@ -283,7 +283,7 @@ void update_cu_idx_in_apt(struct drm_zocl_dev *zdev, int apt_idx, int cu_idx);
 int zocl_kds_reset(struct drm_zocl_dev *zdev);
 
 int subdev_create_cu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp);
-void subdev_destroy_cu(struct platform_device *pdev);
+void subdev_destroy_cu(struct drm_zocl_dev *zdev);
 /* Sub device driver */
 extern struct platform_driver zocl_cu_xgq_driver;
 extern struct platform_driver zocl_csr_intc_driver;
@@ -308,9 +308,7 @@ zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
 }
 
 extern u32 zocl_cu_get_status(struct platform_device *pdev);
-
-#endif
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 extern const struct drm_gem_object_funcs zocl_gem_object_funcs;
+#endif
 #endif

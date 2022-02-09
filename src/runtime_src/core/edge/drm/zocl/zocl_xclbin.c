@@ -2,7 +2,7 @@
 /*
  * MPSoC based OpenCL accelerators Compute Units.
  *
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    David Zhang <davidzha@xilinx.com>
@@ -20,15 +20,24 @@
 #include "xrt_xclbin.h"
 #include "xclbin.h"
 
-extern int kds_mode;
-
+/*
+ * Load xclbin using FPGA manager
+ *
+ * @param       zdev:    zocl device structure
+ * @param       data:   xclbin data buffer pointer
+ * @param       size:   xclbin data buffer size
+ * @param       flag:   FPGA Manager flags
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
-zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 flags)
+zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size,
+		   u32 flags)
 {
 	struct drm_device *ddev = zdev->ddev;
 	struct device *dev = ddev->dev;
 	struct fpga_manager *fpga_mgr = zdev->fpga_mgr;
-	struct fpga_image_info *info;
+	struct fpga_image_info *info = NULL;
 	int err = 0;
 
 	 /* On Non PR platform, it shouldn't never go to this point.
@@ -39,6 +48,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 		return -ENXIO;
 	}
 
+	/* Allocate an FPGA image info struct */
 	info = fpga_image_info_alloc(dev);
 	if (!info)
 		return -ENOMEM;
@@ -47,6 +57,7 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 	info->buf = data;
 	info->count = size;
 
+	/* load FPGA from buffer */
 	err = fpga_mgr_load(fpga_mgr, info);
 	if (err == 0)
 		DRM_INFO("FPGA Manager load DONE");
@@ -58,40 +69,63 @@ zocl_fpga_mgr_load(struct drm_zocl_dev *zdev, const char *data, int size, u32 fl
 	return err;
 }
 
+/*
+ * Load partial bitstream to PR platform
+ *
+ * @param       zdev:   zocl device structure
+ * @param       buffer: xclbin data buffer pointer
+ * @param       length: xclbin data buffer size
+ * @param       slot: 	Target slot structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
-zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length)
+zocl_load_partial(struct drm_zocl_dev *zdev, const char *buffer, int length,
+		  struct drm_zocl_slot *slot)
 {
-	int err;
+	int err = 0;
 	void __iomem *map = NULL;
 
-	if (!zdev->pr_isolation_addr) {
+	if (!slot->pr_isolation_addr) {
 		DRM_ERROR("PR isolation address is not set");
 		return -ENODEV;
 	}
 
-	map = ioremap(zdev->pr_isolation_addr, PR_ISO_SIZE);
+	map = ioremap(slot->pr_isolation_addr, PR_ISO_SIZE);
 	if (IS_ERR_OR_NULL(map)) {
 		DRM_ERROR("ioremap PR isolation address 0x%llx failed",
-		    zdev->pr_isolation_addr);
+		    slot->pr_isolation_addr);
 		return -EFAULT;
 	}
 
 	/* Freeze PR ISOLATION IP for bitstream download */
-	iowrite32(zdev->pr_isolation_freeze, map);
+	iowrite32(slot->pr_isolation_freeze, map);
 	err = zocl_fpga_mgr_load(zdev, buffer, length, FPGA_MGR_PARTIAL_RECONFIG);
 	/* Unfreeze PR ISOLATION IP */
-	iowrite32(zdev->pr_isolation_unfreeze, map);
+	iowrite32(slot->pr_isolation_unfreeze, map);
 
 	iounmap(map);
 	return err;
 }
 
+/*
+ * Load the bitstream. For PR platform load the partial bitstream and for FLAT
+ * platform load the full bitstream.
+ *
+ * @param       zdev:   zocl device structure
+ * @param       buffer: xclbin data buffer pointer
+ * @param       length: xclbin data buffer size
+ * @param       slot: Target slot structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
-zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
+zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
+		   struct drm_zocl_slot *slot)
 {
-	struct XHwIcap_Bit_Header bit_header;
+	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
-	unsigned int i;
+	unsigned int i = 0;
 	char temp;
 
 	memset(&bit_header, 0, sizeof(bit_header));
@@ -121,8 +155,9 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length)
 	}
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
-	if (zdev->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength);
+	if (slot->pr_isolation_addr)
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength,
+					 slot);
 	else {
 		/* 0 is for full bitstream */
 		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
@@ -278,109 +313,244 @@ static inline u32 xclbin_intr_id(u32 prop)
 	return intr_id >> IP_INTERRUPT_ID_SHIFT;
 }
 
+/*
+ * Get the next free aparture index. If phy_addr is zero of an index then
+ * consider it as free index.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ * @return      valid index on success, Error code on failure.
+ */
+static int
+get_next_free_apt_index(struct drm_zocl_dev *zdev)
+{
+	int apt_idx = 0;
+
+	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
+		if (zdev->apertures[apt_idx].addr == 0)
+			return apt_idx;
+	}
+
+	return -ENOSPC;
+}
+
+/*
+ * Always keep tract of max aperture index. This will help not to traverse
+ * maximum size of the aperture number always.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ */
+static void
+update_max_apt_number(struct drm_zocl_dev *zdev)
+{
+	int apt_idx = 0;
+
+	zdev->num_apts = 0;
+	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
+		if (zdev->apertures[apt_idx].addr != 0)
+			zdev->num_apts = apt_idx;
+	}
+}
+
+/*
+ * Cleanup the apertures of a specific slot. Others will remain same without
+ * changing the index.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       slot_idx:	Specific slot index
+ *
+ */
+static void
+zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
+{
+	int apt_idx = 0;
+	struct addr_aperture *apt = NULL;
+
+	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
+		apt = &zdev->apertures[apt_idx];
+		if (apt->slot_idx == slot_idx) {
+			/* Reset this aperture index */
+			apt->addr = 0;
+			apt->size = 0;
+			apt->prop = 0;
+			apt->cu_idx = -1;
+			apt->slot_idx = 0xFFFF;
+		}
+	}
+
+	update_max_apt_number(zdev);
+}
+
 /* Record all of the hardware address apertures in the XCLBIN
  * This could be used to verify if the configure command set wrong CU base
  * address and allow user map one of the aperture to user space.
  *
  * The xclbin doesn't contain IP size. Use hardcoding size for now.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       slot:	Specific slot staructure
+ *
+ * @return      0 on success, Error code on failure.
  */
 static int
-zocl_update_apertures(struct drm_zocl_dev *zdev)
+zocl_update_apertures(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 {
-	struct ip_data *ip;
-	struct debug_ip_data *dbg_ip;
-	struct addr_aperture *apt;
+	struct ip_data *ip = NULL;
+	struct debug_ip_data *dbg_ip = NULL;
+	struct addr_aperture *apt = NULL;
 	int total = 0;
-	int i;
+	int apt_idx = 0;
+	int i = 0;
 
 	/* Update aperture should only happen when loading xclbin */
-	kfree(zdev->apertures);
-	zdev->apertures = NULL;
-	zdev->num_apts = 0;
+	if (slot->ip)
+		total += slot->ip->m_count;
 
-	if (zdev->ip)
-		total += zdev->ip->m_count;
-
-	if (zdev->debug_ip)
-		total += zdev->debug_ip->m_count;
+	if (slot->debug_ip)
+		total += slot->debug_ip->m_count;
 
 	if (total == 0)
 		return 0;
 
 	/* If this happened, the xclbin is super bad */
-	if (total < 0) {
+	if ((total < 0) || (total > MAX_APT_NUM)) {
 		DRM_ERROR("Invalid number of apertures\n");
 		return -EINVAL;
 	}
 
-	apt = kcalloc(total, sizeof(struct addr_aperture), GFP_KERNEL);
-	if (!apt) {
-		DRM_ERROR("Out of memory\n");
-		return -ENOMEM;
-	}
+	/* Cleanup the aperture for this slot before update for new xclbin */
+	zocl_clean_aperture(zdev, slot->slot_idx);
 
-	if (zdev->ip) {
-		for (i = 0; i < zdev->ip->m_count; ++i) {
-			ip = &zdev->ip->m_ip_data[i];
-			apt[zdev->num_apts].addr = ip->m_base_address;
-			apt[zdev->num_apts].size = CU_SIZE;
-			apt[zdev->num_apts].prop = ip->properties;
-			apt[zdev->num_apts].cu_idx = -1;
-			zdev->num_apts++;
+	/* Now update the aperture for the new xclbin */
+	if (slot->ip) {
+		for (i = 0; i < slot->ip->m_count; ++i) {
+			ip = &slot->ip->m_ip_data[i];
+			apt_idx = get_next_free_apt_index(zdev);
+			if (apt_idx < 0) {
+				DRM_ERROR("No more free apertures\n");
+				return -EINVAL;
+			}
+			apt = &zdev->apertures[apt_idx];
+
+			apt->addr = ip->m_base_address;
+			apt->size = CU_SIZE;
+			apt->prop = ip->properties;
+			apt->cu_idx = -1;
+			apt->slot_idx = slot->slot_idx;
 		}
+		/* Update num_apts based on current index */
+		update_max_apt_number(zdev);
 	}
 
-	if (zdev->debug_ip) {
-		for (i = 0; i < zdev->debug_ip->m_count; ++i) {
-			dbg_ip = &zdev->debug_ip->m_debug_ip_data[i];
-			apt[zdev->num_apts].addr = dbg_ip->m_base_address;
+	if (slot->debug_ip) {
+		for (i = 0; i < slot->debug_ip->m_count; ++i) {
+			dbg_ip = &slot->debug_ip->m_debug_ip_data[i];
+			apt_idx = get_next_free_apt_index(zdev);
+			if (apt_idx < 0) {
+				DRM_ERROR("No more free apertures\n");
+				return -EINVAL;
+			}
+			apt = &zdev->apertures[apt_idx];
+
+			apt->addr = dbg_ip->m_base_address;
+			apt->slot_idx = slot->slot_idx;
 			if (dbg_ip->m_type == AXI_MONITOR_FIFO_LITE
 			    || dbg_ip->m_type == AXI_MONITOR_FIFO_FULL)
 				/* FIFO_LITE has 4KB and FIFO FULL has 8KB
 				 * address range. Use both 8K is okay.
 				 */
-				apt[zdev->num_apts].size = _8KB;
+				apt->size = _8KB;
 			else
 				/* Others debug IPs have 64KB address range*/
-				apt[zdev->num_apts].size = _64KB;
-			zdev->num_apts++;
+				apt->size = _64KB;
 		}
+		/* Update num_apts based on current index */
+		update_max_apt_number(zdev);
 	}
-
-	zdev->apertures = apt;
 
 	return 0;
 }
 
-void zocl_destroy_cu(struct drm_zocl_dev *zdev)
+/*
+ * Get the next free CU index. If cu platform device is NULL of an index then
+ * consider it as free index.
+ *
+ * @param       zdev:    zocl device structure
+ *
+ * @return      valid index on success, Error code on failure.
+ */
+static int
+zocl_get_cu_inst_idx(struct drm_zocl_dev *zdev)
 {
-	int i;
+	int i = 0;
+
+	/* TODO : Didn't think about efficient way till now */
+	for (i = 0; i < MAX_CU_NUM; ++i)
+		if (zdev->cu_pldev[i] == NULL)
+			return i;
+
+	return -ENOSPC;
+}
+
+/*
+ * Destroy all the CUs belongs to a specific slot. All the other CUs remain
+ * same. There could be possibility of holes in the lists. But we should not
+ * change the index of existing CUs
+ *
+ * @param       zdev:		zocl device structure
+ * @param       slot_idx:	Specific slot index
+ *
+ */
+static void
+zocl_destroy_cu_slot(struct drm_zocl_dev *zdev, u32 slot_idx)
+{
+	struct platform_device *pldev = NULL;
+	struct xrt_cu_info *info = NULL;
+	int i = 0;
 
 	for (i = 0; i < MAX_CU_NUM; ++i) {
-		if (!zdev->cu_pldev[i])
+		pldev = zdev->cu_pldev[i];
+		if (!pldev)
 			continue;
-		subdev_destroy_cu(zdev->cu_pldev[i]);
-		zdev->cu_pldev[i] = NULL;
+
+		info = dev_get_platdata(&pldev->dev);
+		if (info->slot_idx == slot_idx) {
+			/* Remove the platform-level device */
+			platform_device_del(pldev);
+			/* Destroy the platform device */
+			platform_device_put(pldev);
+			zdev->cu_pldev[i] = NULL;
+		}
 	}
 }
 
+/*
+ * Create the CUs for a specific slot. CUs for a specific slot may not be
+ * contigious. CU index will be assign based on the next free index.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       slot: Specific slot structure
+ *
+ * @return      0 on success, Error code on failure.
+ */
 static int
-zocl_create_cu(struct drm_zocl_dev *zdev)
+zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 {
-	int err;
-	int i;
-	int num_cus;
+	int err = 0;
+	int i = 0;
+	int num_cus = 0;
 	struct xrt_cu_info *cu_info = NULL;
 	struct kernel_info *krnl_info = NULL;
 
-	if (!zdev->ip)
+	if (!slot->ip)
 		return 0;
 
 	cu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
 	if (!cu_info)
 		return -ENOMEM;
 
-	num_cus = kds_ip_layout2cu_info(zdev->ip, cu_info, MAX_CUS);
+	num_cus = kds_ip_layout2cu_info(slot->ip, cu_info, MAX_CUS);
 
 	for (i = 0; i < num_cus; ++i) {
 
@@ -388,6 +558,7 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 		if (cu_info[i].addr == -1)
 			continue;
 
+		cu_info[i].slot_idx = slot->slot_idx;
 		cu_info[i].num_res = 1;
 
 		switch (cu_info[i].protocol) {
@@ -404,9 +575,24 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 			return -EINVAL;
 		}
 
-		cu_info[i].inst_idx = i;
+		/* Get the next free CU index */
+		cu_info[i].inst_idx = zocl_get_cu_inst_idx(zdev);
+		/* ip_data->m_name format "<kernel name>:<instance name>",
+		 * where instance name is so called CU name.
+		 */
+		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
+		if (!krnl_info) {
+			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
+			cu_info[i].args = NULL;
+			cu_info[i].num_args = 0;
+			cu_info[i].size = 0x10000;
+		} else {
+			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
+			cu_info[i].num_args = krnl_info->anums;
+			cu_info[i].size = krnl_info->range;
+		}
 
-		krnl_info = zocl_query_kernel(zdev, cu_info[i].kname);
+		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
 		if (!krnl_info) {
 			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
 			cu_info[i].args = NULL;
@@ -431,16 +617,44 @@ zocl_create_cu(struct drm_zocl_dev *zdev)
 
 	return 0;
 err:
-	kfree(cu_info);
-	zocl_destroy_cu(zdev);
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 	return err;
 }
 
 static inline bool
-zocl_xclbin_same_uuid(struct drm_zocl_dev *zdev, xuid_t *uuid)
+zocl_xclbin_same_uuid(struct drm_zocl_slot *slot, xuid_t *uuid)
 {
-	return (zocl_xclbin_get_uuid(zdev) != NULL &&
-	    uuid_equal(uuid, zocl_xclbin_get_uuid(zdev)));
+	return (zocl_xclbin_get_uuid(slot) != NULL &&
+	    uuid_equal(uuid, zocl_xclbin_get_uuid(slot)));
+}
+
+/*
+ * Return the slot pointer for the given xclbin uuid as an Input.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      domian pointer on success, NULL on failure.
+ */
+struct drm_zocl_slot *
+zocl_get_slot(struct drm_zocl_dev *zdev, uuid_t *id)
+{
+	struct drm_zocl_slot *zocl_slot = NULL;
+	int i = 0;
+
+	for (i = 0; i < zdev->num_pr_slot; i++) {
+		zocl_slot = zdev->pr_slot[i];
+		if (zocl_slot) {
+			mutex_lock(&zocl_slot->slot_xclbin_lock);
+			if (zocl_xclbin_same_uuid(zocl_slot, id)) {
+				mutex_unlock(&zocl_slot->slot_xclbin_lock);
+				return zocl_slot;
+			}
+			mutex_unlock(&zocl_slot->slot_xclbin_lock);
+		}
+	}
+
+	return NULL;
 }
 
 /*
@@ -451,31 +665,38 @@ zocl_xclbin_same_uuid(struct drm_zocl_dev *zdev, xuid_t *uuid)
  * Note: this is only used under ert mode so that we do not need to
  * check context or cache XCLBIN metadata, which are done by host
  * XRT driver. Only if the same XCLBIN has been loaded, we skip loading.
+ *
+ * @param       zdev:   zocl device structure
+ * @param       data:   xclbin buffer
+ * @param       slot: Specific slot structure
+ *
+ * @return      0 on success, Error code on failure.
  */
 int
-zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
+zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
+                    struct drm_zocl_slot *slot)
 {
-	struct axlf *axlf = data;
-	struct axlf *axlf_head = axlf;
-	char *xclbin = NULL;
-	char *section_buffer = NULL;
-	size_t size_of_header;
-	size_t num_of_sections;
-	uint64_t size = 0;
-	int ret = 0;
-	int count;
+        struct axlf *axlf = data;
+        struct axlf *axlf_head = axlf;
+        char *xclbin = NULL;
+        char *section_buffer = NULL;
+        size_t size_of_header = 0;
+        size_t num_of_sections = 0;
+        uint64_t size = 0;
+        int ret = 0;
+        int count = 0;
 
-	if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
-		DRM_INFO("Invalid xclbin magic string");
-		return -EINVAL;
-	}
+        if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
+                DRM_INFO("Invalid xclbin magic string");
+                return -EINVAL;
+        }
 
-	mutex_lock(&zdev->zdev_xclbin_lock);
+        mutex_lock(&slot->slot_xclbin_lock);
 	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(zdev, &axlf_head->m_header.uuid)) {
+	if (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid)) {
 		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
 			 __func__, &axlf_head->m_header.uuid);
-		mutex_unlock(&zdev->zdev_xclbin_lock);
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return ret;
 	}
 
@@ -496,7 +717,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	    axlf, xclbin);
 	if (size > 0) {
 		write_unlock(&zdev->attr_rwlock);
-		ret = zocl_load_partial(zdev, section_buffer, size);
+		ret = zocl_load_partial(zdev, section_buffer, size, slot);
 		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
@@ -505,7 +726,7 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	size = zocl_offsetof_sect(PDI, &section_buffer, axlf, xclbin);
 	if (size > 0) {
 		write_unlock(&zdev->attr_rwlock);
-		ret = zocl_load_partial(zdev, section_buffer, size);
+		ret = zocl_load_partial(zdev, section_buffer, size, slot);
 		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out;
@@ -519,14 +740,15 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data)
 	}
 
 	/* preserve uuid, avoid double download */
-	zocl_xclbin_set_uuid(zdev, &axlf_head->m_header.uuid);
+	zocl_xclbin_set_uuid(slot, &axlf_head->m_header.uuid);
 
 	/* no need to reset scheduler, config will always reset scheduler */
 
 out:
 	write_unlock(&zdev->attr_rwlock);
-	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot),
+		ret);
+	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
 }
 
@@ -560,9 +782,52 @@ zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 	return ret;
 }
 
+/*
+ * Free the xclbin specific sections for this slot.
+ *
+ * @param       slot: Specific slot structure
+ *
+ */
+void zocl_free_sections(struct drm_zocl_slot *slot)
+{
+	if (slot->ip) {
+		vfree(slot->ip);
+		CLEAR(slot->ip);
+	}
+	if (slot->debug_ip) {
+		vfree(slot->debug_ip);
+		CLEAR(slot->debug_ip);
+	}
+	if (slot->connectivity) {
+		vfree(slot->connectivity);
+		CLEAR(slot->connectivity);
+	}
+	if (slot->topology) {
+		vfree(slot->topology);
+		CLEAR(slot->topology);
+	}
+	if (slot->axlf) {
+		vfree(slot->axlf);
+		CLEAR(slot->axlf);
+		slot->axlf_size = 0;
+	}
+}
+
+/*
+ * Load a bitstream, partial metadata or PDI to the FPGA from userspace pointer.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       axlf:		xclbin userspace header pointer
+ * @param       xclbin:		xclbin userspace buffer pointer
+ * @param       kind:		xclbin section type
+ * @param       slot:		Specific slot structure
+ *
+ * @return      0 on success, Error code on failure.
+ *
+ */
 static int
-zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
-	char __user *xclbin, enum axlf_section_kind kind)
+zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf, char __user *xclbin,
+	      enum axlf_section_kind kind, struct drm_zocl_slot *slot)
 {
 	uint64_t size = 0;
 	char *section_buffer = NULL;
@@ -574,11 +839,11 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 
 	switch (kind) {
 	case BITSTREAM:
-		ret = zocl_load_bitstream(zdev, section_buffer, size);
+		ret = zocl_load_bitstream(zdev, section_buffer, size, slot);
 		break;
 	case PDI:
 	case BITSTREAM_PARTIAL_PDI:
-		ret = zocl_load_partial(zdev, section_buffer, size);
+		ret = zocl_load_partial(zdev, section_buffer, size, slot);
 		break;
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 	case PARTITION_METADATA: {
@@ -588,26 +853,29 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		struct drm_zocl_bo *bo;
 		uint64_t bsize = 0;
 		uint64_t flags = 0;
-		if (zdev->partial_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_PR) {
-			err = of_overlay_remove(&zdev->partial_overlay_id);
+		if (slot->partial_overlay_id != -1 &&
+			axlf->m_header.m_mode == XCLBIN_PR) {
+			err = of_overlay_remove(&slot->partial_overlay_id);
 			if (err < 0) {
 				DRM_WARN("Failed to delete rm overlay (err=%d)\n", err);
 				ret = err;
 				break;
 			}
-			zdev->partial_overlay_id = -1;
-		} else if (zdev->full_overlay_id != -1 && axlf->m_header.m_mode == XCLBIN_FLAT) {
+			slot->partial_overlay_id = -1;
+		} else if (zdev->full_overlay_id != -1 &&
+			   axlf->m_header.m_mode == XCLBIN_FLAT) {
 			err = of_overlay_remove_all();
 			if (err < 0) {
 				DRM_WARN("Failed to delete static overlay (err=%d)\n", err);
 				ret = err;
 				break;
 			}
-			zdev->partial_overlay_id = -1;
+			slot->partial_overlay_id = -1;
 			zdev->full_overlay_id = -1;
 		}
 
-		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf, xclbin);
+		bsize = zocl_read_sect(BITSTREAM, &bsection_buffer, axlf,
+				       xclbin);
 		if (bsize == 0) {
 			ret = 0;
 			break;
@@ -621,7 +889,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		}
 		vaddr = bo->cma_base.vaddr;
 		memcpy(vaddr,bsection_buffer,bsize);
-		
+
 		flags = zdev->fpga_mgr->flags;
 		zdev->fpga_mgr->flags |= FPGA_MGR_CONFIG_DMA_BUF;
 		zdev->fpga_mgr->dmabuf = drm_gem_prime_export(&bo->gem_base, 0);
@@ -637,7 +905,7 @@ zocl_load_sect(struct drm_zocl_dev *zdev, struct axlf *axlf,
 		}
 
 		if (axlf->m_header.m_mode == XCLBIN_PR)
-			zdev->partial_overlay_id = id;
+			slot->partial_overlay_id = id;
 		else
 			zdev->full_overlay_id = id;
 
@@ -675,35 +943,47 @@ is_aie_only(struct axlf *axlf)
  *       reload the hardware and can do non-destructive operations.
  */
 static int
-zocl_cache_xclbin(struct drm_zocl_dev *zdev, struct axlf *axlf,
+zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
 		char __user *xclbin_ptr)
 {
 	int ret;
 	size_t size = axlf->m_header.m_length;
 
-	zdev->axlf = vmalloc(size);
-	if (!zdev->axlf)
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf)
 		return -ENOMEM;
 
-	ret = copy_from_user(zdev->axlf, xclbin_ptr, size);
+	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
 	if (ret) {
-		vfree(zdev->axlf);
+		vfree(slot->axlf);
 		return ret;
 	}
 
-	zdev->axlf_size = size;
+	slot->axlf_size = size;
 
 	return 0;
 }
 
 int
-zocl_xclbin_refcount(struct drm_zocl_dev *zdev)
+zocl_xclbin_refcount(struct drm_zocl_slot *slot)
 {
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&slot->slot_xclbin_lock));
 
-	return zdev->zdev_xclbin->zx_refcnt;
+	return slot->slot_xclbin->zx_refcnt;
 }
 
+/*
+ * This function is the main entry point to load xclbin. It's takes an userspace
+ * pointer of xclbin and copy the xclbin data to kernel space. Then load that
+ * xclbin to the FPGA. It also initialize other modules like, memory, aie, CUs
+ * etc.
+ *
+ * @param       zdev:		zocl device structure
+ * @param       axlf_obj:	xclbin userspace structure
+ * @param       client:		user space client attached to device
+ *
+ * @return      0 on success, Error code on failure.
+ */
 int
 zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	struct sched_client_ctx *client)
@@ -718,17 +998,32 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	void *aie_res = 0;
 	uint64_t size = 0;
 	int ret = 0;
+	struct drm_zocl_slot *slot = NULL;
+	int slot_id = axlf_obj->za_slot_id;
 
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+	if (slot_id > zdev->num_pr_slot) {
+		DRM_ERROR("Invalid Slot[%d]", slot_id);
+		return -EINVAL;
+	}
+
+	slot = zdev->pr_slot[slot_id];
+	if (!slot) {
+		DRM_ERROR("Slot[%d] doesn't exists", slot_id);
+		return -EINVAL;
+	}
+
+	mutex_lock(&slot->slot_xclbin_lock);
 
 	if (copy_from_user(&axlf_head, axlf_obj->za_xclbin_ptr,
 	    sizeof(struct axlf))) {
 		DRM_WARN("copy_from_user failed for za_xclbin_ptr");
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
 
 	if (memcmp(axlf_head.m_magic, "xclbin2", 8)) {
 		DRM_WARN("xclbin magic is invalid %s", axlf_head.m_magic);
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EINVAL;
 	}
 
@@ -739,12 +1034,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	axlf = vmalloc(axlf_size);
 	if (!axlf) {
 		DRM_WARN("read xclbin fails: no memory");
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return -ENOMEM;
 	}
 
 	if (copy_from_user(axlf, axlf_obj->za_xclbin_ptr, axlf_size)) {
 		DRM_WARN("read xclbin: fail copy from user memory");
 		vfree(axlf);
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
 
@@ -753,6 +1050,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	if (ret) {
 		DRM_WARN("read xclbin: fail the access check");
 		vfree(axlf);
+		mutex_unlock(&slot->slot_xclbin_lock);
 		return -EFAULT;
 	}
 
@@ -766,11 +1064,12 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
 
 	/* Check unique ID */
-	if (zocl_xclbin_same_uuid(zdev, &axlf_head.m_header.uuid)) {
+	if (zocl_xclbin_same_uuid(slot, &axlf_head.m_header.uuid)) {
 		if (!(axlf_obj->za_flags & DRM_ZOCL_FORCE_PROGRAM)) {
 			if (is_aie_only(axlf)) {
 				write_unlock(&zdev->attr_rwlock);
-				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin, client);
+				ret = zocl_load_aie_only_pdi(zdev, axlf, xclbin,
+							     client);
 				write_lock(&zdev->attr_rwlock);
 				if (ret)
 					DRM_WARN("read xclbin: fail to load AIE");
@@ -778,7 +1077,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 					write_unlock(&zdev->attr_rwlock);
 					zocl_create_aie(zdev, axlf, aie_res);
 					write_lock(&zdev->attr_rwlock);
-					zocl_cache_xclbin(zdev, axlf, xclbin);
+					zocl_cache_xclbin(slot, axlf, xclbin);
 				}
 			} else {
 				DRM_INFO("%s The XCLBIN already loaded", __func__);
@@ -791,37 +1090,20 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		}
 	}
 
-	if (kds_mode == 0) {
-		if (sched_live_clients(zdev, NULL) || sched_is_busy(zdev)) {
-			DRM_ERROR("Current xclbin is in-use, can't change");
-			ret = -EBUSY;
-			goto out0;
-		}
-	} else {
-		/* 1. We locked &zdev->zdev_xclbin_lock so that no new contexts
-		 * can be opened and/or closed
-		 * 2. A opened context would lock bitstream and hold it.
-		 * 3. If all contexts are closed, new kds would make sure all
-		 * relative exec BO are released
-		 */
-		if (zocl_xclbin_refcount(zdev) > 0) {
-			DRM_ERROR("Current xclbin is in-use, can't change");
-			ret = -EBUSY;
-			goto out0;
-		}
+	/* 1. We locked &zdev->slot_xclbin_lock so that no new contexts
+	 * can be opened and/or closed
+	 * 2. A opened context would lock bitstream and hold it.
+	 * 3. If all contexts are closed, new kds would make sure all
+	 * relative exec BO are released
+	 */
+	if (zocl_xclbin_refcount(slot) > 0) {
+		DRM_ERROR("Current xclbin is in-use, can't change");
+		ret = -EBUSY;
+		goto out0;
 	}
 
-	/* uuid is null means first time load xclbin */
-	if (zocl_xclbin_get_uuid(zdev) != NULL) {
-		/* reset scheduler prior to load new xclbin */
-		if (kds_mode == 0) {
-			ret = sched_reset_exec(zdev->ddev);
-			if (ret)
-				goto out0;
-		}
-	}
-
-	zocl_free_sections(zdev);
+	/* Free sections before load the new xclbin */
+	zocl_free_sections(slot);
 
 #if KERNEL_VERSION(5, 4, 0) <= LINUX_VERSION_CODE
 	if (xrt_xclbin_get_section_num(axlf, PARTITION_METADATA) &&
@@ -833,14 +1115,15 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * bitstream in BITSTREAM section.
 		 */
 		write_unlock(&zdev->attr_rwlock);
-		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA);
+		ret = zocl_load_sect(zdev, axlf, xclbin, PARTITION_METADATA,
+				    slot);
 		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
 
 	} else
 #endif
-	if (zdev->pr_isolation_addr) {
+	if (slot->pr_isolation_addr) {
 		/* For PR support platform, device-tree has configured addr */
 		if (axlf_head.m_header.m_mode != XCLBIN_PR &&
 		    axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
@@ -859,8 +1142,8 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			  * cleanup previously loaded xclbin related data
 			  * before loading new bitstream/pdi
 			  */
-			if (kds_mode == 1 && (zocl_xclbin_get_uuid(zdev) != NULL)) {
-				zocl_destroy_cu(zdev);
+			if (zocl_xclbin_get_uuid(slot) != NULL) {
+				zocl_destroy_cu_slot(zdev, slot->slot_idx);
 				if (zdev->aie) {
 					/*
 					 * Dont reset if aie is already in reset
@@ -879,20 +1162,21 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			 * if there is one, before loading AIE PDI.
 			 */
 			write_unlock(&zdev->attr_rwlock);
-			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+			ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM,
+					    slot);
 			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
 			write_unlock(&zdev->attr_rwlock);
 			ret = zocl_load_sect(zdev, axlf, xclbin,
-			    BITSTREAM_PARTIAL_PDI);
+			    BITSTREAM_PARTIAL_PDI, slot);
 			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
 
 			write_unlock(&zdev->attr_rwlock);
-			ret = zocl_load_sect(zdev, axlf, xclbin, PDI);
+			ret = zocl_load_sect(zdev, axlf, xclbin, PDI, slot);
 			write_lock(&zdev->attr_rwlock);
 			if (ret)
 				goto out0;
@@ -904,7 +1188,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		if (ret)
 			goto out0;
 
-		zocl_cache_xclbin(zdev, axlf, xclbin);
+		zocl_cache_xclbin(slot, axlf, xclbin);
 	} else if ((axlf_obj->za_flags & DRM_ZOCL_PLATFORM_FLAT) &&
 		   axlf_head.m_header.m_mode == XCLBIN_FLAT &&
 		   axlf_head.m_header.m_mode != XCLBIN_HW_EMU &&
@@ -914,7 +1198,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 		 * and xclbin has full bitstream and its not hw emulation
 		 */
 		write_unlock(&zdev->attr_rwlock);
-		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM);
+		ret = zocl_load_sect(zdev, axlf, xclbin, BITSTREAM, slot);
 		write_lock(&zdev->attr_rwlock);
 		if (ret)
 			goto out0;
@@ -922,37 +1206,38 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Populating IP_LAYOUT sections */
 	/* zocl_read_sect return size of section when successfully find it */
-	size = zocl_read_sect(IP_LAYOUT, &zdev->ip, axlf, xclbin);
+	size = zocl_read_sect(IP_LAYOUT, &slot->ip, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0) {
 			ret = size;
 			goto out0;
 		}
-	} else if (sizeof_section(zdev->ip, m_ip_data) != size) {
+	} else if (sizeof_section(slot->ip, m_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
 	}
 
 	/* Populating DEBUG_IP_LAYOUT sections */
-	size = zocl_read_sect(DEBUG_IP_LAYOUT, &zdev->debug_ip, axlf, xclbin);
+	size = zocl_read_sect(DEBUG_IP_LAYOUT, &slot->debug_ip, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0) {
 			ret = size;
 			goto out0;
 		}
-	} else if (sizeof_section(zdev->debug_ip, m_debug_ip_data) != size) {
+	} else if (sizeof_section(slot->debug_ip, m_debug_ip_data) != size) {
 		ret = -EINVAL;
 		goto out0;
 	}
 
-	ret = zocl_update_apertures(zdev);
+	ret = zocl_update_apertures(zdev, slot);
 	if (ret)
 		goto out0;
 
-	if (zdev->kernels != NULL) {
-		vfree(zdev->kernels);
-		zdev->kernels = NULL;
-		zdev->ksize = 0;
+	/* Kernels are slot specific. */
+	if (slot->kernels != NULL) {
+		vfree(slot->kernels);
+		slot->kernels = NULL;
+		slot->ksize = 0;
 	}
 
 	if (axlf_obj->za_ksize > 0) {
@@ -966,44 +1251,46 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 			ret = -EFAULT;
 			goto out0;
 		}
-		zdev->ksize = axlf_obj->za_ksize;
-		zdev->kernels = kernels;
+		slot->ksize = axlf_obj->za_ksize;
+		slot->kernels = kernels;
 	}
 
 	/* Populating AIE_METADATA sections */
-	size = zocl_read_sect(AIE_METADATA, &zdev->aie_data.data, axlf, xclbin);
+	size = zocl_read_sect(AIE_METADATA, &slot->aie_data.data, axlf,
+			     xclbin);
 	if (size < 0) {
 		ret = size;
 		goto out0;
 	}
-	zdev->aie_data.size = size;
+	slot->aie_data.size = size;
 
 	/* Populating CONNECTIVITY sections */
-	size = zocl_read_sect(CONNECTIVITY, &zdev->connectivity, axlf, xclbin);
+	size = zocl_read_sect(CONNECTIVITY, &slot->connectivity, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0) {
 			ret = size;
 			goto out0;
 		}
-	} else if (sizeof_section(zdev->connectivity, m_connection) != size) {
+	} else if (sizeof_section(slot->connectivity, m_connection) != size) {
 		ret = -EINVAL;
 		goto out0;
 	}
 
 	/* Populating MEM_TOPOLOGY sections */
-	size = zocl_read_sect(MEM_TOPOLOGY, &zdev->topology, axlf, xclbin);
+	size = zocl_read_sect(MEM_TOPOLOGY, &slot->topology, axlf, xclbin);
 	if (size <= 0) {
 		if (size != 0) {
 			ret = size;
 			goto out0;
 		}
-	} else if (sizeof_section(zdev->topology, m_mem_data) != size) {
+	} else if (sizeof_section(slot->topology, m_mem_data) != size) {
 		ret = -EINVAL;
 		goto out0;
 	}
 
-	zocl_clear_mem(zdev);
-	zocl_init_mem(zdev, zdev->topology);
+	zocl_clear_mem_slot(zdev, slot->slot_idx);
+	/* Initialize the memory for the new xclbin */
+	zocl_init_mem(zdev, slot);
 
 	/* Createing AIE Partition */
 	write_unlock(&zdev->attr_rwlock);
@@ -1013,51 +1300,65 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	/*
 	 * Remember xclbin_uuid for opencontext.
 	 */
-	zdev->zdev_xclbin->zx_refcnt = 0;
-	zocl_xclbin_set_uuid(zdev, &axlf_head.m_header.uuid);
+	slot->slot_xclbin->zx_refcnt = 0;
+	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
-	if (kds_mode == 1) {
-		/*
-		 * Invoking kernel thread (kthread), hence need
-		 * to call this outside of the atomic context
-		 */
-		write_unlock(&zdev->attr_rwlock);
+	/*
+	 * Invoking kernel thread (kthread), hence need
+	 * to call this outside of the atomic context
+	 */
+	write_unlock(&zdev->attr_rwlock);
 
-		(void) zocl_kds_reset(zdev);
-		ret = zocl_create_cu(zdev);
-		if (ret) {
-			write_lock(&zdev->attr_rwlock);
-			goto out0;
-		}
-		ret = zocl_kds_update(zdev, &axlf_obj->kds_cfg);
-		if (ret) {
-			write_lock(&zdev->attr_rwlock);
-			goto out0;
-		}
+	/* Destroy the CUs specific for this slot */
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 
+	/* Create the CUs for this slot */
+	ret = zocl_create_cu(zdev, slot);
+	if (ret) {
 		write_lock(&zdev->attr_rwlock);
+		goto out0;
 	}
+
+	ret = zocl_kds_update(zdev, slot, &axlf_obj->kds_cfg);
+	if (ret) {
+		write_lock(&zdev->attr_rwlock);
+		goto out0;
+	}
+
+	write_lock(&zdev->attr_rwlock);
 
 out0:
 	write_unlock(&zdev->attr_rwlock);
 	vfree(aie_res);
 	vfree(axlf);
-	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(zdev), ret);
+	DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot),
+		ret);
+	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
 }
 
 void *
-zocl_xclbin_get_uuid(struct drm_zocl_dev *zdev)
+zocl_xclbin_get_uuid(struct drm_zocl_slot *slot)
 {
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&slot->slot_xclbin_lock));
+	if (!slot->slot_xclbin)
+		return NULL;
 
-	return zdev->zdev_xclbin->zx_uuid;
+	return slot->slot_xclbin->zx_uuid;
 }
 
+/*
+ * Block the bitstream for this slot. This will increase reference count.
+ *
+ * @param       slot:	slot specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success, -EBUSY if already locked, Error code on failure.
+ */
 int
-zocl_xclbin_hold(struct drm_zocl_dev *zdev, const uuid_t *id)
+zocl_xclbin_hold(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(zdev);
+	xuid_t *xclbin_id = (xuid_t *)zocl_xclbin_get_uuid(slot);
 
 	if (!xclbin_id) {
 		DRM_ERROR("No active xclbin. Cannot hold ");
@@ -1069,48 +1370,66 @@ zocl_xclbin_hold(struct drm_zocl_dev *zdev, const uuid_t *id)
 		DRM_WARN("NULL uuid to hold\n");
 		return -EINVAL;
 	}
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&slot->slot_xclbin_lock));
 
 	if (!uuid_equal(id, xclbin_id)) {
-		DRM_ERROR("lock bitstream %pUb failed, on zdev: %pUb",
+		DRM_ERROR("lock bitstream %pUb failed, on Slot: %pUb",
 		    id, xclbin_id);
 		return -EBUSY;
 	}
 
-	zdev->zdev_xclbin->zx_refcnt++;
+	slot->slot_xclbin->zx_refcnt++;
 	DRM_INFO("bitstream %pUb locked, ref=%d",
-		 id, zdev->zdev_xclbin->zx_refcnt);
+		 id, slot->slot_xclbin->zx_refcnt);
 
 	return 0;
 }
 
-int zocl_lock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+/*
+ * Lock this bitstream for this slot. This will help to protect the slot
+ * for accidental update of new xclbin.
+ *
+ * @param       slot:	slot specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success, -EBUSY if already locked, Error code on failure.
+ */
+int zocl_lock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
 	int ret;
 
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_hold(zdev, id);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
+	mutex_lock(&slot->slot_xclbin_lock);
+	ret = zocl_xclbin_hold(slot, id);
+	mutex_unlock(&slot->slot_xclbin_lock);
 
 	return ret;
 }
 
+/*
+ * Release this bitstream for this slot. Also decrease the reference count
+ * for this slot.
+ *
+ * @param       slot:	slot specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
 int
-zocl_xclbin_release(struct drm_zocl_dev *zdev, const uuid_t *id)
+zocl_xclbin_release(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(zdev);
+	xuid_t *xclbin_uuid = (xuid_t *)zocl_xclbin_get_uuid(slot);
 
 	if (!xclbin_uuid) {
 		DRM_ERROR("No active xclbin. Cannot release");
 		return -EINVAL;
 	}
 
-	BUG_ON(!mutex_is_locked(&zdev->zdev_xclbin_lock));
+	BUG_ON(!mutex_is_locked(&slot->slot_xclbin_lock));
 
 	if (uuid_is_null(id)) /* force unlock all */
-		zdev->zdev_xclbin->zx_refcnt = 0;
+		slot->slot_xclbin->zx_refcnt = 0;
 	else if (uuid_equal(xclbin_uuid, id))
-		--zdev->zdev_xclbin->zx_refcnt;
+		--slot->slot_xclbin->zx_refcnt;
 	else {
 		DRM_WARN("unlock bitstream %pUb failed, on device: %pUb",
 			 id, xclbin_uuid);
@@ -1118,94 +1437,43 @@ zocl_xclbin_release(struct drm_zocl_dev *zdev, const uuid_t *id)
 	}
 
 	DRM_INFO("bitstream %pUb unlocked, ref=%d",
-		 xclbin_uuid, zdev->zdev_xclbin->zx_refcnt);
+		 xclbin_uuid, slot->slot_xclbin->zx_refcnt);
 
 	return 0;
 }
 
-int zocl_unlock_bitstream(struct drm_zocl_dev *zdev, const uuid_t *id)
+/*
+ * Unlock this bitstream for this slot. This will help to reload a new xclbin
+ * for this slot.
+ *
+ * @param       slot:	slot specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
+int zocl_unlock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
 	int ret;
 
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_release(zdev, id);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
+	mutex_lock(&slot->slot_xclbin_lock);
+	ret = zocl_xclbin_release(slot, id);
+	mutex_unlock(&slot->slot_xclbin_lock);
 
 	return ret;
 }
 
+/*
+ * Set this uuid for this slot.
+ *
+ * @param       slot:	slot specific structure
+ * @param       id:	xclbin uuid
+ *
+ * @return      0 on success Error code on failure.
+ */
 int
-zocl_graph_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
-        struct sched_client_ctx *client)
+zocl_xclbin_set_uuid(struct drm_zocl_slot *slot, void *uuid)
 {
-	xuid_t *zdev_xuid, *ctx_xuid;
-	u32 gid = ctx->graph_id;
-	u32 flags = ctx->flags;
-	int ret;
-
-	mutex_lock(&zdev->zdev_xclbin_lock);
-
-	ctx_xuid = vmalloc(ctx->uuid_size);
-	if (!ctx_xuid) {
-		mutex_unlock(&zdev->zdev_xclbin_lock);
-		return -ENOMEM;
-	}
-
-	ret = copy_from_user(ctx_xuid, (void *)(uintptr_t)ctx->uuid_ptr,
-	    ctx->uuid_size);
-	if (ret)
-		goto out;
-
-	zdev_xuid = (xuid_t *)zdev->zdev_xclbin->zx_uuid;
-
-	if (!zdev_xuid || !uuid_equal(zdev_xuid, ctx_xuid)) {
-		DRM_ERROR("try to allocate Graph CTX with wrong xclbin %pUB",
-		    ctx_xuid);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	ret = zocl_aie_graph_alloc_context(zdev, gid, flags, client);
-out:
-	mutex_unlock(&zdev->zdev_xclbin_lock);
-	vfree(ctx_xuid);
-	return ret;
-}
-
-int
-zocl_graph_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
-        struct sched_client_ctx *client)
-{
-	u32 gid = ctx->graph_id;
-	int ret;
-
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_aie_graph_free_context(zdev, gid, client);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
-
-	return ret;
-}
-
-int
-zocl_aie_alloc_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
-        struct sched_client_ctx *client)
-{
-	u32 flags = ctx->flags;
-
-	return zocl_aie_alloc_context(zdev, flags, client);
-}
-
-int
-zocl_aie_free_ctx(struct drm_zocl_dev *zdev, struct drm_zocl_ctx *ctx,
-        struct sched_client_ctx *client)
-{
-	return zocl_aie_free_context(zdev, client);
-}
-
-int
-zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid)
-{
-	xuid_t *zx_uuid = zdev->zdev_xclbin->zx_uuid;
+	xuid_t *zx_uuid = slot->slot_xclbin->zx_uuid;
 
 	if (zx_uuid) {
 		vfree(zx_uuid);
@@ -1217,92 +1485,57 @@ zocl_xclbin_set_uuid(struct drm_zocl_dev *zdev, void *uuid)
 		return -ENOMEM;
 
 	uuid_copy(zx_uuid, uuid);
-	zdev->zdev_xclbin->zx_uuid = zx_uuid;
+	slot->slot_xclbin->zx_uuid = zx_uuid;
 	return 0;
-}
-
-int
-zocl_xclbin_init(struct drm_zocl_dev *zdev)
-{
-	zdev->zdev_xclbin = vmalloc(sizeof(struct zocl_xclbin));
-	if (!zdev->zdev_xclbin) {
-		DRM_ERROR("Alloc zdev_xclbin failed: no memory\n");
-		return -ENOMEM;
-	}
-
-	zdev->zdev_xclbin->zx_refcnt = 0;
-	zdev->zdev_xclbin->zx_uuid = NULL;
-
-	return 0;
-}
-void
-zocl_xclbin_fini(struct drm_zocl_dev *zdev)
-{
-	vfree(zdev->zdev_xclbin->zx_uuid);
-	zdev->zdev_xclbin->zx_uuid = NULL;
-	vfree(zdev->zdev_xclbin);
-	zdev->zdev_xclbin = NULL;
-
-	/* Delete CU devices if exist */
-	zocl_destroy_cu(zdev);
-}
-
-bool
-zocl_xclbin_accel_adapter(int kds_mask)
-{
-	return kds_mask == ACCEL_ADAPTER;
-}
-
-bool
-zocl_xclbin_legacy_intr(struct drm_zocl_dev *zdev)
-{
-	u32 prop;
-	int i, count = 0;
-
-	/* if all of the interrupt id is 0, this xclbin is legacy */
-	for (i = 0; i < zdev->num_apts; i++) {
-		prop = zdev->apertures[i].prop;
-		if ((prop & IP_INTERRUPT_ID_MASK) == 0)
-			count++;
-	}
-
-	if (count < zdev->num_apts && count > 1) {
-		DRM_WARN("%d non-zero interrupt-id CUs out of %d CUs",
-		    count, zdev->num_apts);
-	}
-
-	return (count == zdev->num_apts);
-}
-
-u32
-zocl_xclbin_intr_id(struct drm_zocl_dev *zdev, u32 idx)
-{
-	u32 prop = zdev->apertures[idx].prop;
-
-	return xclbin_intr_id(prop);
 }
 
 /*
- * returns false if any of the cu doesnt support interrupt
+ * Initialize the xclbin for this slot. Allocate necessery memory for the
+ * same.
+ *
+ * @param       slot:	slot specific structure
+ *
+ * @return      0 on success Error code on failure.
  */
-bool
-zocl_xclbin_cus_support_intr(struct drm_zocl_dev *zdev)
+int
+zocl_xclbin_init(struct drm_zocl_slot *slot)
 {
-	struct ip_data *ip;
-	int i;
+	struct zocl_xclbin *z_xclbin = NULL;
 
-	if (!zdev->ip)
-		return false;
-
-	for (i = 0; i < zdev->ip->m_count; ++i) {
-		ip = &zdev->ip->m_ip_data[i];
-		if (xclbin_protocol(ip->properties) == AP_CTRL_NONE) {
-			continue;
-		}
-		if (!(ip->properties & 0x1)) {
-			return false;
-		}
+	z_xclbin = vmalloc(sizeof(struct zocl_xclbin));
+	if (!z_xclbin) {
+		DRM_ERROR("Alloc slot_xclbin failed: no memory\n");
+		return -ENOMEM;
 	}
 
-	return true;
+	z_xclbin->zx_refcnt = 0;
+	z_xclbin->zx_uuid = NULL;
+
+	slot->slot_xclbin = z_xclbin;
+
+	return 0;
+}
+
+/*
+ * Cleanup the xclbin for this slot. Also destroy the CUs associated with this
+ * slot.
+ *
+ * @param       zdev:	zocl device structure
+ * @param       slot:	slot specific structure
+ *
+ * @return      0 on success Error code on failure.
+ */
+void
+zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
+{
+	if (!slot->slot_xclbin)
+		return;
+
+	vfree(slot->slot_xclbin->zx_uuid);
+	slot->slot_xclbin->zx_uuid = NULL;
+	vfree(slot->slot_xclbin);
+	slot->slot_xclbin = NULL;
+
+	/* Delete CU devices if exist for this slot */
+	zocl_destroy_cu_slot(zdev, slot->slot_idx);
 }

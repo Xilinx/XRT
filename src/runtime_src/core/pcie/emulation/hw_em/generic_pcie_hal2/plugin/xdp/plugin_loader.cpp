@@ -15,6 +15,7 @@
  */
 
 #include "core/common/config_reader.h"
+#include "core/common/utils.h"
 
 #include "device_offload.h"
 #include "hal_trace.h"
@@ -27,7 +28,8 @@ namespace hw_emu {
   //  options and loading the appropriate debug/profile plugins.
   void load()
   {
-    if (xrt_core::config::get_xrt_trace())
+    if (xrt_core::config::get_xrt_trace() ||
+        xrt_core::utils::load_host_trace())
       xdp::hw_emu::trace::load() ;
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
         xrt_core::config::get_device_trace() != "off" ||
