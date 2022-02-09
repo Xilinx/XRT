@@ -49,15 +49,25 @@
 /**
  * sensor data request types
  */
+enum xgq_cmd_sensor_application_id {
+	XGQ_CMD_SENSOR_AID_GET_SIZE			= 0x1,
+	XGQ_CMD_SENSOR_AID_GET_SDR			= 0x2,
+	XGQ_CMD_SENSOR_AID_GET_SINGLE_SENSOR_DATA	= 0x3,
+	XGQ_CMD_SENSOR_AID_GET_ALL_SENSOR_DATA		= 0x4,
+};
+
+/**
+ * sensor data request types
+ */
 enum xgq_cmd_sensor_page_id {
-	XGQ_CMD_SENSOR_PID_GET_SIZE	= 0x0,
-	XGQ_CMD_SENSOR_PID_BDINFO	= 0x1,
-	XGQ_CMD_SENSOR_PID_TEMP		= 0x2,
-	XGQ_CMD_SENSOR_PID_VOLTAGE	= 0x3,
-	XGQ_CMD_SENSOR_PID_CURRENT	= 0x4,
-	XGQ_CMD_SENSOR_PID_POWER	= 0x5,
-	XGQ_CMD_SENSOR_PID_QSFP		= 0x6,
-	XGQ_CMD_SENSOR_PID_ALL		= 0x7,
+	XGQ_CMD_SENSOR_SID_GET_SIZE	= 0x0,
+	XGQ_CMD_SENSOR_SID_BDINFO	= 0x1,
+	XGQ_CMD_SENSOR_SID_TEMP		= 0x2,
+	XGQ_CMD_SENSOR_SID_VOLTAGE	= 0x3,
+	XGQ_CMD_SENSOR_SID_CURRENT	= 0x4,
+	XGQ_CMD_SENSOR_SID_POWER	= 0x5,
+	XGQ_CMD_SENSOR_SID_QSFP		= 0x6,
+	XGQ_CMD_SENSOR_SID_ALL		= 0x7,
 };
 
 /**
@@ -103,6 +113,28 @@ struct xgq_cmd_log_payload {
 	uint32_t size;
 	uint32_t offset;
 	uint32_t pid:16;
+	uint32_t addr_type:3;
+	uint32_t rsvd1:13;
+	uint32_t pad;
+};
+
+/**
+ * struct xgq_cmd_sensor_payload: sensor_page request command
+ *
+ * @address:	pre-allocated sensor data, device writes sensor data at this address
+ * @size:	size of pre-allocated sensor data
+ * @offset:	offset of returned device data
+ * @pid:	sensor request id
+ * @addr_type:	pre-allocated address type
+ *
+ * This payload is used for sensor data report.
+ */
+struct xgq_cmd_sensor_payload {
+	uint64_t address;
+	uint32_t size;
+	uint32_t offset;
+	uint32_t aid:8;
+	uint32_t pid:8;
 	uint32_t addr_type:3;
 	uint32_t rsvd1:13;
 	uint32_t pad;
@@ -173,12 +205,12 @@ struct xgq_cmd_vmr_control_payload {
 struct xgq_cmd_sq {
 	struct xgq_cmd_sq_hdr hdr;
 	union {
-		struct xgq_cmd_log_payload 		log_payload;
-		struct xgq_cmd_clock_payload 		clock_payload;
-		struct xgq_cmd_data_payload 		pdi_payload;
-		struct xgq_cmd_data_payload 		xclbin_payload;
-		struct xgq_cmd_log_payload 		sensor_payload;
-		struct xgq_cmd_vmr_control_payload 	vmr_control_payload;
+		struct xgq_cmd_log_payload		log_payload;
+		struct xgq_cmd_clock_payload		clock_payload;
+		struct xgq_cmd_data_payload		pdi_payload;
+		struct xgq_cmd_data_payload		xclbin_payload;
+		struct xgq_cmd_sensor_payload		sensor_payload;
+		struct xgq_cmd_vmr_control_payload	vmr_control_payload;
 	};
 };
 
