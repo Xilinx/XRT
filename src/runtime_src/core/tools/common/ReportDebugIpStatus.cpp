@@ -783,7 +783,7 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
 {
   uint64_t num_debug_ips = _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips");
 
-  _output << "\nDebug IP Status \n  Number of IPs found :: " 
+  _output << "\nDebug IP Status \n  Number of IPs found: " 
           << num_debug_ips << std::endl; // Total count with the IPs actually shown
 
   if (0 == num_debug_ips) {
