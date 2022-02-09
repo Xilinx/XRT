@@ -197,10 +197,13 @@ all:
         { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
         { load=0x20000000, file=$BUILD_DIR/boot.scr }
-        { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
     }
 }
 EOF
+
+# remove metadata. The current loading address seems conflicting with other program.
+# This leads to RPU crash while loading APU package
+#        { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
 
 MKIMAGE=mkimage
 
