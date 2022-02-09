@@ -95,6 +95,7 @@ enum xgq_cmd_vmr_control_type {
 enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_AF		= 0x0,
 	XGQ_CMD_LOG_FW		= 0x1,
+	XGQ_CMD_LOG_XCLBIN	= 0x2,
 };
 
 /**
@@ -168,6 +169,7 @@ struct xgq_cmd_clock_payload {
 struct xgq_cmd_data_payload {
 	uint64_t address;
 	uint32_t size;
+	uint32_t remain_size;
 	uint32_t addr_type:4;
 	uint32_t flush_type:4;
 	uint32_t rsvd1:24;
@@ -255,6 +257,16 @@ struct xgq_cmd_cq_log_page_payload {
 };
 
 /**
+ * struct xgq_cmd_cq_log_page_payload: load xclbin/pdi data payload
+ *
+ * @count:	how many data returned in bytes
+ */
+struct xgq_cmd_cq_data_payload {
+	uint32_t count;
+	uint32_t resvd1;
+};
+
+/**
  * struct xgq_cmd_cq_vmr_payload: vmr device status payload
  *
  * bitfields for indicting flash partition statistics.
@@ -295,6 +307,7 @@ struct xgq_cmd_cq {
 		struct xgq_cmd_cq_sensor_payload	cq_sensor_payload;
 		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
 		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
+		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
 	};
 	uint32_t rcode;
 };
