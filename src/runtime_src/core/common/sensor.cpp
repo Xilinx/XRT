@@ -56,7 +56,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("voltage.error_msg", ex.what());
   }
   pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(voltage));
-  pt.put("voltage.is_present", voltage != 0 ? "true" : "false");
+  pt.put("voltage.is_present", voltage != 0 ? true : false);
 
   try {
     if (!std::is_same<QRCurrent, xq::noop>::value)
@@ -66,7 +66,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("current.error_msg", ex.what());
   }
   pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(current));
-  pt.put("current.is_present", current != 0 ? "true" : "false");
+  pt.put("current.is_present", current != 0 ? true : false);
 
   return pt;
 }
@@ -89,7 +89,7 @@ populate_temp(const xrt_core::device * device,
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("temp_C", temp_C);
-  pt.put("is_present", temp_C != 0 ? "true" : "false");
+  pt.put("is_present", temp_C != 0 ? true : false);
 
   return pt;
 }
@@ -137,7 +137,6 @@ populate_fan(const xrt_core::device * device,
 
 /*
  * _data_driven_*(): Sensor data driven model APIs
- *   data_driven functions are used when accessing sensor data
  *   without it's name and it is not static.
  *   The data is being accessed from hwmon driver's sysfs nodes, which
  *   are registered by xrt client device driver.
@@ -155,31 +154,28 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   ptree_type sensor_array;
   ptree_type pt;
 
-  pt.put("data_driven", true);
   // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& curr : current)
   {
-    pt.put("label", curr.label);
-    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(curr.input));
-    pt.put("max", xrt_core::utils::format_base10_shiftdown3(curr.max));
-    pt.put("average", xrt_core::utils::format_base10_shiftdown3(curr.average));
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(curr.highest));
-	// these fields are also needed to differentiate between sensor types
+    pt.put("description", curr.label);
+    pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(curr.input));
+    pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(curr.max));
+    pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(curr.average));
+    // these fields are also needed to differentiate between sensor types
     pt.put("current.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("power.is_present", false);
     sensor_array.push_back({"", pt});
   }
 
-  // iterate over current data, store to ptree by converting to Volts from milli Volts
+  // iterate over voltage data, store to ptree by converting to Volts from milli Volts
   for (const auto& tmp : voltage)
   {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-	// these fields are also needed to differentiate between sensor types
+    pt.put("description", tmp.label);
+    pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+    pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", true);
     pt.put("current.is_present", false);
     pt.put("power.is_present", false);
@@ -187,15 +183,12 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   }
 
   std::string bd_power;
-  // iterate over current data, store to ptree by converting to watts.
+  // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown6(tmp.input));
-    pt.put("max", xrt_core::utils::format_base10_shiftdown6(tmp.max));
-    pt.put("average", xrt_core::utils::format_base10_shiftdown6(tmp.average));
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown6(tmp.highest));
-	// these fields are also needed to differentiate between sensor types
+    pt.put("description", tmp.label);
+    pt.put("power.watts", xrt_core::utils::format_base10_shiftdown6(tmp.input));
+    // these fields are also needed to differentiate between sensor types
     pt.put("power.is_present", true);
     pt.put("voltage.is_present", false);
     pt.put("current.is_present", false);
@@ -216,18 +209,18 @@ static ptree_type
 read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& output)
 {
   ptree_type thermal_array;
-  ptree_type pt;
   ptree_type root;
 
-  pt.put("data_driven", true);
   // iterate over temperature data, store to ptree by converting to Celcius
   for(const auto& tmp : output)
   {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-    pt.put("average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    uint64_t temp_C;
+    ptree_type pt;
+    pt.put("description", tmp.label);
+    temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("temp_C", temp_C);
     pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    pt.put("is_present", temp_C != 0 ? true : false);
     thermal_array.push_back({"", pt});
   }
 
@@ -239,18 +232,16 @@ static ptree_type
 read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
 {
   ptree_type root;
-  ptree_type fan_array;
   ptree_type pt;
+  ptree_type fan_array;
 
-  pt.put("data_driven", true);
-  // iterate over temperature data, store it into property_tree
+  // iterate over output data, store it into property_tree
   for(const auto& tmp : output)
   {
-    pt.put("label", tmp.label);
-    pt.put("instantaneous", tmp.input);
-    pt.put("max", tmp.max);
-    pt.put("average", tmp.average);
-    pt.put("highest", tmp.highest);
+    pt.put("description", tmp.label);
+    pt.put("speed_rpm", tmp.input);
+    pt.put("critical_trigger_temp_C", "N/A");
+    pt.put("is_present", true);
     fan_array.push_back({"", pt});
   }
 
@@ -324,7 +315,6 @@ read_legacy_electrical(const xrt_core::device * device)
   ptree_type sensor_array;
   ptree_type pt;
 
-  sensor_array.push_back({"", pt.put("is_present", "true")});
   sensor_array.push_back({"",
     populate_sensor<xq::v12v_aux_millivolts, xq::v12v_aux_milliamps>(device, "12v_aux", "12 Volts Auxillary")});
   sensor_array.push_back({"",

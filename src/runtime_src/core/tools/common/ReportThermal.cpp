@@ -56,16 +56,11 @@ ReportThermal::writeReport( const xrt_core::device* /*_pDevice*/,
   _output << boost::format("  %-23s: %6s\n") % "Temperature" % "Celcius";
   for(auto& kv : thermals) {
     const boost::property_tree::ptree& pt_temp = kv.second;
-    if(pt_temp.get<bool>("data_driven", false)) {
-      thermals_present = true;
-      _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("label") % pt_temp.get<std::string>("instantaneous");
-    } else {
-      if(!pt_temp.get<bool>("is_present", false))
-        continue;
+    if(!pt_temp.get<bool>("is_present", false))
+      continue;
 
-      thermals_present = true;
-      _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
-    }
+    thermals_present = true;
+    _output << boost::format("  %-23s: %6s C\n") % pt_temp.get<std::string>("description") % pt_temp.get<std::string>("temp_C");
   }
 
   if(!thermals_present)
