@@ -349,7 +349,7 @@ update_max_apt_number(struct drm_zocl_dev *zdev)
 	zdev->num_apts = 0;
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
 		if (zdev->apertures[apt_idx].addr != 0)
-			zdev->num_apts = apt_idx;
+			zdev->num_apts = apt_idx + 1;
 	}
 }
 

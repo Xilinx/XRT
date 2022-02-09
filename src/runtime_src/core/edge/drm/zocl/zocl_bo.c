@@ -450,10 +450,6 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 
 	mem_index = GET_MEM_INDEX(args->flags);
 	mem = zocl_get_mem_by_mem_index(zdev, mem_index);
-	if (!mem) {
-		DRM_ERROR("Invalid memory index");
-		return -EINVAL;
-	}
 
 	/* Always allocate EXECBUF from CMA */
 	if (args->flags & ZOCL_BO_FLAGS_EXECBUF)
