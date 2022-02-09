@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "SubCmdConfigure.h"
 #include "tools/common/XBUtilities.h"
+#include "common/system.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -122,23 +123,11 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
   }
 }
 
-static std::string
-get_hostname()
-{
-  std::string hn;
-#ifdef __GNUC__
-  char hostname[256] = {0};
-  gethostname(hostname, 256);
-  hn = hostname;
-#endif
-  return hn;
-}
-
 static config
 get_daemon_conf()
 {
   config cfg;
-  cfg.host = get_hostname();
+  cfg.host = xrt_core::get_hostname();
 
   std::ifstream istr(config_file);
   if (!istr)

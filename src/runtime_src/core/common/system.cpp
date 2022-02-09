@@ -183,6 +183,12 @@ get_total_devices(bool is_user)
   return instance().get_total_devices(is_user);
 }
 
+std::string
+get_hostname()
+{
+  return instance().get_hostname();
+}
+
 device::id_type
 get_device_id(const std::string& str)
 {

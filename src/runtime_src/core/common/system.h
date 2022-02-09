@@ -107,6 +107,14 @@ public:
   get_mgmtpf_device(device::id_type id) const = 0;
 
   /**
+   */
+  virtual std::string
+  get_hostname() const
+  {
+    return std::string("hostname");
+  }
+
+  /**
    * get_monitor_access_type() -
    *
    * Each system have different ways of accessing profiling
@@ -174,6 +182,12 @@ get_devices(boost::property_tree::ptree& pt);
 XRT_CORE_COMMON_EXPORT
 std::pair<device::id_type, device::id_type>
 get_total_devices(bool is_user);
+
+/**
+ */
+XRT_CORE_COMMON_EXPORT
+std::string
+get_hostname();
 
 /**
  * get_device_id() - Convert str to device index
