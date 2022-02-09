@@ -17,9 +17,6 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportMechanical.h"
-#include "core/common/query_requests.h"
-
-namespace qr = xrt_core::query;
 
 #include "core/common/sensor.h"
 
@@ -53,9 +50,7 @@ ReportMechanical::writeReport( const xrt_core::device* /*_pDevice*/,
   const boost::property_tree::ptree& fans = _pt.get_child("mechanical.fans", empty_ptree);
   for(auto& kv : fans) {
     const boost::property_tree::ptree& pt_fan = kv.second;
-    if(!pt_fan.get<bool>("is_present", false))
-      continue;
-    if(!pt_fan.get<bool>("is_present")) {
+    if(!pt_fan.get<bool>("is_present", false)) {
       _output << "    Not present"  << std::endl;
       continue;
     }
