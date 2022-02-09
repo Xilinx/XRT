@@ -1,44 +1,30 @@
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 
-/**
- * XRT software scheduler in user space.
- *
- * This is a software model of the kds scheduler.  Primarily
- * for debug and bring up.
- */
+// XRT software scheduler in user space.
+//
+// This is a software model of the kds scheduler.  Primarily
+// for debug and bring up.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "exec.h"
 #include "command.h"
 #include "ert.h"
 #include "xclbin.h"
-#include "core/common/device.h"
+
 #include "core/common/debug.h"
+#include "core/common/device.h"
 #include "core/common/task.h"
 #include "core/common/thread.h"
 #include "core/common/xclbin_parser.h"
-#include <limits>
 #include <bitset>
-#include <vector>
+#include <condition_variable>
+#include <cstring>
+#include <limits>
 #include <list>
 #include <map>
 #include <mutex>
-#include <condition_variable>
-#include <cstring>
+#include <vector>
 
 #ifdef _WIN32
 # pragma warning( disable : 4996 4458 4267 4244 )
@@ -861,6 +847,12 @@ unmanaged_wait(const xrt_core::command* cmd)
     s_cmd_complete_cond.wait(lk);
 }
 
+std::cv_status
+exec_wait(const xrt_core::device*, const std::chrono::milliseconds&)
+{
+  throw std::runtime_error("sws::exec_wait not implemented");
+}
+
 void
 start()
 {
@@ -906,7 +898,7 @@ init(xrt_core::device* xdev)
 
   // Slots are computed by device, its a function of device properties
   auto slots = xdev->get_ert_slots(xml_data, xml_size).first;
-  
+
   // create execution core for this device
   cu_trace_enabled = xrt_core::config::get_opencl_summary();
 

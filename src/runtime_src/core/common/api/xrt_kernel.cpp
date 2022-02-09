@@ -1,19 +1,5 @@
-/*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
 
 // This file implements XRT kernel APIs as declared in
 // core/include/experimental/xrt_kernel.h
@@ -649,6 +635,18 @@ public:
   using callback_function_type = std::function<void(ert_cmd_state)>;
   using callback_list = std::vector<callback_function_type>;
 
+private:
+  // Return state of underlying exec buffer packet This is an
+  // asynchronous call, the command object may not be in the same
+  // state as reflected by the return value.
+  ert_cmd_state
+  get_state_raw() const
+  {
+    auto pkt = get_ert_packet();
+    return static_cast<ert_cmd_state>(pkt->state);
+  }
+
+
 public:
   explicit
   kernel_command(std::shared_ptr<device_type> dev)
@@ -696,12 +694,15 @@ public:
     return m_done;
   }
 
-  // Return state of underlying exec buffer packet
+  // Return state of command object.  The underlying packet
+  // state is reflected in the command itself.  If function
+  // returns completed, then the run object can be reused.
   ert_cmd_state
   get_state() const
   {
-    auto pkt = get_ert_packet();
-    return static_cast<ert_cmd_state>(pkt->state);
+    auto state = get_state_raw();
+    notify(state);  // update command state accordingly
+    return state;
   }
 
   // Cast underlying exec buffer to its requested type
@@ -812,7 +813,7 @@ public:
       xrt_core::exec::unmanaged_wait(this);
     }
 
-    return get_state();
+    return get_state_raw(); // state wont change after wait
   }
 
   ert_cmd_state
@@ -829,7 +830,7 @@ public:
         return ERT_CMD_STATE_TIMEOUT;
     }
 
-    return get_state();
+    return get_state_raw(); // state wont change after wait
   }
 
   ////////////////////////////////////////////////////////////////
@@ -854,12 +855,19 @@ public:
   }
 
   void
-  notify(ert_cmd_state s) override
+  notify(ert_cmd_state s) const override
   {
     bool complete = false;
     bool callbacks = false;
-    if (s>=ERT_CMD_STATE_COMPLETED) {
+    if (s >= ERT_CMD_STATE_COMPLETED) {
       std::lock_guard<std::mutex> lk(m_mutex);
+
+      // Handle potential race if multiple threads end up here. This
+      // condition is by design because there are multiple paths into
+      // this function and first conditional check should not be locked
+      if (m_done)
+        return;
+
       XRT_DEBUGF("kernel_command::notify() m_uid(%d) m_state(%d)\n", m_uid, s);
       complete = m_done = true;
       callbacks = (m_callbacks && !m_callbacks->empty());
@@ -882,11 +890,11 @@ public:
 
 private:
   std::shared_ptr<device_type> m_device;
-  std::shared_ptr<xrt::event_impl> m_event;
+  mutable std::shared_ptr<xrt::event_impl> m_event;
   execbuf_type m_execbuf; // underlying execution buffer
   unsigned int m_uid = 0;
   bool m_managed = false;
-  bool m_done = false;
+  mutable bool m_done = false;
 
   mutable std::mutex m_mutex;
   mutable std::condition_variable m_exec_done;
@@ -2164,8 +2172,7 @@ public:
   ert_cmd_state
   state() const
   {
-    auto pkt = cmd->get_ert_packet();
-    return static_cast<ert_cmd_state>(pkt->state);
+    return cmd->get_state();
   }
 
   ert_packet*
@@ -2196,7 +2203,7 @@ class mailbox_impl : public run_impl
     uint32_t* data32;    // note that 'data' in base is uint8_t*
     mailbox_impl* mbox;
     static constexpr size_t wsize = sizeof(uint32_t);  // register word size
-    
+
     hs_arg_setter(uint32_t* data, mailbox_impl* mimpl)
       : run_impl::hs_arg_setter(data), data32(data), mbox(mimpl)
     {}
@@ -2207,7 +2214,7 @@ class mailbox_impl : public run_impl
       // single 4 byte register write
       run_impl::hs_arg_setter::set_offset_value(offset, value);
 
-      // write single 4 byte value to mailbox 
+      // write single 4 byte value to mailbox
       mbox->mailbox_wait();
       mbox->kernel->write_register(offset, *(data32 + offset / wsize));
     }
@@ -2281,8 +2288,8 @@ class mailbox_impl : public run_impl
 
   uint32_t m_ctrlreg = 0;   // last CU ctrl reg read
   bool m_busy = false;      // true after initiating write() or read()
-  bool m_readonly = false;    // 
-  bool m_writeonly = false;   // 
+  bool m_readonly = false;    //
+  bool m_writeonly = false;   //
 
 public:
   explicit
@@ -2972,7 +2979,7 @@ offset(int argno) const
 // xrt_mailbox C++ experimental API implmentations
 // see experimental/xrt_mailbox.h
 ////////////////////////////////////////////////////////////////
-namespace xrt { 
+namespace xrt {
 
 mailbox::
 mailbox(const xrt::run& run)
@@ -3014,7 +3021,7 @@ set_arg_at_index(int index, const void* value, size_t bytes)
 {
   handle->set_arg_at_index(index, value, bytes);
 }
- 
+
 void
 mailbox::
 set_arg_at_index(int index, const xrt::bo& glb)
