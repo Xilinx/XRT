@@ -496,7 +496,7 @@ class xclbin_impl
         }), mems.end());
 
       if (mems.empty())
-        return {};
+        return enc;
 
       // sort collected memory banks on addr decreasing order, the size
       std::sort(mems.begin(), mems.end(),
