@@ -461,7 +461,7 @@ zocl_create_bo_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 		 * PL-DDR; For any other cases (invalid bank index), we
 		 * allocate from CMA by default.
 		 */
-		if (mem->zm_used) {
+		if (mem && mem->zm_used) {
 			if (mem->zm_type == ZOCL_MEM_TYPE_CMA)
 				args->flags |= ZOCL_BO_FLAGS_CMA;
 		} else {
