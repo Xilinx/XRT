@@ -56,7 +56,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("voltage.error_msg", ex.what());
   }
   pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(voltage));
-  pt.put("voltage.is_present", voltage != 0 ? true : false);
+  pt.put("voltage.is_present", voltage != 0 ? "true" : "false");
 
   try {
     if (!std::is_same<QRCurrent, xq::noop>::value)
@@ -66,7 +66,7 @@ populate_sensor(const xrt_core::device * device,
     pt.put("current.error_msg", ex.what());
   }
   pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(current));
-  pt.put("current.is_present", current != 0 ? true : false);
+  pt.put("current.is_present", current != 0 ? "true" : "false");
 
   return pt;
 }
@@ -89,7 +89,7 @@ populate_temp(const xrt_core::device * device,
   pt.put("location_id", loc_id);
   pt.put("description", desc);
   pt.put("temp_C", temp_C);
-  pt.put("is_present", temp_C != 0 ? true : false);
+  pt.put("is_present", temp_C != 0 ? "true" : "false");
 
   return pt;
 }
@@ -162,9 +162,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(curr.max));
     pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(curr.average));
     // these fields are also needed to differentiate between sensor types
-    pt.put("current.is_present", true);
-    pt.put("voltage.is_present", false);
-    pt.put("power.is_present", false);
+    pt.put("current.is_present", "true");
+    pt.put("voltage.is_present", "false");
+    pt.put("power.is_present", "false");
     sensor_array.push_back({"", pt});
   }
 
@@ -176,9 +176,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
     pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
     // these fields are also needed to differentiate between sensor types
-    pt.put("voltage.is_present", true);
-    pt.put("current.is_present", false);
-    pt.put("power.is_present", false);
+    pt.put("voltage.is_present", "true");
+    pt.put("current.is_present", "false");
+    pt.put("power.is_present", "false");
     sensor_array.push_back({"", pt});
   }
 
@@ -189,9 +189,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     pt.put("description", tmp.label);
     pt.put("power.watts", xrt_core::utils::format_base10_shiftdown6(tmp.input));
     // these fields are also needed to differentiate between sensor types
-    pt.put("power.is_present", true);
-    pt.put("voltage.is_present", false);
-    pt.put("current.is_present", false);
+    pt.put("power.is_present", "true");
+    pt.put("voltage.is_present", "false");
+    pt.put("current.is_present", "false");
     sensor_array.push_back({"", pt});
     if (!strcmp((tmp.label).c_str(), "POWER"))
       bd_power = xrt_core::utils::format_base10_shiftdown6(tmp.input);
@@ -220,7 +220,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
     temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("temp_C", temp_C);
     pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-    pt.put("is_present", temp_C != 0 ? true : false);
+    pt.put("is_present", temp_C != 0 ? "true" : "false");
     thermal_array.push_back({"", pt});
   }
 
@@ -241,7 +241,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
     pt.put("description", tmp.label);
     pt.put("speed_rpm", tmp.input);
     pt.put("critical_trigger_temp_C", "N/A");
-    pt.put("is_present", true);
+    pt.put("is_present", "true");
     fan_array.push_back({"", pt});
   }
 
