@@ -74,7 +74,7 @@
           <arg name="arg4" addressQualifier="0" id="4" size="0x8" offset="0x38" hostOffset="0x0" hostSize="0x8" type="int"/>
           <arg name="arg5" addressQualifier="0" id="5" size="0x4" offset="0x40" hostOffset="0x0" hostSize="0x4" type="float"/>
           <arg name="arg6" addressQualifier="1" id="6" size="0x10" offset="0x44" hostOffset="0x0" hostSize="0x10" type="float*"/>
-          <arg name="arg7" addressQualifier="1" id="7" size="0x10" offset="0x54" hostOffset="0x0" hostSize="0x10" type="xrtHandles*"/>
+          <arg name="arg7" addressQualifier="1" id="" size="0x10" offset="0x54" hostOffset="0x0" hostSize="0x10" type="xrtHandles*"/>
           <instance name="scu_0"/>
         </kernel>
       </core>
