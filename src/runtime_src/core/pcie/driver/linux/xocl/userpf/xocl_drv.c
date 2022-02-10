@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: Lizhi.Hou@xilinx.com
  *
@@ -932,6 +932,12 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 
+	ret = xocl_hwmon_sdm_init(xdev);
+	if (ret) {
+		userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+		ret = 0;
+	}
+
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 
 	ret = xocl_init_sysfs(xdev);
@@ -988,6 +994,55 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 	}
 
 	return 0;
+}
+
+static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind kind)
+{
+	struct xcl_mailbox_subdev_peer subdev_peer = {0};
+	size_t resp_len = 4 * 1024;
+	size_t data_len = sizeof(struct xcl_mailbox_subdev_peer);
+	struct xcl_mailbox_req *mb_req = NULL;
+	char *in_buf = NULL;
+	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
+	int ret, id;
+
+	mb_req = vmalloc(reqlen);
+	if (!mb_req)
+		goto done;
+
+	in_buf = vzalloc(resp_len);
+	if (!in_buf)
+		goto done;
+
+	mb_req->req = XCL_MAILBOX_REQ_SDR_DATA;
+	subdev_peer.size = resp_len;
+	subdev_peer.kind = kind;
+	subdev_peer.entries = 1;
+
+	memcpy(mb_req->data, &subdev_peer, data_len);
+
+	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
+
+	xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
+
+done:
+	vfree(in_buf);
+	vfree(mb_req);
+
+	return ret;
+}
+
+int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
+{
+	struct xocl_subdev_info subdev_info = XOCL_DEVINFO_HWMON_SDM;
+	int ret;
+
+	ret = xocl_subdev_create(xdev, &subdev_info);
+	if (ret && ret != -EEXIST)
+		return ret;
+
+	ret = xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
+	return ret;
 }
 
 /*
