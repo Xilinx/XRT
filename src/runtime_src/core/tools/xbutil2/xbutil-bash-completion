@@ -126,7 +126,7 @@ COMP_FILE="/usr/share/bash-completion/bash_completion"
 if [ -f "${COMP_FILE}" ]; then
   source /usr/share/bash-completion/bash_completion
   complete -F _xbutil_completion xbutil
-  echo Autocomplete enabled for the xbmgmt command
+  echo Autocomplete enabled for the xbutil command
 else
   echo ${COMP_FILE} missing! Autocomplete disabled for the xbutil command
 fi
