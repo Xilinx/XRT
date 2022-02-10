@@ -102,12 +102,12 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 	/* TODO : Need to update this function based on the device tree */
 	if (ZOCL_PLATFORM_ARM64) {
 		u64 pr_num;
-		if (of_property_read_u64(pdev->dev.of_node,
-					 "xlnx,pr-num-support", &pr_num))
+		if (!of_property_read_u64(pdev->dev.of_node,
+					  "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
 	} else {
 		u32 pr_num;
-		if (of_property_read_u32(pdev->dev.of_node,
+		if (!of_property_read_u32(pdev->dev.of_node,
 				 "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
 	}
