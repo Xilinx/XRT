@@ -122,8 +122,13 @@ _xbutil_completion()
   _command_word_xbutil_completion "${options}"
 }
 
-source /usr/share/bash-completion/bash_completion
-complete -F _xbutil_completion xbutil
-echo Autocomplete enabled for the xbutil command
+COMP_FILE="/usr/share/bash-completion/bash_completion"
+if [ -f "${COMP_FILE}" ]; then
+  source /usr/share/bash-completion/bash_completion
+  complete -F _xbutil_completion xbutil
+  echo Autocomplete enabled for the xbmgmt command
+else
+  echo ${COMP_FILE} missing! Autocomplete disabled for the xbutl command
+fi
 
 # ex: filetype=sh

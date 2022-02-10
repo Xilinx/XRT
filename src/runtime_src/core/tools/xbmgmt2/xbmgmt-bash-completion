@@ -103,7 +103,13 @@ _xbmgmt_completion()
   _command_word_xbmgmt_completion "${options}"
 }
 
-complete -F _xbmgmt_completion xbmgmt
-echo Autocomplete enabled for the xbmgmt command
+COMP_FILE="/usr/share/bash-completion/bash_completion"
+if [ -f "${COMP_FILE}" ]; then
+  source /usr/share/bash-completion/bash_completion
+  complete -F _xbmgmt_completion xbmgmt
+  echo Autocomplete enabled for the xbmgmt command
+else
+  echo ${COMP_FILE} missing! Autocomplete disabled for the xbmgmt command
+fi
 
 # ex: filetype=sh
