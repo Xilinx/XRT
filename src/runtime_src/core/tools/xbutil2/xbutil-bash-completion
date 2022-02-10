@@ -128,7 +128,7 @@ if [ -f "${COMP_FILE}" ]; then
   complete -F _xbutil_completion xbutil
   echo Autocomplete enabled for the xbmgmt command
 else
-  echo ${COMP_FILE} missing! Autocomplete disabled for the xbutl command
+  echo ${COMP_FILE} missing! Autocomplete disabled for the xbutil command
 fi
 
 # ex: filetype=sh
