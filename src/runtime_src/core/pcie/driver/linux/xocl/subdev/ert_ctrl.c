@@ -593,7 +593,7 @@ static int ert_ctrl_connect(struct platform_device *pdev)
 	int err = 0;
 
 	if (ec->ec_connected)
-		return -EBUSY;
+		return 0;
 
 	ec->ec_version = ert_ctrl_read32(ec->ec_cq_base + ERT_CTRL_VER_OFFSET);
 	switch (ec->ec_version) {
@@ -837,6 +837,11 @@ static int ert_ctrl_probe(struct platform_device *pdev)
 		err = ert_ctrl_cq_init(pdev);
 	if (err)
 		goto init_failed;
+
+	/* At this point, we are not able to attach control XGQ, since we don't
+	 * know if XGQ ERT is ready or not. We cannot wait for it.
+	 * The attach control XGQ can happen later by calling ert_ctrl_connect.
+	 */
 
 	if (sysfs_create_group(&pdev->dev.kobj, &ert_ctrl_attrgroup))
 		EC_ERR(ec, "Not able to create sysfs group");
