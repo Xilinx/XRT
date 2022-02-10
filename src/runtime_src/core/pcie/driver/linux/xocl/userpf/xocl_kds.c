@@ -489,7 +489,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	if (kds->xgq_enable)
 		return true;
 
-	if ((kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
+	if (kds->ert && (kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
 		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
