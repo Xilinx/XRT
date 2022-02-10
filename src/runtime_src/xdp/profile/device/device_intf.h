@@ -2,7 +2,7 @@
 #define _XDP_DEVICE_INTF_H_
 
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
 
  * Author(s): Paul Schumacher
  *          : Anurag Dubey
@@ -49,9 +49,6 @@ namespace xdp {
 // Helper methods
 
 XDP_EXPORT
-uint64_t GetDeviceTraceBufferSize(uint32_t property);
-
-XDP_EXPORT
 uint64_t GetTS2MMBufSize(bool isAIETrace = false);
 
 
@@ -76,15 +73,9 @@ class DeviceIntf {
     XDP_EXPORT
     uint32_t getNumMonitors(xclPerfMonType type);
     XDP_EXPORT
-    uint32_t getMonitorProperties(xclPerfMonType type, uint32_t index);
-    XDP_EXPORT
-    void getMonitorName(xclPerfMonType type, uint32_t index, char* name, uint32_t length);
-    XDP_EXPORT
     std::string getMonitorName(xclPerfMonType type, uint32_t index);
     XDP_EXPORT
-    std::string getTraceMonName(xclPerfMonType type, uint32_t index);
-    XDP_EXPORT
-    uint32_t getTraceMonProperty(xclPerfMonType type, uint32_t index);
+    uint64_t getFifoSize();
 
     bool isHostAIM(uint32_t index) {
       return mAimList[index]->isHostMonitor();
@@ -132,24 +123,26 @@ class DeviceIntf {
     /** Trace S2MM Management
      */
     bool hasTs2mm() {
-      return (mPlTraceDma != nullptr);
+      return (!mPlTraceDmaList.empty());
     };
     size_t getNumberTS2MM() {
-      return (mPlTraceDma != nullptr) ? 1 : 0;
+      return mPlTraceDmaList.size();
     };
+    bool supportsCircBuf() {
+      return ((1 == getNumberTS2MM()) ? (mPlTraceDmaList[0]->supportsCircBuf()) : false);
+    }
 
     XDP_EXPORT
-    void resetTS2MM();
-    TraceS2MM* getTs2mm() {return mPlTraceDma;};
+    void resetTS2MM(uint64_t index);
     XDP_EXPORT
-    void initTS2MM(uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
+    void initTS2MM(uint64_t index, uint64_t bufferSz, uint64_t bufferAddr, bool circular); 
 
     XDP_EXPORT
-    uint64_t getWordCountTs2mm();
+    uint64_t getWordCountTs2mm(uint64_t index);
     XDP_EXPORT
-    uint8_t  getTS2MmMemIndex();
+    uint8_t  getTS2MmMemIndex(uint64_t index);
     XDP_EXPORT
-    void parseTraceData(void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
+    void parseTraceData(uint64_t index, void* traceData, uint64_t bytes, std::vector<xclTraceResults>& traceVector);
 
     XDP_EXPORT
     void resetAIETs2mm(uint64_t index);
@@ -195,9 +188,10 @@ class DeviceIntf {
 
     TraceFifoLite* mFifoCtrl    = nullptr;
     TraceFifoFull* mFifoRead    = nullptr;
-    TraceFunnel*   mTraceFunnel = nullptr;
 
-    TraceS2MM*     mPlTraceDma  = nullptr;
+    std::vector<TraceFunnel*> mTraceFunnelList;
+
+    std::vector<TraceS2MM*> mPlTraceDmaList;
     std::vector<TraceS2MM*> mAieTraceDmaList;
     DeadlockDetector*     mDeadlockDetector  = nullptr;
 

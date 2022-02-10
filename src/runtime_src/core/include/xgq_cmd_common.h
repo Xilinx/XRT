@@ -89,7 +89,7 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_CLOCK		= 0xb,
 	XGQ_CMD_OP_SENSOR		= 0xc,
 	XGQ_CMD_OP_LOAD_APUBIN		= 0xd,
-	XGQ_CMD_OP_MULTIPLE_BOOT	= 0xe,
+	XGQ_CMD_OP_VMR_CONTROL		= 0xe,
 
 	/* User command type */
 	XGQ_CMD_OP_START_CUIDX	        = 0x100,
@@ -104,6 +104,10 @@ enum xgq_cmd_opcode {
 	XGQ_CMD_OP_CFG_END	        = 0x109,
 	XGQ_CMD_OP_CFG_CU	        = 0x10a,
 	XGQ_CMD_OP_QUERY_CU	        = 0x10b,
+	XGQ_CMD_OP_CLOCK_CALIB     	= 0x10c,
+	XGQ_CMD_OP_ACCESS_VALID     	= 0x10d,
+	XGQ_CMD_OP_DATA_INTEGRITY   	= 0x10e,
+	XGQ_CMD_OP_EXIT             	= 0x10f,
 
 	/* Common command type */
 	XGQ_CMD_OP_BARRIER		= 0x200,

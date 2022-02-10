@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo User Function Driver
  *
- * Copyright (C) 2020-2021 Xilinx, Inc.
+ * Copyright (C) 2020-2022 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -190,7 +190,14 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	mutex_lock(&client->lock);
 	/* If this client has no opened context, lock bitstream */
-	if (!client->num_ctx) {
+	if (!client->ctx) {
+		/* Allocate the new client context and store the xclbin */
+		client->ctx = vzalloc(sizeof(struct kds_client_ctx));
+		if (!client->ctx) {
+			ret = -ENOMEM;
+			goto out;
+		}
+
 		ret = xocl_icap_lock_bitstream(xdev, &args->xclbin_id);
 		if (ret)
 			goto out;
@@ -200,20 +207,24 @@ static int xocl_add_context(struct xocl_dev *xdev, struct kds_client *client,
 			goto out1;
 		}
 		uuid_copy(uuid, &args->xclbin_id);
-		client->xclbin_id = uuid;
+		client->ctx->xclbin_id = uuid;
+
+		list_add_tail(&client->ctx->link, &client->ctx_list);
 	}
 
 	/* Bitstream is locked. No one could load a new one
 	 * until this client close all of the contexts.
 	 */
 	xocl_ctx_to_info(args, &info);
+	info.curr_ctx = (void *)client->ctx;
 	ret = kds_add_context(&XDEV(xdev)->kds, client, &info);
 
 out1:
 	/* If client still has no opened context at this point */
-	if (!client->num_ctx) {
-		vfree(client->xclbin_id);
-		client->xclbin_id = NULL;
+	if (!client->ctx) {
+		if (client->ctx->xclbin_id)
+			vfree(client->ctx->xclbin_id);
+		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
 	}
 out:
@@ -230,7 +241,7 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 
 	mutex_lock(&client->lock);
 
-	uuid = client->xclbin_id;
+	uuid = client->ctx->xclbin_id;
 	/* xclCloseContext() would send xclbin_id and cu_idx.
 	 * Be more cautious while delete. Do sanity check */
 	if (!uuid) {
@@ -247,15 +258,20 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	}
 
 	xocl_ctx_to_info(args, &info);
+        /* Store the current context here. KDS required that later */
+        info.curr_ctx = (void *)client->ctx;
 	ret = kds_del_context(&XDEV(xdev)->kds, client, &info);
 	if (ret)
 		goto out;
 
 	/* unlock bitstream if there is no opening context */
-	if (!client->num_ctx) {
-		vfree(client->xclbin_id);
-		client->xclbin_id = NULL;
+	if (!client->ctx->num_ctx) {
+		vfree(client->ctx->xclbin_id);
+		client->ctx->xclbin_id = NULL;
 		(void) xocl_icap_unlock_bitstream(xdev, &args->xclbin_id);
+		list_del(&client->ctx->link);
+		vfree(client->ctx);
+		client->ctx = NULL;
 	}
 
 out:
@@ -473,7 +489,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 	if (kds->xgq_enable)
 		return true;
 
-	if (!kds->ert_disable && (kds->ert->slot_size < pkg_size)) {
+	if ((kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
 		userpf_err(xdev, "payload size bigger than CQ slot size\n");
 		return false;
 	}
@@ -494,9 +510,11 @@ static void convert_exec_write2key_val( struct ert_start_kernel_cmd *ecmd)
 	/* Shift payload 6 words up */
 	for (i = ecmd->extra_cu_masks; i < end; i++)
 		ecmd->data[i] = ecmd->data[i + 6];
+	ecmd->count -= 6;
 }
 
-static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd)
+static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd,
+				 struct drm_file *filp)
 {
 	struct ert_packet *ecmd = NULL;
 	struct ert_start_kernel_cmd *kecmd = NULL;
@@ -524,8 +542,54 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		xcmd->isize = xgq_exec_convert_start_cu_cmd(xcmd->info, kecmd);
 		ret = 1; /* hack */
 		break;
+	case ERT_CLK_CALIB:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_CLK_CALIB;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_clock_calib_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_ACCESS_TEST_C:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_data_integrity_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_MB_VALIDATE:
+		ecmd = (struct ert_packet *)xcmd->execbuf;
+		xcmd->opcode = OP_VALIDATE;
+		xcmd->type = KDS_ERT;
+		xcmd->isize = xgq_exec_convert_accessible_cmd(xcmd->info, ecmd);
+		ret = 1;
+		break;
+	case ERT_EXEC_WRITE:
+	case ERT_START_KEY_VAL:
+		if (!xocl_ps_sched_on(xdev) && ecmd->opcode == ERT_EXEC_WRITE) {
+			/* PS ERT is not sync with host. Have to skip 6 data */
+			userpf_info_once(xdev, "ERT_EXEC_WRITE is obsoleted, use ERT_START_KEY_VAL\n");
+			convert_exec_write2key_val(to_start_krnl_pkg(ecmd));
+		}
+		print_ecmd_info(ecmd);
+		kecmd = (struct ert_start_kernel_cmd *)xcmd->execbuf;
+		xcmd->type = KDS_CU;
+		xcmd->opcode = OP_START;
+		xcmd->cu_mask[0] = kecmd->cu_mask;
+		memcpy(&xcmd->cu_mask[1], kecmd->data, kecmd->extra_cu_masks);
+		xcmd->num_mask = 1 + kecmd->extra_cu_masks;
+		xcmd->isize = xgq_exec_convert_start_kv_cu_cmd(xcmd->info, kecmd);
+		ret = 1;
+		break;
+	case ERT_START_COPYBO:
+		ret = copybo_ecmd2xcmd(xdev, filp, to_copybo_pkg(ecmd), xcmd);
+		if (ret > 0) {
+			xcmd->status = KDS_COMPLETED;
+			xcmd->cb.notify_host(xcmd, xcmd->status);
+			ret = 0;
+		}
+		break;
 	default:
-		userpf_err(xdev, "Unsupport command\n");
+		userpf_err(xdev, "Unsupport command op(%d)\n", ecmd->opcode);
 		ret = -EINVAL;
 	}
 
@@ -544,7 +608,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	struct kds_command *xcmd;
 	int ret = 0;
 
-	if (!client->xclbin_id) {
+	if (!client->ctx->xclbin_id) {
 		userpf_err(xdev, "The client has no opening context\n");
 		return -EINVAL;
 	}
@@ -612,7 +676,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	print_ecmd_info(ecmd);
 
 	if (XDEV(xdev)->kds.xgq_enable) {
-		ret = xocl_fill_payload_xgq(xdev, xcmd);
+		ret = xocl_fill_payload_xgq(xdev, xcmd, filp);
 		if (ret > 0)
 			goto out2;
 		goto out1;
@@ -715,7 +779,6 @@ out2:
 	 * xcmd and put gem object while notify host.
 	 */
 	ret = kds_add_command(&XDEV(xdev)->kds, xcmd);
-
 	return ret;
 
 out1:
@@ -747,6 +810,9 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 		goto out;
 	}
 
+        /* Initializing context list */
+        INIT_LIST_HEAD(&client->ctx_list);
+
 	*priv = client;
 
 out:
@@ -763,9 +829,9 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 
 	kds = &XDEV(xdev)->kds;
 	kds_fini_client(kds, client);
-	if (client->xclbin_id) {
-		(void) xocl_icap_unlock_bitstream(xdev, client->xclbin_id);
-		vfree(client->xclbin_id);
+	if (client->ctx && client->ctx->xclbin_id) {
+		(void) xocl_icap_unlock_bitstream(xdev, client->ctx->xclbin_id);
+		vfree(client->ctx->xclbin_id);
 	}
 	kfree(client);
 	userpf_info(xdev, "client exits pid(%d)\n", pid);
@@ -1238,8 +1304,10 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	 * - protocol
 	 */
 	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
+	if (!ip_layout)
+		goto done;
+
 	num_cus = kds_ip_layout2cu_info(ip_layout, cu_info, num_info);
-	XOCL_PUT_MEM_TOPOLOGY(xdev);
 
 	/*
 	 * Get CU metadata from XML,
@@ -1273,6 +1341,8 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
 	}
 
+done:
+	XOCL_PUT_IP_LAYOUT(xdev);
 	return num_cus;
 }
 
@@ -1338,6 +1408,15 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
 {
 	struct kds_sched *kds = (struct kds_sched *)xcmd->priv;
+	struct xgq_com_queue_entry *resp = xcmd->response;
+
+	if (status != KDS_COMPLETED)
+		resp->hdr.cstate = XGQ_CMD_STATE_ABORTED;
+
+	if (status == KDS_ERROR)
+		resp->rcode = -ENOSPC;
+	else if (status == KDS_TIMEOUT)
+		resp->rcode = -ETIMEDOUT;
 
 	complete(&kds->comp);
 }
@@ -1383,10 +1462,14 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
+
+	userpf_info(xdev, "Config start completed, num_cus(%d)\n",
+		    cfg_start->num_cus);
 	return 0;
 }
 
@@ -1423,10 +1506,12 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Configure XGQ ERT failed");
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config end failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
+	userpf_info(xdev, "Config end completed\n");
 	return 0;
 }
 
@@ -1438,17 +1523,28 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
 	struct kds_command *xcmd = NULL;
+	xuid_t *xclbin_id = NULL;
 	int ret = 0;
 	int i = 0, j = 0;
+
+	/* TODO: ICAP will pass UUID to KDS, instead of fetch it */
+	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
+	if (ret) {
+		userpf_err(xdev, "Unable to get on device uuid %d", ret);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < num_cus; i++) {
 		int max_off_idx = 0;
 		int max_off = 0;
+		int max_off_arg_size = 0;
 
 		client = kds->anon_client;
 		xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_config_cu));
-		if (!xcmd)
+		if (!xcmd) {
+			XOCL_PUT_XCLBIN_ID(xdev);
 			return -ENOMEM;
+		}
 
 		cfg_cu = xcmd->info;
 		cfg_cu->hdr.opcode = XGQ_CMD_OP_CFG_CU;
@@ -1466,9 +1562,24 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 				max_off_idx = j;
 			}
 		}
-		cfg_cu->payload_size = max_off + cu_info[i].args[max_off_idx].size;
+		/* This determines the XGQ slot size for CU/SCU etc. */
+		if (cu_info[i].num_args)
+			max_off_arg_size = cu_info[i].args[max_off_idx].size;
+		cfg_cu->payload_size = max_off + max_off_arg_size + sizeof(struct xgq_cmd_sq_hdr);
+		/*
+		 * Times 2 to make sure XGQ slot size is bigger than the size of
+		 * key-value pair commands, eg. ERT_START_KEY_VAL.
+		 *
+		 * TODO: XOCL XGQ should be able to splict a big command into
+		 * small sub commands. Before it is done, use this simple
+		 * approach.
+		 */
+		cfg_cu->payload_size = cfg_cu->payload_size * 2;
+
 		scnprintf(cfg_cu->name, sizeof(cfg_cu->name), "%s:%s",
 			  cu_info[i].kname, cu_info[i].iname);
+
+		memcpy(cfg_cu->uuid, xclbin_id, sizeof(cfg_cu->uuid));
 
 		xcmd->cb.notify_host = xocl_kds_xgq_notify;
 		xcmd->cb.free = kds_free_command;
@@ -1482,13 +1593,16 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		if (ret)
 			break;
 
-		if (xcmd->status != KDS_COMPLETED) {
-			userpf_err(xdev, "Configure XGQ ERT failed");
+		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+			userpf_err(xdev, "Config CU failed cstate(%d) rcode(%d)",
+				   resp.hdr.cstate, resp.rcode);
 			ret = -EINVAL;
 			break;
 		}
+		userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
+	XOCL_PUT_XCLBIN_ID(xdev);
 	return ret;
 }
 
@@ -1526,11 +1640,16 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 	if (ret)
 		return ret;
 
-	if (xcmd->status != KDS_COMPLETED) {
-		userpf_err(xdev, "Query CU(%d) failed", cu_idx);
+	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Query CU(%d) failed cstate(%d) rcode(%d)",
+			   cu_idx, resp->hdr.cstate, resp->rcode);
 		return -EINVAL;
 	}
 
+	userpf_info(xdev, "Query CU(%d) completed\n", query_cu->cu_idx);
+	userpf_info(xdev, "xgq_id %d\n", resp->xgq_id);
+	userpf_info(xdev, "size %d\n", resp->size);
+	userpf_info(xdev, "offset 0x%x\n", resp->offset);
 	return 0;
 }
 
@@ -1546,6 +1665,16 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		return -ENOMEM;
 
 	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+
+	/* Don't send config command if ERT doesn't present */
+	if (!XDEV(xdev)->kds.ert)
+		goto create_regular_cu;
+
+	if (!cfg.ert) {
+		XDEV(xdev)->kds.ert_disable = true;
+		goto create_regular_cu;
+	}
+
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)
 		goto create_regular_cu;
@@ -1581,15 +1710,17 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	}
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
-	XDEV(xdev)->kds.xgq_enable = true;
-	kfree(cu_info);
-	return 0;
+	XDEV(xdev)->kds.xgq_enable = (cfg.ert)? true : false;
+	goto out;
 
 create_regular_cu:
 	/* Regular CU directly talks to CU, without XGQ */
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 	XDEV(xdev)->kds.xgq_enable = false;
 
+out:
+	userpf_info(xdev, "scheduler config ert(%d)\n",
+		    XDEV(xdev)->kds.xgq_enable);
 	kfree(cu_info);
 	return ret;
 }
@@ -1603,12 +1734,16 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
-	if (ret < 0) {
-		userpf_err(xdev, "failed to connect ERT ctrl, err: %d\n", ret);
+	if (ret == -ENODEV) {
+		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+	} else if (ret < 0) {
+		userpf_info(xdev, "ERT connect failed, ret %d\n", ret);
+		ret = -EINVAL;
 		goto out;
 	}
 
-	if (xocl_ert_ctrl_is_version(xdev, 1, 0))
+	if (xocl_ert_ctrl_is_version(xdev, 1, 0) > 0)
 		ret = xocl_kds_update_xgq(xdev, cfg);
 	else
 		ret = xocl_kds_update_legacy(xdev, cfg);

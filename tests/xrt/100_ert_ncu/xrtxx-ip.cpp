@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -46,6 +46,8 @@
 static constexpr uint32_t AP_START    = 0x1;
 static constexpr uint32_t AP_DONE     = 0x2;
 static constexpr uint32_t AP_IDLE     = 0x4;
+static constexpr uint32_t AP_CONTINUE = 0x10;
+static constexpr uint32_t ADDR_ISR    = 0x0C;
 
 static constexpr size_t ELEMENTS = 16;
 static constexpr size_t ARRAY_SIZE = 8;
@@ -53,6 +55,7 @@ static constexpr size_t MAXCUS = 8;
 
 static size_t compute_units = MAXCUS;
 static bool use_interrupt = false;
+static int32_t timeout = -1;
 
 static void
 usage()
@@ -64,6 +67,7 @@ usage()
   std::cout << "  [--cus <number>]: number of cus to use (default: 8) (max: 8)\n";
   std::cout << "  [--seconds <number>]: number of seconds to run\n";
   std::cout << "  [--intr]: use IP interrupt notification\n";
+  std::cout << "  [--timeout]: timeout to use with IP interrupt notification\n";
   std::cout << "";
   std::cout << "* Program schedules a job per CU specified. Each jobs is repeated\n";
   std::cout << "* unless specified seconds have elapsed\n";
@@ -105,7 +109,7 @@ struct job_type
     static size_t count=0;
     id = count++;
 
-    { 
+    {
       // Create kernel to run it once for preceeding of register map
       // Scoped to ensure automatic object are destructed before xrt::ip is created
       xrt::kernel kernel{device, xid, cu};
@@ -168,6 +172,9 @@ struct job_type
       }
       while (!(val & (AP_IDLE | AP_DONE)));
 
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
       if (stop)
         break;
     }
@@ -183,16 +190,55 @@ struct job_type
       ++runs;
       interrupt.wait();
 
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
       if (stop)
         break;
     }
   }
-    
+
+  void
+  run_intr(std::chrono::milliseconds timeout)
+  {
+    auto interrupt = ip.create_interrupt_notify();
+
+    while (1) {
+      ip.write_register(0, AP_START);
+      ++runs;
+
+      uint32_t num_timeout = 0;
+      std::cv_status ret;
+      do {
+        ret = interrupt.wait(timeout);
+        ++num_timeout;
+      }
+      while (num_timeout < 100 && ret == std::cv_status::timeout);
+      if (ret == std::cv_status::timeout)
+        throw std::runtime_error("Timeout when waiting for CU interrupt");
+
+      // acknowledge done
+      ip.write_register(0, AP_CONTINUE);
+
+      //Clear ISR
+      auto rdata = ip.read_register(ADDR_ISR);
+      ip.write_register(ADDR_ISR, rdata);
+      //Read/Clear driver interrupt counter
+      interrupt.wait();//This will return immediately after clearing the counter
+
+      //Check CU output here
+
+      if (stop)
+        break;
+    }
+  }
 
   void
   run()
   {
-    if (use_interrupt)
+    if (use_interrupt && timeout > 0)
+      run_intr(std::chrono::milliseconds(timeout));
+    else if (use_interrupt)
       run_intr();
     else
       run_poll();
@@ -272,6 +318,8 @@ run(int argc, char** argv)
       secs = std::stoi(arg);
     else if (cur == "--cus")
       cus = std::stoi(arg);
+    else if (cur == "--timeout")
+      timeout = std::stoi(arg);
     else
       throw std::runtime_error("bad argument '" + cur + " " + arg + "'");
   }

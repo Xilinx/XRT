@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,6 +33,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <poll.h>
 #include <sys/syscall.h>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
@@ -154,12 +155,23 @@ struct kds_cu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      /* TODO : For backward compartability changing the following logic
+       * as the first column should represent the slot index */
+      // stats e.g.
+      // Slot index present
+      //   0,0,vadd:vadd_1,0x1400000,0x4,0
+      // Without Slot index
+      //   0,vadd:vadd_1,0x1400000,0x4,0
+      if ((std::distance(tokens.begin(), tokens.end()) != 5) &&
+	(std::distance(tokens.begin(), tokens.end()) != 6))
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
-      data_type data;
+      data_type data = { 0 };
       const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      if (std::distance(tokens.begin(), tokens.end()) == 6)
+        data.slot_index =std::stoi(std::string(*tok_it++));
+
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
       data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
@@ -829,13 +841,13 @@ initialize_query_table()
   emplace_sysfs_get<query::enabled_host_mem>                   ("address_translator", "host_mem_size");
   emplace_sysfs_get<query::cpu_affinity>                       ("", "local_cpulist");
   emplace_sysfs_get<query::mailbox_metrics>                    ("mailbox", "recv_metrics");
-  emplace_sysfs_get<query::clock_timestamp>                    ("ert_user", "clock_timestamp");
-  emplace_sysfs_getput<query::ert_sleep>                       ("ert_user", "mb_sleep");
-  emplace_sysfs_get<query::ert_cq_read>                        ("ert_user", "cq_read_cnt");
-  emplace_sysfs_get<query::ert_cq_write>                       ("ert_user", "cq_write_cnt");
-  emplace_sysfs_get<query::ert_cu_read>                        ("ert_user", "cu_read_cnt");
-  emplace_sysfs_get<query::ert_cu_write>                       ("ert_user", "cu_write_cnt");
-  emplace_sysfs_get<query::ert_data_integrity>                 ("ert_user", "data_integrity");
+  emplace_sysfs_get<query::clock_timestamp>                    ("ert_ctrl", "clock_timestamp");
+  emplace_sysfs_getput<query::ert_sleep>                       ("ert_ctrl", "mb_sleep");
+  emplace_sysfs_get<query::ert_cq_read>                        ("ert_ctrl", "cq_read_cnt");
+  emplace_sysfs_get<query::ert_cq_write>                       ("ert_ctrl", "cq_write_cnt");
+  emplace_sysfs_get<query::ert_cu_read>                        ("ert_ctrl", "cu_read_cnt");
+  emplace_sysfs_get<query::ert_cu_write>                       ("ert_ctrl", "cu_write_cnt");
+  emplace_sysfs_get<query::ert_data_integrity>                 ("ert_ctrl", "data_integrity");
   emplace_sysfs_getput<query::config_mailbox_channel_disable>  ("", "config_mailbox_channel_disable");
   emplace_sysfs_getput<query::config_mailbox_channel_switch>   ("", "config_mailbox_channel_switch");
   emplace_sysfs_getput<query::config_xclbin_change>            ("", "config_xclbin_change");
@@ -1015,6 +1027,28 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
+std::cv_status
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
+{
+  struct pollfd pfd = {.fd=handle, .events=POLLIN};
+  int32_t ret = 0;
+
+  //Checking for only one fd; Only of one CU
+  //Timeout value in milli seconds
+  ret = ::poll(&pfd, 1, timeout);
+  if (ret < 0)
+    throw error(errno, "wait_timeout: failed POSIX poll");
+
+  if (ret == 0) //Timeout occured
+    return std::cv_status::timeout;
+
+  if (pfd.revents & POLLIN) //Interrupt received
+    return std::cv_status::no_timeout;
+
+  throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
 xclBufferHandle

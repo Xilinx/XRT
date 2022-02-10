@@ -144,21 +144,21 @@ rh_package_list()
 
     if [ $docker == 0 ]; then
         if [ $FLAVOR == "centos" ]; then
-        # In CentOs kernel-devel and headers with $(uname -r) version 
-        # are not available always which causes xrtdeps to fail if we 
+        # In CentOs kernel-devel and headers with $(uname -r) version
+        # are not available always which causes xrtdeps to fail if we
         # include these packages with specific version.
             RH_LIST+=(\
               kernel-devel \
               kernel-headers \
             )
-        else 
+        else
             RH_LIST+=(\
               kernel-devel-$(uname -r) \
               kernel-headers-$(uname -r) \
             )
         fi
     fi
- 
+
     #dmidecode is only applicable for x86_64
     if [ $ARCH == "x86_64" ]; then
         RH_LIST+=( dmidecode )
@@ -462,6 +462,9 @@ prep_centos8()
     echo "Enabling PowerTools and AppStream repo for CentOS8 ..."
     #minor version of CentOs
     MINOR=`cat /etc/centos-release | awk -F. '{ print $2 }'`
+    if [ -z "$MINOR" ]; then
+        MINOR=3
+    fi
     if [ $MINOR -gt "2" ]; then
         yum config-manager --set-enabled powertools
         yum config-manager --set-enabled appstream
@@ -469,7 +472,7 @@ prep_centos8()
         yum config-manager --set-enabled PowerTools
         yum config-manager --set-enabled AppStream
     fi
-      
+
 }
 
 prep_centos()
@@ -552,10 +555,9 @@ install()
             yum install -y devtoolset-7
 	elif [ $MAJOR -lt "8" ]  && [ $FLAVOR != "amzn" ]; then
             if [ $FLAVOR == "centos" ]; then
-                yum --enablerepo=base install -y devtoolset-9
-            else
-                yum install -y devtoolset-9
+                yum install -y centos-release-scl-rh
             fi
+            yum install -y devtoolset-9
 	fi
     fi
 

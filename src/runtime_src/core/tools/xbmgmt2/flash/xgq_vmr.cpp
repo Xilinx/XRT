@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -15,36 +15,38 @@
  */
 
 #include <fcntl.h>
-#include "xgq.h"
+#include "xgq_vmr.h"
 
 /**
- * @brief XGQ_Flasher::XGQ_Flasher
+ * @brief XGQ_VMR_Flasher::XGQ_VMR_Flasher
  */
-XGQ_Flasher::XGQ_Flasher(std::shared_ptr<xrt_core::device> dev)
+XGQ_VMR_Flasher::XGQ_VMR_Flasher(std::shared_ptr<xrt_core::device> dev)
     : m_device(std::move(dev))
 {
 }
 
-int XGQ_Flasher::xclUpgradeFirmware(std::istream& binStream)
+int XGQ_VMR_Flasher::xclUpgradeFirmware(std::istream& binStream)
 {
   binStream.seekg(0, binStream.end);
-  auto total_size = static_cast<int>(binStream.tellg());
+  ssize_t total_size = static_cast<int>(binStream.tellg());
   binStream.seekg(0, binStream.beg);
 
-  std::cout << "INFO: ***PDI has " << total_size << " bytes" << std::endl;
+  std::cout << "INFO: ***xsabin has " << total_size << " bytes" << std::endl;
 
   try {
-    auto fd = m_device->file_open("xgq", O_RDWR);
     std::vector<char> buffer(total_size);
     binStream.read(buffer.data(), total_size);
     ssize_t ret = total_size;
+
 #ifdef __GNUC__
+    auto fd = m_device->file_open("xgq_vmr", O_RDWR);
     ret = write(fd.get(), buffer.data(), total_size);
 #endif
+    std::cout << "INFO: ***Write " << ret << " bytes" << std::endl;
     return ret == total_size ? 0 : -EIO;
   }
   catch (const std::exception& e) {
-    xrt_core::send_exception_message(e.what(), "XBMGMT");
+    xrt_core::send_exception_message(e.what(), "xgq_vmr operation failed");
     return -EIO;
   }
 }

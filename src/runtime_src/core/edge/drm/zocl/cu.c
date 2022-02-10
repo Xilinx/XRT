@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2020 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Min Ma <min.ma@xilinx.com>
@@ -174,7 +174,6 @@ static int cu_probe(struct platform_device *pdev)
 	struct resource **res;
 	struct xrt_cu_info *info;
 	struct drm_zocl_dev *zdev;
-	struct kernel_info *krnl_info;
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
 	int i;
@@ -204,32 +203,7 @@ static int cu_probe(struct platform_device *pdev)
 	}
 	zcu->base.res = res;
 
-	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
-
-	krnl_info = zocl_query_kernel(zdev, info->kname);
-	if (!krnl_info) {
-		err = -EFAULT;
-		goto err1;
-	}
-
-	if(krnl_info->anums)
-	{
-		args = vmalloc(sizeof(struct xrt_cu_arg) * krnl_info->anums);
-		if (!args) {
-			err = -ENOMEM;
-			goto err1;
-		}
-	}
-
-	for (i = 0; i < krnl_info->anums; i++) {
-		strcpy(args[i].name, krnl_info->args[i].name);
-		args[i].offset = krnl_info->args[i].offset;
-		args[i].size = krnl_info->args[i].size;
-		args[i].dir = krnl_info->args[i].dir;
-	}
-	zcu->base.info.num_args = krnl_info->anums;
-	zcu->base.info.args = args;
-
+	zdev = zocl_get_zdev();
 	err = zocl_kds_add_cu(zdev, &zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to add CU %p to KDS", zcu);
@@ -281,6 +255,7 @@ static int cu_probe(struct platform_device *pdev)
 	zcu->base.user_manage_irq = user_manage_irq;
 	zcu->base.configure_irq = configure_irq;
 
+	zocl_info(&pdev->dev, "CU[%d] created", info->cu_idx);
 	return 0;
 err2:
 	zocl_kds_del_cu(zdev, &zcu->base);
@@ -315,17 +290,15 @@ static int cu_remove(struct platform_device *pdev)
 	if (info->intr_enable)
 		free_irq(zcu->irq, zcu);
 
-	zdev = platform_get_drvdata(to_platform_device(pdev->dev.parent));
+	zdev = zocl_get_zdev();
 	zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
 
-	if (info->args)
-		vfree(info->args);
-
 	sysfs_remove_group(&pdev->dev.kobj, &cu_attrgroup);
 
+	zocl_info(&pdev->dev, "CU[%d] removed", info->cu_idx);
 	kfree(zcu->irq_name);
 	kfree(zcu);
 
@@ -345,3 +318,10 @@ struct platform_driver cu_driver = {
 	},
 	.id_table	= cu_id_table,
 };
+u32 zocl_cu_get_status(struct platform_device *pdev)
+{
+	struct zocl_cu *zcu = platform_get_drvdata(pdev);
+
+	BUG_ON(!zcu);
+	return xrt_cu_get_status(&zcu->base);
+}

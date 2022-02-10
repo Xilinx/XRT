@@ -81,9 +81,13 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+  bool AIEProfilingPlugin::live = false;
+
   AIEProfilingPlugin::AIEProfilingPlugin() 
       : XDPPlugin()
   {
+    AIEProfilingPlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
     getPollingInterval();
@@ -104,11 +108,11 @@ namespace xdp {
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
       {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_TRUE_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
       {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_TRUE_CORE}},
-      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
       {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
@@ -124,11 +128,11 @@ namespace xdp {
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
       {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_TRUE_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
       {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_TRUE_CORE}},
-      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
       {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
@@ -216,6 +220,12 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
+    AIEProfilingPlugin::live = false;
+  }
+
+  bool AIEProfilingPlugin::alive()
+  {
+    return AIEProfilingPlugin::live;
   }
 
   void AIEProfilingPlugin::getPollingInterval()
@@ -548,6 +558,54 @@ namespace xdp {
     XAie_EventSelectStrmPort(aieDevInst, loc, rscId, slaveOrMaster, SOUTH, streamPortId);
   }
 
+  // Get reportable payload specific for this tile and/or counter
+  uint32_t AIEProfilingPlugin::getCounterPayload(XAie_DevInst* aieDevInst, 
+      uint16_t column, uint16_t row, uint16_t startEvent)
+  {
+    // For now, only used for DMA BD sizes
+    if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
+        && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
+        && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
+        && (startEvent != XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM))
+      return 0;
+
+    uint32_t payloadValue = 0;
+
+    constexpr int NUM_BDS = 8;
+    constexpr uint32_t BYTES_PER_WORD = 4;
+    constexpr uint32_t ACTUAL_OFFSET = 1;
+    uint64_t offsets[NUM_BDS] = {XAIEGBL_MEM_DMABD0CTRL,            XAIEGBL_MEM_DMABD1CTRL,
+                                 XAIEGBL_MEM_DMABD2CTRL,            XAIEGBL_MEM_DMABD3CTRL,
+                                 XAIEGBL_MEM_DMABD4CTRL,            XAIEGBL_MEM_DMABD5CTRL,
+                                 XAIEGBL_MEM_DMABD6CTRL,            XAIEGBL_MEM_DMABD7CTRL};
+    uint32_t lsbs[NUM_BDS]    = {XAIEGBL_MEM_DMABD0CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD1CTRL_LEN_LSB,
+                                 XAIEGBL_MEM_DMABD2CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD3CTRL_LEN_LSB,
+                                 XAIEGBL_MEM_DMABD4CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD5CTRL_LEN_LSB,
+                                 XAIEGBL_MEM_DMABD6CTRL_LEN_LSB,    XAIEGBL_MEM_DMABD7CTRL_LEN_LSB};
+    uint32_t masks[NUM_BDS]   = {XAIEGBL_MEM_DMABD0CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD1CTRL_LEN_MASK,
+                                 XAIEGBL_MEM_DMABD2CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD3CTRL_LEN_MASK,
+                                 XAIEGBL_MEM_DMABD4CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD5CTRL_LEN_MASK,
+                                 XAIEGBL_MEM_DMABD6CTRL_LEN_MASK,   XAIEGBL_MEM_DMABD7CTRL_LEN_MASK};
+    uint32_t valids[NUM_BDS]  = {XAIEGBL_MEM_DMABD0CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD1CTRL_VALBD_MASK,
+                                 XAIEGBL_MEM_DMABD2CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD3CTRL_VALBD_MASK,
+                                 XAIEGBL_MEM_DMABD4CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD5CTRL_VALBD_MASK,
+                                 XAIEGBL_MEM_DMABD6CTRL_VALBD_MASK, XAIEGBL_MEM_DMABD7CTRL_VALBD_MASK};
+
+    auto tileOffset = _XAie_GetTileAddr(aieDevInst, row + 1, column);
+    for (int bd = 0; bd < NUM_BDS; ++bd) {
+      uint32_t regValue = 0;
+      XAie_Read32(aieDevInst, tileOffset + offsets[bd], &regValue);
+      
+      if (regValue & valids[bd]) {
+        uint32_t bdBytes = BYTES_PER_WORD * (((regValue >> lsbs[bd]) & masks[bd]) + ACTUAL_OFFSET);
+        payloadValue = std::max(bdBytes, payloadValue);
+      }
+    }
+
+    return payloadValue;
+  }
+
+  // Set metrics for all specified AIE counters on this device
   bool AIEProfilingPlugin::setMetrics(uint64_t deviceId, void* handle)
   {
     XAie_DevInst* aieDevInst =
@@ -622,15 +680,18 @@ namespace xdp {
                         : xaieTile.pl());
         
         for (int i=0; i < numFreeCounters; ++i) {
+          auto startEvent = startEvents.at(i);
+          auto endEvent   = endEvents.at(i);
+
           // Request counter from resource manager
           auto perfCounter = xaieModule.perfCounter();
-          auto ret = perfCounter->initialize(mod, startEvents.at(i), mod, endEvents.at(i));
+          auto ret = perfCounter->initialize(mod, startEvent, mod, endEvent);
           if (ret != XAIE_OK) break;
           ret = perfCounter->reserve();
           if (ret != XAIE_OK) break;
           
-          configGroupEvents(aieDevInst, loc, mod, startEvents.at(i), metricSet);
-          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvents.at(i), metricSet);
+          configGroupEvents(aieDevInst, loc, mod, startEvent, metricSet);
+          configStreamSwitchPorts(aieDevInst, tile, xaieTile, loc, startEvent, metricSet);
           
           // Start the counters after group events have been configured
           ret = perfCounter->start();
@@ -640,8 +701,8 @@ namespace xdp {
           // Convert enums to physical event IDs for reporting purposes
           uint8_t tmpStart;
           uint8_t tmpEnd;
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvents.at(i), &tmpStart);
-          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, endEvents.at(i), &tmpEnd);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod, startEvent, &tmpStart);
+          XAie_EventLogicalToPhysicalConv(aieDevInst, loc, mod,   endEvent, &tmpEnd);
           uint16_t phyStartEvent = (mod == XAIE_CORE_MOD) ? tmpStart
                                  : ((mod == XAIE_MEM_MOD) ? (tmpStart + BASE_MEMORY_COUNTER)
                                  : (tmpStart + BASE_SHIM_COUNTER));
@@ -649,10 +710,13 @@ namespace xdp {
                                  : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
                                  : (tmpEnd + BASE_SHIM_COUNTER));
 
+          auto payload = getCounterPayload(aieDevInst, col, row, startEvent);
+
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
           (db->getStaticInfo()).addAIECounter(deviceId, counterId, col, row, i,
-              phyStartEvent, phyEndEvent, resetEvent, clockFreqMhz, moduleName, counterName);
+              phyStartEvent, phyEndEvent, resetEvent, payload, clockFreqMhz, 
+              moduleName, counterName);
           counterId++;
           numCounters++;
         }
@@ -739,6 +803,7 @@ namespace xdp {
           XAie_ReadTimer(aieDevInst, tileLocation, XAIE_CORE_MOD, &timerValue);
         }
         values.push_back(timerValue);
+        values.push_back(aie->payload);
 
         // Get timestamp in milliseconds
         double timestamp = xrt_core::time_ns() / 1.0e6;
@@ -793,10 +858,16 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg);
         }
         else {
+          XAie_DevInst* aieDevInst =
+            static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
+
           for (auto& counter : counters) {
+            auto payload = getCounterPayload(aieDevInst, counter.column, counter.row, 
+                                             counter.startEvent);
+
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
                 counter.row + 1, counter.counterNumber, counter.startEvent, counter.endEvent,
-                counter.resetEvent, counter.clockFreqMhz, counter.module, counter.name);
+                counter.resetEvent, payload, counter.clockFreqMhz, counter.module, counter.name);
           }
         }
       }

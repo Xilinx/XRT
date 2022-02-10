@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -50,10 +50,6 @@ namespace xdp {
     bool m_enable_circular_buffer = false;
 
   protected:
-    // This is used to determine if each plugin instance
-    //  has access to the device
-    bool active ;
-
     // Each device offload plugin is responsible for offloading
     //  information from all devices.  This holds all the objects
     //  responsible for offloading data from all devices.
@@ -78,7 +74,7 @@ namespace xdp {
 
   public:
     XDP_EXPORT DeviceOffloadPlugin() ;
-    XDP_EXPORT ~DeviceOffloadPlugin() ;
+    XDP_EXPORT virtual ~DeviceOffloadPlugin() = default ;
 
     virtual void writeAll(bool openNewFiles) ;
 

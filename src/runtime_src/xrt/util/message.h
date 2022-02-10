@@ -14,8 +14,8 @@
  * under the License.
  */
 
-#ifndef xrt_message_h_
-#define xrt_message_h_
+#ifndef xrtx_message_h_
+#define xrtx_message_h_
 
 #include "core/common/message.h"
 #include <string>
@@ -27,7 +27,7 @@ using namespace xrt_core::message;
 inline void
 send(severity_level l, const char* msg)
 {
-  send(l,"XRT",msg);
+  xrt_core::message::send(l,"XRT",msg);
 };
 
 inline void

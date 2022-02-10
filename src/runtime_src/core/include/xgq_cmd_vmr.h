@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021, Xilinx Inc
+ *  Copyright (C) 2021-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -49,15 +49,25 @@
 /**
  * sensor data request types
  */
+enum xgq_cmd_sensor_application_id {
+	XGQ_CMD_SENSOR_AID_GET_SIZE			= 0x1,
+	XGQ_CMD_SENSOR_AID_GET_SDR			= 0x2,
+	XGQ_CMD_SENSOR_AID_GET_SINGLE_SENSOR_DATA	= 0x3,
+	XGQ_CMD_SENSOR_AID_GET_ALL_SENSOR_DATA		= 0x4,
+};
+
+/**
+ * sensor data request types
+ */
 enum xgq_cmd_sensor_page_id {
-	XGQ_CMD_SENSOR_PID_GET_SIZE	= 0x0,
-	XGQ_CMD_SENSOR_PID_BDINFO	= 0x1,
-	XGQ_CMD_SENSOR_PID_TEMP		= 0x2,
-	XGQ_CMD_SENSOR_PID_VOLTAGE	= 0x3,
-	XGQ_CMD_SENSOR_PID_CURRENT	= 0x4,
-	XGQ_CMD_SENSOR_PID_POWER	= 0x5,
-	XGQ_CMD_SENSOR_PID_QSFP		= 0x6,
-	XGQ_CMD_SENSOR_PID_ALL		= 0x7,
+	XGQ_CMD_SENSOR_SID_GET_SIZE	= 0x0,
+	XGQ_CMD_SENSOR_SID_BDINFO	= 0x1,
+	XGQ_CMD_SENSOR_SID_TEMP		= 0x2,
+	XGQ_CMD_SENSOR_SID_VOLTAGE	= 0x3,
+	XGQ_CMD_SENSOR_SID_CURRENT	= 0x4,
+	XGQ_CMD_SENSOR_SID_POWER	= 0x5,
+	XGQ_CMD_SENSOR_SID_QSFP		= 0x6,
+	XGQ_CMD_SENSOR_SID_ALL		= 0x7,
 };
 
 /**
@@ -72,10 +82,20 @@ enum xgq_cmd_clock_req_type {
 /**
  * multi-boot operation request types
  */
-enum xgq_cmd_multiboot_req_type {
-	XGQ_CMD_BOOT_QUERY	= 0x0,
+enum xgq_cmd_vmr_control_type {
+	XGQ_CMD_VMR_QUERY	= 0x0,
 	XGQ_CMD_BOOT_DEFAULT	= 0x1,
 	XGQ_CMD_BOOT_BACKUP	= 0x2,
+	XGQ_CMD_PROGRAM_SC	= 0x3,
+};
+
+/**
+ * log page type
+ */
+enum xgq_cmd_log_page_type {
+	XGQ_CMD_LOG_AF		= 0x0,
+	XGQ_CMD_LOG_FW		= 0x1,
+	XGQ_CMD_LOG_XCLBIN	= 0x2,
 };
 
 /**
@@ -83,6 +103,7 @@ enum xgq_cmd_multiboot_req_type {
  *
  * @address:	pre-allocated log data, device writes log data at this address
  * @size:	size of pre-allocated log data
+ * @offset:	offset of returned device data
  * @pid:	log_page page id
  * @addr_type:	pre-allocated address type
  *
@@ -91,9 +112,33 @@ enum xgq_cmd_multiboot_req_type {
 struct xgq_cmd_log_payload {
 	uint64_t address;
 	uint32_t size;
+	uint32_t offset;
 	uint32_t pid:16;
 	uint32_t addr_type:3;
 	uint32_t rsvd1:13;
+	uint32_t pad;
+};
+
+/**
+ * struct xgq_cmd_sensor_payload: sensor_page request command
+ *
+ * @address:	pre-allocated sensor data, device writes sensor data at this address
+ * @size:	size of pre-allocated sensor data
+ * @offset:	offset of returned device data
+ * @pid:	sensor request id
+ * @addr_type:	pre-allocated address type
+ *
+ * This payload is used for sensor data report.
+ */
+struct xgq_cmd_sensor_payload {
+	uint64_t address;
+	uint32_t size;
+	uint32_t offset;
+	uint32_t aid:8;
+	uint32_t pid:8;
+	uint32_t addr_type:3;
+	uint32_t rsvd1:13;
+	uint32_t pad;
 };
 
 /**
@@ -124,20 +169,28 @@ struct xgq_cmd_clock_payload {
 struct xgq_cmd_data_payload {
 	uint64_t address;
 	uint32_t size;
+	uint32_t remain_size;
 	uint32_t addr_type:4;
-	uint32_t flush_default_only:1;
-	uint32_t rsvd1:27;
+	uint32_t flush_type:4;
+	uint32_t rsvd1:24;
 	uint32_t pad1;
 };
 
+enum xgq_cmd_flush_type {
+	XGQ_CMD_FLUSH_DEFAULT		= 0x0,
+	XGQ_CMD_FLUSH_NO_BACKUP		= 0x1,
+	XGQ_CMD_FLUSH_TO_LEGACY		= 0x2,
+};
+
 /**
- * struct xgq_cmd_multiboot_payload: multiboot request payload
+ * struct xgq_cmd_vmr_control_payload: vmr controlling ops
  *
  * @req_type:		request type
  */
-struct xgq_cmd_multiboot_payload {
+struct xgq_cmd_vmr_control_payload {
 	uint32_t req_type:8;
-	uint32_t rsvd:24;
+	uint32_t debug_level:3;
+	uint32_t rsvd:21;
 };
 
 /**
@@ -154,12 +207,12 @@ struct xgq_cmd_multiboot_payload {
 struct xgq_cmd_sq {
 	struct xgq_cmd_sq_hdr hdr;
 	union {
-		struct xgq_cmd_log_payload 		log_payload;
-		struct xgq_cmd_clock_payload 		clock_payload;
-		struct xgq_cmd_data_payload 		pdi_payload;
-		struct xgq_cmd_data_payload 		xclbin_payload;
-		struct xgq_cmd_log_payload 		sensor_payload;
-		struct xgq_cmd_multiboot_payload 	multiboot_payload;
+		struct xgq_cmd_log_payload		log_payload;
+		struct xgq_cmd_clock_payload		clock_payload;
+		struct xgq_cmd_data_payload		pdi_payload;
+		struct xgq_cmd_data_payload		xclbin_payload;
+		struct xgq_cmd_sensor_payload		sensor_payload;
+		struct xgq_cmd_vmr_control_payload	vmr_control_payload;
 	};
 };
 
@@ -168,7 +221,7 @@ struct xgq_cmd_sq {
  *
  * @result:	result code
  */
-struct xgq_cmd_cq_vmr_payload {
+struct xgq_cmd_cq_default_payload {
 	uint32_t resvd0;
 	uint32_t resvd1;
 };
@@ -194,19 +247,46 @@ struct xgq_cmd_cq_sensor_payload {
 };
 
 /**
- * struct xgq_cmd_cq_fpt_payload: vmr multiboot fpt competion payload
+ * struct xgq_cmd_cq_log_page_payload: vmr log page completion payload
+ *
+ * @count:	how many data returned in bytes
+ */
+struct xgq_cmd_cq_log_page_payload {
+	uint32_t count;
+	uint32_t resvd1;
+};
+
+/**
+ * struct xgq_cmd_cq_log_page_payload: load xclbin/pdi data payload
+ *
+ * @count:	how many data returned in bytes
+ */
+struct xgq_cmd_cq_data_payload {
+	uint32_t count;
+	uint32_t resvd1;
+};
+
+/**
+ * struct xgq_cmd_cq_vmr_payload: vmr device status payload
  *
  * bitfields for indicting flash partition statistics.
+ * vmr device status.
  */
-struct xgq_cmd_cq_multiboot_payload {
+struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_fpt:1;
 	uint16_t has_fpt_recovery:1;
 	uint16_t boot_on_default:1;
 	uint16_t boot_on_backup:1;
 	uint16_t boot_on_recovery:1;
-	uint16_t resvd1:11;
+	uint16_t has_extfpt:1;
+	uint16_t has_ext_xsabin:1;
+	uint16_t has_ext_scfw:1;
+	uint16_t has_ext_sysdtb:1;
+	uint16_t resvd1:7;
 	uint16_t multi_boot_offset;
-	uint32_t resvd2;
+	uint32_t debug_level:3;
+	uint32_t program_progress:7;
+	uint32_t resvd2:22;
 };
 
 /*
@@ -222,12 +302,58 @@ struct xgq_cmd_cq_multiboot_payload {
 struct xgq_cmd_cq {
 	struct xgq_cmd_cq_hdr hdr;
 	union {
-		struct xgq_cmd_cq_vmr_payload		default_payload;
-		struct xgq_cmd_cq_clock_payload		clock_payload;
-		struct xgq_cmd_cq_sensor_payload	sensor_payload;
-		struct xgq_cmd_cq_multiboot_payload	multiboot_payload;
+		struct xgq_cmd_cq_default_payload	cq_default_payload;
+		struct xgq_cmd_cq_clock_payload		cq_clock_payload;
+		struct xgq_cmd_cq_sensor_payload	cq_sensor_payload;
+		struct xgq_cmd_cq_vmr_payload		cq_vmr_payload;
+		struct xgq_cmd_cq_log_page_payload	cq_log_payload;
+		struct xgq_cmd_cq_data_payload		cq_xclbin_payload;
 	};
 	uint32_t rcode;
 };
 XGQ_STATIC_ASSERT(sizeof(struct xgq_cmd_cq) == 16, "xgq_cmd_cq has to be 16 bytes in size");
+
+/**
+ * XGQ memory partition table, should be positioned at shared memory offset 0,
+ *     and inited by VMR software on RPU device.
+ *
+ * We use the memory partition table for sharing info between host and RPU.
+ * Including:
+ *
+ * @vmr_magic_no:	the magic no.
+ * @ring_buffer_off:	the offset of xgq ring buffer inited by xgq server
+ * @ring_buffer_len:	the length of xgq ring buffer inited by xgq server
+ * TODO: only support hearbeat now
+ * @vmr_status_off:	the offset of vmr device status
+ * @vmr_status_len:	the length of vmr device status
+ * @log_msg_index:	the current index of ring buffer log
+ * @log_msg_buf_off:	the offset of dbg log 
+ * @log_msg_buf_len:	the length of dbg log
+ * @vmr_data_start:	the offset of data buffer started
+ * @vmr_data_end: 	the offset of data buffer ended
+ */
+struct vmr_shared_mem {
+	uint32_t	vmr_magic_no;
+	uint32_t	ring_buffer_off;
+	uint32_t	ring_buffer_len;
+	uint32_t	vmr_status_off;
+	uint32_t	vmr_status_len;
+	uint32_t	log_msg_index;
+	uint32_t	log_msg_buf_off;
+	uint32_t	log_msg_buf_len;
+	uint32_t	vmr_data_start;
+	uint32_t	vmr_data_end;
+};
+
+#define VMR_MAGIC_NO	0x564D5230 /* VMR0 */
+
+#define VMR_LOG_ENTRY_SIZE (96)
+#define VMR_LOG_MAX_RECS (50)
+
+struct vmr_log {
+	char	log_buf[VMR_LOG_ENTRY_SIZE];
+};
+
+#define LOG_BUF_LEN (sizeof(struct vmr_log) * VMR_LOG_MAX_RECS);
+
 #endif

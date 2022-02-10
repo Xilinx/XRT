@@ -122,6 +122,42 @@ def main():
 
   jsonFileCompare(expectedKernelJSON, outputKernelJSON)
 
+  # ---------------------------------------------------------------------------
+  step = "3) Validate adding just a soft kernel"
+
+  outputOnlyPSKernelXclbin = "only_pskernel.xclbin"
+  outputPSKEmbeddedMetadata = "embedded_metadata_psk.xml"
+  expectedOnlyPSKEmbeddedMetadata = os.path.join(args.resource_dir, "embedded_metadata_psk_expected.xml")
+
+  outputPSKIpLayout = "ip_layout_psk.json"
+  expectedPSKIpLayout = os.path.join(args.resource_dir, "ip_layout_psk_expected.json")
+
+  outputPSKConnectivity = "connectivity_psk.json"
+  expectedPSKConnectivity = os.path.join(args.resource_dir, "connectivity_psk_expected.json")
+
+  outputPSKMemTopology = "mem_topology_psk.json"
+  expectedPSKMemTopology = os.path.join(args.resource_dir, "mem_topology_psk_expected.json")
+
+
+  cmd = [xclbinutil, "--add-pskernel", psKernelSharedLibrary,
+                     "--dump-section", "EMBEDDED_METADATA:RAW:" + outputPSKEmbeddedMetadata,
+                     "--dump-section", "IP_LAYOUT:JSON:" + outputPSKIpLayout,
+                     "--dump-section", "CONNECTIVITY:JSON:" + outputPSKConnectivity,
+                     "--dump-section", "MEM_TOPOLOGY:JSON:" + outputPSKMemTopology,
+                     "--output", outputOnlyPSKernelXclbin, 
+                     "--force"]
+
+  execCmd(step, cmd)
+
+  # Validate the contents of the various sections
+  textFileCompare(outputPSKEmbeddedMetadata, expectedOnlyPSKEmbeddedMetadata)
+  jsonFileCompare(outputPSKIpLayout, expectedPSKIpLayout)
+  jsonFileCompare(outputPSKConnectivity, expectedPSKConnectivity)
+  jsonFileCompare(outputPSKMemTopology, expectedPSKMemTopology)
+
+  execCmd(step, cmd)
+
+  # ---------------------------------------------------------------------------
 
   # If the code gets this far, all is good.
   return False

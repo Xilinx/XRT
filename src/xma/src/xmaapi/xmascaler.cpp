@@ -296,6 +296,7 @@ xma_scaler_session_create(XmaScalerProperties *sc_props)
     priv1->num_execbo_allocated = num_execbo;
 
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_SCALER_MOD) != XMA_SUCCESS) {
+        kernel_info->context_opened = false;
         free(sc_session->base.plugin_data);
         free(sc_session);
         delete priv1;

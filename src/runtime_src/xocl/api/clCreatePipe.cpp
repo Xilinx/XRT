@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -129,7 +129,7 @@ clCreatePipe(cl_context                context,
 
   // TODO: here we allocate a pipe even if it isn't a memory mapped pipe,
   // it would be nice to not allocate the pipe if it's a hardware pipe.
-  size_t nbytes = upipe->get_pipe_packet_size() * (upipe->get_pipe_max_packets()+8);
+  size_t nbytes = static_cast<size_t>(upipe->get_pipe_packet_size()) * (upipe->get_pipe_max_packets()+8);
   void* user_ptr=nullptr;
   int status = xrt_core::posix_memalign(&user_ptr, 128, (sizeof(cpu_pipe_t)+nbytes));
   if (status)

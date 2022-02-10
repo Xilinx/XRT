@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -64,7 +64,8 @@ template <typename Callable, typename ...Args>
 auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
-  if (xrt_core::config::get_native_xrt_trace()) {
+  if (xrt_core::config::get_native_xrt_trace() ||
+      xrt_core::config::get_host_trace()) {
     generic_api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }
@@ -95,7 +96,8 @@ template <typename Callable, typename ...Args>
 auto
 profiling_wrapper_sync(const char* function, xclBOSyncDirection dir, size_t size, Callable&& f, Args&&...args)
 {
-  if (xrt_core::config::get_native_xrt_trace()) {
+  if (xrt_core::config::get_native_xrt_trace() ||
+      xrt_core::config::get_host_trace()) {
     sync_logger log_object(function, (dir == XCL_BO_SYNC_BO_TO_DEVICE), size);
     return f(std::forward<Args>(args)...) ;
   }

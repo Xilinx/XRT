@@ -1,8 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
- * Author(s): Umang Parekh
- *          : Sonal Santan
- *          : Ryan Radjabi
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * XRT PCIe library layered on top of xocl kernel driver
  *
@@ -551,7 +548,7 @@ shim(unsigned index)
   , mStallProfilingNumberSlots(0)
   , mStreamProfilingNumberSlots(0)
   , mCmdBOCache(nullptr)
-  , mCuMaps(128, std::make_pair<uint32_t*, uint32_t>(nullptr, 0))
+  , mCuMaps{128, {nullptr, 0}}
 {
   init(index);
 }
@@ -998,12 +995,12 @@ void shim::xclSysfsGetDeviceInfo(xclDeviceInfo2 *info)
     info->mPciSlot = (mDev->domain<<16) + (mDev->bus<<8) + (mDev->dev<<3) + mDev->func;
     info->mNumClocks = numClocks(info->mName);
     info->mNumCDMA = xrt_core::device_query<xrt_core::query::kds_numcdmas>(mCoreDevice);
-    
+
     mDev->sysfs_get("", "link_width", errmsg, info->mPCIeLinkWidth, static_cast<unsigned short>(-1));
     mDev->sysfs_get("", "link_speed", errmsg, info->mPCIeLinkSpeed, static_cast<unsigned short>(-1));
     mDev->sysfs_get("", "link_speed_max", errmsg, info->mPCIeLinkSpeedMax, static_cast<unsigned short>(-1));
     mDev->sysfs_get("", "link_width_max", errmsg, info->mPCIeLinkWidthMax, static_cast<unsigned short>(-1));
-    
+
     //dont try to get any information which needs mailbox communication when device is not ready.
     if(!mDev->is_mgmt() && !mDev->is_ready)
         return;
@@ -1482,7 +1479,7 @@ int shim::xclLoadAxlf(const axlf *buffer)
         dev_init();
         ret = mDev->ioctl(mUserHandle, DRM_IOCTL_XOCL_READ_AXLF, &axlf_obj);
     }
-    
+
     if (ret)
         return -errno;
 
@@ -2204,48 +2201,49 @@ int shim::xclGetDebugProfileDeviceInfo(xclDebugProfileDeviceInfo* info)
 
 int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
 {
+  std::lock_guard<std::mutex> lk(mCuMapLock);
+
+  if (ipIndex >= mCuMaps.size()) {
+    xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
+    return -EINVAL;
+  }
+
+  auto& cumap = mCuMaps[ipIndex];  // {base, size}
+
+  if (cumap.first == nullptr) {
+    auto cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
+    uint32_t size = 0;
     std::string errmsg;
-    std::string cu_subdev;
-    uint32_t size;
-    std::lock_guard<std::mutex> l(mCuMapLock);
-
-    if (ipIndex >= mCuMaps.size()) {
-        xrt_logmsg(XRT_ERROR, "%s: invalid CU index: %d", __func__, ipIndex);
-        return -EINVAL;
-    }
-
-    cu_subdev = "CU[" + std::to_string(ipIndex) + "]";
     mDev->sysfs_get<uint32_t>(cu_subdev, "size", errmsg, size, 0);
     if (size <= 0) {
-        xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
-        return -EINVAL;
+      xrt_logmsg(XRT_ERROR, "%s: incorrect cu size %d", __func__, size);
+      return -EINVAL;
     }
 
-    if (mCuMaps[ipIndex].first == nullptr) {
-        void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
-                             MAP_SHARED, (ipIndex + 1) * getpagesize());
-        if (p != MAP_FAILED) {
-            mCuMaps[ipIndex].first = (uint32_t *)p;
-            mCuMaps[ipIndex].second = size;
-        }
+    void *p = mDev->mmap(mUserHandle, size, PROT_READ | PROT_WRITE,
+                         MAP_SHARED, static_cast<off_t>(ipIndex + 1) * getpagesize());
+    if (p != MAP_FAILED) {
+      cumap.first = static_cast<uint32_t*>(p);
+      cumap.second = size;
     }
+  }
 
-    uint32_t *cumap = mCuMaps[ipIndex].first;
-    if (cumap == nullptr) {
-        xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
-        return -EINVAL;
-    }
+  if (cumap.first == nullptr) {
+    xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
+    return -EINVAL;
+  }
 
-    if (offset >= mCuMaps[ipIndex].second || (offset & (sizeof(uint32_t) - 1)) != 0) {
-        xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
-        return -EINVAL;
-    }
+  if (offset >= cumap.second || (offset & (sizeof(uint32_t) - 1)) != 0) {
+    xrt_logmsg(XRT_ERROR, "%s: invalid CU offset: %d", __func__, offset);
+    return -EINVAL;
+  }
 
-    if (rd)
-        *datap = cumap[offset / sizeof(uint32_t)];
-    else
-        cumap[offset / sizeof(uint32_t)] = *datap;
-    return 0;
+  if (rd)
+    *datap = (cumap.first)[offset / sizeof(uint32_t)];
+  else
+    (cumap.first)[offset / sizeof(uint32_t)] = *datap;
+
+  return 0;
 }
 
 int shim::xclRegRead(uint32_t ipIndex, uint32_t offset, uint32_t *datap)
@@ -2497,7 +2495,7 @@ int xclRegWrite(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint3
   [handle, ipIndex, offset, data] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclRegWrite(ipIndex, offset, data) : -ENODEV;
-  }) ; 
+  }) ;
 }
 
 int xclRegRead(xclDeviceHandle handle, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
@@ -2577,7 +2575,7 @@ size_t xclReadBO(xclDeviceHandle handle, unsigned int boHandle, void *dst, size_
   [handle, boHandle, dst, size, skip] {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->xclReadBO(boHandle, dst, size, skip) : -ENODEV;
-  }); 
+  });
 }
 
 void *xclMapBO(xclDeviceHandle handle, unsigned int boHandle, bool write)
@@ -2698,6 +2696,12 @@ unsigned int xclImportBO(xclDeviceHandle handle, int fd, unsigned flags)
         std::cout << __func__ << ", " << std::this_thread::get_id() << ", handle & XOCL Device are bad" << std::endl;
     }
     return drv ? drv->xclImportBO(fd, flags) : -ENODEV;
+}
+
+int
+xclCloseExportHandle(int fd)
+{
+  return close(fd) ? -errno : 0;
 }
 
 ssize_t xclUnmgdPwrite(xclDeviceHandle handle, unsigned flags, const void *buf, size_t count, uint64_t offset)

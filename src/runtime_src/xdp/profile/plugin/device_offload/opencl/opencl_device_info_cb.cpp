@@ -19,24 +19,24 @@
 #include "xocl/core/platform.h"
 #include "xocl/core/device.h"
 
-#include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_cb.h"
-#include "xdp/profile/plugin/device_offload/opencl/opencl_device_offload_plugin.h"
+#include "xdp/profile/plugin/device_offload/opencl/opencl_device_info_cb.h"
+#include "xdp/profile/plugin/device_offload/opencl/opencl_device_info_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 namespace xdp {
-  static OpenCLDeviceOffloadPlugin deviceOffloadPluginInstance ;
+  static OpenCLDeviceInfoPlugin deviceInfoPluginInstance ;
 
   // This function gets called in a callback at the OpenCL layer.
   //  It could be either hardware or hardware emulation.  In either case,
   //  we call the same higher level function.
   static void updateDeviceOpenCL(xrt_xocl::device* handle)
   {
-    deviceOffloadPluginInstance.updateDevice(handle) ;
+    deviceInfoPluginInstance.updateDevice(handle) ;
   }
 
   static void flushDeviceOpenCL(xrt_xocl::device* handle)
   {
-    deviceOffloadPluginInstance.flushDevice(handle) ;
+    deviceInfoPluginInstance.flushDevice(handle) ;
   }
 
 } // end namespace xdp 

@@ -138,6 +138,41 @@ struct xgq_cmd_config_start {
 };
 
 /**
+ * struct xgq_cmd_clock_calib: xgq clock counter command
+ *
+ * This command would let ERT read the clock counter
+ */
+
+struct xgq_cmd_clock_calib {
+	struct xgq_cmd_sq_hdr hdr;
+};
+
+/**
+ * struct xgq_cmd_access_valid: ERT performance measurement
+ *
+ * This command would measure the performance number of ERT accessing peripherals
+ */
+
+struct xgq_cmd_access_valid {
+	struct xgq_cmd_sq_hdr hdr;
+};
+
+/**
+ * struct xgq_cmd_data_integrity: queue data integrity test
+ *
+ * @rw_count: the number of write operation remaining
+ * @draft:    the offset of read/write operation
+ *
+ * This command would let ERT test host/device accessibility
+ */
+
+struct xgq_cmd_data_integrity {
+	struct xgq_cmd_sq_hdr hdr;
+
+	uint32_t rw_count;
+	uint32_t draft;
+};
+/**
  * struct xgq_cmd_resp_config_start: configure start command response
  *
  * @i2h: ERT interrupt to host enabled
@@ -178,6 +213,7 @@ struct xgq_cmd_config_end {
  * @haddr: higher 32 bits of the CU address
  * @payload_size: CU XGQ slot payload size
  * @name: name of the CU
+ * @uuid: UUID of the XCLBIN of the CU
  *
  * Configure PL/PS CUs.
  */
@@ -195,6 +231,7 @@ struct xgq_cmd_config_cu {
 	uint32_t haddr;
 	uint32_t payload_size;
 	char name[64];
+	char uuid[16];
 };
 
 /**
@@ -249,6 +286,79 @@ struct xgq_cmd_resp_query_cu {
 			uint32_t size:15;
 			uint32_t type:1;
 			uint32_t offset;
+		};
+	};
+	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_resp_clock_calib: query clock counter response
+ *
+ * @timestamp: the number of clock counter
+ *
+ */
+
+struct xgq_cmd_resp_clock_calib {
+	struct xgq_cmd_cq_hdr hdr;
+
+	union {
+		struct {
+			uint32_t resvd;
+			uint32_t timestamp;
+		};
+	};
+	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_resp_access_valid: query performance measurement response
+ *
+ * @cq_read_single: the cycle number of single queue read
+ * @cq_write_single: the cycle number of single queue write
+ * @cu_read_single: the cycle number of single CU read
+ * @cu_write_single: the cycle number of single CU write
+ *
+ */
+
+struct xgq_cmd_resp_access_valid {
+	struct xgq_cmd_cq_hdr hdr;
+
+	union {
+		struct {
+			uint16_t status;
+			uint16_t rsvd1;
+			uint32_t resvd;
+		};
+		struct {
+			uint8_t cq_read_single;
+			uint8_t cq_write_single;
+			uint8_t cu_read_single;
+			uint8_t cu_write_single;
+		};
+	};
+	uint32_t rcode;
+};
+
+/**
+ * struct xgq_cmd_resp_data_integrity: device accessibility response
+ *
+ * @h2d_access:     the result of host to device accessibility
+ * @d2d_access:     the result of device accessibility
+ * @d2cu_access:    the result of device to cu accessibility
+ * @data_integrity: the result of stress test
+ *
+ */
+
+struct xgq_cmd_resp_data_integrity {
+	struct xgq_cmd_cq_hdr hdr;
+
+	union {
+		struct {
+			uint32_t h2d_access:1;
+			uint32_t d2d_access:1;
+			uint32_t d2cu_access:1;
+			uint32_t data_integrity:1;
+			uint32_t resvd:28;
 		};
 	};
 	uint32_t rcode;

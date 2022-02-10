@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -64,7 +64,8 @@ auto
 profiling_wrapper(const char* function, Callable&& f, Args&&...args)
 {
   loader load_object ;
-  if (xrt_core::config::get_xrt_trace()) {
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::config::get_host_trace()) {
     generic_api_call_logger log_object(function) ;
     return f(std::forward<Args>(args)...) ;
   }
@@ -96,7 +97,8 @@ buffer_transfer_profiling_wrapper(const char* function, size_t size,
                                   bool isWrite, Callable&& f, Args&&...args)
 {
   loader load_object ;
-  if (xrt_core::config::get_xrt_trace()) {
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::config::get_host_trace()) {
     buffer_transfer_logger log_object(function, size, isWrite) ;
     return f(std::forward<Args>(args)...) ;
   }

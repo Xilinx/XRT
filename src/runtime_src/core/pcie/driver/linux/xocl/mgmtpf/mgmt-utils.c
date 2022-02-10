@@ -298,14 +298,10 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
-	/*
-	 * reset multi-boot config for next boot.
-	 * This is needed to make sure next boot will be based on pre-loaded
-	 *    boot configuration.
-	 */
-	err = xocl_vmr_enable_multiboot(lro);
-	if (err && err != -ENODEV) {
-		mgmt_info(lro, "reset multi-boot config failed. err: %ld", err);
+	err = xocl_enable_vmr_boot(lro);
+	if (err) {
+		mgmt_err(lro, "enable reset failed");
+		err = -ENODEV;
 		goto failed;
 	}
 
@@ -324,7 +320,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 */
 	if (!XOCL_DSA_PCI_RESET_OFF(lro)) {
 		xocl_subdev_destroy_by_level(lro, XOCL_SUBDEV_LEVEL_URP);
-		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_XGQ);
+		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_XGQ_VMR);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_UARTLITE);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_offline_by_id(lro, XOCL_SUBDEV_ICAP);
@@ -350,7 +346,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_ICAP);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_FLASH);
 		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_UARTLITE);
-		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_XGQ);
+		(void) xocl_subdev_online_by_id(lro, XOCL_SUBDEV_XGQ_VMR);
 	} else {
 		mgmt_warn(lro, "PCI Hot reset is not supported on this board.");
 	}
@@ -389,7 +385,7 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
 
-	(void) xocl_reinit_vmr(lro);
+	(void) xocl_reload_vmr(lro);
 
 	return 0;
 

@@ -113,7 +113,12 @@
 #define NODE_PCIE "pcie"
 #define NODE_BARS "bars"
 #define NODE_XGQ_SQ_BASE "ep_xgq_mgmt_to_rpu_sq_pi_00"
-#define NODE_XGQ_RING_BASE "ep_xgq_payload_mgmt_00"
+#define NODE_XGQ_VMR_PAYLOAD_BASE "ep_xgq_payload_mgmt_00"
+#define NODE_XGQ_USR_SQ_00_BASE "ep_xgq_user_to_apu_sq_pi_00"
+#define NODE_XGQ_USR_SQ_01_BASE "ep_xgq_user_to_apu_sq_pi_01"
+#define NODE_XGQ_USR_SQ_02_BASE "ep_xgq_user_to_apu_sq_pi_02"
+#define NODE_XGQ_USR_SQ_03_BASE "ep_xgq_user_to_apu_sq_pi_03"
+#define NODE_XGQ_USR_RING_BASE "ep_xgq_payload_user_00"
 
 #define PROP_BARM_CTRL "axi_bram_ctrl"
 #define PROP_HWICAP "axi_hwicap"
@@ -155,6 +160,8 @@
 #define RESNAME_INTC_CU_02	NODE_INTC_CU_02
 #define RESNAME_INTC_CU_03	NODE_INTC_CU_03
 #define RESNAME_ERT_CQ_USER    NODE_ERT_CQ_USER
+#define RESNAME_XGQ_USER_SQ	"ep_xgq_user_to_apu_sq_pi"
+#define RESNAME_XGQ_USER_RING	"ep_xgq_payload_user"
 
 #define ERT_SCHED_INTR_ALIAS_00	"interrupt_cu_bank_00"
 #define ERT_SCHED_INTR_ALIAS_01	"interrupt_cu_bank_01"
