@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  * Author: Hem C Neema, Ryan Radjabi
  * Simple command line utility to inetract with SDX PCIe devices
  *
