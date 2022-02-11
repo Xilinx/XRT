@@ -327,11 +327,7 @@ get_next_free_apt_index(struct drm_zocl_dev *zdev)
 	int apt_idx = 0;
 
 	for (apt_idx = 0; apt_idx < MAX_APT_NUM; ++apt_idx) {
-#ifdef CONFIG_PHYS_ADDR_T_64BIT
-		if (zdev->apertures[apt_idx].addr == 0xFFFFffffFFFFffff)
-#else
-		if (zdev->apertures[apt_idx].addr == 0xFFFFffff)
-#endif
+		if (zdev->apertures[apt_idx].addr == EMPTY_APT_VALUE)
 			return apt_idx;
 	}
 
@@ -375,11 +371,7 @@ zocl_clean_aperture(struct drm_zocl_dev *zdev, u32 slot_idx)
 		apt = &zdev->apertures[apt_idx];
 		if (apt->slot_idx == slot_idx) {
 			/* Reset this aperture index */
-#ifdef CONFIG_PHYS_ADDR_T_64BIT
-			apt->addr = 0xFFFFffffFFFFffff;
-#else
-			apt->addr = 0xFFFFffff;
-#endif
+			apt->addr = EMPTY_APT_VALUE;
 			apt->size = 0;
 			apt->prop = 0;
 			apt->cu_idx = -1;
