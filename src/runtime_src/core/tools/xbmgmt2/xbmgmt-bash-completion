@@ -105,7 +105,7 @@ _xbmgmt_completion()
 
 COMP_FILE="/usr/share/bash-completion/bash_completion"
 if [ -f "${COMP_FILE}" ]; then
-  source /usr/share/bash-completion/bash_completion
+  bash /usr/share/bash-completion/bash_completion
   complete -F _xbmgmt_completion xbmgmt
   echo Autocomplete enabled for the xbmgmt command
 else
