@@ -311,10 +311,6 @@ public:
       if (karginfo.index == xrt_core::xclbin::kernel_argument::no_index)
         continue;
 
-      // Sanity check
-      if (karginfo.index != argidx)
-        throw std::runtime_error("internal error: argidx mismatch");
-
       // Create kernel argument for argidx
       auto kargimpl = std::make_shared<arg_impl>();
 
