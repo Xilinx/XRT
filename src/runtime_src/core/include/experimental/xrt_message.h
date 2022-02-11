@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
+/*
+ * Copyright (C) 2021-2022 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -18,8 +18,10 @@
 /*!
  * @namespace xrt::message
  *
+ * @brief
  * APIs for XRT messaging.
  *
+ * @details
  * XRT internally uses a message system that supports dispatching of
  * messages to null, console, file, or syslog under different verbosity
  * levels.  The sink and verbosity level is controlled statically
@@ -30,8 +32,16 @@
  */
 namespace xrt { namespace message {
 
-/**
- * @enum level - verbosity level for messages
+/*!
+ * @enum level
+ *
+ * @brief
+ * Verbosity level for messages
+ *
+ * @details
+ * Use logging APIs to control at what verbosity level the
+ * messages should be issued.  The default verbosity can be changed in
+ * `xrt.ini` or programatically by using `xrt::ini::set`.
  *
  * @var emergency
  * @var alert
@@ -54,6 +64,7 @@ enum class level : unsigned short
   debug     = xrtLogMsgLevel::XRT_DEBUG
 };
 
+/// @cond
 namespace detail {
 
 template <typename ArgType>
@@ -75,19 +86,20 @@ format(boost::format& fmt, ArgType&& arg, Args&&... args)
 XCL_DRIVER_DLLESPEC
 bool
 enabled(level lvl);
-  
+
 } // detail
+/// @endcond
 
 /**
  * log() - Dispatch composed log message
  *
  * @param lvl
- *   Severity level, the message is ignored if configured level
- *   is less than specified level.
+ *  Severity level, the message is ignored if configured level
+ *  is less than specified level.
  * @param tag
- *   The message tag to use.  
- *  @param msg
- *   A formatted composed message
+ *  The message tag to use.
+ * @param msg
+ *  A formatted composed message
  */
 XCL_DRIVER_DLLESPEC
 void
@@ -97,17 +109,17 @@ log(level lvl, const std::string& tag, const std::string& msg);
  * log() - Compose and dispatch log message
  *
  * @param lvl
- *   Severity level, the message is ignored if configured level
- *   is less than specified level.
+ *  Severity level, the message is ignored if configured level
+ *  is less than specified level.
  * @param tag
- *   The message tag to use.  
+ *  The message tag to use.
  * @param format
- *   A format string similar to printf or boost::format
- *  @param args
- *   Message arguments for the placeholders used in the format string
+ *  A format string similar to printf or boost::format
+ * @param args
+ *  Message arguments for the placeholders used in the format string
  *
- * This log function uses boost::format to compose the message from 
- * specified format string and arguments. 
+ * This log function uses boost::format to compose the message from
+ * specified format string and arguments.
  */
 template <typename ...Args>
 void
