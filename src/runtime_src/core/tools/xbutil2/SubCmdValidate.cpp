@@ -1110,7 +1110,7 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   uint32_t m2m_enabled = 0;
   try {
     m2m_enabled = xrt_core::device_query<xrt_core::query::m2m>(_dev);
-  } catch (const xrt_core::query::sysfs_error&) {
+  } catch (const xrt_core::query::exception&) {
     // Ignore the catch! Let the below logic handle the notification as we want to skip this test
     // If we end up here this means the m2m sysfs node was not found and we skip the test.
   }
