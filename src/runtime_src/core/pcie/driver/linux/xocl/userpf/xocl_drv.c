@@ -1004,7 +1004,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 	struct xcl_mailbox_req *mb_req = NULL;
 	char *in_buf = NULL;
 	size_t reqlen = sizeof(struct xcl_mailbox_req) + data_len;
-	int ret, id;
+	int ret = 0;
 
 	mb_req = vmalloc(reqlen);
 	if (!mb_req)
