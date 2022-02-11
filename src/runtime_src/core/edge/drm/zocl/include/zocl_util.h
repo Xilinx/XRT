@@ -26,7 +26,6 @@
 /* Apertures contains both ip and debug ip information */
 #define MAX_APT_NUM		2*MAX_CU_NUM
 #define EMPTY_APT_VALUE		(phys_addr_t) -1;
-#endif
 #define CU_SIZE        _64KB
 #define PR_ISO_SIZE    _4KB
 
