@@ -204,17 +204,13 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
-  void HwEmShim::parseHLSPrintf(const std::string& simPath)
+  void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
   {
     std::ifstream ifs(simPath + "/simulate.log");
-    std::string word = "HLS_PRINT";
-    std::string line;
-    while( getline(ifs, line ))
-    {
-      size_t pos = line.find(word);
-      if ( pos != std::string::npos) {
-        logMessage(line, 0);
-      }
+    std::string lineHandle;
+    while(getline(ifs, lineHandle)) {
+      if(lineHandle.find(searchString, 0) != std::string::npos)
+        logMessage(lineHandle, 0);
     }
   }
 
@@ -222,7 +218,7 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseHLSPrintf(simPath);
+    parseString(simPath,"HLS_PRINT");
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
@@ -230,6 +226,10 @@ namespace xclhwemhal2 {
       std::string deadlockMsg = content.substr(first , last + 9 - first);
       logMessage(deadlockMsg, 0);
     }
+
+    //CR-1120081 Changes Start
+    parseString(simPath,"SIM-IPC's external process can be connected to instance");
+    //CR-1120081 Changes End
   }
 
   static void sigHandler(int sn, siginfo_t *si, void *sc)
