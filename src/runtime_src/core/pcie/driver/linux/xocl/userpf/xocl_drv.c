@@ -1022,8 +1022,16 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 	memcpy(mb_req->data, &subdev_peer, data_len);
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
+	if (ret) {
+		userpf_err(xdev, "sdr peer request failed, err: %d", ret);
+		goto done;
+	}
 
-	xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
+	ret = xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
+	if (ret)
+		userpf_err(xdev, "hwmon_sdm sysfs creation failed, err: %d", ret);
+	else
+		userpf_dbg(xdev, "successfully created hwmon_sdm sensor sysfs nodes");
 
 done:
 	vfree(in_buf);

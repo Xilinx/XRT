@@ -651,7 +651,7 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 
 	sdm->cache_expire_secs = HWMON_SDM_DEFAULT_EXPIRE_SECS;
 
-	if ((XGQ_DEV(xdev) == NULL) || (XGQ_DEV(xdev) == -ENODEV)) {
+	if (XGQ_DEV(xdev) == NULL) {
 		xocl_dbg(&pdev->dev, "in userpf driver");
 		sdm->privileged = false;
 	} else {
@@ -779,9 +779,9 @@ static int hwmon_sdm_get_sensors(struct platform_device *pdev,
  * It is used to create sysfs nodes in xocl/userpf driver
  * It is invoked from xocl driver for each sensor group.
  */
-static void hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
-                                           char *in_buf, size_t len,
-                                           enum xcl_group_kind kind)
+static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
+                                          char *in_buf, size_t len,
+                                          enum xcl_group_kind kind)
 {
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	int repo_type, repo_id;
@@ -805,6 +805,8 @@ static void hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 		sdm->sensor_data[repo_id] = (char*)kzalloc(sizeof(char) * 4096, GFP_KERNEL);
 		memcpy(sdm->sensor_data[repo_id], in_buf, len);
 	}
+
+	return ret;
 }
 
 static struct xocl_sdm_funcs sdm_ops = {

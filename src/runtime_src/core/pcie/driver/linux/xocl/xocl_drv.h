@@ -2167,8 +2167,10 @@ struct xocl_xgq_vmr_funcs {
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
-	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp, enum xcl_group_kind repo_type);
-	void (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf, size_t len, enum xcl_group_kind kind);
+	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind repo_type);
+	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
+                                          size_t len, enum xcl_group_kind kind);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
