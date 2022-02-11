@@ -200,13 +200,26 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
  */
 static int zocl_aperture_init(struct drm_zocl_dev *zdev)
 {
+	struct addr_aperture *apts = NULL;
+	int i;
+
 	zdev->apertures = kcalloc(MAX_APT_NUM, sizeof(struct addr_aperture),
 				 GFP_KERNEL);
 	if (!zdev->apertures) {
 		DRM_ERROR("Out of memory for Aperture\n");
 		return -ENOMEM;
 	}
+	
+	apts = zdev->apertures;
 
+	/* Consider this magic number as uninitialized aperture identity */
+	for (i = 0; i < MAX_APT_NUM; ++i) {
+#ifdef CONFIG_PHYS_ADDR_T_64BIT
+		apts[i].addr = 0xFFFFffffFFFFffff;
+#else
+		apts[i].addr = 0xFFFFffff;
+#endif	
+	}
 	zdev->num_apts = 0;
 
 	return 0;
