@@ -1,22 +1,9 @@
 /*
- * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * SPDX-License-Identifier: Apache-2.0
  */
-
-#ifndef _XRT_BO_H_
-#define _XRT_BO_H_
+#ifndef XRT_BO_H_
+#define XRT_BO_H_
 
 #include "xrt.h"
 #include "xrt_mem.h"
@@ -47,8 +34,13 @@ typedef uint64_t xrtBufferFlags;
  */
 typedef uint32_t xrtMemoryGroup;
 
-/**
+/*!
+ * @struct xcl_buffer_handle
+ *
+ * @brief
  * Typed xclBufferHandle used to prevent ambiguity
+ *
+ * @details
  * Use when constructing xrt::bo from xclBufferHandle
  */
 struct xcl_buffer_handle { xclBufferHandle bhdl; };
@@ -59,9 +51,14 @@ namespace xrt {
 
 using memory_group = xrtMemoryGroup;
 
-/**
+/*!
+ * @struct pid_type
+ *
+ * @brief
  * Typed pid_t used to prevent ambiguity when contructing
  * bo with a process id.
+ *
+ * @details
  * Use xrt::bo bo{..., pid_type{pid}, ...};
  */
 struct pid_type { pid_t pid; };
