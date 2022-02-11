@@ -21,9 +21,11 @@
 #include "flash/firmware_image.h"
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
+#include "core/common/info_vmr.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
 
@@ -100,9 +102,19 @@ get_boot_info(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
   try {
-    auto def = xrt_core::device_query<xrt_core::query::boot_partition>(dev);
-    ptree.add("default", def == 0 ? "ACTIVE" : "INACTIVE");
-    ptree.add("backup", def == 0 ? "INACTIVE" : "ACTIVE");
+    // get boot on default from vmr_status sysfs node
+    int is_default_boot = 0;
+    const auto pt = xrt_core::vmr::vmr_info(dev);
+    for(auto& ks : ptree) {
+      const boost::property_tree::ptree& vmr_stat = ks.second;
+      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+        std::cout << "boot on def" <<std::endl;
+        is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
+        std::cout << "boot val: " << is_default_boot <<std::endl;
+      }
+    }
+    ptree.add("default", is_default_boot == 0 ? "ACTIVE" : "INACTIVE");
+    ptree.add("backup", is_default_boot == 0 ? "INACTIVE" : "ACTIVE");
   }
   catch (const xrt_core::query::exception&) { 
     // only available for versal devices
