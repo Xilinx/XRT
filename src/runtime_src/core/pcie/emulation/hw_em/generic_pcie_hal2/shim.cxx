@@ -1694,7 +1694,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     }
 
     //bool simDontRun = xclemulation::config::getInstance()->isDontRun();
-    if(!mSimDontRun)
+    /* If XRT_PCIE_HW_EMU_FORCE_SHUTDOWN environment variable
+       is set, skip the dead-locking wait for the simulator ending */
+    if(!mSimDontRun && !std::getenv("XRT_PCIE_HW_EMU_FORCE_SHUTDOWN"))
       while (-1 == waitpid(0, &status, 0));
 
     if(( lWaveform == xclemulation::debug_mode::gui || lWaveform == xclemulation::debug_mode::batch || lWaveform == xclemulation::debug_mode::off)
