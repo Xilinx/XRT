@@ -156,7 +156,7 @@ public:
     // @e : shared_future to type erase
     template <typename ValueType>
     event(std::shared_future<ValueType> e)
-      : m_content(new event_holder<ValueType>(std::move(e)))
+      : m_content(std::make_shared<event_holder<ValueType>>(std::move(e)))
     {}
 
     event&
