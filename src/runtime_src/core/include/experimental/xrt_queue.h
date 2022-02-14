@@ -196,7 +196,7 @@ public:
    * @return
    *   Future result of the function (std::future)
    *
-   * A callable is an argument less lambda function.  The function is
+   * A callable is an argument-less lambda function.  The function is
    * executed asynchronously by the queue consumer (worker thread)
    * once all previous enqueued operations have completed.
    *
