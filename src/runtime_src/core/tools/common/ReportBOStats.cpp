@@ -46,7 +46,6 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
     std::vector<std::string> mem_stat;
 
     //Convert vector of char from query cmd into vector of strings separated by null char separated by null char
-    //boost::split(mem_stat, mem_stat_char, boost::is_any_of(boost::as_array("\n")));
     boost::split(mem_stat, mem_stat_char, boost::is_any_of("\n"));
     /* Content of mem_stat now will be as below:
         [UNUSED] bank0@0x004000000000 (16384MB): 0KB 0BOs
@@ -113,7 +112,7 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
   }
 
   // There can only be 1 root node
-  pt.add_child("bo_stats", pt2_list);
+  pt.add_child("buffer_object_stats", pt2_list);
 }
 
 
