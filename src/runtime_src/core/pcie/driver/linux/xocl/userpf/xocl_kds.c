@@ -1418,6 +1418,50 @@ static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
 }
 
 static int
+xocl_kds_xgq_identify(struct xocl_dev *xdev, int *major, int *minor)
+{
+	struct xgq_cmd_identify *identify = NULL;
+	struct xgq_cmd_resp_identify resp = {0};
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_identify));
+	if (!xcmd)
+		return -ENOMEM;
+
+	identify = xcmd->info;
+
+	identify->hdr.opcode = XGQ_CMD_OP_IDENTIFY;
+	identify->hdr.count = 0;
+	identify->hdr.state = 1;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
+		return -EINVAL;
+	}
+
+	*major = resp.major;
+	*minor = resp.minor;
+	return 0;
+}
+
+static int
 xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_cus)
 {
 	struct xgq_cmd_config_start *cfg_start = NULL;
@@ -1646,6 +1690,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 			       struct ps_kernel_node *ps_kernel)
 {
 	struct xrt_cu_info *cu_info = NULL;
+	int major = 0, minor = 0;
 	int num_cus = 0;
 	int ret = 0;
 	int i = 0;
@@ -1663,6 +1708,17 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	if (!cfg.ert) {
 		XDEV(xdev)->kds.ert_disable = true;
 		goto create_regular_cu;
+	}
+
+	/*
+	 * The XGQ Identify command is used to identify the version of firmware which
+	 * can help host to know the different behaviors of the firmware.
+	 */
+	xocl_kds_xgq_identify(xdev, &major, &minor);
+	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
+	if (major != 1 && minor != 0) {
+		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
+		return -EINVAL;
 	}
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
