@@ -46,7 +46,7 @@ class queue
 {
   friend class queue_impl;
 
-  // class task - type erased callable operation
+  // class task - type-erased callable operation
   //
   // A task wraps a callers typed operation such that it
   // can be inserted into a queue.
