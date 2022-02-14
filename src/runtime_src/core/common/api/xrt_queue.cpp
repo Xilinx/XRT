@@ -34,7 +34,7 @@ namespace xrt {
 // class queue_impl - insulated implemention of an xrt::queue
 //
 // Manages and executes enqueued tasks.
-// Tasks are executed and complete in order of enqueuing.
+// Tasks are executed and completed in order of enqueuing.
 //
 // A queue is associated with exactly one handler thread that executes
 // the task asynchronously to the enqueuer.
