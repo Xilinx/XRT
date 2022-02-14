@@ -89,21 +89,21 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
 
       boost::property_tree::ptree bo_pt;
       if (bo_info[0].length() < 5 || bo_info[1].length() < 3 || bo_info[2].length() < 4) {
-        bo_pt.put("bo_type", "Invalid");
-        bo_pt.put("bo_count", "n/a");
-        bo_pt.put("mem_used", "n/a");
-        bo_pt.put("mem_used_unit", "n/a");
-        bo_pt.put("mem_used_bytes", "n/a");
+        bo_pt.put("bufer_type", "Invalid");
+        bo_pt.put("buffer_count", "n/a");
+        bo_pt.put("memory_used", "n/a");
+        bo_pt.put("memory_used_unit", "n/a");
+        bo_pt.put("memory_used_bytes", "n/a");
       } else {
 	std::string mem_used(bo_info[1]);
 	mem_used.pop_back();
 	auto mem_used_bytes = XBUtilities::string_to_bytes(mem_used);
 	mem_used.pop_back();
-        bo_pt.put("bo_type", bo_info[0].substr(1, bo_info[0].length()-2));
-        bo_pt.put("bo_count", bo_info[2].substr(0, bo_info[2].length()-3));
-        bo_pt.put("mem_used", mem_used);
-        bo_pt.put("mem_used_unit", bo_info[1].substr(bo_info[1].length()-2, 2));
-        bo_pt.put("mem_used_bytes", mem_used_bytes);
+        bo_pt.put("buffer_type", bo_info[0].substr(1, bo_info[0].length()-2));
+        bo_pt.put("buffer_count", bo_info[2].substr(0, bo_info[2].length()-3));
+        bo_pt.put("memory_used", mem_used);
+        bo_pt.put("memory_used_unit", bo_info[1].substr(bo_info[1].length()-2, 2));
+        bo_pt.put("memory_used_bytes", mem_used_bytes);
       }
       pt2_list.push_back(std::make_pair("", bo_pt));
     }
