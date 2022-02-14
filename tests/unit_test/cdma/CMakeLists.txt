@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 set(TESTNAME "cdma")
@@ -7,8 +7,10 @@ PROJECT(${TESTNAME})
 
 include(../../CMake/utils.cmake)
 
+find_package(OpenCL REQUIRED)
+
 add_executable(${TESTNAME} main.cpp)
-target_link_libraries(${TESTNAME} PRIVATE ${xrt_xilinxopencl_LIBRARY})
+target_link_libraries(${TESTNAME} PRIVATE ${OpenCL_LIBRARY})
 
 if (NOT WIN32)
   target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)

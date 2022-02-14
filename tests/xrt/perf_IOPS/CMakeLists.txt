@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+#
+
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 PROJECT(perf_IOPS)
 set(TESTNAME "perf_IOPS")

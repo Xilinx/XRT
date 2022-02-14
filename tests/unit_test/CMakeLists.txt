@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
 PROJECT(UNIT_TEST)
@@ -9,9 +9,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(XILINX_XRT $ENV{XILINX_XRT})
 set(XRT_CORE_LIBRARY xrt_core)
-if (NOT DEFINED ${MODE})
-  set(MODE sw_emu)
-endif()
 
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
@@ -38,8 +35,8 @@ add_subdirectory(018_bringup3)
 add_subdirectory(019_bringup4)
 add_subdirectory(036_hello)
 add_subdirectory(2kernelglobal_002_rw_4ddr_512)
-#add_subdirectory(cdma)
-#add_subdirectory(cuselect)
-#add_subdirectory(subdevice)
-#add_subdirectory(vadd_bank3)
+add_subdirectory(cdma)
+add_subdirectory(cuselect)
+add_subdirectory(subdevice)
+add_subdirectory(vadd_bank3)
 
