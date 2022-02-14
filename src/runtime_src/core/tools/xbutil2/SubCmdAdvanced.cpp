@@ -19,6 +19,7 @@
 #include "SubCmdAdvanced.h"
 #include "OO_MemRead.h"
 #include "OO_AieRegRead.h"
+#include "OO_AieFreqScale.h"
 #include "OO_MemWrite.h"
 #include "XBReport.h"
 
@@ -78,6 +79,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 // Only defined for embedded platform
 #ifndef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
   subOptionOptions.emplace_back(std::make_shared<OO_AieRegRead>("read-aie-reg"));
+  subOptionOptions.emplace_back(std::make_shared<OO_AieFreqScale>("aie-freq"));
 #endif
 
   for (auto & subOO : subOptionOptions) {

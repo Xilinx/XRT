@@ -30,6 +30,7 @@ file(GLOB XBUTIL_V2_SUBCMD_FILES
   "OO_MemWrite.cpp"
   "OO_P2P.cpp"
   "OO_AieRegRead.cpp"
+  "OO_AieFreqScale.cpp"
   "OO_HostMem.cpp"
 )
 

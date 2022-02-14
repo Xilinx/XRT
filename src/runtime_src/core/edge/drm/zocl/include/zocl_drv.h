@@ -243,6 +243,7 @@ int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_reset(struct drm_zocl_dev *zdev);
+int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_graph_alloc_context(struct drm_zocl_dev *dev, u32 gid,
 		u32 ctx_code, struct sched_client_ctx *client);
 int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,

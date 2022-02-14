@@ -494,6 +494,82 @@ struct aie_reg_read
   }
 };
 
+struct aie_get_freq
+{
+  using result_type = query::aie_get_freq::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
+  {
+    auto dev = get_edgedev(device);
+    result_type freq = 0;
+#ifdef XRT_ENABLE_AIE
+#ifndef __AIESIM__
+    const static std::string AIE_TAG = "aie_metadata";
+    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    std::string err;
+    std::string value;
+
+    // Reading the aie_metadata sysfs.
+    dev->sysfs_get(AIE_TAG, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error
+      (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+       + "Intelligent Engines (AIE). No action will be performed.");
+
+    int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
+    if (!mKernelFD)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+
+    uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
+    struct drm_zocl_aie_freq_scale aie_arg = { part_id, freq, 0 };
+    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading frequency from AIE partition %d failed") % part_id));
+    }
+#endif
+#endif
+    return freq;
+  }
+};
+
+struct aie_set_freq_req
+{
+  using result_type = query::aie_set_freq_req::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
+  {
+    auto dev = get_edgedev(device);
+#ifdef XRT_ENABLE_AIE
+#ifndef __AIESIM__
+    const static std::string AIE_TAG = "aie_metadata";
+    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    std::string err;
+    std::string value;
+
+    // Reading the aie_metadata sysfs.
+    dev->sysfs_get(AIE_TAG, err, value);
+    if (!err.empty())
+      throw xrt_core::query::sysfs_error
+      (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+       + "Intelligent Engines (AIE). No action will be performed.");
+
+    int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
+    if (!mKernelFD)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+
+    uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
+    uint64_t frequency = boost::any_cast<uint64_t>(freq);
+    struct drm_zocl_aie_freq_scale aie_arg = { part_id, frequency, 1 };
+    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
+      throw xrt_core::error(-errno, boost::str(boost::format("Setting frequency request for AIE partition %d failed") % part_id));
+    }
+#endif
+#endif
+    return true;
+  }
+};
+
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -653,6 +729,17 @@ struct function0_get : QueryRequestType
 };
 
 template <typename QueryRequestType, typename Getter>
+struct function2_get : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1, arg2);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
   boost::any
@@ -692,6 +779,14 @@ emplace_func0_request()
 
 template <typename QueryRequestType, typename Getter>
 static void
+emplace_func2_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
 emplace_func3_request()
 {
   auto k = QueryRequestType::key;
@@ -721,6 +816,8 @@ initialize_query_table()
   emplace_func0_request<query::aie_core_info,		aie_core_info>();
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
+  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func2_request<query::aie_set_freq_req,        aie_set_freq_req>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");

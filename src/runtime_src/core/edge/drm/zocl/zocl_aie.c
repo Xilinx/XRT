@@ -435,6 +435,54 @@ zocl_aie_reset(struct drm_zocl_dev *zdev)
 	return 0;
 }
 
+int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
+{
+	struct drm_zocl_aie_freq_scale *args= data;
+	int ret = 0;
+
+	mutex_lock(&zdev->aie_lock);
+
+	if (!zdev->aie) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("AIE image is not loaded.\n");
+		return -ENODEV;
+	}
+
+	if (!zdev->aie->aie_dev) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("No available AIE partition.\n");
+		return -ENODEV;
+	}
+
+	if (zdev->aie->partition_id != args->partition_id) {
+		mutex_unlock(&zdev->aie_lock);
+		DRM_ERROR("AIE partition %d does not exist.\n",
+		    args->partition_id);
+		return -ENODEV;
+	}
+
+	if(!args->dir) {
+		// Read frequency from requested aie partition
+		ret = aie_partition_get_freq(zdev->aie->aie_dev, &args->freq);
+		if(ret)
+			DRM_ERROR("Reading frequency from AIE partition %d failed with error %d\n",
+				args->partition_id, ret);
+		mutex_unlock(&zdev->aie_lock);
+		return ret;
+	} else {
+		// Send Set frequency request for aie partition
+		ret = aie_partition_set_freq_req(zdev->aie->aie_dev, args->freq);
+		if(ret)
+			DRM_ERROR("Setting frequency request for AIE partition %d failed with error %d\n",
+				args->partition_id, ret);
+		mutex_unlock(&zdev->aie_lock);
+		return ret;
+
+	}
+
+	return 0;
+}
+
 int
 zocl_aie_graph_alloc_context(struct drm_zocl_dev *zdev, u32 gid, u32 ctx_code,
 	struct sched_client_ctx *client)

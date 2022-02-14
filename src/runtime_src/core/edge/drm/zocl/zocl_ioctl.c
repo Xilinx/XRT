@@ -129,3 +129,13 @@ zocl_aie_reset_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	ret = zocl_aie_reset(zdev);
 	return ret;
 }
+
+int
+zocl_aie_freqscale_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
+{
+	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(dev);
+	int ret = 0;
+
+	ret = zocl_aie_freqscale(zdev, data);
+	return ret;
+}
