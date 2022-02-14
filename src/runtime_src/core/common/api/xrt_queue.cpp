@@ -36,7 +36,7 @@ namespace xrt {
 // Manages and executes enqueued tasks.
 // Tasks are executed and complete in order of enqueuing.
 //
-// An queue is associated with exactly one handler thread that executes
+// A queue is associated with exactly one handler thread that executes
 // the task asynchronously to the enqueuer.
 class queue_impl
 {
