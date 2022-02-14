@@ -124,13 +124,13 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
 {
   boost::format entfmt("BO type: %-11s, BO count: %-5s, Mem usage(%s): %s\n");
 
-  for(auto& kv : pt.get_child("bo_stats")) {
+  for(auto& kv : pt.get_child("buffer_object_stats")) {
     const boost::property_tree::ptree& v = kv.second;
 
     output << boost::str(entfmt 
-      % v.get<std::string>("bo_type")
-      % v.get<std::string>("bo_count")
-      % v.get<std::string>("mem_used_unit")
-      % v.get<std::string>("mem_used"));
+      % v.get<std::string>("buffer_type")
+      % v.get<std::string>("buffer_count")
+      % v.get<std::string>("memory_used_unit")
+      % v.get<std::string>("memory_used"));
   }
 }
