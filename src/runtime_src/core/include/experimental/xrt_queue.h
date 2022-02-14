@@ -108,7 +108,7 @@ class queue
 public:
 
   /**
-   * class event - type erased std::shared_future
+   * class event - type-erased std::shared_future
    *
    * Wraps typed future return value returned when
    * enqueueing an operation.
