@@ -203,7 +203,7 @@ zocl_create_client_context(struct drm_zocl_dev *zdev,
  *
  */
 static struct kds_client_ctx *
-zocl_check_exists_context(struct kds_client *client, uuid_t *id)
+zocl_check_exists_context(struct kds_client *client, const uuid_t *id)
 {
 	struct kds_client_ctx *curr = NULL;
 
@@ -283,11 +283,26 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
+	struct kds_client_ctx *cctx = NULL;
+
+	cctx = vzalloc(sizeof(struct kds_client_ctx));
+	if (!cctx)
+		return -ENOMEM;
+
+	cctx->xclbin_id = vzalloc(sizeof(uuid_t));
+	if (!cctx->xclbin_id) {
+		vfree(info.curr_ctx);
+		return -ENOMEM;
+	}
+	uuid_copy(cctx->xclbin_id, &uuid_null);
 
 	info.cu_idx = cu_idx;
 	info.flags = flags;
+	info.curr_ctx = cctx;
 
 	mutex_lock(&client->lock);
+
+	list_add_tail(&(cctx->link), &client->ctx_list);
 	ret = kds_add_context(&zdev->kds, client, &info);
 	mutex_unlock(&client->lock);
 	return ret;
@@ -298,11 +313,24 @@ int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
+	struct kds_client_ctx *cctx = NULL;
 
 	info.cu_idx = cu_idx;
 	mutex_lock(&client->lock);
+	cctx = zocl_check_exists_context(client, &uuid_null);
+	if (cctx == NULL)
+		return -EINVAL;
+
+	info.curr_ctx = (void *)cctx;
 	ret = kds_del_context(&zdev->kds, client, &info);
+
+	list_del(&cctx->link);
 	mutex_unlock(&client->lock);
+
+	if (cctx->xclbin_id)
+		vfree(cctx->xclbin_id);
+	if (cctx)
+		vfree(cctx);
 	return ret;
 }
 
@@ -807,7 +835,6 @@ void zocl_destroy_client(void *client_hdl)
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_sched  *kds = NULL;
-	struct drm_device *ddev = NULL;
 	struct kds_client_ctx *curr = NULL;
 	struct drm_zocl_slot *slot = NULL;
 	int pid = pid_nr(client->pid);
