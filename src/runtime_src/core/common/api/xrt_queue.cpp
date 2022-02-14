@@ -45,7 +45,7 @@ class queue_impl
   std::condition_variable m_work;
   bool m_stop = false;
 
-  // single worker threads to run the tasks
+  // single worker thread to run the tasks
   std::thread m_worker;
 
   // worker thread, executes tasks as they become ready
