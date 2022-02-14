@@ -50,12 +50,12 @@ usage()
 {
     echo "Usage: build.sh [options]"
     echo
-    echo "[-help]                   List this help"
-    echo "[-nocmake]                Skip CMake call"
-    echo "[-em <hw_emu | sw_emu>]   Link for emulation mode"
-    echo "[clean|-clean]            Remove build directories"
-    echo "[-testname <testname | all>]  Build a testcase by specifying it. By default, all testcases will be built"
-    echo "[-xclbin]                 create xclbin using kernel source code along with the testcases"
+    echo "[-help]                                    List this help"
+    echo "[-nocmake]                                 Skip CMake call"
+    echo "[-em <hw_emu | sw_emu>]                    Link for emulation mode"
+    echo "[clean|-clean]                             Remove build directories"
+    echo "[-testname <testname | all>]               Build a testcase by specifying it. By default, all testcases will be built"
+    echo "[-xclbin]                                  create xclbin using kernel source code along with the testcases"
     echo "[-platform | --platform <path to *.xpfm]   Path to xpfm file"
     echo ""
     echo "The test executables are installed under"
@@ -144,6 +144,7 @@ if [[ $xclbin == 1 ]]; then
     echo "Building xclbin from kernel source code"
     export XCLBIN_CREATION=$xclbin
 fi
+
 here=$PWD
 mkdir -p $CMAKEDIR
 cd $CMAKEDIR
