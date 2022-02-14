@@ -34,6 +34,12 @@
 #define ZRPU_CHANNEL_XGQ_BUFFER_SIZE	4096
 #define ZRPU_CHANNEL_XGQ_SLOT_SIZE	1024
 
+struct zocl_rpu_data_entry {
+	struct list_head	entry_list;
+	char			*data_entry;
+	size_t			data_size;
+};
+
 struct zocl_rpu_channel {
 	struct platform_device *pdev;
 	struct platform_device *intc_pdev;
@@ -42,6 +48,7 @@ struct zocl_rpu_channel {
 	void *xgq_hdl;
 	u64 mem_start;
 	size_t mem_size;
+	struct list_head	data_list;
 };
 
 static inline void reg_write(void __iomem *base, u64 off, u32 val)
@@ -110,6 +117,109 @@ static void zchan_cmd_identify(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_
 	r->minor = ZCHAN_CMD_HANDLER_VER_MINOR;
 }
 
+static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
+	struct xgq_com_queue_entry *resp)
+{
+	struct xgq_cmd_sq *sq = (struct xgq_cmd_sq *)cmd;
+	struct xgq_cmd_cq *cq = (struct xgq_cmd_cq *)resp;
+	u32 address_offset = sq->xclbin_payload.address;
+	u32 size = sq->xclbin_payload.size;
+	u32 remain_size = sq->xclbin_payload.remain_size;
+	struct zocl_rpu_data_entry *entry = NULL;
+	void __iomem *src = chan->mem_base + address_offset;
+	int ret = 0;
+
+	zchan_info(chan, "addr_off 0x%x, size %d, remain %d",
+		address_offset, size, remain_size);
+
+	/*
+	 * if remain_size is not 0, this is not last pkt.
+	 *
+	 * every pkt will be added to linkedlist.
+	 * if this is last pkt, dump linked list to whole xclbin.
+	 */
+	entry = vmalloc(sizeof(struct zocl_rpu_data_entry));
+	if (entry == NULL) {
+		zchan_err(chan, "no memory");
+		ret = -ENOMEM;
+		goto fail;
+	}
+	entry->data_size = size;
+	entry->data_entry = vmalloc(size);
+	memcpy_fromio(entry->data_entry, src, size);
+
+	list_add_tail(&entry->entry_list, &chan->data_list);
+
+	/* remain_size 0 indicates this is the last pkt */
+	if (remain_size == 0) {
+		struct list_head *pos = NULL, *next = NULL;
+		struct zocl_rpu_data_entry *elem = NULL;
+		size_t total_size = 0;
+		char *total_data = NULL;
+		char *cur = NULL;
+		int i;
+
+		list_for_each_safe(pos, next, &chan->data_list) {
+			elem = list_entry(pos, struct zocl_rpu_data_entry, entry_list);
+			total_size += elem->data_size;
+		}
+
+		total_data = vmalloc(total_size);
+		if (total_data == NULL) {
+			zchan_err(chan, "no memory");
+			ret = -ENOMEM;
+			goto fail;
+		}
+
+		cur = total_data;
+		pos = NULL;
+		next = NULL;
+		list_for_each_safe(pos, next, &chan->data_list) {
+			elem = list_entry(pos, struct zocl_rpu_data_entry, entry_list);
+			
+			memcpy(cur, elem->data_entry, elem->data_size);
+			cur += elem->data_size;
+
+			list_del(pos);
+			vfree(elem->data_entry);
+			vfree(elem);
+		}
+		zchan_err(chan, "total size: %ld list empty %d",
+			total_size, list_empty(&chan->data_list));
+		INIT_LIST_HEAD(&chan->data_list);
+
+		/*NOTE: now we have the whole xclbn data, use the xclbin data here */
+		/* debug info for comparing data */
+		for (i = 0; i < 8; i++)
+			zchan_err(chan, "0x%x", total_data[i]);
+		for (i = total_size - 8; i < total_size; i++)
+			zchan_err(chan, "0x%x", total_data[i]);
+
+		vfree(total_data);
+	}
+
+	init_resp(resp, cmd->cid, 0);
+	cq->cq_xclbin_payload.count = size;
+	return;
+fail:
+	/* if list is not empty, clean up memory and re-init list */
+	if (list_empty(&chan->data_list)) {
+		struct list_head *pos = NULL, *next = NULL;
+		struct zocl_rpu_data_entry *elem = NULL;
+
+		list_for_each_safe(pos, next, &chan->data_list) {
+			elem = list_entry(pos, struct zocl_rpu_data_entry, entry_list);
+			list_del(pos);
+			vfree(elem->data_entry);
+			vfree(elem);
+		}
+		INIT_LIST_HEAD(&chan->data_list);
+	}
+	init_resp(resp, cmd->cid, ret);
+	return;
+
+}
+
 static void zchan_cmd_default_handler(struct zocl_rpu_channel *chan, struct xgq_cmd_sq_hdr *cmd,
 				      struct xgq_com_queue_entry *resp)
 {
@@ -122,7 +232,8 @@ struct zchan_ops {
 	char *name;
 	cmd_handler handler;
 } zchan_op_table[] = {
-	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zchan_cmd_identify }
+	{ XGQ_CMD_OP_IDENTIFY, "XGQ_CMD_OP_IDENTIFY", zchan_cmd_identify },
+	{ XGQ_CMD_OP_LOAD_XCLBIN, "XGQ_CMD_OP_LOAD_XCLBIN", zchan_cmd_load_xclbin },
 };
 
 static inline const struct zchan_ops *opcode2op(u32 op)
@@ -184,6 +295,8 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 
 	chan->pdev = pdev;
 	platform_set_drvdata(pdev, chan);
+
+	INIT_LIST_HEAD(&chan->data_list);
 
 	/* Discover and init shared ring buffer. */
 	chan->mem_base = zlib_map_phandle_res_by_name(ZCHAN2PDEV(chan), mem_res_name,

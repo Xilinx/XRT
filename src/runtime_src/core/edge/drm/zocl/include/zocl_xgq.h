@@ -14,6 +14,7 @@
 
 #include <linux/platform_device.h>
 #include "xgq_cmd_common.h"
+#include "xgq_cmd_vmr.h"
 
 /*
  * Callback function for processing cmd. Cmd buffer is allocated by zocl_xgq and should be

@@ -147,11 +147,13 @@ def main():
                      "--output", outputOnlyPSKernelXclbin, 
                      "--force"]
 
+  execCmd(step, cmd)
+
   # Validate the contents of the various sections
-  textFileCompare(outputEmbeddedMetadata, expectedEmbeddedMetadata)
-  jsonFileCompare(outputIpLayout, expectedIpLayout)
-  jsonFileCompare(outputConnectivity, expectedConnectivity)
-  jsonFileCompare(outputMemTopology, expectedMemTopology)
+  textFileCompare(outputPSKEmbeddedMetadata, expectedOnlyPSKEmbeddedMetadata)
+  jsonFileCompare(outputPSKIpLayout, expectedPSKIpLayout)
+  jsonFileCompare(outputPSKConnectivity, expectedPSKConnectivity)
+  jsonFileCompare(outputPSKMemTopology, expectedPSKMemTopology)
 
   execCmd(step, cmd)
 

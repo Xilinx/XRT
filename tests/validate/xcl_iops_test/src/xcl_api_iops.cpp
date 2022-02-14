@@ -197,6 +197,8 @@ void runTestThread(arg_t &arg)
     auto xclbin = load_file_to_memory(arg.xclbin_fn);
     auto top = reinterpret_cast<const axlf*>(xclbin.data());
     auto topo = xclbin::get_axlf_section(top, MEM_TOPOLOGY);
+    if (!topo)
+        throw std::runtime_error("MEM_TOPOLOGY not found in XCLBIN");
     auto topology = reinterpret_cast<mem_topology*>(xclbin.data() + topo->m_sectionOffset);
     if (xclLoadXclBin(handle, top))
         throw std::runtime_error("Bitstream download failed");
@@ -278,12 +280,15 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
     /* calculate performance */
     int overallCommands = 0;
     double duration;
+    std::ios_base::fmtflags f(std::cout.flags());
     for (int i = 0; i < threadNumber; i++) {
         /* For some special case, memory bank is too small to allocate buffers.
          * Return not support error code if a thread has 0 command buffer.
          */
-        if (arg[i].total == 0)
+        if (arg[i].total == 0) {
+            std::cout.flags(f); // restore format
             return EOPNOTSUPP;
+        }
 
         if (verbose) {
             duration = (std::chrono::duration_cast<ms_t>(arg[i].end - arg[i].start)).count();
@@ -302,6 +307,7 @@ int testMultiThreads(std::string &dev, std::string &xclbin_fn, int threadNumber,
               << " IOPS: " << (overallCommands * 1000000.0 / duration)
               << " (" << krnl.name << ")"
               << std::endl;
+    std::cout.flags(f); // restore format
     return 0;
 }
 
@@ -361,6 +367,9 @@ int _main(int argc, char* argv[])
 
     if (threadNumber <= 0)
         throw std::runtime_error("Invalid thread number");
+
+    if (threadNumber > 1024)
+        throw std::runtime_error("Invalid thread number. Do not larger than 1024");
 
     if (flag_s) {
         if (!infile.good()) {

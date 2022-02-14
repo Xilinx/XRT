@@ -102,12 +102,12 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 	/* TODO : Need to update this function based on the device tree */
 	if (ZOCL_PLATFORM_ARM64) {
 		u64 pr_num;
-		if (of_property_read_u64(pdev->dev.of_node,
-					 "xlnx,pr-num-support", &pr_num))
+		if (!of_property_read_u64(pdev->dev.of_node,
+					  "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
 	} else {
 		u32 pr_num;
-		if (of_property_read_u32(pdev->dev.of_node,
+		if (!of_property_read_u32(pdev->dev.of_node,
 				 "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
 	}
@@ -200,12 +200,20 @@ static void zocl_pr_slot_fini(struct drm_zocl_dev *zdev)
  */
 static int zocl_aperture_init(struct drm_zocl_dev *zdev)
 {
+	struct addr_aperture *apts = NULL;
+	int i = 0;
+
 	zdev->apertures = kcalloc(MAX_APT_NUM, sizeof(struct addr_aperture),
 				 GFP_KERNEL);
 	if (!zdev->apertures) {
 		DRM_ERROR("Out of memory for Aperture\n");
 		return -ENOMEM;
 	}
+
+	apts = zdev->apertures;
+	/* Consider this magic number as uninitialized aperture identity */
+	for (i = 0; i < MAX_APT_NUM; ++i)
+		apts[i].addr = EMPTY_APT_VALUE;
 
 	zdev->num_apts = 0;
 
