@@ -48,7 +48,7 @@ class queue
 
   // class task - type-erased callable operation
   //
-  // A task wraps a callers typed operation such that it
+  // A task wraps a caller's typed operation such that it
   // can be inserted into a queue.
   //
   // Tasks should be synchronous operations.
@@ -207,8 +207,8 @@ public:
   auto
   enqueue(Callable&& c)
   {
-    using value_type = decltype(c());
-    std::packaged_task<value_type()> task{[cc = std::move(c)] { return cc(); }};
+    using return_type = decltype(c());
+    std::packaged_task<return_type()> task{[cc = std::move(c)] { return cc(); }};
     std::shared_future f{task.get_future()};
     add_task(std::move(task));
     return f;
