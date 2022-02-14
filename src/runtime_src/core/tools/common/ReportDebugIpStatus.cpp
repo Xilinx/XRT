@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -147,13 +147,13 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
 debug_ip_layout*
 DebugIpStatusCollector::getDebugIpLayout()
 {
-  if (0 == map.size()) {
+  if (0 == map.size())
     return nullptr;
-  }
+
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
-  if (0 == dbgIpLayout->m_count) {
+  if (0 == dbgIpLayout->m_count)
     return nullptr;
-  }
+
   return dbgIpLayout;
 }
 
@@ -167,7 +167,7 @@ void
 DebugIpStatusCollector::getDebugIpData()
 {
   debug_ip_layout* dbgIpLayout = getDebugIpLayout();
-  if(nullptr == dbgIpLayout)
+  if (nullptr == dbgIpLayout)
     return;
 
   // reset debugIpNum to zero
@@ -534,9 +534,9 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 
   boost::property_tree::ptree dbg_ip_list_pt;
   for(uint8_t i = 0; i < DEBUG_IP_TYPE_MAX; i++) {
-    if(0 == debugIpNum[i]) {
+    if (0 == debugIpNum[i])
        continue;
-    }
+
     boost::property_tree::ptree entry;
     entry.put("name", debugIpNames[i]);
     entry.put("count", debugIpNum[i]);
@@ -786,9 +786,8 @@ reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpS
   _output << "\nDebug IP Status \n  Number of IPs found: " 
           << num_debug_ips << std::endl; // Total count with the IPs actually shown
 
-  if (0 == num_debug_ips) {
+  if (0 == num_debug_ips)
     return;
-  }
 
   try {
     const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
