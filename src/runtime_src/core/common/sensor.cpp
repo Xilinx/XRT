@@ -157,6 +157,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over current data, store to ptree by converting to Amps from milli Amps
   for (const auto& curr : current)
   {
+    pt.put("id", curr.label);
     pt.put("description", curr.label);
     pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(curr.input));
     pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(curr.max));
@@ -171,7 +172,28 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over voltage data, store to ptree by converting to Volts from milli Volts
   for (const auto& tmp : voltage)
   {
-    pt.put("description", tmp.label);
+    bool found =false;
+    auto desc = tmp.label;
+    for(auto& kv : sensor_array)
+    {
+      auto id = kv.second.get<std::string>("id");
+      //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
+      if(id.find(desc) != std::string::npos)
+      {
+        kv.second.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+        kv.second.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+        kv.second.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+        kv.second.put("voltage.is_present", "true");
+        found = true;
+        break;
+      }
+    }
+
+    if(found)
+      continue;
+
+    pt.put("id", desc);
+    pt.put("description", desc);
     pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
     pt.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
@@ -186,18 +208,13 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
-    pt.put("description", tmp.label);
-    pt.put("power.watts", xrt_core::utils::format_base10_shiftdown6(tmp.input));
-    // these fields are also needed to differentiate between sensor types
-    pt.put("power.is_present", "true");
-    pt.put("voltage.is_present", "false");
-    pt.put("current.is_present", "false");
-    sensor_array.push_back({"", pt});
     if (!strcmp((tmp.label).c_str(), "POWER"))
       bd_power = xrt_core::utils::format_base10_shiftdown6(tmp.input);
   }
   ptree_type root;
+
   root.add_child("power_rails", sensor_array);
+
   root.put("power_consumption_watts", bd_power);
   root.put("power_consumption_max_watts", "NA");
   root.put("power_consumption_warning", "NA");
@@ -216,6 +233,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   {
     uint64_t temp_C;
     ptree_type pt;
+    pt.put("id", tmp.label);
     pt.put("description", tmp.label);
     temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("temp_C", temp_C);
@@ -238,6 +256,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
   // iterate over output data, store it into property_tree
   for(const auto& tmp : output)
   {
+    pt.put("id", tmp.label);
     pt.put("description", tmp.label);
     pt.put("speed_rpm", tmp.input);
     pt.put("critical_trigger_temp_C", "N/A");
