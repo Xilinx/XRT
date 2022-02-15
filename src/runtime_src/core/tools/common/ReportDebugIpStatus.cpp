@@ -92,7 +92,7 @@ public :
 
   void collect();
 
-  bool populateOverview(boost::property_tree::ptree &_pt);
+  void populateOverview(boost::property_tree::ptree &_pt);
   void populateAllResults(boost::property_tree::ptree &_pt);
 
 private :
@@ -493,13 +493,13 @@ DebugIpStatusCollector::readAccelDeadlockDetector(debug_ip_data* dbgIpInfo)
 }
 
 
-bool 
+void 
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
   debug_ip_layout* dbgIpLayout = getDebugIpLayout();
   if (nullptr == dbgIpLayout) {
     _pt.put("total_num_debug_ips", 0);
-    return false;
+    return;
   }
 
   uint64_t count = 0;
@@ -526,7 +526,7 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
         // No need to show these Debug IP types
         continue;
       default:
-        return false;
+        return;
     }
   }
 
@@ -544,8 +544,6 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
     dbg_ip_list_pt.push_back(std::make_pair("", entry));
   }
   _pt.add_child("debug_ips", dbg_ip_list_pt);
-  
-  return true;
 }
 
 
@@ -781,7 +779,7 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
 void
 reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
 {
-  uint64_t num_debug_ips = _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips");
+  uint64_t num_debug_ips = _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips", 0);
 
   _output << "\nDebug IP Status \n  Number of IPs found: " 
           << num_debug_ips << std::endl; // Total count with the IPs actually shown
@@ -1267,7 +1265,8 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   auto handle = _pDevice->get_device_handle();
 
   DebugIpStatusCollector collector(handle, _pDevice);
-  if (true == collector.populateOverview(pt)) {
+  collector.populateOverview(pt);
+  if (0 != pt.get<uint64_t>("total_num_debug_ips", 0)) {
     collector.collect();
     collector.populateAllResults(pt);
   }
