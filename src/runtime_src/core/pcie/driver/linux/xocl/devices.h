@@ -2691,7 +2691,6 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
 		XOCL_DEVINFO_ICAP_USER,					\
-		XOCL_DEVINFO_XMC_USER,					\
 	 })
 
 #define RES_MGMT_U2_VSEC						\
