@@ -1147,7 +1147,8 @@ int shim::p2pEnable(bool enable, bool force)
         mDev->sysfs_put("p2p", "p2p_enable", err, "0");
     }
     if (!err.empty()) {
-        throw std::runtime_error("P2P is not supported");
+        std::cerr << "ERROR: Config P2P failed : P2P is not supported" << std::endl;
+        throw xrt_core::error(std::errc::operation_canceled);
     }
 
     if (force) {
@@ -2664,6 +2665,9 @@ int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
   try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
+  }
+  catch(const xrt_core::error&) {
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   catch (const std::exception& ex) {
     xrt_core::send_exception_message(ex.what());
