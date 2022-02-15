@@ -367,8 +367,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 		else if(completion_code == SDR_CODE_INVALID_SENSOR_ID)
 			xocl_err(&sdm->pdev->dev, "Error: SDR Code Invalid Sensor ID");
 		else
-			xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command, completion_code:
-					 0x%x", completion_code);
+			xocl_err(&sdm->pdev->dev, "Failed in sending SDR Repository command, completion_code: 0x%x", completion_code);
 		return -EINVAL;
 	}
 
