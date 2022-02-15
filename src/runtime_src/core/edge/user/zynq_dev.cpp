@@ -151,3 +151,8 @@ zynq_device *zynq_device::get_dev()
 zynq_device::zynq_device(const std::string& root) : sysfs_root(root)
 {
 }
+
+zynq_device::~zynq_device()
+{
+	sysfs_root = "";
+}

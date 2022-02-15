@@ -55,6 +55,7 @@ private:
         bool write = false, bool binary = false);
 
     std::string sysfs_root;
+    ~zynq_device();
     zynq_device(const std::string& sysfs_base);
     zynq_device(const zynq_device& s) = delete;
     zynq_device& operator=(const zynq_device& s) = delete;
