@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018-2021, Xilinx Inc
+ *  Copyright (C) 2018-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -2691,6 +2691,13 @@ struct xocl_subdev_map {
 	((struct xocl_subdev_info []) {					\
 		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
 		XOCL_DEVINFO_ICAP_USER,					\
+		XOCL_DEVINFO_XMC_USER,					\
+	 })
+
+#define RES_USER_VERSAL_VSEC_ES3					\
+	((struct xocl_subdev_info []) {					\
+		XOCL_DEVINFO_FEATURE_ROM_USER_DYN,			\
+		XOCL_DEVINFO_ICAP_USER,					\
 	 })
 
 #define RES_MGMT_U2_VSEC						\
@@ -2944,8 +2951,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
 			XOCL_DSAFLAG_VERSAL_ES3 |			\
 			XOCL_DSAFLAG_VERSAL,				\
-		.subdev_info = RES_USER_VERSAL_VSEC,			\
-		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
+		.subdev_info = RES_USER_VERSAL_VSEC_ES3,		\
+		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC_ES3),	\
 		.board_name = "vck5000",				\
 		.vbnv       = "xilinx_vck5000"				\
 	}
