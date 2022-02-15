@@ -1029,9 +1029,9 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 
 	ret = xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
 	if (ret)
-		userpf_err(xdev, "hwmon_sdm sysfs creation failed, err: %d", ret);
+		userpf_err(xdev, "hwmon_sdm sysfs creation failed for xcl_sdr 0x%x, err: %d", kind, ret);
 	else
-		userpf_dbg(xdev, "successfully created hwmon_sdm sensor sysfs nodes");
+		userpf_dbg(xdev, "successfully created hwmon_sdm sensor sysfs node for xcl_sdr 0x%x", kind);
 
 done:
 	vfree(in_buf);
@@ -1049,7 +1049,11 @@ int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
 	if (ret && ret != -EEXIST)
 		return ret;
 
-	ret = xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_BDINFO);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_CURRENT);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_POWER);
+
 	return ret;
 }
 
