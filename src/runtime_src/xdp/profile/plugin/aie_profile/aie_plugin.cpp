@@ -857,8 +857,8 @@ namespace xdp {
                             "Please specify aie_profile_core_metrics, aie_profile_memory_metrics, "
                             "and/or aie_profile_interface_metrics in your xrt.ini.";
           xrt_core::message::send(severity_level::warning, "XRT", msg);
-    //      (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
-    //      return;
+          (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
+          return;
 	}
         else {
           XAie_DevInst* aieDevInst =
