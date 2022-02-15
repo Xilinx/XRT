@@ -279,7 +279,8 @@ using addr_type = uint64_t;
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
       std::string loadFileContentsToString(const std::string& path);
       void constructQueryTable();
-      void parseHLSPrintf(const std::string& simPath);	  
+      //CR-1120081
+      void parseString(const std::string& simPath , const std::string& searchString);
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
