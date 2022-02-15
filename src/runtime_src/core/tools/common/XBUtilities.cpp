@@ -606,7 +606,7 @@ XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
 std::vector<char>
 XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
 {
-  std::ifstream in(filename);
+  std::ifstream in(filename, std::ios::binary);
   if (!in.is_open())
     throw std::runtime_error(boost::str(boost::format("Can't open %s") % filename));
 
