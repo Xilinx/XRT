@@ -887,9 +887,6 @@ namespace xdp {
     std::string mem_str  = (mMemoryMetricSet.empty()) ? "" : "_" + mMemoryMetricSet;
     std::string shim_str = (mShimMetricSet.empty()) ? "" : "_" + mShimMetricSet;    
 
-    std::string test_msg = "CORE: ," + mCoreMetricSet + "," + mMemoryMetricSet + "," + mShimMetricSet + ",";
-    xrt_core::message::send(severity_level::warning, "XRT", test_msg);
-
     std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str + shim_str + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
