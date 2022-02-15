@@ -400,9 +400,9 @@ get_aie_profile_memory_metrics()
 }
 
 inline std::string
-get_aie_profile_shim_metrics()
+get_aie_profile_interface_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "");
+  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 

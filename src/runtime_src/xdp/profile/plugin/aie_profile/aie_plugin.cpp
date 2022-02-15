@@ -634,7 +634,7 @@ namespace xdp {
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
-         xrt_core::config::get_aie_profile_shim_metrics()};
+         xrt_core::config::get_aie_profile_interface_metrics()};
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
@@ -855,7 +855,7 @@ namespace xdp {
         if (counters.empty()) {
           std::string msg = "AIE Profile Counters were not found for this design. "
                             "Please specify aie_profile_core_metrics, aie_profile_memory_metrics, "
-                            "and/or aie_profile_shim_metrics in your xrt.ini.";
+                            "and/or aie_profile_interface_metrics in your xrt.ini.";
           xrt_core::message::send(severity_level::warning, "XRT", msg);
     //      (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
     //      return;
