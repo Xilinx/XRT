@@ -14,23 +14,22 @@
  * under the License.
  */
 
-#ifndef __OO_AieFreqScale_h_
-#define __OO_AieFreqScale_h_
+#ifndef __OO_AieClockFreq_h_
+#define __OO_AieClockFreq_h_
 
 #include "tools/common/OptionOptions.h"
 
-class OO_AieFreqScale : public OptionOptions {
+class OO_AieClockFreq : public OptionOptions {
  public:
   virtual void execute( const SubCmdOptions &_options ) const;
 
  public:
-  OO_AieFreqScale( const std::string &_longName, bool _isHidden = false );
+  OO_AieClockFreq( const std::string &_longName, bool _isHidden = false );
 
  private:
    std::string m_device;
-   bool m_set;
-   bool m_get;
    uint32_t m_partition_id;
+   bool m_get;
    std::string m_freq;
    bool m_help;
 };

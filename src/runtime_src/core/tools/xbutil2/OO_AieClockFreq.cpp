@@ -18,7 +18,7 @@
 // Local - Include Files
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
-#include "OO_AieFreqScale.h"
+#include "OO_AieClockFreq.h"
 #include "tools/common/XBUtilities.h"
 
 namespace XBU = XBUtilities;
@@ -37,30 +37,28 @@ namespace qr = xrt_core::query;
 #define to_mega(x) x/1000000
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
-OO_AieFreqScale::OO_AieFreqScale( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Set/Get aie partition frequency" )
+OO_AieClockFreq::OO_AieClockFreq( const std::string &_longName, bool _isHidden )
+    : OptionOptions(_longName, _isHidden, "Set/Get AIE Clock frequency" )
     , m_device("")
-    , m_set(false)
-    , m_get(false)
     , m_partition_id(1)
+    , m_get(false)
     , m_freq("")
     , m_help(false)
 {
   m_optionsDescription.add_options()
     ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("partition,p", po::value<decltype(m_partition_id)>(&m_partition_id), "The Partition id of aie to set/get frequency")
-    ("set-freq-req,s", po::bool_switch(&m_set), "Request to set frequency for given aie partition")
-    ("get-freq,g", po::bool_switch(&m_get), "Get frequency for given aie partition")
-    ("freq,f", po::value<decltype(m_freq)>(&m_freq), "Frequency value (hertz (Hz)) to be set (eg: 100K, 312.5M)")
+    ("set,s", po::value<decltype(m_freq)>(&m_freq), "Set frequency value (hertz (Hz)) for given aie partition with units (eg: 100K, 312.5M, 5G)")
+    ("get,g", po::bool_switch(&m_get), "Get frequency for given aie partition")
     ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 }
 
 void
-OO_AieFreqScale::execute(const SubCmdOptions& _options) const
+OO_AieClockFreq::execute(const SubCmdOptions& _options) const
 {
 
-  XBU::verbose("SubCommand option: aie_freq");
+  XBU::verbose("SubCommand option: clock");
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options)
@@ -91,29 +89,12 @@ OO_AieFreqScale::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  // Check if set/get is use
-  if(!m_set && !m_get) {
-      std::cerr << "ERROR: Neither `set-freq-req` nor `get-freq` is used" << std::endl;
-      std::cerr << "please use any one of set-freq/get-freq and rerun" << std::endl;
-      printHelp();
-      return;
-  }
-
-  // Check if 'set-freq' is used and freq is not provided
-  if(m_set && (m_freq.length() == 0)) {
-      std::cerr << "ERROR: set proper `freq` value (eg: 100K, 312.5M, 2G) and rerun" << std::endl;
-      return;
-  }
-
-  // Convert freq to hertz(Hz)
-  uint64_t freq = 0;
-  try {
-      freq = XBUtilities::string_to_bytes(m_freq);
-  }
-  catch(const xrt_core::error&) {
-    std::cerr << "Value supplied to --freq option is invalid. Please specify proper units and rerun" << std::endl;
-    std::cerr << "eg: 'B', 'K', 'M', 'G' " << std::endl;
-    throw xrt_core::error(std::errc::operation_canceled);
+  // Check if set/get is used
+  if(!m_get && m_freq.length() == 0) {
+    std::cerr << "ERROR: Neither `set` nor `get' is used" << std::endl;
+    std::cerr << "please use any one of set/get and rerun" << std::endl;
+    printHelp();
+    return;
   }
 
   // Check if partition_id is provided else print Warning!
@@ -137,10 +118,21 @@ OO_AieFreqScale::execute(const SubCmdOptions& _options) const
   for (auto& device : deviceCollection) {
     try {
         if(m_get) {
-            double freq_part = to_mega(xrt_core::device_query<qr::aie_get_freq>(device, m_partition_id));
+            double freq_part = static_cast<double>(to_mega(xrt_core::device_query<qr::aie_get_freq>(device, m_partition_id)));
             std::cout << boost::format("INFO: Frequency value of aie partition_id %d is : %lu MHz\n") % m_partition_id % freq_part ;
         }
-        if(m_set) {
+        if(m_freq.length() > 0) {
+            uint64_t freq = 0;
+            try {
+		//convert freq to hertz(Hz)
+                freq = XBUtilities::string_to_bytes(m_freq);
+            }
+            catch(const xrt_core::error&) {
+                std::cerr << "Freq value provided with `set` option is invalid. Please specify proper units and rerun" << std::endl;
+                std::cerr << "eg: 'B', 'K', 'M', 'G' " << std::endl;
+                throw xrt_core::error(std::errc::operation_canceled);
+            }
+
             xrt_core::device_query<qr::aie_set_freq_req>(device, m_partition_id, freq) ? 
             std::cout << boost::format("INFO: Frequency request for aie partition_id %d is submitted successfully\n") %  m_partition_id :
             std::cout << boost::format("INFO: Frequency request submission for aie partition_id %d failed\n") %  m_partition_id;
@@ -153,5 +145,5 @@ OO_AieFreqScale::execute(const SubCmdOptions& _options) const
 
   if (errorOccured)
     throw xrt_core::error(std::errc::operation_canceled);
-}
 
+}

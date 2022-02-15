@@ -55,6 +55,20 @@ using key_type = query::key_type;
 xclDeviceHandle handle;
 xclDeviceInfo2 deviceInfo;
 
+struct drm_fd
+{
+  int fd;
+  drm_fd(const std::string file_path, int flags)
+  {
+    fd = open(file_path.c_str(),flags);
+  }
+  ~drm_fd()
+  {
+    if(fd > 0)
+      close(fd);
+  }
+};
+
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
 static zynq_device*
@@ -494,6 +508,23 @@ struct aie_reg_read
   }
 };
 
+static std::unique_ptr<drm_fd> aie_get_drmfd(const xrt_core::device* device, std::string dev_path)
+{
+  const static std::string AIE_TAG = "aie_metadata";
+  std::string err;
+  std::string value;
+
+  auto dev = get_edgedev(device);
+  // Reading the aie_metadata sysfs.
+  dev->sysfs_get(AIE_TAG, err, value);
+  if (!err.empty())
+    throw xrt_core::query::sysfs_error
+    (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+     + "Intelligent Engines (AIE). No action will be performed.");
+
+  return std::make_unique<drm_fd>(dev_path, O_RDWR);
+}
+
 struct aie_get_freq
 {
   using result_type = query::aie_get_freq::result_type;
@@ -501,32 +532,20 @@ struct aie_get_freq
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
   {
-    auto dev = get_edgedev(device);
     result_type freq = 0;
-#ifdef XRT_ENABLE_AIE
-#ifndef __AIESIM__
-    const static std::string AIE_TAG = "aie_metadata";
+#if defined(XRT_ENABLE_AIE) && !defined(__AIESIM__)
     const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
-    std::string err;
-    std::string value;
-
-    // Reading the aie_metadata sysfs.
-    dev->sysfs_get(AIE_TAG, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error
-      (err + ", The loading xclbin acceleration image doesn't use the Artificial "
-       + "Intelligent Engines (AIE). No action will be performed.");
-
-    int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
-    if (!mKernelFD)
+    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
 
     uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
     struct drm_zocl_aie_freq_scale aie_arg = { part_id, freq, 0 };
-    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
       throw xrt_core::error(-errno, boost::str(boost::format("Reading frequency from AIE partition %d failed") % part_id));
     }
-#endif
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif
     return freq;
   }
@@ -539,32 +558,20 @@ struct aie_set_freq_req
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
   {
-    auto dev = get_edgedev(device);
-#ifdef XRT_ENABLE_AIE
-#ifndef __AIESIM__
-    const static std::string AIE_TAG = "aie_metadata";
+#if defined(XRT_ENABLE_AIE) && !defined(__AIESIM__)
     const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
-    std::string err;
-    std::string value;
-
-    // Reading the aie_metadata sysfs.
-    dev->sysfs_get(AIE_TAG, err, value);
-    if (!err.empty())
-      throw xrt_core::query::sysfs_error
-      (err + ", The loading xclbin acceleration image doesn't use the Artificial "
-       + "Intelligent Engines (AIE). No action will be performed.");
-
-    int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
-    if (!mKernelFD)
+    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
 
     uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
     uint64_t frequency = boost::any_cast<uint64_t>(freq);
     struct drm_zocl_aie_freq_scale aie_arg = { part_id, frequency, 1 };
-    if (ioctl(mKernelFD, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
       throw xrt_core::error(-errno, boost::str(boost::format("Setting frequency request for AIE partition %d failed") % part_id));
     }
-#endif
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif
     return true;
   }
