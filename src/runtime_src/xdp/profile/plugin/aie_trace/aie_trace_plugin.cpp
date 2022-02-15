@@ -409,7 +409,7 @@ namespace xdp {
     std::smatch pieces_match;
     uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
     const uint64_t max_cycles = 0xffffffff;
-    std::string size_str = xrt_core::config::get_aie_trace_start_delay();
+    std::string size_str = xrt_core::config::get_aie_trace_start_time();
 
     // Catch cases like "1Ms" "1NS"
     std::transform(size_str.begin(), size_str.end(), size_str.begin(),
