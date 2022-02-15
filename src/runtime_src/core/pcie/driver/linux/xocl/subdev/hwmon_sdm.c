@@ -243,7 +243,6 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	uint32_t buf_index = (index >> 8) & 0xFFF;
 	uint8_t buf_len = (index >> 20) & 0xFF;
 	char output[64];
-	int i;
 	uint32_t uval = 0;
 
 	get_sensors_data(sdm->pdev, repo_id);
@@ -259,20 +258,17 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	}
 
 	if (field_id == SYSFS_SDR_INS_VAL) {
-		for (i = buf_len - 1; i >= 0; i--, buf_index++)
-			uval |= sdm->sensor_data[repo_id][buf_index] << (i * 8);
+		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		return sprintf(buf, "%u\n", uval);
 	}
 
 	if (field_id == SYSFS_SDR_AVG_VAL) {
-		for (i = buf_len - 1; i >= 0; i--, buf_index++)
-			uval |= sdm->sensor_data[repo_id][buf_index] << (i * 8);
+		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		return sprintf(buf, "%u\n", uval);
 	}
 
 	if (field_id == SYSFS_SDR_MAX_VAL) {
-		for (i = buf_len - 1; i >= 0; i--, buf_index++)
-			uval |= sdm->sensor_data[repo_id][buf_index] << (i * 8);
+		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
 		return sprintf(buf, "%u\n", uval);
 	}
 
@@ -350,7 +346,6 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
-	int r = 0;
 
 	completion_code = in_buf[SDR_COMPLETE_IDX];
 
