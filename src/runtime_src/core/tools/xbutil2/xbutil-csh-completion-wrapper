@@ -1,9 +1,11 @@
 #!/bin/csh -f
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # Enable autocompletion for the xbutil and xbmgmt commands
 alias __xbutil_completion_csh tcsh $XILINX_XRT/share/completions/xbutil-csh-completion
-complete xbutil 'p/*/`__xbutil_completion_csh`/'
+# TCSH is very unfriendly when performing file completions inside the aliased script
+# to get around this we add certain options that default to file/directory searches here
+complete xbutil 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/-p/f/' 'n/--path/f/' 'p/*/`__xbutil_completion_csh`/'
 echo Autocomplete enabled for the xbutil command

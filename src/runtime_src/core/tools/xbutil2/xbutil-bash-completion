@@ -1,6 +1,6 @@
 # bash completion for xbutil                              -*- shell-script -*-
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # Generates the command word options dependant on the previous word
@@ -13,46 +13,68 @@
 _command_word_xbutil_completion()
 {
   # Get the righthand most word on the command line
-  currentWord=${COMP_WORDS[COMP_CWORD]}
-  # The previous word is used 
-  previousWord=${COMP_WORDS[COMP_CWORD-1]}
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  # The previous word 
+  local prev=${COMP_WORDS[COMP_CWORD-1]}
+
+  # The BDFs (for devices) contain colons which breaks the autocomplete
+  # to get around this a helper function removes colons and helps parse the current and previous
+  # words
+  _get_comp_words_by_ref -n : cur prev
+
   # Each defined case requires an argument so no reply is given
   # All other cases default to using `compgen` output to format COMPREPLY
-  case ${previousWord} in
-    --device)
+  case ${prev} in
+    -d|--device)
+      options=$(xbutil examine | sed -n '/Devices present/,/^$/ s/[ \[]*\(0000:[0-9]\+:[0-9]\+.1\)].*/\1/p')
       ;;
-    -d)
+    -u|--user)
+      _filedir
+      options=""
       ;;
-    --user)
+    -f|--format)
+      options="JSON JSON-2020.2"
       ;;
-    -u)
+    -o|--output)
+      _filedir
+      options=""
       ;;
-    --run)
+    -t|--type)
+      options="hot"
       ;;
-    --format)
+    -p|--path)
+      _filedir
+      options=""
       ;;
-    -f)
+    --p2p)
+      options="ENABLE DISABLE VALIDATE"
       ;;
-    --output)
+    --host-mem)
+      options="ENABLE DISABLE"
       ;;
-    -o)
-      ;;
-    --report)
-      ;;
-    --type)
-      ;;
-    -t)
-      ;;
-    # -r shorthand applies to multiple commands under xbutil and requires additional processing
-    # Assuming we want to add something here one day
-    -r)
+    # The -r option is used for multiple commands so extra processing is needed in here
+    -r|--report|--run)
+      # Command word is used to specify further options as the command expands
+      local commandWord=${COMP_WORDS[1]}
+      case ${commandWord} in
+        "validate")
+          options=$(xbutil validate --help | sed -n '/--run/,/--output/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+          ;;
+        "examine")
+          options=$(xbutil examine --help | sed -n '/--report/,/--format/ s/        [ ]\+\([A-Za-z0-9\-]\+\)[ ]\+- .*/\1/p')
+          ;;
+      esac
       ;;
     *)
-      # The format of the compgen commands options is seperated from the current word using a --.
-      # The -- character signifies the end of command options. All following arguments are positional.
-      COMPREPLY=($(compgen -W "$1" -- ${currentWord}))
+      # Default to using the passed in options if no particular option is used
+      options=$1
       ;;
   esac
+  # The format of the compgen commands options is seperated from the current word using a --.
+  # The -- character signifies the end of command options. All following arguments are positional.
+  COMPREPLY+=($(compgen -W "$options" -- $cur))
+  # 2nd part of getting aroudn colons in the suggested keywords
+  __ltrim_colon_completions "$cur"
 }
 
 # The main function populating the COMPREPLY
@@ -65,8 +87,7 @@ _xbutil_completion()
   case ${COMP_CWORD} in
     # Case for command after xbutil
     1)
-      commandWordOptions="program validate examine configure reset ${commonSubCommands}"
-      _command_word_xbutil_completion "${commandWordOptions}"
+      options="program validate examine configure reset ${commonSubCommands}"
       ;;
     # Case for options after the above command is entered
     *)
@@ -77,34 +98,37 @@ _xbutil_completion()
       # Once a command is identified the options will always be the same
       case ${commandWord} in
         "program")
-          programOptions="--user -u ${commonSubCommands}"
-          _command_word_xbutil_completion "${programOptions}"
+          options="--user -u ${commonSubCommands}"
           ;;
         "validate")
-          validateOptions="--run -r --format -f --output -o ${commonSubCommands}"
-          _command_word_xbutil_completion "${validateOptions}"
+          options="--run -r --format -f --output -o --path -p ${commonSubCommands}"
           ;;
         "examine")
-          examineOptions="--report -r --format -f --output -o ${commonSubCommands}"
-          _command_word_xbutil_completion "${examineOptions}"
+          options="--report -r --format -f --output -o ${commonSubCommands}"
           ;;
         "configure")
-          configureOptions="--host-mem --p2p --size ${commonSubCommands}"
-          _command_word_xbutil_completion "${configureOptions}"
+          options="--host-mem --p2p --size ${commonSubCommands}"
           ;;
         "reset")
-          resetOptions="--type -t ${commonSubCommands}"
-          _command_word_xbutil_completion "${resetOptions}"
+          options="--type -t ${commonSubCommands}"
           ;;
         # Return an empty reply if an invalid command is entered
         *)
+          options=""
           ;;
       esac
       ;;
   esac
+  _command_word_xbutil_completion "${options}"
 }
 
-complete -F _xbutil_completion xbutil
-echo Autocomplete enabled for the xbutil command
+COMP_FILE="/usr/share/bash-completion/bash_completion"
+if [ -f "${COMP_FILE}" ]; then
+  bash /usr/share/bash-completion/bash_completion
+  complete -F _xbutil_completion xbutil
+  echo Autocomplete enabled for the xbutil command
+else
+  echo ${COMP_FILE} missing! Autocomplete disabled for the xbutil command
+fi
 
 # ex: filetype=sh

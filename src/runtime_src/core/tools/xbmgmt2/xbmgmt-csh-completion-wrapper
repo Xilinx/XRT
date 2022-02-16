@@ -1,9 +1,9 @@
 #!/bin/csh -f
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
 # Enable autocompletion for the xbutil and xbmgmt commands
 alias __xbmgmt_completion_csh tcsh $XILINX_XRT/share/completions/xbmgmt-csh-completion
-complete xbmgmt 'p/*/`__xbmgmt_completion_csh`/'
+complete xbmgmt 'n/-u/f/' 'n/--user/f/' 'n/-o/f/' 'n/--output/f/' 'n/--shell/f/' 'n/--image/f/' 'p/*/`__xbmgmt_completion_csh`/'
 echo Autocomplete enabled for the xbmgmt command
