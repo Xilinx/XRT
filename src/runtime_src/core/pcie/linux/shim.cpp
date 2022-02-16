@@ -1134,22 +1134,19 @@ int shim::p2pEnable(bool enable, bool force)
         return -EINVAL;
 
     ret = check_p2p_config(mDev, err);
-    if (ret == P2P_CONFIG_ENABLED && enable) {
+    if (ret == P2P_CONFIG_ENABLED && enable)
         throw std::runtime_error("P2P is already enabled");
-    } else if (ret == P2P_CONFIG_DISABLED && !enable) {
+    else if (ret == P2P_CONFIG_DISABLED && !enable)
         throw std::runtime_error("P2P is already disabled");
-    }
 
     /* write 0 to config for default bar size */
-    if (enable) {
+    if (enable)
         mDev->sysfs_put("p2p", "p2p_enable", err, "1");
-    } else {
+    else
         mDev->sysfs_put("p2p", "p2p_enable", err, "0");
-    }
-    if (!err.empty()) {
-        std::cerr << "ERROR: Config P2P failed : P2P is not supported" << std::endl;
-        throw xrt_core::error(std::errc::operation_canceled);
-    }
+
+    if (!err.empty())
+        throw xrt_core::error(std::errc::operation_canceled, "Config P2P failed : P2P is not supported");
 
     if (force) {
         dev_fini();
@@ -1168,13 +1165,12 @@ int shim::p2pEnable(bool enable, bool force)
     }
 
     ret = check_p2p_config(mDev, err);
-    if (!err.empty()) {
+    if (!err.empty())
         throw std::runtime_error(err);
-    } else if (ret == P2P_CONFIG_DISABLED && enable) {
+    else if (ret == P2P_CONFIG_DISABLED && enable)
         throw std::runtime_error("Can not enable P2P");
-    } else if (ret == P2P_CONFIG_ENABLED && !enable) {
+    else if (ret == P2P_CONFIG_ENABLED && !enable)
         throw std::runtime_error("Can not disable P2P");
-    }
 
     return 0;
 }
@@ -2662,17 +2658,8 @@ int xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 
 int xclP2pEnable(xclDeviceHandle handle, bool enable, bool force)
 {
-  try {
     xocl::shim *drv = xocl::shim::handleCheck(handle);
     return drv ? drv->p2pEnable(enable, force) : -ENODEV;
-  }
-  catch(const xrt_core::error&) {
-    throw xrt_core::error(std::errc::operation_canceled);
-  }
-  catch (const std::exception& ex) {
-    xrt_core::send_exception_message(ex.what());
-    return -ENODEV;
-  }
 }
 
 int xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t total_size)

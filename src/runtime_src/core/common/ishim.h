@@ -431,15 +431,30 @@ struct shim : public DeviceType
   void
   p2p_enable(bool force) override
   {
-    if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), true, force))
-      throw system_error(ret, "failed to enable p2p");
+    auto ret = xclP2pEnable(DeviceType::get_device_handle(), true, force);
+    switch (ret) {
+      case -EINVAL:
+      case -ENODEV:
+        throw system_error(ret, "failed to enable p2p");
+        break;
+      default:
+        break;
+    }
   }
+      
 
   void
   p2p_disable(bool force) override
   {
-    if (auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force))
-      throw system_error(ret, "failed to disable p2p");
+    auto ret = xclP2pEnable(DeviceType::get_device_handle(), false, force);
+    switch (ret) {
+      case -EINVAL:
+      case -ENODEV:
+        throw system_error(ret, "failed to disable p2p");
+        break;
+      default:
+        break;
+    }
   }
 
   void
