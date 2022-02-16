@@ -3,7 +3,7 @@
 /**
  * Pybind11 module for XRT C++ APIs
  *
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Authors: graham.schelle@xilinx.com
  *          sonal.santan@xilinx.com
