@@ -2945,8 +2945,8 @@ struct xocl_subdev_map {
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP |			\
 			XOCL_DSAFLAG_VERSAL_ES3 |			\
 			XOCL_DSAFLAG_VERSAL,				\
-		.subdev_info = RES_USER_VERSAL_VSEC,		\
-		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),	\
+		.subdev_info = RES_USER_VERSAL_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VERSAL_VSEC),		\
 		.board_name = "vck5000",				\
 		.vbnv       = "xilinx_vck5000"				\
 	}
