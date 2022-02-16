@@ -555,7 +555,7 @@ static u32 inline shm_addr_data(struct xocl_xgq_vmr *xgq)
 }
 
 /*TODO: enhance to n resources by atomic test_and_clear_bit/set_bit */
-static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr)
+static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr, u32 *len)
 {
 	if (down_interruptible(&xgq->xgq_log_page_sema)) {
 		XGQ_ERR(xgq, "cancelled");
@@ -564,6 +564,7 @@ static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr)
 
 	/*TODO: memset shared memory to all zero */
 	*addr = shm_addr_log_page(xgq);
+	*len = LOG_PAGE_SIZE;
 	return 0;
 }
 
@@ -572,7 +573,7 @@ static void shm_release_log_page(struct xocl_xgq_vmr *xgq)
 	up(&xgq->xgq_log_page_sema);
 }
 
-static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr)
+static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr, u32 *len)
 {
 	if (down_interruptible(&xgq->xgq_data_sema)) {
 		XGQ_ERR(xgq, "cancelled");
@@ -580,6 +581,7 @@ static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr)
 	}
 
 	*addr = shm_addr_data(xgq);
+	*len = shm_size_data(xgq);
 	return 0;
 }
 
@@ -652,6 +654,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	ssize_t ret = 0;
 	u32 address = 0;
+	u32 length = 0;
 	int id = 0;
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
@@ -672,11 +675,17 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_data(xgq, &address)) {
+	if (shm_acquire_data(xgq, &address, &length)) {
 		ret = -EIO;
 		goto acquire_failed;
 	}
 
+	if (length < len) {
+		ret = -EINVAL;
+		XGQ_ERR(xgq, "request %lld is larger than available %d",
+			len, length);
+		goto cid_alloc_failed;
+	}
 	/* set up payload */
 	payload = (opcode == XGQ_CMD_OP_LOAD_XCLBIN) ?
 		&(cmd->xgq_cmd_entry.pdi_payload) :
@@ -763,7 +772,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 	u32 address = 0;
-	u32 len = LOG_PAGE_SIZE;
+	u32 len = 0;
 
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
@@ -775,7 +784,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_log_page(xgq, &address)) {
+	if (shm_acquire_log_page(xgq, &address, &len)) {
 		ret = -EIO;
 		goto acquire_failed;
 	}
@@ -846,7 +855,6 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		}
 	}
 
-
 done:
 	remove_xgq_cid(xgq, id);
 
@@ -867,6 +875,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
+	u32 address = 0;
+	u32 len = 0;
 
 	/* skip periodic firewall check when xgq service is halted */
 	if (xgq->xgq_halted)
@@ -874,17 +884,25 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
-		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return -ENOMEM;
+		XGQ_ERR(xgq, "kmalloc failed, retry please");
+		return 0;
 	}
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
+	if (shm_acquire_log_page(xgq, &address, &len)) {
+		ret = 0;
+		XGQ_ERR(xgq, "shared memory is busy, retry please");
+		goto acquire_failed;
+	}
+
 	payload = &(cmd->xgq_cmd_entry.log_payload);
+	payload->address = address;
+	payload->size = len;
+	payload->offset = 0;
 	payload->pid = XGQ_CMD_LOG_AF;
-	/*TODO: payload is to be filed for retriving log back */
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
@@ -919,10 +937,39 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
 
+	if (ret) {
+		struct xgq_cmd_cq_log_page_payload *log = NULL;
+		u32 size;
+
+		vmr_cq_result_copy(xgq, cmd);
+		log = (struct xgq_cmd_cq_log_page_payload *)&xgq->xgq_cq_payload;
+
+		size = log->count;
+		if (size > len) {
+			XGQ_ERR(xgq, "return log size %d is greater than request %d",
+				log->count, len);
+			size = len;
+		} else if (size  == 0) {
+			XGQ_ERR(xgq, "no error message");
+		} else {
+			char *log_msg = vmalloc(size);
+			if (log_msg == NULL) {
+				XGQ_ERR(xgq, "vmalloc failed, no msg");
+				goto done;
+			}
+			memcpy_from_device(xgq, address, log_msg, size);
+			XGQ_ERR(xgq, "%s", log_msg);
+			vfree(log_msg);
+		}
+	} 
+
 done:
 	remove_xgq_cid(xgq, id);
 
 cid_alloc_failed:
+	shm_release_log_page(xgq);
+
+acquire_failed:
 	kfree(cmd);
 
 	return ret;
@@ -1315,6 +1362,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	struct xgq_cmd_sensor_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	u32 address = 0;
+	u32 length = 0;
 	int ret = 0;
 	int id = 0;
 
@@ -1328,9 +1376,14 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_log_page(xgq, &address)) {
+	if (shm_acquire_log_page(xgq, &address, &length)) {
 		ret = -EIO;
 		goto acquire_failed;
+	}
+
+	if (length < len) {
+		XGQ_WARN(xgq, "request %d, but can only have %d available", len, length);
+		len = length;
 	}
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
