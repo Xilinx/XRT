@@ -128,8 +128,9 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
                         std::ostream & output) const
 {
   boost::format entfmt("BO type: %-11s, BO count: %-5s, Mem usage(%s): %s\n");
+   boost::property_tree::ptree empty_ptree;
 
-  for(auto& kv : pt.get_child("buffer_object_stats")) {
+  for(auto& kv : pt.get_child("buffer_object_stats", empty_ptree)) {
     const boost::property_tree::ptree& v = kv.second;
 
     output << boost::str(entfmt 
