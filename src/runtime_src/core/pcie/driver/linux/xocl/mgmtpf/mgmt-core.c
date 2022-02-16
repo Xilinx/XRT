@@ -771,17 +771,16 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case XCL_BDINFO:
 		current_sz = sizeof(struct xcl_board_info);
 		*resp = vzalloc(current_sz);
-		ret = xocl_xmc_get_data(lro, XCL_BDINFO, *resp);
-		if (ret == -ENODEV) {
-			vfree(*resp);
-			current_sz = 4096;
-			*resp = vzalloc(current_sz);
-			(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_BDINFO);
-		}
+		(void) xocl_xmc_get_data(lro, XCL_BDINFO, *resp);
 		break;
 	case XCL_SUBDEV:
 		xclmgmt_subdev_get_data(lro, subdev_req->offset,
 			subdev_req->size, resp, &current_sz);
+		break;
+	case XCL_SDR_BDINFO:
+		current_sz = 4096;
+		*resp = vzalloc(current_sz);
+		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
 		break;
 	case XCL_SDR_TEMP:
 		current_sz = 4096;

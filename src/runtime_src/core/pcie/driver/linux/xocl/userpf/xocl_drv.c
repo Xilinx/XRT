@@ -1049,7 +1049,7 @@ int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
 	if (ret && ret != -EEXIST)
 		return ret;
 
-	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_BDINFO);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_BDINFO);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_CURRENT);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_POWER);

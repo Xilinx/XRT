@@ -107,7 +107,7 @@ static int to_xcl_sdr_type(uint8_t repo_type)
 	switch (repo_type)
 	{
 	case SDR_TYPE_BDINFO:
-		xcl_grp = XCL_BDINFO;
+		xcl_grp = XCL_SDR_BDINFO;
 		break;
 	case SDR_TYPE_TEMP:
 		xcl_grp = XCL_SDR_TEMP;
@@ -135,7 +135,7 @@ static int get_sdr_type(enum xcl_group_kind kind)
 
 	switch (kind)
 	{
-	case XCL_BDINFO:
+	case XCL_SDR_BDINFO:
 		type = SDR_TYPE_BDINFO;
 		break;
 	case XCL_SDR_TEMP:
@@ -811,7 +811,7 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 	struct xocl_hwmon_sdm *sdm = platform_get_drvdata(pdev);
 	int repo_type, repo_id;
 	int ret = 0;
-	bool create_sysfs = (kind != XCL_BDINFO) ? true : false;
+	bool create_sysfs = (kind != XCL_SDR_BDINFO) ? true : false;
 
 	repo_type = get_sdr_type(kind);
 	if (repo_type < 0) {
