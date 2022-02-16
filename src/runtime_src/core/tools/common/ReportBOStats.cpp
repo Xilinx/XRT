@@ -108,7 +108,12 @@ ReportBOStats::getPropertyTree20202( const xrt_core::device * pDevice,
       pt2_list.push_back(std::make_pair("", bo_pt));
     }
   } catch(const xrt_core::error& e) {
-    throw std::runtime_error(e.what());
+    std::cerr << "ERROR: " << e.what() << std::endl;
+    std::cerr << "ERROR: bo_stats cmd - invalid format" << std::endl;
+    return; //Give error and let script continue
+  } catch (...) {
+    std::cerr << "ERROR: bo_stats cmd - invalid format" << std::endl;
+    return; //Give error and let script continue
   }
 
   // There can only be 1 root node
