@@ -548,6 +548,20 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 	return;
 }
 
+static void ert_ctrl_unset_xgq(struct platform_device *pdev)
+{
+	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	int i = 0;
+
+	for (i = 0; i < ec->ec_exgq_capacity; i++) {
+		if (ec->ec_exgq[i] == NULL)
+			continue;
+
+		xocl_xgq_fini(ec->ec_exgq[i]);
+		ec->ec_exgq[i] = NULL;
+	}
+}
+
 static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
 {
 	xdev_handle_t xdev = xocl_get_xdev(ec->ec_pdev);
@@ -811,7 +825,6 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
-	const char *const devname = dev_name(&pdev->dev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;
@@ -862,6 +875,7 @@ static struct xocl_ert_ctrl_funcs ert_ctrl_ops = {
 	.is_version	= ert_ctrl_is_version,
 	.get_base	= ert_ctrl_get_base,
 	.setup_xgq	= ert_ctrl_setup_xgq,
+	.unset_xgq	= ert_ctrl_unset_xgq,
 };
 
 struct xocl_drv_private ert_ctrl_drv_priv = {

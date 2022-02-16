@@ -917,7 +917,6 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 
-	kds_reset(&XDEV(xdev)->kds);
 	return 0;
 }
 
@@ -1851,5 +1850,7 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 		XDEV(xdev)->kds.ert_disable = true;
 	}
 
+	xocl_ert_ctrl_unset_xgq(xdev);
+	kds_reset(&XDEV(xdev)->kds);
 }
 

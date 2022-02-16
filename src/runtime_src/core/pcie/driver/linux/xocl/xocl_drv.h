@@ -1976,6 +1976,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	       void (* unset_xgq)(struct platform_device *pdev);
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2005,6 +2006,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
+#define xocl_ert_ctrl_unset_xgq(xdev) \
+	(ERT_CTRL_CB(xdev, unset_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
