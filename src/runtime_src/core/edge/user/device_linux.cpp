@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <boost/format.hpp>
@@ -64,8 +65,10 @@ struct drm_fd
   }
   ~drm_fd()
   {
-    if(fd > 0)
+    if(fd > 0) {
       close(fd);
+      fd = -1;
+    }
   }
 };
 
@@ -539,11 +542,14 @@ struct aie_get_freq
     if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
 
-    uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
-    struct drm_zocl_aie_freq_scale aie_arg = { part_id, freq, 0 };
-    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
-      throw xrt_core::error(-errno, boost::str(boost::format("Reading frequency from AIE partition %d failed") % part_id));
-    }
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = freq;
+    aie_arg.dir = 0;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading clock frequency from AIE partition(%d) failed") % aie_arg.partition_id));
+
 #else
     throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif
@@ -564,12 +570,14 @@ struct aie_set_freq_req
     if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
 
-    uint32_t part_id = boost::any_cast<uint32_t>(partition_id);
-    uint64_t frequency = boost::any_cast<uint64_t>(freq);
-    struct drm_zocl_aie_freq_scale aie_arg = { part_id, frequency, 1 };
-    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg)) {
-      throw xrt_core::error(-errno, boost::str(boost::format("Setting frequency request for AIE partition %d failed") % part_id));
-    }
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = boost::any_cast<uint64_t>(freq);
+    aie_arg.dir = 1;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Setting clock frequency for AIE partition (%d) failed") % aie_arg.partition_id));
+
 #else
     throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
 #endif

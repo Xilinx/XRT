@@ -36,9 +36,24 @@ namespace qr = xrt_core::query;
 
 #define to_mega(x) x/1000000
 
+// ----- H E L P E R M E T H O D S ------------------------------------------
+static double get_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part_id)
+{
+  double freq = 0;
+  try {
+    freq = static_cast<double>(to_mega(xrt_core::device_query<qr::aie_get_freq>(device, part_id)));
+  }
+  catch (const std::exception &e) {
+    std::cerr << boost::format("ERROR: Failed to read clock frequency of AIE partition(%d)\n %s\n") % part_id % e.what();
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
+
+  return freq;
+}
+
 // ----- C L A S S   M E T H O D S -------------------------------------------
 OO_AieClockFreq::OO_AieClockFreq( const std::string &_longName, bool _isHidden )
-    : OptionOptions(_longName, _isHidden, "Set/Get AIE Clock frequency" )
+    : OptionOptions(_longName, _isHidden, "AIE clock frequency operations" )
     , m_device("")
     , m_partition_id(1)
     , m_get(false)
@@ -46,10 +61,10 @@ OO_AieClockFreq::OO_AieClockFreq( const std::string &_longName, bool _isHidden )
     , m_help(false)
 {
   m_optionsDescription.add_options()
-    ("device,d", po::value<decltype(m_device)>(&m_device), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
-    ("partition,p", po::value<decltype(m_partition_id)>(&m_partition_id), "The Partition id of aie to set/get frequency")
-    ("set,s", po::value<decltype(m_freq)>(&m_freq), "Set frequency value (hertz (Hz)) for given aie partition with units (eg: 100K, 312.5M, 5G)")
-    ("get,g", po::bool_switch(&m_get), "Get frequency for given aie partition")
+    ("device,d", po::value<decltype(m_device)>(&m_device)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
+    ("partition,p", po::value<decltype(m_partition_id)>(&m_partition_id), "The Partition id of AIE")
+    ("set,s", po::value<decltype(m_freq)>(&m_freq), "Frequency value (Hz) to set given AIE partition to (eg: 100K, 312.5M, 5G)")
+    ("get,g", po::bool_switch(&m_get), "Read the frequency of given AIE partition")
     ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 }
@@ -58,7 +73,7 @@ void
 OO_AieClockFreq::execute(const SubCmdOptions& _options) const
 {
 
-  XBU::verbose("SubCommand option: clock");
+  XBU::verbose("SubCommand option: AIE Clock");
 
   XBU::verbose("Option(s):");
   for (auto & aString : _options)
@@ -94,7 +109,7 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
     std::cerr << "ERROR: Neither `set` nor `get' is used" << std::endl;
     std::cerr << "please use any one of set/get and rerun" << std::endl;
     printHelp();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check if partition_id is provided else print Warning!
@@ -105,45 +120,68 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
   std::set<std::string> deviceNames;
   xrt_core::device_collection deviceCollection;
   deviceNames.insert(boost::algorithm::to_lower_copy(m_device));
-  
+
   try {
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-  } catch (const std::runtime_error& e) {
-    // Catch only the exceptions that we have generated earlier
+
+    std::stringstream errmsg;
+    if(deviceCollection.size() == 0) {
+      errmsg << "No devices present\n";
+      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
+    }
+    // We support only single device
+    if(deviceCollection.size() > 1) {
+      errmsg << "Multiple devices are not supported. Please specify a single device using --device option\n\n";
+      errmsg << "List of available devices:\n";
+      boost::property_tree::ptree available_devices = XBUtilities::get_available_devices(true);
+      for(auto& kd : available_devices) {
+        boost::property_tree::ptree& _dev = kd.second;
+        errmsg << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+      }
+      throw xrt_core::error(std::errc::operation_canceled, errmsg.str());
+    }
+  }
+  catch (const std::exception& e){
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  bool errorOccured = false;
-  for (auto& device : deviceCollection) {
-    try {
-        if(m_get) {
-            double freq_part = static_cast<double>(to_mega(xrt_core::device_query<qr::aie_get_freq>(device, m_partition_id)));
-            std::cout << boost::format("INFO: Frequency value of aie partition_id %d is : %lu MHz\n") % m_partition_id % freq_part ;
-        }
-        if(m_freq.length() > 0) {
-            uint64_t freq = 0;
-            try {
-		//convert freq to hertz(Hz)
-                freq = XBUtilities::string_to_bytes(m_freq);
-            }
-            catch(const xrt_core::error&) {
-                std::cerr << "Freq value provided with `set` option is invalid. Please specify proper units and rerun" << std::endl;
-                std::cerr << "eg: 'B', 'K', 'M', 'G' " << std::endl;
-                throw xrt_core::error(std::errc::operation_canceled);
-            }
-
-            xrt_core::device_query<qr::aie_set_freq_req>(device, m_partition_id, freq) ? 
-            std::cout << boost::format("INFO: Frequency request for aie partition_id %d is submitted successfully\n") %  m_partition_id :
-            std::cout << boost::format("INFO: Frequency request submission for aie partition_id %d failed\n") %  m_partition_id;
-        }
-    } catch (const std::exception& e){
-      std::cerr << boost::format("ERROR: %s\n") % e.what();
-      errorOccured = true;
-    }
+  // Do operations on the device collected
+  auto device = deviceCollection.front();
+  if(m_get) {
+    double freq_part = get_aie_part_freq(device, m_partition_id);
+    std::cout << boost::format("INFO: Clock frequency of AIE partition(%d) is: %.2f MHz\n") % m_partition_id % freq_part ;
+    return;
   }
 
-  if (errorOccured)
-    throw xrt_core::error(std::errc::operation_canceled);
+  if(m_freq.length() > 0) {
+    uint64_t freq = 0;
+    try {
+      //convert freq to hertz(Hz)
+      freq = XBUtilities::string_to_bytes(m_freq);
+    }
+    catch(const xrt_core::error&) {
+      std::cerr << "Freq value provided with `set` option is invalid. Please specify proper units and rerun" << std::endl;
+      std::cerr << "eg: 'B', 'K', 'M', 'G' " << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
 
+    // Display frequency before setting
+    std::cout << boost::format("INFO: Clock frequency of AIE partition(%d) before setting is: %.2f MHz\n") % m_partition_id % get_aie_part_freq(device, m_partition_id);
+
+    // Try to set frequency
+    try {
+      bool status = xrt_core::device_query<qr::aie_set_freq_req>(device, m_partition_id, freq);
+      if(status) {
+	std::cout << boost::format("INFO: Setting clock freq of AIE partition(%d) is successful\n") %  m_partition_id;
+	std::cout << boost::format("Running clock freq of AIE partition(%d) is: %.2f MHz\n") % m_partition_id % get_aie_part_freq(device, m_partition_id);
+      }
+      else
+	  std::cout << boost::format("INFO: Setting clock freq of AIE partition(%d) to %s failed\n") %  m_partition_id % m_freq;
+    }
+    catch (const std::exception& e){
+      std::cerr << boost::format("ERROR: Setting the AIE partition(%d) clock frequency to %s failed, %s\n") % m_partition_id % m_freq % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+  }
 }

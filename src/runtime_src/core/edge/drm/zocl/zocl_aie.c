@@ -465,7 +465,7 @@ int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
 		// Read frequency from requested aie partition
 		ret = aie_partition_get_freq(zdev->aie->aie_dev, &args->freq);
 		if(ret)
-			DRM_ERROR("Reading frequency from AIE partition %d failed with error %d\n",
+			DRM_ERROR("Reading clock frequency from AIE partition(%d) failed with error %d\n",
 				args->partition_id, ret);
 		mutex_unlock(&zdev->aie_lock);
 		return ret;
@@ -473,7 +473,7 @@ int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data)
 		// Send Set frequency request for aie partition
 		ret = aie_partition_set_freq_req(zdev->aie->aie_dev, args->freq);
 		if(ret)
-			DRM_ERROR("Setting frequency request for AIE partition %d failed with error %d\n",
+			DRM_ERROR("Setting clock frequency for AIE partition(%d) failed with error %d\n",
 				args->partition_id, ret);
 		mutex_unlock(&zdev->aie_lock);
 		return ret;
