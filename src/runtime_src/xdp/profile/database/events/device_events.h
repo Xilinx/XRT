@@ -91,8 +91,8 @@ namespace xdp {
   {
   private:
     int32_t  cuId;
-    uint64_t portName ;
     uint64_t memoryName ;
+    uint64_t portName ;
     uint64_t argumentNames ;
     uint16_t burstLength ;
     uint16_t numBytes ;
@@ -100,8 +100,11 @@ namespace xdp {
     DeviceMemoryAccess() = delete ;
   public:
     XDP_EXPORT DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
-                                  uint64_t devId, uint32_t monId, int32_t cuIdx = -1);
+                                  uint64_t devId, uint32_t monId, int32_t cuIdx = -1,
+                                  uint64_t memStrId = 0);
     XDP_EXPORT ~DeviceMemoryAccess();
+
+    XDP_EXPORT virtual void dump(std::ofstream& fout, uint32_t bucket);
 
     virtual int32_t getCUId() { return cuId; }
 

@@ -578,13 +578,22 @@ namespace xdp {
 
       if (cuId != mon->cuIndex)
         continue ;
+
+      uint64_t memStrId = 0;
+      if(-1 != mon->memIndex) {
+        Memory* mem = db->getStaticInfo().getMemory(deviceId, mon->memIndex);
+        if(nullptr != mem) {
+          memStrId = db->getDynamicInfo().addString(mem->name);
+        }
+      }
+
       int32_t amId = -1 ;
       ComputeUnitInstance* cu = db->getStaticInfo().getCU(deviceId, cuId);
       if (cu) {
         amId = cu->getAccelMon();
       }
-      addApproximateDataTransferEvent(KERNEL_READ, aimSlotID, amId, cuId) ;
-      addApproximateDataTransferEvent(KERNEL_WRITE, aimSlotID + 1, amId, cuId) ;
+      addApproximateDataTransferEvent(KERNEL_READ, aimSlotID, amId, cuId, memStrId) ;
+      addApproximateDataTransferEvent(KERNEL_WRITE, aimSlotID + 1, amId, cuId, memStrId) ;
     }
   }
 

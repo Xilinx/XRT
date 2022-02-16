@@ -54,6 +54,20 @@
 
 namespace xdp {
 
+std::string convertMemoryName(std::string mem)
+{
+  if (0 == mem.compare("DDR[0]"))
+    return "bank0";
+  if (0 == mem.compare("DDR[1]"))
+    return "bank1";
+  if (0 == mem.compare("DDR[2]"))
+    return "bank2";
+  if (0 == mem.compare("DDR[3]"))
+    return "bank3";
+
+  return mem;
+}
+
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d)
     : db(d)
     , runSummary(nullptr)
@@ -1585,11 +1599,13 @@ namespace xdp {
     }
 
     std::string memName = "" ;
+    std::string memName1 = "" ;
     std::string portName = "" ;
     size_t pos1 = name.find('-');
     if(pos1 != std::string::npos) {
       memName = name.substr(pos1+1);
       portName = name.substr(pos+1, pos1-pos-1);
+      memName1 = convertMemoryName(memName);
     }
 
     ComputeUnitInstance* cuObj = nullptr ;
@@ -1606,7 +1622,7 @@ namespace xdp {
       }
     }
     for(auto mem : xclbin->pl.memoryInfo) {
-      if(0 == memName.compare(mem.second->name)) {
+      if(0 == memName1.compare(mem.second->name)) {
         memId = mem.second->index;
         break;
       }

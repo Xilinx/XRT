@@ -91,17 +91,25 @@ namespace xdp {
   }
 
   DeviceMemoryAccess::DeviceMemoryAccess(uint64_t s_id, double ts, VTFEventType ty,
-                                         uint64_t devId, uint32_t monId, int32_t cuIdx)
+                                         uint64_t devId, uint32_t monId, int32_t cuIdx,
+                                         uint64_t memStrId)
                     : VTFDeviceEvent(s_id, ts, ty, devId, monId),
                       cuId(cuIdx),
+                      memoryName(memStrId),
                       // Until implemented, provide a default value for all members
-                      portName(0), memoryName(0), argumentNames(0), burstLength(0),
+                      portName(0), argumentNames(0), burstLength(0),
                       numBytes(0)
   {
   }
 
   DeviceMemoryAccess::~DeviceMemoryAccess()
   {
+  }
+
+  void DeviceMemoryAccess::dump(std::ofstream& fout, uint32_t bucket)
+  {
+    VTFEvent::dump(fout, bucket) ;
+    fout << "," << memoryName << std::endl;
   }
 
   DeviceStreamAccess::DeviceStreamAccess(uint64_t s_id, double ts, VTFEventType ty,
