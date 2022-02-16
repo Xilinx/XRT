@@ -1622,7 +1622,7 @@ std::string convertMemoryName(std::string mem)
       }
     }
     for(auto mem : xclbin->pl.memoryInfo) {
-      if(0 == memName1.compare(mem.second->name)) {
+      if (0 == memName1.compare(mem.second->name) || 0 == memName.compare(mem.second->name)) {
         memId = mem.second->index;
         break;
       }
