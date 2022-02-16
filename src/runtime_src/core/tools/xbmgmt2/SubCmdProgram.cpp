@@ -105,9 +105,6 @@ update_shell(unsigned int index, std::map<std::string, std::string>& image_paths
     throw xrt_core::error("Failed to update base");
   
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
-  std::cout << "****************************************************\n";
-  std::cout << "Cold reboot machine to load the new image on device.\n";
-  std::cout << "****************************************************\n";
 }
 
 static std::string 
@@ -440,18 +437,20 @@ update_default_only(xrt_core::device* device, bool value)
 {
   try {
     // get boot on backup from vmr_status sysfs node
-    int is_backup_boot = 0;
-    const auto pt = xrt_core::vmr::vmr_info(device);
+    boost::property_tree::ptree pt_empty;
+    const auto pt = xrt_core::vmr::vmr_info(device).get_child("vmr", pt_empty);
     for(auto& ks : pt) {
       const boost::property_tree::ptree& vmr_stat = ks.second;
-      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on backup")) {
-        std::cout << "boot on backup" <<std::endl;
-        is_backup_boot = std::stoi(vmr_stat.get<std::string>("value"));
-        std::cout << "boot val: " << is_backup_boot <<std::endl;
+      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+        // if backup is booted, then do not proceed
+        if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
+          std::cout << "ERROR: Please load default boot to use this option" <<std::endl;
+          throw xrt_core::error(std::errc::operation_canceled);
+        }
+        break;
       }
     }
-    if (is_backup_boot != 0)
-      throw xrt_core::error("Please load default boot to use this option.");
+      
     uint32_t value = xrt_core::query::flush_default_only::value_type(value);
     xrt_core::device_update<xrt_core::query::flush_default_only>(device, value);
   }
@@ -836,8 +835,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   auto flash_type = working_flasher.getFlashType(flashType);
 
   if (!update.empty()) {
+    XBU::verbose("Sub command: --base");
+    XBU::sudo_or_throw("Root privileges are required to update the devices flash image");
     // User did not provide an image for all. Select image automatically.
     if (update.compare("all") == 0) {
+      update_default_only(working_device.get(), false);
       if (image.empty()) {
         auto_flash(working_device, flash_type);
         return;
@@ -875,8 +877,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
         break;
     }
 
-    XBU::verbose("Sub command: --base");
-    XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
     if (update.compare("all") == 0) {
         update_default_only(working_device.get(), false);
         auto_flash(working_device, flash_type, validated_image_map["primary"]);
@@ -889,6 +889,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     else if (update.compare("shell") == 0) {
       update_default_only(working_device.get(), false);
       update_shell(working_device.get()->get_device_id(), validated_image_map, flash_type);
+      std::cout << "****************************************************\n";
+      std::cout << "Cold reboot machine to load the new image on device.\n";
+      std::cout << "****************************************************\n";
     }
     else if (update.compare("no-backup") == 0) {
       update_default_only(working_device.get(), true);

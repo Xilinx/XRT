@@ -101,23 +101,17 @@ static boost::property_tree::ptree
 get_boot_info(const xrt_core::device * dev)
 {
   boost::property_tree::ptree ptree;
-  try {
-    // get boot on default from vmr_status sysfs node
-    int is_default_boot = 0;
-    const auto pt = xrt_core::vmr::vmr_info(dev);
-    for(auto& ks : ptree) {
-      const boost::property_tree::ptree& vmr_stat = ks.second;
-      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
-        std::cout << "boot on def" <<std::endl;
-        is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
-        std::cout << "boot val: " << is_default_boot <<std::endl;
-      }
+  // get boot on default from vmr_status sysfs node
+  boost::property_tree::ptree pt_empty;
+  const auto pt = xrt_core::vmr::vmr_info(dev).get_child("vmr", pt_empty);
+  for(auto& ks : pt) {
+    const boost::property_tree::ptree& vmr_stat = ks.second;
+    if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+      auto is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
+      ptree.add("default", is_default_boot ? "ACTIVE" : "INACTIVE");
+      ptree.add("backup", is_default_boot ? "INACTIVE" : "ACTIVE");
+      break;
     }
-    ptree.add("default", is_default_boot == 0 ? "ACTIVE" : "INACTIVE");
-    ptree.add("backup", is_default_boot == 0 ? "INACTIVE" : "ACTIVE");
-  }
-  catch (const xrt_core::query::exception&) { 
-    // only available for versal devices
   }
   return ptree;
 }
