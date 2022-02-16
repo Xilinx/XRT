@@ -241,7 +241,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
     temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("temp_C", temp_C);
     pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
-    pt.put("is_present", temp_C != 0 ? "true" : "false");
+    pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }
 
