@@ -493,12 +493,12 @@ void zocl_free_bo(struct drm_gem_object *obj)
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_HOST_BO)
 			zocl_free_host_bo(obj);
 		else if (zocl_obj->flags & ZOCL_BO_FLAGS_CMA) {
-			/* free resources associated with a CMA GEM object */
-			drm_gem_cma_free_object(obj);
-
 			/* Update memory usage statistics */
 			zocl_update_mem_stat(zdev, obj->size, -1,
 			    zocl_obj->mem_index);
+			/* free resources associated with a CMA GEM object */
+			drm_gem_cma_free_object(obj);
+
 		} else {
 			if (zocl_obj->mm_node) {
 				mutex_lock(&zdev->mm_lock);
