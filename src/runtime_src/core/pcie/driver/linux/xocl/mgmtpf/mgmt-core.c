@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2020 Xilinx, Inc.
+ * Copyright (C) 2017-2022 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -1382,7 +1382,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	(void) xocl_reinit_vmr(lro);
+	(void) xocl_download_apu_firmware(lro);
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1398,7 +1398,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	(void) xocl_hwmon_sdm_get_sensors_list(lro);
+	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 
 	xocl_drvinst_set_offline(lro, false);
 	return 0;

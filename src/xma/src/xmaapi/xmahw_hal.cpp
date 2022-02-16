@@ -278,7 +278,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
 
         if (dev_tmp1.number_of_hardware_kernels > 0) {
             //Avoid virtual cu context as it takes 40 millisec
-            dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
+            //dev_tmp1.xrt_device.get_handle()->open_context(info.uuid, dev_tmp1.kernels[0].cu_index_ert, true);
             dev_tmp1.kernels[0].context_opened = true;
         } else {
             //Opening virtual CU context as some applications may use soft kernels only

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -286,6 +286,18 @@ inline bool
 get_profile_api()
 {
   static bool value = detail::get_bool_value("Debug.profile_api", false);
+  return value;
+}
+
+inline bool
+get_host_trace()
+{
+  // The host_trace switch is intended to turn on only one layer of host trace,
+  // either OpenCL level, Native XRT level, or HAL level.  If the user
+  // sets host_trace=true in the xrt.ini file, then the level of trace that
+  // will be enabled is the level at which the host application is written.
+
+  static bool value = detail::get_bool_value("Debug.host_trace", false);
   return value;
 }
 

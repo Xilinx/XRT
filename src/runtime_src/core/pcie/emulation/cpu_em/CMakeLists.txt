@@ -14,7 +14,6 @@ include_directories(
   ${BOOST_SYSTEM_INCLUDE_DIRS}
   )
 
-
 file(GLOB EM_SRC_FILES
   "${EM_SRC_DIR}/*.h"
   "${EM_SRC_DIR}/*.cxx"
@@ -32,6 +31,12 @@ add_library(xrt_swemu SHARED ${CURR_SOURCE}
   $<TARGET_OBJECTS:core_common_objects>
   )
 
+add_library(xrt_swemu_static STATIC ${CURR_SOURCE}
+  $<TARGET_OBJECTS:sw_emu_objects>
+  $<TARGET_OBJECTS:core_common_objects>
+  $<TARGET_OBJECTS:common_em_objects>
+  )
+
 set_target_properties(xrt_swemu PROPERTIES VERSION ${XRT_VERSION_STRING}
   SOVERSION ${XRT_SOVERSION})
 
@@ -46,13 +51,23 @@ target_link_libraries(xrt_swemu
   uuid
   )
 
+target_link_libraries(xrt_swemu_static
+  INTERFACE
+  boost_filesystem
+  boost_system
+  ${PROTOBUF_LIBRARY}
+  xrt_coreutil_static
+  rt
+  uuid
+  )
+
 install (TARGETS xrt_swemu
   EXPORT xrt-targets
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} ${XRT_NAMELINK_SKIP}
   RUNTIME DESTINATION ${XRT_INSTALL_BIN_DIR}
 )
 
-install (TARGETS xrt_swemu
+install (TARGETS xrt_swemu xrt_swemu_static
   EXPORT xrt-dev-targets
   ARCHIVE DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT}
   LIBRARY DESTINATION ${XRT_INSTALL_LIB_DIR} COMPONENT ${XRT_DEV_COMPONENT} ${XRT_NAMELINK_ONLY}

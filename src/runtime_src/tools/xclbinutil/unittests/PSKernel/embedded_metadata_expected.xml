@@ -66,7 +66,7 @@
         </kernel>
         <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_32_0_M13_AXI" dstType="kernel" dstInst="vadd_1" dstPort="S_AXI_CONTROL"/>
         <connection srcType="core" srcInst="OCL_REGION_0" srcPort="noc_64_0_S02_AXI" dstType="kernel" dstInst="vadd_1" dstPort="M_AXI_GMEM"/>
-        <kernel name="kernel0" language="c" type="dpu">
+        <kernel name="kernel0" language="c" type="ps">
           <arg name="arg0" addressQualifier="1" id="0" size="0x10" offset="0x0" hostOffset="0x0" hostSize="0x10" type="float*"/>
           <arg name="arg1" addressQualifier="1" id="1" size="0x10" offset="0x10" hostOffset="0x0" hostSize="0x10" type="float*"/>
           <arg name="arg2" addressQualifier="1" id="2" size="0x10" offset="0x20" hostOffset="0x0" hostSize="0x10" type="float*"/>
@@ -74,7 +74,7 @@
           <arg name="arg4" addressQualifier="0" id="4" size="0x8" offset="0x38" hostOffset="0x0" hostSize="0x8" type="int"/>
           <arg name="arg5" addressQualifier="0" id="5" size="0x4" offset="0x40" hostOffset="0x0" hostSize="0x4" type="float"/>
           <arg name="arg6" addressQualifier="1" id="6" size="0x10" offset="0x44" hostOffset="0x0" hostSize="0x10" type="float*"/>
-          <arg name="arg7" addressQualifier="1" id="7" size="0x10" offset="0x54" hostOffset="0x0" hostSize="0x10" type="xrtHandles*"/>
+          <arg name="arg7" addressQualifier="1" id="" size="0x10" offset="0x54" hostOffset="0x0" hostSize="0x10" type="xrtHandles*"/>
           <instance name="scu_0"/>
         </kernel>
       </core>

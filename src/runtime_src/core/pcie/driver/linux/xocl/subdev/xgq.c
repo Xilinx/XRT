@@ -281,8 +281,9 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 			
 			xgq_cmd->xgq_cmd_rcode = -ETIME;
 			complete(&xgq_cmd->xgq_cmd_complete);
-			XGQ_ERR(xgq, "cmd id: %d timed out, hot reset is required!",
-				xgq_cmd->xgq_cmd_entry.hdr.cid);
+			XGQ_ERR(xgq, "cmd id: %d op: 0x%x timed out, hot reset is required!",
+				xgq_cmd->xgq_cmd_entry.hdr.cid,
+				xgq_cmd->xgq_cmd_entry.hdr.opcode);
 		}
 	}
 	mutex_unlock(&xgq->xgq_lock);
@@ -828,6 +829,9 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 			XGQ_ERR(xgq, "need to alloc %d for device data", 
 				fw_result->count);
 			ret = -ENOSPC;
+		} else if (fw_result->count == 0) {
+			XGQ_ERR(xgq, "fw size cannot be zero");
+			ret = -EINVAL;
 		} else {
 			*fw_size = fw_result->count;
 			*fw = vmalloc(*fw_size);
@@ -1308,7 +1312,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
-	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sensor_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	u32 address = 0;
 	int ret = 0;
@@ -1331,6 +1335,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
 	payload->size = len;
+	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
 	payload->pid = pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1383,14 +1388,10 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_collect_bdinfo_sensors(struct platform_device *pdev, char *buf, uint32_t len)
+static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
+									 uint8_t id, uint32_t len)
 {
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_BDINFO, buf, len);
-}
-
-static int xgq_collect_temp_sensors(struct platform_device *pdev, char *buf, uint32_t len)
-{
-	return xgq_collect_sensors(pdev, XGQ_CMD_SENSOR_PID_TEMP, buf, len);
+	return xgq_collect_sensors(pdev, id, buf, len);
 }
 
 /* sysfs */
@@ -1885,8 +1886,7 @@ static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_get_data = xgq_get_data,
 	.xgq_download_apu_firmware = xgq_download_apu_firmware,
 	.vmr_enable_multiboot = vmr_enable_multiboot,
-	.xgq_collect_bdinfo_sensors = xgq_collect_bdinfo_sensors,
-	.xgq_collect_temp_sensors = xgq_collect_temp_sensors,
+	.xgq_collect_sensors_by_id = xgq_collect_sensors_by_id,
 	.vmr_load_firmware = xgq_log_page_fw,
 };
 

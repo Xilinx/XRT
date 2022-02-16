@@ -87,13 +87,13 @@ jobs:
 
       # XRT build aritfacts step uploads the build/Release folder to github action in zip format
       # This step uses upload-artifacts action which is maintained by github
-    - name: XRT build artifacts
+#    - name: XRT build artifacts
       # if always() keyword is set so that even if previous step fails or workflow is cancelled, this step is set to run always
-      if: always()
-      uses: actions/upload-artifact@v2
-      with:
-        name: Build Artifacts
-        path: build/Release
+#      if: always()
+#      uses: actions/upload-artifact@v2
+#      with:
+#        name: Build Artifacts
+#        path: build/Release
 
     # This step installs the XRT rpm/deb packages created in the previous step
     - name: Install XRT
@@ -118,6 +118,11 @@ jobs:
         source /opt/xilinx/xrt/setup.sh
         xbutil validate -d --verbose --batch
         xbutil examine -d
+    - name: Verify kernel
+      run: |
+        source /opt/xilinx/xrt/setup.sh
+        echo "Running 'Verify Kernel' testcase"
+        xbutil validate --batch -r 'Verify kernel' -d --verbose
     - name: Drivers reloading
       timeout-minutes: 10
       run: |

@@ -2,7 +2,7 @@
 /*
  * Xilinx Unify CU Model
  *
- * Copyright (C) 2020-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -28,6 +28,7 @@
 #endif
 
 #define MAX_CUS 128
+#define MAX_SLOT 32
 
 /* Soft kernel indices are numbered from 0 to some MAX_CUS
  * but are in a distinct domain which is indiciated by the
@@ -216,6 +217,7 @@ enum CU_PROTOCOL {
 struct xrt_cu_info {
 	u32			 model;
 	int			 cu_idx;
+	u32			 slot_idx;
 	int			 inst_idx;
 	u64			 addr;
 	size_t			 size;
@@ -227,8 +229,8 @@ struct xrt_cu_info {
 	bool			 sw_reset;
 	struct xrt_cu_arg	*args;
 	u32			 num_args;
-	char			 iname[32];
-	char			 kname[32];
+	char			 iname[64];
+	char			 kname[64];
 	void			*xgq;
 };
 

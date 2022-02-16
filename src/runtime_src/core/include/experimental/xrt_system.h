@@ -1,5 +1,5 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
+/*
+ * Copyright (C) 2021-2022 Xilinx, Inc
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -13,6 +13,7 @@
 /*!
  * @namespace xrt::system
  *
+ * @brief
  * APIs for system level queries and control.
  */
 namespace xrt { namespace system {
@@ -21,10 +22,10 @@ namespace xrt { namespace system {
  * enumerate_devices() - Enumerate devices found in the system
  *
  * @return
-     Number of devices in the system recognized by XRT
+ *  Number of devices in the system recognized by XRT
  */
 XCL_DRIVER_DLLESPEC
-unsigned int    
+unsigned int
 enumerate_devices();
 
 }}

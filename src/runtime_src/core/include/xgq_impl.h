@@ -338,6 +338,15 @@ static inline void xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
 	xgq_ring_read_consumed(xgq->xq_io_hdl, ring);
 }
 
+/*
+ * Check if XGQ tail pointer is reset to 0, which is required during allocation.
+ */
+static inline int xgq_check_reset(struct xgq *xgq, struct xgq_ring *ring)
+{
+	xgq_ring_read_produced(xgq->xq_io_hdl, ring);
+	return ring->xr_produced == 0;
+}
+
 static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
 	    size_t n_slots, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
 {
@@ -431,6 +440,10 @@ xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr, 
 		return -E2BIG;
 
 	xgq_init(xgq, flags, io_hdl, ring_addr, numslots, slot_size, sq_produced, cq_produced);
+
+	/* Ring is not reset, stale commands may exist, can't use this xgq. */
+	if (!xgq_check_reset(xgq, &xgq->xq_sq) || !xgq_check_reset(xgq, &xgq->xq_cq))
+		return -EEXIST;
 
 	*ring_len = xgq_ring_len(numslots, slot_size);
 	return 0;

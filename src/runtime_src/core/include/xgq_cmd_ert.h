@@ -213,6 +213,7 @@ struct xgq_cmd_config_end {
  * @haddr: higher 32 bits of the CU address
  * @payload_size: CU XGQ slot payload size
  * @name: name of the CU
+ * @uuid: UUID of the XCLBIN of the CU
  *
  * Configure PL/PS CUs.
  */
@@ -230,6 +231,7 @@ struct xgq_cmd_config_cu {
 	uint32_t haddr;
 	uint32_t payload_size;
 	char name[64];
+	char uuid[16];
 };
 
 /**

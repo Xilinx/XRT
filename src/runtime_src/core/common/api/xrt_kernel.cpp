@@ -261,7 +261,7 @@ has_reg_read_write()
 #ifdef _WIN32
   return false;
 #else
-  return !is_sw_emulation();
+  return true;
 #endif
 }
 
