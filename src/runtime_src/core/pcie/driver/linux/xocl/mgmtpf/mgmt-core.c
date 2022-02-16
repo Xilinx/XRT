@@ -32,6 +32,8 @@
 #include "xclbin.h"
 #include "../xocl_xclbin.h"
 
+#define SIZE_4KB  4096
+
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
 	{ 0, }
@@ -778,27 +780,27 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 			subdev_req->size, resp, &current_sz);
 		break;
 	case XCL_SDR_BDINFO:
-		current_sz = 4096;
+		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
 		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
 		break;
 	case XCL_SDR_TEMP:
-		current_sz = 4096;
+		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
 		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
 		break;
 	case XCL_SDR_VOLTAGE:
-		current_sz = 4096;
+		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
 		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
 		break;
 	case XCL_SDR_CURRENT:
-		current_sz = 4096;
+		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
 		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
 		break;
 	case XCL_SDR_POWER:
-		current_sz = 4096;
+		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
 		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
 		break;

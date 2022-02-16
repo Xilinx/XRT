@@ -23,6 +23,7 @@
 #include "xgq_cmd_vmr.h"
 #include "xgq_resp_parser.h"
 #include "../xocl_drv.h"
+#include "xclfeatures.h"
 
 #define SYSFS_COUNT_PER_SENSOR          4
 #define SYSFS_NAME_LEN                  20
@@ -229,6 +230,26 @@ static int get_sensors_data(struct platform_device *pdev, uint8_t repo_id)
 
 	return 0;
 }
+
+static ssize_t show_hwmon_name(struct device *dev, struct device_attribute *da,
+	char *buf)
+{
+	struct FeatureRomHeader rom = { {0} };
+	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
+	void *xdev_hdl = xocl_get_xdev(sdm->pdev);
+	char nm[150] = { 0 };
+	int n;
+
+	xocl_get_raw_header(xdev_hdl, &rom);
+	n = snprintf(nm, sizeof(nm), "%s", rom.VBNVName);
+	if (sdm->privileged)
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "_hwmon_sdm_mgmt");
+	else
+		(void) snprintf(nm + n, sizeof(nm) - n, "%s", "_hwmon_sdm_user");
+	return sprintf(buf, "%s\n", nm);
+}
+static struct sensor_device_attribute name_attr =
+	SENSOR_ATTR(name, 0444, show_hwmon_name, NULL, 0);
 
 /*
  * hwmon_sensor_show(): This API is called when hwmon sysfs node is read
@@ -591,6 +612,7 @@ static void destroy_hwmon_sysfs(struct platform_device *pdev)
 		return;
 
 	if (sdm->hwmon_dev) {
+		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
 		hwmon_device_unregister(sdm->hwmon_dev);
 		sdm->hwmon_dev = NULL;
 	}
@@ -622,11 +644,19 @@ static int create_hwmon_sysfs(struct platform_device *pdev)
 
 	dev_set_drvdata(sdm->hwmon_dev, sdm);
 
+	err = device_create_file(sdm->hwmon_dev, &name_attr.dev_attr);
+	if (err) {
+		xocl_err(&pdev->dev, "create attr name failed: 0x%x", err);
+		goto create_name_failed;
+	}
+
 	xocl_dbg(&pdev->dev, "created hwmon sysfs list");
 	sdm->sysfs_created = true;
 
 	return 0;
 
+create_name_failed:
+	hwmon_device_unregister(sdm->hwmon_dev);
 hwmon_reg_failed:
 	sdm->hwmon_dev = NULL;
 	return err;
