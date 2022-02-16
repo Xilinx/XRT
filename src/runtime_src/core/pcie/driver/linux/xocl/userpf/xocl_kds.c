@@ -1700,6 +1700,15 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 	num_cus = xocl_kds_fill_cu_info(xdev, slot_hdl, ip_layout, cu_info, MAX_CUS);
 
+	 /* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
+	  * We will re-looking at this once at supporting multiple xclbins.
+	  */
+	if (num_cus > 64) {
+		userpf_err(xdev, "More than 64 CUs found\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
 		goto create_regular_cu;
@@ -1717,7 +1726,8 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
 	if (major != 1 && minor != 0) {
 		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out;
 	}
 
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
