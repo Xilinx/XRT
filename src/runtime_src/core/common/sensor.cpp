@@ -155,43 +155,9 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   ptree_type pt;
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
-  for (const auto& curr : current)
-  {
-    pt.put("id", curr.label);
-    pt.put("description", curr.label);
-    pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(curr.input));
-    pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(curr.max));
-    pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(curr.average));
-    // these fields are also needed to differentiate between sensor types
-    pt.put("current.is_present", "true");
-    pt.put("voltage.is_present", "false");
-    pt.put("power.is_present", "false");
-    sensor_array.push_back({"", pt});
-  }
-
-  // iterate over voltage data, store to ptree by converting to Volts from milli Volts
   for (const auto& tmp : voltage)
   {
-    bool found =false;
     auto desc = tmp.label;
-    for(auto& kv : sensor_array)
-    {
-      auto id = kv.second.get<std::string>("id");
-      //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
-      if(id.find(desc) != std::string::npos)
-      {
-        kv.second.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
-        kv.second.put("voltage.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
-        kv.second.put("voltage.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
-        kv.second.put("voltage.is_present", "true");
-        found = true;
-        break;
-      }
-    }
-
-    if(found)
-      continue;
-
     pt.put("id", desc);
     pt.put("description", desc);
     pt.put("voltage.volts", xrt_core::utils::format_base10_shiftdown3(tmp.input));
@@ -200,7 +166,44 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     // these fields are also needed to differentiate between sensor types
     pt.put("voltage.is_present", "true");
     pt.put("current.is_present", "false");
-    pt.put("power.is_present", "false");
+    sensor_array.push_back({"", pt});
+  }
+
+  // iterate over voltage data, store to ptree by converting to Volts from milli Volts
+  for (const auto& tmp : current)
+  {
+    bool found =false;
+    auto desc = tmp.label;
+    auto amps = xrt_core::utils::format_base10_shiftdown3(tmp.input);
+    auto max = xrt_core::utils::format_base10_shiftdown3(tmp.max);
+    auto avg = xrt_core::utils::format_base10_shiftdown3(tmp.average);
+
+    for(auto& kv : sensor_array)
+    {
+      auto id = kv.second.get<std::string>("id");
+      //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
+      if(desc.find(id) != std::string::npos)
+      {
+        kv.second.put("current.amps", amps);
+        kv.second.put("current.max", max);
+        kv.second.put("current.average", avg);
+        kv.second.put("current.is_present", "true");
+        found = true;
+        break;
+      }
+    }
+
+    if(found)
+      continue;
+
+    pt.put("id", tmp.label);
+    pt.put("description", tmp.label);
+    pt.put("current.amps", xrt_core::utils::format_base10_shiftdown3(tmp.input));
+    pt.put("current.max", xrt_core::utils::format_base10_shiftdown3(tmp.max));
+    pt.put("current.average", xrt_core::utils::format_base10_shiftdown3(tmp.average));
+    // these fields are also needed to differentiate between sensor types
+    pt.put("current.is_present", "true");
+    pt.put("voltage.is_present", "false");
     sensor_array.push_back({"", pt});
   }
 
