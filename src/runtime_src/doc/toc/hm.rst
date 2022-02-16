@@ -2,7 +2,7 @@
 
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 
 Host Memory Access
 ==================
@@ -73,68 +73,46 @@ The following table can be used to determine the number of Hugepages required ba
 Enabling the Host Memory by XRT
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Irrespective of the Hugepages settings, ``xbutil host_mem`` command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, ``xbutil host_mem`` command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.
+Irrespective of the Hugepages settings, ``xbutil configure --host-mem`` command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, ``sudo xbutil configure --host-mem -d <bdf>`` command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.
 
 .. code-block:: bash
 
-  xbutil host_mem -d 0 --enable --size 1G
-  xbutil host_mem -d 1 --enable --size 4G
-  xbutil host_mem -d 2 --enable --size 16G
+  sudo xbutil configure --host-mem -d 0000:a6:00.1 --size 1G enable
+  sudo xbutil configure --host-mem -d 0000:73:00.1 --size 4G enable
+  sudo xbutil configure --host-mem -d 0000:17:00.1 --size 16G enable
 
 
 Maximum Host memory supported by the platform
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For the platform supporting the host memory access feature, we can observe the following two data from the ``xbutil query`` output
+For the platform supporting the host memory access feature, we can observe the following two data from the ``xbutil examine -r pcie-info -d <bdf>`` output
 
-     - **Max HOST_MEM**: The maximum host memory supported by the platform.
-     - **HOST_MEM size**: The host memory specified for this card (by ``xbutil host_mem``)
+     - **Max Shared Host Memory**: The maximum host memory supported by the platform.
+     - **Shared Host Memory**: The host memory specified for this card (by ``xbutil configure --host-mem``)
 
 Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 4GB host memory.
 
 .. code-block:: bash
 
-  shell>>xbutil host_mem --enable 4G
-  xbutil host_mem done successfully
-  shell>>xbutil query
-  INFO: Found total 1 card(s), 1 are usable
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  System Configuration
-  OS name:	Linux
-  Release:	5.7.0+
-  Version:	#1 SMP Thu Jun 11 16:19:41 PDT 2020
-  Machine:	x86_64
-  Model:	Super Server
-  CPU cores:	16
-  Memory:	15547 MB
-  Glibc:	2.23
-  Distribution:	Ubuntu 16.04.5 LTS
-  Now:		Tue Sep 22 18:30:33 2020 GMT
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  XRT Information
-  Version:	2.8.0
-  Git Hash:	64ece8bdbd553e0538e99612f11d1926c609a54f
-  Git Branch:	ssv3_0921
-  Build Date:	2020-09-21 14:25:40
-  XOCL:		2.6.0,cd2fcd72498afa91f2a6a60d4e3c1697291cd16e
-  XCLMGMT:	2.6.0,cd2fcd72498afa91f2a6a60d4e3c1697291cd16e
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  Shell                           FPGA                            IDCode
-  xilinx_u250_gen3x16_xdma_shell_2_1                                0x4b57093
-  Vendor          Device          SubDevice       SubVendor       SerNum
-  0x10ee          0x5005          0x000e          0x10ee
-  DDR size        DDR count       Clock0          Clock1          Clock2
-  0 Byte          0               300             500             0
-  PCIe            DMA chan(bidir) MIG Calibrated  P2P Enabled     OEM ID
-  GEN 3x16        2               true            false           0x0(N/A)
-  Interface UUID
-  8e4e5c27e1d0742bd3d00d65c691a382
-  Logic UUID
-  abad927204cb200a2e88751e9d582807
-  DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
-                                  0-15            4 GB            16 GB
-  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  shell>>sudo xbutil configure --host-mem -d 0000:17:00.1 --size 1G enable
 
+  Host-mem enabled successfully
+  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+
+  -----------------------------------------------
+  1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1
+  -----------------------------------------------
+  Pcie Info
+    Vendor                 : 0x10ee
+    Device                 : 0x5005
+    Sub Device             : 0x000e
+    Sub Vendor             : 0x10ee
+    PCIe                   : Gen3x16
+    DMA Thread Count       : 2
+    CPU Affinity           : 16-31,48-63
+    Shared Host Memory     : 4 GB
+    Max Shared Host Memory : 16 GB
+    Enabled Host Memory    : 1
 
 Host code Guideline
 -------------------
