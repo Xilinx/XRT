@@ -16,8 +16,6 @@ if(NOT VITIS_COMPILER)
   )
   if(VITIS_COMPILER)
     message("Vitis Compiler is found at ${VITIS_COMPILER}")
-  else()
-   message(FATAL_ERROR "Vitis Compiler v++ is not found, Please source vitis and try again")
   endif()
 endif()
 
