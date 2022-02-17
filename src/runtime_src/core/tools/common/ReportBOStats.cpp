@@ -17,6 +17,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "ReportBOStats.h"
+#include "Table2D.h"
 #include "XBUtilities.h"
 
 // 3rd Party Library - Include Files
@@ -128,15 +129,32 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
                         std::ostream & output) const
 {
   boost::format entfmt("BO type: %-11s, BO count: %-5s, Mem usage(%s): %s\n");
-   boost::property_tree::ptree empty_ptree;
+  boost::property_tree::ptree empty_ptree;
+
+  Table2D::HeaderData bo_type = {"Buffer Type", Table2D::Justification::right};
+  Table2D::HeaderData bo_count = {"Buffer Count", Table2D::Justification::center};
+  Table2D::HeaderData mem_used = {"Memory Usage", Table2D::Justification::center};
+  std::vector<Table2D::HeaderData> table_headers = {bo_type, bo_count, mem_used};
+  Table2D bo_table(table_headers);
+
 
   for(auto& kv : pt.get_child("buffer_object_stats", empty_ptree)) {
     const boost::property_tree::ptree& v = kv.second;
 
-    output << boost::str(entfmt 
-      % v.get<std::string>("buffer_type")
-      % v.get<std::string>("buffer_count")
-      % v.get<std::string>("memory_used_unit")
-      % v.get<std::string>("memory_used"));
+    std::string mem_string = v.get<std::string>("memory_used")
+        + " " + v.get<std::string>("memory_used_unit");
+
+    std::vector<std::string> entry_data = {v.get<std::string>("buffer_type"),
+	v.get<std::string>("buffer_count"),
+	mem_string};
+
+    bo_table.addEntry(entry_data);
+
+    //output << boost::str(entfmt 
+//      % v.get<std::string>("buffer_type")
+//      % v.get<std::string>("buffer_count")
+//      % v.get<std::string>("memory_used_unit")
+//      % v.get<std::string>("memory_used"));
   }
+  output << bo_table << std::endl;
 }
