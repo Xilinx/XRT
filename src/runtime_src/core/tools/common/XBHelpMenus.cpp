@@ -578,8 +578,12 @@ XBUtilities::create_suboption_list_string( const ReportCollection &_reportCollec
   VectorPairStrings reportDescriptionCollection;
 
   // Add the report names and description
-  for (const auto & report : _reportCollection) 
+  for (const auto & report : _reportCollection) {
+    // Skip hidden reports
+    if (!XBU::getShowHidden() && report->isHidden()) 
+      continue;
     reportDescriptionCollection.emplace_back(report->getReportName(), report->getShortDescription());
+  }
 
   // 'verbose' option
   if (_addAllOption) 
@@ -615,7 +619,12 @@ XBUtilities::collect_and_validate_reports( const ReportCollection &allReportsAva
 {
   // If "verbose" used, then use all of the reports
   if (std::find(reportNamesToAdd.begin(), reportNamesToAdd.end(), "all") != reportNamesToAdd.end()) {
-    reportsToUse = allReportsAvailable;
+    for (const auto & report : allReportsAvailable) {
+      // Skip hidden reports
+      if (report->isHidden()) 
+        continue;
+      reportsToUse.emplace_back(report);
+    }
   } else { 
     // Examine each report name for a match 
     for (const auto & reportName : reportNamesToAdd) {

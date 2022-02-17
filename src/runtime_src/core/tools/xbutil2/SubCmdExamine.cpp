@@ -55,28 +55,30 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportBOStats.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
-    std::make_shared<ReportMemory>(),
-    std::make_shared<ReportHost>(),
-    std::make_shared<ReportDynamicRegion>(),
-    std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportAsyncError>(),
+    std::make_shared<ReportBOStats>(),
+    std::make_shared<ReportDebugIpStatus>(),
+    std::make_shared<ReportDynamicRegion>(),
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportCmcStatus>(),
     std::make_shared<ReportElectrical>(),
+    std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
     std::make_shared<ReportMechanical>(),
-    std::make_shared<ReportFirewall>(),
-    std::make_shared<ReportThermal>(),
     std::make_shared<ReportQspiStatus>(),
-    std::make_shared<ReportCmcStatus>(),
+    std::make_shared<ReportThermal>(),
   #endif
   };
 
