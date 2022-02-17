@@ -1043,6 +1043,10 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 		goto done;
 	}
 
+	// if the response has any error, mgmt sets the resp_len to size of int (error code).
+	if (resp_len <= sizeof(int))
+		goto done;
+
 	ret = xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
 	if (ret)
 		userpf_err(xdev, "hwmon_sdm sysfs creation failed for xcl_sdr 0x%x, err: %d", kind, ret);

@@ -782,27 +782,27 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	case XCL_SDR_BDINFO:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
 		break;
 	case XCL_SDR_TEMP:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
 		break;
 	case XCL_SDR_VOLTAGE:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
 		break;
 	case XCL_SDR_CURRENT:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
 		break;
 	case XCL_SDR_POWER:
 		current_sz = SIZE_4KB;
 		*resp = vzalloc(current_sz);
-		(void) xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
 		break;
 	default:
 		break;
@@ -811,7 +811,8 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	if (!*resp)
 		return -EINVAL;
 	*sz = resp_sz;
-	return 0;
+
+	return ret;
 }
 
 static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
