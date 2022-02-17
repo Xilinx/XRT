@@ -19,7 +19,6 @@
 #include <thread>
 #include <ctime>
 #include <windows.h>
-#include <winsock.h>
 
 #include <boost/format.hpp>
 
@@ -141,17 +140,6 @@ get_total_devices(bool is_user) const
 {
   unsigned int count = is_user ? xclProbe() : mgmtpf::probe();
   return std::make_pair(count, count);
-}
-
-std::string
-system_windows::
-get_hostname() const
-{
-  char hostname[256] = {0};
-  const int error = gethostname(hostname, 256);
-  if (error != 0)
-    throw xrt_core::error("Failed to get hostname");
-  return std::string(hostname);
 }
 
 void

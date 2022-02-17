@@ -36,9 +36,6 @@ public:
   std::pair<device::id_type, device::id_type>
   get_total_devices(bool is_user) const;
 
-  std::string
-  get_hostname() const;
-
   void
   scan_devices(bool verbose, bool json) const;
 

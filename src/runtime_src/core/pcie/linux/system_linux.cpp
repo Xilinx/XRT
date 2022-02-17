@@ -201,17 +201,6 @@ get_total_devices(bool is_user) const
   return std::make_pair(pcidev::get_dev_total(is_user), pcidev::get_dev_ready(is_user));
 }
 
-std::string
-system_linux::
-get_hostname() const
-{
-  char hostname[256] = {0};
-  const int error = gethostname(hostname, 256);
-  if (error != 0)
-    throw xrt_core::error("Failed to get hostname");
-  return std::string(hostname);
-}
-
 void
 system_linux::
 scan_devices(bool, bool) const

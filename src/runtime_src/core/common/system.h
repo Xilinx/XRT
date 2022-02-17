@@ -107,14 +107,6 @@ public:
   get_mgmtpf_device(device::id_type id) const = 0;
 
   /**
-   */
-  virtual std::string
-  get_hostname() const
-  {
-    return std::string("hostname");
-  }
-
-  /**
    * get_monitor_access_type() -
    *
    * Each system have different ways of accessing profiling

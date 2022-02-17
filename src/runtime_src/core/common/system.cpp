@@ -186,7 +186,13 @@ get_total_devices(bool is_user)
 std::string
 get_hostname()
 {
-  return instance().get_hostname();
+  std::string hn;
+#ifdef __GNUC__
+  char hostname[256] = {0};
+  gethostname(hostname, 256);
+  hn = hostname;
+#endif
+  return hn;
 }
 
 device::id_type
