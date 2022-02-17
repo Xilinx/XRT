@@ -47,7 +47,7 @@ vmr_info(const xrt_core::device* device)
   try {
     vmr_status_raw = xrt_core::device_query<xq::vmr_status>(device);
   }
-  catch (const xq::exception& ex) {
+  catch (const xq::exception&) {
     // only available for versal
     return pt_vmr_status_array;
   }
