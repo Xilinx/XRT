@@ -128,7 +128,6 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
                         const std::vector<std::string>& /*elementsFilter*/,
                         std::ostream & output) const
 {
-  boost::format entfmt("BO type: %-11s, BO count: %-5s, Mem usage(%s): %s\n");
   boost::property_tree::ptree empty_ptree;
 
   Table2D::HeaderData bo_type = {"Buffer Type", Table2D::Justification::right};
@@ -149,12 +148,7 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
 	mem_string};
 
     bo_table.addEntry(entry_data);
-
-    //output << boost::str(entfmt 
-//      % v.get<std::string>("buffer_type")
-//      % v.get<std::string>("buffer_count")
-//      % v.get<std::string>("memory_used_unit")
-//      % v.get<std::string>("memory_used"));
   }
+
   output << bo_table << std::endl;
 }
