@@ -1,17 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
-PROJECT(enqueue)
-set(TESTNAME "enqueue")
+set(TESTNAME "2kernelglobal_002_rw_4ddr_512")
+PROJECT(${TESTNAME})
 
 include(../../CMake/utils.cmake)
 
-add_executable(enqueue enqueue.cpp)
-target_link_libraries(enqueue PRIVATE ${xrt_coreutil_LIBRARY})
+add_executable(${TESTNAME} main.cpp)
+target_link_libraries(${TESTNAME} PRIVATE ${xrt_xilinxopencl_LIBRARY})
 
 if (NOT WIN32)
-  target_link_libraries(enqueue PRIVATE ${uuid_LIBRARY} pthread)
+  target_link_libraries(${TESTNAME} PRIVATE ${uuid_LIBRARY} pthread)
 endif(NOT WIN32)
 
 if (DEFINED ENV{XCLBIN_CREATION})
@@ -26,14 +26,14 @@ if (DEFINED ENV{XCLBIN_CREATION})
   xrt_create_xo(
     "${CMAKE_CURRENT_SOURCE_DIR}/kernel.cl"
     ""
-    "kernel"
+    "bandwidth"
   )
   # xrt_create_xclbin is macro defined in utils.cmake for generating xclbin
   xrt_create_xclbin(
     "kernel"
-    "--config;${CMAKE_CURRENT_SOURCE_DIR}/vitis_link.cfg"
+    ""
   )
 endif()
 
-install(TARGETS enqueue
+install(TARGETS ${TESTNAME}
   RUNTIME DESTINATION ${INSTALL_DIR}/${TESTNAME})
