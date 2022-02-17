@@ -548,6 +548,20 @@ static void ert_ctrl_legacy_fini(struct ert_ctrl *ec)
 	return;
 }
 
+static void ert_ctrl_unset_xgq(struct platform_device *pdev)
+{
+	struct ert_ctrl *ec = platform_get_drvdata(pdev);
+	int i = 0;
+
+	for (i = 0; i < ec->ec_exgq_capacity; i++) {
+		if (ec->ec_exgq[i] == NULL)
+			continue;
+
+		xocl_xgq_fini(ec->ec_exgq[i]);
+		ec->ec_exgq[i] = NULL;
+	}
+}
+
 static int ert_ctrl_xgq_init(struct ert_ctrl *ec)
 {
 	xdev_handle_t xdev = xocl_get_xdev(ec->ec_pdev);
@@ -593,7 +607,7 @@ static int ert_ctrl_connect(struct platform_device *pdev)
 	int err = 0;
 
 	if (ec->ec_connected)
-		return -EBUSY;
+		return 0;
 
 	ec->ec_version = ert_ctrl_read32(ec->ec_cq_base + ERT_CTRL_VER_OFFSET);
 	switch (ec->ec_version) {
@@ -811,7 +825,6 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
-	const char *const devname = dev_name(&pdev->dev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;
@@ -838,6 +851,11 @@ static int ert_ctrl_probe(struct platform_device *pdev)
 	if (err)
 		goto init_failed;
 
+	/* At this point, we are not able to attach control XGQ, since we don't
+	 * know if XGQ ERT is ready or not. We cannot wait for it.
+	 * The attach control XGQ can happen later by calling ert_ctrl_connect.
+	 */
+
 	if (sysfs_create_group(&pdev->dev.kobj, &ert_ctrl_attrgroup))
 		EC_ERR(ec, "Not able to create sysfs group");
 
@@ -857,6 +875,7 @@ static struct xocl_ert_ctrl_funcs ert_ctrl_ops = {
 	.is_version	= ert_ctrl_is_version,
 	.get_base	= ert_ctrl_get_base,
 	.setup_xgq	= ert_ctrl_setup_xgq,
+	.unset_xgq	= ert_ctrl_unset_xgq,
 };
 
 struct xocl_drv_private ert_ctrl_drv_priv = {

@@ -231,5 +231,9 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds kds_cfg);
 void xocl_kds_cus_enable(struct xocl_dev *xdev);
 void xocl_kds_cus_disable(struct xocl_dev *xdev);
+int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
+			  struct ip_layout *ip_layout,
+			  struct ps_kernel_node *ps_kernel);
+void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
 
 #endif

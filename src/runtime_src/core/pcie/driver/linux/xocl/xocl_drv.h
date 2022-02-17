@@ -62,6 +62,7 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xclerr_int.h"
+#include "ps_kernel.h"
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
 #include <linux/sched/signal.h>
@@ -611,6 +612,7 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	struct drm_xocl_kds	kds_cfg;
 
 	/*
 	 * Store information about pci bar mappings of CPM.
@@ -1974,6 +1976,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	       void (* unset_xgq)(struct platform_device *pdev);
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2003,6 +2006,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
+#define xocl_ert_ctrl_unset_xgq(xdev) \
+	(ERT_CTRL_CB(xdev, unset_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2432,6 +2438,24 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 {
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
+
+#if PF == MGMTPF
+static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel)
+{
+	return 0;
+}
+static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+{
+	return;
+}
+#else
+int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel);
+void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+#endif
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;
