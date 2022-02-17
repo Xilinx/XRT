@@ -451,10 +451,10 @@ update_default_only(xrt_core::device* device, bool value)
       }
     }
       
-    uint32_t value = xrt_core::query::flush_default_only::value_type(value);
-    xrt_core::device_update<xrt_core::query::flush_default_only>(device, value);
+    uint32_t val = xrt_core::query::flush_default_only::value_type(value);
+    xrt_core::device_update<xrt_core::query::flush_default_only>(device, val);
   }
-  catch (const xrt_core::query::exception& ex) { 
+  catch (const xrt_core::query::exception&) { 
     // only available for versal devices
   }
 }
