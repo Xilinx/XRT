@@ -161,6 +161,22 @@ void xocl_update_mig_cache(struct xocl_dev *xdev)
 	mutex_unlock(&xdev->dev_lock);
 }
 
+int xocl_register_cus(xdev_handle_t xdev_hdl, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel)
+{
+	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+
+	return xocl_kds_register_cus(xdev, slot_hdl, uuid, ip_layout, ps_kernel);
+}
+
+void xocl_unregister_cus(xdev_handle_t xdev_hdl, int slot_hdl)
+{
+	struct xocl_dev *xdev = container_of(XDEV(xdev_hdl), struct xocl_dev, core);
+
+	return xocl_kds_unregister_cus(xdev, slot_hdl);
+}
+
 static int userpf_intr_config(xdev_handle_t xdev_hdl, u32 intr, bool en)
 {
 	int ret;

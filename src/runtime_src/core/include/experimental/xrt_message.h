@@ -71,7 +71,7 @@ template <typename ArgType>
 void
 format(boost::format& fmt, ArgType&& arg)
 {
-  return (fmt % std::forward<ArgType>(arg));
+  fmt % std::forward<ArgType>(arg);
 }
 
 template <typename ArgType, typename ...Args>
@@ -79,7 +79,7 @@ void
 format(boost::format& fmt, ArgType&& arg, Args&&... args)
 {
   fmt % std::forward<ArgType>(arg);
-  return format(fmt, std::forward<Args>(args)...);
+  format(fmt, std::forward<Args>(args)...);
 }
 
 // enabled() - check if specified level is enabled
@@ -106,7 +106,7 @@ void
 log(level lvl, const std::string& tag, const std::string& msg);
 
 /**
- * log() - Compose and dispatch log message
+ * logf() - Compose and dispatch formatted log message
  *
  * @param lvl
  *  Severity level, the message is ignored if configured level
@@ -123,7 +123,7 @@ log(level lvl, const std::string& tag, const std::string& msg);
  */
 template <typename ...Args>
 void
-log(level lvl, const std::string& tag, const char* format, Args&&... args)
+logf(level lvl, const std::string& tag, const char* format, Args&&... args)
 {
   if (!detail::enabled(lvl))
     return;
