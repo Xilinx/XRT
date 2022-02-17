@@ -367,14 +367,14 @@ get_aie_trace_counter_scheme()
 inline std::string
 get_aie_trace_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_start_delay()
+get_aie_trace_start_time()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_delay", "0");
+  static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
   return value;
 }
 
@@ -388,21 +388,21 @@ get_aie_trace_user_control()
 inline std::string
 get_aie_profile_core_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
   return value;
 }
 
 inline std::string
 get_aie_profile_memory_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_shim_metrics()
+get_aie_profile_interface_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "bandwidths");
+  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 

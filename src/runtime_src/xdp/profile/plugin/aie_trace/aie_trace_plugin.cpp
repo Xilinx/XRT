@@ -409,7 +409,7 @@ namespace xdp {
     std::smatch pieces_match;
     uint64_t cycles_per_sec = static_cast<uint64_t>(freqMhz * 1e6);
     const uint64_t max_cycles = 0xffffffff;
-    std::string size_str = xrt_core::config::get_aie_trace_start_delay();
+    std::string size_str = xrt_core::config::get_aie_trace_start_time();
 
     // Catch cases like "1Ms" "1NS"
     std::transform(size_str.begin(), size_str.end(), size_str.begin(),
@@ -418,23 +418,27 @@ namespace xdp {
     // Default is 0 cycles
     uint64_t cycles = 0;
     // Regex can parse values like : "1s" "1ms" "1ns"
-    const std::regex size_regex("\\s*([0-9]+)\\s*(s|ms|us|ns|)\\s*");
+    const std::regex size_regex("\\s*(\\d+\\.?\\d*)\\s*(s|ms|us|ns|)\\s*");
     if (std::regex_match(size_str, pieces_match, size_regex)) {
       try {
         if (pieces_match[2] == "s") {
-          cycles = std::stoull(pieces_match[1]) * cycles_per_sec;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec);
         } else if (pieces_match[2] == "ms") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e3;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e3);
         } else if (pieces_match[2] == "us") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e6;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e6);
         } else if (pieces_match[2] == "ns") {
-          cycles = (std::stoull(pieces_match[1]) * cycles_per_sec) /  1e9;
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]) * cycles_per_sec /  1e9);
         } else {
-          cycles = std::stoull(pieces_match[1]);
+          cycles = static_cast<uint64_t>(std::stof(pieces_match[1]));
         }
+        
+        std::string msg("Parsed aie_trace_start_time: " + std::to_string(cycles) + " cycles.");
+        xrt_core::message::send(xrt_core::message::severity_level::info, "XRT", msg);
+
       } catch (const std::exception& ) {
         // User specified number cannot be parsed
-        std::string msg("Unable to parse aie_trace_delay. Setting delay to 0.");
+        std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
     }
