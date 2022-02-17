@@ -33,6 +33,23 @@ int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 	return sizeof(xgq_cmd->hdr) + payload_size;
 }
 
+int xgq_exec_convert_start_kv_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
+				     struct ert_start_kernel_cmd *ecmd)
+{
+	int num_mask = 0;
+	int payload_size = 0;
+
+	num_mask = 1 + ecmd->extra_cu_masks;
+	payload_size = (ecmd->count - num_mask) * sizeof(u32);
+	memcpy(xgq_cmd->data, &ecmd->data[ecmd->extra_cu_masks], payload_size);
+
+	xgq_cmd->hdr.opcode = XGQ_CMD_OP_START_CUIDX_KV;
+	xgq_cmd->hdr.state = 1;
+	xgq_cmd->hdr.count = payload_size;
+
+	return sizeof(xgq_cmd->hdr) + payload_size;
+}
+
 /* return the size of the xgq clock calibration command */
 int xgq_exec_convert_clock_calib_cmd(struct xgq_cmd_clock_calib *xgq_cmd,
 					struct ert_packet *ecmd)

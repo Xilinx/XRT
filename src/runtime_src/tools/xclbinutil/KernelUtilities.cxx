@@ -119,7 +119,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   boost::property_tree::ptree ptKernelAttributes;
   ptKernelAttributes.put("name", kernelName);
   ptKernelAttributes.put("language", "c");
-  ptKernelAttributes.put("type", "dpu");
+  ptKernelAttributes.put("type", isFixedPS ? "dpu" : "ps");
   ptKernelXML.add_child("<xmlattr>", ptKernelAttributes);
 
   // -- Build kernel arguments
@@ -141,6 +141,12 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (addressQualifier.empty())
       throw std::runtime_error("Missing address qualifier");
 
+    // ID value
+    std::string strID = std::to_string(argID++);
+    // Assume that the ID will always be automatically set.  
+    if (ptArgument.get<int>("use_id", 1) == 0)
+      strID.clear();
+
     // Type & size
     const std::string& argType = ptArgument.get<std::string>("type", "");
     if (argType.empty())
@@ -156,7 +162,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     // Add attributes in the following order.  Helps maintain readablity
     ptArgAttributes.put("name", name);
     ptArgAttributes.put("addressQualifier", std::to_string(addressQualifierStrToInt(addressQualifier)));
-    ptArgAttributes.put("id", std::to_string(argID++));
+    ptArgAttributes.put("id", strID);
     ptArgAttributes.put("size", (boost::format("0x%x") % argSize).str());
     ptArgAttributes.put("offset", offset);
     ptArgAttributes.put("hostOffset", "0x0");
@@ -194,10 +200,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
                            bool isFixedPS,
                            boost::property_tree::ptree& ptEmbeddedData)
 {
-  // -- Validate destination
-  if (ptEmbeddedData.empty())
-    throw std::runtime_error("Embedded Metadata section is empty");
-
   boost::property_tree::ptree ptEmpty;
 
   XUtil::TRACE_PrintTree("Embedded Data XML", ptEmbeddedData);
@@ -219,8 +221,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     ptEmbeddedData.add_child("project", ptProject);
   }
 
-  boost::property_tree::ptree& ptCore = ptEmbeddedData.get_child("project.platform.device.core", ptEmpty);
-
   // Create the kernel XML entry metedata
   XUtil::TRACE_PrintTree("Kernel", ptKernel);
 
@@ -231,6 +231,8 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 
   // Validate that there is no other kernels with the same name.
   const std::string& kernelName = ptKernelXML.get<std::string>("<xmlattr>.name");
+
+  boost::property_tree::ptree& ptCore = ptEmbeddedData.get_child("project.platform.device.core", ptEmpty);
 
   for (const auto& entry : ptCore) {
     if (entry.first != "kernel")
@@ -337,13 +339,13 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
     throw std::runtime_error("Missing kernel name");
 
   // Transform the sections into something more manageable
-  boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout");
+  const boost::property_tree::ptree& ptIPLayout = ptIPLayoutRoot.get_child("ip_layout", ptEmpty);
   auto ipLayout = XUtil::as_vector<boost::property_tree::ptree>(ptIPLayout, "m_ip_data");
 
-  const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology");
+  const boost::property_tree::ptree& ptMemTopology = ptMemTopologyRoot.get_child("mem_topology", ptEmpty);
   auto memTopology = XUtil::as_vector<boost::property_tree::ptree>(ptMemTopology, "m_mem_data");
 
-  boost::property_tree::ptree& ptConnectivity = ptConnectivityRoot.get_child("connectivity");
+  const boost::property_tree::ptree& ptConnectivity = ptConnectivityRoot.get_child("connectivity", ptEmpty);
   auto connectivity = XUtil::as_vector<boost::property_tree::ptree>(ptConnectivity, "m_connection");
 
   // -- Create the kernel instances
@@ -440,7 +442,13 @@ transposeFunction(const std::string& functionSig, boost::property_tree::ptree& p
     ptArgsArray.push_back(std::make_pair("", ptArg));
   }
 
+  // If the function type is a kernel, the last argument should not have an ID
+  if ((functionType == "kernel") && !ptArgsArray.empty())
+    ptArgsArray.back().second.put("use_id", 0);
+
   ptFunction.add_child("args", ptArgsArray);
+
+  XUtil::TRACE_PrintTree("Kernel", ptFunction);
 }
 
 
@@ -579,7 +587,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
   // Validate kernel's last argument
   auto args = XUtil::as_vector<boost::property_tree::ptree>(kernels[0], "args");
   if (args.back().get<std::string>("type") != "xrtHandles*")
-    throw std::runtime_error("Error: Last kernel argument isn't a xrtHandle pointer."
+    throw std::runtime_error("Error: Last kernel argument isn't a xrtHandle pointer.\n"
                              "Shared Library: '" + kernelLibrary + "'\n"
                              "Kernel Function: '" + kernels[0].get<std::string>("signature"));
 }
@@ -635,6 +643,10 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       ptArg.put("type", sType);
       ptArg.put("offset", boost::str(boost::format("0x%x") % offset));
       offset += getTypeSize(sType, false /*fixedKernel*/);
+
+      // Determine if the ID value should be set.
+      if (entry.get<int>("use_id", 1) != 1)
+        ptArg.put("use_id", "0");
 
       ptArgArray.push_back(std::make_pair("", ptArg));   // Used to make an array of objects
     }

@@ -14,6 +14,7 @@
 
 #include <linux/platform_device.h>
 #include "xgq_cmd_common.h"
+#include "xgq_cmd_vmr.h"
 
 /*
  * Callback function for processing cmd. Cmd buffer is allocated by zocl_xgq and should be
@@ -28,8 +29,7 @@ struct zocl_xgq_init_args {
 	void __iomem		*zxia_ring;
 	size_t			zxia_ring_size;
 	size_t			zxia_ring_slot_size;
-	void __iomem		*zxia_sq_prod;
-	void __iomem		*zxia_cq_prod;
+	void __iomem		*zxia_xgq_ip;
 	void __iomem		*zxia_cq_prod_int;
 	zxgq_cmd_handler	zxia_cmd_handler;
 	bool			zxia_simple_cmd_hdr;

@@ -31,6 +31,11 @@
 #define ZXGQ_IS_INTR_ENABLED(zxgq)	((zxgq)->zx_intc_pdev != NULL)
 #define	ZXGQ_THREAD_TIMER		(HZ / 20) /* in jiffies */
 
+#define ZXGQ_IP_SQ_PROD			0x0
+#define ZXGQ_IP_CQ_PROD			0x100
+#define ZXGQ_IP_CQ_CONF			0x10C
+#define ZXGQ_IP_RESET			(0x1 << 31)
+
 struct zocl_xgq {
 	struct platform_device	*zx_pdev;
 	struct platform_device	*zx_intc_pdev;
@@ -168,12 +173,19 @@ static void zxgq_req_receiver_noop(struct work_struct *work)
 static void zxgq_req_receiver(struct work_struct *work)
 {
 	int rc = 0;
+	int loop_cnt = 0;
 	struct xgq_cmd_sq_hdr *cmd = NULL;
 	struct zocl_xgq *zxgq = container_of(work, struct zocl_xgq, zx_worker);
 
 	zxgq_info(zxgq, "XGQ thread started");
 
 	while (!zxgq->zx_worker_stop) {
+		/* Avoid large number of incoming requests leads to more 120 sec blocking */
+		if (++loop_cnt == 8) {
+			loop_cnt = 0;
+			schedule();
+		}
+
 		rc = zxgq_fetch_request(zxgq, &cmd);
 		if (unlikely(rc == -ENOENT)) {
 			if (ZXGQ_IS_INTR_ENABLED(zxgq)) {
@@ -298,6 +310,7 @@ void *zxgq_init(struct zocl_xgq_init_args *arg)
 	u64 flags = 0;
 	size_t ringsz = arg->zxia_ring_size;
 	struct zocl_xgq *zxgq = devm_kzalloc(&arg->zxia_pdev->dev, sizeof(*zxgq), GFP_KERNEL);
+	u64 sqprod = 0, cqprod = 0;
 
 	if (!zxgq)
 		return NULL;
@@ -309,12 +322,17 @@ void *zxgq_init(struct zocl_xgq_init_args *arg)
 	zxgq->zx_simple_cmd_hdr = arg->zxia_simple_cmd_hdr;
 	zxgq->zx_intc_pdev = arg->zxia_intc_pdev;
 
-	if (!arg->zxia_sq_prod)
+	if (!arg->zxia_xgq_ip) {
 		flags |= XGQ_IN_MEM_PROD;
+	} else {
+		sqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_SQ_PROD);
+		cqprod = (u64)(uintptr_t)(arg->zxia_xgq_ip + ZXGQ_IP_CQ_PROD);
+	}
+	/* Reset ring buffer. */
+	memset_io(arg->zxia_ring, 0, ringsz);
 
 	rc = xgq_alloc(&zxgq->zx_xgq, flags, 0, (u64)(uintptr_t)arg->zxia_ring, &ringsz,
-		       zxgq->zx_slot_size, (u64)(uintptr_t)arg->zxia_sq_prod,
-		       (u64)(uintptr_t)arg->zxia_cq_prod);
+		       zxgq->zx_slot_size, sqprod, cqprod);
 	if (rc) {
 		zxgq_err(zxgq, "failed to alloc XGQ: %d", rc);
 		return NULL;

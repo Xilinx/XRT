@@ -12,7 +12,7 @@
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
 #include <linux/mutex.h>
-#include "zocl_util.h"
+#include "zocl_lib.h"
 #include "zocl_drv.h"
 #include "zocl_xgq.h"
 #include "zocl_cu_xgq.h"
@@ -27,9 +27,6 @@
 
 #define ZCU_XGQ_MAX_SLOT_SIZE	1024
 #define ZCU_XGQ_FAST_PATH(zcu_xgq)		((zcu_xgq)->zxc_num_cu == 1)
-//#define ZCU_XGQ_FAST_PATH(zcu_xgq)		(false)
-
-//#define ZCU_XGQ_DEBUG
 
 static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_hdr *cmd);
 
@@ -138,8 +135,7 @@ struct zocl_cu_xgq {
 	u32			zxc_irq;
 	void __iomem		*zxc_ring;
 	size_t			zxc_ring_size;
-	void __iomem		*zxc_sq_prod;
-	void __iomem		*zxc_cq_prod;
+	void __iomem		*zxc_xgq_ip;
 	void __iomem		*zxc_cq_prod_int;
 #ifdef ZCU_XGQ_DEBUG
 	struct log_ring		zxc_log;
@@ -257,29 +253,6 @@ static inline u32 reg_read(void __iomem *addr)
 	return ioread32(addr);
 }
 
-static void __iomem *zcu_xgq_map_res(struct zocl_cu_xgq *zcu_xgq, const char *name, size_t *szp)
-{
-	struct resource *res;
-	void __iomem *map;
-
-	res = platform_get_resource_byname(ZCU_XGQ2PDEV(zcu_xgq), IORESOURCE_MEM, name);
-	if (!res) {
-		zcu_xgq_err(zcu_xgq, "res not found: %s", name);
-		return NULL;
-	}
-	zcu_xgq_info(zcu_xgq, "%s range: %pR", name, res);
-
-	map = devm_ioremap(ZCU_XGQ2DEV(zcu_xgq), res->start, res->end - res->start + 1);
-	if (IS_ERR(map)) {
-		zcu_xgq_err(zcu_xgq, "Failed to map res: %s: %ld", name, PTR_ERR(map));
-		return NULL;
-	}
-
-	if (szp)
-		*szp = res->end - res->start + 1;
-	return map;
-}
-
 static void zcu_xgq_init_xgq(struct zocl_cu_xgq *zcu_xgq)
 {
 	struct zocl_xgq_init_args arg = {};
@@ -292,8 +265,7 @@ static void zcu_xgq_init_xgq(struct zocl_cu_xgq *zcu_xgq)
 	arg.zxia_intc_pdev = zcu_xgq->zxc_pdata->zcxi_intc_pdev;
 	if (ZCU_XGQ_MAX_SLOT_SIZE < arg.zxia_ring_slot_size)
 		arg.zxia_ring_slot_size = ZCU_XGQ_MAX_SLOT_SIZE;
-	arg.zxia_sq_prod = zcu_xgq->zxc_sq_prod;
-	arg.zxia_cq_prod = zcu_xgq->zxc_cq_prod;
+	arg.zxia_xgq_ip = zcu_xgq->zxc_xgq_ip;
 	arg.zxia_cq_prod_int = zcu_xgq->zxc_cq_prod_int;
 	arg.zxia_cmd_handler = zcu_xgq->zxc_pdata->zcxi_echo_mode ? NULL : zcu_xgq_cmd_handler;
 	arg.zxia_simple_cmd_hdr = ZCU_XGQ_FAST_PATH(zcu_xgq);
@@ -332,7 +304,7 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 	zcu_xgq->zxc_pdata = dev_get_platdata(ZCU_XGQ2DEV(zcu_xgq));
 	BUG_ON(zcu_xgq->zxc_pdata == NULL);
 
-	zcu_xgq->zxc_ring = zcu_xgq_map_res(zcu_xgq, ZCX_RES_RING, &zcu_xgq->zxc_ring_size);
+	zcu_xgq->zxc_ring = zlib_map_res_by_name(pdev, ZCX_RES_RING, NULL, &zcu_xgq->zxc_ring_size);
 	if (!zcu_xgq->zxc_ring)
 		return -EINVAL;
 
@@ -340,9 +312,8 @@ static int zcu_xgq_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	zcu_xgq->zxc_sq_prod = zcu_xgq_map_res(zcu_xgq, ZCX_RES_SQ_PROD, NULL);
-	zcu_xgq->zxc_cq_prod = zcu_xgq_map_res(zcu_xgq, ZCX_RES_CQ_PROD, NULL);
-	zcu_xgq->zxc_cq_prod_int = zcu_xgq_map_res(zcu_xgq, ZCX_RES_CQ_PROD_INT, NULL);
+	zcu_xgq->zxc_xgq_ip = zlib_map_res_by_name(pdev, ZCX_RES_XGQ_IP, NULL, NULL);
+	zcu_xgq->zxc_cq_prod_int = zlib_map_res_by_name(pdev, ZCX_RES_CQ_PROD_INT, NULL, NULL);
 
 	zcu_xgq->zxc_zdev = zocl_get_zdev();
 	mutex_init(&zcu_xgq->zxc_lock);
@@ -527,6 +498,10 @@ static void zcu_xgq_cmd_handler(struct platform_device *pdev, struct xgq_cmd_sq_
 	switch (cmd->opcode) {
 	case XGQ_CMD_OP_START_CUIDX:
 		zcu_xgq_dbg(zcu_xgq, "XGQ_CMD_OP_START_CUIDX received");
+		zcu_xgq_cmd_start_cuidx(zcu_xgq, cmd);
+		break;
+	case XGQ_CMD_OP_START_CUIDX_KV:
+		zcu_xgq_dbg(zcu_xgq, "XGQ_CMD_OP_START_CUIDX_KV received");
 		zcu_xgq_cmd_start_cuidx(zcu_xgq, cmd);
 		break;
 	default:

@@ -1,19 +1,7 @@
 /*
- * Copyright (C) 2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 #ifndef _XRT_INI_H_
 #define _XRT_INI_H_
 
@@ -28,10 +16,12 @@
 /*!
  * @namespace xrt::ini
  *
+ * @brief
  * APIs for XRT configuration control.
  *
+ * @details
  * XRT can be configured through a json xrt.ini file co-located with
- * the host executable.  If present, XRT uses configuration options 
+ * the host executable.  If present, XRT uses configuration options
  * from the ini file when a given option is first accessed. Without an
  * ini file, the configuration options take on default values.
  *
@@ -81,7 +71,7 @@ extern "C" {
 
 /**
  * xrtIniSet() - Change xrt.ini string value for specified key
- * 
+ *
  * @key:    Key to change value for
  * @value:  New value for key
  * Return:  0 on success, error if key value cannot be changed
@@ -92,7 +82,7 @@ xrtIniStringSet(const char* key, const char* value);
 
 /**
  * xrtIniUintSet() - Change xrt.ini unsigned int value for specified key
- * 
+ *
  * @key:    Key to change value for
  * @value:  New value for key
  * Return:  0 on success, error if key value cannot be changed
@@ -101,7 +91,7 @@ XCL_DRIVER_DLLESPEC
 int
 xrtIniUintSet(const char* key, unsigned int value);
 
-/// @endcond  
+/// @endcond
 #ifdef __cplusplus
 }
 #endif

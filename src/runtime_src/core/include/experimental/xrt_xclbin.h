@@ -1,20 +1,7 @@
 /*
- * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * SPDX-License-Identifier: Apache-2.0
  */
-
 #ifndef XRT_XCLBIN_H_
 #define XRT_XCLBIN_H_
 
@@ -83,8 +70,11 @@ class xclbin_impl;
 class xclbin : public detail::pimpl<xclbin_impl>
 {
 public:
-  /**
-   * @enum taget_type - type of xclbin
+  /*!
+   * @enum target_type
+   *
+   * @brief
+   * Type of xclbin
    *
    * @details
    * See `xclbin.h`
@@ -374,6 +364,8 @@ public:
     /**
      * get_arg() - Get argument at index.
      *
+     * @param index
+     *  Index of argument
      * @return
      *  The argument a specified index
      *
@@ -468,7 +460,7 @@ public:
      */
     XCL_DRIVER_DLLESPEC
     std::vector<ip>
-    get_cus(const std::string& kname) const;
+    get_cus(const std::string& name) const;
 
     /**
      * get_cu() - Get compute unit by name
@@ -807,10 +799,8 @@ xrtXclbinGetUUID(xrtXclbinHandle xhdl, xuid_t ret_uuid);
 /**
  * xrtXclbinGetNumKernels() - Get number of PL kernels in xclbin
  *
- * @param xhdl
- *  Xclbin handle obtained from an xrtXclbinAlloc function
- * @return
- *  The number of PL kernels in the xclbin
+ * @xhdl:   Xclbin handle obtained from an xrtXclbinAlloc function
+ * Return:  The number of PL kernels in the xclbin
  *
  * Kernels are extracted from embedded XML metadata in the xclbin.
  * A kernel groups one or more compute units. A kernel has arguments
@@ -823,10 +813,8 @@ xrtXclbinGetNumKernels(xrtXclbinHandle xhdl);
 /**
  * xrtXclbinGetNumKernelComputeUnits() - Get number of CUs in xclbin
  *
- * @param xhdl
- *  Xclbin handle obtained from an xrtXclbinAlloc function
- * @return
- *  The number of compute units
+ * @xhdl:   Xclbin handle obtained from an xrtXclbinAlloc function
+ * Return:  The number of compute units
  *
  * Compute units are associated with kernels.  This function returns
  * the total number of compute units as the sum of compute units over

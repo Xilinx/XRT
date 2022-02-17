@@ -45,6 +45,7 @@ install_recipes()
         echo "inherit externalsrc" > $XRT_BB
         echo "EXTERNALSRC = \"$XRT_REPO_DIR/src\"" >> $XRT_BB
         echo 'EXTERNALSRC_BUILD = "${WORKDIR}/build"' >> $XRT_BB
+        echo "FILES:\${PN} += \"\${libdir}/ps_kernels_lib\"" >> $XRT_BB
         echo 'PACKAGE_CLASSES = "package_rpm"' >> $XRT_BB
         echo 'LICENSE = "GPLv2 & Apache-2.0"' >> $XRT_BB
         echo 'LIC_FILES_CHKSUM = "file://../LICENSE;md5=da5408f748bce8a9851dac18e66f4bcf \' >> $XRT_BB
@@ -72,50 +73,79 @@ install_recipes()
 
 config_versal_project()
 {
-    # remove following unused packages from rootfs sothat its size would fit in QSPI
+    VERSAL_PROJECT_DIR=$1
+    APU_RECIPES_DIR=$XRT_REPO_DIR/src/runtime_src/tools/scripts/apu_recipes
 
-    sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_kernel-devsrc.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_xrt-dev.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_tcl.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_opencl-headers.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_resize-part.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_htop.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_iperf3.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_meson.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-package-management.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_dnf.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_python3.*//g' project-spec/configs/rootfs_config
-    sed -i 's/^CONFIG_package-feed-uris.*//g' project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-opencv.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-jupyter.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_xrt-dev.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_tcl.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-clhpp-dev.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_opencl-headers.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_libstdcPLUSPLUS.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_packagegroup-petalinux-x11.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_iperf3.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_python3.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_package-feed-uris.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_dnf.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_kernel-devsrc.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_e2fsprogs-mke2fs.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_resize-part.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-hwcodecs.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_htop.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_meson.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-ssh-server-dropbear.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-package-management.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_imagefeature-debug-tweaks.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_gdb.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/^CONFIG_valgrind.*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+
+
+
+    # Add necessary rootfs configs
+    sed -i 's/.*CONFIG_openssh-sftp-server is.*/CONFIG_openssh-sftp-server=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_strace is.*/CONFIG_strace=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_perf is.*/CONFIG_perf=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_vim is.*/CONFIG_vim=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_lrzsz is.*/CONFIG_lrzsz=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ldd is.*/CONFIG_ldd=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_binutils is.*/CONFIG_binutils=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ai-engine-driver is.*/CONFIG_ai-engine-driver=y/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ADD_EXTRA_USERS is.*/CONFIG_ADD_EXTRA_USERS="petalinux:petalinux;"/g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    sed -i 's/.*CONFIG_ROOTFS_ROOT_PASSWD=\"root\".*//g' $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
+    echo "CONFIG_ROOTFS_ROOT_PASSWD=\"root\"" >> $VERSAL_PROJECT_DIR/project-spec/configs/rootfs_config
 
     # Configure u-boot to pick dtb from address 0x40000
-    UBOOT_USER_SCRIPT=u-boot_custom.cfg
-    echo "CONFIG_XILINX_OF_BOARD_DTB_ADDR=0x40000" > project-spec/meta-user/recipes-bsp/u-boot/files/$UBOOT_USER_SCRIPT
-    echo "SRC_URI += \"file://${UBOOT_USER_SCRIPT}\"" >> project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
+    UBOOT_USER_SCRIPT=$APU_RECIPES_DIR/u-boot_custom.cfg
+    cp $UBOOT_USER_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/files
+    echo "SRC_URI += \"file://u-boot_custom.cfg\"" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-bsp/u-boot/u-boot-xlnx_%.bbappend
 
     # Configure kernel
-    echo "CONFIG_SUSPEND=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
-    echo "CONFIG_PM=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
-    echo "CONFIG_SPI=n" >> project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_SUSPEND=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_PM=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_SPI=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
+    echo "CONFIG_DRM_XLNX_DSI=n" >> $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-kernel/linux/linux-xlnx/bsp.cfg
 
     # Configure inittab for getty
-    INIT_TAB_FILE=project-spec/meta-user/recipes-core/sysvinit/sysvinit-inittab_%.bbappend
-    if [ ! -d $(dirname "$INIT_TAB_FILE") ]; then
-        mkdir -p $(dirname "$INIT_TAB_FILE")
+    INIT_TAB_FILE=$APU_RECIPES_DIR/sysvinit-inittab_%.bbappend
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit ]; then
+        mkdir -p $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
     fi
-cat << EOF > $INIT_TAB_FILE
-do_install_append(){
-  echo "UL0:12345:respawn:/bin/start_getty 115200 ttyUL0 vt102" >> \${D}\${sysconfdir}/inittab
-}
-EOF
+    cp $INIT_TAB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-core/sysvinit
+
+    # Create startup script to write to sysfs entry to indicate apu booted
+    SERVICE_FILE=$APU_RECIPES_DIR/apu-boot.service
+    BB_FILE=$APU_RECIPES_DIR/apu-boot.bb
+    INIT_SCRIPT=$APU_RECIPES_DIR/apu-boot
+
+    if [ ! -d $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot ]; then
+        $PETA_BIN/petalinux-config --silentconfig
+        $PETA_BIN/petalinux-create -t apps --template install -n apu-boot --enable
+    fi
+
+    cp $SERVICE_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
+    cp $BB_FILE $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot
+    cp $INIT_SCRIPT $VERSAL_PROJECT_DIR/project-spec/meta-user/recipes-apps/apu-boot/files
 
 }
 
@@ -284,7 +314,7 @@ echo " * Performing PetaLinux Build (from: ${PWD})"
 if [[ $full == 1 ]]; then
   if [[ $AARCH = $versal_dir ]]; then
     # configure the project with appropriate options
-    config_versal_project
+    config_versal_project .
   fi
 
   echo "[CMD]: petalinux-config -c kernel --silentconfig"
@@ -344,6 +374,13 @@ echo dnf --disablerepo=\"*\" reinstall -y *.rpm | sed -e "s/\<$xrt_dbg\>//g" | s
 cp $ORIGINAL_DIR/$PETALINUX_NAME/rpm.txt $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
 cp $ORIGINAL_DIR/$PETALINUX_NAME/install_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
 cp $ORIGINAL_DIR/$PETALINUX_NAME/reinstall_xrt.sh $ORIGINAL_DIR/$PETALINUX_NAME/rpms/.
+
+if [[ $full == 1 ]]; then
+  mkdir -p $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages
+  export PATH=$PETALINUX/../../tool/petalinux-v$PETALINUX_VER-final/components/yocto/buildtools/sysroots/x86_64-petalinux-linux/usr/bin:$PATH
+  $XRT_REPO_DIR/src/runtime_src/tools/scripts/pkgapu.sh -output $ORIGINAL_DIR/$PETALINUX_NAME/apu_packages -images $ORIGINAL_DIR/$PETALINUX_NAME/images/linux/
+fi
+
 cd $ORIGINAL_DIR
 
 eval "$SAVED_OPTIONS"; # Restore shell options

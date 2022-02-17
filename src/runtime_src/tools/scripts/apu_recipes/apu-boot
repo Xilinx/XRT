@@ -1,0 +1,4 @@
+#!/bin/sh
+if [ -e /sys/bus/platform/devices/rpu-channel/ready ]; then
+	echo 1 > /sys/bus/platform/devices/rpu-channel/ready
+fi

@@ -153,6 +153,20 @@ message xclWriteAddrKernelCtrl_response {
      required bool valid = 1;
 }
 //---------------------------------------------
+//xclRegWrite
+message xclRegWrite_call {
+     //required bytes xcl_api = 1;
+     required uint32 baseaddress = 1;
+     required uint32 offset = 2;
+     required bytes data = 3;
+     optional uint32 PF_ID = 4;
+     optional uint32 BAR_ID = 5;
+}
+
+message xclRegWrite_response {
+     required bool valid = 1;
+}
+//---------------------------------------------
 //xclReadAddrSpaceDeviceRam
 message xclReadAddrSpaceDeviceRam_call {
      //required bytes xcl_api = 1;
@@ -178,6 +192,23 @@ message xclReadAddrKernelCtrl_call {
 }
 
 message xclReadAddrKernelCtrl_response {
+     required bool valid = 1;
+     optional bytes data = 2;
+}
+
+//--------------------------------------------
+//xclRegRead
+message xclRegRead_call {
+     //required bytes xcl_api = 1;
+     required uint32 baseaddress = 1;
+     required uint32 offset = 2;
+     required uint32 size = 3;
+     optional bytes data = 4;
+     optional uint32 PF_ID = 5;
+     optional uint32 BAR_ID = 6;
+}
+
+message xclRegRead_response {
      required bool valid = 1;
      optional bytes data = 2;
 }

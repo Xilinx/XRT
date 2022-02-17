@@ -194,6 +194,7 @@ xma_kernel_session_create(XmaKernelProperties *props)
     priv1->kernel_execbos.reserve(num_execbo);
     priv1->num_execbo_allocated = num_execbo;
     if (xma_core::create_session_execbo(priv1, num_execbo, XMA_KERNEL_MOD) != XMA_SUCCESS) {
+        kernel_info->context_opened = false;
         free(session->base.plugin_data);
         free(session);
         delete priv1;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -290,6 +290,18 @@ get_profile_api()
 }
 
 inline bool
+get_host_trace()
+{
+  // The host_trace switch is intended to turn on only one layer of host trace,
+  // either OpenCL level, Native XRT level, or HAL level.  If the user
+  // sets host_trace=true in the xrt.ini file, then the level of trace that
+  // will be enabled is the level at which the host application is written.
+
+  static bool value = detail::get_bool_value("Debug.host_trace", false);
+  return value;
+}
+
+inline bool
 get_xrt_trace()
 {
   static bool value = detail::get_bool_value("Debug.xrt_trace", false);
@@ -355,14 +367,14 @@ get_aie_trace_counter_scheme()
 inline std::string
 get_aie_trace_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "functions");
+  static std::string value = detail::get_string_value("Debug.aie_trace_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_trace_start_delay()
+get_aie_trace_start_time()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_delay", "0");
+  static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
   return value;
 }
 
@@ -376,21 +388,21 @@ get_aie_trace_user_control()
 inline std::string
 get_aie_profile_core_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
   return value;
 }
 
 inline std::string
 get_aie_profile_memory_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_shim_metrics()
+get_aie_profile_interface_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "bandwidths");
+  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 

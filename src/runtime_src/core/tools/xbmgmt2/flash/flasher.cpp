@@ -96,13 +96,12 @@ Flasher::E_FlasherType Flasher::getFlashType(std::string typeStr)
 /*
  * upgradeFirmware
  */
-int Flasher::upgradeFirmware(const std::string& flasherType,
+int Flasher::upgradeFirmware(E_FlasherType flash_type,
     firmwareImage *primary, firmwareImage *secondary)
 {
     int retVal = -EINVAL;
-    E_FlasherType type = getFlashType(flasherType);
 
-    switch(type)
+    switch(flash_type)
     {
     case SPI:
     {

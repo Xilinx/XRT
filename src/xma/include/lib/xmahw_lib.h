@@ -20,9 +20,9 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
-//#include "lib/xmacfg.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 #include "app/xmaparam.h"
@@ -97,23 +97,11 @@ typedef struct XmaCUCmdObjPrivate
 
 typedef struct XmaHwExecBO
 {
-    xclBufferHandle    handle;
-    char*       data;//execBO size is 4096 in xmahw_hal.cpp
-    bool        in_use;
-    int32_t     cu_index;
-    int32_t     session_id;
-    uint32_t    cu_cmd_id1;//Counter
-    int32_t     cu_cmd_id2;//Random num
-
-  XmaHwExecBO() {
-    in_use = false;
-    handle = NULLBO;
-    data = NULL;
-    cu_index = -1;
-    cu_cmd_id1 = 0;
-    cu_cmd_id2 = 0;
-    session_id = -1;
-  }
+    xrt::kernel xrt_kernel;
+    xrt::run xrt_run;
+    bool        in_use = false;
+    uint32_t    cu_cmd_id1 = 0;//Counter
+    int32_t     cu_cmd_id2 = 0;//Random num
 } XmaHwExecBO;
 
 typedef struct XmaBufferPool
@@ -185,11 +173,10 @@ typedef struct XmaHwSessionPrivate
     std::condition_variable work_item_done_1plus;//Use with xma_plg_work_item_done
     std::condition_variable execbo_is_free; //Use with xma_plg_schedule_work_item and xma_plg_schedule_cu_cmd
     std::condition_variable kernel_done_or_free;//Use with xma_plg_cu_cmd_status; CU completion is must every outstanding cmd;
-    xclBufferHandle  last_execbo_handle = NULLBO;// will move it to xrt buffer during exec bo changes
     std::vector<uint32_t> execbo_lru;
     std::vector<uint32_t> execbo_to_check;
     bool     using_work_item_done = false;
-    bool     using_cu_cmd_status = false;
+    std::atomic<bool> using_cu_cmd_status{ false };
     std::atomic<bool> execbo_locked{ false };
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated = -1;
@@ -245,7 +232,7 @@ typedef struct XmaHwKernel
   XmaHwKernel() {
    std::memset(name, 0, sizeof(name));
     in_use = false;
-    context_opened = false;
+    context_opened = true;
     cu_index = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;

@@ -225,6 +225,7 @@ static value_type scratch_mode           = 0;
 
 static value_type flatten_queue          = 0;
 
+static value_type cfg_complete           = 0;
 
 static size_type cmd_queue_slot_size     = 0;
 
@@ -374,6 +375,8 @@ configure_mb(struct sched_cmd *cmd)
   num_cus = XGQ_NUM_CUS(features);
   int ret = 0;
 
+  cfg_complete = 0;
+
   if (num_cus > MAX_XGQ_CU)
     flatten_queue = 0x1;
   else
@@ -420,6 +423,9 @@ configure_mb_end(struct sched_cmd *cmd)
   int ret = setup_cu_queue();
 
   resp_cmd.rcode = ret;
+
+  if (!ret)
+  	cfg_complete = 1;
 
   xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_com_queue_entry));
 
@@ -641,6 +647,23 @@ exit_mb(struct sched_cmd *cmd)
 #endif
   CTRL_DEBUGF("mb wakeup\r\n");
 }
+
+
+static int32_t
+identify_xgq(struct sched_cmd *cmd)
+{
+  struct xgq_cmd_resp_identify resp_cmd = {0};
+
+  resp_cmd.minor = MINOR;
+  resp_cmd.major = MAJOR;
+
+  resp_cmd.rcode = 0;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
+
+  return 0;
+}
+
 /**
  * Process special command.
  *
@@ -686,8 +709,11 @@ process_ctrl_command()
   case XGQ_CMD_OP_EXIT:
     exit_mb(cmd);
     break;
+  case XGQ_CMD_OP_IDENTIFY:
+    ret = identify_xgq(cmd);
+    break;
   default:
-    ret = -EINVAL;
+    ret = -ENOTTY;
     break;
   }
 
@@ -745,7 +771,7 @@ _scheduler_loop()
     reg_access_wait();
 #endif
     while(!process_ctrl_command());
-    if (!flatten_queue) {
+    if (cfg_complete) {
       for (slot_idx=0; slot_idx<num_cus; ++slot_idx) {
         while(!xgq_cu_process(&cu_xgqs[slot_idx])) {
           continue;

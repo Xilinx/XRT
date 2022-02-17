@@ -35,6 +35,8 @@ struct driver_config
     uint8_t reserved_num_rows;
     uint8_t aie_tile_row_start;
     uint8_t aie_tile_num_rows;
+    uint8_t partition_num_cols;
+    std::vector<short> partition_overlay_start_cols;
 };
 
 struct aiecompiler_options

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# -- Detect a Windows environment and automatically switch to the .bat file
+if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
+  trap "" INT
+  "$0.bat" "$@"
+  exit $?
+fi
+
+# Working variables
+XRT_PROG="`dirname \"$0\"`/../python/xbtop/xbtop.py"
+
+# -- Examine the options 
+XRTWARP_PROG_ARGS_size=0
+XRTWRAP_PROG_ARGS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    *)
+      XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
+      XRTWARP_PROG_ARGS_size=$(($XRTWARP_PROG_ARGS_size + 1))
+      shift
+      ;;
+  esac
+done
+
+"python3" "$XRT_PROG" "${XRTWRAP_PROG_ARGS[@]}"

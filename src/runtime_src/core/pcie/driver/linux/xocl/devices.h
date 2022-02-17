@@ -279,6 +279,7 @@ enum {
 #define	XOCL_XGQ_VMR		"xgq_vmr"
 #define	XOCL_HWMON_SDM		"hwmon_sdm"
 #define XOCL_ERT_CTRL           "ert_ctrl"
+#define XOCL_ERT_CTRL_VERSAL    "ert_ctrl.versal"
 
 #define XOCL_DEVNAME(str)	str SUBDEV_SUFFIX
 
@@ -2904,6 +2905,14 @@ struct xocl_subdev_map {
 		.p2p_bar_sz = 64,					\
 	}
 
+#define	XOCL_BOARD_U280_USER_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP, 			\
+		.subdev_info	= RES_USER_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_USER_VSEC),		\
+		.board_name = "u280",					\
+	}
+
 #define	XOCL_BOARD_U250_MGMT_RAPTOR2					\
 	(struct xocl_board_private){					\
 		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
@@ -2911,6 +2920,15 @@ struct xocl_subdev_map {
 		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
 		.flash_type = FLASH_TYPE_SPI,				\
 		.board_name = "u250"					\
+	}
+
+#define	XOCL_BOARD_U280_MGMT_RAPTOR2					\
+	(struct xocl_board_private){					\
+		.flags = XOCL_DSAFLAG_DYNAMIC_IP,			\
+		.subdev_info	= RES_MGMT_VSEC,			\
+		.subdev_num = ARRAY_SIZE(RES_MGMT_VSEC),		\
+		.flash_type = FLASH_TYPE_SPI,				\
+		.board_name = "u280"					\
 	}
 
 #define	XOCL_BOARD_VERSAL_USER_RAPTOR2					\
@@ -3629,6 +3647,14 @@ struct xocl_subdev_map {
 	{ 0x10EE, 0x5004, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u250",			\
 		.priv_data = &XOCL_BOARD_U250_MGMT_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x500D, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u280",			\
+		.priv_data = &XOCL_BOARD_U280_USER_RAPTOR2,		\
+		.type = XOCL_DSAMAP_RAPTOR2 },				\
+	{ 0x10EE, 0x500C, PCI_ANY_ID,					\
+		.vbnv = "xilinx_u280",			\
+		.priv_data = &XOCL_BOARD_U280_MGMT_RAPTOR2,		\
 		.type = XOCL_DSAMAP_RAPTOR2 },				\
 	{ 0x10EE, 0x5020, PCI_ANY_ID,					\
 		.vbnv = "xilinx_u50",		\

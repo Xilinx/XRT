@@ -81,9 +81,13 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+  bool AIEProfilingPlugin::live = false;
+
   AIEProfilingPlugin::AIEProfilingPlugin() 
       : XDPPlugin()
   {
+    AIEProfilingPlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
     getPollingInterval();
@@ -104,11 +108,11 @@ namespace xdp {
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
       {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_TRUE_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
       {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_TRUE_CORE}},
-      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
       {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
@@ -124,11 +128,11 @@ namespace xdp {
       {"stream_put_get",        {XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_INSTR_CASCADE_PUT_CORE,
                                  XAIE_EVENT_INSTR_STREAM_GET_CORE,     XAIE_EVENT_INSTR_STREAM_PUT_CORE}},
       {"write_bandwidths",      {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_PUT_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_TRUE_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_PUT_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
       {"read_bandwidths",       {XAIE_EVENT_ACTIVE_CORE,               XAIE_EVENT_INSTR_STREAM_GET_CORE,
-                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_TRUE_CORE}},
-      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE,
-                                 XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE}},
+                                 XAIE_EVENT_INSTR_CASCADE_GET_CORE,    XAIE_EVENT_GROUP_CORE_STALL_CORE}},
+      {"aie_trace",             {XAIE_EVENT_PORT_RUNNING_1_CORE,       XAIE_EVENT_PORT_STALLED_1_CORE,
+                                 XAIE_EVENT_PORT_RUNNING_0_CORE,       XAIE_EVENT_PORT_STALLED_0_CORE}},
       {"events",                {XAIE_EVENT_INSTR_EVENT_0_CORE,        XAIE_EVENT_INSTR_EVENT_1_CORE,
                                  XAIE_EVENT_USER_EVENT_0_CORE,         XAIE_EVENT_USER_EVENT_1_CORE}}
     };
@@ -216,6 +220,12 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
+    AIEProfilingPlugin::live = false;
+  }
+
+  bool AIEProfilingPlugin::alive()
+  {
+    return AIEProfilingPlugin::live;
   }
 
   void AIEProfilingPlugin::getPollingInterval()
@@ -624,7 +634,7 @@ namespace xdp {
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
-         xrt_core::config::get_aie_profile_shim_metrics()};
+         xrt_core::config::get_aie_profile_interface_metrics()};
 
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
@@ -844,9 +854,12 @@ namespace xdp {
 
         if (counters.empty()) {
           std::string msg = "AIE Profile Counters were not found for this design. "
-                            "Please specify aie_profile_core_metrics and/or aie_profile_memory_metrics in your xrt.ini.";
+                            "Please specify aie_profile_core_metrics, aie_profile_memory_metrics, "
+                            "and/or aie_profile_interface_metrics in your xrt.ini.";
           xrt_core::message::send(severity_level::warning, "XRT", msg);
-        }
+          (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
+          return;
+	}
         else {
           XAie_DevInst* aieDevInst =
             static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
@@ -870,8 +883,11 @@ namespace xdp {
     xclGetDeviceInfo2(handle, &info);
     std::string deviceName = std::string(info.mName);
     // Create and register writer and file
-    std::string outputFile = "aie_profile_" + deviceName + "_" + mCoreMetricSet
-        + "_" + mMemoryMetricSet + "_" + mShimMetricSet + ".csv";
+    std::string core_str = (mCoreMetricSet.empty()) ? "" : "_" + mCoreMetricSet;
+    std::string mem_str  = (mMemoryMetricSet.empty()) ? "" : "_" + mMemoryMetricSet;
+    std::string shim_str = (mShimMetricSet.empty()) ? "" : "_" + mShimMetricSet;    
+
+    std::string outputFile = "aie_profile_" + deviceName + core_str + mem_str + shim_str + ".csv";
 
     VPWriter* writer = new AIEProfilingWriter(outputFile.c_str(),
                                               deviceName.c_str(), mIndex);

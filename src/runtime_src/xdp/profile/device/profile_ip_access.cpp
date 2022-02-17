@@ -15,6 +15,7 @@
  * under the License.
  */
 
+#define XDP_SOURCE
 #include "profile_ip_access.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
 
@@ -40,7 +41,7 @@ ProfileIP::ProfileIP(Device* handle, uint64_t index, debug_ip_data* data)
                   (static_cast<uint64_t>(data->m_index_highbyte) << 8);
         ip_name.assign(reinterpret_cast<const char*>(&data->m_name), 128);
         // Strip away extraneous null characters
-        ip_name.assign(ip_name.c_str()); 
+        ip_name.assign(ip_name.c_str());
     } else {
         showWarning("Cannot get exclusive access");
     }
@@ -50,7 +51,7 @@ ProfileIP::~ProfileIP() {
     if (exclusive) {
         release_exclusive_ip_access(ip_index);
     }
-} 
+}
 
 void ProfileIP::request_exclusive_ip_access(uint64_t /*index*/) {
     /**
@@ -81,8 +82,8 @@ void ProfileIP::map() {
      * the function that maps the IP registers to user memory space, this method should be simplified
      * to one function call to the hal API and saves the result in a mapped_address and set mapped flag.
      ****
-     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
-     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not
      * need such implementation.
      */
     if (!exclusive) {
@@ -95,8 +96,8 @@ void ProfileIP::unmap() {
      * TODO: This should use the unmapping API provided by XRT hal in
      * the future. Now the API is not in place
      ****
-     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
-     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not
      * need such implementation.
      */
     if (!exclusive) {
@@ -111,8 +112,8 @@ int ProfileIP::read(uint64_t offset, size_t size, void* data) {
      * the IP is not ready yet. Once the API is ready, xclRead should be replaced by a
      * memcpy from the mapped address with exception handling.
      ****
-     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
-     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not
      * need such implementation.
      */
     if (!exclusive) {
@@ -135,8 +136,8 @@ int ProfileIP::write(uint64_t offset, size_t size, void* data) {
      * the IP is not ready yet. Once the API is ready, xclWrite should be replaced by a
      * memcpy to the mapped address with exception handling.
      ****
-     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has 
-     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not 
+     * XRT has implemented such mapping infrastructure only for PCIeLinux flow. So, XDP has
+     * specialization for Monitors which handles mapping and unmapping. For now, this base class does not
      * need such implementation.
      */
     if (!exclusive) {
@@ -179,7 +180,7 @@ void ProfileIP::showWarning(std::string reason) {
 void ProfileIP::showProperties()
 {
     std::ostream* outputStream = (out_stream) ? out_stream : (&(std::cout));
-   
+
     std::ios_base::fmtflags formatF = outputStream->flags();
 
     (*outputStream) << "    IP Name : " << ip_name << std::endl
@@ -200,4 +201,3 @@ uint32_t ProfileIP::setLogStream(std::ostream* oStream)
 }
 
 } //  xdp
-
