@@ -186,6 +186,7 @@ enum {
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
 void xocl_p2p_fini(struct xocl_dev *xdev);
 int xocl_p2p_init(struct xocl_dev *xdev);
+int xocl_hwmon_sdm_init(struct xocl_dev *xdev);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);

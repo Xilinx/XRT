@@ -2173,6 +2173,10 @@ struct xocl_xgq_vmr_funcs {
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
+	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind repo_type);
+	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
+                                          size_t len, enum xcl_group_kind kind);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2181,10 +2185,16 @@ struct xocl_sdm_funcs {
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
-	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
+	(XGQ_DEV(xdev) && SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+#define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
+	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1

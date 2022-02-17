@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -77,6 +77,7 @@ enum xcl_mailbox_request {
 	XCL_MAILBOX_REQ_CHG_SHELL =		13,
 	XCL_MAILBOX_REQ_PROGRAM_SHELL =		14,
 	XCL_MAILBOX_REQ_READ_P2P_BAR_ADDR =	15,
+	XCL_MAILBOX_REQ_SDR_DATA =		16,
 	XCL_MAILBOX_REQ_MAX,
 	/* Version 0 OP code ends */
 };
@@ -110,6 +111,11 @@ enum xcl_group_kind {
 	XCL_FIREWALL,
 	XCL_DNA,
 	XCL_SUBDEV,
+	XCL_SDR_BDINFO,
+	XCL_SDR_TEMP,
+	XCL_SDR_VOLTAGE,
+	XCL_SDR_CURRENT,
+	XCL_SDR_POWER,
 };
 
 /**
