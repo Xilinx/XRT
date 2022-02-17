@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -93,6 +93,7 @@ SubCmdExamine::SubCmdExamine(bool _isHidden, bool _isDepricated, bool _isPrelimi
   setIsHidden(_isHidden);
   setIsDeprecated(_isDepricated);
   setIsPreliminary(_isPreliminary);
+  setIsDefaultDevValid(false);
 }
 
 void
@@ -233,7 +234,12 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Create the report
   std::ostringstream oSchemaOutput;
-  XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  bool is_report_output_valid = true;
+  try {
+    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  } catch (const std::exception&) {
+    is_report_output_valid = false;
+  }
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {
@@ -248,4 +254,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
+
+  if (!is_report_output_valid)
+    throw xrt_core::error(std::errc::operation_canceled);
 }

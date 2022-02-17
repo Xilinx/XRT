@@ -647,6 +647,23 @@ exit_mb(struct sched_cmd *cmd)
 #endif
   CTRL_DEBUGF("mb wakeup\r\n");
 }
+
+
+static int32_t
+identify_xgq(struct sched_cmd *cmd)
+{
+  struct xgq_cmd_resp_identify resp_cmd = {0};
+
+  resp_cmd.minor = MINOR;
+  resp_cmd.major = MAJOR;
+
+  resp_cmd.rcode = 0;
+
+  xgq_ctrl_response(&ctrl_xgq, &resp_cmd, sizeof(struct xgq_cmd_resp_identify));
+
+  return 0;
+}
+
 /**
  * Process special command.
  *
@@ -692,8 +709,11 @@ process_ctrl_command()
   case XGQ_CMD_OP_EXIT:
     exit_mb(cmd);
     break;
+  case XGQ_CMD_OP_IDENTIFY:
+    ret = identify_xgq(cmd);
+    break;
   default:
-    ret = -EINVAL;
+    ret = -ENOTTY;
     break;
   }
 

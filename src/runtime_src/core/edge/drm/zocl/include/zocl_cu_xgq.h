@@ -19,10 +19,8 @@
 /*
  * Resources for one cu xgq device.
  */
-/* Producer pointer reg. Use in-mem version, if not provided. */
-#define	ZCX_RES_SQ_PROD		"ZOCL_CU_XGQ_SQ_PRODUDER"
-/* Consumer pointer reg. Use in-mem version, if not provided. */
-#define	ZCX_RES_CQ_PROD		"ZOCL_CU_XGQ_CQ_PRODUDER"
+/* XGQ IP reg. Use in-mem version, if not provided. */
+#define	ZCX_RES_XGQ_IP		"ZOCL_CU_XGQ_IP"
 /* Reg to trigger interrupt to peer. Use prod/con pointer regs, if not provided. */
 #define	ZCX_RES_CQ_PROD_INT	"ZOCL_CU_XGQ_CQ_PRODUCER_INT"
 /* Shared ring buffer. */

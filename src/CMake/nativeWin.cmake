@@ -33,7 +33,8 @@ find_package(Boost
 set(XRT_BOOST_VERSION ${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_SUBMINOR_VERSION})
 
 include_directories(${Boost_INCLUDE_DIRS})
-add_compile_definitions("-DBOOST_LOCALE_HIDE_AUTO_PTR")
+add_compile_definitions("BOOST_LOCALE_HIDE_AUTO_PTR")
+add_compile_definitions("BOOST_BIND_GLOBAL_PLACEHOLDERS")
 
 # warning C4996: 'std::allocator<void>': warning STL4009:
 # std::allocator<void> is deprecated in C++17. You can define

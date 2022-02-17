@@ -2226,11 +2226,11 @@ int shim::xclRegRW(bool rd, uint32_t ipIndex, uint32_t offset, uint32_t *datap)
       cumap.first = static_cast<uint32_t*>(p);
       cumap.second = size;
     }
-  }
 
-  if (cumap.first == nullptr) {
-    xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
-    return -EINVAL;
+    if (cumap.first == nullptr) {
+      xrt_logmsg(XRT_ERROR, "%s: can't map CU: %d", __func__, ipIndex);
+      return -EINVAL;
+    }
   }
 
   if (offset >= cumap.second || (offset & (sizeof(uint32_t) - 1)) != 0) {

@@ -81,9 +81,13 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+  bool AIEProfilingPlugin::live = false;
+
   AIEProfilingPlugin::AIEProfilingPlugin() 
       : XDPPlugin()
   {
+    AIEProfilingPlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_profile);
     getPollingInterval();
@@ -216,6 +220,12 @@ namespace xdp {
 
       db->unregisterPlugin(this);
     }
+    AIEProfilingPlugin::live = false;
+  }
+
+  bool AIEProfilingPlugin::alive()
+  {
+    return AIEProfilingPlugin::live;
   }
 
   void AIEProfilingPlugin::getPollingInterval()

@@ -69,13 +69,6 @@ static const std::array<axlf_section_kind, max_sections> kinds = {
 };
 
 XRT_CORE_UNUSED
-static bool
-is_sw_emulation()
-{
-  static auto xem = std::getenv("XCL_EMULATION_MODE");
-  static bool swem = xem ? std::strcmp(xem,"sw_emu")==0 : false;
-  return swem;
-}
 
 static std::vector<char>
 read_xclbin(const std::string& fnm)
@@ -84,7 +77,7 @@ read_xclbin(const std::string& fnm)
     throw std::runtime_error("No xclbin specified");
 
   // load the file
-  std::ifstream stream(fnm);
+  std::ifstream stream(fnm, std::ios::binary);
   if (!stream)
     throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
 
@@ -503,7 +496,7 @@ class xclbin_impl
         }), mems.end());
 
       if (mems.empty())
-        return {};
+        return enc;
 
       // sort collected memory banks on addr decreasing order, the size
       std::sort(mems.begin(), mems.end(),
@@ -754,21 +747,8 @@ class xclbin_full : public xclbin_impl
 
     m_uuid = uuid(m_top->m_header.uuid);
 
-    const ::ip_layout* ip_layout = nullptr;
     for (auto kind : kinds) {
       auto hdr = xrt_core::xclbin::get_axlf_section(m_top, kind);
-
-      // software emulation xclbin does not have all sections
-      // create the necessary ones.  important that ip_layout is
-      // before connectivity which needs ip_layout
-      if (!hdr && is_sw_emulation() && !xrt_core::config::get_feature_toggle("Runtime.vitis715")) {
-        auto data = xrt_core::xclbin::swemu::get_axlf_section(m_top, ip_layout, kind);
-        if (!data.empty()) {
-          auto pos = m_axlf_sections.emplace(kind, std::move(data));
-          if (kind == IP_LAYOUT)
-            ip_layout = reinterpret_cast<const ::ip_layout*>(pos->second.data());
-        }
-      }
 
       if (!hdr)
         continue;

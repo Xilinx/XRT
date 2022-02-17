@@ -1676,6 +1676,7 @@ parsePSKernelString(const std::string& encodedString,
 //
 // Note: A file name can contain a colen (e.g., C:\test)
 {
+  XUtil::TRACE("Parsing PSKernel command argument: '" + encodedString + "'");
   const std::string delimiters = ":";  
 
   // Working variables
@@ -1719,6 +1720,8 @@ parsePSKernelString(const std::string& encodedString,
 
   // -- [2]: Symbolic name --
   symbol_name = (tokens.size() > 2) ? tokens[2] : "";
+
+  XUtil::TRACE((boost::format("PSKernel command arguments: symbol_name='%s'; num_instances=%d; library='%s'") % symbol_name % num_instances % path_to_library).str());
 }
 
 void getSectionPayload(const XclBin* pXclBin,
@@ -1784,6 +1787,7 @@ updateKernelSections(const std::vector<boost::property_tree::ptree> &kernels,
 void
 XclBin::addPsKernel(const std::string& encodedString)
 {
+  XUtil::TRACE("Adding PSKernel");
   // Get the PS Kernel metadata from the encoded string
   std::string symbolicName;
   std::string kernelLibrary;

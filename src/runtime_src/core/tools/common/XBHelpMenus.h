@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -45,7 +45,8 @@ namespace XBUtilities {
                             const boost::program_options::options_description & _optionDescription,
                             const boost::program_options::options_description &_optionHidden,
                             const boost::program_options::positional_options_description & _positionalDescription,
-                            const boost::program_options::options_description &_globalOptions);
+                            const boost::program_options::options_description &_globalOptions,
+                            bool removeLongOptDashes = false);
 
   void 
     report_subcommand_help( const std::string &_executableName,
@@ -61,11 +62,13 @@ namespace XBUtilities {
     report_option_help( const std::string & _groupName, 
                         const boost::program_options::options_description& _optionDescription,
                         const boost::program_options::positional_options_description & _positionalDescription,
-                        bool _bReportParameter = true);
+                        bool _bReportParameter = true,
+                        bool removeLongOptDashes = false);
 
   std::string 
     create_usage_string( const boost::program_options::options_description &_od,
-                         const boost::program_options::positional_options_description & _pod );
+                         const boost::program_options::positional_options_description & _pod,
+                         bool removeLongOptDashes = false);
 
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 

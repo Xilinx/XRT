@@ -19,6 +19,7 @@
 #include "xgq_cmd_ert.h"
 #include "../xgq_xocl_plat.h"
 #include "xocl_xgq.h"
+#include "xrt_drv.h"
 
 #define	EC_ERR(ec, fmt, arg...)	\
 	xocl_err(&(ec)->ec_pdev->dev, fmt "\n", ##arg)
@@ -47,7 +48,20 @@
 
 #define CTRL_XGQ_SLOT_SIZE          512	
 
+/* XGQ IP offsets */
+#define XGQ_SQ_REG		0x0
+#define XGQ_CQ_REG		0x100
+
 static uint16_t	g_ctrl_xgq_cid;
+struct xocl_drv_private ert_ctrl_xgq_drv_priv;
+
+struct ert_ctrl_xgq_cu {
+	int			 ecxc_id;
+	resource_size_t		 ecxc_xgq_reg;
+	resource_size_t		 ecxc_xgq_range;
+
+	void __iomem		*ecxc_xgq_base;
+};
 
 struct ert_ctrl {
 	struct kds_ert		 ec_ert;
@@ -60,10 +74,11 @@ struct ert_ctrl {
 	struct xgq		 ec_ctrl_xgq;
 	struct mutex		 ec_xgq_lock;
 
+	struct ert_ctrl_xgq_cu	*ec_xgq_ips;
+	size_t			 ec_num_xgq_ips;
 	/* ERT XGQ instances for CU */
 	void			**ec_exgq;
 	uint32_t		 ec_exgq_capacity;
-
 
 	uint64_t		timestamp;
 	uint32_t		cq_read_single;
@@ -193,6 +208,24 @@ data_integrity_show(struct device *dev, struct device_attribute *attr, char *buf
 };
 static DEVICE_ATTR_RO(data_integrity);
 
+static ssize_t
+xgq_info_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct ert_ctrl *ec = dev_get_drvdata(dev);
+	ssize_t sz = 0;
+	int i;
+
+	for (i = 0; i < ec->ec_exgq_capacity; i++) {
+		if (ec->ec_exgq[i] == NULL)
+			continue;
+
+		sz += xocl_xgq_dump_info(ec->ec_exgq[i], buf+sz, PAGE_SIZE - sz);
+	}
+
+	return sz;
+};
+static DEVICE_ATTR_RO(xgq_info);
+
 static struct attribute *ert_ctrl_attrs[] = {
 	&dev_attr_status.attr,
 	&dev_attr_mb_sleep.attr,
@@ -202,11 +235,57 @@ static struct attribute *ert_ctrl_attrs[] = {
 	&dev_attr_cu_read_cnt.attr,
 	&dev_attr_cu_write_cnt.attr,
 	&dev_attr_data_integrity.attr,
+	&dev_attr_xgq_info.attr,
+	NULL,
+};
+
+static ssize_t
+cq_bin_show(struct file *filp, struct kobject *kobj,
+	    struct bin_attribute *attr, char *buf,
+	    loff_t offset, size_t count)
+{
+	struct ert_ctrl *ec;
+	struct device *dev = container_of(kobj, struct device, kobj);
+	ssize_t nread = 0;
+	size_t size = 0;
+
+	ec = (struct ert_ctrl *)dev_get_drvdata(dev);
+	if (!ec || !ec->ec_cq_base)
+		return nread;
+
+	size = ec->ec_cq_range;
+	if (offset >= size)
+		goto done;
+
+	if (offset + count < size)
+		nread = count;
+	else
+		nread = size - offset;
+
+	xocl_memcpy_fromio(buf, ec->ec_cq_base + offset, nread);
+
+done:
+	return nread;
+}
+
+static struct bin_attribute cq_attr = {
+	.attr = {
+		.name ="cq_bin",
+		.mode = 0444
+	},
+	.read = cq_bin_show,
+	.write = NULL,
+	.size = 0
+};
+
+static struct bin_attribute *ert_ctrl_bin_attrs[] = {
+	&cq_attr,
 	NULL,
 };
 
 static const struct attribute_group ert_ctrl_attrgroup = {
 	.attrs = ert_ctrl_attrs,
+	.bin_attrs = ert_ctrl_bin_attrs,
 };
 
 static inline uint32_t ert_ctrl_read32(void __iomem *addr)
@@ -419,7 +498,7 @@ static inline int ert_ctrl_alloc_ert_xgq(struct ert_ctrl *ec, int num)
 	if (num <= ec->ec_exgq_capacity)
 		return 0;
 
-	tmp = kzalloc(sizeof(void *) * num, GFP_KERNEL);
+	tmp = kzalloc(sizeof(ec->ec_exgq[0]) * num, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 
@@ -589,15 +668,28 @@ static void *ert_ctrl_setup_xgq(struct platform_device *pdev, int id, u64 offset
 			return ERR_PTR(ret);
 	}
 
+	/* If this XGQ is already setup, skip */
 	if (ec->ec_exgq[id])
 		goto done;
 
-	/* TODO: Need setup XGQ IP or setup in memory XGQ */
-
-	/* Setup in memory XGQ */
-	xx_info.xi_id = id;
-	xx_info.xi_addr = (u64)ec->ec_cq_base + offset;
-	xx_info.xi_sq_prod_int = xocl_intc_get_csr_base(xdev) + CQ_STATUS_ADDR;
+	if (ec->ec_xgq_ips) {
+		/* XGQ IP presented */
+		xx_info.xi_id = id;
+		xx_info.xi_addr = (u64)ec->ec_cq_base + offset;
+		/* No need to write to a specific register to trigger interrupt.
+		 * Write to SQ produce register will trigger interrupt.
+		 */
+		xx_info.xi_sq_prod_int = NULL;
+		xx_info.xi_sq_prod = ec->ec_xgq_ips[id].ecxc_xgq_base + XGQ_SQ_REG;
+		xx_info.xi_cq_prod = ec->ec_xgq_ips[id].ecxc_xgq_base + XGQ_CQ_REG;
+	} else {
+		/* Setup in memory XGQ */
+		xx_info.xi_id = id;
+		xx_info.xi_addr = (u64)ec->ec_cq_base + offset;
+		xx_info.xi_sq_prod_int = xocl_intc_get_csr_base(xdev) + CQ_STATUS_ADDR;
+		xx_info.xi_sq_prod = NULL;
+		xx_info.xi_cq_prod = NULL;
+	}
 	ec->ec_exgq[id] = xocl_xgq_init(&xx_info);
 	if (IS_ERR(ec->ec_exgq[id])) {
 		void *err_ret = ec->ec_exgq[id];
@@ -611,22 +703,101 @@ done:
 	return ec->ec_exgq[id];
 }
 
+static int ert_ctrl_xgq_ip_init(struct platform_device *pdev)
+{
+	struct ert_ctrl	*ec = platform_get_drvdata(pdev);
+	struct resource *res = NULL;
+	int i = 0;
+
+	EC_DBG(ec, "XGQ IPs and Ring buffer model");
+	res = xocl_get_iores_byname(pdev, RESNAME_XGQ_USER_RING);
+	if (!res) {
+		EC_ERR(ec, "failed to get %s", RESNAME_XGQ_USER_RING);
+		return -EINVAL;
+	}
+	EC_INFO(ec, "Ring buffer %pR", res);
+
+	ec->ec_cq_range = res->end - res->start + 1;
+	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	if (!ec->ec_cq_base) {
+		EC_ERR(ec, "failed to map %s", RESNAME_XGQ_USER_RING);
+		return -ENOMEM;
+	}
+
+	/* Handle all of the XGQ IPs */
+	ec->ec_num_xgq_ips = xocl_count_iores_byname(pdev, RESNAME_XGQ_USER_SQ);
+	ec->ec_xgq_ips = devm_kzalloc(&pdev->dev, sizeof(struct ert_ctrl_xgq_cu) * ec->ec_num_xgq_ips, GFP_KERNEL);
+	if (!ec->ec_xgq_ips) {
+		EC_ERR(ec, "failed to allocate ec_xgq_ips");
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < ec->ec_num_xgq_ips; i++) {
+		struct ert_ctrl_xgq_cu *xgq_ip;
+
+		xgq_ip = &ec->ec_xgq_ips[i];
+		res = xocl_get_iores_with_idx_byname(pdev, RESNAME_XGQ_USER_SQ, i);
+		if (!res) {
+			EC_ERR(ec, "failed to get %s", RESNAME_XGQ_USER_SQ);
+			return -EINVAL;
+		}
+		EC_INFO(ec, "XGQ IP %pR", res);
+
+		xgq_ip->ecxc_xgq_reg = res->start;
+		xgq_ip->ecxc_xgq_range = res->end - res->start + 1;
+		xgq_ip->ecxc_xgq_base = devm_ioremap(&pdev->dev, res->start, xgq_ip->ecxc_xgq_range);
+		if (!xgq_ip->ecxc_xgq_base)
+			return -ENOMEM;
+
+		/* TODO: remove this hack once XGQ IP has reset register */
+		iowrite32(0x1, xgq_ip->ecxc_xgq_base + 0xC);
+		iowrite32(0x0, xgq_ip->ecxc_xgq_base);
+	}
+
+	/* TODO: Should sort XGQ IP by address to make sure the indexing the
+	 * same as device side
+	 */
+
+	return 0;
+}
+
+static int ert_ctrl_cq_init(struct platform_device *pdev)
+{
+	struct ert_ctrl	*ec = platform_get_drvdata(pdev);
+	struct resource *res = NULL;
+
+	EC_DBG(ec, "CSR registers and Command Queue model");
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res) {
+		EC_ERR(ec, "failed to get memory resource");
+		return -EINVAL;
+	}
+	EC_INFO(ec, "CQ %pR", res);
+
+	ec->ec_cq_range = res->end - res->start + 1;
+	ec->ec_cq_base = devm_ioremap_wc(&pdev->dev, res->start, ec->ec_cq_range);
+	if (!ec->ec_cq_base) {
+		EC_ERR(ec, "failed to map CQ");
+		return -ENOMEM;
+	}
+
+	ec->ec_xgq_ips = NULL;
+	ec->ec_num_xgq_ips = 0;
+
+	return 0;
+}
+
 static int ert_ctrl_remove(struct platform_device *pdev)
 {
 	struct ert_ctrl	*ec = NULL;
 	void *hdl = NULL;
 
 	ec = platform_get_drvdata(pdev);
-	if (!ec) {
-		EC_ERR(ec, "ec is null");
+	if (!ec)
 		return -EINVAL;
-	}
 
 	if (ec->ec_connected)
 		ert_ctrl_disconnect(pdev);
-
-	if (ec->ec_cq_base)
-		iounmap(ec->ec_cq_base);
 
 	if (ec->ec_exgq)
 		kfree(ec->ec_exgq);
@@ -640,10 +811,10 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
+	const char *const devname = dev_name(&pdev->dev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;
-	struct resource *res = NULL;
 	void *hdl = NULL;
 	int err = 0;
 
@@ -660,28 +831,19 @@ static int ert_ctrl_probe(struct platform_device *pdev)
 	ec->ec_pdev = pdev;
 	platform_set_drvdata(pdev, ec);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		EC_ERR(ec, "failed to get memory resource\n");
-		err = -EINVAL;
-		goto cq_init_failed;
-	}
-	EC_INFO(ec, "CQ %pR", res);
-
-	ec->ec_cq_range = res->end - res->start + 1;
-	ec->ec_cq_base = ioremap_wc(res->start, ec->ec_cq_range);
-	if (!ec->ec_cq_base) {
-		EC_ERR(ec, "failed to map CQ\n");
-		err = -ENOMEM;
-		goto cq_init_failed;
-	}
+	if (XOCL_GET_DRV_PRI(pdev) == &ert_ctrl_xgq_drv_priv)
+		err = ert_ctrl_xgq_ip_init(pdev);
+	else
+		err = ert_ctrl_cq_init(pdev);
+	if (err)
+		goto init_failed;
 
 	if (sysfs_create_group(&pdev->dev.kobj, &ert_ctrl_attrgroup))
 		EC_ERR(ec, "Not able to create sysfs group");
 
 	return 0;
 
-cq_init_failed:
+init_failed:
 	xocl_drvinst_release(ec, &hdl);
 	platform_set_drvdata(pdev, NULL);
 	xocl_drvinst_free(hdl);
@@ -695,12 +857,6 @@ static struct xocl_ert_ctrl_funcs ert_ctrl_ops = {
 	.is_version	= ert_ctrl_is_version,
 	.get_base	= ert_ctrl_get_base,
 	.setup_xgq	= ert_ctrl_setup_xgq,
-	/*
-	.attach_xgq	= ert_ctrl_attach_xgq,
-	.detach_xgq	= ert_ctrl_detach_xgq,
-	.produce_xgq	= ert_ctrl_produce_xgq,
-	.consume_xgq	= ert_ctrl_consume_xgq,
-	*/
 };
 
 struct xocl_drv_private ert_ctrl_drv_priv = {
@@ -710,8 +866,16 @@ struct xocl_drv_private ert_ctrl_drv_priv = {
 	.cdev_name	= NULL,
 };
 
+struct xocl_drv_private ert_ctrl_xgq_drv_priv = {
+	.ops		= &ert_ctrl_ops,
+	.fops		= NULL,
+	.dev		= -1,
+	.cdev_name	= NULL,
+};
+
 struct platform_device_id ert_ctrl_id_table[] = {
 	{ XOCL_DEVNAME(XOCL_ERT_CTRL), (kernel_ulong_t)&ert_ctrl_drv_priv },
+	{ XOCL_DEVNAME(XOCL_ERT_CTRL_VERSAL), (kernel_ulong_t)&ert_ctrl_xgq_drv_priv },
 	{},
 };
 

@@ -80,5 +80,7 @@
 #define xclGraphResume_n 49
 
 #define xclCopyBOFromFd_n 50
+#define xclRegWrite_n 51
+#define xclRegRead_n 52
 
 #endif
