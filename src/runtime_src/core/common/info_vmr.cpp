@@ -29,7 +29,8 @@ static std::string
 pretty_label(std::string label)
 {
   std::replace(label.begin(), label.end(), '_', ' ');
-  std::transform(label.begin()+1, label.end(), label.begin()+1, ::tolower);
+  std::transform(label.begin()+1, label.end(), label.begin()+1, 
+                  [](int c) { return static_cast<char>(::tolower(c)); });
   return label;
 }
 
