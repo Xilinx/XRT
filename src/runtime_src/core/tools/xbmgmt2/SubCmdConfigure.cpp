@@ -173,17 +173,18 @@ show_device_conf(xrt_core::device* device)
 
   std::cout << bdf << "\n";
 
+  bool is_mfg = false;
+  bool is_recovery = false;
   try {
-    auto is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
-    auto is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
-    if (is_mfg || is_recovery) {
-      std::cerr << "This operation is not supported with manufacturing image.\n";
-      return;
-    }
+    is_mfg = xrt_core::device_query<xrt_core::query::is_mfg>(device);
+    is_recovery = xrt_core::device_query<xrt_core::query::is_recovery>(device);
   }
   catch (const std::exception& ex) {
     std::cerr << ex.what() << "\n";
   }
+
+  if (is_mfg || is_recovery)
+    throw xrt_core::error(std::errc::operation_canceled, "This operation is not supported with manufacturing image.\n");
 
   try {
     auto sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
@@ -241,7 +242,7 @@ update_daemon_config(const std::string& host)
 
   std::ofstream cfile(config_file);
   if (!cfile)
-    throw xrt_core::system_error(EINVAL, "Missing '" + std::string(config_file) + "'.  Cannot update");
+    throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
   cfg.host = host;
   cfg.write(cfile);
