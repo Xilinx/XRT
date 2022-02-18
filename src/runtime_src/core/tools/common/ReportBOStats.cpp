@@ -130,9 +130,9 @@ ReportBOStats::writeReport(const xrt_core::device* /*pDevice*/,
 {
   boost::property_tree::ptree empty_ptree;
 
-  Table2D::HeaderData bo_type = {"Buffer Type", Table2D::Justification::right};
-  Table2D::HeaderData bo_count = {"Buffer Count", Table2D::Justification::center};
-  Table2D::HeaderData mem_used = {"Memory Usage", Table2D::Justification::center};
+  Table2D::HeaderData bo_type = {"Buffer Type", Table2D::Justification::left};
+  Table2D::HeaderData bo_count = {"Buffer Count", Table2D::Justification::right};
+  Table2D::HeaderData mem_used = {"Memory Usage", Table2D::Justification::right};
   std::vector<Table2D::HeaderData> table_headers = {bo_type, bo_count, mem_used};
   Table2D bo_table(table_headers);
 
