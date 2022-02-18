@@ -331,14 +331,14 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     // Hidden options previously under the config command
     po::options_description configHiddenOptions("Hidden Options");
     configHiddenOptions.add_options()
-        ("daemon", boost::program_options::bool_switch(&daemon), "<add description>")
-        ("host", boost::program_options::value<decltype(host)>(&host), "ip or hostname for peer")
-        ("security", boost::program_options::value<decltype(security)>(&security), "<add description>")
-        ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "<add description>")
-        ("cs_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "<add description>")
-        ("cs_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "<add description>")
-        ("cs_reset", boost::program_options::value<decltype(cs_reset)>(&cs_reset), "<add description>")
-        ("showx", boost::program_options::bool_switch(&showx), "<add description>")
+        ("daemon", boost::program_options::bool_switch(&daemon), "Update the device daemon configuration")
+        ("host", boost::program_options::value<decltype(host)>(&host), "IP or hostname for device peer")
+        ("security", boost::program_options::value<decltype(security)>(&security), "Update the security level for the device")
+        ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "Enable/disable the device runtime clock scaling")
+        ("cs_threshold_power_override", boost::program_options::value<decltype(power_override)>(&power_override), "Update the power threshold in watts")
+        ("cs_threshold_temp_override", boost::program_options::value<decltype(temp_override)>(&temp_override), "Update the temperature threshold in celsius")
+        ("cs_reset", boost::program_options::value<decltype(cs_reset)>(&cs_reset), "Reset all scaling options")
+        ("showx", boost::program_options::bool_switch(&showx), "Display the device configuration settings")
     ;
 
     po::options_description hiddenOptions("Hidden Options");
