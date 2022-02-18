@@ -159,23 +159,6 @@ update_SC(unsigned int  index, const std::string& file)
   if (is_SC_fixed(index)) 
     throw xrt_core::error("SC is fixed, unable to flash image.");
 
-  //don't trigger reset for u30. let python helper handle everything
-  
-  if (xrt_core::device_query<xrt_core::query::rom_vbnv>(dev).find("_u30_") != std::string::npos) {
-    std::ostringstream os_stdout;
-    std::ostringstream os_stderr;
-    const std::string scFlashPath = "/opt/xilinx/xrt/bin/unwrapped/_scflash.py";
-    std::vector<std::string> args = { "-y", "-d", getBDF(index), "-p", file };
-    
-    int exit_code = XBU::runScript("python", scFlashPath, args, "Programming SC ", "SC Programmed", 120, os_stdout, os_stderr, false);
-
-    if (exit_code != 0) {
-      std::string err_msg = "ERROR: " + os_stdout.str() + "\n" + os_stderr.str() + "\n";
-      throw xrt_core::error(err_msg);
-    }
-    return;
-  }
-
 // To be replaced with a cleaner fix
 // Mgmt pf needs to shutdown so that the board doesn't brick
 // Hack: added linux specific code to shutdown mgmt pf
