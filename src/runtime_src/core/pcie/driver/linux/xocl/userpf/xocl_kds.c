@@ -1289,6 +1289,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 {
 	struct kernel_info *krnl_info = NULL;
 	int num_cus = 0;
+	int cur = 0;
 	int i = 0;
 
 	/*
@@ -1311,21 +1312,14 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 	 * - misc: software, number of resourse ...
 	 */
 	for (i = 0; i < num_cus; i++) {
-		cu_info[i].model = XCU_AUTO;
-		cu_info[i].size = 0x1000;
-		cu_info[i].sw_reset = false;
-		cu_info[i].num_res = 1;
-		cu_info[i].num_args = 0;
-		cu_info[i].args = NULL;
-		cu_info[i].slot_idx = slot_hdl;
-
 		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
 		if (!krnl_info) {
-			/* Workaround for U30, maybe we can remove this in the future */
-			userpf_info(xdev, "%s has no metadata. Use default", cu_info[i].kname);
+			userpf_info(xdev, "%s has no metadata. Ignore", cu_info[i].kname);
 			continue;
 		}
 
+		cu_info[i].model = XCU_AUTO;
+		cu_info[i].slot_idx = slot_hdl;
 		cu_info[i].size = krnl_info->range;
 		cu_info[i].sw_reset = false;
 		if (krnl_info->features & KRNL_SW_RESET)
@@ -1334,10 +1328,13 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 		cu_info[i].num_res = 1;
 		cu_info[i].num_args = krnl_info->anums;
 		cu_info[i].args = (struct xrt_cu_arg *)krnl_info->args;
+		if (i != cur)
+			memcpy(&cu_info[cur], &cu_info[i], sizeof(cu_info[cur]));
+		cur++;
 	}
 
 done:
-	return num_cus;
+	return cur;
 }
 
 static void
