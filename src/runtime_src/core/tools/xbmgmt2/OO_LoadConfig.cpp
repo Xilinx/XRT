@@ -49,7 +49,7 @@ OO_LoadConfig::OO_LoadConfig( const std::string &_longName, bool _isHidden)
   m_optionsDescription.add_options()
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("input", boost::program_options::value<decltype(m_path)>(&m_path),"INI file with the memory configuration")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

@@ -64,7 +64,7 @@ SubCmdAdvanced::execute(const SubCmdOptions& _options) const
 
   po::options_description commonOptions("Common Options"); 
   commonOptions.add_options()
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
