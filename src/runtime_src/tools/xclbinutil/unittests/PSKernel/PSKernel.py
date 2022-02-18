@@ -33,6 +33,10 @@ def main():
   print ("Starting test")
 
   # ---------------------------------------------------------------------------
+  step = "Test existance of readelf"
+  cmd = ["readelf", "-v"]
+  execCmd(step,cmd)
+  # ---------------------------------------------------------------------------
 
   step = "0) Create working xclbin container"
 
