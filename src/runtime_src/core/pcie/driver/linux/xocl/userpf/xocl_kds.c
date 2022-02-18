@@ -917,7 +917,6 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 
-	kds_reset(&XDEV(xdev)->kds);
 	return 0;
 }
 
@@ -1184,19 +1183,16 @@ out:
 
 /* Construct PS kernel config command and wait for completion */
 static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
-			    struct ert_packet *pkg)
+			    struct ert_packet *pkg, struct ps_kernel_node *ps_kernel)
 {
 	struct kds_command *xcmd;
 	struct ert_configure_sk_cmd *ecmd = to_cfg_sk_pkg(pkg);
 	struct kds_sched *kds = &XDEV(xdev)->kds;
-	struct ps_kernel_node *ps_kernel = NULL;
 	struct config_sk_image *image;
 	struct ps_kernel_data *scu_data;
 	u32 start_cuidx = 0;
 	int ret = 0;
 	int i;
-
-	XOCL_GET_PS_KERNEL(xdev, ps_kernel);
 
 	if (!ps_kernel)
 		goto out;
@@ -1255,11 +1251,11 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		userpf_info(xdev, "PS kernel cfg command completed");
 
 out:
-	XOCL_PUT_PS_KERNEL(xdev);
 	return ret;
 }
 
-static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
+			   struct ps_kernel_node *ps_kernel)
 {
 	struct kds_client *client;
 	struct ert_packet *ecmd;
@@ -1278,7 +1274,7 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		goto out;
 	}
 
-	ret = xocl_scu_cfg_cmd(xdev, client, ecmd);
+	ret = xocl_scu_cfg_cmd(xdev, client, ecmd, ps_kernel);
 	if (ret)
 		userpf_err(xdev, "PS kernel config failed");
 
@@ -1288,10 +1284,9 @@ out:
 }
 
 static int
-xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
-		      int num_info)
+xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_layout,
+		      struct xrt_cu_info *cu_info, int num_info)
 {
-	struct ip_layout *ip_layout = NULL;
 	struct kernel_info *krnl_info = NULL;
 	int num_cus = 0;
 	int i = 0;
@@ -1303,7 +1298,6 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	 * - interrupt
 	 * - protocol
 	 */
-	XOCL_GET_IP_LAYOUT(xdev, ip_layout);
 	if (!ip_layout)
 		goto done;
 
@@ -1323,6 +1317,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		cu_info[i].num_res = 1;
 		cu_info[i].num_args = 0;
 		cu_info[i].args = NULL;
+		cu_info[i].slot_idx = slot_hdl;
 
 		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
 		if (!krnl_info) {
@@ -1342,7 +1337,6 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	}
 
 done:
-	XOCL_PUT_IP_LAYOUT(xdev);
 	return num_cus;
 }
 
@@ -1365,7 +1359,9 @@ xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 	}
 }
 
-static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
+				  struct ip_layout *ip_layout,
+				  struct ps_kernel_node *ps_kernel)
 {
 	struct xrt_cu_info *cu_info = NULL;
 	struct ert_cu_bulletin brd = {0};
@@ -1376,8 +1372,7 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 	if (!cu_info)
 		return -ENOMEM;
 
-	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
-
+	num_cus = xocl_kds_fill_cu_info(xdev, 0, ip_layout, cu_info, MAX_CUS);
 	xocl_kds_create_cus(xdev, cu_info, num_cus);
 
 	ret = xocl_ert_user_bulletin(xdev, &brd);
@@ -1397,7 +1392,7 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 
 	/* Construct and send configure command */
 	xocl_ert_user_enable(xdev);
-	ret = xocl_config_ert(xdev, cfg);
+	ret = xocl_config_ert(xdev, cfg, ps_kernel);
 	if (ret)
 		userpf_info(xdev, "ERT configure failed, ret %d", ret);
 
@@ -1419,6 +1414,50 @@ static void xocl_kds_xgq_notify(struct kds_command *xcmd, int status)
 		resp->rcode = -ETIMEDOUT;
 
 	complete(&kds->comp);
+}
+
+static int
+xocl_kds_xgq_identify(struct xocl_dev *xdev, int *major, int *minor)
+{
+	struct xgq_cmd_identify *identify = NULL;
+	struct xgq_cmd_resp_identify resp = {0};
+	struct kds_sched *kds = &XDEV(xdev)->kds;
+	struct kds_client *client = NULL;
+	struct kds_command *xcmd = NULL;
+	int ret = 0;
+
+	client = kds->anon_client;
+	xcmd = kds_alloc_command(client, sizeof(struct xgq_cmd_identify));
+	if (!xcmd)
+		return -ENOMEM;
+
+	identify = xcmd->info;
+
+	identify->hdr.opcode = XGQ_CMD_OP_IDENTIFY;
+	identify->hdr.count = 0;
+	identify->hdr.state = 1;
+
+	xcmd->cb.notify_host = xocl_kds_xgq_notify;
+	xcmd->cb.free = kds_free_command;
+	xcmd->priv = kds;
+	xcmd->type = KDS_ERT;
+	xcmd->opcode = OP_CONFIG;
+	xcmd->response = &resp;
+	xcmd->response_size = sizeof(resp);
+
+	ret = kds_submit_cmd_and_wait(kds, xcmd);
+	if (ret)
+		return ret;
+
+	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
+		userpf_err(xdev, "Config start failed cstate(%d) rcode(%d)",
+			   resp.hdr.cstate, resp.rcode);
+		return -EINVAL;
+	}
+
+	*major = resp.major;
+	*minor = resp.minor;
+	return 0;
 }
 
 static int
@@ -1516,23 +1555,15 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 }
 
 static int
-xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_cus)
+xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info *cu_info, int num_cus)
 {
 	struct xgq_cmd_config_cu *cfg_cu = NULL;
 	struct xgq_com_queue_entry resp = {0};
 	struct kds_sched *kds = &XDEV(xdev)->kds;
 	struct kds_client *client = NULL;
 	struct kds_command *xcmd = NULL;
-	xuid_t *xclbin_id = NULL;
 	int ret = 0;
 	int i = 0, j = 0;
-
-	/* TODO: ICAP will pass UUID to KDS, instead of fetch it */
-	ret = XOCL_GET_XCLBIN_ID(xdev, xclbin_id);
-	if (ret) {
-		userpf_err(xdev, "Unable to get on device uuid %d", ret);
-		return -EINVAL;
-	}
 
 	for (i = 0; i < num_cus; i++) {
 		int max_off_idx = 0;
@@ -1602,7 +1633,6 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, struct xrt_cu_info *cu_info, int num_
 		userpf_info(xdev, "Config CU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
-	XOCL_PUT_XCLBIN_ID(xdev);
 	return ret;
 }
 
@@ -1653,9 +1683,13 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx,
 	return 0;
 }
 
-static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
+static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
+			       xuid_t *uuid, struct drm_xocl_kds cfg,
+			       struct ip_layout *ip_layout,
+			       struct ps_kernel_node *ps_kernel)
 {
 	struct xrt_cu_info *cu_info = NULL;
+	int major = 0, minor = 0;
 	int num_cus = 0;
 	int ret = 0;
 	int i = 0;
@@ -1664,7 +1698,16 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 	if (!cu_info)
 		return -ENOMEM;
 
-	num_cus = xocl_kds_fill_cu_info(xdev, cu_info, MAX_CUS);
+	num_cus = xocl_kds_fill_cu_info(xdev, slot_hdl, ip_layout, cu_info, MAX_CUS);
+
+	 /* The XGQ ERT doesn't support more than 64 CUs. Let this hardcoding.
+	  * We will re-looking at this once at supporting multiple xclbins.
+	  */
+	if (num_cus > 64) {
+		userpf_err(xdev, "More than 64 CUs found\n");
+		ret = -EINVAL;
+		goto out;
+	}
 
 	/* Don't send config command if ERT doesn't present */
 	if (!XDEV(xdev)->kds.ert)
@@ -1675,11 +1718,23 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		goto create_regular_cu;
 	}
 
+	/*
+	 * The XGQ Identify command is used to identify the version of firmware which
+	 * can help host to know the different behaviors of the firmware.
+	 */
+	xocl_kds_xgq_identify(xdev, &major, &minor);
+	userpf_info(xdev, "Got ERT XGQ command version %d.%d\n", major, minor);
+	if (major != 1 && minor != 0) {
+		userpf_err(xdev, "Only support ERT XGQ command 1.0\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus);
 	if (ret)
 		goto create_regular_cu;
 
-	ret = xocl_kds_xgq_cfg_cu(xdev, cu_info, num_cus);
+	ret = xocl_kds_xgq_cfg_cu(xdev, uuid, cu_info, num_cus);
 	if (ret)
 		goto create_regular_cu;
 
@@ -1732,24 +1787,6 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 {
 	int ret = 0;
 
-	XDEV(xdev)->kds.xgq_enable = false;
-	ret = xocl_ert_ctrl_connect(xdev);
-	if (ret == -ENODEV) {
-		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
-		XDEV(xdev)->kds.ert_disable = true;
-	} else if (ret < 0) {
-		userpf_info(xdev, "ERT connect failed, ret %d\n", ret);
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if (xocl_ert_ctrl_is_version(xdev, 1, 0) > 0)
-		ret = xocl_kds_update_xgq(xdev, cfg);
-	else
-		ret = xocl_kds_update_legacy(xdev, cfg);
-	if (ret)
-		goto out;
-
 	xocl_kds_fa_clear(xdev);
 
 	ret = xocl_detect_fa_cmdmem(xdev);
@@ -1777,3 +1814,53 @@ void xocl_kds_cus_disable(struct xocl_dev *xdev)
 {
 	kds_cus_irq_enable(&XDEV(xdev)->kds, false);
 }
+
+/* The caller needs to make sure ip_layout and ps_kernel section is locked */
+int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
+			  struct ip_layout *ip_layout,
+			  struct ps_kernel_node *ps_kernel)
+{
+	int ret = 0;
+
+	XDEV(xdev)->kds.xgq_enable = false;
+	ret = xocl_ert_ctrl_connect(xdev);
+	if (ret == -ENODEV) {
+		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+	} else if (ret < 0) {
+		userpf_info(xdev, "ERT connect failed, ret %d\n", ret);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/* Try config legacy ERT firmware */
+	if (!xocl_ert_ctrl_is_version(xdev, 1, 0)) {
+		if (slot_hdl) {
+			userpf_err(xdev, "legacy ERT only support one xclbin\n");
+			ret = -EINVAL;
+			goto out;
+		}
+		ret = xocl_kds_update_legacy(xdev, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+		goto out;
+	}
+
+	ret = xocl_kds_update_xgq(xdev, slot_hdl, uuid, XDEV(xdev)->kds_cfg, ip_layout, ps_kernel);
+out:
+	return ret;
+}
+
+void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
+{
+	int ret = 0;
+
+	XDEV(xdev)->kds.xgq_enable = false;
+	ret = xocl_ert_ctrl_connect(xdev);
+	if (ret) {
+		userpf_info(xdev, "ERT will be disabled, ret %d\n", ret);
+		XDEV(xdev)->kds.ert_disable = true;
+	}
+
+	xocl_ert_ctrl_unset_xgq(xdev);
+	kds_reset(&XDEV(xdev)->kds);
+}
+

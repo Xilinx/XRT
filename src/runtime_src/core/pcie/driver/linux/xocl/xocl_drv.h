@@ -62,6 +62,7 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xclerr_int.h"
+#include "ps_kernel.h"
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
 #include <linux/sched/signal.h>
@@ -611,6 +612,7 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	struct drm_xocl_kds	kds_cfg;
 
 	/*
 	 * Store information about pci bar mappings of CPM.
@@ -1974,6 +1976,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	       void (* unset_xgq)(struct platform_device *pdev);
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2003,6 +2006,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
+#define xocl_ert_ctrl_unset_xgq(xdev) \
+	(ERT_CTRL_CB(xdev, unset_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2167,6 +2173,10 @@ struct xocl_xgq_vmr_funcs {
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
+	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind repo_type);
+	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
+                                          size_t len, enum xcl_group_kind kind);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2175,10 +2185,16 @@ struct xocl_sdm_funcs {
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
-	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
+	(XGQ_DEV(xdev) && SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+#define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
+	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
@@ -2432,6 +2448,24 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 {
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
+
+#if PF == MGMTPF
+static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel)
+{
+	return 0;
+}
+static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+{
+	return;
+}
+#else
+int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel);
+void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+#endif
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;

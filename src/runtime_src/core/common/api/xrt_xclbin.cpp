@@ -77,7 +77,7 @@ read_xclbin(const std::string& fnm)
     throw std::runtime_error("No xclbin specified");
 
   // load the file
-  std::ifstream stream(fnm);
+  std::ifstream stream(fnm, std::ios::binary);
   if (!stream)
     throw std::runtime_error("Failed to open file '" + fnm + "' for reading");
 

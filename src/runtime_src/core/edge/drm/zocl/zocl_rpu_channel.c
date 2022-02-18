@@ -16,6 +16,7 @@
 #include "zocl_drv.h"
 #include "zocl_ert_intc.h"
 #include "zocl_xgq.h"
+#include "zocl_xclbin.h"
 
 #define ZRPU_CHANNEL_NAME "zocl_rpu_channel"
 
@@ -157,7 +158,7 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 		size_t total_size = 0;
 		char *total_data = NULL;
 		char *cur = NULL;
-		int i;
+		int ret;
 
 		list_for_each_safe(pos, next, &chan->data_list) {
 			elem = list_entry(pos, struct zocl_rpu_data_entry, entry_list);
@@ -184,16 +185,13 @@ static void zchan_cmd_load_xclbin(struct zocl_rpu_channel *chan, struct xgq_cmd_
 			vfree(elem->data_entry);
 			vfree(elem);
 		}
-		zchan_err(chan, "total size: %ld list empty %d",
-			total_size, list_empty(&chan->data_list));
+		zchan_info(chan, "total size: %ld list empty %d",
+			   total_size, list_empty(&chan->data_list));
 		INIT_LIST_HEAD(&chan->data_list);
 
-		/*NOTE: now we have the whole xclbn data, use the xclbin data here */
-		/* debug info for comparing data */
-		for (i = 0; i < 8; i++)
-			zchan_err(chan, "0x%x", total_data[i]);
-		for (i = total_size - 8; i < total_size; i++)
-			zchan_err(chan, "0x%x", total_data[i]);
+		ret = zocl_xclbin_load_pskernel(zocl_get_zdev(),total_data);
+		if (ret)
+			zchan_err(chan, "failed to cache xclbin: %d", ret);
 
 		vfree(total_data);
 	}
@@ -365,10 +363,10 @@ static int zrpu_channel_probe(struct platform_device *pdev)
 
 	return 0;
 
-err_intc:
-	sysfs_remove_group(&pdev->dev.kobj, &zrpu_channel_attrgroup);
 err_xgq:
 	zocl_ert_destroy_intc(chan->intc_pdev);
+err_intc:
+	sysfs_remove_group(&pdev->dev.kobj, &zrpu_channel_attrgroup);
 	return -EINVAL;
 };
 

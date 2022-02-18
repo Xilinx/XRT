@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -147,15 +147,13 @@ DebugIpStatusCollector::DebugIpStatusCollector(xclDeviceHandle h,
 debug_ip_layout*
 DebugIpStatusCollector::getDebugIpLayout()
 {
-  if (0 == map.size()) {
-    std::cout << " INFO: Debug IP Data is not populated." << std::endl;
+  if (0 == map.size())
     return nullptr;
-  }
+
   debug_ip_layout* dbgIpLayout = reinterpret_cast<debug_ip_layout*>(map.data());
-  if (0 == dbgIpLayout->m_count) {
-    std::cout << "INFO: Failed to find any Debug IPs in the bitstream loaded on device." << std::endl;
+  if (0 == dbgIpLayout->m_count)
     return nullptr;
-  }
+
   return dbgIpLayout;
 }
 
@@ -169,7 +167,7 @@ void
 DebugIpStatusCollector::getDebugIpData()
 {
   debug_ip_layout* dbgIpLayout = getDebugIpLayout();
-  if(nullptr == dbgIpLayout)
+  if (nullptr == dbgIpLayout)
     return;
 
   // reset debugIpNum to zero
@@ -499,8 +497,10 @@ void
 DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 {
   debug_ip_layout* dbgIpLayout = getDebugIpLayout();
-  if(nullptr == dbgIpLayout)
+  if (nullptr == dbgIpLayout) {
+    _pt.put("total_num_debug_ips", 0);
     return;
+  }
 
   uint64_t count = 0;
   for(uint64_t i = 0; i < dbgIpLayout->m_count; i++) {
@@ -526,8 +526,6 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
         // No need to show these Debug IP types
         continue;
       default:
-        std::cout << "Found invalid IP in debug ip layout with type "
-                << dbgIpLayout->m_debug_ip_data[i].m_type << std::endl;
         return;
     }
   }
@@ -536,9 +534,9 @@ DebugIpStatusCollector::populateOverview(boost::property_tree::ptree &_pt)
 
   boost::property_tree::ptree dbg_ip_list_pt;
   for(uint8_t i = 0; i < DEBUG_IP_TYPE_MAX; i++) {
-    if(0 == debugIpNum[i]) {
+    if (0 == debugIpNum[i])
        continue;
-    }
+
     boost::property_tree::ptree entry;
     entry.put("name", debugIpNames[i]);
     entry.put("count", debugIpNum[i]);
@@ -781,8 +779,13 @@ DebugIpStatusCollector::populateAccelDeadlockResults(boost::property_tree::ptree
 void
 reportOverview(std::ostream& _output, const boost::property_tree::ptree& _dbgIpStatus_pt)
 {
-  _output << "Debug IP Status \n  Number of IPs found :: " 
-          << _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips") << std::endl; // Total count with the IPs actually shown
+  uint64_t num_debug_ips = _dbgIpStatus_pt.get<uint64_t>("total_num_debug_ips", 0);
+
+  _output << "\nDebug IP Status \n  Number of IPs found: " 
+          << num_debug_ips << std::endl; // Total count with the IPs actually shown
+
+  if (0 == num_debug_ips)
+    return;
 
   try {
     const boost::property_tree::ptree& dbgIps_pt = _dbgIpStatus_pt.get_child("debug_ips");
@@ -1263,8 +1266,10 @@ ReportDebugIpStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 
   DebugIpStatusCollector collector(handle, _pDevice);
   collector.populateOverview(pt);
-  collector.collect();
-  collector.populateAllResults(pt);
+  if (0 != pt.get<uint64_t>("total_num_debug_ips", 0)) {
+    collector.collect();
+    collector.populateAllResults(pt);
+  }
 
   // There can only be 1 root node
   _pt.add_child("debug_ip_status", pt);

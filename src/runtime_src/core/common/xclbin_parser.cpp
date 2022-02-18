@@ -308,6 +308,58 @@ get_portname_width_map(const pt::ptree& xml_kernel)
   return pwmap;
 }
 
+// Merge multi-component args into the first component of the argument
+//
+// Pre-condition:
+//  - args is sorted based on argidx
+//  - no_index args are at end of args
+//
+// This function iterates the sorted args to look for multi-component
+// args with same argidx.  For every multi-component argument, merge
+// the additional components into first component.  The size of the first
+// component is adjusted with size of all merged components.  The offset
+// of the first component is the mimimum of first component and those
+// merged into the first component.
+//
+// Post-condition:
+//  - all indexed args are stored in vector at same index
+static void
+merge_args(std::vector<xrt_core::xclbin::kernel_argument>& args)
+{
+  for (size_t idx = 0; idx < args.size(); ++idx) {
+    // first component of argument with argidx
+    auto& arg = args[idx];
+
+    // dont merge no_index args which are guarateed to be sorted to
+    // end of args
+    if (arg.index == xrt_core::xclbin::kernel_argument::no_index)
+      break;
+
+    // for all elements with same index as arg
+    auto next = idx + 1;
+    for (; next < args.size(); ++next) {
+      // break early ok because args is sorted.
+      if (args[next].index != arg.index)
+        break;
+
+      // merge to arg
+      arg.size += args[next].size;
+      arg.hostsize += args[next].hostsize;
+      arg.offset = std::min(arg.offset, args[next].offset);
+    }
+
+    // erase merged argument components
+    args.erase(args.begin() + idx + 1, args.begin() + next);
+  }
+
+  // assert post condition
+  size_t argidx = 0;
+  for (auto& arg : args)
+    if (arg.index != argidx++ && arg.index != xrt_core::xclbin::kernel_argument::no_index)
+      throw std::runtime_error("xclbin parser internal error: mismatched argument index");
+}
+
+
 } // namespace
 
 namespace xrt_core { namespace xclbin {
@@ -853,6 +905,10 @@ get_kernel_arguments(const char* xml_data, size_t xml_size, const std::string& k
     // stable sort to preserve order of multi-component arguments
     // for example global_size, local_size, etc.
     std::stable_sort(args.begin(), args.end(), [](auto& a1, auto& a2) { return a1.index < a2.index; });
+
+    // merge args with same index
+    merge_args(args);
+
     break;
   }
   return args;
