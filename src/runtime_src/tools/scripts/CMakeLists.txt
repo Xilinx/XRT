@@ -13,10 +13,6 @@ set(XRT_LOADER_SCRIPTS
 set (XRT_SCRIPTS
   plp_program.sh)
 
-set(XBRESET
-  _scflash.py)
-else()
-
 set(XRT_SETUP_SCRIPTS
   setup.bat)
 
