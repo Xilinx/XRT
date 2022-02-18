@@ -73,6 +73,7 @@ buffer size and/or reduce trace_buffer_offload_interval."
 // Trace file Dump Settings and Warnings
 #define MIN_TRACE_DUMP_INTERVAL_S 1
 #define TRACE_DUMP_INTERVAL_WARN_MSG "Setting trace file dump interval to minimum supported value of 1 second."
+#define AIE_TRACE_DUMP_INTERVAL_WARN_MSG "Setting AIE trace file dump interval to minimum supported value of 1 second."
 #define TRACE_DUMP_FILE_COUNT_WARN 10
 #define TRACE_DUMP_FILE_COUNT_WARN_MSG "Continuous Trace might create a large number of trace files. Please use trace_file_dump_interval \
 to control how often trace data is written."

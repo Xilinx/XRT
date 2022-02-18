@@ -107,7 +107,7 @@ std::cout << " AIETraceWriter::writeTraceEvents : dataBuffer " << dataBuffer << 
   {
   }
 
-  bool AIETraceWriter::write(bool openNewFile)
+  bool AIETraceWriter::write(bool /*openNewFile*/)
   {
 #if 0
     writeHeader() ;
@@ -124,7 +124,7 @@ std::cout << " AIETraceWriter::writeTraceEvents : dataBuffer " << dataBuffer << 
     fout << std::endl ;
 #endif
 
-    if (openNewFile) switchFiles() ;
+   // if (openNewFile) switchFiles() ;
     return true;
   }
 
