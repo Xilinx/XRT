@@ -1073,6 +1073,7 @@ int xocl_hwmon_sdm_init(struct xocl_dev *xdev)
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_TEMP);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_CURRENT);
 	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_POWER);
+	(void) xocl_hwmon_sdm_init_sysfs(xdev, XCL_SDR_VOLTAGE);
 
 	return ret;
 }
