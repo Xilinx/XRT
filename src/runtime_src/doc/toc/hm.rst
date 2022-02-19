@@ -90,7 +90,7 @@ For the platform supporting the host memory access feature, we can observe the f
      - **Max Shared Host Memory**: The maximum host memory supported by the platform.
      - **Shared Host Memory**: The host memory specified for this card (by ``xbutil configure --host-mem``)
 
-Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 4GB host memory.
+Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 1GB host memory, no xclbin loaded.
 
 .. code-block:: bash
 
@@ -110,9 +110,51 @@ Assuming the platform supported maximum host memory is 16GB, the following outpu
     PCIe                   : Gen3x16
     DMA Thread Count       : 2
     CPU Affinity           : 16-31,48-63
-    Shared Host Memory     : 4 GB
+    Shared Host Memory     : 1 GB
+    Max Shared Host Memory : 0 Byte
+    Enabled Host Memory    : 0 Byte
+
+When you load an xclbin with the host mem support, the ``Max Shared Host Mem`` gets populated.
+
+.. code-block:: bash
+
+  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+
+  -----------------------------------------------
+  1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1
+  -----------------------------------------------
+  Pcie Info
+    Vendor                 : 0x10ee
+    Device                 : 0x5005
+    Sub Device             : 0x000e
+    Sub Vendor             : 0x10ee
+    PCIe                   : Gen3x16
+    DMA Thread Count       : 2
+    CPU Affinity           : 16-31,48-63
+    Shared Host Memory     : 1 GB
     Max Shared Host Memory : 16 GB
-    Enabled Host Memory    : 1
+    Enabled Host Memory    : 0 Byte
+
+Finally, when you run an application which exercises HOST[0], ``Enabled Host Memory`` is populated.
+
+.. code-block:: bash
+
+  shell>>xbutil examine -r pcie-info -d 0000:17:00.1
+
+  -----------------------------------------------
+  1/1 [0000:a6:00.1] : xilinx_u250_gen3x16_xdma_shell_3_1
+  -----------------------------------------------
+  Pcie Info
+    Vendor                 : 0x10ee
+    Device                 : 0x5005
+    Sub Device             : 0x000e
+    Sub Vendor             : 0x10ee
+    PCIe                   : Gen3x16
+    DMA Thread Count       : 2
+    CPU Affinity           : 16-31,48-63
+    Shared Host Memory     : 1 GB
+    Max Shared Host Memory : 16 GB
+    Enabled Host Memory    : 1 GB
 
 Host code Guideline
 -------------------
