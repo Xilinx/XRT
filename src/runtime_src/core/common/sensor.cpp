@@ -236,7 +236,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   {
     uint64_t temp_C;
     ptree_type pt;
-    pt.put("id", tmp.label);
+    pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
     temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
     pt.put("temp_C", temp_C);
@@ -259,7 +259,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
   // iterate over output data, store it into property_tree
   for(const auto& tmp : output)
   {
-    pt.put("id", tmp.label);
+    pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
     pt.put("speed_rpm", tmp.input);
     pt.put("critical_trigger_temp_C", "N/A");
