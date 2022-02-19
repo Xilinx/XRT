@@ -135,7 +135,7 @@ struct xgq_cmd_sensor_payload {
 	uint32_t size;
 	uint32_t offset;
 	uint32_t aid:8;
-	uint32_t pid:8;
+	uint32_t sid:8;
 	uint32_t addr_type:3;
 	uint32_t rsvd1:13;
 	uint32_t pad;
@@ -282,7 +282,8 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_ext_xsabin:1;
 	uint16_t has_ext_scfw:1;
 	uint16_t has_ext_sysdtb:1;
-	uint16_t resvd1:7;
+	uint16_t apu_is_ready:1;
+	uint16_t resvd1:6;
 	uint16_t multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
