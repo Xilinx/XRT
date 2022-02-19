@@ -114,7 +114,7 @@ struct xocl_xgq_vmr_cmd {
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq_vmr	*xgq_vmr;
 	u64			xgq_cmd_timeout_jiffies; /* timout till */
-	uint32_t		xgq_cmd_rcode;
+	int			xgq_cmd_rcode;
 	/* xgq complete command can return in-line data via payload */
 	struct xgq_cmd_cq_default_payload	xgq_cmd_cq_payload;
 };
@@ -236,7 +236,7 @@ static int complete_worker(void *data)
 		if (xgq->xgq_polling) {
 			usleep_range(1000, 2000);
 		} else {
-			wait_for_completion_interruptible(&xgq->xgq_irq_complete);
+			wait_for_completion_killable(&xgq->xgq_irq_complete);
 		}
 
 		if (kthread_should_stop()) {
@@ -292,6 +292,30 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 		}
 	}
 	mutex_unlock(&xgq->xgq_lock);
+}
+
+static void xgq_submitted_cmd_remove(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+{
+	struct xocl_xgq_vmr_cmd *xgq_cmd = NULL;
+	struct list_head *pos = NULL, *next = NULL;
+
+	mutex_lock(&xgq->xgq_lock);
+	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
+		xgq_cmd = list_entry(pos, struct xocl_xgq_vmr_cmd, xgq_cmd_list);
+
+		/* Finding aborted cmds */
+		if (xgq_cmd == cmd) {
+			list_del(pos);
+			
+			xgq_cmd->xgq_cmd_rcode = -EIO;
+
+			XGQ_ERR(xgq, "cmd id: %d op: 0x%x reomved.",
+				xgq_cmd->xgq_cmd_entry.hdr.cid,
+				xgq_cmd->xgq_cmd_entry.hdr.opcode);
+		}
+	}
+	mutex_unlock(&xgq->xgq_lock);
+
 }
 
 /*
@@ -523,7 +547,7 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 	struct xocl_xgq_vmr_cmd *xgq_cmd = (struct xocl_xgq_vmr_cmd *)arg;
 	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
 
-	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rcode = (int)ccmd->rcode;
 	/* preserve payload prior to free xgq_cmd_cq */
 	memcpy(&xgq_cmd->xgq_cmd_cq_payload, &cmd_cq->cq_default_payload,
 		sizeof(cmd_cq->cq_default_payload));
@@ -729,8 +753,8 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	/* If return is 0, we set length as return value */
@@ -825,8 +849,8 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -936,7 +960,10 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
+		/* this is not a firewall trip */
+		ret = 0;
 		goto done;
 	}
 
@@ -1040,8 +1067,8 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1189,8 +1216,8 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1350,8 +1377,8 @@ static int vmr_control_op(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1447,11 +1474,13 @@ static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
+
+	printk("DZ__ %d\n", (int)(0xffff));
 
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
