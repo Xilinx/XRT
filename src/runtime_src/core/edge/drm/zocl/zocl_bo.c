@@ -342,7 +342,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (mem == NULL)
 			return ERR_PTR(-ENOMEM);
 
-		if (mem->zm_used || mem->zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
+		if (!mem->zm_used || mem->zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
 			return ERR_PTR(-EINVAL);
 
 		bo = zocl_create_range_mem(dev, size, mem);

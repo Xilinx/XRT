@@ -186,7 +186,6 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 
 	read_lock(&zdev->attr_rwlock);
 
-
         list_for_each_entry(memp, &zdev->zm_list_head, link) {
 		if (memp->zm_type == ZOCL_MEM_TYPE_STREAMING)
 			continue;
@@ -195,7 +194,7 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 		bo_count = memp->zm_stat.bo_count;
 
 		if (raw)
-			count = sprintf(buf, raw_fmt, memory_usage, bo_count,0);
+			count = sprintf(buf, raw_fmt, memory_usage, bo_count, 0);
 		else {
 			count = sprintf(buf, txt_fmt,
 			    memp->zm_used ? "IN-USE" : "UNUSED",

@@ -133,10 +133,8 @@ struct drm_zocl_dev {
 	phys_addr_t		 res_start;
 	unsigned int		 cu_num;
 	unsigned int             irq[MAX_CU_NUM];
-	/* Saif TODO : This is for old kds. Not required now */
 	struct sched_exec_core  *exec;
-	/* Saif TODO : Hopefully this is not required */
-	//unsigned int		 num_mem;
+	/* Zocl driver memory list head */
 	struct list_head	 zm_list_head;
 	struct drm_mm           *zm_drm_mm;    /* DRM MM node for PL-DDR */
 	struct mutex		 mm_lock;

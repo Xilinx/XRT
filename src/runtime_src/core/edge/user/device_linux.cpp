@@ -307,10 +307,10 @@ struct xclbin_uuid
     if (!errmsg.empty())
       throw xrt_core::query::sysfs_error(errmsg);
 
-    result_type xclbin_data;
     // xclbin_uuid e.g.
-    // 0 <uuid_slot_0>
-    // 1 <uuid_slot_1>
+    // <slot_id> <uuid_slot_0>
+    //	   0	 <uuid_slot_0>
+    //	   1	 <uuid_slot_1>
     for (auto& line : xclbin_info) {
       boost::char_separator<char> sep(" ");
       tokenizer tokens(line, sep);
@@ -321,8 +321,9 @@ struct xclbin_uuid
       tokenizer::iterator tok_it = tokens.begin();
       unsigned int slot_index = std::stoi(std::string(*tok_it++));
       //return the first slot uuid always for backward compatibility
-      return std::string(*tok_it++);
+      return std::string(*tok_it);
     }
+
     return "";
   }
 };
