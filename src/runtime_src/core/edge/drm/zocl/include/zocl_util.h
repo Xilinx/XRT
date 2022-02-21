@@ -138,7 +138,6 @@ struct drm_zocl_dev {
 	/* Saif TODO : Hopefully this is not required */
 	//unsigned int		 num_mem;
 	struct list_head	 zm_list_head;
-	struct zocl_mem		*mem;
 	struct drm_mm           *zm_drm_mm;    /* DRM MM node for PL-DDR */
 	struct mutex		 mm_lock;
 	struct mutex		 aie_lock;
