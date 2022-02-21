@@ -28,7 +28,6 @@
 #include "lib/xmaxclbin.h"
 #include "lib/xmahw_private.h"
 #include "core/common/device.h"
-#include "core/common/xclbin_parser.h"
 #include <dlfcn.h>
 #include <iostream>
 #include <bitset>
@@ -67,7 +66,6 @@ bool hal_is_compatible(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t 
 
 bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_parms)
 {
-    std::bitset<MAX_XILINX_KERNELS> cu_mask_32bits(0xFFFFFFFF);
     if (hwcfg == nullptr) {
         xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "hwcfg is nullptr\n");
         return false;
@@ -92,15 +90,15 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
                        dev_index);
             return false;
         }
-        std::string xclbin = std::string(devXclbins[i].xclbin_name);
-        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin);
+        std::string xclbin_file = std::string(devXclbins[i].xclbin_name);
+        std::vector<char> xclbin_buffer = xma_xclbin_file_open(xclbin_file);
         char *buffer = xclbin_buffer.data();
 
-        int32_t rc = xma_xclbin_info_get(buffer, &info);
+        int32_t rc = xma_xclbin_info_get(xclbin_file, &info);
         if (rc != XMA_SUCCESS)
         {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not get info for xclbin file %s\n",
-                       xclbin.c_str());
+                xclbin_file.c_str());
             return false;
         }
 
@@ -120,34 +118,25 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         }
          catch (const xrt_core::system_error&) {
              xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
-                 xclbin.c_str(), dev_index);
+                 xclbin_file.c_str(), dev_index);
              return false;
          }    
 
-        const axlf* xclbin_ax = reinterpret_cast<const axlf*>(buffer);      
-        std::vector<uint64_t> cu_addrs_sorted = xrt_core::xclbin::get_cus(info.ip_axlf, false);
+        auto xclbin_ax = reinterpret_cast<const axlf*>(buffer);
         uuid_copy(dev_tmp1.uuid, xclbin_ax->m_header.uuid);
         xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD,"\nFor device id: %d; CUs are:", dev_index);
-        for (int32_t d = 0; d < info.ip_axlf->m_count; d++) {
-            if (info.ip_axlf->m_ip_data[d].m_type != IP_KERNEL)
-                continue;
-            auto kernel_name = std::string((char*)info.ip_axlf->m_ip_data[d].m_name);
+
+        for (int32_t d = 0; d < (int32_t)info.ip_vec.size(); d++) {
             dev_tmp1.kernels.emplace_back(XmaHwKernel{});
             XmaHwKernel& tmp1 = dev_tmp1.kernels.back();
             memset((void*)tmp1.name, 0x0, MAX_KERNEL_NAME);
-            kernel_name.copy((char*)tmp1.name, MAX_KERNEL_NAME - 1);
+            info.ip_vec[d].copy((char*)tmp1.name, MAX_KERNEL_NAME - 1);
             tmp1.cu_index = (int32_t)d;
             //Allow default ddr_bank of -1; When CU is not connected to any ddr
-            // TODO: Removed this code and handle it using xrt::kernel
             xma_xclbin_map2ddr(info.ip_ddr_mapping[d], &tmp1.default_ddr_bank, info.has_mem_groups);
             //XMA now supports multiple DDR Banks per Kernel
-            tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d]; 
-            for (int32_t c = 0; c < info.conn_axlf->m_count; c++)
-            {
-                if (info.conn_axlf->m_connection[c].m_ip_layout_index == (int32_t)d) {
-                    tmp1.CU_arg_to_mem_info.emplace(info.conn_axlf->m_connection[c].arg_index, info.conn_axlf->m_connection[c].mem_data_index);
-                }
-            }
+            tmp1.ip_ddr_mapping = info.ip_ddr_mapping[d];
+            tmp1.CU_arg_to_mem_info = info.ip_arg_connections[d];
             if (tmp1.default_ddr_bank < 0) {
                 xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "\tCU# %d - %s - default DDR bank: NONE", d, (char*)tmp1.name);
             }
@@ -185,7 +174,7 @@ bool hal_configure(XmaHwCfg *hwcfg, XmaXclbinParameter *devXclbins, int32_t num_
         dev_tmp1.number_of_cus = dev_tmp1.kernels.size();     
         if (dev_tmp1.number_of_cus > MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS) {
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not download xclbin file %s to device %d\n",
-                xclbin.c_str(), dev_index);
+                xclbin_file.c_str(), dev_index);
             xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA & XRT supports max of %d CUs but xclbin has %d number of CUs\n", MAX_XILINX_KERNELS + MAX_XILINX_SOFT_KERNELS, dev_tmp1.number_of_cus);
             return false;
         }

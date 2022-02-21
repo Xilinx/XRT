@@ -20,8 +20,6 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "core/common/config_reader.h"
-#include "core/common/xclbin_parser.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
 
@@ -59,36 +57,72 @@ std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
     return xclbin_buffer;
 }
 
-int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
+//Extract info form xrt::xclbin
+int xma_xclbin_info_get(const std::string& xclbin_name, XmaXclbinInfo *info)
 {
-    const axlf* xclbin_ax = reinterpret_cast<const axlf*>(buffer);
-    const axlf_section_header* ip_hdr = xclbin::get_axlf_section(xclbin_ax, IP_LAYOUT);
-    if (!ip_hdr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find IP_LAYOUT in xclbin ip_hdr=%p ", ip_hdr);
-        throw std::runtime_error("Could not find IP_LAYOUT in xclbin file");
-    }
-    const char* data = &buffer[ip_hdr->m_sectionOffset];
-    info->ip_axlf = reinterpret_cast<const ip_layout*>(data);
-
-    const axlf_section_header* conn_hdr = xrt_core::xclbin::get_axlf_section(xclbin_ax, ASK_GROUP_CONNECTIVITY);
-    if (!conn_hdr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find CONNECTIVITY in xclbin conn_hdr=%p ", conn_hdr);
-        throw std::runtime_error("Could not find CONNECTIVITY in xclbin file");
-    }
-    const char* conn_data = &buffer[conn_hdr->m_sectionOffset];
-    info->conn_axlf = reinterpret_cast<const connectivity*>(conn_data);
-
+    std::vector<std::string> cu_vec;
     memset(info->ip_ddr_mapping, 0, sizeof(info->ip_ddr_mapping));
+    auto xclbin = xrt::xclbin(xclbin_name);
+    const auto& memidx_encoding = xrt_core::xclbin_int::get_membank_encoding(xclbin);
+    for (auto& kernel : xclbin.get_kernels()) {
+        //get CU's of each kernel object
+        //iterate over CU's to get arguments
+        for (const auto& cu : kernel.get_cus())
+        {
+            auto krnl_inst_name = cu.get_name();
+            auto itr = std::find_if(cu_vec.begin(), cu_vec.end(),
+                [&krnl_inst_name](auto& cu_name) {
+                    return krnl_inst_name == cu_name;
+                });
+            if (itr == cu_vec.end())
+                cu_vec.push_back(cu.get_name());
+        }
+    }
+    uint64_t ip_idx = 0;
     uint64_t tmp_ddr_map = 0;
-    for(uint32_t c = 0; c < (uint32_t)info->conn_axlf->m_count; c++)
-    {
-        tmp_ddr_map = 1;
-        tmp_ddr_map = tmp_ddr_map << (info->conn_axlf->m_connection[c].mem_data_index);
-        info->ip_ddr_mapping[info->conn_axlf->m_connection[c].m_ip_layout_index] |= tmp_ddr_map;
+    for (auto& ip_node : xclbin.get_ips()) {
+        auto ip_name = ip_node.get_name();
+        auto itr = std::find_if(cu_vec.begin(), cu_vec.end(),
+            [&ip_name](auto& inst) {
+                return ip_name == inst;
+            });
+        if (itr != cu_vec.end()) {
+            info->ip_vec.push_back(ip_name);
+            // collect the memory connections for each IP argument
+            std::vector<encoded_bitset<MAX_DDR_MAP>> connections;
+            std::unordered_map<int32_t, int32_t> arg_to_mem_info;
+            for (const auto& arg : ip_node.get_args()) {
+                auto argidx = arg.get_index();
+
+                for (const auto& mem : arg.get_mems()) {
+                    auto memidx = mem.get_index();
+                    // disregard memory indices that do not map to a memory mapped bank
+                    // this could be streaming connections
+                    if (memidx_encoding.at(memidx) == std::numeric_limits<size_t>::max())
+                        continue;
+                    auto size = argidx + 1;
+                    const std::vector<size_t>* encoding = &memidx_encoding;
+                    if (connections.size() >= size)
+                        return XMA_ERROR;
+                    connections.resize(size, encoded_bitset<MAX_DDR_MAP>{encoding});
+                    connections[argidx].set(memidx);
+
+                    if(connections[argidx].test(memidx))
+                        arg_to_mem_info.emplace(argidx, memidx);
+
+                    tmp_ddr_map = 1;
+                    tmp_ddr_map = tmp_ddr_map << memidx;
+                    info->ip_ddr_mapping[ip_idx] |= tmp_ddr_map;
+                }
+            }
+            info->ip_arg_connections.push_back(arg_to_mem_info);
+            ip_idx++;
+        }
     }
     return XMA_SUCCESS;
 }
 
+//Allow default ddr_bank of -1; When CU is not connected to any ddr
 int xma_xclbin_map2ddr(uint64_t bit_map, int32_t* ddr_bank, bool has_mem_grps)
 {
     //64 bits based on MAX_DDR_MAP = 64
