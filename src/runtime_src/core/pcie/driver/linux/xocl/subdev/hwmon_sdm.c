@@ -373,7 +373,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t status;
 	int buf_index, err, repo_id;
 	uint8_t remaining_records, completion_code, repo_type;
-	iuint8_t name_length, name_type_length, sys_index;
+	uint8_t name_length, name_type_length, sys_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
