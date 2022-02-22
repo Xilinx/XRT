@@ -255,6 +255,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_status.put("shell", same_shell( pt_current_shell.get<std::string>("vbnv", ""), 
               pt_current_shell.get<std::string>("id", ""), installedDSA));
     pt_status.put("sc", same_sc( pt_current_shell.get<std::string>("sc_version", ""), installedDSA));
+    pt_status.put("is_mfg", xrt_core::device_query<xrt_core::query::is_mfg>(device));
     pt_platform.add_child("status", pt_status);
 
     pt_available_shells.push_back( std::make_pair("", pt_available_shell) );

@@ -317,7 +317,7 @@ report_status(const std::string& vbnv, boost::property_tree::ptree& pt_device)
   if (!pt_device.get<bool>("platform.status.shell"))
     action_list << boost::format("  [%s] : Program base (FLASH) image\n") % pt_device.get<std::string>("platform.bdf");
 
-  if (!pt_device.get<bool>("platform.status.sc"))
+  if (!pt_device.get<bool>("platform.status.sc") && !pt_device.get<bool>("platform.status.is_mfg"))
     action_list << boost::format("  [%s] : Program Satellite Controller (SC) image\n") % pt_device.get<std::string>("platform.bdf");
   
   if (!action_list.str().empty()) {
@@ -524,11 +524,15 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
     try {
       std::cout << std::endl;
       // 1) Flash the Satellite Controller image
-      if (update_sc(p.first, p.second) == true)  {
-        report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
-        need_warm_reboot = true;
-      } else
-        report_stream << boost::format("  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or not installed. No actions taken.\n") % getBDF(p.first);
+      if (xrt_core::device_query<xrt_core::query::is_mfg>(working_device.get()))
+        report_stream << boost::format("  [%s] : Detected Golden Image. Reflash the device after the reboot to update the SC firmware.\n") % getBDF(p.first);
+      else {
+        if (update_sc(p.first, p.second) == true)  {
+          report_stream << boost::format("  [%s] : Successfully flashed the Satellite Controller (SC) image\n") % getBDF(p.first);
+          need_warm_reboot = true;
+        } else
+          report_stream << boost::format("  [%s] : Satellite Controller (SC) is either up-to-date, fixed, or not installed. No actions taken.\n") % getBDF(p.first);
+      }
 
       // 2) Flash shell image
       if (update_shell(p.first, p.second, flashType) == true)  {
