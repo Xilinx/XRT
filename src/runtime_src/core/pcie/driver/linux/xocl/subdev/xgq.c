@@ -1480,8 +1480,6 @@ static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 
 	ret = cmd->xgq_cmd_rcode;
 
-	printk("DZ__ %d\n", (int)(0xffff));
-
 	if (ret) {
 		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
 	} else {
