@@ -165,7 +165,7 @@ def main(args):
         assert (opt.first_mem >= 0), "Incorrect memory configuration"
 
         if (runKernel(opt) == errno.EOPNOTSUPP):
-            print("EOPNOTSUPP")
+            print("NOT SUPPORTED TEST")
             sys.exit(errno.EOPNOTSUPP)
         print("PASSED TEST")
 
