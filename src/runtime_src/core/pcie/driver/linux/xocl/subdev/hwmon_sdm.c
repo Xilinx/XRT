@@ -373,7 +373,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t status;
 	int buf_index, err, repo_id;
 	uint8_t remaining_records, completion_code, repo_type;
-	uint8_t name_length, name_type_length;
+	iuint8_t name_length, name_type_length, sys_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
@@ -411,6 +411,12 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	buf_index = SDR_NUM_BYTES_IDX + 1;
 	//buf_size is only payload size. So, add header bytes for total in_buf buffer size
 	buf_size = buf_size + SDR_HEADER_SIZE;
+
+	//sysfs name indexing starts with 1 except for voltage.
+	//example; curr1_*, temp1_*. For voltage, it will be in0_*
+	sys_index = 1;
+	if (repo_type == SDR_TYPE_VOLTAGE)
+		sys_index = 0;
 
 	while((remaining_records > 0) && (buf_index < buf_size))
 	{
@@ -518,31 +524,31 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 
 			switch(repo_type) {
 				case SDR_TYPE_TEMP:
-					sprintf(sysfs_name[3], "temp%d_average", remaining_records);
-					sprintf(sysfs_name[2], "temp%d_max", remaining_records);
-					sprintf(sysfs_name[1], "temp%d_input", remaining_records);
-					sprintf(sysfs_name[0], "temp%d_label", remaining_records);
+					sprintf(sysfs_name[3], "temp%d_average", sys_index);
+					sprintf(sysfs_name[2], "temp%d_max", sys_index);
+					sprintf(sysfs_name[1], "temp%d_input", sys_index);
+					sprintf(sysfs_name[0], "temp%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
-					sprintf(sysfs_name[3], "in%d_average", remaining_records);
-					sprintf(sysfs_name[2], "in%d_max", remaining_records);
-					sprintf(sysfs_name[1], "in%d_input", remaining_records);
-					sprintf(sysfs_name[0], "in%d_label", remaining_records);
+					sprintf(sysfs_name[3], "in%d_average", sys_index);
+					sprintf(sysfs_name[2], "in%d_max", sys_index);
+					sprintf(sysfs_name[1], "in%d_input", sys_index);
+					sprintf(sysfs_name[0], "in%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
-					sprintf(sysfs_name[3], "curr%d_average", remaining_records);
-					sprintf(sysfs_name[2], "curr%d_max", remaining_records);
-					sprintf(sysfs_name[1], "curr%d_input", remaining_records);
-					sprintf(sysfs_name[0], "curr%d_label", remaining_records);
+					sprintf(sysfs_name[3], "curr%d_average", sys_index);
+					sprintf(sysfs_name[2], "curr%d_max", sys_index);
+					sprintf(sysfs_name[1], "curr%d_input", sys_index);
+					sprintf(sysfs_name[0], "curr%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
-					sprintf(sysfs_name[3], "power%d_average", remaining_records);
-					sprintf(sysfs_name[2], "power%d_max", remaining_records);
-					sprintf(sysfs_name[1], "power%d_input", remaining_records);
-					sprintf(sysfs_name[0], "power%d_label", remaining_records);
+					sprintf(sysfs_name[3], "power%d_average", sys_index);
+					sprintf(sysfs_name[2], "power%d_max", sys_index);
+					sprintf(sysfs_name[1], "power%d_input", sys_index);
+					sprintf(sysfs_name[0], "power%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_QSFP:
@@ -596,6 +602,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 		}
 
 		remaining_records--;
+		sys_index++;
 	}
 
 	if ((remaining_records > 0) || (buf_index >= buf_size))
