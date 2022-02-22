@@ -20,17 +20,10 @@
 #include "app/xmaerror.h"
 #include "app/xmalogger.h"
 #include "lib/xmaxclbin.h"
-#include "core/common/config_reader.h"
-#include "core/common/xclbin_parser.h"
 #include "app/xma_utils.hpp"
 #include "lib/xma_utils.hpp"
 
 #define XMAAPI_MOD "xmaxclbin"
-
-/* Private function */
-static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info);
-static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_info);
-static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_info);
 
 std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
 {
@@ -64,287 +57,72 @@ std::vector<char> xma_xclbin_file_open(const std::string& xclbin_name)
     return xclbin_buffer;
 }
 
-static int get_xclbin_iplayout(const char *buffer, XmaXclbinInfo *xclbin_info)
+//Extract info form xrt::xclbin
+int xma_xclbin_info_get(const std::string& xclbin_name, XmaXclbinInfo *info)
 {
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
-
-    const axlf_section_header *ip_hdr = xclbin::get_axlf_section(xclbin, IP_LAYOUT);
-    if (ip_hdr)
-    {
-        const char *data = &buffer[ip_hdr->m_sectionOffset];
-        const ip_layout *ipl = reinterpret_cast<const ip_layout *>(data);
-        xclbin_info->number_of_kernels = 0;
-        xclbin_info->number_of_hardware_kernels = 0;
-        std::string kernel_channels_info = xrt_core::config::get_kernel_channel_info();
-        xclbin_info->cu_addrs_sorted = xrt_core::xclbin::get_cus(ipl, false);
-        bool has_cuisr = xrt_core::xclbin::get_cuisr(xclbin);
-        if (!has_cuisr) {
-            xma_logmsg(XMA_WARNING_LOG, XMAAPI_MOD, "One or more CUs do not support interrupt. Use RTL Wizard or Vitis for xclbin creation ");
-        }
-        auto& xma_ip_layout = xclbin_info->ip_layout;
-        for (int i = 0; i < ipl->m_count; i++) {
-            if (ipl->m_ip_data[i].m_type != IP_KERNEL)
-                continue;
-
-            if (xma_ip_layout.size() == MAX_XILINX_KERNELS) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d kernels per device ", MAX_XILINX_KERNELS);
-                throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_KERNELS) + " kernels per device");
-            }
-
-            XmaIpLayout temp_ip_layout;
-            temp_ip_layout.base_addr = ipl->m_ip_data[i].m_base_address;
-            temp_ip_layout.kernel_name = std::string((char*)ipl->m_ip_data[i].m_name);
-
-            using xarg = xrt_core::xclbin::kernel_argument;
-            static constexpr size_t no_index = xarg::no_index;
-            auto args = xrt_core::xclbin::get_kernel_arguments(xclbin, temp_ip_layout.kernel_name);
-            //Note: args are sorted by index; Assuming that offset will increase with arg index
-            //This is fair assumption; v++ or HLS decides on these offset values
-            std::vector<xarg> args2;
-            std::copy_if(args.begin(), args.end(), std::back_inserter(args2), 
-                  [](const xarg& y){return y.index != no_index;});
-            temp_ip_layout.arg_start = -1;
-            temp_ip_layout.regmap_size = -1;
-            if (args2.size() > 0) {
-                temp_ip_layout.arg_start = args2[0].offset;
-                auto& last = args2.back();
-                temp_ip_layout.regmap_size = last.offset + last.size;
-                if (temp_ip_layout.arg_start < 0x10) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());
-                    throw std::runtime_error("kernel doesn't meet argument register map spec of HLS/RTL Wizard kernels");
-                }
-            } else {
-                std::string knm = temp_ip_layout.kernel_name.substr(0,temp_ip_layout.kernel_name.find(":"));
-                args = xrt_core::xclbin::get_kernel_arguments(xclbin, knm);
-                std::vector<xarg> args3;
-                std::copy_if(args.begin(), args.end(), std::back_inserter(args3), 
-                      [](const xarg& y){return y.index != no_index;});
-                if (args3.size() > 0) {
-                    temp_ip_layout.arg_start = args3[0].offset;
-                    auto& last = args3.back();
-                    temp_ip_layout.regmap_size = last.offset + last.size;
-                    if (temp_ip_layout.arg_start < 0x10) {
-                        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s doesn't meet argument register map spec of HLS/RTL Wizard kernels ", temp_ip_layout.kernel_name.c_str());
-                        throw std::runtime_error("kernel doesn't meet argument register map spec of HLS/RTL Wizard kernels");
-                    }
-                }
-            }
-            temp_ip_layout.kernel_channels = false;
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %lu, kernel name = %s, base_addr = %lx ",
-                    xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str(), temp_ip_layout.base_addr);
-            if (temp_ip_layout.regmap_size > MAX_KERNEL_REGMAP_SIZE) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "kernel %s register map size exceeds max limit. regmap_size: %d, max regmap_size: %d . Will use only max regmap_size", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.regmap_size, MAX_KERNEL_REGMAP_SIZE);
-                //DRM IPs have registers at high offset
-                temp_ip_layout.regmap_size = MAX_KERNEL_REGMAP_SIZE;
-                //throw std::runtime_error("kernel regmap exceed's max size");
-            }
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s:- arg_start: 0x%x, regmap_size: 0x%x", temp_ip_layout.kernel_name.c_str(), temp_ip_layout.arg_start, temp_ip_layout.regmap_size);
-            xma_logmsg(XMA_INFO_LOG, XMAAPI_MOD, "kernel \"%s\" is treated as a regular kernel. Channels to be managed by host app and plugins ", temp_ip_layout.kernel_name.c_str());
-            temp_ip_layout.soft_kernel = false;
-            
-            xma_ip_layout.emplace_back(std::move(temp_ip_layout));
-        }
-
-        xclbin_info->number_of_hardware_kernels = xma_ip_layout.size();
-        if (xclbin_info->number_of_hardware_kernels != xclbin_info->cu_addrs_sorted.size()) {
-            xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %ud. But num of sorted kernels = %lu", xclbin_info->number_of_hardware_kernels, xclbin_info->cu_addrs_sorted.size());
-            throw std::runtime_error("Unable to get sorted kernel list");
-        }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of hardware kernels on this device = %ud ", xclbin_info->number_of_hardware_kernels);
-        uint32_t num_soft_kernels = 0;
-        //Handle soft kernels just like another hardware IP_Layout kernel
-        //soft kernels to follow hardware kernels. so soft kenrel index will start after hardware kernels
-        auto soft_kernels = xrt_core::xclbin::get_softkernels(xclbin);
-        for (auto& sk: soft_kernels) {
-            if (num_soft_kernels + sk.ninst > MAX_XILINX_SOFT_KERNELS) {
-                xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d soft kernels per device ", MAX_XILINX_SOFT_KERNELS);
-                throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_XILINX_SOFT_KERNELS) + " soft kernels per device");
-            }
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "soft kernel name = %s, version = %s, symbol name = %s, num of instances = %d ", sk.mpo_name.c_str(), sk.mpo_version.c_str(), sk.symbol_name.c_str(), sk.ninst);
-
-            XmaIpLayout temp_ip_layout;
-            std::string str_tmp1;
-            for (uint32_t i = 0; i < sk.ninst; i++) {
-                str_tmp1 = std::string(sk.mpo_name);
-                str_tmp1 += "_";
-                str_tmp1 += std::to_string(i);
-                temp_ip_layout.kernel_name = str_tmp1;
-
-                temp_ip_layout.soft_kernel = true;
-                temp_ip_layout.base_addr = 0;
-                temp_ip_layout.arg_start = -1;
-                temp_ip_layout.regmap_size = -1;
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %lu, soft kernel name = %s ", xma_ip_layout.size(), temp_ip_layout.kernel_name.c_str());
-
-                xma_ip_layout.emplace_back(std::move(temp_ip_layout));
-                num_soft_kernels++;
-            }
-        }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of soft kernels on this device = %ud ", num_soft_kernels);
-
-        xclbin_info->number_of_kernels = xma_ip_layout.size();
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Num of total kernels on this device = %ud ", xclbin_info->number_of_kernels);
-
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
-        const axlf_section_header *xml_hdr = xclbin::get_axlf_section(xclbin, EMBEDDED_METADATA);
-        if (xml_hdr) {
-            char *xml_data = const_cast<char*>(&buffer[xml_hdr->m_sectionOffset]);
-            uint64_t xml_size = xml_hdr->m_sectionSize;
-            if (xml_size > 0 && xml_size < 500000) {
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is:");
-                xma_core::utils::streambuf xml_streambuf(xml_data, xml_size);
-                std::istream xml_stream(&xml_streambuf);
-                std::string line;
-                while(std::getline(xml_stream, line)) {
-                    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.c_str());
-                }
-            }
-        } else {
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "XML MetaData is missing");
-        }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
-        const axlf_section_header *kv_hdr = xclbin::get_axlf_section(xclbin, KEYVALUE_METADATA);
-        if (kv_hdr) {
-            char *kv_data = const_cast<char*>(&buffer[kv_hdr->m_sectionOffset]);
-            uint64_t kv_size = kv_hdr->m_sectionSize;
-            if (kv_size > 0 && kv_size < 200000) {
-                xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value MetaData is:");
-                xma_core::utils::streambuf kv_streambuf(kv_data, kv_size);
-                std::istream kv_stream(&kv_streambuf);
-                std::string line;
-                while(std::getline(kv_stream, line)) {
-                    uint32_t lsize = line.size();
-                    uint32_t pos = 0;
-                    while (pos < lsize) {
-                        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "%s", line.substr(pos, MAX_KERNEL_NAME).c_str());
-                        pos += MAX_KERNEL_NAME;
-                    }
-                }
-            }
-        } else {
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "Key-Value Data is not present in xclbin");
-        }
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "  ");
-    }
-    else
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find IP_LAYOUT in xclbin ip_hdr=%p ", ip_hdr);
-        throw std::runtime_error("Could not find IP_LAYOUT in xclbin");
-    }
-
-    uuid_copy(xclbin_info->uuid, xclbin->m_header.uuid); 
-
-    return XMA_SUCCESS;
-}
-
-static int get_xclbin_mem_topology(const char *buffer, XmaXclbinInfo *xclbin_info)
-{
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
-
-    const axlf_section_header *mem_hdr = xrt_core::xclbin::get_axlf_section(xclbin, MEM_TOPOLOGY);
-    if (!mem_hdr) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find MEM TOPOLOGY in xclbin ");
-        throw std::runtime_error("Could not find MEM TOPOLOGY in xclbin file");
-    }
-    const char *data3 = &buffer[mem_hdr->m_sectionOffset];
-    auto mem_topo1 = reinterpret_cast<const mem_topology *>(data3);
-    auto mem_topo2 = const_cast<mem_topology*>(mem_topo1);
-    xclbin_info->has_mem_groups = false;
-
-    const axlf_section_header *mem_grp_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_TOPOLOGY);
-    if (mem_grp_hdr) {
-        const char *data2 = &buffer[mem_grp_hdr->m_sectionOffset];
-        auto mem_grp_topo = reinterpret_cast<const mem_topology *>(data2);
-        if (mem_grp_topo->m_count > mem_topo1->m_count) {
-            xclbin_info->has_mem_groups = true;
-            mem_topo2 = const_cast<mem_topology*>(mem_grp_topo);
-        }
-    }
-    auto mem_topo = reinterpret_cast<const mem_topology *>(mem_topo2);
-    auto& xma_mem_topology = xclbin_info->mem_topology;
-
-    xclbin_info->number_of_mem_banks = mem_topo->m_count;
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "MEM TOPOLOGY - %ud banks ",xclbin_info->number_of_mem_banks);
-    if (xclbin_info->number_of_mem_banks > MAX_DDR_MAP) {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "XMA supports max of only %d mem banks ", MAX_DDR_MAP);
-        throw std::runtime_error("XMA supports max of only " + std::to_string(MAX_DDR_MAP) + " mem banks");
-    }
-    for (int i = 0; i < mem_topo->m_count; i++) {
-        XmaMemTopology temp_mem_topology;
-        temp_mem_topology.m_type = mem_topo->m_mem_data[i].m_type;
-        temp_mem_topology.m_used = mem_topo->m_mem_data[i].m_used;
-        temp_mem_topology.m_size = mem_topo->m_mem_data[i].m_size;
-        temp_mem_topology.m_base_address = mem_topo->m_mem_data[i].m_base_address;
-        //m_tag is 16 chars
-        auto tmp_ptr = mem_topo->m_mem_data[i].m_tag;
-        temp_mem_topology.m_tag = {tmp_ptr, std::find(tmp_ptr, tmp_ptr+16, '\0')};//magic 16 from xclbin.h
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index=%d, tag=%s, type = %ud, used = %ud, size = %lx, base = %lx ",
-               i,temp_mem_topology.m_tag.c_str(), temp_mem_topology.m_type, temp_mem_topology.m_used,
-               temp_mem_topology.m_size, temp_mem_topology.m_base_address);
-        xma_mem_topology.emplace_back(std::move(temp_mem_topology));
-    }
-
-    return XMA_SUCCESS;
-}
-
-static int get_xclbin_connectivity(const char *buffer, XmaXclbinInfo *xclbin_info)
-{
-    const axlf *xclbin = reinterpret_cast<const axlf *>(buffer);
-
-    const axlf_section_header *ip_hdr = xrt_core::xclbin::get_axlf_section(xclbin, ASK_GROUP_CONNECTIVITY);
-    if (ip_hdr)
-    {
-        const char *data = &buffer[ip_hdr->m_sectionOffset];
-        const connectivity *axlf_conn = reinterpret_cast<const connectivity *>(data);
-        auto& xma_connectivity = xclbin_info->connectivity;
-        xclbin_info->number_of_connections = axlf_conn->m_count;
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CONNECTIVITY - %d connections ",xclbin_info->number_of_connections);
-        for (int i = 0; i < axlf_conn->m_count; i++)
-        {
-            XmaAXLFConnectivity temp_conn;
-
-            temp_conn.arg_index         = axlf_conn->m_connection[i].arg_index;
-            temp_conn.m_ip_layout_index = axlf_conn->m_connection[i].m_ip_layout_index;
-            temp_conn.mem_data_index    = axlf_conn->m_connection[i].mem_data_index;
-            xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "index = %d, arg_idx = %d, ip_idx = %d, mem_idx = %d ",
-                     i, temp_conn.arg_index, temp_conn.m_ip_layout_index,
-                     temp_conn.mem_data_index);
-            xma_connectivity.emplace_back(std::move(temp_conn));
-        }
-    }
-    else
-    {
-        xma_logmsg(XMA_ERROR_LOG, XMAAPI_MOD, "Could not find CONNECTIVITY in xclbin ip_hdr=%p ", ip_hdr);
-        throw std::runtime_error("Could not find CONNECTIVITY in xclbin file");
-    }
-
-    return XMA_SUCCESS;
-}
-
-int xma_xclbin_info_get(const char *buffer, XmaXclbinInfo *info)
-{
-    get_xclbin_mem_topology(buffer, info);
-    get_xclbin_connectivity(buffer, info);
-    get_xclbin_iplayout(buffer, info);
-
+    std::vector<std::string> cu_vec;
     memset(info->ip_ddr_mapping, 0, sizeof(info->ip_ddr_mapping));
+    auto xclbin = xrt::xclbin(xclbin_name);
+    const auto& memidx_encoding = xrt_core::xclbin_int::get_membank_encoding(xclbin);
+    for (auto& kernel : xclbin.get_kernels()) {
+        //get CU's of each kernel object
+        //iterate over CU's to get arguments
+        for (const auto& cu : kernel.get_cus())
+        {
+            auto krnl_inst_name = cu.get_name();
+            auto itr = std::find_if(cu_vec.begin(), cu_vec.end(),
+                [&krnl_inst_name](auto& cu_name) {
+                    return krnl_inst_name == cu_name;
+                });
+            if (itr == cu_vec.end())
+                cu_vec.push_back(cu.get_name());
+        }
+    }
+    uint64_t ip_idx = 0;
     uint64_t tmp_ddr_map = 0;
-    for(uint32_t c = 0; c < info->number_of_connections; c++)
-    {
-        auto& xma_conn = info->connectivity[c];
-        tmp_ddr_map = 1;
-        tmp_ddr_map = tmp_ddr_map << (xma_conn.mem_data_index);
-        info->ip_ddr_mapping[xma_conn.m_ip_layout_index] |= tmp_ddr_map;
-    }
-    xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "CU DDR connections bitmap:");
-    for(uint32_t i = 0; i < info->number_of_hardware_kernels; i++)
-    {
-        xma_logmsg(XMA_DEBUG_LOG, XMAAPI_MOD, "\t%s - 0x%016llx ",info->ip_layout[i].kernel_name.c_str(), (unsigned long long)info->ip_ddr_mapping[i]);
-    }
+    for (auto& ip_node : xclbin.get_ips()) {
+        auto ip_name = ip_node.get_name();
+        auto itr = std::find_if(cu_vec.begin(), cu_vec.end(),
+            [&ip_name](auto& inst) {
+                return ip_name == inst;
+            });
+        if (itr != cu_vec.end()) {
+            info->ip_vec.push_back(ip_name);
+            // collect the memory connections for each IP argument
+            std::vector<encoded_bitset<MAX_DDR_MAP>> connections;
+            std::unordered_map<int32_t, int32_t> arg_to_mem_info;
+            for (const auto& arg : ip_node.get_args()) {
+                auto argidx = arg.get_index();
 
+                for (const auto& mem : arg.get_mems()) {
+                    auto memidx = mem.get_index();
+                    // disregard memory indices that do not map to a memory mapped bank
+                    // this could be streaming connections
+                    if (memidx_encoding.at(memidx) == std::numeric_limits<size_t>::max())
+                        continue;
+                    auto size = argidx + 1;
+                    const std::vector<size_t>* encoding = &memidx_encoding;
+                    if (connections.size() >= size)
+                        return XMA_ERROR;
+                    connections.resize(size, encoded_bitset<MAX_DDR_MAP>{encoding});
+                    connections[argidx].set(memidx);
+
+                    if(connections[argidx].test(memidx))
+                        arg_to_mem_info.emplace(argidx, memidx);
+
+                    tmp_ddr_map = 1;
+                    tmp_ddr_map = tmp_ddr_map << memidx;
+                    info->ip_ddr_mapping[ip_idx] |= tmp_ddr_map;
+                }
+            }
+            info->ip_arg_connections.push_back(arg_to_mem_info);
+            ip_idx++;
+        }
+    }
     return XMA_SUCCESS;
 }
 
+//Allow default ddr_bank of -1; When CU is not connected to any ddr
 int xma_xclbin_map2ddr(uint64_t bit_map, int32_t* ddr_bank, bool has_mem_grps)
 {
     //64 bits based on MAX_DDR_MAP = 64

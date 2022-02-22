@@ -1600,6 +1600,12 @@ public:
       arg.valid_or_error();
     return arg;
   }
+
+  size_t 
+  get_regmap_size()
+  {
+      return regmap_size;
+  }
 };
 
 // struct run_impl - The internals of an xrtRunHandle
@@ -2778,6 +2784,12 @@ get_arg_value(const xrt::run& run, size_t argidx)
   std::vector<uint32_t> vec(value.size());
   std::copy_n(value.begin(), value.size(), vec.data());
   return vec;
+}
+
+size_t
+get_regmap_size(const xrt::kernel& kernel)
+{
+    return kernel.get_handle()->get_regmap_size();
 }
 
 }} // kernel_int, xrt_core
