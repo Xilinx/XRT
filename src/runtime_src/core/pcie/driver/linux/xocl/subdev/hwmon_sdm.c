@@ -26,7 +26,7 @@
 #include "xclfeatures.h"
 
 #define SYSFS_COUNT_PER_SENSOR          4
-#define SYSFS_NAME_LEN                  20
+#define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
 //TODO: fix it by issuing sensor size request to vmr.
@@ -253,16 +253,21 @@ static struct sensor_device_attribute name_attr =
 
 /*
  * hwmon_sensor_show(): This API is called when hwmon sysfs node is read
+ * It uses index to identify the right sensor from sensor_data list
+ * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+ * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+ * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+ * buf_len     : uint8_t  | 8 bits  (0xFF)   | [24:31]
  */
 static ssize_t hwmon_sensor_show(struct device *dev,
                                  struct device_attribute *da, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	uint8_t repo_id = index & 0xF;
-	uint8_t field_id = (index >> 4) & 0xF;
-	uint32_t buf_index = (index >> 8) & 0xFFF;
-	uint8_t buf_len = (index >> 20) & 0xFF;
+	uint8_t repo_id = index & 0xFF;
+	uint8_t field_id = (index >> 8) & 0xF;
+	uint32_t buf_index = (index >> 12) & 0xFFF;
+	uint8_t buf_len = (index >> 24) & 0xFF;
 	char output[64];
 	uint32_t uval = 0;
 
@@ -306,18 +311,23 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 					 GFP_KERNEL);
 	int err = 0;
 	iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
-                                sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
+                                sizeof(char) * strlen(sysfs_name) + 1, GFP_KERNEL);
 	strcpy((char*)iter->dev_attr.attr.name, sysfs_name);
 	iter->dev_attr.attr.mode = S_IRUGO;
 	iter->dev_attr.show = hwmon_sensor_show;
-	iter->index = repo_id | (field_id << 4) | (buf_index << 8) | (len << 20);
+	/*
+	 * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+	 * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+	 * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+	 * len         : uint8_t  | 8 bits  (0xFF)   | [24:31]
+	 */
+	iter->index = repo_id | (field_id << 8) | (buf_index << 12) | (len << 24);
 
 	sysfs_attr_init(&iter->dev_attr.attr);
 	err = device_create_file(sdm->hwmon_dev, &iter->dev_attr);
 	if (err) {
 		iter->dev_attr.attr.name = NULL;
-		xocl_err(&sdm->pdev->dev, "unabled to create sensors_list0 hwmon sysfs file ret: 0x%x",
-				 err);
+		xocl_err(&sdm->pdev->dev, "unabled to create sysfs file, err: 0x%x", err);
 	}
 
 	return err;
@@ -749,6 +759,7 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                                GFP_KERNEL);
 	ret = xocl_xgq_collect_sensors_by_id(xdev, sdm->sensor_data[repo_id],
                                          repo_id, resp_size);
+
 	if (!ret) {
 		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
 		if (!ret)
@@ -772,6 +783,7 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_POWER, create_sysfs);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_VOLTAGE, create_sysfs);
 }
 
 /*
