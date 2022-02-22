@@ -2,6 +2,7 @@
 
 // aarch64-linux-gnu-g++ -c -I/proj/xcohdstaff1/stephenr/github/XRT/WIP/build/Debug//opt/xilinx/xrt/include -o pskernel.o /proj/xcohdstaff1/stephenr/github/XRT/WIP/src/runtime_src/tools/xclbinutil/unittests/PSKernel/pskernel.cpp
 // aarch64-linux-gnu-g++ pskernel.o -shared -o pskernel.so
+// xxd -p ./pskernel.so | tr -d $'\n' > pskernel.hex 
 
 
 #include "xrt.h"

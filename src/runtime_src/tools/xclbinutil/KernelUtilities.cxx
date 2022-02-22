@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -152,7 +152,13 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    auto argSize = getTypeSize(argType, isFixedPS);
+    size_t argSize = (ptArgument.find("byte-size") == ptArgument.not_found())
+                           ? getTypeSize(argType, isFixedPS)
+                           : ptArgument.get<size_t>("byte-size");
+
+    // All global non-fixed PS Kernel address qualifiers are 16 bytes in size (from the driver's perspective)
+    if ((addressQualifier == "GLOBAL") && !isFixedPS)
+      argSize = 16;
 
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
@@ -385,94 +391,6 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
 }
 
 void
-transposeFunction(const std::string& functionSig, boost::property_tree::ptree& ptFunction)
-// Example signatures:
-//    kernel0(float*, float*, float*, int, int, float, float*, xrtHandles*)
-//    kernel0_fini(xrtHandles*)
-//    kernel0_init(void*, unsigned char const*)
-
-{
-  if (functionSig.empty())
-    throw std::runtime_error("Error: No function found to transform to a property_tree.");
-
-  // Discover the function name
-  auto startArgs = functionSig.find("(");
-  if (startArgs == std::string::npos)
-    throw std::runtime_error("Error: Function signature not formed correctly, missing opening parenthesis '(': '" + functionSig + "'");
-
-  std::string functionName = functionSig.substr(0, startArgs);
-  boost::algorithm::trim(functionName);
-  ptFunction.put("name", functionName);
-  ptFunction.put("signature", functionSig);
-
-  // Infer the function type
-  std::string functionType = "kernel";
-  if (boost::algorithm::ends_with(functionName, "_init"))
-    functionType = "init";
-
-  if (boost::algorithm::ends_with(functionName, "_fini"))
-    functionType = "fini";
-
-  ptFunction.put("type", functionType);
-
-  // Discover the arguments
-  auto endArgs = functionSig.find(")");
-  if (startArgs == std::string::npos)
-    throw std::runtime_error("Error: Function signature not formed correctly, missing ending parenthesis ')(': '" + functionSig + "'");
-
-  startArgs += 1; // Remove the start parenthesis
-  std::string sArgs(functionSig.substr(startArgs, endArgs - startArgs));
-  boost::algorithm::trim(sArgs);
-
-  std::vector<std::string> arguments;
-  boost::split(arguments, sArgs, boost::is_any_of(","));
-
-  boost::property_tree::ptree ptArgsArray;
-  unsigned int argID = 0;
-  for (auto& arg : arguments) {
-    const std::string sArgDefaultName = "arg" + std::to_string(argID++);
-    boost::property_tree::ptree ptArg;
-
-    boost::algorithm::trim(arg);
-
-    // Build up the argument
-    ptArg.put("name", sArgDefaultName);
-    ptArg.put("type", arg);
-
-    ptArgsArray.push_back(std::make_pair("", ptArg));
-  }
-
-  // If the function type is a kernel, the last argument should not have an ID
-  if ((functionType == "kernel") && !ptArgsArray.empty())
-    ptArgsArray.back().second.put("use_id", 0);
-
-  ptFunction.add_child("args", ptArgsArray);
-
-  XUtil::TRACE_PrintTree("Kernel", ptFunction);
-}
-
-
-
-void
-XclBinUtilities::transposeFunctions(const std::vector<std::string>& functionSigs,
-                                    boost::property_tree::ptree& ptFunctions)
-{
-  // Prepare return value
-  ptFunctions.clear();
-
-  // Examine each of the function signatures
-  boost::property_tree::ptree ptFunctionArray;
-  for (const auto& entry  : functionSigs) {
-    boost::property_tree::ptree ptFunction;
-    transposeFunction(entry, ptFunction);
-    ptFunctionArray.push_back(std::make_pair("", ptFunction));
-  }
-
-  ptFunctions.add_child("functions", ptFunctionArray);
-}
-
-
-void
 validateSignature(std::vector<boost::property_tree::ptree> functions,
                   const std::vector<std::string>& expectedArgs,
                   const std::string& kernelName,
@@ -574,7 +492,7 @@ XclBinUtilities::validateFunctions(const std::string& kernelLibrary, const boost
 
   // -- Validate _init function
   if (!initKernels.empty()) {
-    static std::vector<std::string> argsExpected = { "void*", "unsigned char const*" };
+    static std::vector<std::string> argsExpected = { "xclDeviceHandle", "const unsigned char*" };
     validateSignature(initKernels, argsExpected, kernelName, kernelLibrary);
   }
 
@@ -611,7 +529,9 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
 
     // Build up the PSKernel property tree
     boost::property_tree::ptree ptKernel;
-    ptKernel.put("name", ptFunction.get<std::string>("name"));
+
+    const auto & kernelName = ptFunction.get<std::string>("name");
+    ptKernel.put("name", kernelName);
 
     // Gather arguments
     auto args = XUtil::as_vector<boost::property_tree::ptree>(ptFunction, "args");
@@ -619,34 +539,30 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
     uint64_t offset = 0;
     for (const auto& entry : args) {
       boost::property_tree::ptree ptArg;
-      ptArg.put("name", entry.get<std::string>("name"));
 
-      const std::string sType = entry.get<std::string>("type");
+      const auto & argName = entry.get<std::string>("name");
+      ptArg.put("name", argName);
+      ptArg.put("type", entry.get<std::string>("type"));
 
-      std::string addressQualifier;
-      if (isScalar(sType))
-        addressQualifier = "SCALAR";
+      const auto & addrQualifier = entry.get<std::string>("address-qualifier");
+      ptArg.put("address-qualifier", addrQualifier);
 
-      if (isGlobal(sType)) {
-        ptArg.put("memory-connection", "");    // Empty string indicates auto connection
-        addressQualifier = "GLOBAL";
-      }
+      if ((addrQualifier == "GLOBAL") &&
+          (entry.get<int>("use-id", 1)))
+        ptArg.put("memory-connection", "");
 
-      if (addressQualifier.empty())
-        throw std::runtime_error("Error: Unknown kernel argument type.\n"
-                                 "Shared Library: '" + kernelLibrary + "'\n"
-                                 "Kernel Function: '" + ptFunction.get<std::string>("signature") + "\n"
-                                 "Argument Name: '" + entry.get<std::string>("name") + "\n"
-                                 "Argument Type: '" + entry.get<std::string>("type"));
+      const auto byteSize = entry.get<uint64_t>("byte-size", 0);
 
-      ptArg.put("address-qualifier", addressQualifier);
-      ptArg.put("type", sType);
+      if (!byteSize) 
+        throw std::runtime_error("Error: The kernel '" + kernelName + "' argument '" + argName + "' is doesn't have a size.");
+
+      ptArg.put("byte-size", entry.get<std::string>("byte-size"));
       ptArg.put("offset", boost::str(boost::format("0x%x") % offset));
-      offset += getTypeSize(sType, false /*fixedKernel*/);
+      offset += byteSize;
 
       // Determine if the ID value should be set.
-      if (entry.get<int>("use_id", 1) != 1)
-        ptArg.put("use_id", "0");
+      if (entry.get<int>("use-id", 1) != 1) 
+        ptArg.put("use-id", "0");
 
       ptArgArray.push_back(std::make_pair("", ptArg));   // Used to make an array of objects
     }
