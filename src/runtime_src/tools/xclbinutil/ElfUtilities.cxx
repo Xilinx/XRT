@@ -139,7 +139,7 @@ readHexString(const std::string& entry,
   unsigned long number = 0;
   try {
     number = std::stoul(sNumber, nullptr, 16);
-  } catch (const std::exception& e) {
+  } catch (...) {
     throw std::runtime_error("ERROR: Unable to convert hex string number '" + sNumber + "' to an unsigned long.");
   }
   return number;

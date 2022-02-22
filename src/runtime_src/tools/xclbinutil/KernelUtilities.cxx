@@ -152,9 +152,9 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    unsigned int argSize = (ptArgument.find("byte-size") == ptArgument.not_found())
+    size_t argSize = (ptArgument.find("byte-size") == ptArgument.not_found())
                            ? getTypeSize(argType, isFixedPS)
-                           : ptArgument.get<unsigned int>("byte-size");
+                           : ptArgument.get<size_t>("byte-size");
 
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
