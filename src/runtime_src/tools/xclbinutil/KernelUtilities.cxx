@@ -156,6 +156,10 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
                            ? getTypeSize(argType, isFixedPS)
                            : ptArgument.get<size_t>("byte-size");
 
+    // All global non-fixed PS Kernel address qualifiers are 16 bytes in size (from the driver's perspective)
+    if ((addressQualifier == "GLOBAL") && !isFixedPS)
+      argSize = 16;
+
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
     if (offset.empty())
