@@ -290,6 +290,44 @@ struct kds_cu_info
   }
 };
 
+
+struct xclbin_uuid
+{
+
+  using result_type = query::xclbin_uuid::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type)
+  {
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    std::vector<std::string> xclbin_info;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("xclbinid", errmsg, xclbin_info);
+    if (!errmsg.empty())
+      throw xrt_core::query::sysfs_error(errmsg);
+
+    // xclbin_uuid e.g.
+    // <slot_id> <uuid_slot_0>
+    //	   0	 <uuid_slot_0>
+    //	   1	 <uuid_slot_1>
+    for (auto& line : xclbin_info) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      tokenizer::iterator tok_it = tokens.begin();
+      unsigned int slot_index = std::stoi(std::string(*tok_it++));
+      //return the first slot uuid always for backward compatibility
+      return std::string(*tok_it);
+    }
+
+    return "";
+  }
+};
+
 struct get_xclbin_data
 {
   using result_type = query::get_xclbin_data::result_type;
@@ -684,8 +722,8 @@ initialize_query_table()
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
 
-  emplace_sysfs_get<query::xclbin_uuid>               ("xclbinid");
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
+  emplace_sysfs_get<query::group_topology>            ("mem_topology");
   emplace_sysfs_get<query::ip_layout_raw>             ("ip_layout");
   emplace_sysfs_get<query::debug_ip_layout_raw>       ("debug_ip_layout");
   emplace_sysfs_get<query::aie_metadata>              ("aie_metadata");
@@ -697,6 +735,7 @@ initialize_query_table()
   emplace_func0_request<query::pcie_bdf,                bdf>();
   emplace_func0_request<query::board_name,              board_name>();
   emplace_func0_request<query::is_ready,                is_ready>();
+  emplace_func0_request<query::xclbin_uuid ,            xclbin_uuid>();
 
   emplace_func0_request<query::kds_cu_info,             kds_cu_info>();
   emplace_func0_request<query::instance,                instance>();

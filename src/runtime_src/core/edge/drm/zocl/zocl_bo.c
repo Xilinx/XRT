@@ -342,7 +342,7 @@ zocl_create_bo(struct drm_device *dev, uint64_t unaligned_size, u32 user_flags)
 		if (mem == NULL)
 			return ERR_PTR(-ENOMEM);
 
-		if (mem->zm_used || mem->zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
+		if (!mem->zm_used || mem->zm_type != ZOCL_MEM_TYPE_RANGE_ALLOC)
 			return ERR_PTR(-EINVAL);
 
 		bo = zocl_create_range_mem(dev, size, mem);
@@ -1164,9 +1164,6 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 	for (i = 0; i < mtopo->m_count; i++) {
 		struct mem_data *md = &mtopo->m_mem_data[i];
 
-		if (!md->m_used)
-			continue;
-
 		memp = vzalloc(sizeof(struct zocl_mem));
 		if (md->m_type == MEM_STREAMING) {
 			memp->zm_type = ZOCL_MEM_TYPE_STREAMING;
@@ -1176,7 +1173,7 @@ void zocl_init_mem(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 		memp->zm_base_addr = md->m_base_address;
 		/* In mem_topology, size is in KB */
 		memp->zm_size = md->m_size * 1024;
-		memp->zm_used = 1;
+		memp->zm_used = md->m_used;
 		memp->zm_mem_idx = SET_MEM_INDEX(slot->slot_idx, i);
 		/* This list used for multiple tag case */
 		INIT_LIST_HEAD(&memp->zm_list);
@@ -1285,9 +1282,6 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev)
 	struct zocl_mem *curr_mem = NULL;
 	struct zocl_mem *next = NULL;
 
-	if (!zdev->mem)
-		return;
-
 	mutex_lock(&zdev->mm_lock);
 
 	list_for_each_entry_safe(curr_mem, next, &zdev->zm_list_head, link) {
@@ -1300,8 +1294,6 @@ void zocl_clear_mem(struct drm_zocl_dev *zdev)
 		drm_mm_takedown(zdev->zm_drm_mm);
 		vfree(zdev->zm_drm_mm);
 	}
-
-	zdev->mem = NULL;
 
 	mutex_unlock(&zdev->mm_lock);
 }
