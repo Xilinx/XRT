@@ -67,7 +67,7 @@ struct xocl_hwmon_sdm {
 	/* Keep sensor data for maitaining hwmon sysfs nodes */
 	char                    *sensor_data[SDR_TYPE_MAX];
 	bool                    sensor_data_avail[SDR_TYPE_MAX];
-	struct xocl_sdr_bdinfo	*bdinfo;
+	struct xocl_sdr_bdinfo	bdinfo;
 
 	struct mutex            sdm_lock;
 	u64                     cache_expire_secs;
@@ -291,7 +291,9 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	char output[64];
 	uint32_t uval = 0;
 
+	mutex_lock(&sdm->sdm_lock);
 	get_sensors_data(sdm->pdev, repo_id);
+	mutex_unlock(&sdm->sdm_lock);
 
 	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
 		xocl_err(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
@@ -390,38 +392,38 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 	memcpy(sensor_name, &sdm->sensor_data[repo_id][name_index], name_length);
 
 	if (!strcmp(sensor_name, "Product Name"))
-		memcpy(sdm->bdinfo->bd_name, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.bd_name, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Board Serial"))
-		memcpy(sdm->bdinfo->serial_num, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.serial_num, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Board Part Num"))
-		memcpy(sdm->bdinfo->bd_part_num, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.bd_part_num, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Board Revision"))
-		memcpy(sdm->bdinfo->revision, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.revision, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Board MFG Date"))
-		memcpy(&sdm->bdinfo->mfg_date, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.mfg_date, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "PCIE Info"))
-		memcpy(&sdm->bdinfo->pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.pcie_info, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "UUID"))
-		memcpy(&sdm->bdinfo->uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 0"))
-		memcpy(&sdm->bdinfo->mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 1"))
-		memcpy(&sdm->bdinfo->mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Fan Presence"))
 	{
 		char sensor_val[60];
 		memcpy(sensor_val, &sdm->sensor_data[repo_id][ins_index], val_len);
 		if (!strcmp(sensor_val, "A"))
-			sdm->bdinfo->fan_presence = true;
+			sdm->bdinfo.fan_presence = true;
 		else
-			sdm->bdinfo->fan_presence = false;
+			sdm->bdinfo.fan_presence = false;
 	}
 	else if (!strcmp(sensor_name, "Active MSP Ver"))
-		memcpy(&sdm->bdinfo->active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Target MSP Ver"))
-		memcpy(&sdm->bdinfo->target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "OEM ID"))
-		memcpy(&sdm->bdinfo->oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
 }
 
 /*
@@ -695,6 +697,8 @@ static void destroy_hwmon_sysfs(struct platform_device *pdev)
 		hwmon_device_unregister(sdm->hwmon_dev);
 		sdm->hwmon_dev = NULL;
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &bdinfo_attrs);
 }
 
 static int create_hwmon_sysfs(struct platform_device *pdev)
@@ -754,6 +758,7 @@ static int hwmon_sdm_remove(struct platform_device *pdev)
 	if (sdm->sysfs_created)
 		destroy_hwmon_sysfs(pdev);
 
+	mutex_destroy(&sdm->sdm_lock);
 	platform_set_drvdata(pdev, NULL);
 
 	return 0;
@@ -764,7 +769,7 @@ bd_name_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%s\n", sdm->bdinfo->bd_name);
+	return sprintf(buf, "%s\n", sdm->bdinfo.bd_name);
 };
 static DEVICE_ATTR_RO(bd_name);
 
@@ -773,7 +778,7 @@ serial_num_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%s\n", sdm->bdinfo->serial_num);
+	return sprintf(buf, "%s\n", sdm->bdinfo.serial_num);
 };
 static DEVICE_ATTR_RO(serial_num);
 
@@ -782,7 +787,7 @@ bd_part_num_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%s\n", sdm->bdinfo->bd_part_num);
+	return sprintf(buf, "%s\n", sdm->bdinfo.bd_part_num);
 };
 static DEVICE_ATTR_RO(bd_part_num);
 
@@ -791,7 +796,7 @@ revision_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%s\n", sdm->bdinfo->revision);
+	return sprintf(buf, "%s\n", sdm->bdinfo.revision);
 };
 static DEVICE_ATTR_RO(revision);
 
@@ -800,7 +805,7 @@ mfg_date_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->mfg_date);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mfg_date);
 };
 static DEVICE_ATTR_RO(mfg_date);
 
@@ -809,7 +814,7 @@ pcie_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->pcie_info);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.pcie_info);
 };
 static DEVICE_ATTR_RO(pcie_info);
 
@@ -818,7 +823,7 @@ uuid_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->uuid);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.uuid);
 };
 static DEVICE_ATTR_RO(uuid);
 
@@ -827,7 +832,7 @@ mac_addr0_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->mac_addr0);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mac_addr0);
 };
 static DEVICE_ATTR_RO(mac_addr0);
 
@@ -836,7 +841,7 @@ mac_addr1_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->mac_addr1);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mac_addr1);
 };
 static DEVICE_ATTR_RO(mac_addr1);
 
@@ -845,7 +850,7 @@ fan_presence_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "%d\n", sdm->bdinfo->fan_presence);
+	return sprintf(buf, "%d\n", sdm->bdinfo.fan_presence);
 };
 static DEVICE_ATTR_RO(fan_presence);
 
@@ -854,7 +859,7 @@ active_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->active_msp_ver);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.active_msp_ver);
 };
 static DEVICE_ATTR_RO(active_msp_ver);
 
@@ -863,7 +868,7 @@ target_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->target_msp_ver);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.target_msp_ver);
 };
 static DEVICE_ATTR_RO(target_msp_ver);
 
@@ -872,7 +877,7 @@ oem_id_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo->oem_id);
+	return sprintf(buf, "0x%llx\n", sdm->bdinfo.oem_id);
 };
 static DEVICE_ATTR_RO(oem_id);
 
@@ -930,8 +935,6 @@ static int hwmon_sdm_probe(struct platform_device *pdev)
 		sdm->privileged = true;
 	}
 
-	sdm->bdinfo = (struct xocl_sdr_bdinfo*)devm_kzalloc(&sdm->pdev->dev,
-                   sizeof(struct xocl_sdr_bdinfo), GFP_KERNEL);
 	if (sysfs_create_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup))
 		xocl_err(&pdev->dev, "unable to create sysfs group for bdinfo");
 
