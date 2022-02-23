@@ -851,6 +851,7 @@ struct ps_kernel : request
 struct kds_scu_info : request
 {
   struct data {
+    uint32_t slot_index;
     uint32_t index;
     std::string name;
     uint32_t status;

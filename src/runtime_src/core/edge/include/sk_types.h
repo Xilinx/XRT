@@ -20,6 +20,7 @@
 #define __SK_TYPES_H_
 
 #include "xclhal2_mpsoc.h"
+#include <memory>
 
 /*
  * Helper functions for kernel to use.
@@ -44,5 +45,26 @@ struct sk_operations {
  * ops:  provide help functions for soft kernel to use.
  */
 typedef int (* kernel_t)(void *args, struct sk_operations *ops);
+
+/*
+ * PS Context Data Structure included by user PS kernel code
+ */
+class pscontext {
+public:
+  ~pscontext();
+ pscontext() : pimpl{std::make_shared<pscontext::impl>()} {}
+ 
+protected:
+  struct impl;
+  std::shared_ptr<impl> pimpl;
+};
+
+struct pscontext::impl {
+private:
+  bool aie_profile_en;
+};
+
+typedef pscontext* (* kernel_init_t)(xclDeviceHandle device, unsigned char *uuid);
+typedef int (* kernel_fini_t)(pscontext *xrtHandles);
 
 #endif

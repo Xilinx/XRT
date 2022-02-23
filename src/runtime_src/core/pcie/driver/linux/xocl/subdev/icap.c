@@ -2354,9 +2354,9 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_create_subdev_ip_layout(pdev);
 
 	// Create scu subdev if SOFT_KERNEL section is found
-	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);
-	if (count > 0)
-		icap_create_subdev_scu(pdev);
+//	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);
+//	if (count > 0)
+//		icap_create_subdev_scu(pdev);
 
 	/* Create cu/scu subdev by slot */
 	xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,

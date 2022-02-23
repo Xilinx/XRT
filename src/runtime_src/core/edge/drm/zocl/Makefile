@@ -31,6 +31,7 @@ endif
 
 drv_common-y   := $(common_dir)/kds_core.o \
                   $(common_dir)/cu_hls.o \
+                  $(common_dir)/cu_scu.o \
                   $(common_dir)/fast_adapter.o \
                   $(common_dir)/xrt_cu.o \
                   $(common_dir)/xrt_xclbin.o
@@ -52,6 +53,7 @@ zocl-y := \
 	zocl_sk.o \
 	zocl_kds.o \
 	cu.o \
+	scu.o \
 	zocl_error.o \
 	zocl_aie.o \
 	zocl_ctrl_ert.o \

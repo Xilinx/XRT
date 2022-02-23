@@ -9,6 +9,7 @@
 
 #include "xocl_drv.h"
 #include "xrt_cu.h"
+#include "cu_xgq.h"
 
 #define XSCU_INFO(xcu, fmt, arg...) \
 	xocl_info(&xcu->pdev->dev, fmt "\n", ##arg)
@@ -220,52 +221,13 @@ static const struct attribute_group scu_attrgroup = {
 	.bin_attrs = scu_bin_attrs,
 };
 
-static int scu_add_args(struct xocl_cu *xcu, struct kernel_info *kinfo)
-{
-	struct xrt_cu_arg *args = NULL;
-	int i;
-
-	/* If there is no detail kernel information, maybe it is a manualy
-	 * created xclbin. Print warning and let it go through
-	 */
-	if (!kinfo) {
-		XSCU_WARN(xcu, "CU %s metadata not found, xclbin maybe corrupted",
-			 xcu->base.info.iname);
-		xcu->base.info.num_args = 0;
-		xcu->base.info.args = NULL;
-		return 0;
-	}
-
-	args = vmalloc(sizeof(struct xrt_cu_arg) * kinfo->anums);
-	if (!args)
-		return -ENOMEM;
-
-	if (kinfo) {
-		for (i = 0; i < kinfo->anums; i++) {
-			strcpy(args[i].name, kinfo->args[i].name);
-			args[i].offset = kinfo->args[i].offset;
-			args[i].size = kinfo->args[i].size;
-			args[i].dir = kinfo->args[i].dir;
-		}
-		xcu->base.info.num_args = kinfo->anums;
-		xcu->base.info.args = args;
-	}
-
-	return 0;
-}
-
-static void scu_del_args(struct xocl_cu *xcu)
-{
-	if (xcu->base.info.args)
-		vfree(xcu->base.info.args);
-}
-
 static int scu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_cu *xcu;
+	struct xrt_cu_info *info = NULL;
+	struct xrt_cu_arg *args = NULL;
 	int err = 0;
-	int i;
 
 	/* Not using xocl_drvinst_alloc here. Because it would quickly run out
 	 * of memory when there are a lot of cards. Since user cannot open CU
@@ -278,13 +240,21 @@ static int scu_probe(struct platform_device *pdev)
 	xcu->pdev = pdev;
 	xcu->base.dev = XDEV2DEV(xdev);
 
-	xcu->base.info.model = XCU_HLS;
+	info = XOCL_GET_SUBDEV_PRIV(&pdev->dev);
+	BUG_ON(!info);
+	memcpy(&xcu->base.info, info, sizeof(struct xrt_cu_info));
+
+	xcu->base.info.model = XCU_XGQ;
 
 	err = xocl_kds_add_scu(xdev, &xcu->base);
 	if (err) {
-		err = 0; //Ignore this error now
-		//XSCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
+		XSCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
 		goto err;
+	}
+	err = xrt_cu_xgq_init(&xcu->base);
+	if (err) {
+		XSCU_ERR(xcu, "Not able to initialize CU %p", xcu);
+		goto err2;
 	}
 
 	if (sysfs_create_group(&pdev->dev.kobj, &scu_attrgroup))
@@ -294,6 +264,8 @@ static int scu_probe(struct platform_device *pdev)
 
 	return 0;
 
+err2:
+	xrt_cu_xgq_fini(&xcu->base);
 err:
 	(void) xocl_kds_del_scu(xdev, &xcu->base);
 	return err;
@@ -312,12 +284,11 @@ static int scu_remove(struct platform_device *pdev)
 	(void) sysfs_remove_group(&pdev->dev.kobj, &scu_attrgroup);
 	info = &xcu->base.info;
 
+	xrt_cu_xgq_fini(&xcu->base);
 	(void) xocl_kds_del_scu(xdev, &xcu->base);
 
 	if (xcu->base.res)
 		vfree(xcu->base.res);
-
-	scu_del_args(xcu);
 
 	platform_set_drvdata(pdev, NULL);
 

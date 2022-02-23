@@ -290,6 +290,7 @@ struct config_sk_image {
   uint32_t start_cuidx;
   uint32_t num_cus;
   uint32_t sk_name[5];
+  char     sk_uuid[16];
 };
 
 /**

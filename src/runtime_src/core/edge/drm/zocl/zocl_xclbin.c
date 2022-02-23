@@ -187,19 +187,43 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	kfree(sk->sk_img);
 	sk->sk_nimg = 0;
 	sk->sk_img = NULL;
-	mutex_unlock(&sk->sk_lock);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
-	if (count == 0)
+	if (count == 0) {
+		mutex_unlock(&sk->sk_lock);
 		return 0;
+	}
 
-	mutex_lock(&sk->sk_lock);
 
 	sk->sk_nimg = count;
 	sk->sk_img = kzalloc(sizeof(struct scu_image) * count, GFP_KERNEL);
+	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
+	if(header) {
+		DRM_INFO("Found EMBEDDED_METADATA section\n");
+		DRM_INFO("EMBEDDED_METADATA section size = %d\n",header->m_sectionSize);
+	} else {
+		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
+		mutex_unlock(&sk->sk_lock);
+		return -EINVAL;
+	}
+	sk->sk_meta_bo = zocl_drm_create_bo(zdev->ddev, header->m_sectionSize,
+					    ZOCL_BO_FLAGS_CMA);
+	if (IS_ERR(sk->sk_meta_bo)) {
+		ret = PTR_ERR(sk->sk_meta_bo);
+		DRM_ERROR("Failed to allocate BO: %d\n", ret);
+		mutex_unlock(&sk->sk_lock);
+		return ret;
+	}
+
+	sk->sk_meta_bo->flags = ZOCL_BO_FLAGS_CMA;
+	sk->sk_meta_bohdl = -1;
+	DRM_INFO("Caching EMBEDDED_METADATA\n");
+	memcpy(sk->sk_meta_bo->cma_base.vaddr, xclbin + header->m_sectionOffset,
+	       header->m_sectionSize);
 
 	header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL, header);
 	while (header) {
+		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		struct soft_kernel *sp =
 		    (struct soft_kernel *)&xclbin[header->m_sectionOffset];
 		char *begin = (char *)sp;
@@ -227,6 +251,9 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 		memcpy(sip->si_bo->cma_base.vaddr, begin + sp->m_image_offset,
 		    sp->m_image_size);
 
+		strncpy(sip->scu_name,
+		    begin + sp->mpo_symbol_name,
+		    PS_KERNEL_NAME_LENGTH - 1);
 		scu_idx += sp->m_num_instances;
 
 		header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL,
@@ -658,6 +685,68 @@ zocl_get_slot(struct drm_zocl_dev *zdev, uuid_t *id)
 }
 
 /*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
+		char __user *xclbin_ptr)
+{
+	int ret;
+	size_t size = axlf->m_header.m_length;
+
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf)
+		return -ENOMEM;
+
+	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
+	if (ret) {
+		vfree(slot->axlf);
+		return ret;
+	}
+
+	slot->axlf_size = size;
+
+	return 0;
+}
+
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
+		char *xclbin_ptr)
+{
+	int ret;
+	size_t size = axlf->m_header.m_length;
+
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf) {
+		DRM_ERROR("%s cannot allocate slot->axlf memory!",__func__);
+		return -ENOMEM;
+	}
+
+	memcpy(slot->axlf, xclbin_ptr, size);
+
+	slot->axlf_size = size;
+
+	return 0;
+}
+
+/*
  * This function takes an XCLBIN in kernel buffer and extracts
  * BITSTREAM_PDI section (or PDI section). Then load the extracted
  * section through fpga manager.
@@ -734,7 +823,12 @@ zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
-		ret = zocl_load_pskernel(zdev, axlf);
+		ret = zocl_cache_xclbin(slot, axlf, xclbin);
+		if (ret) {
+			DRM_ERROR("%s cannot cache xclbin",__func__);
+			goto out;
+		}
+		ret = zocl_load_pskernel(zdev, slot->axlf);
 		if (ret)
 			goto out;
 	}
@@ -750,38 +844,6 @@ out:
 		ret);
 	mutex_unlock(&slot->slot_xclbin_lock);
 	return ret;
-}
-
-/*
- * Cache the xclbin blob so that it can be shared by processes.
- *
- * Note: currently, we only cache xclbin blob for AIE only xclbin to
- *       support AIE multi-processes. For AIE only xclbin, we load
- *       the PDI to AIE even it has been loaded. But if a process is
- *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
- *       So that a shared AIE context can load AIE metadata without
- *       reload the hardware and can do non-destructive operations.
- */
-static int
-zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
-		char __user *xclbin_ptr)
-{
-	int ret;
-	size_t size = axlf->m_header.m_length;
-
-	slot->axlf = vmalloc(size);
-	if (!slot->axlf)
-		return -ENOMEM;
-
-	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
-	if (ret) {
-		vfree(slot->axlf);
-		return ret;
-	}
-
-	slot->axlf_size = size;
-
-	return 0;
 }
 
 /*
@@ -830,7 +892,7 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	/* Get full axlf header */
 	size_of_header = sizeof(struct axlf_section_header);
 	num_of_sections = axlf_head->m_header.m_numSections-1;
-	xclbin = (char __user *)axlf;
+	xclbin = (char *)axlf;
 	if (zocl_xclbin_get_uuid(slot) != NULL) {
 		if (zdev->aie) {
 			/*
@@ -856,10 +918,14 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 	write_unlock(&zdev->attr_rwlock);
 	zocl_create_aie(zdev, axlf, aie_res);
 	write_lock(&zdev->attr_rwlock);
-	zocl_cache_xclbin(slot, axlf, xclbin);
-	
+
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
 	if (count > 0) {
+		ret = zocl_kernel_cache_xclbin(slot, axlf, xclbin);
+		if (ret) {
+			DRM_ERROR("%s cannot cache xclbin",__func__);
+			goto out;
+		}
 		ret = zocl_load_pskernel(zdev, slot->axlf);
 		if (ret)
 			goto out;

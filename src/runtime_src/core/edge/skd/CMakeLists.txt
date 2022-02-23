@@ -2,20 +2,15 @@
 # Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
 #
 
-find_package(libdw REQUIRED)
-find_package(libelf REQUIRED)
 find_package(libffi REQUIRED)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/../include
-  ${LIBDW_INCLUDE_DIR}
-  ${LIBELF_INCLUDE_DIR}
   ${LIBFFI_INCLUDE_DIR}
   )
 
 file(GLOB XRT_SKD_FILES
-  "../../common/pskernel_parse.*"
   "*.h"
   "*.cpp"
   "*.c"
@@ -37,8 +32,6 @@ target_link_libraries(skd
   xrt_core
   xrt_coreutil
   dl
-  ${LIBDW_LDFLAGS}
-  ${LIBELF_LDFLAGS}
   ${LIBFFI_LDFLAGS}
   )
 

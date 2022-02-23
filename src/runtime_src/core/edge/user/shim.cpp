@@ -769,6 +769,8 @@ xclSKGetCmd(xclSKCmd *cmd)
     cmd->start_cuidx = scmd.start_cuidx;
     cmd->cu_nums = scmd.cu_nums;
     cmd->bohdl = scmd.bohdl;
+    cmd->meta_bohdl = scmd.meta_bohdl;
+    snprintf(cmd->uuid, 16, "%s", scmd.uuid);
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 
@@ -808,13 +810,16 @@ xclAIEPutCmd(xclAIECmd *cmd)
 
 int
 shim::
-xclSKCreate(unsigned int boHandle, uint32_t cu_idx)
+xclSKCreate(int *boHandle, uint32_t cu_idx)
 {
   int ret;
-  drm_zocl_sk_create scmd = {cu_idx, boHandle};
+  drm_zocl_sk_create scmd = {cu_idx, 0};
 
   ret = ioctl(mKernelFD, DRM_IOCTL_ZOCL_SK_CREATE, &scmd);
-
+  if(!ret) {
+    *boHandle = scmd.handle;
+  }
+  
   return ret ? -errno : ret;
 }
 
@@ -2039,7 +2044,7 @@ xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd)
 }
 
 int
-xclSKCreate(xclDeviceHandle handle, unsigned int boHandle, uint32_t cu_idx)
+xclSKCreate(xclDeviceHandle handle, int *boHandle, uint32_t cu_idx)
 {
   ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
   if (!drv)

@@ -30,7 +30,6 @@ extern "C" {
 #define	SOFT_KERNEL_FILE_PATH	"/home/softkernel/softkernel/"
 #define	SOFT_KERNEL_FILE_NAME	"sk"
 
-#define	SOFT_KERNEL_REG_SIZE	4096
 #define	AIE_INFO_SIZE		4096
 
 struct xclSKCmd {
@@ -39,6 +38,8 @@ struct xclSKCmd {
     uint32_t	cu_nums;
     char	krnl_name[XRT_MAX_NAME_LENGTH];
     int		bohdl;
+    int		meta_bohdl;
+    char	uuid[16];
 };
 
 struct xclAIECmd {
@@ -99,7 +100,7 @@ XCL_DRIVER_DLLESPEC int xclAIEPutCmd(xclDeviceHandle handle, xclAIECmd *cmd);
  * @cu_idx:        CU index
  * Return:         0 on success or appropriate error number
  */
-XCL_DRIVER_DLLESPEC int xclSKCreate(xclDeviceHandle handle, unsigned int boHandle, uint32_t cu_idx);
+XCL_DRIVER_DLLESPEC int xclSKCreate(xclDeviceHandle handle, int *boHandle, uint32_t cu_idx);
 
 /**
  * xclSKReport() - Report a soft kernel compute unit state change

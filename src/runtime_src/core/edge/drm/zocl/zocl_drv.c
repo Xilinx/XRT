@@ -451,6 +451,60 @@ void subdev_destroy_cu(struct drm_zocl_dev *zdev)
 }
 
 /**
+ * Create a new SCU subdevice. And try to attach to the driver. This will force
+ * cu probe to call.
+ *
+ * @param	zdev: zocl Device Instance
+ * @param	info: SCU related information
+ *
+ * @return	0 on success, Error code on failure.
+ */
+int subdev_create_scu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp)
+{
+	struct platform_device *pldev;
+	int ret;
+
+	pldev = platform_device_alloc("SCU", PLATFORM_DEVID_AUTO);
+	if (!pldev) {
+		DRM_ERROR("Failed to alloc device SCU\n");
+		return -ENOMEM;
+	}
+
+	ret = platform_device_add_data(pldev, info, sizeof(*info));
+	if (ret) {
+		DRM_ERROR("Failed to add data\n");
+		goto err;
+	}
+
+	pldev->dev.parent = dev;
+
+	ret = platform_device_add(pldev);
+	if (ret) {
+		DRM_ERROR("Failed to add device\n");
+		goto err;
+	}
+
+	/*
+	 * force probe to avoid dependence issue. if probing
+	 * failed, it could be the driver is not registered.
+	 */
+	ret = device_attach(&pldev->dev);
+	if (ret != 1) {
+		ret = -EINVAL;
+		DRM_ERROR("Failed to probe device\n");
+		goto err1;
+	}
+	*pdevp = pldev;
+
+	return 0;
+err1:
+	platform_device_del(pldev);
+err:
+	platform_device_put(pldev);
+	return ret;
+}
+
+/**
  * zocl_gem_create_object - Create drm_zocl_bo object instead of DRM CMA object.
  *
  * @dev: DRM device struct
@@ -1188,6 +1242,7 @@ static struct platform_driver *drivers[] = {
 	&zocl_watchdog_driver,
 	&zocl_ospi_versal_driver,
 	&cu_driver,
+	&scu_driver,
 	&zocl_drm_private_driver,
 	&zocl_csr_intc_driver,
 	&zocl_xgq_intc_driver,

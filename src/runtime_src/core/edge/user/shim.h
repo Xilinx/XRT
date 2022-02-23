@@ -81,7 +81,7 @@ public:
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);
-  int xclSKCreate(unsigned int boHandle, uint32_t cu_idx);
+  int xclSKCreate(int *boHandle, uint32_t cu_idx);
   int xclSKReport(uint32_t cu_idx, xrt_scu_state state);
 
   int xclAIEGetCmd(xclAIECmd *cmd);

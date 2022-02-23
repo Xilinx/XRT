@@ -35,7 +35,7 @@ struct zocl_cu_xgq_info {
 	struct platform_device *zcxi_intc_pdev;
 };
 
-int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx);
-int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx);
+int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain);
+int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain);
 
 #endif /* _ZOCL_CU_XGQ_H_ */

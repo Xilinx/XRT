@@ -8,12 +8,6 @@ include_directories(
 if (NOT WIN32)
 include_directories(${DRM_INCLUDE_DIRS})
 
-pkg_check_modules(LIBDW REQUIRED libdw)
-INCLUDE_DIRECTORIES(${LIBDW_INCLUDEDIR})
-
-pkg_check_modules(LIBELF REQUIRED libelf)
-INCLUDE_DIRECTORIES(${LIBELF_INCLUDEDIR})
-
 pkg_check_modules(LIBFFI REQUIRED libffi)
 INCLUDE_DIRECTORIES(${LIBFFI_INCLUDEDIR})
 
@@ -47,12 +41,6 @@ endif()
 # The static library files may not contain dependencies on dwarf/elf/ffi
 # so can't include ps kernel sources
 set(XRT_CORE_COMMON_SRC_STATIC ${XRT_CORE_COMMON_SRC_SHARED})
-
-if (DEFINED XRT_PSKERNEL_BUILD)
-  message("-- enabling api ps build")
-  list(APPEND XRT_CORE_COMMON_SRC_SHARED "pskernel_parse.cpp")
-  list(APPEND XRT_CORE_COMMON_SRC_SHARED "api/pskernel/xrt_pskernel.cpp")
-endif()
 
 # Files to include in object list
 file(GLOB XRT_CORE_COMMON_SRC_OBJ
@@ -93,10 +81,6 @@ if (NOT WIN32)
   # system libraries
   target_link_libraries(xrt_coreutil_static INTERFACE uuid dl rt pthread)
 
-  if (DEFINED XRT_PSKERNEL_BUILD)
-    target_link_libraries(xrt_coreutil PRIVATE ${LIBDW_LDFLAGS} ${LIBELF_LDFLAGS} ${LIBFFI_LDFLAGS})
-  endif()
-  
 endif()
 
 install(TARGETS xrt_coreutil

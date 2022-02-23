@@ -129,6 +129,7 @@ struct zocl_cu_xgq {
 	struct drm_zocl_dev	*zxc_zdev;
 
 	struct mutex		zxc_lock;
+	u32			zxc_cu_domain;
 	u32			zxc_cu_idx;
 	size_t			zxc_num_cu;
 
@@ -364,7 +365,7 @@ struct platform_driver zocl_cu_xgq_driver = {
 	.id_table = zocl_cu_xgq_id_match,
 };
 
-int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx)
+int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 {
 	int rc;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
@@ -372,9 +373,10 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx)
 	mutex_lock(&zcu_xgq->zxc_lock);
 	zcu_xgq->zxc_num_cu++;
 	/* For optimization when there is only 1 CU. */
+	zcu_xgq->zxc_cu_domain = cu_domain;
 	zcu_xgq->zxc_cu_idx = cu_idx;
 	rc = zocl_add_context_kernel(zcu_xgq->zxc_zdev, zcu_xgq->zxc_client_hdl,
-				     cu_idx, CU_CTX_SHARED);
+				     cu_idx, CU_CTX_SHARED, cu_domain);
 	if (!rc) {
 		/* Re-init xgq since we may have > 1 CU assigned so can't use fast path anymore. */
 		zcu_xgq_fini_xgq(zcu_xgq);
@@ -382,11 +384,11 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx)
 	}
 	mutex_unlock(&zcu_xgq->zxc_lock);
 
-	zcu_xgq_info(zcu_xgq, "CU[%d] assigned", cu_idx);
+	zcu_xgq_info(zcu_xgq, "CU Domain[%d] CU[%d] assigned", cu_domain, cu_idx);
 	return rc;
 }
 
-int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx)
+int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 {
 	int rc;
 	struct zocl_cu_xgq *zcu_xgq;
@@ -397,7 +399,7 @@ int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx)
 	BUG_ON(zcu_xgq == NULL);
 	mutex_lock(&zcu_xgq->zxc_lock);
 	zcu_xgq->zxc_num_cu--;
-	rc = zocl_del_context_kernel(zcu_xgq->zxc_zdev, zcu_xgq->zxc_client_hdl, cu_idx);
+	rc = zocl_del_context_kernel(zcu_xgq->zxc_zdev, zcu_xgq->zxc_client_hdl, cu_idx, cu_domain);
 	mutex_unlock(&zcu_xgq->zxc_lock);
 	return rc;
 }
@@ -433,8 +435,12 @@ static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
 	xcmd->info = NULL;
 	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0);
 
-	if (xcmd->cu_idx >= 0)
-		client_stat_inc(xcmd->client, c_cnt[xcmd->cu_idx]);
+	if (xcmd->cu_idx >= 0) {
+		if (cmd->cu_domain != 0)
+			client_stat_inc(xcmd->client, scu_c_cnt[xcmd->cu_idx]);
+		else
+			client_stat_inc(xcmd->client, c_cnt[xcmd->cu_idx]);
+	}
 }
 
 static inline void
@@ -460,16 +466,22 @@ zcu_xgq_cmd_start_cuidx(struct zocl_cu_xgq *zcu_xgq, struct xgq_cmd_sq_hdr *cmd)
 	xcmd->cb.notify_host = zcu_xgq_cmd_notify;
 	xcmd->cb.free = kds_free_command;
 	xcmd->priv = zcu_xgq;
-	xcmd->type = KDS_CU;
-	xcmd->opcode = OP_START;
 	xcmd->response_size = 0;
 
 	if (ZCU_XGQ_FAST_PATH(zcu_xgq)) {
+		cmd->cu_domain = zcu_xgq->zxc_cu_domain;
 		mask_idx = zcu_xgq->zxc_cu_idx / 32;
 		bit_idx = zcu_xgq->zxc_cu_idx % 32;
 	} else {
 		mask_idx = cmd->cu_idx / 32;
 		bit_idx = cmd->cu_idx % 32;
+	}
+	if (cmd->cu_domain != 0) {
+		xcmd->type = KDS_SCU;
+		xcmd->opcode = OP_START_SK;
+	} else {
+		xcmd->type = KDS_CU;
+		xcmd->opcode = OP_START;
 	}
 	xcmd->cu_mask[mask_idx] = 1 << bit_idx;
 	if (mask_idx < 4) {

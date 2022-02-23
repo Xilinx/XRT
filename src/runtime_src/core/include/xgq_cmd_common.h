@@ -166,7 +166,8 @@ enum xgq_cmd_page_id {
  * @count:	[30-16]	number of bytes representing packet payload
  * @state:	[31]	flag indicates this is a new entry
  * @cid:		unique command id
- * @rsvd, rsvd1:	reserved for future use
+ * @rsvd:	        reserved for future use
+ * @cu_domain:	[3-0]	CU domain for certain start CU op codes
  * @cu_idx:	[11-0]	CU index for certain start CU op codes
  *
  * Any command in XGQ submission queue shares same command header.
@@ -187,7 +188,7 @@ struct xgq_cmd_sq_hdr {
 				uint16_t rsvd;
 				struct {
 					uint16_t cu_idx:12;
-					uint16_t rsvd1:4;
+					uint16_t cu_domain:4;
 				};
 			};
 		};

@@ -15,6 +15,8 @@
 #ifndef _ZOCL_SK_H_
 #define _ZOCL_SK_H_
 
+#include "ps_kernel.h"
+
 #define	MAX_SOFT_KERNEL		128
 
 #define	ZOCL_SCU_FLAGS_RELEASE	1
@@ -53,6 +55,7 @@ struct scu_image {
 	uint32_t		si_end;		/* end instance # */
 	int			si_bohdl;	/* BO handle */
 	struct drm_zocl_bo	*si_bo;		/* BO to hold the image */
+	char		        scu_name[PS_KERNEL_NAME_LENGTH];	/* Soft Kernel Name */
 };
 
 struct soft_krnl {
@@ -66,6 +69,8 @@ struct soft_krnl {
 	 */
 	uint32_t		sk_ncus;
 
+	int			sk_meta_bohdl;	/* metadata BO handle */
+	struct drm_zocl_bo	*sk_meta_bo;		/* BO to hold metadata */
 	uint32_t		sk_nimg;
 	struct scu_image	*sk_img;
 	wait_queue_head_t	sk_wait_queue;
@@ -77,7 +82,10 @@ struct soft_krnl_cmd {
 	struct config_sk_image	*skc_packet;
 };
 
-int zocl_init_soft_kernel(struct drm_device *drm);
-void zocl_fini_soft_kernel(struct drm_device *drm);
+int zocl_init_soft_kernel(struct drm_zocl_dev *zdev);
+void zocl_fini_soft_kernel(struct drm_zocl_dev *zdev);
+extern struct platform_device *zert_get_scu_pdev(struct platform_device *pdev, u32 cu_idx);
+extern int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, struct drm_file *filp, int *boHandle);
+extern int zocl_scu_wait_cmd_sk(struct platform_device *pdev);
 
 #endif
