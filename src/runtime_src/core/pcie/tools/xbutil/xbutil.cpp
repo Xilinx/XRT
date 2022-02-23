@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2018 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  * Author: Hem C Neema, Ryan Radjabi
  * Simple command line utility to inetract with SDX PCIe devices
  *
@@ -2255,7 +2255,7 @@ int xcldev::device::testM2m()
     if (dev == nullptr)
         return -EINVAL;
 
-    dev->sysfs_get<int>("", "kds_numcdmas", errmsg, m2m_enabled, 0);
+    dev->sysfs_get<int>("", "m2m", errmsg, m2m_enabled, 0);
 
     // Workaround:
     // u250_xdma_201830_1 falsely shows that m2m is available
