@@ -98,7 +98,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 	int ret = 0;
 	int i = 0;
 
-
+	zdev->num_pr_slot = 0;
 	/* TODO : Need to update this function based on the device tree */
 	if (ZOCL_PLATFORM_ARM64) {
 		u64 pr_num;
@@ -106,10 +106,14 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 					  "xlnx,pr-num-support", &pr_num))
 			zdev->num_pr_slot = (int)pr_num;
 	} else {
-		u32 pr_num;
-		if (!of_property_read_u32(pdev->dev.of_node,
-				 "xlnx,pr-num-support", &pr_num))
-			zdev->num_pr_slot = (int)pr_num;
+		/* Work around for CR-1119382 issue.
+		 * ZOCL driver is crashing if it accessing the device tree node */
+		if (ZOCL_PLATFORM_ARM64) {
+			u32 pr_num;
+			if (!of_property_read_u32(pdev->dev.of_node,
+					  "xlnx,pr-num-support", &pr_num))
+				zdev->num_pr_slot = (int)pr_num;
+		}
 	}
 
 	/* If there is no information available for number of slot available
@@ -131,7 +135,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 			return ret;
 
 		mutex_init(&zocl_slot->slot_xclbin_lock);
-
+ 
 		if (ZOCL_PLATFORM_ARM64) {
 			zocl_slot->pr_isolation_freeze = 0x0;
 			zocl_slot->pr_isolation_unfreeze = 0x3;
@@ -145,14 +149,18 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 				zocl_slot->pr_isolation_unfreeze = 0x0;
 			}
 		} else {
-			u32 prop_addr = 0;
+			/* Work around for CR-1119382 issue.
+			 * ZOCL driver is crashing if it accessing the device tree node */
+			if (ZOCL_PLATFORM_ARM64) {
+				u32 prop_addr = 0;
 
-			if (of_property_read_u32(pdev->dev.of_node,
-						 "xlnx,pr-isolation-addr",
-						 &prop_addr))
-				zocl_slot->pr_isolation_addr = 0;
-			else
-				zocl_slot->pr_isolation_addr = prop_addr;
+				if (of_property_read_u32(pdev->dev.of_node,
+							 "xlnx,pr-isolation-addr",
+							 &prop_addr))
+					zocl_slot->pr_isolation_addr = 0;
+				else
+					zocl_slot->pr_isolation_addr = prop_addr;
+			}
 		}
 
 		DRM_INFO("PR[%d] Isolation addr 0x%llx", i,
@@ -990,14 +998,18 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 	/* set to 0xFFFFFFFF(32bit) or 0xFFFFFFFFFFFFFFFF(64bit) */
 	zdev->host_mem = (phys_addr_t) -1;
 	zdev->host_mem_len = 0;
-	/* If reserved memory region are not found, just keep going */
-	ret = get_reserved_mem_region(&pdev->dev, &res_mem);
-	if (!ret) {
-		DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
-			 (unsigned long)res_mem.start,
-			 (unsigned long)resource_size(&res_mem));
-		zdev->host_mem = res_mem.start;
-		zdev->host_mem_len = resource_size(&res_mem);
+	/* Work around for CR-1119382 issue.
+	 * ZOCL driver is crashing if it accessing the device tree node */
+	if (ZOCL_PLATFORM_ARM64) {
+		/* If reserved memory region are not found, just keep going */
+		ret = get_reserved_mem_region(&pdev->dev, &res_mem);
+		if (!ret) {
+			DRM_INFO("Reserved memory for host at 0x%lx, size 0x%lx\n",
+				 (unsigned long)res_mem.start,
+				 (unsigned long)resource_size(&res_mem));
+			zdev->host_mem = res_mem.start;
+			zdev->host_mem_len = resource_size(&res_mem);
+		}
 	}
 	mutex_init(&zdev->mm_lock);
 	INIT_LIST_HEAD(&zdev->zm_list_head);
@@ -1028,19 +1040,23 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 		zdev->watchdog = platform_get_drvdata(subdev);
 	}
 
-	/* For Non PR platform, there is not need to have FPGA manager
-	 * For PR platform, the FPGA manager is required. No good way to
-	 * determin if it is a PR platform at probe.
-	 */
-	fnode = of_find_node_by_name(NULL,
-	    zdev->zdev_data_info->fpga_driver_name);
-	if (fnode) {
-		zdev->fpga_mgr = of_fpga_mgr_get(fnode);
-		if (IS_ERR(zdev->fpga_mgr))
-			zdev->fpga_mgr = NULL;
-		DRM_INFO("FPGA programming device %s founded.\n",
-		    zdev->zdev_data_info->fpga_driver_name);
-		of_node_put(fnode);
+	/* Work around for CR-1119382 issue.
+	 * ZOCL driver is crashing if it accessing the device tree node */
+	if (ZOCL_PLATFORM_ARM64) {
+		/* For Non PR platform, there is not need to have FPGA manager
+		 * For PR platform, the FPGA manager is required. No good way to
+		 * determin if it is a PR platform at probe.
+		 */
+		fnode = of_find_node_by_name(NULL,
+				     zdev->zdev_data_info->fpga_driver_name);
+		if (fnode) {
+			zdev->fpga_mgr = of_fpga_mgr_get(fnode);
+			if (IS_ERR(zdev->fpga_mgr))
+				zdev->fpga_mgr = NULL;
+			DRM_INFO("FPGA programming device %s founded.\n",
+				 zdev->zdev_data_info->fpga_driver_name);
+			of_node_put(fnode);
+		}
 	}
 
 	/* Initialize Aperture */
@@ -1065,16 +1081,19 @@ static int zocl_drm_platform_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, zdev);
 
-	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
-		&zocl_driver.major,
-		&zocl_driver.minor,
-		&zocl_driver.patchlevel);
-	sscanf(XRT_DATE, "%d-%d-%d ", &year, &mon, &day);
-        //e.g HASH_DATE ==> Wed, 4 Nov 2020 08:46:44 -0800
-        //e.g XRT_DATE ==> 2020-11-04
-	snprintf(driver_date, sizeof(driver_date),
-		"%d%02d%02d", year, mon, day);
-
+	/* Work around for CR-1119382 issue.
+	 * ZOCL driver is crashing if it accessing the device tree node */
+	if (ZOCL_PLATFORM_ARM64) {
+		sscanf(XRT_DRIVER_VERSION, "%d.%d.%d",
+		       &zocl_driver.major,
+		       &zocl_driver.minor,
+		       &zocl_driver.patchlevel);
+		sscanf(XRT_DATE, "%d-%d-%d ", &year, &mon, &day);
+		//e.g HASH_DATE ==> Wed, 4 Nov 2020 08:46:44 -0800
+		//e.g XRT_DATE ==> 2020-11-04
+		snprintf(driver_date, sizeof(driver_date),
+			 "%d%02d%02d", year, mon, day);
+	}
 	/* Create and register DRM device */
 	drm = drm_dev_alloc(&zocl_driver, &pdev->dev);
 	if (IS_ERR(drm)) {
