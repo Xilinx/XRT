@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2016-2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "exec.h"
@@ -115,7 +102,7 @@ unmanaged_wait(const command* cmd)
   else
     sws::unmanaged_wait(cmd);
 }
-    
+
 // Wait for a command to complete execution with timeout.
 std::cv_status
 unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms)
@@ -124,6 +111,15 @@ unmanaged_wait(const command* cmd, const std::chrono::milliseconds& timeout_ms)
     return kds::unmanaged_wait(cmd, timeout_ms);
   else
     return sws::unmanaged_wait(cmd, timeout_ms);
+}
+
+std::cv_status
+exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms)
+{
+  if (kds_enabled())
+    return kds::exec_wait(device, timeout_ms);
+  else
+    return sws::exec_wait(device, timeout_ms);
 }
 
 void
