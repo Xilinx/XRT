@@ -155,7 +155,6 @@ namespace xma_core { namespace utils {
 constexpr std::uint64_t cu_base_min = 0x1800000;
 namespace bfs = boost::filesystem;
 
-
 static const char*
 emptyOrValue(const char* cstr)
 {

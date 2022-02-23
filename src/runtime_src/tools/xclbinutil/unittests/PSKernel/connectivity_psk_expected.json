@@ -1,6 +1,6 @@
 {
     "connectivity": {
-        "m_count": "5",
+        "m_count": "4",
         "m_connection": [
             {
                 "arg_index": "0",
@@ -19,11 +19,6 @@
             },
             {
                 "arg_index": "6",
-                "m_ip_layout_index": "0",
-                "mem_data_index": "0"
-            },
-            {
-                "arg_index": "7",
                 "m_ip_layout_index": "0",
                 "mem_data_index": "0"
             }

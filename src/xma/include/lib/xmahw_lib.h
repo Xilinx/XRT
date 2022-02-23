@@ -198,25 +198,11 @@ typedef struct XmaHwKernel
     bool        context_opened;
     bool        in_use;
     int32_t     cu_index;
-    uint64_t    base_address;
-    //uint64_t bitmap based on MAX_DDR_MAP=64
     uint64_t    ip_ddr_mapping;
     int32_t     default_ddr_bank;
     std::unordered_map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
-
-    int32_t     cu_index_ert;
-    uint32_t    cu_mask0;
-    uint32_t    cu_mask1;
-    uint32_t    cu_mask2;
-    uint32_t    cu_mask3;
-
     bool soft_kernel;
-    bool kernel_channels;
-    uint32_t     max_channel_id;
-    int32_t      arg_start;
-    int32_t      regmap_size;
-    bool         is_shared;
-
+    bool is_shared;
     //No need of atomic as only one thread is using below variables
     uint32_t num_sessions;
     uint32_t num_cu_cmds_avg;
@@ -226,7 +212,6 @@ typedef struct XmaHwKernel
     uint32_t cu_idle;
     uint32_t cu_busy_tmp;
     uint32_t num_samples_tmp;
-
     uint32_t    reserved[16];
 
   XmaHwKernel() {
@@ -236,16 +221,7 @@ typedef struct XmaHwKernel
     cu_index = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;
-    cu_index_ert = -1;
-    cu_mask0 = 0;
-    cu_mask1 = 0;
-    cu_mask2 = 0;
-    cu_mask3 = 0;
-    soft_kernel = false;
-    kernel_channels = false;
-    max_channel_id = 0;
-    arg_start = -1;
-    regmap_size = -1;
+    soft_kernel = false;  
     is_shared = false;
     num_sessions = 0;
     num_cu_cmds_avg = 0;
@@ -258,27 +234,6 @@ typedef struct XmaHwKernel
   }
 } XmaHwKernel;
 
-typedef struct XmaHwMem
-{
-    bool        in_use;
-    uint64_t    base_address;
-    uint64_t    size_kb;
-    uint32_t    size_mb;
-    uint32_t    size_gb;
-    uint8_t     name[MAX_KERNEL_NAME];
-
-    uint32_t    reserved[16];
-
-  XmaHwMem() {
-    std::memset(name, 0, sizeof(name));
-    in_use = false;
-    base_address = 0;
-    size_kb = 0;
-    size_mb = 0;
-    size_gb = 0;
-  }
-} XmaHwMem;
-
 typedef struct XmaHwDevice
 {
     xrt::device        xrt_device;
@@ -288,7 +243,6 @@ typedef struct XmaHwDevice
     uint32_t           number_of_hardware_kernels = 0;
     uint32_t           number_of_mem_banks = 0;
     std::vector<XmaHwKernel> kernels;
-    std::vector<XmaHwMem> ddrs;
     uint32_t    cu_cmd_id1 = 0;//Counter
     uint32_t    cu_cmd_id2 = 0;//Counter
     std::mt19937 mt_gen;
