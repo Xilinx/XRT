@@ -88,6 +88,7 @@ static int hwmon_sdm_update_sensors(struct platform_device *pdev,
 static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                             enum xgq_sdr_repo_type repo_type,
                                             bool create_sysfs);
+static void destroy_hwmon_sysfs(struct platform_device *pdev);
 
 static int to_sensor_repo_type(int repo_id)
 {
@@ -683,24 +684,6 @@ abort:
 	return -EINVAL;
 }
 
-static void destroy_hwmon_sysfs(struct platform_device *pdev)
-{
-	struct xocl_hwmon_sdm *sdm;
-
-	sdm = platform_get_drvdata(pdev);
-
-	if (!sdm->supported)
-		return;
-
-	if (sdm->hwmon_dev) {
-		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
-		hwmon_device_unregister(sdm->hwmon_dev);
-		sdm->hwmon_dev = NULL;
-	}
-
-	sysfs_remove_group(&pdev->dev.kobj, &bdinfo_attrs);
-}
-
 static int create_hwmon_sysfs(struct platform_device *pdev)
 {
 	struct xocl_hwmon_sdm *sdm;
@@ -902,6 +885,24 @@ static struct attribute *bdinfo_attrs[] = {
 static const struct attribute_group hwmon_sdm_bdinfo_attrgroup = {
 	.attrs = bdinfo_attrs,
 };
+
+static void destroy_hwmon_sysfs(struct platform_device *pdev)
+{
+	struct xocl_hwmon_sdm *sdm;
+
+	sdm = platform_get_drvdata(pdev);
+
+	if (!sdm->supported)
+		return;
+
+	if (sdm->hwmon_dev) {
+		device_remove_file(sdm->hwmon_dev, &name_attr.dev_attr);
+		hwmon_device_unregister(sdm->hwmon_dev);
+		sdm->hwmon_dev = NULL;
+	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &hwmon_sdm_bdinfo_attrgroup);
+}
 
 static int hwmon_sdm_probe(struct platform_device *pdev)
 {
