@@ -108,7 +108,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 	} else {
 		/* Work around for CR-1119382 issue.
 		 * ZOCL driver is crashing if it accessing the device tree node */
-		if (ZOCL_PLATFORM_ARM64) {
+		if (false) {
 			u32 pr_num;
 			if (!of_property_read_u32(pdev->dev.of_node,
 					  "xlnx,pr-num-support", &pr_num))
@@ -151,7 +151,7 @@ static int zocl_pr_slot_init(struct drm_zocl_dev *zdev,
 		} else {
 			/* Work around for CR-1119382 issue.
 			 * ZOCL driver is crashing if it accessing the device tree node */
-			if (ZOCL_PLATFORM_ARM64) {
+			if (false) {
 				u32 prop_addr = 0;
 
 				if (of_property_read_u32(pdev->dev.of_node,
