@@ -92,7 +92,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // -- Retrieve and parse the subcommand options -----------------------------
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
