@@ -1,18 +1,5 @@
-/**
- * Copyright (C) 2019-2020 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #include "xrtexec.hpp"
 #include "xrt/device/device.h"
 #include "core/common/bo_cache.h"
@@ -39,7 +26,7 @@ static void
 add_cu(ert_start_kernel_cmd* skcmd, index_type cuidx)
 {
   auto maskidx = mask_idx(cuidx);
-  if (maskidx > 3) 
+  if (maskidx > 3)
     throw std::runtime_error("Bad CU idx : " + std::to_string(cuidx));
 
   // Shift payload down if necessary to make room for extra cu mask(s).
@@ -98,7 +85,7 @@ create_exec_buf(xrt_xocl::device* device)
     device->add_close_callback(std::bind(at_close, device));
     s_ebocache.emplace(device, std::make_unique<xrt_core::bo_cache>(device->get_xcl_handle(), 128));
   }
-  
+
   return s_ebocache[device]->alloc<ert_packet>();
 }
 
@@ -107,7 +94,7 @@ release_exec_buf(const xrt_xocl::device* device, execbuf_type& ebo)
 {
   s_ebocache[device]->release(ebo);
 }
-  
+
 struct command::impl : xrt_core::command
 {
   impl(xrt_xocl::device* device, ert_cmd_opcode opcode)
@@ -201,15 +188,15 @@ struct command::impl : xrt_core::command
   }
 
   virtual void
-  notify(ert_cmd_state s)
+  notify(ert_cmd_state s) const
   {
-    if (s< ERT_CMD_STATE_COMPLETED)
+    if (s < ERT_CMD_STATE_COMPLETED)
       return;
 
     std::lock_guard<std::mutex> lk(m_mutex);
     m_done = true;
   }
-  
+
 };
 
 command::
@@ -306,7 +293,7 @@ add_ctx(uint32_t ctx)
 {
   if (ctx >= 32)
     throw std::runtime_error("write_exec supports at most 32 contexts numbered 0 through 31");
-  
+
   auto skcmd = m_impl->ert_cu;
   skcmd->data[0x10 >> 2] = ctx;
 }
@@ -327,7 +314,7 @@ clear()
   auto skcmd = m_impl->ert_cu;
   skcmd->cu_mask = 0;
 
-  m_impl->ert_pkt->count = 1; 
+  m_impl->ert_pkt->count = 1;
 }
 
 }} // exec,xrt

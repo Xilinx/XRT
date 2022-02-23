@@ -1,36 +1,23 @@
-/**
- * Copyright (C) 2021 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 
 #include "exec.h"
 #include "ert.h"
 #include "command.h"
+#include "core/common/debug.h"
 #include "core/common/device.h"
 #include "core/common/thread.h"
-#include "core/common/debug.h"
 
-#include <memory>
+#include <algorithm>
 #include <cstring>
 #include <cerrno>
-#include <algorithm>
-#include <thread>
-#include <mutex>
 #include <condition_variable>
 #include <list>
 #include <map>
+#include <memory>
+#include <mutex>
+#include <thread>
 
 ////////////////////////////////////////////////////////////////
 // Main command execution interface for scheduling commands for
@@ -369,6 +356,13 @@ unmanaged_wait(const xrt_core::command* cmd, const std::chrono::milliseconds& ti
 {
   auto kdev = get_kds_device(cmd);
   return kdev->exec_wait(cmd, timeout_ms.count());
+}
+
+std::cv_status
+exec_wait(const xrt_core::device* device, const std::chrono::milliseconds& timeout_ms)
+{
+  auto kdev = get_kds_device_or_error(device);
+  return kdev->exec_wait(timeout_ms.count());
 }
 
 // Start unmanaged command execution.  The command must be explicitly
