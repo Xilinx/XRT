@@ -967,7 +967,7 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
 		return hwmon_sdm_read_from_peer(pdev, repo_type);
 
 	if (!sdm->sensor_data[repo_id])
-		sdm->sensor_data[repo_id] = (char*)kzalloc(sizeof(char) * RESP_LEN, GFP_KERNEL);
+		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * RESP_LEN, GFP_KERNEL);
 
 	ret = xocl_xgq_collect_sensors_by_id(xdev, sdm->sensor_data[repo_id],
                                          repo_id, RESP_LEN);
@@ -1078,7 +1078,7 @@ static int hwmon_sdm_create_sensors_sysfs(struct platform_device *pdev,
 	}
 
 	if (!sdm->sensor_data[repo_id])
-		sdm->sensor_data[repo_id] = (char*)kzalloc(sizeof(char) * RESP_LEN, GFP_KERNEL);
+		sdm->sensor_data[repo_id] = (char*)devm_kzalloc(&sdm->pdev->dev, sizeof(char) * RESP_LEN, GFP_KERNEL);
 	memcpy(sdm->sensor_data[repo_id], in_buf, len);
 
 	ret = parse_sdr_info(in_buf, sdm, true);
