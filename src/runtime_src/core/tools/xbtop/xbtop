@@ -8,7 +8,7 @@ if [[ "`uname`" == windows32* ]] || [[ "`uname`" == CYGWIN* ]] ; then
 fi
 
 # Working variables
-XRT_PROG="`dirname \"$0\"`/../python/xbtop/xbtop.py"
+XRT_PROG="`dirname \"$0\"`/../python/xbtop.py"
 
 # -- Examine the options 
 XRTWARP_PROG_ARGS_size=0
