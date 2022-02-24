@@ -37,8 +37,6 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
 
@@ -57,6 +55,7 @@ namespace xdp {
     }
 
     // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
 
     if (openNewFile)
@@ -66,8 +65,6 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
 
@@ -86,6 +83,7 @@ namespace xdp {
     }
 
     // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
 
     if (openNewFile)
@@ -107,8 +105,6 @@ namespace xdp {
 
   bool AIEShimDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     
@@ -127,6 +123,7 @@ namespace xdp {
     }
 
     // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
 
     if (openNewFile)
@@ -136,8 +133,6 @@ namespace xdp {
 
   bool AIEShimDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     
@@ -156,6 +151,7 @@ namespace xdp {
     }
 
     // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
 
     if (openNewFile)
