@@ -1548,6 +1548,9 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_PS_KERNEL_MEM(topo, idx)					\
+	(topo->m_mem_data[idx].m_type == MEM_PS_KERNEL && \
+	!IS_PS_KERNEL_MEM(topo->m_mem_data[i].m_tag))
 #define XOCL_IS_P2P_MEM(topo, idx)					\
 	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\

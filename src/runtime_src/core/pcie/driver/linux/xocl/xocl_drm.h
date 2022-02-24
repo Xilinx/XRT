@@ -25,6 +25,7 @@
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 #define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
+#define IS_PS_KERNEL_MEM(m_tag)	(!strncmp(m_tag, "MEM_PS_KERNEL", 13))
 #define IS_PLRAM(m_tag)		(!strncmp(m_tag, "PLRAM[", 6))
 
 /**
@@ -110,8 +111,6 @@ void xocl_mm_get_usage_stat(struct xocl_drm *drm_p, u32 ddr,
 void xocl_mm_update_usage_stat(struct xocl_drm *drm_p, u32 ddr,
         u64 size, int count);
 
-int xocl_mm_insert_node_range(struct xocl_drm *drm_p, u32 mem_id,
-                    struct drm_mm_node *node, u64 size);
 int xocl_mm_insert_node(struct xocl_drm *drm_p, u32 ddr,
                 struct drm_mm_node *node, u64 size);
 
