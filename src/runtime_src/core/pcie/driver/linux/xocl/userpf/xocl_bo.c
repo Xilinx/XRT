@@ -443,6 +443,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		xobj->base.size);
 	if (err)
 		goto failed;
+
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);

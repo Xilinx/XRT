@@ -662,9 +662,13 @@ static int xocl_mm_insert_node_range_all(struct xocl_drm *drm_p, u32 mem_id,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	for (i = 0; i < grp_topology->m_count; i++) {
+		if (IS_HOST_MEM(grp_topology->m_mem_data[i].m_tag) ||
+				XOCL_IS_PS_KERNEL_MEM(grp_topology, i))
+			continue;
+
 		hash_start_addr = grp_topology->m_mem_data[i].m_base_address;
 		hash_for_each_possible(drm_p->mm_range, wrapper, node, hash_start_addr) {
-			if (!wrapper && (wrapper->ddr == drm_p->cma_bank_idx))
+			if (!wrapper)
 				continue;
 
 			start_addr = wrapper->start_addr;

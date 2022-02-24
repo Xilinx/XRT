@@ -25,7 +25,6 @@
 typedef void (*xocl_execbuf_callback)(unsigned long data, int error);
 
 #define IS_HOST_MEM(m_tag)	(!strncmp(m_tag, "HOST[0]", 7))
-#define IS_PS_KERNEL_MEM(m_tag)	(!strncmp(m_tag, "MEM_PS_KERNEL", 13))
 #define IS_PLRAM(m_tag)		(!strncmp(m_tag, "PLRAM[", 6))
 
 /**
