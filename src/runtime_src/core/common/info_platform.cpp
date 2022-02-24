@@ -103,6 +103,46 @@ add_mig_info(const xrt_core::device* device, ptree_type& pt)
   }
 }
 
+static std::map<std::string, long long> 
+p2p_convert_config(xrt_core::query::p2p_config::result_type& config)
+{
+  std::map<std::string, long long> map;
+  for (auto& str : config) {
+    // str is in key:value format obtained from p2p_config query
+    auto pos = str.find(":");
+    std::string key = str.substr(0, pos);
+    try {
+      long long value = std::stoll(str.substr(pos + 1));
+      map[key] = value;
+    } catch (const std::exception&) {
+      // Failed to parse a non long long BAR value. Dont parse it into the map and move on!
+    }
+  }
+  return map;
+}
+
+void
+add_p2p_config(const xrt_core::device* device, ptree_type& pt)
+{
+  ptree_type pt_p2p;
+  auto config = xrt_core::device_query<xq::p2p_config>(device);
+  auto config_map = p2p_convert_config(config);
+  for(auto& pair : config_map)
+    pt_p2p.add(pair.first, std::to_string(pair.second/1024/1024/1024)); // Turn bytes into GB
+
+  pt.put_child("p2p", pt_p2p);
+}
+
+void
+add_config_info(const xrt_core::device* device, ptree_type& pt)
+{
+  ptree_type pt_config;
+
+  add_p2p_config(device, pt_config);
+
+  pt.put_child("config", pt_config);
+}
+
 void
 add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 {
@@ -261,6 +301,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_controller_info(device, pt_platform);
   add_clock_info(device, pt_platform);
   add_mac_info(device, pt_platform);
+  add_config_info(device, pt_platform);
 
   pt_platforms.push_back(std::make_pair("", pt_platform));
   pt_platform_array.add_child("platforms", pt_platforms);
