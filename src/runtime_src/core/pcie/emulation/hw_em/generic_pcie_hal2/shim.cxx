@@ -553,7 +553,8 @@ namespace xclhwemhal2 {
     }
 
     std::string instance_name = "";
-    auto base_address = 0;
+    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
+    uint64_t base_address = 0;
     for (const auto& kernel : xclbin_object.get_kernels())
     {
       // get properties of each kernel object
@@ -563,17 +564,19 @@ namespace xclhwemhal2 {
       for (const auto& cu : kernel.get_cus())
       {
         base_address = cu.get_base_address();
-        mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
-        //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-        if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
-        {
-          mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
+        if (base_address != (uint64_t)-1 && mVersalPlatform) {
+          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
+          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
+          {
+            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+          }
+          else if(mVersalPlatform)
+          {
+            mCuBaseAddress = 0x20200000000;
+          }
         }
-        else if(mVersalPlatform)
-        {
-          mCuBaseAddress = 0x20200000000;
-        }
-
         //fetch instance name
         instance_name = cu.get_name();
         //iterate over arguments and populate kernelArg structure

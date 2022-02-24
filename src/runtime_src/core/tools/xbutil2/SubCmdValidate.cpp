@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1106,7 +1106,14 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   XBU::xclbin_lock xclbin_lock(_dev);
-  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
+  // Assume m2m is not enabled
+  uint32_t m2m_enabled = 0;
+  try {
+    m2m_enabled = xrt_core::device_query<xrt_core::query::m2m>(_dev);
+  } catch (const xrt_core::query::exception&) {
+    // Ignore the catch! Let the below logic handle the notification as we want to skip this test
+    // If we end up here this means the m2m sysfs node was not found and we skip the test.
+  }
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
   // Workaround:
@@ -1297,7 +1304,7 @@ pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
 {
   // If the status is anything other than skipped print the test name
   auto _status = test.get<std::string>("status", "");
-  if (!boost::iequals(_status, test_token_skipped)) {
+  if (!boost::equals(_status, test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
@@ -1330,7 +1337,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](std::string tag, std::string log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if(boost::iequals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else

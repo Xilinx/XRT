@@ -2185,7 +2185,7 @@ struct xocl_sdm_funcs {
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
 	(struct xocl_sdm_funcs *)SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM)->ops : NULL)
 #define	SDM_CB(xdev, cb)					\
-	(XGQ_DEV(xdev) && SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
+	(SDM_DEV(xdev) && SDM_OPS(xdev) && SDM_OPS(xdev)->cb)
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)

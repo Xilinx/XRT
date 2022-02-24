@@ -1795,11 +1795,9 @@ XclBin::addPsKernel(const std::string& encodedString)
   parsePSKernelString(encodedString, symbolicName, numInstances, kernelLibrary);
 
   // Examine the PS library data mining the function and its arguments
-  std::vector<std::string> functionSigs = XUtil::dataMineExportedFunctions(kernelLibrary);
-
   // Convert the function signatures into something useful.
   boost::property_tree::ptree ptFunctions;
-  XUtil::transposeFunctions(functionSigs, ptFunctions);
+  XUtil::dataMineExportedFunctionsDWARF(kernelLibrary, ptFunctions);
   XUtil::validateFunctions(kernelLibrary, ptFunctions);
 
   // Create the same schema that is used for kernels

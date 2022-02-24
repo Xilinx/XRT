@@ -1,19 +1,5 @@
-/*
- * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2020-2022 Xilinx, Inc. All rights reserved.
 
 // This file implements XRT xclbin APIs as declared in
 // core/include/experimental/xrt_device.h
@@ -23,24 +9,26 @@
 #include "core/include/xrt/xrt_device.h"
 #include "core/include/xrt/xrt_aie.h"
 
-#include "core/common/system.h"
 #include "core/common/device.h"
-#include "core/common/message.h"
-#include "core/common/sensor.h"
 #include "core/common/info_aie.h"
 #include "core/common/info_memory.h"
 #include "core/common/info_platform.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/sensor.h"
+#include "core/common/system.h"
 
+#include "device_int.h"
+#include "exec.h"
 #include "handle.h"
 #include "native_profile.h"
-#include "xclbin_int.h" // Non public xclbin APIs
+#include "xclbin_int.h"
 
 #include <boost/property_tree/json_parser.hpp>
 
+#include <fstream>
 #include <map>
 #include <vector>
-#include <fstream>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 )
@@ -215,8 +203,13 @@ get_xcl_device_handle(xrtDeviceHandle dhdl)
   return device->get_device_handle();  // shim handle
 }
 
-}} // device_int, xrt_core
+std::cv_status
+exec_wait(const xrt::device& device, const std::chrono::milliseconds& timeout_ms)
+{
+  return xrt_core::exec::exec_wait(device.get_handle().get(), timeout_ms);
+}
 
+}} // device_int, xrt_core
 
 namespace xrt {
 

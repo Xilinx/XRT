@@ -27,7 +27,6 @@ Steps for RHEL 8.x::
 Steps for CENTOS 7.x::
 
 	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 
 Steps for CENTOS 8.x::
 

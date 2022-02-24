@@ -83,6 +83,9 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
+#define MAX_WAIT 30
+#define WAIT_INTERVAL 1000 //ms
+
 /*
  * reserved shared memory size and number for log page.
  * currently, only 1 resource controlled by sema. Can be extended to n.
@@ -150,6 +153,8 @@ struct xocl_xgq_vmr {
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
 };
+
+static int vmr_status_query(struct platform_device *pdev);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -730,7 +735,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		XGQ_INFO(xgq, "ret %d", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -1242,13 +1247,38 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 	size_t len)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 	int ret = 0;
+	int i = 0;
 
 	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
 		XOCL_XGQ_DOWNLOAD_TIME);
 
-	XGQ_DBG(xgq, "ret %d", ret);
-	return ret == len ? 0 : -EIO;
+	if (ret != len) {
+		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
+		return -EIO;
+	}
+
+	/*
+	 * We wait till the apu is back online or report EBUSY after a
+	 * certain time.
+	 */
+	for (i = 0; i < MAX_WAIT; i++) {
+
+		if (vmr_status_query(xgq->xgq_pdev)) {
+			ret = -EIO;
+			break;
+		}
+		if (vmr_status->apu_is_ready) {
+			break;
+		}
+
+		msleep(WAIT_INTERVAL);
+	}
+
+	XGQ_INFO(xgq, "wait %d seconds for apu ready value: %d", i, vmr_status->apu_is_ready);
+	return vmr_status->apu_is_ready ? 0 : -ETIME;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
@@ -1354,7 +1384,7 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
-static int xgq_collect_sensors(struct platform_device *pdev, int pid,
+static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 	char *data_buf, uint32_t len)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -1389,7 +1419,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	payload->address = address;
 	payload->size = len;
 	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
-	payload->pid = pid;
+	payload->sid = sid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1442,7 +1472,7 @@ acquire_failed:
 }
 
 static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
-									 uint8_t id, uint32_t len)
+	 uint8_t id, uint32_t len)
 {
 	return xgq_collect_sensors(pdev, id, buf, len);
 }
@@ -1665,6 +1695,7 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "HAS_EXT_SYSTEM_DTB:%d\n", vmr_status->has_ext_sysdtb);
 	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
+	cnt += sprintf(buf + cnt, "APU_IS_READY:%d\n", vmr_status->apu_is_ready);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;

@@ -26,7 +26,7 @@
 #include "xclfeatures.h"
 
 #define SYSFS_COUNT_PER_SENSOR          4
-#define SYSFS_NAME_LEN                  20
+#define SYSFS_NAME_LEN                  30
 #define HWMON_SDM_DEFAULT_EXPIRE_SECS   1
 
 //TODO: fix it by issuing sensor size request to vmr.
@@ -253,16 +253,21 @@ static struct sensor_device_attribute name_attr =
 
 /*
  * hwmon_sensor_show(): This API is called when hwmon sysfs node is read
+ * It uses index to identify the right sensor from sensor_data list
+ * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+ * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+ * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+ * buf_len     : uint8_t  | 8 bits  (0xFF)   | [24:31]
  */
 static ssize_t hwmon_sensor_show(struct device *dev,
                                  struct device_attribute *da, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 	int index = to_sensor_dev_attr(da)->index;
-	uint8_t repo_id = index & 0xF;
-	uint8_t field_id = (index >> 4) & 0xF;
-	uint32_t buf_index = (index >> 8) & 0xFFF;
-	uint8_t buf_len = (index >> 20) & 0xFF;
+	uint8_t repo_id = index & 0xFF;
+	uint8_t field_id = (index >> 8) & 0xF;
+	uint32_t buf_index = (index >> 12) & 0xFFF;
+	uint8_t buf_len = (index >> 24) & 0xFF;
 	char output[64];
 	uint32_t uval = 0;
 
@@ -306,18 +311,23 @@ static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
 					 GFP_KERNEL);
 	int err = 0;
 	iter->dev_attr.attr.name = (char*)devm_kzalloc(&sdm->pdev->dev,
-                                sizeof(char) * strlen(sysfs_name), GFP_KERNEL);
+                                sizeof(char) * strlen(sysfs_name) + 1, GFP_KERNEL);
 	strcpy((char*)iter->dev_attr.attr.name, sysfs_name);
 	iter->dev_attr.attr.mode = S_IRUGO;
 	iter->dev_attr.show = hwmon_sensor_show;
-	iter->index = repo_id | (field_id << 4) | (buf_index << 8) | (len << 20);
+	/*
+	 * repo_id     : uint8_t  | 8 bits  (0xFF)   | [0:7]
+	 * field_id    : uint8_t  | 4 bits  (0xF)    | [8:11]
+	 * buf_index   : uint32_t | 12 bits (0xFFF)  | [12:23]
+	 * len         : uint8_t  | 8 bits  (0xFF)   | [24:31]
+	 */
+	iter->index = repo_id | (field_id << 8) | (buf_index << 12) | (len << 24);
 
 	sysfs_attr_init(&iter->dev_attr.attr);
 	err = device_create_file(sdm->hwmon_dev, &iter->dev_attr);
 	if (err) {
 		iter->dev_attr.attr.name = NULL;
-		xocl_err(&sdm->pdev->dev, "unabled to create sensors_list0 hwmon sysfs file ret: 0x%x",
-				 err);
+		xocl_err(&sdm->pdev->dev, "unabled to create sysfs file, err: 0x%x", err);
 	}
 
 	return err;
@@ -363,7 +373,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	uint8_t status;
 	int buf_index, err, repo_id;
 	uint8_t remaining_records, completion_code, repo_type;
-	uint8_t name_length, name_type_length;
+	uint8_t name_length, name_type_length, sys_index;
 	uint8_t val_len, value_type_length, threshold_support_byte;
 	uint8_t bu_len, sensor_id, base_unit_type_length, unit_modifier_byte;
 	uint32_t buf_size, name_index, ins_index, max_index = 0, avg_index = 0;
@@ -401,6 +411,12 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 	buf_index = SDR_NUM_BYTES_IDX + 1;
 	//buf_size is only payload size. So, add header bytes for total in_buf buffer size
 	buf_size = buf_size + SDR_HEADER_SIZE;
+
+	//sysfs name indexing starts with 1 except for voltage.
+	//example; curr1_*, temp1_*. For voltage, it will be in0_*
+	sys_index = 1;
+	if (repo_type == SDR_TYPE_VOLTAGE)
+		sys_index = 0;
 
 	while((remaining_records > 0) && (buf_index < buf_size))
 	{
@@ -508,31 +524,31 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 
 			switch(repo_type) {
 				case SDR_TYPE_TEMP:
-					sprintf(sysfs_name[3], "temp%d_average", remaining_records);
-					sprintf(sysfs_name[2], "temp%d_max", remaining_records);
-					sprintf(sysfs_name[1], "temp%d_input", remaining_records);
-					sprintf(sysfs_name[0], "temp%d_label", remaining_records);
+					sprintf(sysfs_name[3], "temp%d_average", sys_index);
+					sprintf(sysfs_name[2], "temp%d_max", sys_index);
+					sprintf(sysfs_name[1], "temp%d_input", sys_index);
+					sprintf(sysfs_name[0], "temp%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_VOLTAGE:
-					sprintf(sysfs_name[3], "in%d_average", remaining_records);
-					sprintf(sysfs_name[2], "in%d_max", remaining_records);
-					sprintf(sysfs_name[1], "in%d_input", remaining_records);
-					sprintf(sysfs_name[0], "in%d_label", remaining_records);
+					sprintf(sysfs_name[3], "in%d_average", sys_index);
+					sprintf(sysfs_name[2], "in%d_max", sys_index);
+					sprintf(sysfs_name[1], "in%d_input", sys_index);
+					sprintf(sysfs_name[0], "in%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_CURRENT:
-					sprintf(sysfs_name[3], "curr%d_average", remaining_records);
-					sprintf(sysfs_name[2], "curr%d_max", remaining_records);
-					sprintf(sysfs_name[1], "curr%d_input", remaining_records);
-					sprintf(sysfs_name[0], "curr%d_label", remaining_records);
+					sprintf(sysfs_name[3], "curr%d_average", sys_index);
+					sprintf(sysfs_name[2], "curr%d_max", sys_index);
+					sprintf(sysfs_name[1], "curr%d_input", sys_index);
+					sprintf(sysfs_name[0], "curr%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_POWER:
-					sprintf(sysfs_name[3], "power%d_average", remaining_records);
-					sprintf(sysfs_name[2], "power%d_max", remaining_records);
-					sprintf(sysfs_name[1], "power%d_input", remaining_records);
-					sprintf(sysfs_name[0], "power%d_label", remaining_records);
+					sprintf(sysfs_name[3], "power%d_average", sys_index);
+					sprintf(sysfs_name[2], "power%d_max", sys_index);
+					sprintf(sysfs_name[1], "power%d_input", sys_index);
+					sprintf(sysfs_name[0], "power%d_label", sys_index);
 					create = true;
 					break;
 				case SDR_TYPE_QSFP:
@@ -586,6 +602,7 @@ static int parse_sdr_info(char *in_buf, struct xocl_hwmon_sdm *sdm, bool create_
 		}
 
 		remaining_records--;
+		sys_index++;
 	}
 
 	if ((remaining_records > 0) || (buf_index >= buf_size))
@@ -749,6 +766,7 @@ static int hwmon_sdm_update_sensors_by_type(struct platform_device *pdev,
                                                GFP_KERNEL);
 	ret = xocl_xgq_collect_sensors_by_id(xdev, sdm->sensor_data[repo_id],
                                          repo_id, resp_size);
+
 	if (!ret) {
 		ret = parse_sdr_info(sdm->sensor_data[repo_id], sdm, create_sysfs);
 		if (!ret)
@@ -772,6 +790,7 @@ static void hwmon_sdm_get_sensors_list(struct platform_device *pdev, bool create
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_TEMP, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_CURRENT, create_sysfs);
 	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_POWER, create_sysfs);
+	(void) hwmon_sdm_update_sensors_by_type(pdev, SDR_TYPE_VOLTAGE, create_sysfs);
 }
 
 /*
