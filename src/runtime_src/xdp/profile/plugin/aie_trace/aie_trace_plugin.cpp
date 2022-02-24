@@ -89,9 +89,9 @@ namespace xdp {
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
-    continuousTrace = xrt_core::config::get_continuous_trace();
+    continuousTrace = xrt_core::config::get_periodic_aie_trace_offload();
     if (continuousTrace) {
-      offloadIntervalms = xrt_core::config::get_trace_buffer_offload_interval_ms();
+      offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
     }
 
     // Pre-defined metric sets
@@ -161,6 +161,13 @@ namespace xdp {
       memoryCounterStartEvents = {XAIE_EVENT_TRUE_MEM};
       memoryCounterEndEvents   = {XAIE_EVENT_NONE_MEM};
       memoryCounterEventValues = {0x3FF00};
+    }
+
+    //Process the file dump interval
+    aie_trace_file_dump_int_s = xrt_core::config::get_aie_trace_file_dump_interval_s();
+    if (aie_trace_file_dump_int_s < MIN_TRACE_DUMP_INTERVAL_S){
+      aie_trace_file_dump_int_s = MIN_TRACE_DUMP_INTERVAL_S;
+      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", AIE_TRACE_DUMP_INTERVAL_WARN_MSG);
     }
   }
 
@@ -985,7 +992,7 @@ namespace xdp {
 
     // Continuous Trace Offload is supported only for PLIO flow
     if (continuousTrace && isPLIO) {
-      XDPPlugin::startWriteThread(XDPPlugin::get_trace_file_dump_int_s(), "AIE_EVENT_TRACE");
+      XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE");
     }
 
     // First, check against memory bank size
