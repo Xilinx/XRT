@@ -718,7 +718,7 @@ namespace xdp {
                                  : ((mod == XAIE_MEM_MOD) ? (tmpEnd + BASE_MEMORY_COUNTER)
                                  : (tmpEnd + BASE_SHIM_COUNTER));
 
-          auto payload = getCounterPayload(aieDevInst, col, row, startEvent);
+          auto payload = getCounterPayload(aieDevInst, tile, col, row, startEvent);
 
           // Store counter info in database
           std::string counterName = "AIE Counter " + std::to_string(counterId);
@@ -867,13 +867,14 @@ namespace xdp {
           xrt_core::message::send(severity_level::warning, "XRT", msg);
           (db->getStaticInfo()).setIsAIECounterRead(deviceId,true);
           return;
-	}
+        }
         else {
           XAie_DevInst* aieDevInst =
             static_cast<XAie_DevInst*>(db->getStaticInfo().getAieDevInst(fetchAieDevInst, handle));
 
           for (auto& counter : counters) {
-            auto payload = getCounterPayload(aieDevInst, counter.column, counter.row, 
+            tile_type tile;
+            auto payload = getCounterPayload(aieDevInst, tile, counter.column, counter.row, 
                                              counter.startEvent);
 
             (db->getStaticInfo()).addAIECounter(deviceId, counter.id, counter.column,
