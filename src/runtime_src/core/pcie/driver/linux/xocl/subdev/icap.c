@@ -1,5 +1,5 @@
 /**
- *  Copyright (C) 2017-2021 Xilinx, Inc. All rights reserved.
+ *  Copyright (C) 2017-2022 Xilinx, Inc. All rights reserved.
  *  Author: Sonal Santan
  *  Code copied verbatim from SDAccel xcldma kernel mode driver
  *

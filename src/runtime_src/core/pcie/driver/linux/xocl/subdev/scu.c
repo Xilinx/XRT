@@ -2,7 +2,7 @@
 /*
  * Xilinx Alveo CU Sub-device Driver
  *
- * Copyright (C) 2021 Xilinx, Inc.
+ * Copyright (C) 2021-2022 Xilinx, Inc.
  *
  * Authors: min.ma@xilinx.com
  */
@@ -179,7 +179,7 @@ crc_buf_show(struct file *filp, struct kobject *kobj,
 {
 	struct device *dev = container_of(kobj, struct device, kobj);
 	struct xocl_cu *cu = (struct xocl_cu *)dev_get_drvdata(dev);
-	struct xrt_cu *xcu;
+	struct xrt_cu *xcu = NULL;
 
 	if (!cu)
 		return 0;
@@ -224,7 +224,7 @@ static const struct attribute_group scu_attrgroup = {
 static int scu_probe(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xocl_cu *xcu;
+	struct xocl_cu *xcu = NULL;
 	struct xrt_cu_info *info = NULL;
 	struct xrt_cu_arg *args = NULL;
 	int err = 0;
@@ -274,8 +274,8 @@ err:
 static int scu_remove(struct platform_device *pdev)
 {
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct xrt_cu_info *info;
-	struct xocl_cu *xcu;
+	struct xrt_cu_info *info = NULL;
+	struct xocl_cu *xcu = NULL;
 
 	xcu = platform_get_drvdata(pdev);
 	if (!xcu)

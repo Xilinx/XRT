@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -367,7 +367,7 @@ struct platform_driver zocl_cu_xgq_driver = {
 
 int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 {
-	int rc;
+	int rc = 0;
 	struct zocl_cu_xgq *zcu_xgq = platform_get_drvdata(pdev);
 
 	mutex_lock(&zcu_xgq->zxc_lock);
@@ -390,7 +390,7 @@ int zcu_xgq_assign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 
 int zcu_xgq_unassign_cu(struct platform_device *pdev, u32 cu_idx, u32 cu_domain)
 {
-	int rc;
+	int rc = 0;
 	struct zocl_cu_xgq *zcu_xgq;
 
 	BUG_ON(pdev == NULL);

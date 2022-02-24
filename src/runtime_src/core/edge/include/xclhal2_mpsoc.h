@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2015-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may

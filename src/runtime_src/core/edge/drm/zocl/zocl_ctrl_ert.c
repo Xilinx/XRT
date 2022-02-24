@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 OR Apache-2.0 */
 /*
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
  *
  * Author(s):
  *        Max Zhen <maxz@xilinx.com>
@@ -184,7 +184,7 @@ static void cu_conf2info(struct xgq_cmd_config_cu *conf, struct xrt_cu_info *inf
 
 static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *conf)
 {
-	int ret;
+	int ret = 0;
 	struct xrt_cu_info info;
 	u32 cuidx = conf->cu_idx;
 
@@ -209,7 +209,7 @@ static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *
 
 static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *conf)
 {
-	int ret;
+	int ret = 0;
 	struct xrt_cu_info info;
 	u32 cuidx = conf->cu_idx;
 
@@ -234,7 +234,7 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 
 static void zert_init_cus(struct zocl_ctrl_ert *zert)
 {
-	u32 i;
+	u32 i = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
 	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
@@ -253,7 +253,7 @@ static void zert_init_cus(struct zocl_ctrl_ert *zert)
 
 static int zert_validate_cus(struct zocl_ctrl_ert *zert)
 {
-	u32 i;
+	u32 i = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
 	for (i = 0; i < zert->zce_num_cus; i++, cu++) {
@@ -285,8 +285,8 @@ static int zert_validate_cus(struct zocl_ctrl_ert *zert)
 
 static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 {
-	int ret;
-	u32 i;
+	int ret = 0;
+	u32 i = 0;
 	u32 idx = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
@@ -316,7 +316,7 @@ static void zert_unassign_cu_xgqs(struct zocl_ctrl_ert *zert)
 
 static void zert_destroy_cus(struct zocl_ctrl_ert *zert)
 {
-	u32 i;
+	u32 i = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
 
 	zert_unassign_cu_xgqs(zert);
@@ -377,9 +377,9 @@ static int zert_create_cu_xgq(struct zocl_ctrl_ert *zert, struct zocl_ctrl_ert_c
 
 static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 {
-	int ret;
-	u32 i;
-	u32 idx;
+	int ret = 0;
+	u32 i = 0;
+	u32 idx = 0;
 	struct platform_device *xgqpdev = NULL;
 	u32 xgqidx = 0;
 	struct zocl_ctrl_ert_cu *cu = &zert->zce_cus[0];
@@ -428,7 +428,6 @@ static void zert_assign_cu_xgqs(struct zocl_ctrl_ert *zert)
 				cu->zcec_xgq_idx = idx;
 		}
 	}
-
 }
 
 static int zert_create_cu_xgqs(struct zocl_ctrl_ert *zert)
@@ -511,8 +510,8 @@ static void zert_destroy_cu_xgqs(struct zocl_ctrl_ert *zert)
 
 static int zert_versal_init(struct zocl_ctrl_ert *zert)
 {
-	int i;
-	int ret;
+	int i = 0;
+	int ret = 0;
 	const char *cq_res_name = "xlnx,xgq_buffer";
 	const char *xgq_res_name = "xlnx,xgq_device";
 	struct device_node *np = NULL;
@@ -584,12 +583,12 @@ static int zert_versal_init(struct zocl_ctrl_ert *zert)
 static int zert_mpsoc_init(struct zocl_ctrl_ert *zert)
 {
 	void __iomem *regs;
-	u64 reg_start;
+	u64 reg_start = 0;
 	/* We support max 32 XGQs since we have only one interrupt line from host. */
 	const int max_xgq = 32;
-	u32 irq;
-	size_t i;
-	int ret;
+	u32 irq = 0;
+	size_t i = 0;
+	int ret = 0;
 
 	/* Obtain CSR and CQ status registers. */
 	regs = zlib_map_res_by_id(ZERT2PDEV(zert), ZERT_HW_RES, &reg_start, NULL);
@@ -668,7 +667,7 @@ static int zert_probe(struct platform_device *pdev)
 	ret = data->zced_dev_init(zert);
 	if (ret)
 		return ret;
-	
+
 	zert->zce_cu_xgq_ring_start = zert->zce_cq_start + sizeof(struct zocl_ert_cq);
 	zert->zce_cu_xgq_ring_size = zert->zce_cq_size - sizeof(struct zocl_ert_cq);
 	/* Remap CQ to just what we need. The rest will be passed onto CU XGQ drivers. */
@@ -790,7 +789,7 @@ static void zert_cmd_cfg_start(struct zocl_ctrl_ert *zert, struct xgq_cmd_sq_hdr
 	zert->zce_num_scus = c->num_scus;
 	zert->zce_echo_mode = c->echo;
 	zert_init_cus(zert);
-	
+
 	init_resp(resp, cmd->cid, 0);
 	r->i2h = true;
 	r->i2e = true;

@@ -3,10 +3,11 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu <yliu@xilinx.com>
+ *    Jeff Lin  <jeffli@xilinx.com>
  *
  * This file is dual-licensed; you may select either the GNU General Public
  * License version 2 or Apache License, Version 2.0.

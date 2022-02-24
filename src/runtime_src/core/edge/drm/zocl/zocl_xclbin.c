@@ -698,7 +698,7 @@ static int
 zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
 		char __user *xclbin_ptr)
 {
-	int ret;
+	int ret = 0;
 	size_t size = axlf->m_header.m_length;
 
 	slot->axlf = vmalloc(size);
@@ -730,7 +730,7 @@ static int
 zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
 		char *xclbin_ptr)
 {
-	int ret;
+	int ret = 0;
 	size_t size = axlf->m_header.m_length;
 
 	slot->axlf = vmalloc(size);
@@ -951,9 +951,9 @@ static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			char __user *xclbin, struct sched_client_ctx *client)
 {
-	uint64_t size;
+	uint64_t size = 0;
 	char *pdi_buf = NULL;
-	int ret;
+	int ret = 0;
 
 	if (client && client->aie_ctx == ZOCL_CTX_SHARED) {
 		DRM_ERROR("%s Shared context can not load xclbin", __func__);
@@ -1559,7 +1559,7 @@ zocl_xclbin_hold(struct drm_zocl_slot *slot, const uuid_t *id)
  */
 int zocl_lock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&slot->slot_xclbin_lock);
 	ret = zocl_xclbin_hold(slot, id);
@@ -1616,7 +1616,7 @@ zocl_xclbin_release(struct drm_zocl_slot *slot, const uuid_t *id)
  */
 int zocl_unlock_bitstream(struct drm_zocl_slot *slot, const uuid_t *id)
 {
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&slot->slot_xclbin_lock);
 	ret = zocl_xclbin_release(slot, id);

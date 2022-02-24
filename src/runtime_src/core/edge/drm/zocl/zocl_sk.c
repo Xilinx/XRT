@@ -3,10 +3,11 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Larry Liu       <yliu@xilinx.com>
+ *    Jeff Lin        <jeffli@xilinx.com>
  *    Jan Stephan     <j.stephan@hzdr.de>
  *
  * This file is dual-licensed; you may select either the GNU General Public
@@ -44,7 +45,7 @@ zocl_sk_getcmd_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	kdata->opcode = scmd->skc_opcode;
 
 	if (kdata->opcode == ERT_SK_CONFIG) {
-		struct config_sk_image *cmd;
+		struct config_sk_image *cmd = NULL;
 		u32 bohdl = 0xffffffff;
 		u32 meta_bohdl = 0xffffffff;
 		int i, ret;
@@ -120,10 +121,10 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct drm_zocl_sk_create *args = data;
 	uint32_t cu_idx = args->cu_idx;
 	struct platform_device *zert = zocl_find_pdev("ert_hw");
-	struct platform_device *scu_pdev;
-	struct zocl_cu *scu;
-	int boHandle;
-	int ret;
+	struct platform_device *scu_pdev = NULL;
+	struct zocl_cu *scu = NULL;
+	int boHandle = -1;
+	int ret = 0;
 	
 	if (cu_idx >= MAX_SOFT_KERNEL) {
 		DRM_ERROR("Fail to create soft kernel: CU index %d > %d.\n",
@@ -159,12 +160,12 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		struct drm_file *filp)
 {
 	struct drm_zocl_sk_report *args = data;
-	struct zocl_cu *scu;
+	struct zocl_cu *scu = NULL;
 	uint32_t cu_idx = args->cu_idx;
 	enum drm_zocl_scu_state state = args->cu_state;
 	int ret = 0;
 	struct platform_device *zert = zocl_find_pdev("ert_hw");
-	struct platform_device *scu_pdev;
+	struct platform_device *scu_pdev = NULL;
 	
 	if(!zert) {
 		DRM_ERROR("ERT not found!");
@@ -176,7 +177,7 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		DRM_ERROR("SCU %d does not exist.\n", cu_idx);
 		return -EINVAL;
 	}
-	
+
 	switch (state) {
 
 	case ZOCL_SCU_STATE_DONE:

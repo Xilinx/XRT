@@ -55,7 +55,7 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)data;
 	u32 num_reg = 0;
 	u32 i = 0;
-	u32 *cu_regfile;
+	u32 *cu_regfile = NULL;
 
 	cu_regfile = scu->vaddr;
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
@@ -67,8 +67,8 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 
 static int scu_configure(void *core, u32 *data, size_t sz, int type)
 {
-  struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
-	struct xgq_cmd_sq_hdr *hdr;
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
 	size_t num_reg = 0;
 
 	if (kds_echo)
@@ -82,8 +82,8 @@ static int scu_configure(void *core, u32 *data, size_t sz, int type)
 
 static void scu_start(void *core)
 {
-  struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
-	u32 *cu_regfile;
+	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
+	u32 *cu_regfile = NULL;
 
 	cu_regfile = scu->vaddr;
 	scu->run_cnts++;
@@ -107,7 +107,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
-	u32 *cu_regfile;
+	u32 *cu_regfile = NULL;
 
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
@@ -155,10 +155,10 @@ static struct xcu_funcs xrt_scu_funcs = {
 
 int xrt_cu_scu_init(struct xrt_cu *xcu)
 {
-	struct xrt_cu_scu *core;
-	size_t size;
+	struct xrt_cu_scu *core = NULL;
+	size_t size = 0;
 	int err = 0;
-	struct drm_zocl_dev *zdev;
+	struct drm_zocl_dev *zdev = NULL;
 
 	core = kzalloc(sizeof(struct xrt_cu_scu), GFP_KERNEL);
 	if (!core) {

@@ -92,8 +92,8 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct soft_krnl *sk = zdev->soft_kernel;
-	struct soft_krnl_cmd *scmd;
-	struct config_sk_image *cp;
+	struct soft_krnl_cmd *scmd = NULL;
+	struct config_sk_image *cp = NULL;
 
 	cp = kmalloc(sizeof(struct config_sk_image), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
@@ -101,6 +101,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
 	strcpy(cp->sk_uuid,uuid);
 
+	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);
 
 	/*
@@ -118,6 +119,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
 	scmd->skc_packet = cp;
 
 	list_add_tail(&scmd->skc_list, &sk->sk_cmd_list);
+	// Releasing soft kernel data structure lock
 	mutex_unlock(&sk->sk_lock);
 
 	/* start CU by waking up PS kernel handler */
@@ -128,9 +130,9 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
 
 static int scu_probe(struct platform_device *pdev)
 {
-	struct zocl_scu *zcu;
-	struct xrt_cu_info *info;
-	struct drm_zocl_dev *zdev;
+	struct zocl_scu *zcu = NULL;
+	struct xrt_cu_info *info = NULL;
+	struct drm_zocl_dev *zdev = NULL;
 	int err = 0;
 
 	zcu = kzalloc(sizeof(*zcu), GFP_KERNEL);
@@ -177,9 +179,9 @@ err:
 
 static int scu_remove(struct platform_device *pdev)
 {
-	struct zocl_scu *zcu;
-	struct drm_zocl_dev *zdev;
-	struct xrt_cu_info *info;
+	struct zocl_scu *zcu = NULL;
+	struct drm_zocl_dev *zdev = NULL;
+	struct xrt_cu_info *info = NULL;
 
 	zcu = platform_get_drvdata(pdev);
 	if (!zcu)
@@ -227,7 +229,7 @@ int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, st
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &zcu->base;
 	struct xrt_cu_scu *cu_scu = xcu->core;
-	int ret;
+	int ret = 0;
 
 	if(!cu_scu) {
 		return -EINVAL;

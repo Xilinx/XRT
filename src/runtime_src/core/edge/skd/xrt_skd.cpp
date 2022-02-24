@@ -48,9 +48,9 @@ namespace xrt {
   XCL_DRIVER_DLLESPEC
   int
   skd::init() {
-    void *buf;
+    void *buf = NULL;
     xclBOProperties prop;
-    int ret;
+    int ret = 0;
 
     // Create soft kernel file from sk_bo
     if(createSoftKernelFile(devHdl, sk_bo) != 0)
@@ -88,14 +88,15 @@ namespace xrt {
     
     // Check for soft kernel init function
     kernel_init_t kernel_init;
-    char sk_init[PS_KERNEL_NAME_LENGTH+5];
+    std::string initExtension = "_init";
+    char sk_init[PS_KERNEL_NAME_LENGTH+initExtension.size()];
 
-    snprintf(sk_init,PS_KERNEL_NAME_LENGTH+5,"%s%s",sk_name,"_init");
+    snprintf(sk_init,PS_KERNEL_NAME_LENGTH+initExtension.size(),"%s%s",sk_name,initExtension.c_str());
     kernel_init = (kernel_init_t)dlsym(sk_handle, sk_init);
     if (!kernel_init) {
       syslog(LOG_INFO, "kernel init function %s not found\n", sk_init);
     } else {
-      int ret;
+      int ret = 0;
       ret = xrtDeviceLoadXclbinUUID(xrtdHdl,reinterpret_cast<unsigned char*>(xclbin_uuid));
       if(ret) {
 	syslog(LOG_ERR, "Cannot load xclbin from UUID!\n");
@@ -142,11 +143,7 @@ namespace xrt {
     
     // Prep FFI type for all kernel arguments
     for(int i=0;i<num_args;i++) {
-      //      if((args[i].index == xrt_core::xclbin::kernel_argument::no_index) && (args[i].hosttype.compare("xrtHandles*")==0)) {
-      //	syslog(LOG_ERR, "ERROR: xrtHandles not initialized!  No kernel init function found!\n");
-      //	return -1;
-      //      } else
-	ffi_args[i] = convert_to_ffitype(args[i]);
+      ffi_args[i] = convert_to_ffitype(args[i]);
     }
     
     if(ffi_prep_cif(&cif,FFI_DEFAULT_ABI, num_args, &ffi_type_uint32,ffi_args) != FFI_OK) {
@@ -162,7 +159,7 @@ namespace xrt {
   void
   skd::run() {
     int32_t kernel_return = 0;
-    int ret;
+    int ret = 0;
     void* ffi_arg_values[num_args];
     // Buffer Objects
     int boHandles[num_args];
@@ -221,9 +218,10 @@ namespace xrt {
   skd::~skd() {
     // Call soft kernel fini if available
     kernel_fini_t kernel_fini;
-    char sk_fini[PS_KERNEL_NAME_LENGTH+5];
+    std::string finiExtension = "_fini";
+    char sk_fini[PS_KERNEL_NAME_LENGTH+finiExtension.size()];
     int ret = 0;
-    snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+5,"%s%s",sk_name,"_fini");
+    snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
     kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
     if (!kernel_fini) {
       syslog(LOG_INFO, "kernel fini function %s not found\n", sk_fini);
@@ -249,7 +247,7 @@ namespace xrt {
   }
 
   int skd::createSoftKernel(int *boh) {
-    int ret;
+    int ret = 0;
     ret = xclSKCreate(devHdl, boh, cu_idx);
     return ret;
   }
@@ -262,47 +260,32 @@ namespace xrt {
    */
   int skd::createSoftKernelFile(xclDeviceHandle handle, int bohdl)
   {
-    FILE *fptr;
-    void *buf;
+    FILE *fptr = NULL;
+    void *buf = NULL;
     char path[XRT_MAX_PATH_LENGTH];
     int len, i;
     
     xclBOProperties prop;
     if (xclGetBOProperties(handle, bohdl, &prop)) {
       syslog(LOG_ERR, "Cannot get SK .so BO info.\n");
-      xclFreeBO(handle, bohdl);
       return -1;
     }
     
     buf = xclMapBO(handle, bohdl, false);
     if (!buf) {
       syslog(LOG_ERR, "Cannot map softkernel BO.\n");
-      xclFreeBO(handle, bohdl);
       return -1;
     }
     
     snprintf(path, XRT_MAX_PATH_LENGTH, "%s", SOFT_KERNEL_FILE_PATH);
-    len = strlen(path);
     
     /* If not exist, create the path one by one. */
-    for (i = 1; i < len; i++) {
-      if (path[i] == '/') {
-      path[i] = '\0';
-      if (access(path, F_OK) != 0) {
-        if (mkdir(path, 0744) != 0) {
-          syslog(LOG_ERR, "Cannot create soft kernel file.\n");
-          return -1;
-        }
-      }
-      path[i] = '/';
-      }
-    }
+    std::filesystem::create_directories(path);
     
     fptr = fopen(sk_path, "w+b");
     if (fptr == NULL) {
       syslog(LOG_ERR, "Cannot create file: %s\n", sk_path);
       munmap(buf, prop.size);
-      xclFreeBO(handle, bohdl);
       return -1;
     }
     
@@ -311,14 +294,12 @@ namespace xrt {
       syslog(LOG_ERR, "Fail to write to file %s.\n", sk_path);
       fclose(fptr);
       munmap(buf, prop.size);
-      xclFreeBO(handle, bohdl);
       return -1;
     }
     syslog(LOG_INFO,"File created at %s\n", sk_path);
     
     fclose(fptr);
     munmap(buf, prop.size);
-    xclFreeBO(handle, bohdl);
     
     return 0;
   }
