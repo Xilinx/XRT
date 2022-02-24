@@ -536,7 +536,7 @@ struct aie_get_freq
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
   {
     result_type freq = 0;
-#if defined(XRT_ENABLE_AIE) && !defined(__AIESIM__)
+#if defined(XRT_ENABLE_AIE)
     const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
     auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
     if (fd_obj->fd < 0)
@@ -564,7 +564,7 @@ struct aie_set_freq_req
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
   {
-#if defined(XRT_ENABLE_AIE) && !defined(__AIESIM__)
+#if defined(XRT_ENABLE_AIE)
     const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
     auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
     if (fd_obj->fd < 0)

@@ -30,7 +30,7 @@ class OO_AieClockFreq : public OptionOptions {
    std::string m_device;
    uint32_t m_partition_id;
    bool m_get;
-   std::string m_freq;
+   std::string m_setFreq;
    bool m_help;
 };
 
