@@ -242,7 +242,7 @@ namespace xdp {
     auto loc = XAie_TileLoc(col, row);
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "Core" 
                            : ((mod == XAIE_MEM_MOD) ? "Memory" 
-                           : "Shim");
+                           : "Interface Tile");
     const std::string groups[3] = {
       XAIEDEV_DEFAULT_GROUP_GENERIC,
       XAIEDEV_DEFAULT_GROUP_STATIC,
@@ -275,7 +275,7 @@ namespace xdp {
     uint32_t tileId = 0;
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                            : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "shim");
+                           : "interface tile");
     auto stats = aieDevice->getRscStat(XAIEDEV_DEFAULT_GROUP_AVAIL);
 
     // Calculate number of free counters based on minimum available across tiles
@@ -350,7 +350,7 @@ namespace xdp {
     std::string metricSet  = vec.at( vec.size()-1 );
     std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                            : ((mod == XAIE_MEM_MOD) ? "memory" 
-                           : "shim");
+                           : "interface tile");
     
     // Ensure requested metric set is supported (if not, use default)
     if (((mod == XAIE_CORE_MOD) && (mCoreStartEvents.find(metricSet) == mCoreStartEvents.end()))
@@ -476,7 +476,7 @@ namespace xdp {
     {
       std::string moduleName = (mod == XAIE_CORE_MOD) ? "core" 
                              : ((mod == XAIE_MEM_MOD) ? "memory" 
-                             : "shim");
+                             : "interface tile");
       std::stringstream msg;
       msg << "Tiles used for AIE " << moduleName << " profile counters: ";
       for (auto& tile : tiles) {
@@ -560,9 +560,17 @@ namespace xdp {
 
   // Get reportable payload specific for this tile and/or counter
   uint32_t AIEProfilingPlugin::getCounterPayload(XAie_DevInst* aieDevInst, 
-      uint16_t column, uint16_t row, uint16_t startEvent)
+      const tile_type& tile, uint16_t column, uint16_t row, uint16_t startEvent)
   {
-    // For now, only used for DMA BD sizes
+    // First, catch stream ID for PLIO metrics
+    // NOTE: value = ((master or slave) << 8) & (stream ID)
+    if ((startEvent == XAIE_EVENT_PORT_RUNNING_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
+        || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
+      return ((tile.itr_mem_col << 8) & tile.itr_mem_row);
+
+    // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM)
         && (startEvent != XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM)
@@ -630,7 +638,7 @@ namespace xdp {
         {NUM_CORE_COUNTERS, NUM_MEMORY_COUNTERS, NUM_SHIM_COUNTERS};
     XAie_ModuleType falModuleTypes[NUM_MODULES] = 
         {XAIE_CORE_MOD, XAIE_MEM_MOD, XAIE_PL_MOD};
-    std::string moduleNames[NUM_MODULES] = {"core", "memory", "shim"};
+    std::string moduleNames[NUM_MODULES] = {"core", "memory", "interface tile"};
     std::string metricSettings[NUM_MODULES] = 
         {xrt_core::config::get_aie_profile_core_metrics(),
          xrt_core::config::get_aie_profile_memory_metrics(),
