@@ -387,7 +387,7 @@ OO_AieRegRead::OO_AieRegRead( const std::string &_longName, bool _isHidden )
     ("row", po::value<decltype(m_row)>(&m_row)->required(), "Row of core tile")
     ("col", po::value<decltype(m_col)>(&m_col)->required(), "Column of core tile")
     ("reg", po::value<decltype(m_reg)>(&m_reg)->required(), "Register name to read from core tile")
-    ("help,h", po::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", po::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

@@ -120,7 +120,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
