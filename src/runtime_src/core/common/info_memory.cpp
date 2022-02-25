@@ -43,7 +43,8 @@ memtype2str(MEM_TYPE mt)
    {MEM_HBM,                  "MEM_HBM"},
    {MEM_BRAM,                 "MEM_BRAM"},
    {MEM_URAM,                 "MEM_URAM"},
-   {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"}
+   {MEM_STREAMING_CONNECTION, "MEM_STREAMING_CONNECTION"},
+   {MEM_PS_KERNEL,            "MEM_PS_KERNEL"}
   };
 
   auto itr = memtype_map.find(mt);

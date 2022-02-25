@@ -82,6 +82,7 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
   xocl_errors,
@@ -819,6 +820,47 @@ struct debug_ip_layout_raw : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct sdm_sensor_info : request
+{
+  /**
+   * enum class sdr_req_type - request ids for specific sensor query requests
+   *
+   * Use request ids in this table to identify the desired sensor query request.
+   */
+  enum class sdr_req_type
+  {
+    current     = 0,
+    voltage     = 1,
+    power       = 2,
+    thermal     = 3,
+    mechanical  = 4,
+  };
+
+  /*
+   * struct sensor_data: used to store sensor information and
+   * each sensor contains following information.
+   *  label    : name
+   *  input    : instantaneous value
+   *  max      : maximum value
+   *  average  : average value
+   *  highest  : highest value (used for temperature sensors)
+   */
+  struct sensor_data {
+    std::string label;
+    uint32_t input {};
+    uint32_t max {};
+    uint32_t average {};
+    uint32_t highest {};
+  };
+  using result_type = std::vector<sensor_data>;
+  using req_type = sdr_req_type;
+  using data_type = sensor_data;
+  static const key_type key = key_type::sdm_sensor_info;
+
+  virtual boost::any
+  get(const device*, const boost::any& req_type) const = 0;
 };
 
 struct kds_cu_info : request

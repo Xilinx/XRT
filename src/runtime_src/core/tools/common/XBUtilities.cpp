@@ -341,13 +341,14 @@ XBUtilities::get_available_devices(bool inUserDomain)
       auto mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(device);
       std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN_"+ std::to_string(mGoldenVer);
       pt_dev.put("vbnv", vbnv);
+      pt_dev.put("id", "n/a");
+      pt_dev.put("instance","n/a");
     }
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...)
-      {
+      } catch(...) {
         // The id wasn't added
       }
 
@@ -369,7 +370,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
        }
 
     }
-
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
   }

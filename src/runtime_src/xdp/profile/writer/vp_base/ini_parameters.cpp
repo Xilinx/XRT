@@ -63,6 +63,9 @@ namespace xdp {
     addParameter("trace_buffer_offload_interval_ms",
                  xrt_core::config::get_trace_buffer_offload_interval_ms(),
                  "Interval for reading of device data to host (in ms)");
+    addParameter("trace_file_dump_interval_s",
+                 xrt_core::config::get_trace_file_dump_interval_s(),
+                 "Interval for dumping files to host (in s)");              
     addParameter("lop_trace", xrt_core::config::get_lop_trace(),
                  "Generation of lower overhead OpenCL trace. Should not be used with other OpenCL options.");
     addParameter("debug_mode", xrt_core::config::get_launch_waveform(),
@@ -75,6 +78,14 @@ namespace xdp {
     addParameter("aie_trace_metrics",
                  xrt_core::config::get_aie_trace_metrics(),
                  "Configuration level used for AI Engine trace");
+    addParameter("periodic_aie_trace_offload", xrt_core::config::get_periodic_aie_trace_offload(),
+                 "Periodic offloading of aie trace from memory to host");
+    addParameter("aie_trace_buffer_offload_interval_ms",
+                 xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),
+                 "Interval for reading of device aie trace data to host (in ms)");
+    addParameter("aie_trace_file_dump_interval_s",
+                 xrt_core::config::get_aie_trace_file_dump_interval_s(),
+                 "Interval for dumping aie trace files to host (in s)");  
     addParameter("aie_profile", xrt_core::config::get_aie_profile(),
                  "Generation of AI Engine profiling");
     addParameter("aie_profile_interval_us",

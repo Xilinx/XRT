@@ -252,8 +252,9 @@ XclBinUtilities::addKernel(const boost::property_tree::ptree& ptKernel,
   }
 
   // Add the kernel
-  XUtil::TRACE("Fix kernel '" + kernelName + "' added to EMBEDDED_METADATA");
   ptCore.add_child("kernel", ptKernelXML);
+
+  XUtil::TRACE_PrintTree("EMBEDDED_METADATA XML", ptEmbeddedData);
 }
 
 void addArgsToMemoryConnections(const unsigned int ipLayoutIndexID,
@@ -316,6 +317,11 @@ void transformVectorToPtree(const std::vector<boost::property_tree::ptree>& vect
                             const std::string& arrayName,
                             boost::property_tree::ptree& ptRoot)
 {
+  ptRoot.clear();
+
+  if (vectorOfPtree.empty())
+    return;
+
   boost::property_tree::ptree ptBase;
   ptBase.put("m_count", std::to_string(vectorOfPtree.size()));
 
@@ -326,7 +332,6 @@ void transformVectorToPtree(const std::vector<boost::property_tree::ptree>& vect
 
   ptBase.add_child(arrayName, ptArray);
 
-  ptRoot.clear();
   ptRoot.add_child(sectionName, ptBase);
 }
 
