@@ -524,8 +524,9 @@ add_DWTAG_subprogram(size_t& index,
 
   const auto& functionName = ptFunction.get<std::string>("name", "");
 
-  if (functionName.empty())
-    throw std::runtime_error("ERROR: Could not find the function name for the sub-program. Index: " + std::to_string(subProgramIndex));
+  if (functionName.empty()) {
+    XUtil::TRACE("Info: Could not find the function name for the sub-program. Index: " + std::to_string(subProgramIndex));
+  }
 
   // See if this function is visible
   if (std::find(exportedFunctions.begin(), exportedFunctions.end(), functionName) == exportedFunctions.end())
