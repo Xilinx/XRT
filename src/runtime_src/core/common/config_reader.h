@@ -358,7 +358,7 @@ get_aie_trace_flush()
 inline std::string
 get_aie_trace_counter_scheme()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es2");
+  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es1");
   return value;
 }
 
