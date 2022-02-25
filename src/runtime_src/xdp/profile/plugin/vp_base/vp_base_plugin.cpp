@@ -132,10 +132,10 @@ namespace xdp {
     if (is_write_thread_active) {
       // Ask writer thread to quit
       {
-        std::lock_guard<std::mutex> l(mtx_writer);
-        stop_writer = true;
+        std::lock_guard<std::mutex> l(mtx_writer_thread);
+        stop_writer_thread = true;
       }
-      cv_writer.notify_one();
+      cv_writer_thread.notify_one();
       write_thread.join();
       is_write_thread_active = false;
     } else {
@@ -143,12 +143,12 @@ namespace xdp {
     }
   }
 
-  void XDPPlugin::trySafeWrite(std::string type, bool openNewFiles)
+  void XDPPlugin::trySafeWrite(const std::string& type, bool openNewFiles)
   {
     if (type.empty() && openNewFiles)
       return;
 
-    // If a writer is already writing then don't do anything
+    // If a writer is already writing, then don't do anything
     if (mtx_writer_list.try_lock()) {
       for (auto w : writers) {
         bool success = w->write(openNewFiles);
