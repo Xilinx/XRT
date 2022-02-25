@@ -52,9 +52,11 @@ struct config
 {
   std::string host;
 
-  void write(std::ostream& ostr)
+  friend std::ostream& 
+  operator<<(std::ostream& ostr, const struct config& cfg)
   {
-    ostr << "host=" << host << std::endl;
+    ostr << boost::str(boost::format("host=%s") % cfg.host);
+    return ostr;
   }
 };
 
@@ -85,12 +87,12 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
   boost::property_tree::ini_parser::read_ini(path, pt_root);
   static boost::property_tree::ptree empty_tree;
 
-  const boost::property_tree::ptree pt_device = pt_root.get_child("Device", empty_tree);
+  const boost::property_tree::ptree& pt_device = pt_root.get_child("Device", empty_tree);
 
   if (pt_device.empty())
     throw std::runtime_error(boost::str(boost::format("No [Device] section in the config file. Config File: %s") % path));
 
-  for (auto& key : pt_device) {
+  for (const auto& key : pt_device) {
     if (!key.first.compare("mailbox_channel_disable")) {
       xrt_core::device_update<xrt_core::query::config_mailbox_channel_disable>(_dev.get(), key.second.get_value<std::string>());
       continue;
@@ -126,7 +128,7 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
 static config
 get_daemon_conf()
 {
-  config cfg;
+  config cfg = {.host = ""};
   cfg.host = xrt_core::get_hostname();
 
   std::ifstream istr(config_file);
@@ -134,7 +136,8 @@ get_daemon_conf()
     return cfg;
 
   // Load persistent value, may overwrite default one
-  for (std::string line; std::getline(istr, line);) {
+  std::string line;
+  while (std::getline(istr, line)) {
     auto pos = line.find('=', 0);
     if (pos == std::string::npos)
       throw xrt_core::system_error(EIO, "Bad daemon config file line '" + line + "'");
@@ -156,9 +159,8 @@ static void
 show_daemon_conf()
 {
   auto cfg = get_daemon_conf();
-  std::cout << "Daemon:" << std::endl;
-  std::cout << "\t";
-  cfg.write(std::cout);
+  std::cout << "Daemon:\n";
+  std::cout << boost::str(boost::format("  %s\n") % cfg);
 }
 
 /*
@@ -245,7 +247,7 @@ update_daemon_config(const std::string& host)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
   cfg.host = host;
-  cfg.write(cfile);
+  std::cout << boost::str(boost::format("%s\n") % cfg);
 }
 
 /*
