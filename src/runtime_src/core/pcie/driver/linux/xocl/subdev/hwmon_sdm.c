@@ -291,37 +291,36 @@ static ssize_t hwmon_sensor_show(struct device *dev,
 	uint8_t buf_len = (index >> 24) & 0xFF;
 	char output[64];
 	uint32_t uval = 0;
+	ssize_t sz = 0;
 
 	mutex_lock(&sdm->sdm_lock);
 	get_sensors_data(sdm->pdev, repo_id);
-	mutex_unlock(&sdm->sdm_lock);
 
 	if ((sdm->sensor_data[repo_id] == NULL) || (!sdm->sensor_data_avail[repo_id])) {
-		xocl_err(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
-		return sprintf(buf, "%d\n", 0);
+		xocl_dbg(&sdm->pdev->dev, "sensor_data is empty for repo_id: 0x%x\n", repo_id);
+		sz = sprintf(buf, "%d\n", 0);
 	}
 
 	if (field_id == SYSFS_SDR_NAME) {
 		memcpy(output, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return snprintf(buf, buf_len + 2, "%s\n", output);
-	}
-
-	if (field_id == SYSFS_SDR_INS_VAL) {
+		sz = snprintf(buf, buf_len + 2, "%s\n", output);
+	} else if ((field_id == SYSFS_SDR_INS_VAL) ||
+               (field_id == SYSFS_SDR_AVG_VAL) ||
+               (field_id == SYSFS_SDR_MAX_VAL)) {
+		if (buf_len > 4) {
+			//TODO: fix this case
+			buf_len = 4;
+		}
 		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
+		sz = sprintf(buf, "%u\n", uval);
+	} else {
+		xocl_dbg(&sdm->pdev->dev, "field_id: 0x%x is corrupted or not supported\n", field_id);
+		sz = sprintf(buf, "%d\n", 0);
 	}
 
-	if (field_id == SYSFS_SDR_AVG_VAL) {
-		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
-	}
+	mutex_unlock(&sdm->sdm_lock);
 
-	if (field_id == SYSFS_SDR_MAX_VAL) {
-		memcpy(&uval, &sdm->sensor_data[repo_id][buf_index], buf_len);
-		return sprintf(buf, "%u\n", uval);
-	}
-
-	return sprintf(buf, "N/A\n");
+	return sz;
 }
 
 static int hwmon_sysfs_create(struct xocl_hwmon_sdm * sdm,
