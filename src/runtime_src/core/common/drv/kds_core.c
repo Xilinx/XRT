@@ -1312,7 +1312,7 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 			mutex_unlock(&kds->cu_mgmt.lock);
 		}
 	} else {
-	     if (info->cu_domain >= (SCU_DOMAIN>>16)) {
+	     if (info->cu_domain == (SCU_DOMAIN>>16)) {
 		if (kds_del_scu_context(kds, client, info))
 			return -EINVAL;
 	     } else {
