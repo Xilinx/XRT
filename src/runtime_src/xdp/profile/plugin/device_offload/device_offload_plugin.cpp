@@ -360,7 +360,7 @@ namespace xdp {
     return true;
   }
 
-  void DeviceOffloadPlugin::writeAll(bool openNewFiles)
+  void DeviceOffloadPlugin::writeAll(bool /*openNewFiles*/)
   {
     // This function gets called if the database is destroyed before
     //  the plugin object.  At this time, the information in the database

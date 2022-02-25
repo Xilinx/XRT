@@ -1286,7 +1286,7 @@ namespace xdp {
     
   }
 
-  void AieTracePlugin::writeAll(bool openNewFiles)
+  void AieTracePlugin::writeAll(bool /*openNewFiles*/)
   {
     // read the trace data from device and wrie to the output file
     for(auto o : aieOffloaders) {
