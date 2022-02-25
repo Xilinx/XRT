@@ -52,7 +52,9 @@ namespace xdp {
       std::unique_lock<std::mutex> lk(mtx_writer);
       return !cv_writer.wait_for(lk, duration, [this]() { return stop_writer; });
     }
-    void writeContinuous(unsigned int interval, std::string type);
+    void writeContinuous(unsigned int interval, std::string type, bool openNewFiles);
+    // Mutex to access writer list
+    std::mutex mtx_writer_list;
 
   protected:
     // A link to the single instance of the database that all plugins
@@ -66,9 +68,9 @@ namespace xdp {
     //  dealing with emulation flows.
     XDP_EXPORT virtual void emulationSetup() ;
 
-    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type);
-    XDP_EXPORT void endWrite(bool openNewFiles);
-    XDP_EXPORT void forceWrite(bool openNewFiles) ;
+    XDP_EXPORT void startWriteThread(unsigned int interval, std::string type, bool openNewFiles = true);
+    XDP_EXPORT void endWrite();
+    XDP_EXPORT void trySafeWrite(std::string type, bool openNewFiles);
 
   public:
     XDP_EXPORT XDPPlugin() ;

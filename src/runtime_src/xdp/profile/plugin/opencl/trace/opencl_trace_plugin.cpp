@@ -52,7 +52,7 @@ namespace xdp {
 
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
-      XDPPlugin::endWrite(false);
+      XDPPlugin::endWrite();
       db->unregisterPlugin(this) ;
     }
   }

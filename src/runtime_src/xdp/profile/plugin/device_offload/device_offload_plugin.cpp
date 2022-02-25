@@ -375,7 +375,7 @@ namespace xdp {
     // Also, store away the counter results
     readCounters() ;
 
-    XDPPlugin::endWrite(openNewFiles);
+    XDPPlugin::endWrite();
   }
 
   void DeviceOffloadPlugin::checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId)
@@ -414,7 +414,7 @@ namespace xdp {
       break ;
     case VPDatabase::DUMP_TRACE:
       {
-	XDPPlugin::forceWrite(true) ;
+        XDPPlugin::trySafeWrite("VP_TRACE", true);
       }
       break ;
     default:
