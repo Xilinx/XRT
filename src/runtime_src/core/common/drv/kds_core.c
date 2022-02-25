@@ -1799,7 +1799,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 		 */
 
 		/* Insertion sort */
-		for (j = i; j >= 0; j--) {
+		for (j = num_cus; j >= 0; j--) {
 			struct xrt_cu_info *prev_info;
 
 			if (j == 0) {
@@ -1827,7 +1827,7 @@ int kds_ip_layout2cu_info(struct ip_layout *ip_layout,
 				cu_info[j].cu_idx = j;
 				num_cus++;
 				break;
-			} else if (prev_info->intr_id > info.intr_id) {
+			} else if (prev_info->addr > info.addr) {
 				memcpy(&cu_info[j], prev_info, sizeof(info));
 				cu_info[j].cu_idx = j;
 				continue;

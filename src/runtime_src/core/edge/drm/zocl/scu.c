@@ -99,7 +99,7 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
-	strcpy(cp->sk_uuid,uuid);
+	memcpy(cp->sk_uuid,uuid,sizeof(cp->sk_uuid));
 
 	// Locking soft kernel data structure
 	mutex_lock(&sk->sk_lock);

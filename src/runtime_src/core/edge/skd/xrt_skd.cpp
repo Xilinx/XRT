@@ -34,7 +34,7 @@ namespace xrt {
   skd::skd(xclDeviceHandle handle, int sk_meta_bohdl, int sk_bohdl, char *kname, uint32_t cu_index, char *uuid) {
     strcpy(sk_name,kname);
     devHdl = handle;
-    xrtdHdl = xrt::device(handle);
+    xrtdHdl = xrtDeviceOpenFromXcl(handle);
     cu_idx = cu_index;
     sk_bo = sk_bohdl;
     sk_meta_bo = sk_meta_bohdl;
@@ -102,7 +102,7 @@ namespace xrt {
 	syslog(LOG_ERR, "Cannot load xclbin from UUID!\n");
 	return -1;
       }
-      xrtHandle = kernel_init(xrtdHdl,reinterpret_cast<unsigned char*>(xclbin_uuid));
+      xrtHandle = kernel_init(devHdl,reinterpret_cast<unsigned char*>(xclbin_uuid));
       if(xrtHandle) {
 	pass_xrtHandles = true;
 	syslog(LOG_INFO, "kernel init function found! Will pass xrtHandles to soft kernel\n");

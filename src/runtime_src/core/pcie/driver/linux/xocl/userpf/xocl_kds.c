@@ -1638,7 +1638,7 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 	}
 
 	userpf_info(xdev, "Config start completed, num_cus(%d), num_scus(%d)\n",
-		    cfg_start->num_cus, cfg_start->num_cus);
+		    cfg_start->num_cus, cfg_start->num_scus);
 	return 0;
 }
 
