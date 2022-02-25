@@ -383,8 +383,6 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 static uint xocl_poll(struct file *filp, poll_table *wait)
 {
 	struct drm_file *priv = filp->private_data;
-	struct drm_device *dev = priv->minor->dev;
-	struct xocl_drm	*drm_p = dev->dev_private;
 
 	BUG_ON(!priv->driver_priv);
 

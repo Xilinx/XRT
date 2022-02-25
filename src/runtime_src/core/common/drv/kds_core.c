@@ -139,7 +139,7 @@ ssize_t show_kds_stat(struct kds_sched *kds, char *buf)
 			"CU to host interrupt capability: %d\n",
 			kds->cu_intr_cap);
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Interrupt mode: %s\n",
-			(kds->cu_intr)? "cu" : "ert");
+			(KDS_SETTING(kds->cu_intr))? "cu" : "ert");
 	sz += scnprintf(buf+sz, PAGE_SIZE - sz, "Number of CUs: %d\n",
 			cu_mgmt->num_cus);
 	for (i = 0; i < MAX_CUS; ++i) {
@@ -1523,12 +1523,12 @@ int kds_cfg_update(struct kds_sched *kds)
 			if (!xcu)
 				continue;
 
-			if (cu_mgmt->cu_intr[i] == kds->cu_intr)
+			if (cu_mgmt->cu_intr[i] == KDS_SETTING(kds->cu_intr))
 				continue;
 
-			ret = xrt_cu_cfg_update(xcu, kds->cu_intr);
+			ret = xrt_cu_cfg_update(xcu, KDS_SETTING(kds->cu_intr));
 			if (!ret)
-				cu_mgmt->cu_intr[i] = kds->cu_intr;
+				cu_mgmt->cu_intr[i] = KDS_SETTING(kds->cu_intr);
 			else if (ret == -ENOSYS) {
 				/* CU doesn't support interrupt */
 				cu_mgmt->cu_intr[i] = 0;
@@ -1538,8 +1538,7 @@ int kds_cfg_update(struct kds_sched *kds)
 	}
 
 run_polling:
-	if (!kds->cu_intr) {
-		BUG_ON(kds->polling_thread);
+	if (!KDS_SETTING(kds->cu_intr) && !kds->polling_thread) {
 		kds->polling_stop = 0;
 		kds->polling_thread = kthread_run(kds_polling_thread, kds, "kds_poll");
 		if (IS_ERR(kds->polling_thread)) {
