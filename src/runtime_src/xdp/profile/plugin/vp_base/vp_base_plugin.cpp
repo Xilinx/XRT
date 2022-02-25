@@ -117,7 +117,10 @@ namespace xdp {
       trySafeWrite(type, openNewFiles);
 
     // Do a final write
-    trySafeWrite(type, false);
+    mtx_writer_list.lock();
+    for (auto w : writers)
+      w->write(false);
+    mtx_writer_list.unlock();
   }
 
   void XDPPlugin::startWriteThread(unsigned int interval, std::string type, bool openNewFiles)
