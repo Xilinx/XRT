@@ -31,6 +31,7 @@ namespace XBU = XBUtilities;
 #include "core/common/message.h"
 #include "core/common/utils.h"
 #include "flash/flasher.h"
+#include "core/common/info_vmr.h"
 // Remove linux specific code
 #ifdef __GNUC__
 #include "core/pcie/linux/scan.cpp"
@@ -99,14 +100,11 @@ update_shell(unsigned int index, std::map<std::string, std::string>& image_paths
     if (sec->fail())
       throw xrt_core::error(boost::str(boost::format("Failed to read %s") % image_paths["secondary"]));
   }
-
+  
   if (flasher.upgradeFirmware(flash_type, pri.get(), sec.get()) != 0)
     throw xrt_core::error("Failed to update base");
   
   std::cout << boost::format("%-8s : %s \n") % "INFO" % "Base flash image has been programmed successfully.";
-  std::cout << "****************************************************\n";
-  std::cout << "Cold reboot machine to load the new image on device.\n";
-  std::cout << "****************************************************\n";
 }
 
 static std::string 
@@ -434,6 +432,33 @@ update_shell(unsigned int boardIdx, DSAInfo& candidate, Flasher::E_FlasherType f
   return true;
 }
 
+static void
+update_default_only(xrt_core::device* device, bool value)
+{
+  try {
+    // get boot on backup from vmr_status sysfs node
+    boost::property_tree::ptree pt_empty;
+    const auto pt = xrt_core::vmr::vmr_info(device).get_child("vmr", pt_empty);
+    for(auto& ks : pt) {
+      const boost::property_tree::ptree& vmr_stat = ks.second;
+      if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+        // if backup is booted, then do not proceed
+        if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
+          std::cout << "ERROR: Please load default boot to use this option" <<std::endl;
+          throw xrt_core::error(std::errc::operation_canceled);
+        }
+        break;
+      }
+    }
+      
+    uint32_t val = xrt_core::query::flush_default_only::value_type(value);
+    xrt_core::device_update<xrt_core::query::flush_default_only>(device, val);
+  }
+  catch (const xrt_core::query::exception&) { 
+    // only available for versal devices
+  }
+}
+
 // Update shell and sc firmware on the device automatically 
 // Refactor code to support only 1 device. 
 static void 
@@ -561,7 +586,7 @@ auto_flash(std::shared_ptr<xrt_core::device> & working_device, Flasher::E_Flashe
   } else if (need_warm_reboot) {
     std::cout << "******************************************************************\n";
     std::cout << "Warm reboot is required to recognize new SC image on the device.\n";
-    std::cout << "******************************************************************\\n";
+    std::cout << "******************************************************************\n";
   }
 }
 
@@ -630,6 +655,27 @@ find_flash_image_paths(const std::vector<std::string>& image_list)
   return path_list;
 }
 
+static void
+switch_partition(xrt_core::device* device, int boot)
+{
+  auto bdf = xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device));
+  std::cout << boost::format("Rebooting device: [%s] with '%s' partition")
+                % bdf % (boot ? "backup" : "default") << std::endl;
+  try {
+    auto value = xrt_core::query::flush_default_only::value_type(boot);
+    xrt_core::device_update<xrt_core::query::boot_partition>(device, value);
+    std::cout << "Performing hot reset..." << std::endl;
+    auto hot_reset = XBU::str_to_reset_obj("hot");
+    device->reset(hot_reset);
+    std::cout << "Rebooted successfully" << std::endl;
+  }
+  catch (const xrt_core::query::exception& ex) { 
+    std::cout << "ERROR: " << ex.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+    // only available for versal devices
+  }
+}
+
 }
 //end anonymous namespace
 
@@ -668,6 +714,7 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   std::string update = "";
   std::string xclbin = "";
   std::string flashType = "";
+  std::string boot = "";
   std::vector<std::string> image;
   bool revertToGolden = false;
   bool help = false;
@@ -680,10 +727,11 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     ("base,b", boost::program_options::value<decltype(update)>(&update)->implicit_value("all"), "Update the persistent images and/or the Satellite controller (SC) firmware image.  Value values:\n"
                                                                          "  ALL   - All images will be updated\n"
                                                                          "  SHELL - Platform image\n"
-                                                                         "  SC    - Satellite controller")
+                                                                         "  SC    - Satellite controller\n"
+                                                                         "  NO-BACKUP   - Backup boot remains unchanged")
     ("user,u", boost::program_options::value<decltype(xclbin)>(&xclbin), "The xclbin to be loaded.  Valid values:\n"
                                                                       "  Name (and path) of the xclbin.")
-    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Value values:\n"
+    ("image", boost::program_options::value<decltype(image)>(&image)->multitoken(),  "Specifies an image to use used to update the persistent device.  Valid values:\n"
                                                                     "  Name (and path) to the mcs image on disk\n"
                                                                     "  Name (and path) to the xsabin image on disk")
     ("revert-to-golden", boost::program_options::bool_switch(&revertToGolden), "Resets the FPGA PROM back to the factory image. Note: The Satellite Controller will not be reverted for a golden image does not exist.")
@@ -693,9 +741,13 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   po::options_description hiddenOptions("Hidden Options");  
   hiddenOptions.add_options()
     ("flash-type", boost::program_options::value<decltype(flashType)>(&flashType),
-      "Overrides the flash mode. Use with caution.  Value values:\n"
+      "Overrides the flash mode. Use with caution.  Valid values:\n"
       "  ospi\n"
       "  ospi_versal")
+    ("boot", boost::program_options::value<decltype(boot)>(&boot)->implicit_value("default"), 
+    "RPU and/or APU will be booted to either partition A or partition B.  Valid values:\n"
+    "  DEFAULT - Reboot RPU to partition A\n"
+    "  BACKUP  - Reboot RPU to partition B\n")
   ;
 
   po::options_description allOptions("All Options");  
@@ -783,9 +835,19 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   auto flash_type = working_flasher.getFlashType(flashType);
 
   if (!update.empty()) {
+    XBU::verbose("Sub command: --base");
+    XBU::sudo_or_throw("Root privileges are required to update the devices flash image");
     // User did not provide an image for all. Select image automatically.
     if (update.compare("all") == 0) {
+      update_default_only(working_device.get(), false);
       if (image.empty()) {
+        auto_flash(working_device, flash_type);
+        return;
+      }
+    }
+    else if (update.compare("no-backup") == 0) {
+      if (image.empty()) {
+        update_default_only(working_device.get(), true);
         auto_flash(working_device, flash_type);
         return;
       }
@@ -815,9 +877,8 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
         break;
     }
 
-    XBU::verbose("Sub command: --base");
-    XBUtilities::sudo_or_throw("Root privileges are required to update the devices flash image");
     if (update.compare("all") == 0) {
+        update_default_only(working_device.get(), false);
         auto_flash(working_device, flash_type, validated_image_map["primary"]);
     }
     // For the following two if conditions regarding the validated images portion
@@ -826,7 +887,15 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
       update_SC(working_device.get()->get_device_id(), validated_image_map["primary"]);
     }
     else if (update.compare("shell") == 0) {
+      update_default_only(working_device.get(), false);
       update_shell(working_device.get()->get_device_id(), validated_image_map, flash_type);
+      std::cout << "****************************************************\n";
+      std::cout << "Cold reboot machine to load the new image on device.\n";
+      std::cout << "****************************************************\n";
+    }
+    else if (update.compare("no-backup") == 0) {
+      update_default_only(working_device.get(), true);
+      auto_flash(working_device, flash_type, validated_image_map["primary"]);
     }
     else
       throw xrt_core::error("Usage: xbmgmt program --device='0000:00:00.0' --base [all|sc|shell]"
@@ -947,7 +1016,22 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
     }
     std::cout << boost::format("INFO: Successfully downloaded xclbin \n") << std::endl;
     return;
-}
+  }
+
+  // -- process "boot" option ------------------------------------------
+  if (!boot.empty()) {
+    if (boost::iequals(boot, "DEFAULT"))
+      switch_partition(working_device.get(), 0);
+    else if (boost::iequals(boot, "BACKUP"))
+      switch_partition(working_device.get(), 1);
+    else {
+      std::cout << "ERROR: Invalid value.\n" 
+                << "Usage: xbmgmt program --device='0000:00:00.0' --boot [default|backup]" 
+                << std::endl;
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+    return;
+  }
 
   std::cout << "\nERROR: Missing flash operation.  No action taken.\n\n";
   printHelp(commonOptions, hiddenOptions);

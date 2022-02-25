@@ -259,6 +259,10 @@ enum class key_type
   accel_deadlock_status,
   get_xclbin_data,
 
+  boot_partition,
+  flush_default_only,
+  vmr_status,
+
   noop
 };
 
@@ -2804,6 +2808,43 @@ struct accel_deadlock_status : request
   get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
+struct boot_partition : request
+{
+  // default: 0
+  // backup : 1
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::boot_partition;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct flush_default_only : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::flush_default_only;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct get_xclbin_data : request
 {
   struct xclbin_data {
@@ -2817,6 +2858,7 @@ struct get_xclbin_data : request
 
   virtual boost::any
   get(const xrt_core::device* device) const = 0;
+
 };
 
 } // query
