@@ -52,6 +52,8 @@
 #define XGQ_SQ_REG		0x0
 #define XGQ_CQ_REG		0x100
 
+#define SHELL_NOT_SUPP_LEGACY(ec) (ec->ec_xgq_ips != NULL)
+
 static uint16_t	g_ctrl_xgq_cid;
 struct xocl_drv_private ert_ctrl_xgq_drv_priv;
 
@@ -616,6 +618,10 @@ static int ert_ctrl_connect(struct platform_device *pdev)
 		err = ert_ctrl_xgq_init(ec);
 		break;
 	default:
+		if (SHELL_NOT_SUPP_LEGACY(ec)) {
+			err = -ENODEV;
+			break;
+		}
 		EC_INFO(ec, "Connect Legacy ERT firmware");
 		err = ert_ctrl_legacy_init(ec);
 	}
