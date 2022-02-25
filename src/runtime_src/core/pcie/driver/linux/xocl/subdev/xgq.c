@@ -83,6 +83,9 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
 #define XOCL_XGQ_CONFIG_TIME	msecs_to_jiffies(30 * 1000) 
 #define XOCL_XGQ_MSLEEP_1S	(1000)      //1 s
 
+#define MAX_WAIT 30
+#define WAIT_INTERVAL 1000 //ms
+
 /*
  * reserved shared memory size and number for log page.
  * currently, only 1 resource controlled by sema. Can be extended to n.
@@ -111,7 +114,7 @@ struct xocl_xgq_vmr_cmd {
 	struct timer_list	xgq_cmd_timer;
 	struct xocl_xgq_vmr	*xgq_vmr;
 	u64			xgq_cmd_timeout_jiffies; /* timout till */
-	uint32_t		xgq_cmd_rcode;
+	int			xgq_cmd_rcode;
 	/* xgq complete command can return in-line data via payload */
 	struct xgq_cmd_cq_default_payload	xgq_cmd_cq_payload;
 };
@@ -150,6 +153,8 @@ struct xocl_xgq_vmr {
 	struct xgq_cmd_cq_default_payload xgq_cq_payload;
 	int 			xgq_vmr_debug_level;
 };
+
+static int vmr_status_query(struct platform_device *pdev);
 
 /*
  * when detect cmd is completed, find xgq_cmd from submitted_cmds list
@@ -231,7 +236,7 @@ static int complete_worker(void *data)
 		if (xgq->xgq_polling) {
 			usleep_range(1000, 2000);
 		} else {
-			wait_for_completion_interruptible(&xgq->xgq_irq_complete);
+			wait_for_completion_killable(&xgq->xgq_irq_complete);
 		}
 
 		if (kthread_should_stop()) {
@@ -287,6 +292,30 @@ static void xgq_submitted_cmds_drain(struct xocl_xgq_vmr *xgq)
 		}
 	}
 	mutex_unlock(&xgq->xgq_lock);
+}
+
+static void xgq_submitted_cmd_remove(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
+{
+	struct xocl_xgq_vmr_cmd *xgq_cmd = NULL;
+	struct list_head *pos = NULL, *next = NULL;
+
+	mutex_lock(&xgq->xgq_lock);
+	list_for_each_safe(pos, next, &xgq->xgq_submitted_cmds) {
+		xgq_cmd = list_entry(pos, struct xocl_xgq_vmr_cmd, xgq_cmd_list);
+
+		/* Finding aborted cmds */
+		if (xgq_cmd == cmd) {
+			list_del(pos);
+			
+			xgq_cmd->xgq_cmd_rcode = -EIO;
+
+			XGQ_ERR(xgq, "cmd id: %d op: 0x%x reomved.",
+				xgq_cmd->xgq_cmd_entry.hdr.cid,
+				xgq_cmd->xgq_cmd_entry.hdr.opcode);
+		}
+	}
+	mutex_unlock(&xgq->xgq_lock);
+
 }
 
 /*
@@ -518,7 +547,7 @@ static void xgq_complete_cb(void *arg, struct xgq_com_queue_entry *ccmd)
 	struct xocl_xgq_vmr_cmd *xgq_cmd = (struct xocl_xgq_vmr_cmd *)arg;
 	struct xgq_cmd_cq *cmd_cq = (struct xgq_cmd_cq *)ccmd;
 
-	xgq_cmd->xgq_cmd_rcode = ccmd->rcode;
+	xgq_cmd->xgq_cmd_rcode = (int)ccmd->rcode;
 	/* preserve payload prior to free xgq_cmd_cq */
 	memcpy(&xgq_cmd->xgq_cmd_cq_payload, &cmd_cq->cq_default_payload,
 		sizeof(cmd_cq->cq_default_payload));
@@ -555,7 +584,7 @@ static u32 inline shm_addr_data(struct xocl_xgq_vmr *xgq)
 }
 
 /*TODO: enhance to n resources by atomic test_and_clear_bit/set_bit */
-static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr)
+static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr, u32 *len)
 {
 	if (down_interruptible(&xgq->xgq_log_page_sema)) {
 		XGQ_ERR(xgq, "cancelled");
@@ -564,6 +593,7 @@ static int shm_acquire_log_page(struct xocl_xgq_vmr *xgq, u32 *addr)
 
 	/*TODO: memset shared memory to all zero */
 	*addr = shm_addr_log_page(xgq);
+	*len = LOG_PAGE_SIZE;
 	return 0;
 }
 
@@ -572,7 +602,7 @@ static void shm_release_log_page(struct xocl_xgq_vmr *xgq)
 	up(&xgq->xgq_log_page_sema);
 }
 
-static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr)
+static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr, u32 *len)
 {
 	if (down_interruptible(&xgq->xgq_data_sema)) {
 		XGQ_ERR(xgq, "cancelled");
@@ -580,6 +610,7 @@ static int shm_acquire_data(struct xocl_xgq_vmr *xgq, u32 *addr)
 	}
 
 	*addr = shm_addr_data(xgq);
+	*len = shm_size_data(xgq);
 	return 0;
 }
 
@@ -652,6 +683,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	ssize_t ret = 0;
 	u32 address = 0;
+	u32 length = 0;
 	int id = 0;
 
 	if (opcode != XGQ_CMD_OP_LOAD_XCLBIN && 
@@ -672,11 +704,17 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_data(xgq, &address)) {
+	if (shm_acquire_data(xgq, &address, &length)) {
 		ret = -EIO;
 		goto acquire_failed;
 	}
 
+	if (length < len) {
+		ret = -EINVAL;
+		XGQ_ERR(xgq, "request %lld is larger than available %d",
+			len, length);
+		goto cid_alloc_failed;
+	}
 	/* set up payload */
 	payload = (opcode == XGQ_CMD_OP_LOAD_XCLBIN) ?
 		&(cmd->xgq_cmd_entry.pdi_payload) :
@@ -715,13 +753,13 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
-		XGQ_ERR(xgq, "ret %d", cmd->xgq_cmd_rcode);
+		XGQ_INFO(xgq, "ret %d", cmd->xgq_cmd_rcode);
 		ret = cmd->xgq_cmd_rcode;
 	} else {
 		ret = len;
@@ -763,7 +801,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	int ret = 0;
 	int id = 0;
 	u32 address = 0;
-	u32 len = LOG_PAGE_SIZE;
+	u32 len = 0;
 
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
@@ -775,7 +813,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_log_page(xgq, &address)) {
+	if (shm_acquire_log_page(xgq, &address, &len)) {
 		ret = -EIO;
 		goto acquire_failed;
 	}
@@ -811,8 +849,8 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -846,7 +884,6 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 		}
 	}
 
-
 done:
 	remove_xgq_cid(xgq, id);
 
@@ -867,6 +904,8 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	int ret = 0;
 	int id = 0;
+	u32 address = 0;
+	u32 len = 0;
 
 	/* skip periodic firewall check when xgq service is halted */
 	if (xgq->xgq_halted)
@@ -874,17 +913,25 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
 	if (!cmd) {
-		XGQ_ERR(xgq, "kmalloc failed, retry");
-		return -ENOMEM;
+		XGQ_ERR(xgq, "kmalloc failed, retry please");
+		return 0;
 	}
 
 	cmd->xgq_cmd_cb = xgq_complete_cb;
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
+	if (shm_acquire_log_page(xgq, &address, &len)) {
+		ret = 0;
+		XGQ_ERR(xgq, "shared memory is busy, retry please");
+		goto acquire_failed;
+	}
+
 	payload = &(cmd->xgq_cmd_entry.log_payload);
+	payload->address = address;
+	payload->size = len;
+	payload->offset = 0;
 	payload->pid = XGQ_CMD_LOG_AF;
-	/*TODO: payload is to be filed for retriving log back */
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
@@ -913,16 +960,48 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
+		/* this is not a firewall trip */
+		ret = 0;
 		goto done;
 	}
 
 	ret = cmd->xgq_cmd_rcode == -ETIME ? 0 : cmd->xgq_cmd_rcode;
 
+	if (ret) {
+		struct xgq_cmd_cq_log_page_payload *log = NULL;
+		u32 size;
+
+		vmr_cq_result_copy(xgq, cmd);
+		log = (struct xgq_cmd_cq_log_page_payload *)&xgq->xgq_cq_payload;
+
+		size = log->count;
+		if (size > len) {
+			XGQ_ERR(xgq, "return log size %d is greater than request %d",
+				log->count, len);
+			size = len;
+		} else if (size  == 0) {
+			XGQ_ERR(xgq, "no error message");
+		} else {
+			char *log_msg = vmalloc(size);
+			if (log_msg == NULL) {
+				XGQ_ERR(xgq, "vmalloc failed, no msg");
+				goto done;
+			}
+			memcpy_from_device(xgq, address, log_msg, size);
+			XGQ_ERR(xgq, "%s", log_msg);
+			vfree(log_msg);
+		}
+	} 
+
 done:
 	remove_xgq_cid(xgq, id);
 
 cid_alloc_failed:
+	shm_release_log_page(xgq);
+
+acquire_failed:
 	kfree(cmd);
 
 	return ret;
@@ -988,8 +1067,8 @@ static int xgq_freq_scaling(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1137,8 +1216,8 @@ static uint32_t xgq_clock_get_data(struct xocl_xgq_vmr *xgq,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1195,13 +1274,38 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 	size_t len)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xgq_cmd_cq_vmr_payload *vmr_status =
+		(struct xgq_cmd_cq_vmr_payload *)&xgq->xgq_cq_payload;
 	int ret = 0;
+	int i = 0;
 
 	ret = xgq_transfer_data(xgq, buf, len, XGQ_CMD_OP_LOAD_APUBIN,
 		XOCL_XGQ_DOWNLOAD_TIME);
 
-	XGQ_DBG(xgq, "ret %d", ret);
-	return ret == len ? 0 : -EIO;
+	if (ret != len) {
+		XGQ_ERR(xgq, "return %d, but request %ld", ret, len);
+		return -EIO;
+	}
+
+	/*
+	 * We wait till the apu is back online or report EBUSY after a
+	 * certain time.
+	 */
+	for (i = 0; i < MAX_WAIT; i++) {
+
+		if (vmr_status_query(xgq->xgq_pdev)) {
+			ret = -EIO;
+			break;
+		}
+		if (vmr_status->apu_is_ready) {
+			break;
+		}
+
+		msleep(WAIT_INTERVAL);
+	}
+
+	XGQ_INFO(xgq, "wait %d seconds for apu ready value: %d", i, vmr_status->apu_is_ready);
+	return vmr_status->apu_is_ready ? 0 : -ETIME;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
@@ -1273,8 +1377,8 @@ static int vmr_control_op(struct platform_device *pdev,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1307,7 +1411,7 @@ static int vmr_enable_multiboot(struct platform_device *pdev)
 		xgq->xgq_boot_from_backup ? XGQ_CMD_BOOT_BACKUP : XGQ_CMD_BOOT_DEFAULT);
 }
 
-static int xgq_collect_sensors(struct platform_device *pdev, int pid,
+static int xgq_collect_sensors(struct platform_device *pdev, int sid,
 	char *data_buf, uint32_t len)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
@@ -1315,6 +1419,7 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	struct xgq_cmd_sensor_payload *payload = NULL;
 	struct xgq_cmd_sq_hdr *hdr = NULL;
 	u32 address = 0;
+	u32 length = 0;
 	int ret = 0;
 	int id = 0;
 
@@ -1328,15 +1433,20 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 	cmd->xgq_cmd_arg = cmd;
 	cmd->xgq_vmr = xgq;
 
-	if (shm_acquire_log_page(xgq, &address)) {
+	if (shm_acquire_log_page(xgq, &address, &length)) {
 		ret = -EIO;
 		goto acquire_failed;
+	}
+
+	if (length < len) {
+		XGQ_WARN(xgq, "request %d, but can only have %d available", len, length);
+		len = length;
 	}
 	payload = &(cmd->xgq_cmd_entry.sensor_payload);
 	payload->address = address;
 	payload->size = len;
 	payload->aid = XGQ_CMD_SENSOR_AID_GET_SDR;
-	payload->pid = pid;
+	payload->sid = sid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_SENSOR;
@@ -1364,8 +1474,8 @@ static int xgq_collect_sensors(struct platform_device *pdev, int pid,
 
 	/* wait for command completion */
 	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submit cmd killed");
-		goto done;
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
 	}
 
 	ret = cmd->xgq_cmd_rcode;
@@ -1389,7 +1499,7 @@ acquire_failed:
 }
 
 static int xgq_collect_sensors_by_id(struct platform_device *pdev, char *buf,
-									 uint8_t id, uint32_t len)
+	 uint8_t id, uint32_t len)
 {
 	return xgq_collect_sensors(pdev, id, buf, len);
 }
@@ -1612,6 +1722,7 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "HAS_EXT_SYSTEM_DTB:%d\n", vmr_status->has_ext_sysdtb);
 	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
+	cnt += sprintf(buf + cnt, "APU_IS_READY:%d\n", vmr_status->apu_is_ready);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;

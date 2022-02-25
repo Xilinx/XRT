@@ -752,6 +752,135 @@ out:
 	return ret;
 }
 
+/*
+ * Cache the xclbin blob so that it can be shared by processes.
+ *
+ * Note: currently, we only cache xclbin blob for AIE only xclbin to
+ *       support AIE multi-processes. For AIE only xclbin, we load
+ *       the PDI to AIE even it has been loaded. But if a process is
+ *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
+ *       So that a shared AIE context can load AIE metadata without
+ *       reload the hardware and can do non-destructive operations.
+ */
+static int
+zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
+		char __user *xclbin_ptr)
+{
+	int ret;
+	size_t size = axlf->m_header.m_length;
+
+	slot->axlf = vmalloc(size);
+	if (!slot->axlf)
+		return -ENOMEM;
+
+	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
+	if (ret) {
+		vfree(slot->axlf);
+		return ret;
+	}
+
+	slot->axlf_size = size;
+
+	return 0;
+}
+
+/*
+ * This function takes an XCLBIN in kernel buffer and extracts
+ * SOFT_KERNEL section.
+ *
+ * If the same XCLBIN has been loaded, we skip loading.
+ *
+ * @param       zdev:   zocl device structure
+ * @param       data:   xclbin buffer
+ *
+ * @return      0 on success, Error code on failure.
+ */
+int
+zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
+{
+        struct axlf *axlf = (struct axlf *)data;
+        struct axlf *axlf_head = axlf;
+	struct drm_zocl_slot *slot;
+        char *xclbin = NULL;
+        size_t size_of_header = 0;
+        size_t num_of_sections = 0;
+        int ret = 0;
+        int count = 0;
+	void *aie_res = 0;
+
+        if (memcmp(axlf_head->m_magic, "xclbin2", 8)) {
+                DRM_INFO("Invalid xclbin magic string");
+                return -EINVAL;
+        }
+
+	// Currently only 1 slot - TODO: Support multi-slot in the future
+	slot = zdev->pr_slot[0];
+	
+        mutex_lock(&slot->slot_xclbin_lock);
+	/* Check unique ID */
+	if (zocl_xclbin_same_uuid(slot, &axlf_head->m_header.uuid)) {
+		DRM_INFO("%s The XCLBIN already loaded, uuid: %pUb",
+			 __func__, &axlf_head->m_header.uuid);
+		mutex_unlock(&slot->slot_xclbin_lock);
+		return ret;
+	}
+
+	write_lock(&zdev->attr_rwlock);
+
+	/* Get full axlf header */
+	size_of_header = sizeof(struct axlf_section_header);
+	num_of_sections = axlf_head->m_header.m_numSections-1;
+	xclbin = (char __user *)axlf;
+	if (zocl_xclbin_get_uuid(slot) != NULL) {
+		if (zdev->aie) {
+			/*
+			 * Dont reset if aie is already in reset
+			 * state
+			 */
+			if( !zdev->aie->aie_reset) {
+				ret = zocl_aie_reset(zdev);
+				if (ret)
+					goto out;
+			}
+			zocl_destroy_aie(zdev);
+		}
+	}
+	
+	/*
+	 * Read AIE_RESOURCES section. aie_res will be NULL if there is no
+	 * such a section.
+	 */
+	zocl_read_sect(AIE_RESOURCES, &aie_res, axlf, xclbin);
+
+	// Cache full xclbin
+	write_unlock(&zdev->attr_rwlock);
+	zocl_create_aie(zdev, axlf, aie_res);
+	write_lock(&zdev->attr_rwlock);
+	zocl_cache_xclbin(slot, axlf, xclbin);
+	
+	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
+	if (count > 0) {
+		ret = zocl_load_pskernel(zdev, slot->axlf);
+		if (ret)
+			goto out;
+	}
+
+	/* preserve uuid, avoid double download */
+	zocl_xclbin_set_uuid(slot, &axlf_head->m_header.uuid);
+
+	/* no need to reset scheduler, config will always reset scheduler */
+
+out:
+	write_unlock(&zdev->attr_rwlock);
+	vfree(aie_res);
+	if (!ret)
+		DRM_INFO("%s %pUb ret: %d", __func__, zocl_xclbin_get_uuid(slot), ret);
+	else
+		DRM_INFO("%s ret: %d", __func__, ret);
+	mutex_unlock(&slot->slot_xclbin_lock);
+	return ret;
+}
+
 static int
 zocl_load_aie_only_pdi(struct drm_zocl_dev *zdev, struct axlf *axlf,
 			char __user *xclbin, struct sched_client_ctx *client)
@@ -930,38 +1059,6 @@ static bool
 is_aie_only(struct axlf *axlf)
 {
 	return (axlf->m_header.m_actionMask & AM_LOAD_AIE);
-}
-
-/*
- * Cache the xclbin blob so that it can be shared by processes.
- *
- * Note: currently, we only cache xclbin blob for AIE only xclbin to
- *       support AIE multi-processes. For AIE only xclbin, we load
- *       the PDI to AIE even it has been loaded. But if a process is
- *       using UUID to load xclbin metatdata, we don't load PDI to AIE.
- *       So that a shared AIE context can load AIE metadata without
- *       reload the hardware and can do non-destructive operations.
- */
-static int
-zocl_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
-		char __user *xclbin_ptr)
-{
-	int ret;
-	size_t size = axlf->m_header.m_length;
-
-	slot->axlf = vmalloc(size);
-	if (!slot->axlf)
-		return -ENOMEM;
-
-	ret = copy_from_user(slot->axlf, xclbin_ptr, size);
-	if (ret) {
-		vfree(slot->axlf);
-		return ret;
-	}
-
-	slot->axlf_size = size;
-
-	return 0;
 }
 
 int

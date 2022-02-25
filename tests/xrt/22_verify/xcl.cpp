@@ -24,6 +24,7 @@ to an xrt::bo object which is then used as a kernel argument.
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <cstring>
 
 #include "xrt.h"
 #include "xrt/xrt_device.h"

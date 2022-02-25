@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021, Xilinx Inc
+ *  Copyright (C) 2021-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -43,11 +43,13 @@
 #define SDR_TYPE_MASK	0x03
 #define SDR_TYPE_POS	6
 
-#define SDR_COMPLETE_IDX 0
-#define SDR_REPO_IDX 1
-#define SDR_REPO_VER_IDX 2
-#define SDR_NUM_REC_IDX 3
+#define SDR_COMPLETE_IDX  0
+#define SDR_REPO_IDX      1
+#define SDR_REPO_VER_IDX  2
+#define SDR_NUM_REC_IDX   3
 #define SDR_NUM_BYTES_IDX 4
+#define SDR_HEADER_SIZE   5
+
 #define SDR_EOR_BYTES     3
 
 #define THRESHOLD_UPPER_WARNING_MASK	(0x1 << 0)

@@ -186,6 +186,7 @@ enum {
 int xocl_hot_reset(struct xocl_dev *xdev, u32 flag);
 void xocl_p2p_fini(struct xocl_dev *xdev);
 int xocl_p2p_init(struct xocl_dev *xdev);
+int xocl_hwmon_sdm_init(struct xocl_dev *xdev);
 void xocl_reset_notify(struct pci_dev *pdev, bool prepare);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 13, 0)
 void user_pci_reset_prepare(struct pci_dev *pdev);
@@ -231,5 +232,9 @@ u32 xocl_kds_live_clients(struct xocl_dev *xdev, pid_t **plist);
 int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds kds_cfg);
 void xocl_kds_cus_enable(struct xocl_dev *xdev);
 void xocl_kds_cus_disable(struct xocl_dev *xdev);
+int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hd, xuid_t *uuid,
+			  struct ip_layout *ip_layout,
+			  struct ps_kernel_node *ps_kernel);
+void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hd);
 
 #endif

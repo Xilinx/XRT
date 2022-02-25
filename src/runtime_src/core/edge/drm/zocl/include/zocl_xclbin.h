@@ -36,7 +36,7 @@ int zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev,
 	struct drm_zocl_axlf *axlf_obj, struct sched_client_ctx *client);
 int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
-
+int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data);
 bool zocl_xclbin_accel_adapter(int kds_mask);
 
 #endif /* _ZOCL_XCLBIN_H_ */

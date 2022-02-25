@@ -82,6 +82,7 @@ namespace xdp {
 
       bool continuousTrace;
       uint64_t offloadIntervalms;
+      unsigned int aie_trace_file_dump_int_s;
 
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;

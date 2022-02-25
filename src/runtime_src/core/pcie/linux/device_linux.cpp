@@ -35,6 +35,7 @@
 #include <string>
 #include <poll.h>
 #include <sys/syscall.h>
+#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -73,7 +74,6 @@ get_pcidev(const xrt_core::device* device)
 {
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
-
 
 static std::vector<uint64_t> 
 get_counter_status_from_sysfs(const std::string &mon_name_address, 
@@ -127,6 +127,149 @@ struct bdf
     auto pdev = get_pcidev(device);
     return std::make_tuple(pdev->domain, pdev->bus, pdev->dev, pdev->func);
   }
+};
+
+/*
+ * sdm_sensor_info query request used to access sensor information from
+ * hwmon sysfs directly. It is a data driven approach.
+ */
+struct sdm_sensor_info
+{
+  using result_type = query::sdm_sensor_info::result_type;
+  using data_type = query::sdm_sensor_info::data_type;
+  using sdr_req_type = query::sdm_sensor_info::sdr_req_type;
+
+  static result_type
+  get_sdm_sensors(const xrt_core::device* device,
+                  const sdr_req_type& req_type,
+                  const std::string& path)
+  {
+    auto pdev = get_pcidev(device);
+    result_type output;
+    //sensors are stored in hwmon sysfs dir with name starts & ends with as follows.
+    std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
+    std::array<std::string, 5> sname_end = {"label", "input", "max", "average", "highest"};
+    int max_end_types = sname_end.size();
+    bool next_id = false;
+    //All sensor sysfs nodes starts with 1 as starting index.
+    int start_id = 1;
+    auto type = sname_start[(int)req_type];
+
+    //voltage sensor sysfs node starts with "in" with 0 as starting index.
+    if (!type.compare("in"))
+      start_id = 0;
+
+    while (!next_id)
+    {
+      data_type data;
+      const auto slash = "/";
+      const auto underscore = "_";
+      /*
+       * Forming sysfs node as /<start>[start_id]_.
+       * Example: /in0_ or /curr1_ or /power1_ or /temp1_ in 1st iteration.
+       * start_id will be incremented till next_id become true.
+       * So, next iteration will be /in1_ or /curr2_ or /power2_ or /temp2_.
+       * Similarly, end string of sysfs node name will be retrieved using end[].
+       */
+      std::string tmp = slash + type + std::to_string(start_id) + underscore;
+      for (int end_id = 0; end_id < max_end_types; end_id++)
+      {
+        if (end_id == 0)
+        {
+          std::string errmsg;
+          std::string label;
+          pdev->sysfs_get("", path + tmp + sname_end[end_id], errmsg, label);
+          if (!errmsg.empty())
+          {
+            //go and read next sysfs node
+            data.label = "N/A";
+            next_id = true;
+            end_id = max_end_types;
+            continue;
+          }
+          data.label = label;
+        }
+        else
+        {
+          std::string errmsg;
+          uint32_t input = 0;
+          pdev->sysfs_get<uint32_t>("", path + tmp + sname_end[end_id], errmsg, input, EINVAL);
+          if (!errmsg.empty())
+            continue;
+
+          if (end_id == 1)
+            data.input = input;
+          else if (end_id == 2)
+            data.max = input;
+          else if (end_id == 3)
+            data.average = input;
+          else
+            data.highest = input;
+        }
+      } // for (end_id =0; end_id < max ...)
+
+      if (data.label.compare("N/A"))
+        output.push_back(data);
+
+      start_id++;
+    } //while (!next_id)
+
+    return output;
+  } //get_sdm_sensors()
+
+  static result_type
+  get(const xrt_core::device* device, key_type, const boost::any& reqType)
+  {
+    const sdr_req_type req_type = boost::any_cast<query::sdm_sensor_info::req_type>(reqType);
+    auto pdev = get_pcidev(device);
+    const std::string target_dir = "hwmon";
+    const std::string target_file = "name";
+    const std::string target_name = "hwmon_sdm";
+    const std::string slash = "/";
+    std::string parent_path = pdev->get_sysfs_path("", target_dir);
+    std::string path;
+
+    /*
+     * Goal here is to find the correct hwmon sysfs directory.
+     * hwmon sysfs directory has a sysfs node called "name", and it is decision factor.
+     * So, the target hwmon sysfs dir is the one whose name contains target_name.
+     */
+    boost::filesystem::path render_dirs(parent_path);
+    if (!boost::filesystem::is_directory(render_dirs))
+      return result_type();
+
+    //iterate over list of hwmon syfs directory's directories
+    boost::filesystem::directory_iterator iter(render_dirs);
+    while (iter != boost::filesystem::directory_iterator{})
+    {
+      if (!boost::filesystem::is_directory(iter->path()))
+      {
+        ++iter;
+        continue;
+      }
+
+      std::string f_name = iter->path().filename().string();
+      if (boost::algorithm::starts_with(f_name, target_dir))
+      {
+        std::string name;
+        std::string errmsg;
+        pdev->sysfs_get("", target_dir + slash + f_name + slash + target_file, errmsg, name);
+        if (errmsg.empty() && (name.find(target_name) != std::string::npos))
+        {
+          //found target hwmon sysfs directory, store it to path variable.
+          //Here, f_name contains hwmon1 or hwmon2 etc." So, final path looks like "hwmon/<f_name>"
+          path = target_dir + slash + f_name;
+          break;
+        }
+      }
+      ++iter;
+    }
+
+    if (path.empty())
+      return result_type();
+
+    return get_sdm_sensors(device, req_type, path);
+  } //get()
 };
 
 struct kds_cu_info
@@ -873,6 +1016,8 @@ initialize_query_table()
   emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
   emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+
+  emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
 }
 
 struct X { X() { initialize_query_table(); }};
