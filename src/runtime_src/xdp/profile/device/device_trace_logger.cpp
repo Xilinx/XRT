@@ -710,20 +710,22 @@ namespace xdp {
 
     // Try to find 8 contiguous clock training packets.  Anything before that
     //  is garbage from the previous run
-    
-    bool found = false ;
-    for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
-      for (uint64_t j = i ; j < i + 8 ; ++j) {
-        uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
-        if (!isClockTraining(packet)) {
-          break ;
+    // Note: This needs to be done only in beginning chunk of data
+    static bool found = false ;
+    if (!found) {
+      for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
+        for (uint64_t j = i ; j < i + 8 ; ++j) {
+          uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
+          if (!isClockTraining(packet)) {
+            break ;
+          }
+          if (j == (i + 7)) {
+            start = i ;
+            found = true ;
+          }
         }
-        if (j == (i + 7)) {
-          start = i ;
-          found = true ;
-        }
+        if (found) break ;
       }
-      if (found) break ;
     }
     
     for (uint64_t i = start ; i < numPackets ; ++i) {
