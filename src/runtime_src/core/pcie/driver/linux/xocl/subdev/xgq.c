@@ -236,7 +236,11 @@ static int complete_worker(void *data)
 		if (xgq->xgq_polling) {
 			usleep_range(1000, 2000);
 		} else {
-			wait_for_completion_killable(&xgq->xgq_irq_complete);
+			/* Note: We dont support xgq interrupt yet.
+			 * Ignore commands killed, the health_worker will set
+			 * correct rcode for submitted cmds
+			 */
+			(void) wait_for_completion_killable(&xgq->xgq_irq_complete);
 		}
 
 		if (kthread_should_stop()) {
