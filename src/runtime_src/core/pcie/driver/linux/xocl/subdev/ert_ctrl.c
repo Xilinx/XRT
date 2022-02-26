@@ -811,7 +811,6 @@ static int ert_ctrl_remove(struct platform_device *pdev)
 
 static int ert_ctrl_probe(struct platform_device *pdev)
 {
-	const char *const devname = dev_name(&pdev->dev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	bool ert_on = xocl_ert_on(xdev);
 	struct ert_ctrl	*ec = NULL;

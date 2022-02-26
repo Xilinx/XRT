@@ -285,7 +285,7 @@ int xocl_gem_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 #else
 		ret = vm_insert_page(vma, vmf_address, xobj->pages[page_offset]);
 #endif
-	} else if (xocl_bo_cma(xobj)) {
+	} else if (xocl_bo_cma(xobj) || xocl_bo_userptr(xobj)) {
 /*  vm_insert_page does not allow driver to insert anonymous pages.
  *  Instead, we call vm_insert_mixed.
  */
@@ -383,11 +383,8 @@ static void xocl_client_release(struct drm_device *dev, struct drm_file *filp)
 static uint xocl_poll(struct file *filp, poll_table *wait)
 {
 	struct drm_file *priv = filp->private_data;
-	struct drm_device *dev = priv->minor->dev;
-	struct xocl_drm	*drm_p = dev->dev_private;
 
 	BUG_ON(!priv->driver_priv);
-
 	DRM_ENTER("");
 	return xocl_poll_client(filp, wait, priv->driver_priv);
 }
