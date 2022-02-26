@@ -51,7 +51,7 @@
 #define TS2MM_MIN_READ_SIZE      0x200
 #define DEFAULT_TRACE_OFFLOAD_INTERVAL_MS 10
 // Throw warning when too much trace in processing pipeline
-// use some arbitrary large number here
+// Use some arbitrary large number here
 #define TS2MM_QUEUE_SZ_WARN_THRESHOLD 5000
 
 #define FIFO_WARN_MSG "Trace FIFO is full because of too many events. Device trace could be incomplete. Suggested fixes:\n\
