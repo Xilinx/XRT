@@ -326,5 +326,6 @@ extern u32 zocl_cu_get_status(struct platform_device *pdev);
 extern u32 zocl_scu_get_status(struct platform_device *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 extern const struct drm_gem_object_funcs zocl_gem_object_funcs;
+extern const struct drm_gem_object_funcs zocl_cma_default_funcs;
 #endif
 #endif
