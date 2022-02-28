@@ -124,13 +124,17 @@ p2p_convert_config(xrt_core::query::p2p_config::result_type& config)
 void
 add_p2p_config(const xrt_core::device* device, ptree_type& pt)
 {
-  ptree_type pt_p2p;
-  auto config = xrt_core::device_query<xq::p2p_config>(device);
-  auto config_map = p2p_convert_config(config);
-  for(auto& pair : config_map)
-    pt_p2p.add(pair.first, std::to_string(pair.second/1024/1024/1024)); // Turn bytes into GB
-
-  pt.put_child("p2p", pt_p2p);
+  try {
+    ptree_type pt_p2p;
+    auto config = xrt_core::device_query<xq::p2p_config>(device);
+    auto config_map = p2p_convert_config(config);
+    for(auto& pair : config_map)
+      pt_p2p.add(pair.first, std::to_string(pair.second/1024/1024/1024)); // Turn bytes into GB
+    pt.put_child("p2p", pt_p2p);
+  }
+  catch (const xq::exception&) {
+    // Devices that do not suport p2p will not add anything to the passed in ptree
+  }
 }
 
 void

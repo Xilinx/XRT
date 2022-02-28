@@ -23,6 +23,7 @@
 
 // 3rd Party Library - Include Files
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/optional/optional.hpp>
 void
 ReportPlatforms::getPropertyTreeInternal( const xrt_core::device * dev, 
                                               boost::property_tree::ptree &pt) const
@@ -72,8 +73,9 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << boost::format("  %-23s: %s \n") % "Mig Calibrated" % pt_status.get<std::string>("mig_calibrated");
     _output << boost::format("  %-23s: %s \n") % "P2P Status" % pt_status.get<std::string>("p2p_status");
 
-    const boost::property_tree::ptree& pt_config = pt_platform.get_child("config.p2p");
-    _output << boost::format("  %-23s: %s GB\n") % "P2P Host supported IO memory space required:" % pt_config.get<std::string>("exp_bar");
+    boost::optional<const boost::property_tree::ptree&> pt_config = pt_platform.get_child_optional("config.p2p");
+    if (pt_config)
+      _output << boost::format("  %-23s: %s GB\n") % "P2P IO space required" % (*pt_config).get<std::string>("exp_bar");
 
     const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if(!clocks.empty()) {
