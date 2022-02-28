@@ -33,15 +33,22 @@ namespace qr = xrt_core::query;
 
 // System - Include Files
 #include <iostream>
-
-#define to_mega(x) x/1000000
+#include <math.h>
 
 // ----- H E L P E R M E T H O D S ------------------------------------------
-static double get_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part_id)
+static double
+to_megaHz(uint64_t value)
+{
+  constexpr auto div = pow(10, 6);
+  return static_cast<double>(value)/div;
+}
+
+static double
+get_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part_id)
 {
   double freq = 0;
   try {
-    freq = static_cast<double>(to_mega(xrt_core::device_query<qr::aie_get_freq>(device, part_id)));
+    freq = to_megaHz(xrt_core::device_query<qr::aie_get_freq>(device, part_id));
   }
   catch (const std::exception &e) {
     std::cerr << boost::format("ERROR: Failed to read clock frequency of AIE partition(%d)\n %s\n") % part_id % e.what();
@@ -51,7 +58,8 @@ static double get_aie_part_freq(const std::shared_ptr<xrt_core::device>& device,
   return freq;
 }
 
-static void set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part_id, const std::string& setFreq)
+static void
+set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part_id, const std::string& setFreq)
 {
   uint64_t freq = 0;
   try {
@@ -69,13 +77,13 @@ static void set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, u
 
   // Try to set frequency
   try {
-    bool status = xrt_core::device_query<qr::aie_set_freq_req>(device, part_id, freq);
+    bool status = xrt_core::device_query<qr::aie_set_freq>(device, part_id, freq);
     if(status) {
       std::cout << boost::format("INFO: Setting clock freq of AIE partition(%d) is successful\n") %  part_id;
       std::cout << boost::format("Running clock freq of AIE partition(%d) is: %.2f MHz\n") % part_id % get_aie_part_freq(device, part_id);
     }
     else
-      std::cout << boost::format("INFO: Setting clock freq of AIE partition(%d) to %s failed\n") %  part_id % setFreq;
+      std::cout << boost::format("ERROR: Setting clock freq of AIE partition(%d) to %s failed\n") %  part_id % setFreq;
   }
   catch (const std::exception& e){
     std::cerr << boost::format("ERROR: Setting the AIE partition(%d) clock frequency to %s failed, %s\n") % part_id % setFreq % e.what();
@@ -186,6 +194,6 @@ OO_AieClockFreq::execute(const SubCmdOptions& _options) const
     return;
   }
 
-  if(m_setFreq.length() > 0)
+  if(!m_setFreq.empty())
     set_aie_part_freq(device, m_partition_id, m_setFreq);
 }

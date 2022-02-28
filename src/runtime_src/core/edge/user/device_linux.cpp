@@ -557,9 +557,9 @@ struct aie_get_freq
   }
 };
 
-struct aie_set_freq_req
+struct aie_set_freq
 {
-  using result_type = query::aie_set_freq_req::result_type;
+  using result_type = query::aie_set_freq::result_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
@@ -832,7 +832,7 @@ initialize_query_table()
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
   emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
-  emplace_func2_request<query::aie_set_freq_req,        aie_set_freq_req>();
+  emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");
