@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2019-2021, Xilinx Inc
+ *  Copyright (C) 2019-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -290,6 +290,7 @@ struct config_sk_image {
   uint32_t start_cuidx;
   uint32_t num_cus;
   uint32_t sk_name[5];
+  char     sk_uuid[16];
 };
 
 /**

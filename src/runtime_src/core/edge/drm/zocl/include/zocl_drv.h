@@ -193,9 +193,21 @@ zocl_kds_add_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 }
 
 static inline int
+zocl_kds_add_scu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
+{
+	return kds_add_scu(&zdev->kds, xcu);
+}
+
+static inline int
 zocl_kds_del_cu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
 {
 	return kds_del_cu(&zdev->kds, xcu);
+}
+
+static inline int
+zocl_kds_del_scu(struct drm_zocl_dev *zdev, struct xrt_cu *xcu)
+{
+	return kds_del_scu(&zdev->kds, xcu);
 }
 
 int zocl_copy_bo_async(struct drm_device *dev, struct drm_file *fipl,
@@ -250,8 +262,8 @@ int zocl_aie_kds_add_context(struct drm_zocl_dev *zdev, u32 ctx_code,
 	struct kds_client *client);
 int zocl_aie_kds_del_context(struct drm_zocl_dev *zdev,
 	struct kds_client *client);
-int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags);
-int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx);
+int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags, u32 cu_domain);
+int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 cu_domain);
 
 int zocl_inject_error(struct drm_zocl_dev *zdev, void *data,
 		struct drm_file *filp);
@@ -284,12 +296,15 @@ int zocl_kds_reset(struct drm_zocl_dev *zdev);
 
 int subdev_create_cu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp);
 void subdev_destroy_cu(struct drm_zocl_dev *zdev);
+int subdev_create_scu(struct device *dev, struct xrt_cu_info *info, struct platform_device **pdevp);
+void subdev_destroy_scu(struct drm_zocl_dev *zdev);
 /* Sub device driver */
 extern struct platform_driver zocl_cu_xgq_driver;
 extern struct platform_driver zocl_csr_intc_driver;
 extern struct platform_driver zocl_xgq_intc_driver;
 extern struct platform_driver zocl_rpu_channel_driver;
 extern struct platform_driver cu_driver;
+extern struct platform_driver scu_driver;
 struct zocl_cu_ops {
 	int (*submit)(struct platform_device *pdev, struct kds_command *xcmd);
 };
@@ -308,6 +323,7 @@ zocl_cu_submit_xcmd(struct drm_zocl_dev *zdev, int i, struct kds_command *xcmd)
 }
 
 extern u32 zocl_cu_get_status(struct platform_device *pdev);
+extern u32 zocl_scu_get_status(struct platform_device *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 extern const struct drm_gem_object_funcs zocl_gem_object_funcs;
 #endif

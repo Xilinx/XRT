@@ -37,6 +37,7 @@
 
 enum kds_type {
 	KDS_CU		= 0,
+	KDS_SCU,
 	KDS_ERT,
 	KDS_MAX_TYPE, // always the last one
 };
@@ -52,6 +53,7 @@ enum kds_type {
  */
 #define	CU_CTX_VIRT_CU		0xffffffff
 struct kds_ctx_info {
+	u32		  cu_domain;
 	u32		  cu_idx;
 	u32		  flags;
 	void		 *curr_ctx; // Holds the current context ptr for kds
@@ -190,6 +192,7 @@ struct kds_command *kds_alloc_command(struct kds_client *client, u32 size);
 
 void kds_free_command(struct kds_command *xcmd);
 int kds_ip_layout2cu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_info[], int num_info);
+int kds_ip_layout2scu_info(struct ip_layout *ip_layout, struct xrt_cu_info cu_info[], int num_info);
 
 /* sysfs */
 int store_kds_echo(struct kds_sched *kds, const char *buf, size_t count,

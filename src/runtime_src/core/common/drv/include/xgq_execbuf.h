@@ -2,7 +2,7 @@
 /*
  * Xilinx Kernel Driver Scheduler
  *
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: min.ma@xilinx.com
  *
@@ -17,6 +17,8 @@
 #include "xgq_cmd_ert.h"
 
 int xgq_exec_convert_start_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
+					struct ert_start_kernel_cmd *ecmd);
+int xgq_exec_convert_start_scu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 					struct ert_start_kernel_cmd *ecmd);
 int xgq_exec_convert_start_kv_cu_cmd(struct xgq_cmd_start_cuidx *xgq_cmd,
 				     struct ert_start_kernel_cmd *ecmd);
