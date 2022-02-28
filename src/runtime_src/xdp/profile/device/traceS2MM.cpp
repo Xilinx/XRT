@@ -271,7 +271,7 @@ void TraceS2MM::parseTraceBuf(void* buf, uint64_t size, std::vector<xclTraceResu
         }
         else {
           mModulus = mModulus + 1 ;
-	}
+        }
       }
       else {
         xclTraceResults result = {};
