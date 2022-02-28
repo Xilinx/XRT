@@ -992,7 +992,7 @@ namespace xdp {
 
     // Continuous Trace Offload is supported only for PLIO flow
     if (continuousTrace && isPLIO) {
-      XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE");
+      XDPPlugin::startWriteThread(aie_trace_file_dump_int_s, "AIE_EVENT_TRACE", false);
     }
 
     // First, check against memory bank size
@@ -1286,7 +1286,7 @@ namespace xdp {
     
   }
 
-  void AieTracePlugin::writeAll(bool openNewFiles)
+  void AieTracePlugin::writeAll(bool /*openNewFiles*/)
   {
     // read the trace data from device and wrie to the output file
     for(auto o : aieOffloaders) {
@@ -1309,7 +1309,7 @@ namespace xdp {
     }
     aieOffloaders.clear();
 
-    XDPPlugin::endWrite(openNewFiles);
+    XDPPlugin::endWrite();
   }
 
 } // namespace xdp

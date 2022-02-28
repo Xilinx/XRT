@@ -360,7 +360,7 @@ namespace xdp {
     return true;
   }
 
-  void DeviceOffloadPlugin::writeAll(bool openNewFiles)
+  void DeviceOffloadPlugin::writeAll(bool /*openNewFiles*/)
   {
     // This function gets called if the database is destroyed before
     //  the plugin object.  At this time, the information in the database
@@ -375,7 +375,7 @@ namespace xdp {
     // Also, store away the counter results
     readCounters() ;
 
-    XDPPlugin::endWrite(openNewFiles);
+    XDPPlugin::endWrite();
   }
 
   void DeviceOffloadPlugin::checkTraceBufferFullness(DeviceTraceOffload* offloader, uint64_t deviceId)
@@ -414,7 +414,7 @@ namespace xdp {
       break ;
     case VPDatabase::DUMP_TRACE:
       {
-	XDPPlugin::forceWrite(true) ;
+        XDPPlugin::trySafeWrite("VP_TRACE", true);
       }
       break ;
     default:
