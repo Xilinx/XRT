@@ -885,6 +885,19 @@ namespace xdp {
         uint64_t numDevices = db->getStaticInfo().getNumDevices(contextID);
         DeviceInfo* device = db->getStaticInfo().getDeviceInfo(deviceID);
 
+        fout << contextName << ":" << numDevices << ",";
+        fout << types[i] << ",";
+        fout << stats.count << ",";
+
+        // In hardware emulation, the transfer rate and the average bandwidth
+        // are meaningless as the times are a mix of simulated times
+        // and real times and can fluctuate based on the load of the machine.
+        //
+        // On NoDMA platforms, the transfer rate and average bandwidth are
+        // also meaningless, as we are transferring from host memory to
+        // host memory and not reporting host to device transfers.
+        //
+        // In both of these cases, we print "N/A"
         bool printNA =
           (getFlowMode() == HW_EMU || (device && device->isNoDMA()));
 
@@ -897,12 +910,16 @@ namespace xdp {
         double maxReadBW = db->getStaticInfo().getMaxReadBW(deviceID);
         double aveBWUtil = (one_hundred * transferRate) / maxReadBW;
 
-        fout << contextName << ":" << numDevices << ",";
-        fout << types[i] << ",";
-        fout << stats.count << ",";
         printNA ? (fout << "N/A,") : (fout << transferRate << ",");
         printNA ? (fout << "N/A,") : (fout << aveBWUtil << ",");
         fout << static_cast<double>(stats.averageSize / one_thousand) << ",";
+
+        // In hardware emulation, the total time and average tie don't make
+        // sense due to the mixing of simulated times and real times.  Also,
+        // for NoDMA platforms these numbers misrepresent transfer times
+        // as there are no actual host to device transfers.
+        //
+        // In both these cases we print out "N/A"
         printNA ? (fout << "N/A,") : (fout << stats.totalTime/one_million << ",");
         printNA ? (fout << "N/A,") : (fout << stats.averageTime / one_million << ",\n");
 
