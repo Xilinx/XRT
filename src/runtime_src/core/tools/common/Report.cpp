@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -76,6 +76,7 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
                             std::ostream & consoleStream,
                             boost::property_tree::ptree & pt) const
 {
+  // If an exception occurs while generating a report throw an error in the catch
   try {
     switch (schemaVersion) {
       case SchemaVersion::json_internal:
@@ -99,7 +100,7 @@ Report::getFormattedReport( const xrt_core::device *pDevice,
       std::cerr << reportName << std::endl;
     }
 
-    std::cerr << "  ERROR: " << e.what() << std::endl << std::endl;
-    // Fall through
+    std::cerr << "  ERROR: " << e.what() << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 }

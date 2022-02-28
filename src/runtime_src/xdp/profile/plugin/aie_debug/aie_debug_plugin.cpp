@@ -61,9 +61,13 @@ namespace {
 namespace xdp {
   using severity_level = xrt_core::message::severity_level;
 
+  bool AIEDebugPlugin::live = false;
+
   AIEDebugPlugin::AIEDebugPlugin() 
       : XDPPlugin()
   {
+    AIEDebugPlugin::live = true;
+
     db->registerPlugin(this);
     db->registerInfo(info::aie_status);
 
@@ -79,6 +83,12 @@ namespace xdp {
     if (VPDatabase::alive())
       db->unregisterPlugin(this);
 
+    AIEDebugPlugin::live = false;
+  }
+
+  bool AIEDebugPlugin::alive()
+  {
+    return AIEDebugPlugin::live;
   }
 
   // Get tiles to debug
@@ -321,8 +331,8 @@ namespace xdp {
       if (!(db->getStaticInfo().isDeviceReady(index)))
         continue;
 
-      aieWriter->write(false);
-      aieshimWriter->write(false);
+      aieWriter->write(false, handle);
+      aieshimWriter->write(false, handle);
       std::this_thread::sleep_for(std::chrono::microseconds(mPollingInterval));
     }
   }
@@ -381,6 +391,10 @@ namespace xdp {
 
   void AIEDebugPlugin::endPollforDevice(void* handle)
   {
+    // Last chance at writing status reports
+    for (auto w : writers)
+      w->write(false, handle);
+ 
     // Ask threads to stop
     mThreadCtrlMap[handle] = false;
 

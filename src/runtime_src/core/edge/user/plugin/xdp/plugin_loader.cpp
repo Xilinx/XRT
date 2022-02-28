@@ -16,6 +16,7 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
+#include "core/common/utils.h"
 
 #include "hal_profile.h"
 #include "plugin_loader.h"
@@ -41,7 +42,8 @@ namespace hal_hw_plugins {
 bool load()
 {
 #ifndef __HWEM__
-  if (xrt_core::config::get_xrt_trace())
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::utils::load_host_trace())
     xdp::hal::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||
@@ -96,7 +98,8 @@ bool load()
 {
 #ifdef __HWEM__
   // Hardware emulation uses the same plugin as hardware for API trace
-  if (xrt_core::config::get_xrt_trace())
+  if (xrt_core::config::get_xrt_trace() ||
+      xrt_core::utils::load_host_trace())
     xdp::hal::load();
 
   if (xrt_core::config::get_data_transfer_trace() != "off" ||

@@ -69,7 +69,7 @@ namespace xdp {
     if (VPDatabase::alive()) {
       readTrace() ;
       readCounters() ;
-      XDPPlugin::endWrite(false) ;
+      XDPPlugin::endWrite() ;
       db->unregisterPlugin(this) ;
     }
 

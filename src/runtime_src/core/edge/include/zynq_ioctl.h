@@ -2,7 +2,7 @@
 /*
  * A GEM style CMA backed memory manager for ZynQ based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -409,10 +409,11 @@ struct drm_zocl_kds {
  * @za_kernels:	pointer of argument array
  **/
 struct drm_zocl_axlf {
-	struct axlf 		*za_xclbin_ptr;
+	struct axlf		*za_xclbin_ptr;
 	uint32_t		za_flags;
 	int			za_ksize;
 	char			*za_kernels;
+	uint32_t		za_slot_id;
 	struct drm_zocl_kds	kds_cfg;
 };
 
@@ -431,13 +432,17 @@ struct drm_zocl_axlf {
  * @paddr        : soft kernel image's physical address (little endian)
  * @name         : symbol name of soft kernel
  * @bohdl        : BO to hold soft kernel image
+ * @meta_bohdl   : BO to hold metadata
+ * @uuid         : UUID for the xclbin
  */
 struct drm_zocl_sk_getcmd {
 	uint32_t	opcode;
 	uint32_t	start_cuidx;
 	uint32_t	cu_nums;
 	char		name[ZOCL_MAX_NAME_LENGTH];
-	uint32_t	bohdl;
+	int		bohdl;
+	int		meta_bohdl;
+	char		uuid[16];
 };
 
 enum aie_info_code {
@@ -467,7 +472,7 @@ struct drm_zocl_aie_cmd {
  */
 struct drm_zocl_sk_create {
 	uint32_t	cu_idx;
-	uint32_t	handle;
+	int		handle;
 };
 
 /**
@@ -486,6 +491,7 @@ enum drm_zocl_scu_state {
  */
 struct drm_zocl_sk_report {
 	uint32_t		cu_idx;
+	uint32_t		cu_domain;
 	enum drm_zocl_scu_state	cu_state;
 };
 

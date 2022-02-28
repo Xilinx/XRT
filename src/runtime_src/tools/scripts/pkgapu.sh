@@ -1,10 +1,11 @@
 #!/bin/bash
 #
-# Copyright (C) 2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #
 
-# This script creates rpm and deb packages for Versal APU firmware.
+# This script creates rpm and deb packages for Versal APU firmware and Built-in PS Kernels.
 # The firmware file (.xsabin) is installed to /lib/firmware/xilinx
+# The Built-in PS Kernel (ps_kernels.xclbin) is installed to /lib/firmware/xilinx/ps_kernels
 #
 # The script is assumed to run on a host or docker that has all the
 # necessary tools is accessible.
@@ -109,6 +110,10 @@ SYSTEM_DTB_ADDR="0x40000"
 KERNEL_ADDR="0x20100000"
 ROOTFS_ADDR="0x21000000"
 
+# this address needs to be in sync with VMR
+METADATA_ADDR="0x7FBD0000"
+METADATA_BUFFER_LEN=131072
+
 clean=0
 while [ $# -gt 0 ]; do
 	case $1 in
@@ -192,6 +197,7 @@ all:
         { load=$ROOTFS_ADDR, file=$IMAGES_DIR/rootfs.cpio.gz.u-boot }
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
         { load=0x20000000, file=$BUILD_DIR/boot.scr }
+        { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
     }
 }
 EOF
@@ -204,6 +210,7 @@ MKIMAGE=mkimage
 UBOOT_SCRIPT="$BUILD_DIR/boot.scr"
 UBOOT_CMD="$BUILD_DIR/boot.cmd"
 cat << EOF > $UBOOT_CMD
+setenv bootargs "console=ttyUL0 clk_ignore_unused"
 bootm $KERNEL_ADDR $ROOTFS_ADDR $SYSTEM_DTB_ADDR
 EOF
 $MKIMAGE -A arm -O linux -T script -C none -a 0 -e 0 -n "boot" -d $UBOOT_CMD $UBOOT_SCRIPT
@@ -232,6 +239,14 @@ fi
 BOOTGEN=$XILINX_VITIS/bin/bootgen
 
 #
+# Generate metadata.dat
+#
+METADATA="$BUILD_DIR/metadata.dat"
+cat $IMAGE $IMAGES_DIR/rootfs.cpio.gz | md5sum | awk '{print $1}' >$METADATA.tmp
+cat $IMAGES_DIR/rootfs.manifest >>$METADATA.tmp
+dd if=$METADATA.tmp of=$METADATA bs=1 count=$METADATA_BUFFER_LEN
+
+#
 # Generate pdi
 #
 APU_PDI="$BUILD_DIR/apu.pdi"
@@ -245,6 +260,30 @@ xclbinutil --add-section PDI:RAW:$APU_PDI --output $FW_FILE
 if [[ ! -e $FW_FILE ]]; then
 	error "failed to generate XSABIN"
 fi
+
+# Generate PS Kernel xclbin
+# Hardcoding the ps kernel xclbin name to ps_kernels.xclbin
+# We can create one xclbin per PS Kernel also based on future requirements
+PS_KERNELS_XCLBIN="$BUILD_DIR/lib/firmware/xilinx/ps_kernels/ps_kernels.xclbin"
+#Extract ps_kernels_lib from rootfs tar
+tar -C $BUILD_DIR -xf $IMAGES_DIR/rootfs.tar.gz ./usr/lib/ps_kernels_lib
+if [ $? -eq 0 ]; then
+    PS_KERNEL_DIR=$BUILD_DIR/usr/lib/ps_kernels_lib
+    ps_kernel_command="xclbinutil --output $PS_KERNELS_XCLBIN "
+    pk_exists=0
+    for entry in "$PS_KERNEL_DIR"/*.so
+    do
+            pk_exists=1
+            ps_kernel_command+=" --add-pskernel $entry"
+    done
+    # Generate xclbin if atleast one PS Kernel exists
+    if [ $pk_exists -eq 1 ]; then
+        # Run final xclbinutil command to generate the PS Kernels xclbin
+        echo "Running $ps_kernel_command"
+        $ps_kernel_command
+    fi
+fi
+
 dodeb $INSTALL_ROOT
 dorpm $INSTALL_ROOT
 

@@ -48,6 +48,7 @@ usage()
     echo "[-with-static-boost <boost> Build binaries using static linking of boost from specified boost install"
     echo "[-clangtidy]                Run clang-tidy as part of build"
     echo "[-pskernel]                 Enable building of POC ps kernel"
+    echo "[-cppstd]                   Cpp standard (default: 17)"
     echo "[-docs]                     Enable documentation generation with sphinx"
     echo "[-j <n>]                    Compile parallel (default: system cores)"
     echo "[-ccache]                   Build using RDI's compile cache"
@@ -134,6 +135,11 @@ while [ $# -gt 0 ]; do
         -ccache)
             cmake_flags+=" -DRDI_CCACHE=1"
             ccache=1
+            shift
+            ;;
+        -cppstd)
+            shift
+            cmake_flags+=" -DCMAKE_CXX_STANDARD=$1"
             shift
             ;;
         -toolchain)

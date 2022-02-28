@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +39,7 @@ class SubCmd {
    bool isHidden() const { return m_isHidden; };
    bool isDeprecated() const { return m_isDeprecated; };
    bool isPreliminary() const { return m_isPreliminary; };
+   bool isDefaultDeviceValid() const { return m_defaultDeviceValid; };
 
  public:
    void setExecutableName(const std::string & _name) { m_executableName = _name; };
@@ -60,10 +61,12 @@ public:
   void setIsHidden(bool _isHidden) { m_isHidden = _isHidden; };
   void setIsDeprecated(bool _isDeprecated) { m_isDeprecated = _isDeprecated; };
   void setIsPreliminary(bool _isPreliminary) { m_isPreliminary = _isPreliminary; };
+  void setIsDefaultDevValid(bool _defaultDeviceValid) { m_defaultDeviceValid = _defaultDeviceValid; };
   void setLongDescription(const std::string &_longDescription) {m_longDescription = _longDescription; };
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
   void printHelp(const boost::program_options::options_description & _optionDescription,
-                 const boost::program_options::options_description & _optionHidden) const;
+                 const boost::program_options::options_description & _optionHidden,
+                 bool removeLongOptDashes = false) const;
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
@@ -85,6 +88,7 @@ public:
   bool m_isHidden;
   bool m_isDeprecated;
   bool m_isPreliminary;
+  bool m_defaultDeviceValid;
 };
 
 #endif

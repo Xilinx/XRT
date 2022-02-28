@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -93,7 +93,7 @@ namespace xdp {
         deviceNumbering[deviceName] = 0 ;
       }
       deviceName += "-" ;
-      deviceName += deviceNumbering[deviceName] ;
+      deviceName += std::to_string(deviceNumbering[deviceName]) ;
       deviceNumbering[deviceName]++ ;
 
       std::string outputFile = "power_profile_" + deviceName + ".csv" ; 

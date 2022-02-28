@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2021-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -110,6 +110,13 @@ public:
     // Waits for interrupt, upon return interrupt is disabled.
     device->wait_ip_interrupt(handle);
     enable(); // re-enable interrupts
+  }
+
+  std::cv_status
+  wait(const std::chrono::milliseconds& timeout) const
+  {
+    // Waits for interrupt, or return on timeout
+    return device->wait_ip_interrupt(handle, static_cast<int32_t>(timeout.count()));
   }
 };
 
@@ -351,6 +358,16 @@ wait()
 {
   if (handle)
     handle->wait();
+}
+
+std::cv_status
+ip::interrupt::
+wait(const std::chrono::milliseconds& timeout) const
+{
+  if (handle)
+    return handle->wait(timeout);
+
+  return std::cv_status::no_timeout;
 }
 
 } // namespace xrt

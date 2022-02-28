@@ -439,10 +439,11 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
-	err = xocl_mm_insert_node_range(drm_p, memidx, xobj->mm_node,
+	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
 		xobj->base.size);
 	if (err)
 		goto failed;
+
 	BO_DEBUG("insert mm_node:%p, start:%llx size: %llx",
 		xobj->mm_node, xobj->mm_node->start,
 		xobj->mm_node->size);

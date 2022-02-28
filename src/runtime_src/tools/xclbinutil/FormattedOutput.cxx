@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2018 Xilinx, Inc
+ * Copyright (C) 2018, 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,6 +25,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 
 // Generated include files
 #include "version.h"
@@ -573,7 +575,9 @@ void
 reportClocks( std::ostream & _ostream,
               const std::vector<Section*> _sections)
 {
-  _ostream << "Clocks" << std::endl;
+  boost::property_tree::ptree ptEmpty;
+
+  _ostream << "Scalable Clocks" << std::endl;
   _ostream << "------" << std::endl;
 
   boost::property_tree::ptree ptClockFreqTopology;
@@ -589,8 +593,7 @@ reportClocks( std::ostream & _ostream,
   }
 
   if (ptClockFreqTopology.empty()) {
-    _ostream << "   No clock frequency data available."  << std::endl;
-    return;
+    _ostream << "   No scalable clock data available."  << std::endl;
   }
 
   auto clockFreqs = XUtil::as_vector<boost::property_tree::ptree>(ptClockFreqTopology,"m_clock_freq");
@@ -608,6 +611,77 @@ reportClocks( std::ostream & _ostream,
     if (&ptClockFreq != &clockFreqs.back()) {
       _ostream << std::endl;
     }
+  }
+
+  // the following information is from SYSTEM_METADATA section (system diagram json)
+  _ostream << "\n"
+           << "System Clocks\n"
+           << "------\n";
+  // system_diagram_metadata
+  //   xsa
+  //     clocks
+  // example of clocks info in SYSTEM_METADATA
+  //   "clocks": [
+  //    {
+  //      "name": "CPU",
+  //      "orig_name": "CPU",
+  //      "id": -1,
+  //      "default": false,
+  //      "type": "RESERVED",
+  //      "spec_frequency": 1200,
+  //      "spec_period": 0.833333,
+  //      "requested_frequency": 0,
+  //      "achieved_frequency": 0,
+  //      "clock_domain": "",
+  //      "inst_ref": "",
+  //      "comp_ref": "",
+  //      "xclbin_name": ""
+  //    },
+  //    ...
+  boost::property_tree::ptree ptXsa;
+  for (const auto & pSection : _sections) {
+    if (pSection->getSectionKind() == SYSTEM_METADATA) {
+      boost::property_tree::ptree pt;
+      pSection->getPayload(pt);
+      if (!pt.empty()) {
+        boost::property_tree::ptree ptSysDiaMet = pt.get_child("system_diagram_metadata", ptEmpty);
+        if (!ptSysDiaMet.empty()) 
+          ptXsa = ptSysDiaMet.get_child("xsa", ptEmpty);
+      }
+      break;
+    }
+  }
+
+  auto clocks = XUtil::as_vector<boost::property_tree::ptree>(ptXsa,"clocks");
+  if (clocks.empty()) {
+    _ostream << "   No system clock data available.\n";
+    return;
+  }
+
+  for (const auto & ptClock : clocks) {
+    std::string sName = ptClock.get<std::string>("orig_name","");
+    std::string sType = ptClock.get<std::string>("type","");
+    std::string sSpecFreq = ptClock.get<std::string>("spec_frequency","");
+    std::string sRequestedFreq = ptClock.get<std::string>("requested_frequency","");
+    std::string sAchievedFreq = ptClock.get<std::string>("achieved_frequency","");
+
+    // skip CPU clocks (type = RESERVED)
+    if (boost::iequals(sType, "RESERVED"))
+      continue;
+
+    boost::format systemClockFmt("   %-15s %s %s\n");
+    _ostream << systemClockFmt % "Name:" % sName % "";
+    _ostream << systemClockFmt % "Type:" % sType % "";
+    _ostream << systemClockFmt % "Default Freq:" % sSpecFreq % "MHz";
+
+    // display requested and achieved frequency only for scalable clocks 
+    if (boost::iequals(sType, "SCALABLE")) {
+      _ostream << systemClockFmt % "Requested Freq:" % sRequestedFreq % "MHz";
+      _ostream << systemClockFmt % "Achieved Freq:" % sAchievedFreq % "MHz";
+    }
+
+    if (&ptClock != &clocks.back()) 
+      _ostream << std::endl;
   }
 }
 

@@ -25,12 +25,16 @@ namespace xdp {
 
   static void updateAIEDebugDevice(void* handle)
   {
-    aiePluginInstance.updateAIEDevice(handle);
+    if (AIEDebugPlugin::alive()) {
+      aiePluginInstance.updateAIEDevice(handle);
+    }
   }
 
   static void endAIEDebugPoll(void* handle)
   {
-    aiePluginInstance.endPollforDevice(handle);
+    if (AIEDebugPlugin::alive()) {
+      aiePluginInstance.endPollforDevice(handle);
+    }
   }
 
 } // end namespace xdp

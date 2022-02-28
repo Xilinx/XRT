@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -24,16 +24,16 @@
 
 #ifdef __cplusplus
 # include "xrt/detail/abi.h"
+# include "xrt/detail/any.h"
 # include "xrt/detail/param_traits.h"
 # include <memory>
-# include <boost/any.hpp> // std::any c++17
 #endif
 
 /**
  * typedef xrtDeviceHandle - opaque device handle
  */
 typedef void* xrtDeviceHandle;
-  
+
 #ifdef __cplusplus
 
 namespace xrt_core {
@@ -44,7 +44,7 @@ namespace xrt {
 
 namespace info {
 /*!
- * @enum device 
+ * @enum device
  *
  * @brief
  * Device information parameters
@@ -54,7 +54,7 @@ namespace info {
  * device.  The type of the device properties is compile time defined
  * with param traits.
  *
- * @var bdf 
+ * @var bdf
  *  BDF for device (std::string)
  * @var interface_uuid
  *  Interface UUID when device is programmed with 2RP shell (`xrt::uuid`)
@@ -90,6 +90,8 @@ namespace info {
  *  AIE shim information of the device (std::string)
  * @var dynamic_regions
  *  Information about xclbin on the device (std::string)
+ * @var vmr
+ *  Information about vmr on the device (std::string)
  */
 enum class device : unsigned int {
   bdf,
@@ -102,17 +104,18 @@ enum class device : unsigned int {
   offline,
   electrical,
   thermal,
-  mechanical, 
-  memory, 
+  mechanical,
+  memory,
   platform,
   pcie_info,
-  host, 
-  aie, 
-  aie_shim, 
-  dynamic_regions
+  host,
+  aie,
+  aie_shim,
+  dynamic_regions,
+  vmr
 };
 
-/// @cond 
+/// @cond
 /*
  * Return type for xrt::device::get_info()
  */
@@ -134,7 +137,8 @@ XRT_INFO_PARAM_TRAITS(device::host, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie, std::string);
 XRT_INFO_PARAM_TRAITS(device::aie_shim, std::string);
 XRT_INFO_PARAM_TRAITS(device::dynamic_regions, std::string);
-/// @endcond 
+XRT_INFO_PARAM_TRAITS(device::vmr, std::string);
+/// @endcond
 
 } // info
 
@@ -156,7 +160,7 @@ public:
    * device() - Dtor
    */
   ~device() = default;
-  
+
   /**
    * device() - Constructor from device index
    *
@@ -173,12 +177,12 @@ public:
    * device() - Constructor from string
    *
    * @param bdf
-   *  String identifying the device to open.  
+   *  String identifying the device to open.
    *
    * If the string is in BDF format it matched against devices
    * installed on the system.  Otherwise the string is assumed
    * to be a device index.
-   * 
+   *
    * Throws if string format is invalid or no matching device is
    * found.
    */
@@ -267,13 +271,19 @@ public:
   typename info::param_traits<info::device, param>::return_type
   get_info() const
   {
+#ifndef XRT_NO_STD_ANY
+    return std::any_cast<
+      typename info::param_traits<info::device, param>::return_type
+    >(get_info_std(param, xrt::detail::abi{}));
+#else
     return boost::any_cast<
-      typename info::param_traits<info::device, param>::return_type  
+      typename info::param_traits<info::device, param>::return_type
     >(get_info(param, xrt::detail::abi{}));
+#endif
   }
 
   /**
-   * load_xclbin() - Load an xclbin 
+   * load_xclbin() - Load an xclbin
    *
    * @param xclbin
    *  Pointer to xclbin in memory image
@@ -322,7 +332,7 @@ public:
    * @return
    *  UUID of currently loaded xclbin
    *
-   * Note that current UUID can be different from the UUID of 
+   * Note that current UUID can be different from the UUID of
    * the xclbin loaded by this process using load_xclbin()
    */
   XCL_DRIVER_DLLESPEC
@@ -339,7 +349,7 @@ public:
    * @return
    *  The specified section if available.
    *
-   * Get the xclbin section of the xclbin currently loaded on the 
+   * Get the xclbin section of the xclbin currently loaded on the
    * device.  The function throws on error
    *
    * Note, this API may be replaced with more generic query request access
@@ -391,6 +401,13 @@ private:
   XCL_DRIVER_DLLESPEC
   boost::any
   get_info(info::device param, const xrt::detail::abi&) const;
+
+#ifndef XRT_NO_STD_ANY
+  XCL_DRIVER_DLLESPEC
+  std::any
+  get_info_std(info::device param, const xrt::detail::abi&) const;
+#endif
+
 private:
   std::shared_ptr<xrt_core::device> handle;
 };
@@ -510,7 +527,7 @@ xrtDeviceLoadXclbinUUID(xrtDeviceHandle dhdl, const xuid_t uuid);
  * @out:    Return xclbin id in this uuid_t struct
  * Return:  0 on success or appropriate error number
  *
- * Note that current UUID can be different from the UUID of 
+ * Note that current UUID can be different from the UUID of
  * the xclbin loaded by this process using @load_xclbin()
  */
 XCL_DRIVER_DLLESPEC

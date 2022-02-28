@@ -329,8 +329,7 @@ static inline int xgq_can_consume(struct xgq *xgq)
 }
 
 /*
- * Fast forward to where we left, should only be called during attach.
- * The ring may not be empty if peer alloc'ed ring, then pushed cmds to it before we attach.
+ * Fast forward to where we left. Used only during xgq_attach().
  */
 static inline void xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
 {
@@ -338,8 +337,20 @@ static inline void xgq_fast_forward(struct xgq *xgq, struct xgq_ring *ring)
 	xgq_ring_read_consumed(xgq->xq_io_hdl, ring);
 }
 
-static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
-	    size_t n_slots, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
+/*
+ * Set consumed to be the same as produced to ignore any existing commands. And there should not
+ * be any left over commands anyway. Used only during xgq_alloc().
+ */
+static inline void xgq_soft_reset(struct xgq *xgq, struct xgq_ring *ring)
+{
+	xgq_ring_read_produced(xgq->xq_io_hdl, ring);
+	ring->xr_consumed = ring->xr_produced;
+	xgq_ring_write_consumed(xgq->xq_io_hdl, ring);
+}
+
+static inline void
+xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr,
+	 size_t n_slots, uint32_t slot_size, uint64_t sq_produced, uint64_t cq_produced)
 {
 	struct xgq_header hdr = {};
 	uint64_t sqprod, cqprod;
@@ -379,6 +390,9 @@ static inline void xgq_init(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, ui
 	hdr.xh_cq_produced = 0;
 	hdr.xh_flags = xgq->xq_flags;
 	xgq_copy_to_ring(xgq->xq_io_hdl, &hdr, ring_addr, sizeof(hdr));
+
+	xgq_soft_reset(xgq, &xgq->xq_sq);
+	xgq_soft_reset(xgq, &xgq->xq_cq);
 
 	// Write the magic number to confirm the header is fully initialized
 	hdr.xh_magic = XGQ_ALLOC_MAGIC;
@@ -431,7 +445,6 @@ xgq_alloc(struct xgq *xgq, uint64_t flags, uint64_t io_hdl, uint64_t ring_addr, 
 		return -E2BIG;
 
 	xgq_init(xgq, flags, io_hdl, ring_addr, numslots, slot_size, sq_produced, cq_produced);
-
 	*ring_len = xgq_ring_len(numslots, slot_size);
 	return 0;
 }

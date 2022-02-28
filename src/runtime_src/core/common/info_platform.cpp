@@ -288,8 +288,10 @@ pcie_info(const xrt_core::device * device)
     ptree.add("device", xq::pcie_device::to_string(xrt_core::device_query<xq::pcie_device>(device)));
     ptree.add("sub_device", xq::pcie_subsystem_id::to_string(xrt_core::device_query<xq::pcie_subsystem_id>(device)));
     ptree.add("sub_vendor", xq::pcie_subsystem_vendor::to_string(xrt_core::device_query<xq::pcie_subsystem_vendor>(device)));
-    ptree.add("link_speed_gbit_sec", xrt_core::device_query<xq::pcie_link_speed_max>(device));
+    ptree.add("link_speed_gbit_sec", xrt_core::device_query<xq::pcie_link_speed>(device));
+    ptree.add("expected_link_speed_gbit_sec", xrt_core::device_query<xq::pcie_link_speed_max>(device));
     ptree.add("express_lane_width_count", xrt_core::device_query<xq::pcie_express_lane_width>(device));
+    ptree.add("expected_express_lane_width_count", xrt_core::device_query<xq::pcie_express_lane_width_max>(device));
 
     // dma_thread_count might not be present for nodma, but it is safe to ignore.
     try {

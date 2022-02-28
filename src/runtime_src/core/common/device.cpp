@@ -185,8 +185,10 @@ register_axlf(const axlf* top)
   }
   catch (const query::no_such_key&) {
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
-    m_cus = xclbin::get_cus(ip_layout);
-    m_cu2idx = xclbin::get_cu_indices(ip_layout);
+    if (ip_layout != nullptr) {
+      m_cus = xclbin::get_cus(ip_layout);
+      m_cu2idx = xclbin::get_cu_indices(ip_layout);
+    }
   }
 }
 

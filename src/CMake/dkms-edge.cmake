@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 # Custom variables imported by this CMake stub which should be defined by parent CMake:
 # XRT_DKMS_DRIVER_SRC_BASE_DIR
@@ -57,7 +57,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/cu.c
   zocl/LICENSE
   zocl/Makefile
-  zocl/sched_exec.c
   zocl/zocl_aie.c
   zocl/zocl_bo.c
   zocl/zocl_cu.c
@@ -65,7 +64,6 @@ SET (XRT_DKMS_DRIVER_SRCS
   zocl/zocl_drv.c
   zocl/zocl_error.c
   zocl/zocl_ert.c
-  zocl/zocl_generic_cu.c
   zocl/zocl_ioctl.c
   zocl/zocl_kds.c
   zocl/zocl_mailbox.c

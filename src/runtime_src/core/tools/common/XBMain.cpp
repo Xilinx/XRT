@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,17 +16,17 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
-#include "XBMain.h"
-
-#include "XBUtilities.h"
 #include "SubCmd.h"
 #include "XBHelpMenus.h"
+#include "XBMain.h"
+#include "XBUtilities.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
+#include <cstdlib>
 
 namespace po = boost::program_options;
 
@@ -155,11 +155,10 @@ void  main_(int argc, char** argv,
   // Note: "examine" produces different reports depending if the user has
   //       specified the --device option or not.
   if ( sDevice.empty() &&
-       (subCommand->getName() != "examine")) {
+       (subCommand->isDefaultDeviceValid())) {
     sDevice = "default";
   }
   #endif
-
 
   // Was default device requested?
   if (boost::iequals(sDevice, "default")) {

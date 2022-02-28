@@ -33,6 +33,8 @@
 #include "core/common/message.h"
 #include "core/common/xrt_profiling.h"
 #include "core/common/query_requests.h"
+#include "core/common/api/xclbin_int.h"
+#include "core/include/experimental/xrt_xclbin.h"
 
 #include "mem_model.h"
 #include "mbscheduler.h"
@@ -92,6 +94,7 @@ using addr_type = uint64_t;
     size_t m_pdiSize;
     char* m_emuData;
     size_t m_emuDataSize;
+    const axlf* m_top;
   } bitStreamArg;
 
  typedef struct
@@ -276,7 +279,8 @@ using addr_type = uint64_t;
       void createPreSimScript(const std::string& wcfgFilePath, std::string& preSimScriptPath);
       std::string loadFileContentsToString(const std::string& path);
       void constructQueryTable();
-      void parseHLSPrintf(const std::string& simPath);	  
+      //CR-1120081
+      void parseString(const std::string& simPath , const std::string& searchString);
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }

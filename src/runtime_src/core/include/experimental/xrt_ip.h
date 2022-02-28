@@ -1,18 +1,6 @@
-/*
- * Copyright (C) 2021, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+/**
+ * Copyright (C) 2021-2022 Xilinx, Inc
+ * SPDX-License-Identifier: Apache-2.0
  */
 #ifndef _XRT_IP_H_
 #define _XRT_IP_H_
@@ -23,6 +11,7 @@
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
+# include <condition_variable>
 # include <cstdint>
 # include <string>
 #endif
@@ -31,7 +20,7 @@
 
 namespace xrt {
 
-/*!  
+/*!
  * @class ip
  *
  * @brief
@@ -46,9 +35,9 @@ namespace xrt {
  *   - The custom IP must appear in IP_LAYOUT section of xclbin.
  *   - The custom IP must have a base address such that it can be controlled
  *     through register access at offsets from base address.
- *   - The custom IP must have an address range so that write and read access 
+ *   - The custom IP must have an address range so that write and read access
  *     to base address offset can be validated.
- *   - XRT supports exclusive access only for the custom IP, this is to other 
+ *   - XRT supports exclusive access only for the custom IP, this is to other
  *     processes from accessing the same IP at the same time.
  */
 class ip_impl;
@@ -89,7 +78,7 @@ public:
     XCL_DRIVER_DLLESPEC
     void
     enable();
- 
+
     /**
      * disable() - Disable interrupt
      *
@@ -98,18 +87,34 @@ public:
     XCL_DRIVER_DLLESPEC
     void
     disable();
- 
+
     /**
      * wait() - Wait for interrupt
      *
-     * Wait for interrupt from IP. Upon return, interrupt is 
+     * Wait for interrupt from IP. Upon return, interrupt is
      * re-enabled.
      */
     XCL_DRIVER_DLLESPEC
     void
     wait();
+
+    /**
+     * wait() - Wait for interrupt or timeout to occur
+     *
+     * @param timeout
+     *   Timout in milliseconds.
+     * @return
+     *   std::cv_status::timeout if the timeout specified expired,
+     *   std::cv_status::no_timeout otherwise.
+     *
+     * Blocks the current thread until an interrupt is received from the IP,  or
+     * until after the specified timeout duration
+     */
+    XCL_DRIVER_DLLESPEC
+    std::cv_status
+    wait(const std::chrono::milliseconds& timeout) const;
   };
- 
+
 public:
   /**
    * ip() - Construct empty ip object
@@ -135,13 +140,13 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   ip(const xrt::device& device, const xrt::uuid& xclbin_id, const std::string& name);
- 
+
   /**
    * write_register() - Write to the address range of an ip
    *
    * @param offset
    *  Offset in register space to write to
-   * @param data    
+   * @param data
    *  Data to write
    *
    * Throws std::out_or_range if offset is outside the
@@ -150,11 +155,11 @@ public:
   XCL_DRIVER_DLLESPEC
   void
   write_register(uint32_t offset, uint32_t data);
- 
+
   /**
    * read_register() - Read data from ip address range
    *
-   * @param offset 
+   * @param offset
    *  Offset in register space to read from
    * @return
    *  Value read from offset
@@ -165,7 +170,7 @@ public:
   XCL_DRIVER_DLLESPEC
   uint32_t
   read_register(uint32_t offset) const;
- 
+
   /**
    * create_interrupt_notify() - Create xrt::ip::interrupt object
    *
@@ -180,11 +185,10 @@ public:
    */
   XCL_DRIVER_DLLESPEC
   interrupt
-  create_interrupt_notify();  
+  create_interrupt_notify();
 };
 
 } // xrt
 #endif
 
 #endif
-

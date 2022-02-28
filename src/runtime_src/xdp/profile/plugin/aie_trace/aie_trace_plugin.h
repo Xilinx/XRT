@@ -54,6 +54,9 @@ namespace xdp {
       XDP_EXPORT
       virtual void writeAll(bool openNewFiles);
 
+      XDP_EXPORT
+      static bool alive();
+
     private:
       inline uint32_t bcIdToEvent(int bcId);
       void releaseCurrentTileCounters(int numCoreCounters, int numMemoryCounters);
@@ -70,11 +73,16 @@ namespace xdp {
       std::vector<tile_type> getTilesForTracing(void* handle);
 
     private:
+
+      // Indicate whether the Aie Trace Plugin is in valid state
+      static bool live;
+
       // Runtime or compile-time specified trace metrics?
       bool runtimeMetrics = true;
 
       bool continuousTrace;
       uint64_t offloadIntervalms;
+      unsigned int aie_trace_file_dump_int_s;
 
       // Trace Runtime Status
       AieRC mConfigStatus = XAIE_OK;

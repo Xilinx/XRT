@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1106,7 +1106,14 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
   }
 
   XBU::xclbin_lock xclbin_lock(_dev);
-  uint32_t m2m_enabled = xrt_core::device_query<xrt_core::query::kds_numcdmas>(_dev);
+  // Assume m2m is not enabled
+  uint32_t m2m_enabled = 0;
+  try {
+    m2m_enabled = xrt_core::device_query<xrt_core::query::m2m>(_dev);
+  } catch (const xrt_core::query::exception&) {
+    // Ignore the catch! Let the below logic handle the notification as we want to skip this test
+    // If we end up here this means the m2m sysfs node was not found and we skip the test.
+  }
   std::string name = xrt_core::device_query<xrt_core::query::rom_vbnv>(_dev);
 
   // Workaround:
@@ -1204,8 +1211,6 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
     _ptTest.put("status", test_token_failed);
 
-  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-
   _ptTest.put("status", test_token_passed);
 }
 
@@ -1295,7 +1300,9 @@ static void
 pretty_print_test_desc(const boost::property_tree::ptree& test, int& test_idx,
                        std::ostream & _ostream, const std::string& bdf)
 {
-  if (test.get<std::string>("status", "").compare(test_token_skipped)) {
+  // If the status is anything other than skipped print the test name
+  auto _status = test.get<std::string>("status", "");
+  if (!boost::equals(_status, test_token_skipped)) {
     std::string test_desc = boost::str(boost::format("Test %d [%s]") % ++test_idx % bdf);
     // Only use the long name option when displaying the test
     _ostream << boost::format("%-26s: %s \n") % test_desc % test.get<std::string>("name", "<unknown>");
@@ -1328,7 +1335,7 @@ pretty_print_test_run(const boost::property_tree::ptree& test,
   // if not supported: verbose
   auto redirect_log = [&](std::string tag, std::string log_str) {
     std::vector<std::string> verbose_tags = {"Xclbin", "Testcase"};
-    if((_status.compare(test_token_skipped)) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
+    if(boost::equals(_status, test_token_skipped) || (std::find(verbose_tags.begin(), verbose_tags.end(), tag) != verbose_tags.end())) {
       if(XBU::getVerbose())
         XBU::message(log_str, false, _ostream);
       else
@@ -1585,7 +1592,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     ("run,r", boost::program_options::value<decltype(testsToRun)>(&testsToRun)->multitoken(), (std::string("Run a subset of the test suite.  Valid options are:\n") + formatRunValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
     ("path,p", boost::program_options::value<decltype(xclbin_location)>(&xclbin_location), "Path to the directory containing validate xclbins")
-    ("help,h", boost::program_options::bool_switch(&help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&help), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -1594,11 +1601,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;

@@ -164,7 +164,7 @@ XBUtilities::runScript( const std::string & env,
 
   is_done = true;
   bool passed = (os_stdout.str().find("PASS") != std::string::npos) ? true : false;
-  bool skipped = (os_stdout.str().find("EOPNOTSUPP") != std::string::npos) ? true : false;
+  bool skipped = (os_stdout.str().find("NOT SUPPORTED") != std::string::npos) ? true : false;
   run_test.get()->finish(passed, final_description);
   // Workaround: Clear the default progress bar output so as to print the Error: before printing [FAILED]
   // Remove this once busybar is implemented

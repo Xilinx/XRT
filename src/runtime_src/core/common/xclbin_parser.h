@@ -60,7 +60,7 @@ struct kernel_properties
   kernel_type type = kernel_type::none;
   restart_type counted_auto_restart = 0;
   mailbox_type mailbox = mailbox_type::none;
-  size_t address_range = 0;
+  size_t address_range = 0x10000;  // NOLINT, default address range
   bool sw_reset = false;
 
   // opencl specifics

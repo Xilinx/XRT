@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -41,6 +41,7 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMechanical.h"
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportVmrStatus.h"
 #include "ReportPlatform.h"
 
 // Note: Please insert the reports in the order to be displayed (current alphabetical)
@@ -53,7 +54,8 @@ static const ReportCollection fullReportCollection = {
     std::make_shared<ReportMechanical>(),
     std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
-    std::make_shared<ReportCmcStatus>()
+    std::make_shared<ReportCmcStatus>(),
+    std::make_shared<ReportVmrStatus>()
   #endif
 };
 
@@ -92,11 +94,11 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   // -- Retrieve and parse the subcommand options -----------------------------
   po::options_description commonOptions("Common Options");  
   commonOptions.add_options()
-    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest.  A value of 'all' (default) indicates that every found device should be examined.")
+    ("device,d", boost::program_options::value<decltype(devices)>(&devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");  
@@ -105,16 +107,18 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Check to see if help was requested 
@@ -194,23 +198,28 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
       }
       std::cout << std::endl;
-      return;
+      throw xrt_core::error(std::errc::operation_canceled);
     }
   } catch (const xrt_core::error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
     printHelp(commonOptions, hiddenOptions);
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
   catch (const std::runtime_error& e) {
     // Catch only the exceptions that we have generated earlier
     std::cerr << boost::format("ERROR: %s\n") % e.what();
-    return;
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // Create the report
   std::ostringstream oSchemaOutput;
-  XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  bool is_report_output_valid = true;
+  try {
+    XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
+  } catch (const std::exception&) {
+    is_report_output_valid = false;
+  }
 
   // -- Write output file ----------------------------------------------
   if (!sOutput.empty()) {
@@ -223,4 +232,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
     std::cout << boost::format("Successfully wrote the %s file: %s") % sFormat % sOutput << std::endl;
   }
+
+  if (!is_report_output_valid)
+    throw xrt_core::error(std::errc::operation_canceled);
 }

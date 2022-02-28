@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -576,19 +576,13 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
                     return;
                 }
 
-                // Load entire PDI section.
-                std::vector<char> pdibuf(pdiSection->m_sectionSize);
-                in_file.seekg(pdiSection->m_sectionOffset);
-                in_file.read(pdibuf.data(), pdiSection->m_sectionSize);
-                if (!in_file.good())
-                {
-                    this->setstate(failbit);
-                    std::cout << "Can't read PDI section from "<< file << std::endl;
-                    return;
-                }
-                bufsize = pdiSection->m_sectionSize;
+                /*
+                 * By default, we load entire xsabin. 
+		 * For legacy ospiversal type, the Flasher class will trim to PDI.
+		 * For new ospi_xgq type, the Flasher will take entire xsabin.
+                 */
                 mBuf = new char[bufsize];
-                in_file.seekg(pdiSection->m_sectionOffset);
+                in_file.seekg(0);
                 in_file.read(mBuf, bufsize);
             } else {
                 // Obtain MCS section header.
@@ -648,7 +642,7 @@ firmwareImage::firmwareImage(const char *file, imageType type) :
     this->rdbuf()->pubsetbuf(mBuf, bufsize);
 #endif
 #ifdef _WIN32
-	this->str(mBuf);
+    this->str(mBuf);
 #endif
 }
 

@@ -11,7 +11,7 @@
 
 #include <linux/mod_devicetable.h>
 #include <linux/platform_device.h>
-#include "zocl_util.h"
+#include "zocl_lib.h"
 #include "zocl_ert_intc.h"
 
 /* ERT INTC driver name. */
@@ -28,7 +28,7 @@ struct zocl_xgq_intc {
 
 	spinlock_t			zei_lock;
 
-	size_t				zei_num_irqs;
+	int				zei_num_irqs;
 	/* variable length based on num of irqs, always the last member */
 	struct zocl_ert_intc_handler	zei_handler[0];
 };

@@ -1,0 +1,9 @@
+[Unit]
+Description=apu-boot
+ 
+[Service]
+ExecStart=/usr/bin/apu-boot
+StandardOutput=journal+console
+ 
+[Install]
+WantedBy=multi-user.target

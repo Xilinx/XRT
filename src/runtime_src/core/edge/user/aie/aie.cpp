@@ -246,7 +246,9 @@ clear_bd(BD& bd)
 {
 #ifndef __AIESIM__
   XAie_MemDetach(&bd.memInst);
-  close(bd.buf_fd);
+  /* we shouldnt close the buffer handle here. file handle gets closed in bo
+   * destructor */
+  //close(bd.buf_fd);
 #endif
 }
 

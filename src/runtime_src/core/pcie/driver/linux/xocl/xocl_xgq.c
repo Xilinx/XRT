@@ -39,6 +39,17 @@ struct xocl_xgq {
 	void __iomem		*xx_sq_prod_int;
 };
 
+ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count)
+{
+	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	char *fmt = "id %d, addr 0x%llx\n";
+	ssize_t sz = 0;
+
+	sz = scnprintf(buf, count, fmt, xgq->xx_id, xgq->xx_addr);
+
+	return sz;
+}
+
 static inline void
 xocl_xgq_write_queue(u32 __iomem *dst, u32 *src, int words)
 {
@@ -117,7 +128,7 @@ int xocl_xgq_get_response(void *xgq_handle, int id)
 	if (xgq->xx_num_client == 1)
 		goto unlock_and_out;
 
-	xocl_xgq_read_queue((u32 *)&resp, (u32 __iomem *)addr, sizeof(resp));
+	xocl_xgq_read_queue((u32 *)&resp, (u32 __iomem *)addr, sizeof(resp)/4);
 
 unlock_and_out:
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
@@ -157,10 +168,32 @@ void *xocl_xgq_init(struct xocl_xgq_info *info)
 	xgq->xx_sq_prod_int = info->xi_sq_prod_int;
 
 	spin_lock_init(&xgq->xx_lock);
-	ret = xgq_attach(&xgq->xx_xgq, 0, 0, (u64)xgq->xx_addr, 0, 0);
-	if (ret)
+	ret = xgq_attach(&xgq->xx_xgq, 0, 0, (u64)xgq->xx_addr,
+			 (u64)(uintptr_t)info->xi_sq_prod,
+			 (u64)(uintptr_t)info->xi_cq_prod);
+	if (ret) {
+		kfree(xgq);
 		return (ERR_PTR(-ENODEV));
+	}
 
+#if 0
+	printk("sq prod 0x%llx\n", (u64)(uintptr_t)info->xi_sq_prod);
+	printk("cq prod 0x%llx\n", (u64)(uintptr_t)info->xi_cq_prod);
+	printk("\n");
+	printk("xq_sq slot_num %d\n",      xgq->xx_xgq.xq_sq.xr_slot_num);
+	printk("xq_sq slot_sz  %d\n",      xgq->xx_xgq.xq_sq.xr_slot_sz);
+	printk("xq_sq produced %d\n",      xgq->xx_xgq.xq_sq.xr_produced);
+	printk("xq_sq consumed %d\n",      xgq->xx_xgq.xq_sq.xr_consumed);
+	printk("xq_sq produced 0x%llx\n",  xgq->xx_xgq.xq_sq.xr_produced_addr);
+	printk("xq_sq consumed 0x%llx\n",  xgq->xx_xgq.xq_sq.xr_consumed_addr);
+	printk("\n");
+	printk("xq_cq slot_num %d\n",      xgq->xx_xgq.xq_cq.xr_slot_num);
+	printk("xq_cq slot_sz  %d\n",      xgq->xx_xgq.xq_cq.xr_slot_sz);
+	printk("xq_cq produced %d\n",      xgq->xx_xgq.xq_cq.xr_produced);
+	printk("xq_cq consumed %d\n",      xgq->xx_xgq.xq_cq.xr_consumed);
+	printk("xq_cq produced 0x%llx\n",  xgq->xx_xgq.xq_cq.xr_produced_addr);
+	printk("xq_cq consumed 0x%llx\n",  xgq->xx_xgq.xq_cq.xr_consumed_addr);
+#endif
 	return xgq;
 }
 

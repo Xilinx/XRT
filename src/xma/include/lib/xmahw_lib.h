@@ -20,9 +20,9 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <stdbool.h>
-//#include "lib/xmacfg.h"
 #include "core/include/xrt/xrt_bo.h"
 #include "core/include/xrt/xrt_device.h"
+#include "core/include/xrt/xrt_kernel.h"
 #include "lib/xmalimits_lib.h"
 #include "app/xmahw.h"
 #include "app/xmaparam.h"
@@ -97,23 +97,11 @@ typedef struct XmaCUCmdObjPrivate
 
 typedef struct XmaHwExecBO
 {
-    xclBufferHandle    handle;
-    char*       data;//execBO size is 4096 in xmahw_hal.cpp
-    bool        in_use;
-    int32_t     cu_index;
-    int32_t     session_id;
-    uint32_t    cu_cmd_id1;//Counter
-    int32_t     cu_cmd_id2;//Random num
-
-  XmaHwExecBO() {
-    in_use = false;
-    handle = NULLBO;
-    data = NULL;
-    cu_index = -1;
-    cu_cmd_id1 = 0;
-    cu_cmd_id2 = 0;
-    session_id = -1;
-  }
+    xrt::kernel xrt_kernel;
+    xrt::run xrt_run;
+    bool        in_use = false;
+    uint32_t    cu_cmd_id1 = 0;//Counter
+    int32_t     cu_cmd_id2 = 0;//Random num
 } XmaHwExecBO;
 
 typedef struct XmaBufferPool
@@ -185,11 +173,10 @@ typedef struct XmaHwSessionPrivate
     std::condition_variable work_item_done_1plus;//Use with xma_plg_work_item_done
     std::condition_variable execbo_is_free; //Use with xma_plg_schedule_work_item and xma_plg_schedule_cu_cmd
     std::condition_variable kernel_done_or_free;//Use with xma_plg_cu_cmd_status; CU completion is must every outstanding cmd;
-    xclBufferHandle  last_execbo_handle = NULLBO;// will move it to xrt buffer during exec bo changes
     std::vector<uint32_t> execbo_lru;
     std::vector<uint32_t> execbo_to_check;
     bool     using_work_item_done = false;
-    bool     using_cu_cmd_status = false;
+    std::atomic<bool> using_cu_cmd_status{ false };
     std::atomic<bool> execbo_locked{ false };
     std::vector<XmaHwExecBO> kernel_execbos;
     int32_t    num_execbo_allocated = -1;
@@ -211,25 +198,11 @@ typedef struct XmaHwKernel
     bool        context_opened;
     bool        in_use;
     int32_t     cu_index;
-    uint64_t    base_address;
-    //uint64_t bitmap based on MAX_DDR_MAP=64
     uint64_t    ip_ddr_mapping;
     int32_t     default_ddr_bank;
     std::unordered_map<int32_t, int32_t> CU_arg_to_mem_info;// arg# -> ddr_bank#
-
-    int32_t     cu_index_ert;
-    uint32_t    cu_mask0;
-    uint32_t    cu_mask1;
-    uint32_t    cu_mask2;
-    uint32_t    cu_mask3;
-
     bool soft_kernel;
-    bool kernel_channels;
-    uint32_t     max_channel_id;
-    int32_t      arg_start;
-    int32_t      regmap_size;
-    bool         is_shared;
-
+    bool is_shared;
     //No need of atomic as only one thread is using below variables
     uint32_t num_sessions;
     uint32_t num_cu_cmds_avg;
@@ -239,26 +212,16 @@ typedef struct XmaHwKernel
     uint32_t cu_idle;
     uint32_t cu_busy_tmp;
     uint32_t num_samples_tmp;
-
     uint32_t    reserved[16];
 
   XmaHwKernel() {
    std::memset(name, 0, sizeof(name));
     in_use = false;
-    context_opened = false;
+    context_opened = true;
     cu_index = -1;
     default_ddr_bank = -1;
     ip_ddr_mapping = 0;
-    cu_index_ert = -1;
-    cu_mask0 = 0;
-    cu_mask1 = 0;
-    cu_mask2 = 0;
-    cu_mask3 = 0;
-    soft_kernel = false;
-    kernel_channels = false;
-    max_channel_id = 0;
-    arg_start = -1;
-    regmap_size = -1;
+    soft_kernel = false;  
     is_shared = false;
     num_sessions = 0;
     num_cu_cmds_avg = 0;
@@ -271,27 +234,6 @@ typedef struct XmaHwKernel
   }
 } XmaHwKernel;
 
-typedef struct XmaHwMem
-{
-    bool        in_use;
-    uint64_t    base_address;
-    uint64_t    size_kb;
-    uint32_t    size_mb;
-    uint32_t    size_gb;
-    uint8_t     name[MAX_KERNEL_NAME];
-
-    uint32_t    reserved[16];
-
-  XmaHwMem() {
-    std::memset(name, 0, sizeof(name));
-    in_use = false;
-    base_address = 0;
-    size_kb = 0;
-    size_mb = 0;
-    size_gb = 0;
-  }
-} XmaHwMem;
-
 typedef struct XmaHwDevice
 {
     xrt::device        xrt_device;
@@ -301,7 +243,6 @@ typedef struct XmaHwDevice
     uint32_t           number_of_hardware_kernels = 0;
     uint32_t           number_of_mem_banks = 0;
     std::vector<XmaHwKernel> kernels;
-    std::vector<XmaHwMem> ddrs;
     uint32_t    cu_cmd_id1 = 0;//Counter
     uint32_t    cu_cmd_id2 = 0;//Counter
     std::mt19937 mt_gen;

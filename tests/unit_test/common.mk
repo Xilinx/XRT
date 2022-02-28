@@ -21,7 +21,7 @@ CL_EXT := cl
 # Change the DSA name to point to your device
 # % make DSA=mydevice ...
 DSA ?= xilinx_vcu1525_dynamic_5_1
-MODE ?= hw
+MODE ?= sw_emu
 
 AR := ar
 CPP := g++

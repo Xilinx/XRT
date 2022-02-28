@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -40,7 +40,8 @@ namespace xocl {
     inline void
     set_event_action(xocl::event* e, F&& f, Args&&... args)
     {
-      if (xrt_core::config::get_opencl_trace())
+      if (xrt_core::config::get_opencl_trace() ||
+          xrt_core::config::get_host_trace())
 	e->set_profile_action(f(std::forward<Args>(args)...)) ;
     }
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -33,7 +33,9 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <poll.h>
 #include <sys/syscall.h>
+#include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/filesystem.hpp>
@@ -72,7 +74,6 @@ get_pcidev(const xrt_core::device* device)
 {
   return pcidev::get_dev(device->get_device_id(), device->is_userpf());
 }
-
 
 static std::vector<uint64_t> 
 get_counter_status_from_sysfs(const std::string &mon_name_address, 
@@ -128,6 +129,149 @@ struct bdf
   }
 };
 
+/*
+ * sdm_sensor_info query request used to access sensor information from
+ * hwmon sysfs directly. It is a data driven approach.
+ */
+struct sdm_sensor_info
+{
+  using result_type = query::sdm_sensor_info::result_type;
+  using data_type = query::sdm_sensor_info::data_type;
+  using sdr_req_type = query::sdm_sensor_info::sdr_req_type;
+
+  static result_type
+  get_sdm_sensors(const xrt_core::device* device,
+                  const sdr_req_type& req_type,
+                  const std::string& path)
+  {
+    auto pdev = get_pcidev(device);
+    result_type output;
+    //sensors are stored in hwmon sysfs dir with name starts & ends with as follows.
+    std::array<std::string, 5> sname_start = {"curr", "in", "power", "temp", "fan"};
+    std::array<std::string, 5> sname_end = {"label", "input", "max", "average", "highest"};
+    int max_end_types = sname_end.size();
+    bool next_id = false;
+    //All sensor sysfs nodes starts with 1 as starting index.
+    int start_id = 1;
+    auto type = sname_start[(int)req_type];
+
+    //voltage sensor sysfs node starts with "in" with 0 as starting index.
+    if (!type.compare("in"))
+      start_id = 0;
+
+    while (!next_id)
+    {
+      data_type data;
+      const auto slash = "/";
+      const auto underscore = "_";
+      /*
+       * Forming sysfs node as /<start>[start_id]_.
+       * Example: /in0_ or /curr1_ or /power1_ or /temp1_ in 1st iteration.
+       * start_id will be incremented till next_id become true.
+       * So, next iteration will be /in1_ or /curr2_ or /power2_ or /temp2_.
+       * Similarly, end string of sysfs node name will be retrieved using end[].
+       */
+      std::string tmp = slash + type + std::to_string(start_id) + underscore;
+      for (int end_id = 0; end_id < max_end_types; end_id++)
+      {
+        if (end_id == 0)
+        {
+          std::string errmsg;
+          std::string label;
+          pdev->sysfs_get("", path + tmp + sname_end[end_id], errmsg, label);
+          if (!errmsg.empty())
+          {
+            //go and read next sysfs node
+            data.label = "N/A";
+            next_id = true;
+            end_id = max_end_types;
+            continue;
+          }
+          data.label = label;
+        }
+        else
+        {
+          std::string errmsg;
+          uint32_t input = 0;
+          pdev->sysfs_get<uint32_t>("", path + tmp + sname_end[end_id], errmsg, input, EINVAL);
+          if (!errmsg.empty())
+            continue;
+
+          if (end_id == 1)
+            data.input = input;
+          else if (end_id == 2)
+            data.max = input;
+          else if (end_id == 3)
+            data.average = input;
+          else
+            data.highest = input;
+        }
+      } // for (end_id =0; end_id < max ...)
+
+      if (data.label.compare("N/A"))
+        output.push_back(data);
+
+      start_id++;
+    } //while (!next_id)
+
+    return output;
+  } //get_sdm_sensors()
+
+  static result_type
+  get(const xrt_core::device* device, key_type, const boost::any& reqType)
+  {
+    const sdr_req_type req_type = boost::any_cast<query::sdm_sensor_info::req_type>(reqType);
+    auto pdev = get_pcidev(device);
+    const std::string target_dir = "hwmon";
+    const std::string target_file = "name";
+    const std::string target_name = "hwmon_sdm";
+    const std::string slash = "/";
+    std::string parent_path = pdev->get_sysfs_path("", target_dir);
+    std::string path;
+
+    /*
+     * Goal here is to find the correct hwmon sysfs directory.
+     * hwmon sysfs directory has a sysfs node called "name", and it is decision factor.
+     * So, the target hwmon sysfs dir is the one whose name contains target_name.
+     */
+    boost::filesystem::path render_dirs(parent_path);
+    if (!boost::filesystem::is_directory(render_dirs))
+      return result_type();
+
+    //iterate over list of hwmon syfs directory's directories
+    boost::filesystem::directory_iterator iter(render_dirs);
+    while (iter != boost::filesystem::directory_iterator{})
+    {
+      if (!boost::filesystem::is_directory(iter->path()))
+      {
+        ++iter;
+        continue;
+      }
+
+      std::string f_name = iter->path().filename().string();
+      if (boost::algorithm::starts_with(f_name, target_dir))
+      {
+        std::string name;
+        std::string errmsg;
+        pdev->sysfs_get("", target_dir + slash + f_name + slash + target_file, errmsg, name);
+        if (errmsg.empty() && (name.find(target_name) != std::string::npos))
+        {
+          //found target hwmon sysfs directory, store it to path variable.
+          //Here, f_name contains hwmon1 or hwmon2 etc." So, final path looks like "hwmon/<f_name>"
+          path = target_dir + slash + f_name;
+          break;
+        }
+      }
+      ++iter;
+    }
+
+    if (path.empty())
+      return result_type();
+
+    return get_sdm_sensors(device, req_type, path);
+  } //get()
+};
+
 struct kds_cu_info
 {
   using result_type = query::kds_cu_info::result_type;
@@ -154,12 +298,23 @@ struct kds_cu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 5)
+      /* TODO : For backward compartability changing the following logic
+       * as the first column should represent the slot index */
+      // stats e.g.
+      // Slot index present
+      //   0,0,vadd:vadd_1,0x1400000,0x4,0
+      // Without Slot index
+      //   0,vadd:vadd_1,0x1400000,0x4,0
+      if ((std::distance(tokens.begin(), tokens.end()) != 5) &&
+	(std::distance(tokens.begin(), tokens.end()) != 6))
         throw xrt_core::query::sysfs_error("CU statistic sysfs node corrupted");
 
-      data_type data;
+      data_type data = { 0 };
       const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      if (std::distance(tokens.begin(), tokens.end()) == 6)
+        data.slot_index =std::stoi(std::string(*tok_it++));
+
       data.index     = std::stoi(std::string(*tok_it++));
       data.name      = std::string(*tok_it++);
       data.base_addr = std::stoull(std::string(*tok_it++), nullptr, radix);
@@ -224,28 +379,19 @@ struct kds_scu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 4)
+      if ((std::distance(tokens.begin(), tokens.end()) != 4) &&
+	  (std::distance(tokens.begin(), tokens.end()) != 5))
         throw xrt_core::query::sysfs_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      if (std::distance(tokens.begin(), tokens.end()) == 5)
+	data.slot_index  = std::stoi(std::string(*tok_it++));
       data.index  = std::stoi(std::string(*tok_it++));
       data.name   = std::string(*tok_it++);  // kernel name
       data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages = std::stoul(std::string(*tok_it++));
-
-      // TODO: Let's avoid this special handling for PS kernel name
-      // Modify instance name to match up with xclbin convention where
-      // instance names are numbered 0..n as in kernel_name:[0..n] for
-      // kernel_name.  It is important that the instance name matches
-      // up with the expectations of core XRT, which is based off of
-      // the instance names in the IP_LAYOUT.  By using a knm -> idx
-      // map the driver can assign internal indeces in any order it
-      // likes and sysfs node does not have to list all kernel
-      // instances of a kernel before instances of another kernel.
-      auto& kidx = name2idx[data.name];  // integral values are zero-initialized
-      data.name += ":scu_" + std::to_string(kidx++);
 
       cu_stats.push_back(data);
     }
@@ -857,6 +1003,12 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,                    lapc_status>();
   emplace_func4_request<query::spc_status,                     spc_status>();
   emplace_func4_request<query::accel_deadlock_status,          accel_deadlock_status>();
+
+  emplace_sysfs_getput<query::boot_partition>                  ("xgq_vmr", "boot_from_backup");
+  emplace_sysfs_getput<query::flush_default_only>              ("xgq_vmr", "flush_default_only");
+  emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
+
+  emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
 }
 
 struct X { X() { initialize_query_table(); }};
@@ -1015,6 +1167,28 @@ wait_ip_interrupt(xclInterruptNotifyHandle handle)
   int pending = 0;
   if (::read(handle, &pending, sizeof(pending)) == -1)
     throw error(errno, "wait_ip_interrupt failed POSIX read");
+}
+
+std::cv_status
+device_linux::
+wait_ip_interrupt(xclInterruptNotifyHandle handle, int32_t timeout)
+{
+  struct pollfd pfd = {.fd=handle, .events=POLLIN};
+  int32_t ret = 0;
+
+  //Checking for only one fd; Only of one CU
+  //Timeout value in milli seconds
+  ret = ::poll(&pfd, 1, timeout);
+  if (ret < 0)
+    throw error(errno, "wait_timeout: failed POSIX poll");
+
+  if (ret == 0) //Timeout occured
+    return std::cv_status::timeout;
+
+  if (pfd.revents & POLLIN) //Interrupt received
+    return std::cv_status::no_timeout;
+
+  throw error(-EINVAL, boost::str(boost::format("wait_timeout: POSIX poll unexpected event: %d")  % pfd.revents));
 }
 
 xclBufferHandle

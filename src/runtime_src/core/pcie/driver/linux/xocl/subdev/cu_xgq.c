@@ -62,6 +62,7 @@ static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 	while (!xocl_xgq_get_response(cu_xgq->xgq, cu_xgq->xgq_client_id)) {
 		status->num_done += 1;
 	}
+	status->new_status = 0x4;
 }
 
 static void cu_xgq_enable_intr(void *core, u32 intr_type)
@@ -127,6 +128,7 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu)
 	xcu->interval_min = 2;
 	xcu->interval_max = 5;
 
+	xcu->status = 0x4;
 	err = xrt_cu_init(xcu);
 	if (err)
 		return err;

@@ -1,7 +1,7 @@
 /*
  * Simple Driver for Management PF
  *
- * Copyright (C) 2017-2020 Xilinx, Inc.
+ * Copyright (C) 2017-2022 Xilinx, Inc.
  *
  * Code borrowed from Xilinx SDAccel XDMA driver
  *
@@ -31,6 +31,8 @@
 #include "version.h"
 #include "xclbin.h"
 #include "../xocl_xclbin.h"
+
+#define SIZE_4KB  4096
 
 static const struct pci_device_id pci_ids[] = {
 	XOCL_MGMT_PCI_IDS,
@@ -727,6 +729,7 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 {
 	size_t resp_sz = 0, current_sz = 0, entry_sz = 0, entries = 0;
 	struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)data_ptr;
+	int ret = 0;
 
 	BUG_ON(!lro);
 
@@ -776,6 +779,31 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 		xclmgmt_subdev_get_data(lro, subdev_req->offset,
 			subdev_req->size, resp, &current_sz);
 		break;
+	case XCL_SDR_BDINFO:
+		current_sz = SIZE_4KB;
+		*resp = vzalloc(current_sz);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_BDINFO);
+		break;
+	case XCL_SDR_TEMP:
+		current_sz = SIZE_4KB;
+		*resp = vzalloc(current_sz);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_TEMP);
+		break;
+	case XCL_SDR_VOLTAGE:
+		current_sz = SIZE_4KB;
+		*resp = vzalloc(current_sz);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_VOLTAGE);
+		break;
+	case XCL_SDR_CURRENT:
+		current_sz = SIZE_4KB;
+		*resp = vzalloc(current_sz);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_CURRENT);
+		break;
+	case XCL_SDR_POWER:
+		current_sz = SIZE_4KB;
+		*resp = vzalloc(current_sz);
+		ret = xocl_hwmon_sdm_get_sensors(lro, *resp, XCL_SDR_POWER);
+		break;
 	default:
 		break;
 	}
@@ -783,7 +811,8 @@ static int xclmgmt_read_subdev_req(struct xclmgmt_dev *lro, char *data_ptr, void
 	if (!*resp)
 		return -EINVAL;
 	*sz = resp_sz;
-	return 0;
+
+	return ret;
 }
 
 static bool xclmgmt_is_same_domain(struct xclmgmt_dev *lro,
@@ -1062,6 +1091,26 @@ void xclmgmt_mailbox_srv(void *arg, void *data, size_t len,
 
 		ret = 0;
 		(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		break;
+	}
+	case XCL_MAILBOX_REQ_SDR_DATA: {
+		size_t sz = 0;
+		void *resp = NULL;
+		struct xcl_mailbox_subdev_peer *subdev_req = (struct xcl_mailbox_subdev_peer *)req->data;
+		if (payload_len < sizeof(*subdev_req)) {
+			mgmt_err(lro, "peer request (%d) dropped, wrong size\n", XCL_MAILBOX_REQ_SDR_DATA);
+			break;
+		}
+
+		ret = xclmgmt_read_subdev_req(lro, req->data, &resp, &sz);
+		if (ret) {
+			/* if can't get data, return 0 as response */
+			ret = 0;
+			(void) xocl_peer_response(lro, req->req, msgid, &ret, sizeof(ret));
+		} else {
+			(void) xocl_peer_response(lro, req->req, msgid, resp, sz);
+		}
+		vfree(resp);
 		break;
 	}
 	default:
@@ -1382,7 +1431,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	(void) xocl_subdev_create_by_level(lro, XOCL_SUBDEV_LEVEL_BLD);
 	(void) xocl_subdev_create_vsec_devs(lro);
 
-	(void) xocl_reinit_vmr(lro);
+	(void) xocl_download_apu_firmware(lro);
 
 	/*
 	 * For u30 whose reset relies on SC, and the cmc is running on ps, we
@@ -1398,7 +1447,7 @@ static int xclmgmt_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (!xocl_ps_wait(lro))
 		xocl_xmc_get_serial_num(lro);
 
-	(void) xocl_hwmon_sdm_get_sensors_list(lro);
+	(void) xocl_hwmon_sdm_get_sensors_list(lro, true);
 
 	xocl_drvinst_set_offline(lro, false);
 	return 0;

@@ -21,9 +21,11 @@
 #include "flash/firmware_image.h"
 #include "core/common/query_requests.h"
 #include "core/common/utils.h"
+#include "core/common/info_vmr.h"
 
 // 3rd Party Library - Include Files
 #include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
 
 static boost::format fmtBasic("  %-20s : %s\n");
 
@@ -92,6 +94,25 @@ mac_addresses(const xrt_core::device * dev)
     }
   }
 
+  return ptree;
+}
+
+static boost::property_tree::ptree
+get_boot_info(const xrt_core::device * dev)
+{
+  boost::property_tree::ptree ptree;
+  // get boot on default from vmr_status sysfs node
+  boost::property_tree::ptree pt_empty;
+  const auto pt = xrt_core::vmr::vmr_info(dev).get_child("vmr", pt_empty);
+  for(auto& ks : pt) {
+    const boost::property_tree::ptree& vmr_stat = ks.second;
+    if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
+      auto is_default_boot = std::stoi(vmr_stat.get<std::string>("value"));
+      ptree.add("default", is_default_boot ? "ACTIVE" : "INACTIVE");
+      ptree.add("backup", is_default_boot ? "INACTIVE" : "ACTIVE");
+      break;
+    }
+  }
   return ptree;
 }
 
@@ -255,6 +276,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_status.put("shell", same_shell( pt_current_shell.get<std::string>("vbnv", ""), 
               pt_current_shell.get<std::string>("id", ""), installedDSA));
     pt_status.put("sc", same_sc( pt_current_shell.get<std::string>("sc_version", ""), installedDSA));
+    pt_status.put("is_factory", xrt_core::device_query<xrt_core::query::is_mfg>(device));
     pt_platform.add_child("status", pt_status);
 
     pt_available_shells.push_back( std::make_pair("", pt_available_shell) );
@@ -269,6 +291,10 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   auto macs = mac_addresses(device);
   if(!macs.empty())
     pt_platform.put_child("macs", macs);
+
+  auto pt_boot = get_boot_info(device);
+  if (!pt_boot.empty())
+    pt_platform.put_child("bootable_partition", pt_boot);
 
   // There can only be 1 root node
   pt.add_child("platform", pt_platform);
@@ -360,6 +386,14 @@ ReportPlatform::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << fmtBasic % "Platform ID" % string_or_NA(available_shell.get<std::string>("id"));
     }
       _output << std::endl;
+  }
+
+  const auto& partition = _pt.get_child("platform.bootable_partition", pt_empty);
+  if(!partition.empty()) {
+    _output << "Bootable Partitions:" << std::endl;
+    _output << fmtBasic % "Default" % partition.get<std::string>("default");
+    _output << fmtBasic % "Backup" % partition.get<std::string>("backup");
+    _output << std::endl;
   }
 
   //PLPs installed on the system

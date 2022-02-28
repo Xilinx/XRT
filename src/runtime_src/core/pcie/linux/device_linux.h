@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,6 +59,9 @@ public:
 
   void
   wait_ip_interrupt(xclInterruptNotifyHandle) override;
+
+  std::cv_status
+  wait_ip_interrupt(xclInterruptNotifyHandle, int32_t timeout) override;
 
   xclBufferHandle
   import_bo(pid_t pid, xclBufferExportHandle ehdl) override;

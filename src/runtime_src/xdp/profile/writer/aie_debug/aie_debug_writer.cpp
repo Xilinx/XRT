@@ -47,6 +47,19 @@ namespace xdp {
     return true;
   }
 
+  bool AIEDebugWriter::write(bool openNewFile, void* handle)
+  {
+    refreshFile();
+
+    auto xrtDevice = xrt::device(handle);
+    auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+    fout << aieInfoStr << std::endl;
+
+    if (openNewFile)
+      switchFiles();
+    return true;
+  }
+
   /*
    * Writer for AIE shim tiles status
    */
@@ -64,6 +77,19 @@ namespace xdp {
     refreshFile();
 
     auto xrtDevice = xrt::device((int)mDeviceIndex);
+    auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    fout << aieShimInfoStr << std::endl;
+
+    if (openNewFile)
+      switchFiles();
+    return true;
+  }
+
+  bool AIEShimDebugWriter::write(bool openNewFile, void* handle)
+  {
+    refreshFile();
+
+    auto xrtDevice = xrt::device(handle);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
     fout << aieShimInfoStr << std::endl;
 

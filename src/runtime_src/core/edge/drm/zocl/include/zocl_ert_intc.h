@@ -12,11 +12,13 @@
 #ifndef _ZOCL_ERT_INTC_H_
 #define _ZOCL_ERT_INTC_H_
 
+#include <linux/platform_device.h>
 #include <linux/interrupt.h>
+#include <linux/slab.h>
+#include <linux/io.h>
+#include "zocl_lib.h"
 
-#define ERT_CQ_INTC_DEV_NAME		"ZOCL_CQ_INTC"
-/* TODO: support CU intc when hardware supports ERT ssv3 */
-#define ERT_CU_INTC_DEV_NAME		"ZOCL_CU_INTC"
+#define ERT_CSR_INTC_DEV_NAME		"ZOCL_CSR_INTC"
 #define ERT_XGQ_INTC_DEV_NAME		"ZOCL_XGQ_INTC"
 
 /*
@@ -42,7 +44,7 @@ struct zocl_ert_intc_handler {
 struct zocl_ert_intc_drv_data {
 	void (*add)(struct platform_device *pdev, u32 id, irq_handler_t handler, void *arg);
 	void (*remove)(struct platform_device *pdev, u32 id);
-	void (*config)(struct platform_device *pdev, u32 id);
+	void (*config)(struct platform_device *pdev, u32 id, bool enabled);
 };
 
 #define	ERT_INTC_DRVDATA(pdev)	\
@@ -60,7 +62,38 @@ zocl_ert_intc_remove(struct platform_device *pdev, u32 id)
 	ERT_INTC_DRVDATA(pdev)->remove(pdev, id);
 }
 
-/* TODO: */
-//extern void zocl_ert_intc_config(struct platform_device *pdev, u32 id, bool enabled);
+static inline void zocl_ert_intc_config(struct platform_device *pdev, u32 id, bool enabled)
+{
+	ERT_INTC_DRVDATA(pdev)->config(pdev, id, enabled);
+}
+
+static inline int zocl_ert_create_intc(struct device *dev, u32 *irqs, size_t num_irqs,
+				       u64 status_reg, const char *dev_name,
+				       struct platform_device **pdevp)
+{
+	/* Total num of res is irqs + status reg. */
+	struct resource *res = kzalloc(sizeof(*res) * (num_irqs + 1), GFP_KERNEL);
+	int ret = 0;
+	size_t i = 0;
+
+	if (!res)
+		return -ENOMEM;
+
+	/* Fill in IRQ and status reg resources. */
+	for (i = 0; i < num_irqs; i++)
+		fill_irq_res(&res[i], irqs[i], ZEI_RES_IRQ);
+	fill_iomem_res(&res[i++], status_reg, sizeof(struct zocl_ert_intc_status_reg),
+		       ZEI_RES_STATUS);
+
+	ret = zlib_create_subdev(dev, dev_name, res, i, NULL, 0, pdevp);
+	kfree(res);
+
+	return ret;
+}
+
+static inline void zocl_ert_destroy_intc(struct platform_device *pdev)
+{
+	zlib_destroy_subdev(pdev);
+}
 
 #endif /* _ZOCL_ERT_INTC_H_ */

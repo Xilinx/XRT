@@ -51,6 +51,9 @@ namespace xdp {
     XDP_EXPORT
     void endPollforDevice(void* handle);
 
+    XDP_EXPORT
+    static bool alive();
+
   private:
     void getPollingInterval();
     bool setMetrics(uint64_t deviceId, void* handle);
@@ -88,6 +91,9 @@ namespace xdp {
     void endPoll();
 
   private:
+
+    static bool live;
+
     uint32_t mIndex = 0;
     uint32_t mPollingInterval;
     std::string mCoreMetricSet;

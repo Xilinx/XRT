@@ -213,7 +213,7 @@ bool
 device::
 is_nodma() const
 {
-  if (!m_cdevice)
+  if (!m_xdevice)
     throw xocl::error(CL_INVALID_DEVICE, "Can't check for nodma");
 
   // logically const

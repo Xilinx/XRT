@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -70,14 +70,35 @@ addnodelist(const std::string& search_str, const std::string& node_str,
 static void
 populate_aie_dma(const boost::property_tree::ptree& pt, boost::property_tree::ptree& pt_dma)
 {
+  boost::property_tree::ptree fifo_pt;
   boost::property_tree::ptree mm2s_array;
   boost::property_tree::ptree s2mm_array;
   boost::property_tree::ptree empty_pt;
 
+  // Extract FIFO COUNT information
+  // Sample sysfs entry for DMA
+  // cat /sys/devices/platform/<aie_path>/aiepart_0_50/47_0/dma
+  // ichannel_status: mm2s: idle|idle, s2mm: idle|idle
+  // queue_size: mm2s: 0|0, s2mm: 0|0
+  // queue_status: mm2s: okay|okay, s2mm: okay|okay
+  // current_bd: mm2s: 0|0, s2mm: 0|0
+  // fifo_len: 0|0
+  int id = 0;
+  for (const auto& node : pt.get_child("dma.fifo_len", empty_pt)) {
+    std::string index = "Counter";
+    boost::property_tree::ptree fifo_counter;
+    index += std::to_string(id++);
+    fifo_counter.put("index", index);
+    fifo_counter.put("count", node.second.data());
+    fifo_pt.push_back(std::make_pair("", fifo_counter));
+  }
+
+  pt_dma.add_child("dma.fifo.counters", fifo_pt);
+
   auto queue_size = pt.get_child("dma.queue_size.mm2s", empty_pt).begin();
   auto queue_status = pt.get_child("dma.queue_status.mm2s", empty_pt).begin();
   auto current_bd = pt.get_child("dma.current_bd.mm2s", empty_pt).begin();
-  int id = 0;
+  id = 0;
 
   for (const auto& node : pt.get_child("dma.channel_status.mm2s", empty_pt)) {
     boost::property_tree::ptree channel;

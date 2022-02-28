@@ -341,20 +341,21 @@ XBUtilities::get_available_devices(bool inUserDomain)
       auto mGoldenVer = xrt_core::device_query<xrt_core::query::mfg_ver>(device);
       std::string vbnv = "xilinx_" + xrt_core::device_query<xrt_core::query::board_name>(device) + "_GOLDEN_"+ std::to_string(mGoldenVer);
       pt_dev.put("vbnv", vbnv);
+      pt_dev.put("id", "n/a");
+      pt_dev.put("instance","n/a");
     }
     else {
       pt_dev.put("vbnv", xrt_core::device_query<xrt_core::query::rom_vbnv>(device));
       try { //1RP
         pt_dev.put("id", xrt_core::query::rom_time_since_epoch::to_string(xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
-      } catch(...)
-      {
+      } catch(...) {
         // The id wasn't added
       }
 
       try { //2RP
         auto logic_uuids = xrt_core::device_query<xrt_core::query::logic_uuids>(device);
         if (!logic_uuids.empty())
-          pt_dev.put("id", boost::str(boost::format("0x%s") % logic_uuids[0]));
+          pt_dev.put("id", xrt_core::query::interface_uuids::to_uuid_upper_string(logic_uuids[0]));
       } catch(...) {
         // The id wasn't added
       }
@@ -369,7 +370,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
        }
 
     }
-
     pt_dev.put("is_ready", xrt_core::device_query<xrt_core::query::is_ready>(device));
     pt.push_back(std::make_pair("", pt_dev));
   }
@@ -606,7 +606,7 @@ XBUtilities::print_exception_and_throw_cancel(const std::runtime_error& e)
 std::vector<char>
 XBUtilities::get_axlf_section(const std::string& filename, axlf_section_kind kind)
 {
-  std::ifstream in(filename);
+  std::ifstream in(filename, std::ios::binary);
   if (!in.is_open())
     throw std::runtime_error(boost::str(boost::format("Can't open %s") % filename));
 

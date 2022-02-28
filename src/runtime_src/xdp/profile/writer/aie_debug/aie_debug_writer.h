@@ -32,6 +32,7 @@ namespace xdp {
                    uint64_t deviceIndex);
 
     virtual bool write(bool openNewFile);
+    virtual bool write(bool openNewFile, void* handle);
 
   private:
     std::string mDeviceName;
@@ -48,6 +49,7 @@ namespace xdp {
                        uint64_t deviceIndex);
 
     virtual bool write(bool openNewFile);
+    virtual bool write(bool openNewFile, void* handle);
 
   private:
     std::string mDeviceName;

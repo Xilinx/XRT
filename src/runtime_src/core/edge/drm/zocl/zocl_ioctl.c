@@ -3,7 +3,7 @@
  * A GEM style (optionally CMA backed) device manager for ZynQ based
  * OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors:
  *    Sonal Santan <sonal.santan@xilinx.com>
@@ -17,10 +17,8 @@
 #include "zocl_xclbin.h"
 #include "zocl_error.h"
 
-extern int kds_mode;
-
 /*
- * read_axlf and ctx should be protected by zdev_xclbin_lock exclusively.
+ * read_axlf and ctx should be protected by slot_xclbin_lock exclusively.
  */
 int
 zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
@@ -28,13 +26,8 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 	struct drm_zocl_axlf *axlf_obj = data;
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
 	struct sched_client_ctx *client = filp->driver_priv;
-	int ret;
 
-	mutex_lock(&zdev->zdev_xclbin_lock);
-	ret = zocl_xclbin_read_axlf(zdev, axlf_obj, client);
-	mutex_unlock(&zdev->zdev_xclbin_lock);
-
-	return ret;
+	return zocl_xclbin_read_axlf(zdev, axlf_obj, client);
 }
 
 /*
@@ -45,7 +38,7 @@ zocl_read_axlf_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
  *
  * When swaping xclbin, first call read_axlf_ioctl to download new xclbin, the
  * following conditions have to be true:
- *   -  When we lock the zdev_xclbin_lock, no more zocl_ctx/read_axlf
+ *   -  When we lock the slot_xclbin_lock, no more zocl_ctx/read_axlf
  *   -  If still have live context, we cannot swap xclbin
  *   -  If no live contexts, but still live cmds from previous closed context,
  *      we cannot swap xclbin.
@@ -55,20 +48,12 @@ int
 zocl_ctx_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = ZOCL_GET_ZDEV(ddev);
-	int ret = 0;
 
-	if (kds_mode == 1) {
-		/* Do not acquire zdev_xclbin_lock like sched_xclbin_ctx().
-		 * New KDS would lock bitstream when open the fist context.
-		 * The lock bitstream would exclude read_axlf_ioctl().
-		 */
-		ret = zocl_context_ioctl(zdev, data, filp);
-	}
-	else
-		ret = sched_context_ioctl(zdev, data, filp);
-		
-
-	return ret;
+	/* Do not acquire slot_xclbin_lock like sched_xclbin_ctx().
+	 * New KDS would lock bitstream when open the fist context.
+	 * The lock bitstream would exclude read_axlf_ioctl().
+	 */
+	return zocl_context_ioctl(zdev, data, filp);
 }
 
 /* IOCTL to get CU index in aperture list
@@ -79,16 +64,10 @@ zocl_info_cu_ioctl(struct drm_device *ddev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_info_cu *args = data;
 	struct drm_zocl_dev *zdev = ddev->dev_private;
-	struct sched_exec_core *exec = zdev->exec;
 	struct addr_aperture *apts = zdev->apertures;
 	int apt_idx = args->apt_idx;
 	int cu_idx = args->cu_idx;
 	phys_addr_t addr = args->paddr;
-
-	if (kds_mode == 0 && !exec->configured) {
-		DRM_ERROR("Schduler is not configured\n");
-		return -EINVAL;
-	}
 
 	if (cu_idx != -1) {
 		apt_idx = get_apt_index_by_cu_idx(zdev, cu_idx);
@@ -113,14 +92,8 @@ int
 zocl_execbuf_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 {
 	struct drm_zocl_dev *zdev = dev->dev_private;
-	int ret = 0;
 
-	if (kds_mode == 1)
-		ret = zocl_command_ioctl(zdev, data, filp);
-	else
-		ret = zocl_execbuf_exec(dev, data, filp);
-
-	return ret;
+	return zocl_command_ioctl(zdev, data, filp);
 }
 
 int

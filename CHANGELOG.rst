@@ -16,6 +16,7 @@ Removed
 * Removed deprecated streaming APIs from OpenCL.
 * xrt.ini flags "profile," "timeline_trace," and "xrt_profile" no longer load xdp profiling functionality and no longer issue deprecation warning.
 * Deprecated the xrt.ini profiling flags "opencl_summary," "data_transfer_trace," and "opencl_device_counter".
+* Deprecated old ctypes python bindings "xclbin_bindings.py", "ert_bindings.py", "xrt_bindings.py, and "utils_binding.py".  Python code should be written against imported pyxrt module only, which supports both hardware and emulation in same way as compiled binaries.
 
 2.12.0 (202120.2.12.x)
 ~~~~~~~~~~~~~~~~~~~~~~

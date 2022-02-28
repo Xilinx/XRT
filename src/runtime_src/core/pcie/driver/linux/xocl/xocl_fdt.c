@@ -440,11 +440,6 @@ static struct xocl_subdev_map subdev_map[] = {
 		.res_array = (struct xocl_subdev_res[]) {
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_CQ},
 			{.res_name = NODE_ERT_CQ_USER, .regmap_name = PROP_ERT_LEGACY},
-			{.res_name = NODE_XGQ_USR_SQ_00_BASE},
-			{.res_name = NODE_XGQ_USR_SQ_01_BASE},
-			{.res_name = NODE_XGQ_USR_SQ_02_BASE},
-			{.res_name = NODE_XGQ_USR_SQ_03_BASE},
-			{.res_name = NODE_XGQ_USR_RING_BASE},
 			{NULL},
 		},
 		.required_ip = 1,
@@ -452,7 +447,25 @@ static struct xocl_subdev_map subdev_map[] = {
 		.build_priv_data = ert_build_priv,
 		.devinfo_cb = NULL,
 		.max_level = XOCL_SUBDEV_LEVEL_PRP,
- 	},
+	},
+	{
+		/* Platform has XGQ IP, in this case, there is no CQ. */
+		.id = XOCL_SUBDEV_ERT_CTRL,
+		.dev_name = XOCL_ERT_CTRL_VERSAL,
+		.res_array = (struct xocl_subdev_res[]) {
+			{.res_name = NODE_XGQ_USR_RING_BASE},
+			{.res_name = NODE_XGQ_USR_SQ_00_BASE},
+			{.res_name = NODE_XGQ_USR_SQ_01_BASE},
+			{.res_name = NODE_XGQ_USR_SQ_02_BASE},
+			{.res_name = NODE_XGQ_USR_SQ_03_BASE},
+			{NULL},
+		},
+		.required_ip = 1,
+		.flags = XOCL_SUBDEV_MAP_USERPF_ONLY,
+		.build_priv_data = NULL,
+		.devinfo_cb = NULL,
+		.max_level = XOCL_SUBDEV_LEVEL_PRP,
+	},
 	{
 		.id = XOCL_SUBDEV_XVC_PUB,
 		.dev_name = XOCL_XVC_PUB,
