@@ -278,7 +278,7 @@ out:
 	return ret;
 }
 
-int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags)
+int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 flags, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
@@ -296,6 +296,7 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	}
 	uuid_copy(cctx->xclbin_id, &uuid_null);
 
+	info.cu_domain = cu_domain;
 	info.cu_idx = cu_idx;
 	info.flags = flags;
 	info.curr_ctx = cctx;
@@ -308,13 +309,14 @@ int zocl_add_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_
 	return ret;
 }
 
-int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx)
+int zocl_del_context_kernel(struct drm_zocl_dev *zdev, void *client_hdl, u32 cu_idx, u32 cu_domain)
 {
 	int ret = 0;
 	struct kds_ctx_info info = { 0 };
 	struct kds_client *client = (struct kds_client *)client_hdl;
 	struct kds_client_ctx *cctx = NULL;
 
+	info.cu_domain = cu_domain;
 	info.cu_idx = cu_idx;
 	mutex_lock(&client->lock);
 	cctx = zocl_check_exists_context(client, &uuid_null);

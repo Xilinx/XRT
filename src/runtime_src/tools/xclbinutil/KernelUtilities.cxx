@@ -144,7 +144,7 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     // ID value
     std::string strID = std::to_string(argID++);
     // Assume that the ID will always be automatically set.  
-    if (ptArgument.get<int>("use_id", 1) == 0)
+    if (ptArgument.get<int>("use-id", 1) == 0)
       strID.clear();
 
     // Type & size
@@ -152,13 +152,9 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
     if (argType.empty())
       throw std::runtime_error("Missing argument type");
 
-    size_t argSize = (ptArgument.find("byte-size") == ptArgument.not_found())
-                           ? getTypeSize(argType, isFixedPS)
-                           : ptArgument.get<size_t>("byte-size");
-
-    // All global non-fixed PS Kernel address qualifiers are 16 bytes in size (from the driver's perspective)
-    if ((addressQualifier == "GLOBAL") && !isFixedPS)
-      argSize = 16;
+    size_t argSize = isFixedPS 
+                   ? getTypeSize(argType, isFixedPS) 
+                   : ptArgument.get<size_t>("byte-size");
 
     // Offset
     const std::string& offset = ptArgument.get<std::string>("offset", "");
@@ -549,19 +545,24 @@ XclBinUtilities::createPSKernelMetadata(unsigned long numInstances,
       ptArg.put("name", argName);
       ptArg.put("type", entry.get<std::string>("type"));
 
+      // Determine the primitive byte size
+      auto byteSize = entry.get<uint64_t>("primitive-byte-size", 0);
+      if (!byteSize) 
+        throw std::runtime_error("Error: The kernel '" + kernelName + "' argument '" + argName + "' doesn't have a size.");
+
+      ptArg.put("primitive-byte-size", entry.get<std::string>("primitive-byte-size"));
+      byteSize = entry.get<uint64_t>("primitive-byte-size");
+
       const auto & addrQualifier = entry.get<std::string>("address-qualifier");
       ptArg.put("address-qualifier", addrQualifier);
 
-      if ((addrQualifier == "GLOBAL") &&
-          (entry.get<int>("use-id", 1)))
-        ptArg.put("memory-connection", "");
+      if (addrQualifier == "GLOBAL") {
+        byteSize = 16;
+        if (entry.get<int>("use-id", 1)) 
+          ptArg.put("memory-connection", "");
+      }
 
-      const auto byteSize = entry.get<uint64_t>("byte-size", 0);
-
-      if (!byteSize) 
-        throw std::runtime_error("Error: The kernel '" + kernelName + "' argument '" + argName + "' is doesn't have a size.");
-
-      ptArg.put("byte-size", entry.get<std::string>("byte-size"));
+      ptArg.put("byte-size", byteSize);
       ptArg.put("offset", boost::str(boost::format("0x%x") % offset));
       offset += byteSize;
 
