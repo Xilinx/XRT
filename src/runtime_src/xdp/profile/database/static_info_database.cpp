@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -1291,7 +1291,10 @@ namespace xdp {
       // This is the first time this device was loaded with an xclbin
       devInfo = new DeviceInfo();
       devInfo->deviceId = deviceId ;
-      if (isEdge()) devInfo->isEdgeDevice = true ;
+      if (isEdge())
+        devInfo->isEdgeDevice = true ;
+      if (device->is_nodma())
+        devInfo->isNoDMADevice = true ;
       deviceInfo[deviceId] = devInfo ;
 
     } else {

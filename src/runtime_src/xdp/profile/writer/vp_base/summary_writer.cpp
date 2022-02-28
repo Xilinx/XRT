@@ -44,10 +44,6 @@ namespace xdp {
     initializeAPIs() ;
   }
 
-  SummaryWriter::~SummaryWriter()
-  {
-  }
-
   void SummaryWriter::initializeAPIs()
   {
     // For each of the APIs, initialize the sets with the hard coded names
@@ -864,7 +860,7 @@ namespace xdp {
       return ;
 
     // Caption
-    fout << "Data Transfer: Host to Global Memory" << std::endl ;
+    fout << "Data Transfer: Host to Global Memory\n";
 
     // Column headers
     fout << "Context:Number of Devices"         << ","
@@ -874,81 +870,44 @@ namespace xdp {
 	 << "Average Bandwidth Utilization (%)" << ","
 	 << "Average Buffer Size (KB)"          << ","
 	 << "Total Time (ms)"                   << ","
-	 << "Average Time (ms)"                 << "," 
-	 << std::endl ;
+	 << "Average Time (ms)"                 << ",\n";
 
-    for (auto read : hostReads)
-    {
-      std::string contextName = "context" + std::to_string(read.first.first) ;
-      uint64_t numDevices =
-	(db->getStaticInfo()).getNumDevices(read.first.first) ;
-      if (getFlowMode() == HW_EMU)
-      {
-	fout << contextName << ":" << numDevices << ","
-	     << "READ" << ","
-	     << (read.second).count << ","
-	     << "N/A" << ","
-	     << "N/A" << ","
-	     << ((double)((read.second).averageSize) / one_thousand) << ","
-	     << "N/A" << ","
-	     << "N/A" << "," << std::endl ;
-      }
-      else
-      {
-        double totalTimeInS  = (double)((read.second).totalTime / one_billion);
-        double totalSizeInMB = (double)((read.second).totalSize / one_million);
+    std::string types[2] = { "READ", "WRITE" };
+    uint64_t i = 0 ;
+
+    for (auto& map : { hostReads, hostWrites }) {
+      for (auto entry : map) {
+        auto contextID = entry.first.first;
+        auto deviceID = entry.first.second;
+        auto& stats = entry.second;
+
+        std::string contextName = "context" + std::to_string(contextID);
+        uint64_t numDevices = db->getStaticInfo().getNumDevices(contextID);
+        DeviceInfo* device = db->getStaticInfo().getDeviceInfo(deviceID);
+
+        bool printNA =
+          (getFlowMode() == HW_EMU || (device && device->isNoDMA()));
+
+        double totalTimeInS  =
+          static_cast<double>(stats.totalTime / one_billion);
+        double totalSizeInMB =
+          static_cast<double>(stats.totalSize / one_million);
         double transferRate  = totalSizeInMB / totalTimeInS; 
 
-	double maxReadBW =
-	  (db->getStaticInfo()).getMaxReadBW(read.first.second) ;
-	double aveBWUtil = (one_hundred * transferRate) / maxReadBW ;
+        double maxReadBW = db->getStaticInfo().getMaxReadBW(deviceID);
+        double aveBWUtil = (one_hundred * transferRate) / maxReadBW;
 
-	fout << contextName << ":" << numDevices << ","
-	     << "READ" << ","
-	     << (read.second).count << ","
-	     << transferRate << ","
-	     << aveBWUtil << ","
-	     << ((double)((read.second).averageSize) / one_thousand) << ","
-	     << ((read.second).totalTime / one_million) << ","
-	     << ((read.second).averageTime / one_million) << "," << std::endl ;
-      }
-    }
+        fout << contextName << ":" << numDevices << ",";
+        fout << types[i] << ",";
+        fout << stats.count << ",";
+        printNA ? (fout << "N/A,") : (fout << transferRate << ",");
+        printNA ? (fout << "N/A,") : (fout << aveBWUtil << ",");
+        fout << static_cast<double>(stats.averageSize / one_thousand) << ",";
+        printNA ? (fout << "N/A,") : (fout << stats.totalTime/one_million << ",");
+        printNA ? (fout << "N/A,") : (fout << stats.averageTime / one_million << ",\n");
 
-    for (auto write : hostWrites)
-    {
-      std::string contextName = "context" + std::to_string(write.first.first) ;
-      uint64_t numDevices =
-	(db->getStaticInfo()).getNumDevices(write.first.first) ;
-
-      if (getFlowMode() == HW_EMU)
-      {
-	fout << contextName << ":" << numDevices << ","
-	     << "WRITE" << ","
-	     << (write.second).count << ","
-	     << "N/A" << ","
-	     << "N/A" << ","
-	     << ((double)((write.second).averageSize) / one_thousand) << ","
-	     << "N/A" << ","
-	     << "N/A" << "," << std::endl ;
-      }
-      else
-      {
-        double totalTimeInS  = (double)((write.second).totalTime / one_billion);
-        double totalSizeInMB = (double)((write.second).totalSize / one_million);
-        double transferRate  = totalSizeInMB / totalTimeInS; 
-
-	double maxWriteBW =
-	  (db->getStaticInfo()).getMaxWriteBW(write.first.second);
-	double aveBWUtil = (one_hundred * transferRate) / maxWriteBW ;
-
-	fout << contextName << ":" << numDevices << "," 
-	     << "WRITE" << ","
-	     << (write.second).count << ","
-	     << transferRate << ","
-	     << aveBWUtil << ","
-	     << ((double)((write.second).averageSize) / one_thousand) << ","
-	     << ((write.second).totalTime / one_million) << ","
-	     << ((write.second).averageTime / one_million) << "," << std::endl ;
+        // Move on from READ to WRITE
+        ++i;
       }
     }
   }
