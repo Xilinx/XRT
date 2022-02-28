@@ -39,7 +39,7 @@ namespace qr = xrt_core::query;
 static double
 to_megaHz(uint64_t value)
 {
-  constexpr auto div = pow(10, 6);
+  const auto div = pow(10, 6);
   return static_cast<double>(value)/div;
 }
 
@@ -83,7 +83,7 @@ set_aie_part_freq(const std::shared_ptr<xrt_core::device>& device, uint32_t part
       std::cout << boost::format("Running clock freq of AIE partition(%d) is: %.2f MHz\n") % part_id % get_aie_part_freq(device, part_id);
     }
     else
-      std::cout << boost::format("ERROR: Setting clock freq of AIE partition(%d) to %s failed\n") %  part_id % setFreq;
+      throw std::runtime_error("AIE driver call to set freq failed");
   }
   catch (const std::exception& e){
     std::cerr << boost::format("ERROR: Setting the AIE partition(%d) clock frequency to %s failed, %s\n") % part_id % setFreq % e.what();
