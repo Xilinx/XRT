@@ -669,7 +669,9 @@ static void vmr_cq_result_copy(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd
 	struct xgq_cmd_cq_default_payload *payload =
 		(struct xgq_cmd_cq_default_payload *)&cmd->xgq_cmd_cq_payload;
 
+	mutex_lock(&xgq->xgq_lock);
 	memcpy(&xgq->xgq_cq_payload, payload, sizeof(*payload));
+	mutex_unlock(&xgq->xgq_lock);
 }
 
 /*
@@ -860,8 +862,7 @@ static int xgq_log_page_fw(struct platform_device *pdev,
 	} else {
 		struct xgq_cmd_cq_log_page_payload *fw_result = NULL;
 
-		vmr_cq_result_copy(xgq, cmd);
-		fw_result = (struct xgq_cmd_cq_log_page_payload *)&xgq->xgq_cq_payload;
+		fw_result = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
 
 		if (fw_result->count > len) {
 			XGQ_ERR(xgq, "need to alloc %d for device data", 
@@ -971,29 +972,135 @@ static int xgq_check_firewall(struct platform_device *pdev)
 
 	if (ret) {
 		struct xgq_cmd_cq_log_page_payload *log = NULL;
-		u32 size;
+		u32 log_size = 0;
 
-		vmr_cq_result_copy(xgq, cmd);
-		log = (struct xgq_cmd_cq_log_page_payload *)&xgq->xgq_cq_payload;
+		mutex_lock(&xgq->xgq_lock);
 
-		size = log->count;
-		if (size > len) {
+		log = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
+		log_size = log->count;
+
+		if (log_size > len) {
 			XGQ_ERR(xgq, "return log size %d is greater than request %d",
 				log->count, len);
-			size = len;
-		} else if (size  == 0) {
+			log_size = len;
+		} else if (log_size  == 0) {
 			XGQ_ERR(xgq, "no error message");
 		} else {
-			char *log_msg = vmalloc(size);
+			char *log_msg = vmalloc(log_size);
 			if (log_msg == NULL) {
 				XGQ_ERR(xgq, "vmalloc failed, no msg");
 				goto done;
 			}
-			memcpy_from_device(xgq, address, log_msg, size);
+			memcpy_from_device(xgq, address, log_msg, log_size);
 			XGQ_ERR(xgq, "%s", log_msg);
 			vfree(log_msg);
 		}
 	} 
+
+done:
+	remove_xgq_cid(xgq, id);
+
+cid_alloc_failed:
+	shm_release_log_page(xgq);
+
+acquire_failed:
+	kfree(cmd);
+
+	return ret;
+}
+
+static int vmr_verbose_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
+	struct xocl_xgq_vmr_cmd *cmd = NULL;
+	struct xgq_cmd_log_payload *payload = NULL;
+	struct xgq_cmd_sq_hdr *hdr = NULL;
+	int ret = 0;
+	int id = 0;
+	u32 address = 0;
+	u32 len = 0;
+
+	cmd = kzalloc(sizeof(*cmd), GFP_KERNEL);
+	if (!cmd) {
+		XGQ_ERR(xgq, "kmalloc failed, retry");
+		return -ENOMEM;
+	}
+
+	cmd->xgq_cmd_cb = xgq_complete_cb;
+	cmd->xgq_cmd_arg = cmd;
+	cmd->xgq_vmr = xgq;
+
+	if (shm_acquire_log_page(xgq, &address, &len)) {
+		ret = -EIO;
+		goto acquire_failed;
+	}
+
+	payload = &(cmd->xgq_cmd_entry.log_payload);
+	payload->address = address;
+	payload->size = len;
+	payload->offset = 0;
+	payload->pid = XGQ_CMD_LOG_INFO;
+
+	hdr = &(cmd->xgq_cmd_entry.hdr);
+	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
+	hdr->state = XGQ_SQ_CMD_NEW;
+	hdr->count = sizeof(*payload);
+	id = get_xgq_cid(xgq);
+	if (id < 0) {
+		XGQ_ERR(xgq, "alloc cid failed: %d", id);
+		goto cid_alloc_failed;
+	}
+	hdr->cid = id;
+
+	/* init condition veriable */
+	init_completion(&cmd->xgq_cmd_complete);
+
+	/* set timout actual jiffies */
+	cmd->xgq_cmd_timeout_jiffies = jiffies + XOCL_XGQ_CONFIG_TIME;
+
+	ret = submit_cmd(xgq, cmd);
+	if (ret) {
+		XGQ_ERR(xgq, "submit cmd failed, cid %d", id);
+		goto done;
+	}
+
+	/* wait for command completion */
+	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
+		XGQ_ERR(xgq, "submitted cmd killed");
+		xgq_submitted_cmd_remove(xgq, cmd);
+	}
+
+	ret = cmd->xgq_cmd_rcode;
+
+	if (ret) {
+		XGQ_ERR(xgq, "ret %d", ret);
+	} else {
+		struct xgq_cmd_cq_log_page_payload *info = NULL;
+		u32 info_size = 0;
+
+		info = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
+		info_size = info->count;
+
+		if (info_size > len) {
+			XGQ_WARN(xgq, "return info size %d is greater than request %d", 
+				info->count, len);
+			info_size = len;
+		} else if (info_size == 0) {
+			XGQ_WARN(xgq, "verbose info size is zero");
+			ret = -EINVAL;
+		} else {
+			char *info_data = vmalloc(info_size);
+			if (info_data == NULL) {
+				XGQ_ERR(xgq, "vmalloc failed");
+				ret = -ENOMEM;
+				goto done;
+			}
+			memcpy_from_device(xgq, address, info_data, info_size);
+			*cnt += sprintf(buf, "%s", info_data);
+			vfree(info_data);
+		}
+	}
 
 done:
 	remove_xgq_cid(xgq, id);
@@ -1696,7 +1803,6 @@ static ssize_t vmr_debug_dump_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(vmr_debug_dump);
 
-
 static ssize_t vmr_status_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -1709,7 +1815,6 @@ static ssize_t vmr_status_show(struct device *dev,
 	if (vmr_status_query(xgq->xgq_pdev))
 		return -EINVAL;
 
-	mutex_lock(&xgq->xgq_lock);
 	cnt += sprintf(buf + cnt, "HAS_FPT:%d\n", vmr_status->has_fpt);
 	cnt += sprintf(buf + cnt, "HAS_FPT_RECOVERY:%d\n", vmr_status->has_fpt_recovery);
 	cnt += sprintf(buf + cnt, "BOOT_ON_DEFAULT:%d\n", vmr_status->boot_on_default);
@@ -1723,11 +1828,24 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
 	cnt += sprintf(buf + cnt, "APU_IS_READY:%d\n", vmr_status->apu_is_ready);
-	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;
 }
 static DEVICE_ATTR_RO(vmr_status);
+
+static ssize_t vmr_verbose_info_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	/* update boot status */
+	if (vmr_verbose_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_verbose_info);
 
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
@@ -1735,6 +1853,7 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_flush_default_only.attr,
 	&dev_attr_flush_to_legacy.attr,
 	&dev_attr_vmr_status.attr,
+	&dev_attr_vmr_verbose_info.attr,
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
