@@ -45,157 +45,15 @@
 #define IP_LAYOUT_HOST_NAME "HOST"
 #define IP_LAYOUT_SEP "-"
 
-/************************ APM 0: Monitor MIG Ports ****************************/
-
-#define XPAR_AXI_PERF_MON_0_NUMBER_SLOTS                2
-
-#define XPAR_AXI_PERF_MON_0_SLOT0_NAME                  "OCL Region"
-#define XPAR_AXI_PERF_MON_0_SLOT1_NAME                  "Host"
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT             0
-#define XPAR_AXI_PERF_MON_0_HOST_SLOT                   1
-
+/************************ LEGACY XPAR DEFINES *********************************/
 #define XPAR_AIM0_HOST_SLOT                             0
-#define XPAR_AIM0_FIRST_KERNEL_SLOT                     1
-
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT2            2
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT3            3
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT4            4
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT5            5
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT6            6
-#define XPAR_AXI_PERF_MON_0_OCL_REGION_SLOT7            7
-
-#define XPAR_AXI_PERF_MON_0_SLOT2_NAME                  "OCL Region Master 2"
-#define XPAR_AXI_PERF_MON_0_SLOT3_NAME                  "OCL Region Master 3"
-#define XPAR_AXI_PERF_MON_0_SLOT4_NAME                  "OCL Region Master 4"
-#define XPAR_AXI_PERF_MON_0_SLOT5_NAME                  "OCL Region Master 5"
-#define XPAR_AXI_PERF_MON_0_SLOT6_NAME                  "OCL Region Master 6"
-#define XPAR_AXI_PERF_MON_0_SLOT7_NAME                  "OCL Region Master 7"
-
-#define XPAR_AXI_PERF_MON_0_SLOT0_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT1_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT2_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT3_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT4_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT5_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT6_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_0_SLOT7_DATA_WIDTH            512
-
-/* Profile */
-#define XPAR_AXI_PERF_MON_0_IS_EVENT_COUNT              1
-#define XPAR_AXI_PERF_MON_0_HAVE_SAMPLED_COUNTERS       1
-#define XPAR_AXI_PERF_MON_0_NUMBER_COUNTERS (XPAR_AXI_PERF_MON_0_NUMBER_SLOTS * XAPM_METRIC_COUNTERS_PER_SLOT)
-
-/* Trace */
-#define XPAR_AXI_PERF_MON_0_IS_EVENT_LOG                1
-#define XPAR_AXI_PERF_MON_0_SHOW_AXI_IDS                1
-#define XPAR_AXI_PERF_MON_0_SHOW_AXI_LEN                1
-// 2 DDR platform
-#define XPAR_AXI_PERF_MON_0_SHOW_AXI_IDS_2DDR           0
-#define XPAR_AXI_PERF_MON_0_SHOW_AXI_LEN_2DDR           1
-
-/* AXI Stream FIFOs */
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_FIFO           3
+#define MAX_TRACE_NUMBER_SAMPLES                        16384
 
 #ifdef XRT_EDGE
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            32
 #else
 #define XPAR_AXI_PERF_MON_0_TRACE_WORD_WIDTH            64
 #endif
-
-#define XPAR_AXI_PERF_MON_0_TRACE_NUMBER_SAMPLES        8192
-#define MAX_TRACE_NUMBER_SAMPLES                        16384
-
-#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_0              0x010000
-#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_1              0x011000
-#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_2              0x012000
-// CR 877788: the extra 0x80001000 is a bug in Vivado where the AXI4 base address is not set correctly
-// TODO: remove it once that bug is fixed!
-//#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL       (0x2000000000 + 0x80001000)
-#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL       0x2000000000
-// Default for new monitoring
-//#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2      (0x0400000000 + 0x80001000)
-#define XPAR_AXI_PERF_MON_0_TRACE_OFFSET_AXI_FULL2      0x0400000000
-
-/********************* APM 1: Monitor PCIe DMA Masters ************************/
-
-#define XPAR_AXI_PERF_MON_1_NUMBER_SLOTS                2
-
-#define XPAR_AXI_PERF_MON_1_SLOT0_NAME                  "DMA AXI4 Master"
-#define XPAR_AXI_PERF_MON_1_SLOT1_NAME                  "DMA AXI4-Lite Master"
-#define XPAR_AXI_PERF_MON_1_SLOT2_NAME                  "Null"
-#define XPAR_AXI_PERF_MON_1_SLOT3_NAME                  "Null"
-#define XPAR_AXI_PERF_MON_1_SLOT4_NAME                  "Null"
-#define XPAR_AXI_PERF_MON_1_SLOT5_NAME                  "Null"
-#define XPAR_AXI_PERF_MON_1_SLOT6_NAME                  "Null"
-#define XPAR_AXI_PERF_MON_1_SLOT7_NAME                  "Null"
-
-#define XPAR_AXI_PERF_MON_1_SLOT0_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT1_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT2_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT3_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT4_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT5_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT6_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_1_SLOT7_DATA_WIDTH            512
-
-/* Profile */
-#define XPAR_AXI_PERF_MON_1_IS_EVENT_COUNT              1
-#define XPAR_AXI_PERF_MON_1_HAVE_SAMPLED_COUNTERS       1
-#define XPAR_AXI_PERF_MON_1_NUMBER_COUNTERS (XPAR_AXI_PERF_MON_1_NUMBER_SLOTS * XAPM_METRIC_COUNTERS_PER_SLOT)
-#define XPAR_AXI_PERF_MON_1_SCALE_FACTOR                1
-
-/* Trace */
-#define XPAR_AXI_PERF_MON_1_IS_EVENT_LOG                0
-#define XPAR_AXI_PERF_MON_1_SHOW_AXI_IDS                0
-#define XPAR_AXI_PERF_MON_1_SHOW_AXI_LEN                0
-
-/* AXI Stream FIFOs */
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_FIFO           0
-#define XPAR_AXI_PERF_MON_1_TRACE_WORD_WIDTH            0
-#define XPAR_AXI_PERF_MON_1_TRACE_NUMBER_SAMPLES        0
-
-/************************ APM 2: Monitor OCL Region ***************************/
-
-#define XPAR_AXI_PERF_MON_2_NUMBER_SLOTS                1
-
-#define XPAR_AXI_PERF_MON_2_SLOT0_NAME                  "Kernel0"
-#define XPAR_AXI_PERF_MON_2_SLOT1_NAME                  "Kernel1"
-#define XPAR_AXI_PERF_MON_2_SLOT2_NAME                  "Kernel2"
-#define XPAR_AXI_PERF_MON_2_SLOT3_NAME                  "Kernel3"
-#define XPAR_AXI_PERF_MON_2_SLOT4_NAME                  "Kernel4"
-#define XPAR_AXI_PERF_MON_2_SLOT5_NAME                  "Kernel5"
-#define XPAR_AXI_PERF_MON_2_SLOT6_NAME                  "Kernel6"
-#define XPAR_AXI_PERF_MON_2_SLOT7_NAME                  "Kernel7"
-
-#define XPAR_AXI_PERF_MON_2_SLOT0_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT1_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT2_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT3_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT4_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT5_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT6_DATA_WIDTH            512
-#define XPAR_AXI_PERF_MON_2_SLOT7_DATA_WIDTH            512
-
-/* Profile */
-#define XPAR_AXI_PERF_MON_2_IS_EVENT_COUNT              0
-#define XPAR_AXI_PERF_MON_2_HAVE_SAMPLED_COUNTERS       0
-#define XPAR_AXI_PERF_MON_2_NUMBER_COUNTERS             0
-#define XPAR_AXI_PERF_MON_2_SCALE_FACTOR                1
-
-/* Trace */
-#define XPAR_AXI_PERF_MON_2_IS_EVENT_LOG                1
-#define XPAR_AXI_PERF_MON_2_SHOW_AXI_IDS                0
-#define XPAR_AXI_PERF_MON_2_SHOW_AXI_LEN                0
-
-/* AXI Stream FIFOs */
-/* NOTE: number of FIFOs is dependent upon the number of compute units being monitored */
-//#define XPAR_AXI_PERF_MON_2_TRACE_NUMBER_FIFO           2
-#define XPAR_AXI_PERF_MON_2_TRACE_WORD_WIDTH            64
-#define XPAR_AXI_PERF_MON_2_TRACE_NUMBER_SAMPLES        8192
-
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_0              0x01000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_1              0x02000
-#define XPAR_AXI_PERF_MON_2_TRACE_OFFSET_2              0x03000
 
 /************************ APM Profile Counters ********************************/
 
