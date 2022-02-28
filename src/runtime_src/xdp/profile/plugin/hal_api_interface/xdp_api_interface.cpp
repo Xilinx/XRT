@@ -99,7 +99,7 @@ namespace xdp {
   }
 
   void HALAPIInterface::createProfileResults(xclDeviceHandle deviceHandle, 
-					     void* ret)
+                                             void* ret)
   {
     ProfileResults** retResults = static_cast<ProfileResults**>(ret);
     
@@ -141,12 +141,12 @@ namespace xdp {
       results->kernelTransferData = (KernelTransferData*)calloc(results->numAIM, sizeof(KernelTransferData));
       
       for(unsigned int i=0; i < results->numAIM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
-	results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
-	strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
-	
-	// argname
-	// memoryname
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_MEMORY, i);
+        results->kernelTransferData[i].cuPortName = (char*)malloc(monName.length()+1);
+        strcpy(results->kernelTransferData[i].cuPortName, monName.c_str());
+
+        // argname
+        // memoryname
       }
     }
     
@@ -154,10 +154,10 @@ namespace xdp {
       results->cuExecData = (CuExecData*)calloc(results->numAM, sizeof(CuExecData));
       
       for(unsigned int i=0; i < results->numAM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
-	results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
-	strcpy(results->cuExecData[i].cuName, monName.c_str());
-	// kernel name
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_ACCEL, i);
+        results->cuExecData[i].cuName = (char*)malloc((monName.length()+1)*sizeof(char));
+        strcpy(results->cuExecData[i].cuName, monName.c_str());
+        // kernel name
       }
     }      
     
@@ -166,19 +166,19 @@ namespace xdp {
       results->streamData = (StreamTransferData*)calloc(results->numASM, sizeof(StreamTransferData));
       
       for(unsigned int i=0; i < results->numASM ; ++i) {
-	std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
-	std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
-	if(sepPos == std::string::npos)
-	  continue;
-	
-	std::string masterPort = monName.substr(0, sepPos);
-	std::string slavePort  = monName.substr(sepPos + 1);
-	
-	results->streamData[i].masterPortName = (char*)malloc((masterPort.length()+1));
-	strcpy(results->streamData[i].masterPortName, masterPort.c_str());
-	
-	results->streamData[i].slavePortName = (char*)malloc((slavePort.length()+1));
-	strcpy(results->streamData[i].slavePortName, slavePort.c_str());
+        std::string monName = currDevice->getMonitorName(XCL_PERF_MON_STR, i);
+        std::size_t sepPos  = monName.find(IP_LAYOUT_SEP);
+        if(sepPos == std::string::npos)
+          continue;
+
+        std::string masterPort = monName.substr(0, sepPos);
+        std::string slavePort  = monName.substr(sepPos + 1);
+
+        results->streamData[i].masterPortName = (char*)malloc((masterPort.length()+1));
+        strcpy(results->streamData[i].masterPortName, masterPort.c_str());
+
+        results->streamData[i].slavePortName = (char*)malloc((slavePort.length()+1));
+        strcpy(results->streamData[i].slavePortName, slavePort.c_str());
       }
     }
   }
@@ -193,25 +193,25 @@ namespace xdp {
       // Check for rollover of byte counters; if detected, add 2^32
       // Otherwise, if first read after program with binary, then capture bytes from previous xclbin
       if (!firstReadAfterProgram) {
-	// Update "RollOverCount"
-	if(counterResult.WriteBytes[i]      < loggedResult.WriteBytes[i])      rollOverCount.WriteBytes[i]++;
-	if(counterResult.ReadBytes[i]       < loggedResult.ReadBytes[i])       rollOverCount.ReadBytes[i]++;
-	if(counterResult.WriteTranx[i]      < loggedResult.WriteTranx[i])      rollOverCount.WriteTranx[i]++;
-	if(counterResult.ReadTranx[i]       < loggedResult.ReadTranx[i])       rollOverCount.ReadTranx[i]++;
-	if(counterResult.WriteLatency[i]    < loggedResult.WriteLatency[i])    rollOverCount.WriteLatency[i]++;
-	if(counterResult.ReadLatency[i]     < loggedResult.ReadLatency[i])     rollOverCount.ReadLatency[i]++;
-	if(counterResult.ReadBusyCycles[i]  < loggedResult.ReadBusyCycles[i])  rollOverCount.ReadBusyCycles[i]++;
-	if(counterResult.WriteBusyCycles[i] < loggedResult.WriteBusyCycles[i]) rollOverCount.WriteBusyCycles[i]++;
+        // Update "RollOverCount"
+        if(counterResult.WriteBytes[i]      < loggedResult.WriteBytes[i])      rollOverCount.WriteBytes[i]++;
+        if(counterResult.ReadBytes[i]       < loggedResult.ReadBytes[i])       rollOverCount.ReadBytes[i]++;
+        if(counterResult.WriteTranx[i]      < loggedResult.WriteTranx[i])      rollOverCount.WriteTranx[i]++;
+        if(counterResult.ReadTranx[i]       < loggedResult.ReadTranx[i])       rollOverCount.ReadTranx[i]++;
+        if(counterResult.WriteLatency[i]    < loggedResult.WriteLatency[i])    rollOverCount.WriteLatency[i]++;
+        if(counterResult.ReadLatency[i]     < loggedResult.ReadLatency[i])     rollOverCount.ReadLatency[i]++;
+        if(counterResult.ReadBusyCycles[i]  < loggedResult.ReadBusyCycles[i])  rollOverCount.ReadBusyCycles[i]++;
+        if(counterResult.WriteBusyCycles[i] < loggedResult.WriteBusyCycles[i]) rollOverCount.WriteBusyCycles[i]++;
       } else {
-	// Update "RollOverCounterResults" with logged data
-	rollOverCounterResult.WriteBytes[i]      += loggedResult.WriteBytes[i];
-	rollOverCounterResult.ReadBytes[i]       += loggedResult.ReadBytes[i];
-	rollOverCounterResult.WriteTranx[i]      += loggedResult.WriteTranx[i];
-	rollOverCounterResult.ReadTranx[i]       += loggedResult.ReadTranx[i];
-	rollOverCounterResult.WriteLatency[i]    += loggedResult.WriteLatency[i];
-	rollOverCounterResult.ReadLatency[i]     += loggedResult.ReadLatency[i];
-	rollOverCounterResult.ReadBusyCycles[i]  += loggedResult.ReadBusyCycles[i];
-	rollOverCounterResult.WriteBusyCycles[i] += loggedResult.WriteBusyCycles[i];
+        // Update "RollOverCounterResults" with logged data
+        rollOverCounterResult.WriteBytes[i]      += loggedResult.WriteBytes[i];
+        rollOverCounterResult.ReadBytes[i]       += loggedResult.ReadBytes[i];
+        rollOverCounterResult.WriteTranx[i]      += loggedResult.WriteTranx[i];
+        rollOverCounterResult.ReadTranx[i]       += loggedResult.ReadTranx[i];
+        rollOverCounterResult.WriteLatency[i]    += loggedResult.WriteLatency[i];
+        rollOverCounterResult.ReadLatency[i]     += loggedResult.ReadLatency[i];
+        rollOverCounterResult.ReadBusyCycles[i]  += loggedResult.ReadBusyCycles[i];
+        rollOverCounterResult.WriteBusyCycles[i] += loggedResult.WriteBusyCycles[i];
       }
     }
   }
@@ -225,19 +225,19 @@ namespace xdp {
     for(unsigned int i = 0; i < numAM ; ++i) {
       // Update "RollOverCount" 
       if (!firstReadAfterProgram) {
-	if(counterResult.CuExecCycles[i]     < loggedResult.CuExecCycles[i])     rollOverCount.CuExecCycles[i]++;
-	if(counterResult.CuBusyCycles[i]     < loggedResult.CuBusyCycles[i])     rollOverCount.CuBusyCycles[i]++;
-	if(counterResult.CuStallExtCycles[i] < loggedResult.CuStallExtCycles[i]) rollOverCount.CuStallExtCycles[i]++;
-	if(counterResult.CuStallIntCycles[i] < loggedResult.CuStallIntCycles[i]) rollOverCount.CuStallIntCycles[i]++;
-	if(counterResult.CuStallStrCycles[i] < loggedResult.CuStallStrCycles[i]) rollOverCount.CuStallStrCycles[i]++;
+        if(counterResult.CuExecCycles[i]     < loggedResult.CuExecCycles[i])     rollOverCount.CuExecCycles[i]++;
+        if(counterResult.CuBusyCycles[i]     < loggedResult.CuBusyCycles[i])     rollOverCount.CuBusyCycles[i]++;
+        if(counterResult.CuStallExtCycles[i] < loggedResult.CuStallExtCycles[i]) rollOverCount.CuStallExtCycles[i]++;
+        if(counterResult.CuStallIntCycles[i] < loggedResult.CuStallIntCycles[i]) rollOverCount.CuStallIntCycles[i]++;
+        if(counterResult.CuStallStrCycles[i] < loggedResult.CuStallStrCycles[i]) rollOverCount.CuStallStrCycles[i]++;
       } else {
-	// Update "RollOverCounterResults" with logged data
-	rollOverCounterResult.CuExecCount[i]      += loggedResult.CuExecCount[i];
-	rollOverCounterResult.CuExecCycles[i]     += loggedResult.CuExecCycles[i];
-	rollOverCounterResult.CuBusyCycles[i]     += loggedResult.CuBusyCycles[i];
-	rollOverCounterResult.CuStallExtCycles[i] += loggedResult.CuStallExtCycles[i];
-	rollOverCounterResult.CuStallIntCycles[i] += loggedResult.CuStallIntCycles[i];
-	rollOverCounterResult.CuStallStrCycles[i] += loggedResult.CuStallStrCycles[i];
+        // Update "RollOverCounterResults" with logged data
+        rollOverCounterResult.CuExecCount[i]      += loggedResult.CuExecCount[i];
+        rollOverCounterResult.CuExecCycles[i]     += loggedResult.CuExecCycles[i];
+        rollOverCounterResult.CuBusyCycles[i]     += loggedResult.CuBusyCycles[i];
+        rollOverCounterResult.CuStallExtCycles[i] += loggedResult.CuStallExtCycles[i];
+        rollOverCounterResult.CuStallIntCycles[i] += loggedResult.CuStallIntCycles[i];
+        rollOverCounterResult.CuStallStrCycles[i] += loggedResult.CuStallStrCycles[i];
       }
       
     }
@@ -258,9 +258,9 @@ namespace xdp {
       
       results->cuExecData[i].cuExecCount = counterResults.CuExecCount[i] + rollOverCounterResult.CuExecCount[i];
       results->cuExecData[i].cuExecCycles = counterResults.CuExecCycles[i] + rollOverCounterResult.CuExecCycles[i]
-	+ (rollOverCount.CuExecCycles[i] * 4294967296UL);
+        + (rollOverCount.CuExecCycles[i] * 4294967296UL);
       results->cuExecData[i].cuBusyCycles = counterResults.CuBusyCycles[i] + rollOverCounterResult.CuBusyCycles[i]
-	+ (rollOverCount.CuBusyCycles[i] * 4294967296UL);
+        + (rollOverCount.CuBusyCycles[i] * 4294967296UL);
       
       results->cuExecData[i].cuMaxExecCycles = counterResults.CuMaxExecCycles[i];
       results->cuExecData[i].cuMinExecCycles = counterResults.CuMinExecCycles[i];
@@ -278,7 +278,7 @@ namespace xdp {
     
     for(unsigned int i = 0; i < results->numAIM ; ++i) {
       if(currDevice->isHostAIM(i)) {
-	continue;
+        continue;
       }
       
       results->kernelTransferData[i].totalReadBytes = counterResults.ReadBytes[i] + (rollOverCount.ReadBytes[i] * 4294967296UL);

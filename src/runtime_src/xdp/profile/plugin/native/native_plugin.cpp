@@ -43,7 +43,7 @@ namespace xdp {
       // We were destroyed before the database, so write the writers
       //  and unregister ourselves from the database
       for (auto w : writers) {
-	w->write(false) ;
+        w->write(false) ;
       }
       db->unregisterPlugin(this) ;
     }
