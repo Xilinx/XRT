@@ -921,7 +921,7 @@ namespace xdp {
         //
         // In both these cases we print out "N/A"
         printNA ? (fout << "N/A,") : (fout << stats.totalTime/one_million << ",");
-        printNA ? (fout << "N/A,") : (fout << stats.averageTime / one_million << ",\n");
+        printNA ? (fout << "N/A,\n") : (fout << stats.averageTime / one_million << ",\n");
 
         // Move on from READ to WRITE
         ++i;
