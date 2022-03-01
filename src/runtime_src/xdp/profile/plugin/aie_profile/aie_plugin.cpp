@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -568,7 +568,7 @@ namespace xdp {
         || (startEvent == XAIE_EVENT_PORT_TLAST_0_PL)
         || (startEvent == XAIE_EVENT_PORT_IDLE_0_PL)
         || (startEvent == XAIE_EVENT_PORT_STALLED_0_PL))
-      return ((tile.itr_mem_col << 8) & tile.itr_mem_row);
+      return ((tile.itr_mem_col << 8) | tile.itr_mem_row);
 
     // Second, send DMA BD sizes
     if ((startEvent != XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM)
