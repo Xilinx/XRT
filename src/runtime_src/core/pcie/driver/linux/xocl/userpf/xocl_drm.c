@@ -221,9 +221,10 @@ static bool is_mem_region_valid(struct xocl_drm *drm_p,
 
 		/*
 		 * Memory region in mem_topology needs to match or
-		 * be inside the PS reserved memory region.
+		 * be inside the PS reserved memory region for U30.
+		 * Restriction relaxed for Versal
 		 */
-		if (mem_start >= start && mem_end <= end)
+		if ((mem_start >= start && mem_end <= end) || (XOCL_DSA_IS_VERSAL(xdev)))
 			return true;
 	}
 
