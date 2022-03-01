@@ -789,9 +789,9 @@ The above code shows
 Asynchornous Programming with XRT (experimental)
 ------------------------------------------------
 
-From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. Though the queue is defind in XRT namespace (``xrt::queue``) the underlying implementation is completly detached from core XRT native API data-structures (such as ``xrt::bo``, ``xrt::kernel``, etc). The ``xrt::queue`` implementation is a light-weight, general-purpose queue implementation that can be used completely outside the XRT native API scope as well. If needed, the user can also use their own queue implementation on top of core Native XRT data strucrure. 
+From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. Though the queue implementation defind in XRT namespace (``xrt::queue``) the underlying implementation is completly detached from core XRT native API data-structures (such as ``xrt::bo``, ``xrt::kernel``, etc). The ``xrt::queue`` implementation is a light-weight, independent from core XRT API, general-purpose queue implementation (that can even be used completely outside the XRT native API scope as well). If needed, the user can also use their own queue implementation instead of implementation offered by ``xrt::queue``. 
 
-By default all APIs use a host-thread for execution. So if an API have synchronous behavior the host-thread blocks until that operation is finished. For example 
+As a premise, by default all XRT native APIs execute from the host-thread, so if an API have synchronous behavior the host-thread blocks until that task is finished. For example 
 
 .. code:: c++
       :number-lines: 41
@@ -802,13 +802,13 @@ As ``xrt::bo::sync`` is a synchronous API, the host thread blocks until its comp
 
 XRT defines a queue with ``xrt::queue`` with the following properties
 
-  - Any task enqueued on the queue runs parallel to the original host thread. So the host threads does not wait for its completion and can do other task in parallel. 
+  - Any task enqueued on the queue runs parallel to the original host-thread. So the host threads does not wait for its completion and can do other tasks in parallel. 
   - The task enqueued on the queue must be synchronous in nature
   - All the tasks enqueued on the queue will be completed in the order it is enqueued (strict in-order execution). 
   - The task enqueued on a queue is like a callable, can generally expressed by a C++ lambda
-  - When a synchronous task is enqueued on a queue, an event (``xrt::queue:event``) is returned. The event can be used for multiple purpose
+  - When a synchronous task is enqueued on a queue, an event (``xrt::queue:event``) is returned. The event can be used for multiple purposes, such as: 
   
-       - The host-thread can wait on that event to synchronize with the ``queue::enqueue(task)`` it was generated. 
+       - The host-thread can wait on that event to synchronize with the ``queue::enqueue(task)`` from where the event was generated. 
        - The event can be enqueued to other queues to synchronize among the queues 
        
 Let's understand the above properties by reviewing the examples below
@@ -839,10 +839,10 @@ Executing multiple tasks through queue
 
 Every new ``xrt::queue`` can be thought as a new thread running parallel to the host-thread executing a series of synchronous tasks following the order they were submitted (enqueued) on the queue. For example, let's consider task A, B, C and D as below
    
-    Task A: Host to device data transfer (buffer bo0)
-    Task B: Execute the kernel and wait for the kernel finishing execution
-    Task C: Device to host data transfer (buffer bo_out) 
-    Task D: Check return data bo_out
+    - Task A: Host to device data transfer (buffer bo0)
+    - Task B: Execute the kernel and wait for the kernel finishing execution
+    - Task C: Device to host data transfer (buffer bo_out) 
+    - Task D: Check return data bo_out
     
 The above four tasks should be executed in-order for correct functionality. To execute them in parallel to the host-thread, these four tasks can be enqueued through a queue as below. 
 
