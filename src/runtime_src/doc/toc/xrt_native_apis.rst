@@ -791,6 +791,8 @@ Asynchornous Programming with XRT (experimental)
 
 From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. Though the queue implementation defind in XRT namespace (``xrt::queue``) the underlying implementation is completly detached from core XRT native API data-structures (such as ``xrt::bo``, ``xrt::kernel``, etc). The ``xrt::queue`` implementation is a light-weight, independent from core XRT API, general-purpose queue implementation (that can even be used completely outside the XRT native API scope as well). If needed, the user can also use their own queue implementation instead of implementation offered by ``xrt::queue``. 
 
+XRT queue implementation needs ``#include <experimental/xrt_queue.h`` to be added as the header file. The implementatin also use C++17 features so the host code must be compiled with ``g++ -std=c++17``
+
 As a premise, by default all XRT native APIs execute from the host-thread, so if an API have synchronous behavior the host-thread blocks until that task is finished. For example 
 
 .. code:: c++
@@ -805,7 +807,7 @@ XRT defines a queue with ``xrt::queue`` with the following properties
   - Any task enqueued on the queue runs parallel to the original host-thread. So the host threads does not wait for its completion and can do other tasks in parallel. 
   - The task enqueued on the queue must be synchronous in nature
   - All the tasks enqueued on the queue will be completed in the order it is enqueued (strict in-order execution). 
-  - The task enqueued on a queue is like a callable, can generally expressed by a C++ lambda
+  - The task enqueued on a queue can be any C++ Callable, which can conveniently expressed by a C++ lambda
   - When a synchronous task is enqueued on a queue, an event (``xrt::queue:event``) is returned. The event can be used for multiple purposes, such as: 
   
        - The host-thread can wait on that event to synchronize with the ``queue::enqueue(task)`` from where the event was generated. 
