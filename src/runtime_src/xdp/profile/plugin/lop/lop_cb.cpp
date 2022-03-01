@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,9 @@ namespace xdp {
                                         long long queueAddress,
                                         unsigned long long int functionID)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
     double timestamp = xrt_xocl::time_ns() ;
@@ -52,6 +55,9 @@ namespace xdp {
                                       long long queueAddress,
                                       unsigned long long int functionID)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
@@ -68,6 +74,9 @@ namespace xdp {
 
   static void lop_read(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
     
@@ -86,6 +95,9 @@ namespace xdp {
 
   static void lop_write(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
@@ -103,6 +115,9 @@ namespace xdp {
 
   static void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 

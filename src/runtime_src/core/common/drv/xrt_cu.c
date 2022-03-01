@@ -644,7 +644,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 		return -ENOSYS;
 
 	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
-		xcu_err(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
+		xcu_warn(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
 		return -ENOSYS;
 	}
 
