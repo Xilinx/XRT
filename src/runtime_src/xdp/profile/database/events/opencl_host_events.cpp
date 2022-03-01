@@ -24,12 +24,12 @@ namespace xdp {
   // Host event definitions
   // **************************
   KernelEnqueue::KernelEnqueue(uint64_t s_id, double ts, 
-			       uint64_t dName, 
-			       uint64_t bName, 
-			       uint64_t kName,
-			       uint64_t wgc,
-			       size_t wgs,
-			       const char* enqueueId) :
+                               uint64_t dName, 
+                               uint64_t bName, 
+                               uint64_t kName,
+                               uint64_t wgc,
+                               size_t wgs,
+                               const char* enqueueId) :
     VTFEvent(s_id, ts, KERNEL_ENQUEUE),
     deviceName(dName), binaryName(bName), kernelName(kName),
     workgroupConfiguration(wgc),
@@ -103,10 +103,10 @@ namespace xdp {
   }
 
   OpenCLBufferTransfer::OpenCLBufferTransfer(uint64_t s_id, double ts,
-					     VTFEventType ty,
-					     uint64_t address,
-					     uint64_t resource,
-					     size_t size)
+                                             VTFEventType ty,
+                                             uint64_t address,
+                                             uint64_t resource,
+                                             size_t size)
     :VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id()),
      deviceAddress(address), memoryResource(resource),
      bufferSize(size)
@@ -132,9 +132,9 @@ namespace xdp {
 
 
   OpenCLCopyBuffer::OpenCLCopyBuffer(uint64_t s_id, double ts, VTFEventType ty,
-				     uint64_t srcAddress, uint64_t srcResource,
-				     uint64_t dstAddress, uint64_t dstResource,
-				     size_t size)
+                                     uint64_t srcAddress, uint64_t srcResource,
+                                     uint64_t dstAddress, uint64_t dstResource,
+                                     size_t size)
     :VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id()),
      srcDeviceAddress(srcAddress), srcMemoryResource(srcResource),
      dstDeviceAddress(dstAddress), dstMemoryResource(dstResource),
@@ -153,17 +153,17 @@ namespace xdp {
     {
       fout << "," << 1 ; // Transfer type
       fout << "," << bufferSize 
-	   << "," << srcDeviceAddress
-	   << "," << srcMemoryResource
-	   << "," << dstDeviceAddress
-	   << "," << dstMemoryResource 
-	   << ",0x" << std::hex << threadId << std::dec ;
+           << "," << srcDeviceAddress
+           << "," << srcMemoryResource
+           << "," << dstDeviceAddress
+           << "," << dstMemoryResource 
+           << ",0x" << std::hex << threadId << std::dec ;
     }
     fout << std::endl ;
   }
 
   LOPBufferTransfer::LOPBufferTransfer(uint64_t s_id, double ts, 
-				       VTFEventType ty) :
+                                       VTFEventType ty) :
     VTFEvent(s_id, ts, ty), threadId(std::this_thread::get_id())
   {
     
