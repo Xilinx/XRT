@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -35,6 +35,8 @@ namespace xdp {
     std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
     std::map<std::string, xclCounterResults> mRolloverCountsMap;
 
+    static bool live;
+
   private:
     
     void calculateAIMRolloverResult(const std::string& key, 
@@ -69,6 +71,8 @@ namespace xdp {
      void startCounters();
      void stopCounters();
      void readCounters();
+
+     static bool alive() { return HALAPIInterface::live; }
   } ;
 
 }
