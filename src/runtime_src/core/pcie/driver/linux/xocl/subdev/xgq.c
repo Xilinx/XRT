@@ -974,8 +974,6 @@ static int xgq_check_firewall(struct platform_device *pdev)
 		struct xgq_cmd_cq_log_page_payload *log = NULL;
 		u32 log_size = 0;
 
-		mutex_lock(&xgq->xgq_lock);
-
 		log = (struct xgq_cmd_cq_log_page_payload *)&cmd->xgq_cmd_cq_payload;
 		log_size = log->count;
 
