@@ -875,7 +875,7 @@ Let's assume in the above example, it is required to do two host-to-device buffe
           main_queue.enqueue([&run] {run.start(); run.wait(); });
           main_queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
 
-In the above code, as a single queue (``main_queue``) is used, the host-to-device data transfers for buffer bo0 and bo1 would happen sequentially. In order to do parrallel data transfer for bo0 and bo1, a separate queue is needed for one of the buffer, and also ensure the kernel to execute only after both the buffer transfers are completed. 
+In the above code, as a single queue (``main_queue``) is used, the host-to-device data transfers for buffer ``bo0`` and ``bo1`` would happen sequentially. In order to do parrallel data transfer for ``bo0`` and ``bo1``, a separate queue is needed for one of the buffer, and also it is required to ensure that the kernel to execute only after both the buffer transfers are completed. 
 
 .. code:: c++
       :number-lines: 41
@@ -889,5 +889,5 @@ In the above code, as a single queue (``main_queue``) is used, the host-to-devic
           main_queue.enqueue([&run] {run.start(); run.wait(); });
           main_queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
 
-In the line number 43 and 44 ``bo0`` and ``bo1`` host-to-device data transfers are enqueued through two separate queues to achive a parallel transfers. However, returned event from the ``queue_bo1`` is enqueued in the ``main_queue`` just like a task enqueue. As a result, any other task submitted after that event wont execute until the event is finished. In the above code example subsequent task in the main queue (such as kernel execution) would wait till the bo1_event is complete. By submitting any event returned from a queue::enqueue operation to another queue, we can synchronize among the queues. 
+In the line number 43 and 44 ``bo0`` and ``bo1`` host-to-device data transfers are enqueued through two separate queues to achive a parallel transfers. To synchronize between these two queues the returned event from the ``queue_bo1`` is enqueued in the ``main_queue`` just like a task enqueue (line 45). As a result, any other task submitted after that event wont execute until the event is finished. So in the above code example subsequent task in the ``main_queue`` (such as kernel execution) would wait till the ``bo1_event`` is completed. By submitting a event returned from a ``queue::enqueue`` to another queue, we can synchronize among the queues. 
 
