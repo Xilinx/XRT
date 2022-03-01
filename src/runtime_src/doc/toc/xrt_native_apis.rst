@@ -789,7 +789,7 @@ The above code shows
 Asynchornous Programming with XRT (experimental)
 ------------------------------------------------
 
-From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. 
+From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. Though the queue is defind in XRT namespace (``xrt::queue``) the underlying implementation is completly detached from core XRT native API data-structures (such as ``xrt::bo``, ``xrt::kernel``, etc). The ``xrt::queue`` implementation is a light-weight, general-purpose queue implementation that can be used completely outside the XRT native API scope as well. If needed, the user can also use their own queue implementation on top of core Native XRT data strucrure. 
 
 By default all APIs use a host-thread for execution. So if an API have synchronous behavior the host-thread blocks until that operation is finished. For example 
 
@@ -802,19 +802,19 @@ As ``xrt::bo::sync`` is a synchronous API, the host thread blocks until its comp
 
 XRT defines a queue with ``xrt::queue`` with the following properties
 
-  - Any task enqueued on the queue runs parallel to the original host thread from where it executes. So the host threads does not wait for its completion and can do other task in parallel. 
+  - Any task enqueued on the queue runs parallel to the original host thread. So the host threads does not wait for its completion and can do other task in parallel. 
   - The task enqueued on the queue must be synchronous in nature
-  - All the tasks enqueued on the queue will finish by following the order it is enqueued (in-order execution). 
+  - All the tasks enqueued on the queue will be completed in the order it is enqueued (strict in-order execution). 
   - The task enqueued on a queue is like a callable, can generally expressed by a C++ lambda
-  - When a synchronous task is enqueued on a queue, an event is returned. The event can be used for multiple purpose
+  - When a synchronous task is enqueued on a queue, an event (``xrt::queue:event``) is returned. The event can be used for multiple purpose
   
-       - The host-thread can wait on that event to synchronize with the queue
-       - The event can be enqueued to other queues to synchronize between the queues 
+       - The host-thread can wait on that event to synchronize with the ``queue::enqueue(task)`` it was generated. 
+       - The event can be enqueued to other queues to synchronize among the queues 
        
-Let's review the above situation with the examples below
+Let's understand the above properties by reviewing the examples below
 
-Execurting synchronous task asynchronously 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Executing synchronous task asynchronously 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 .. code:: c++
@@ -827,17 +827,17 @@ Execurting synchronous task asynchronously
           xrt::queue my_queue;
           auto sync_event = queue.enqueue([&bo0] {bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
 
-          myCpuFunction(b);  // here we can perform other host operation that will run parallel to the above sync operation
+          myCpuTask(b);  // here we can perform other host task that will run parallel to the above bo::sync task
           
           sync_event.wait();  // stall the host-thread till sync operation completes 
           
-The above code shows the synchronous API ``xrt::bo::sync`` is enqueued through a ``xrt::queue``. The argument of xrt::queue is unnamed callable written using C++ lambda capturing buffer object. This technique is useful to execute a synchronous task asynchronously from the host-thread, and while this task is ongoing, the host thread can do other operation in the meantime (``myCpuFunction`` in the above code). The return type of ``xrt::queue::enqueue`` is type of ``xrt::queue::event`` which is later synchronized to the host-thread by ``xrt::queue::event::wait()`` blocking function. 
+The above code shows the synchronous API ``xrt::bo::sync`` is enqueued through a ``xrt::queue``. The argument of xrt::queue is unnamed callable written using C++ lambda capturing buffer object. This technique is useful to execute a synchronous task asynchronously from the host-thread, and while this task is ongoing, the host thread can do other operation in parallel (``myCpuTask()`` in the above code). The return type of ``xrt::queue::enqueue()`` is type of ``xrt::queue::event`` which is later synchronized to the host-thread by ``xrt::queue::event::wait()`` blocking function. 
 
 
-Execurting multiple tasks through queue 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Executing multiple tasks through queue 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Every new ``xrt::queue`` can be think of a new thread running parallel to the host-thread executing a series of synchronous tasks following the order they were submitted (enqueued) on the queue. For example, let's consider task A, B, C as below
+Every new ``xrt::queue`` can be thought as a new thread running parallel to the host-thread executing a series of synchronous tasks following the order they were submitted (enqueued) on the queue. For example, let's consider task A, B, C and D as below
    
     Task A: Host to device data transfer (buffer bo0)
     Task B: Execute the kernel and wait for the kernel finishing execution
@@ -851,31 +851,31 @@ The above four tasks should be executed in-order for correct functionality. To e
       :number-lines: 41
       
         
-          xrt::queue my_queue;
+          xrt::queue queue;
           queue.enqueue([&bo0] {bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
           queue.enqueue([&run] {run.start(); run.wait(); });
           queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
           queue.enqueue([&bo_out_map]{my_function_to_check_data(bo_out_map)});
           
-The user can create and use as many as queues in the host-code to overlap tasks in parallel. Next, we will see how it is possible to synchronize amoung the queues using the event. 
+The user can create and use as many as queues in the host-code to overlap tasks in parallel. Next, we will see how it is possible to synchronize among the queues using the event. 
 
 
-Using events to synchronize amonng the queues 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Using events to synchronize among the queues 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Let's assume in the above example, it is required to do two buffers host-to-device synchronization before the kernel execution. If using a single queue the code would appear as
+Let's assume in the above example, it is required to do two host-to-device buffer transfer before the kernel execution. If using a single queue the code would appear as
 
 .. code:: c++
       :number-lines: 41
       
         
-          xrt::queue my_queue;
-          queue.enqueue([&bo0] {bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
-          queue.enqueue([&bo1] {bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
-          queue.enqueue([&run] {run.start(); run.wait(); });
-          queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
+          xrt::queue main_queue;
+          main_queue.enqueue([&bo0] {bo0.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
+          main_queue.enqueue([&bo1] {bo1.sync(XCL_BO_SYNC_BO_TO_DEVICE); });
+          main_queue.enqueue([&run] {run.start(); run.wait(); });
+          main_queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
 
-In the above code, as a single queue is used, the host-to-device data transfer for buffer bo0 and bo1 would happen sequentially. In order to do parrallel data transfer for bo0 and bo1, a separate queue is needed for one of the buffer, and also ensure the kernel should execute only after both the buffer transfer is finished. 
+In the above code, as a single queue (``main_queue``) is used, the host-to-device data transfers for buffer bo0 and bo1 would happen sequentially. In order to do parrallel data transfer for bo0 and bo1, a separate queue is needed for one of the buffer, and also ensure the kernel to execute only after both the buffer transfers are completed. 
 
 .. code:: c++
       :number-lines: 41
@@ -889,5 +889,5 @@ In the above code, as a single queue is used, the host-to-device data transfer f
           main_queue.enqueue([&run] {run.start(); run.wait(); });
           main_queue.enqueue([&bo_out] {bo_out.sync(XCL_BO_SYNC_BO_FROM_DEVICE); });
 
-In the line number 43 and 44 bo0 and bo1 host-to-device data transfer is enqueued through two separate queues to achive a parallel transfers. However, returned event from the queue_bo1 is enqueued in the main queue. As a result any other task submitted after that event wont execute until the event is finished. As a result subsequent task in the main queue (such as kernel execution) would wait till the bo1_event is complete. By submitting any event returned from a queue::enqueue operation to another queue, we can synchronize amoung the queues. 
+In the line number 43 and 44 ``bo0`` and ``bo1`` host-to-device data transfers are enqueued through two separate queues to achive a parallel transfers. However, returned event from the ``queue_bo1`` is enqueued in the ``main_queue`` just like a task enqueue. As a result, any other task submitted after that event wont execute until the event is finished. In the above code example subsequent task in the main queue (such as kernel execution) would wait till the bo1_event is complete. By submitting any event returned from a queue::enqueue operation to another queue, we can synchronize among the queues. 
 
