@@ -786,8 +786,44 @@ The above code shows
 
 
 
-Asynchornous Programming with XRT
----------------------------------
+Asynchornous Programming with XRT (experimental)
+------------------------------------------------
 
-XRT offers a simple asynchronous programming mechanism through user-defined queue. Before reviewing the options let us consider the asynchronous behavior without queue. 
+From 22.1 release, XRT offers a simple asynchronous programming mechanism through user-defined queue. 
+
+By default all APIs use a host-thread for execution. So if an API have synchronous behavior the host-thread blocks until that operation is finished. For example 
+
+.. code:: c++
+      :number-lines: 41
+      
+          buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE);
+
+As ``xrt::bo::sync`` is a synchronous API, the host thread blocks until its completion. 
+
+XRT defines a queue with ``xrt::queue`` with the following properties
+
+  - Any task enqueued on the queue runs parallel to the original host thread from where it executes. So the host threads does not wait for its completion and can do other task in parallel. 
+  - The task enqueued on the queue must be synchronous in nature
+  - All the tasks enqueued on the queue will finish by following the order it is enqueued (in-order execution). 
+  - The task enqueued on a queue is like a callable, can generally expressed by a C++ lambda
+  - When a synchronous task is enqueued on a queue, an event is returned. The event can be used for multiple purpose
+  
+       - The host-thread can wait on that event to synchronize with the queue
+       - The event can be enqueued to other queues to synchronize between the queues 
+       
+Let's review the above situation with the examples below
+
+.. code:: c++
+      :number-lines: 41
+      
+          xrt::queue my_queue;
+          auto sync_event = my_queue.enqueue(buffer.sync(XCL_BO_SYNC_BO_TO_DEVICE));
+          
+          // here we can perform other host operation that will run parallel to the above sync operation
+          sync_event.wait();  // stall the host-thread till sync operation completes 
+          
+
+
+
+
 
