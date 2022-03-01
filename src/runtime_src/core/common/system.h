@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -174,12 +174,6 @@ get_devices(boost::property_tree::ptree& pt);
 XRT_CORE_COMMON_EXPORT
 std::pair<device::id_type, device::id_type>
 get_total_devices(bool is_user);
-
-/**
- */
-XRT_CORE_COMMON_EXPORT
-std::string
-get_hostname();
 
 /**
  * get_device_id() - Convert str to device index

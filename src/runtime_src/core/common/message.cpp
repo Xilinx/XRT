@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2017 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,6 +19,7 @@
 #include "time.h"
 #include "gen/version.h"
 #include "config_reader.h"
+#include "unistd.h"
 
 #include <map>
 #include <fstream>
@@ -29,7 +30,6 @@
 #include <cstdarg>
 #include <climits>
 #ifdef __GNUC__
-# include <unistd.h>
 # include <syslog.h>
 # include <linux/limits.h>
 # include <sys/stat.h>
@@ -60,18 +60,6 @@ get_userid()
 #else
   return getuid();
 #endif
-}
-
-static std::string
-get_hostname()
-{
-  std::string hn;
-#ifdef __GNUC__
-  char hostname[256] = {0};
-  gethostname(hostname, 256);
-  hn = hostname;
-#endif
-  return hn;
 }
 
 static std::string
@@ -219,7 +207,7 @@ file_dispatch(const std::string &file)
   handle << "[" << xrt_core::timestamp() << "]" << "\n";
   handle << "PID: " << get_processid() << "\n";
   handle << "UID: " << get_userid() << "\n";
-  handle << "HOST: " <<  get_hostname() << "\n";
+  handle << "HOST: " <<  xrt_core::get_hostname() << "\n";
   handle << "EXE: " << get_exe_path() << std::endl;
 }
 
@@ -249,7 +237,7 @@ console_dispatch()
   std::cerr << "PID: " << get_processid() << "\n";
   std::cerr << "UID: " << get_userid() << "\n";
   std::cerr << "[" << xrt_core::timestamp() << "]\n";
-  std::cerr << "HOST: " << get_hostname() << "\n";
+  std::cerr << "HOST: " << xrt_core::get_hostname() << "\n";
   std::cerr << "EXE: " << get_exe_path() << std::endl;
 }
 

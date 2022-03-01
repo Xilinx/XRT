@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2019 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -181,18 +181,6 @@ std::pair<device::id_type, device::id_type>
 get_total_devices(bool is_user)
 {
   return instance().get_total_devices(is_user);
-}
-
-std::string
-get_hostname()
-{
-  std::string hn;
-#ifdef __GNUC__
-  char hostname[256] = {0};
-  gethostname(hostname, 256);
-  hn = hostname;
-#endif
-  return hn;
 }
 
 device::id_type

@@ -18,7 +18,8 @@
 // Local - Include Files
 #include "SubCmdConfigure.h"
 #include "tools/common/XBUtilities.h"
-#include "common/system.h"
+#include "core/common/system.h"
+#include "core/common/unistd.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -74,15 +75,6 @@ SubCmdConfigure::SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPre
   setIsPreliminary(_isPreliminary);
 }
 
-// So far, we only support the following configs, eg.
-// [Device]
-// mailbox_channel_disable = 0x20
-// mailbox_channel_switch = 0
-// xclbin_change = 1
-// cahce_xclbin = 0
-// we may support in the future, like,
-// [Daemon]
-// host_ip = x.x.x.x
 static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std::string path)
 {
   boost::property_tree::ptree pt_root;

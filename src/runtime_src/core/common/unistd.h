@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -18,7 +18,7 @@
 #define core_common_unistd_h_
 
 #ifndef _WIN32
-# include <unistd.h>
+#include <unistd.h>
 #else
 #endif
 
@@ -32,6 +32,18 @@ getpagesize()
 #else
   return 4096;
 #endif
+}
+
+inline std::string
+get_hostname()
+{
+  std::string hn;
+#ifndef _WIN32
+  char hostname[256] = {0};
+  gethostname(hostname, 256);
+  hn = hostname;
+#endif
+  return hn;
 }
 
 } // xrt_core
