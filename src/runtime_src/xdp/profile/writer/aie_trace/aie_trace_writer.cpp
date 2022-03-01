@@ -38,12 +38,14 @@ namespace xdp {
 
   AIETraceWriter::~AIETraceWriter()
   {
+
+    std::string dId = std::to_string(deviceId);
+    std::string tId = std::to_string(traceStreamId);
+
+    std::string filename = "aie_trace_" + dId + "_" + tId + ".txt";
+
     try {
       // Check if final file output is empty and throw a warning.
-      std::string dId = std::to_string(deviceId);
-      std::string tId = std::to_string(traceStreamId);
-
-      std::string filename = "aie_trace_" + dId + "_" + tId + ".txt";
       std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
 
       // \n is 2 bytes
