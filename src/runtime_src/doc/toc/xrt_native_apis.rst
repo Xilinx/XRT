@@ -786,3 +786,8 @@ The above code shows
 
 
 
+Asynchornous Programming with XRT
+---------------------------------
+
+XRT offers a simple asynchronous programming mechanism through user-defined queue. Before reviewing the options let us consider the asynchronous behavior without queue. 
+
