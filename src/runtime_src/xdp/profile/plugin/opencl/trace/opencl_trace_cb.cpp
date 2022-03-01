@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -16,13 +16,12 @@
 
 #include <iostream>
 
-#include "xdp/profile/plugin/opencl/trace/opencl_trace_cb.h"
-#include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
-
+#include "core/common/time.h"
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/database/events/opencl_api_calls.h"
 #include "xdp/profile/database/events/opencl_host_events.h"
-#include "core/common/time.h"
+#include "xdp/profile/plugin/opencl/trace/opencl_trace_cb.h"
+#include "xdp/profile/plugin/opencl/trace/opencl_trace_plugin.h"
 
 namespace xdp {
 
@@ -32,6 +31,9 @@ namespace xdp {
 				 uint64_t queueAddress,
 				 uint64_t functionID)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
@@ -52,6 +54,9 @@ namespace xdp {
 			       uint64_t queueAddress,
 			       uint64_t functionID)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
@@ -68,6 +73,9 @@ namespace xdp {
   // The XRT event "id" cannot start until the XRT event "dependency" has ended
   static void add_dependency(uint64_t id, uint64_t dependency)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     VPDatabase* db = openclPluginInstance.getDatabase() ;
     (db->getDynamicInfo()).addDependency(id, dependency) ;
   }
@@ -79,6 +87,9 @@ namespace xdp {
 			  size_t bufferSize,
 			  bool isP2P)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
@@ -110,6 +121,9 @@ namespace xdp {
 			   size_t bufferSize,
 			   bool isP2P)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
@@ -149,6 +163,9 @@ namespace xdp {
 			  size_t bufferSize,
 			  bool isP2P)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 
@@ -185,6 +202,9 @@ namespace xdp {
 			     size_t workgroupConfigurationZ,
 			     size_t workgroupSize)
   {
+    if (!VPDatabase::alive() || !OpenCLTracePlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = openclPluginInstance.getDatabase() ;
 

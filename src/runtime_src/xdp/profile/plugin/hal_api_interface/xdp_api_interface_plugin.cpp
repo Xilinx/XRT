@@ -66,6 +66,9 @@ namespace xdp {
 // Interface function visible from main XRT code
 void hal_api_interface_cb_func(HalInterfaceCallbackType cb_type, void* payload)
 {
+  if (!xdp::HALAPIInterface::alive())
+    return;
+
   switch (cb_type)
   {
   case HalInterfaceCallbackType::START_DEVICE_PROFILING:

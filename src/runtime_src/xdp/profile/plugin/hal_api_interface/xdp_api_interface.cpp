@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,8 +30,11 @@
 
 namespace xdp {
 
+  bool HALAPIInterface::live = false;
+
   HALAPIInterface::HALAPIInterface() 
   {
+    HALAPIInterface::live = true;
   }
 
   HALAPIInterface::~HALAPIInterface()
@@ -42,7 +45,9 @@ namespace xdp {
       delete itr.second;
       itr.second = nullptr;
     }
-    devices.clear();  
+    devices.clear();
+
+    HALAPIInterface::live = false;
   }
 
   void HALAPIInterface::startProfiling(xclDeviceHandle handle)
