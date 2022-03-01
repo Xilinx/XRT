@@ -379,28 +379,19 @@ struct kds_scu_info
       boost::char_separator<char> sep(",");
       tokenizer tokens(line, sep);
 
-      if (std::distance(tokens.begin(), tokens.end()) != 4)
+      if ((std::distance(tokens.begin(), tokens.end()) != 4) &&
+	  (std::distance(tokens.begin(), tokens.end()) != 5))
         throw xrt_core::query::sysfs_error("PS kernel statistic sysfs node corrupted");
 
       data_type data;
       const int radix = 16;
       tokenizer::iterator tok_it = tokens.begin();
+      if (std::distance(tokens.begin(), tokens.end()) == 5)
+	data.slot_index  = std::stoi(std::string(*tok_it++));
       data.index  = std::stoi(std::string(*tok_it++));
       data.name   = std::string(*tok_it++);  // kernel name
       data.status = std::stoul(std::string(*tok_it++), nullptr, radix);
       data.usages = std::stoul(std::string(*tok_it++));
-
-      // TODO: Let's avoid this special handling for PS kernel name
-      // Modify instance name to match up with xclbin convention where
-      // instance names are numbered 0..n as in kernel_name:[0..n] for
-      // kernel_name.  It is important that the instance name matches
-      // up with the expectations of core XRT, which is based off of
-      // the instance names in the IP_LAYOUT.  By using a knm -> idx
-      // map the driver can assign internal indeces in any order it
-      // likes and sysfs node does not have to list all kernel
-      // instances of a kernel before instances of another kernel.
-      auto& kidx = name2idx[data.name];  // integral values are zero-initialized
-      data.name += ":scu_" + std::to_string(kidx++);
 
       cu_stats.push_back(data);
     }

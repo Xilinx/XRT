@@ -390,7 +390,6 @@ get_dw_type(const std::string& typeOffset,
 {
   size_t posOffset = typeOffset.find("<0x") == std::string::npos ? 0 : 3;
   unsigned long offset = readHexString(typeOffset, posOffset);
-  std::cout << boost::format("Offset string: %s', value: 0x%x\n") % typeOffset % offset;
 
   auto it = std::find_if(argTags.begin(), argTags.end(),
                          [&offset](const std::pair<unsigned long, boost::property_tree::ptree>& element) {return element.first == offset;});
@@ -416,7 +415,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
   switch (dwTag) {
     case DW_TAG::pointer_type: {
         evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type"), argTags, ptArgument);
-        ptArgument.put("byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
+        ptArgument.put("primitive-byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
         // Add pointer
         std::string argType = ptArgument.get<std::string>("type", "") + "*";
         ptArgument.put<std::string>("type", argType);
@@ -433,7 +432,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
 
     case DW_TAG::base_type:
       ptArgument.put("type", ptTag.get<std::string>("DW_AT_name"));
-      ptArgument.put("byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
+      ptArgument.put("primitive-byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
       break;
 
     case DW_TAG::const_type: {

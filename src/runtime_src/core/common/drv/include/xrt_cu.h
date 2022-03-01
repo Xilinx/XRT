@@ -35,6 +35,7 @@
  * first 16 bit of the index used to identify the soft kernel
  */
 #define SCU_DOMAIN 0x10000
+#define	SOFT_KERNEL_REG_SIZE	4096
 
 /* The normal CU in ip_layout would assign a interrupt
  * ID in range 0 to 127. Use 128 for m2m cu could ensure
@@ -232,6 +233,8 @@ struct xrt_cu_info {
 	char			 iname[64];
 	char			 kname[64];
 	void			*xgq;
+	int			 cu_domain;
+	char			 uuid[16];
 };
 
 struct per_custat {
@@ -516,6 +519,44 @@ struct xrt_cu_fa {
 
 int xrt_cu_fa_init(struct xrt_cu *xcu);
 void xrt_cu_fa_fini(struct xrt_cu *xcu);
+
+#define to_cu_scu(core) ((struct xrt_cu_scu *)(core))
+struct xrt_cu_scu {
+	u64			 paddr;
+	u32			 slot_sz;
+	u32			 num_slots;
+	u32			 head_slot;
+	u32			 desc_msw;
+	u32			 task_cnt;
+	int			 max_credits;
+	int			 credits;
+	int			 run_cnts;
+	u64			 check_count;
+	void			*vaddr;
+	struct drm_zocl_bo	*sc_bo;
+	spinlock_t		 cu_lock;
+
+	/*
+	 * This semaphore is used for each soft kernel
+	 * CU to wait for next command. When new command
+	 * for this CU comes in or we are told to abort
+	 * a CU, ert will up this semaphore.
+	 */
+	struct semaphore	sc_sem;
+
+	uint32_t		sc_flags;
+	uint64_t		usage;
+
+	/*
+	 * soft cu pid and parent pid. This can be used to identify if the
+	 * soft cu is still running or not. The parent should never crash
+	 */
+	uint32_t		sc_pid;
+	uint32_t		sc_parent_pid;
+};
+
+int xrt_cu_scu_init(struct xrt_cu *xcu);
+void xrt_cu_scu_fini(struct xrt_cu *xcu);
 
 /* PLRAM CU -- deprecated
  * TODO: Delete this type of CU once fast adapter is full supported

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021, Xilinx Inc
+ *  Copyright (C) 2021-2022, Xilinx Inc
  *
  *  This file is dual licensed.  It may be redistributed and/or modified
  *  under the terms of the Apache 2.0 License OR version 2 of the GNU
@@ -135,6 +135,9 @@ struct xgq_cmd_config_start {
 	uint32_t echo:1;
 	uint32_t verbose:1;
 	uint32_t resvd:12;
+
+	/* word 3 */
+	uint32_t num_scus:32;
 };
 
 /**
@@ -222,7 +225,7 @@ struct xgq_cmd_config_cu {
 
 	/* word 2 */
 	uint32_t cu_idx:12;
-	uint32_t rsvd1:4;
+	uint32_t cu_domain:4;
 	uint32_t ip_ctrl:8;
 	uint32_t rsvd2:8;
 
@@ -251,7 +254,7 @@ struct xgq_cmd_query_cu {
 
 	/* word 2 */
 	uint32_t cu_idx:12;
-	uint32_t rsvd1:4;
+	uint32_t cu_domain:4;
 	uint32_t type:4;
 	uint32_t rsvd2:8;
 };

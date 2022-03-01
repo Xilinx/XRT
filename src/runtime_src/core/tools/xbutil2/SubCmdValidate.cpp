@@ -1211,8 +1211,6 @@ bistTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::pt
   if (!ert_validate(_dev, _dev->get_device_handle(), _ptTest))
     _ptTest.put("status", test_token_failed);
 
-  runTestCase(_dev, "xcl_iops_test.exe", _ptTest.get<std::string>("xclbin"), _ptTest);
-
   _ptTest.put("status", test_token_passed);
 }
 
@@ -1603,11 +1601,13 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;
