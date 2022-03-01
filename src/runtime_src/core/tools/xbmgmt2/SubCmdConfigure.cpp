@@ -52,6 +52,8 @@ struct config
 {
   std::string host;
 
+  explicit config() {}
+
   friend std::ostream& 
   operator<<(std::ostream& ostr, const struct config& cfg)
   {
@@ -128,7 +130,7 @@ static void load_config(const std::shared_ptr<xrt_core::device>& _dev, const std
 static config
 get_daemon_conf()
 {
-  config cfg = {.host = ""};
+  config cfg;
   cfg.host = xrt_core::get_hostname();
 
   std::ifstream istr(config_file);
