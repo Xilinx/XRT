@@ -360,8 +360,8 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 	 * Otherwise issue message that a warm reboot is required.
 	 */
 	msleep(20);
-	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_af_check(lro, NULL)) {
-		xocl_af_clear(lro);
+	while (retry++ < XCLMGMT_RESET_MAX_RETRY && xocl_check_firewall(lro, NULL)) {
+		xocl_clear_firewall(lro);
 		msleep(20);
 	}
 
