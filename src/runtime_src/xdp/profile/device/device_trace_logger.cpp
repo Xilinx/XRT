@@ -780,14 +780,14 @@ namespace xdp {
         addAMEvent(packet, hostTimestamp);
       }
       if (AIMPacket) {
-        addAIMEvent(packet, hostTimestamp) ;
+        addAIMEvent(packet, hostTimestamp);
       }
       if (ASMPacket) {
-        addASMEvent(packet, hostTimestamp) ;
+        addASMEvent(packet, hostTimestamp);
       }
 
       // keep track of latest timestamp that comes through trace
-      mLatestHostTimestamp = hostTimestamp;
+      mLatestHostTimestampMs = hostTimestamp;
     }
 
   }
@@ -801,14 +801,16 @@ namespace xdp {
 
   void DeviceTraceLogger::addEventMarkers(bool isFIFOFull, bool isTS2MMFull)
   {
+    double mark_time = mLatestHostTimestampMs * 1e6;
+
     if (isFIFOFull) {
       xrt::profile::user_event events;
-      events.mark_time_ns(mLatestHostTimestamp, "Trace FIFO Full");
+      events.mark_time_ns(mark_time, "Trace FIFO Full");
     }
 
     if (isTS2MMFull) {
         xrt::profile::user_event events;
-        events.mark_time_ns(mLatestHostTimestamp, "Trace Buffer Full");
+        events.mark_time_ns(mark_time, "Trace Buffer Full");
     }
   }
 

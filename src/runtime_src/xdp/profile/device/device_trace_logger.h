@@ -99,7 +99,7 @@ namespace xdp {
 
     uint64_t firstTimestamp = 0 ;
     // Used to mark timeline trace if trace buffer gets full
-    double mLatestHostTimestamp = 0;
+    double mLatestHostTimestampMs = 0;
 
   public:
 
