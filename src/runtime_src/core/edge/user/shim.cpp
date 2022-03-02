@@ -770,7 +770,7 @@ xclSKGetCmd(xclSKCmd *cmd)
     cmd->cu_nums = scmd.cu_nums;
     cmd->bohdl = scmd.bohdl;
     cmd->meta_bohdl = scmd.meta_bohdl;
-    snprintf(cmd->uuid, 16, "%s", scmd.uuid);
+    memcpy(cmd->uuid, &scmd.uuid, sizeof(cmd->uuid));
     snprintf(cmd->krnl_name, ZOCL_MAX_NAME_LENGTH, "%s", scmd.name);
   }
 
@@ -1816,20 +1816,23 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
     if (xrt_core::xclbin::is_pdi_only(buffer))
         return 0;
 
-    ret = xrt_core::scheduler::init(handle, buffer);
-    if (ret) {
-      printf("Scheduler init failed\n");
-      return ret;
-    }
-    ret = drv->mapKernelControl(xrt_core::xclbin::get_cus_pair(buffer));
-    if (ret) {
-      printf("Map CUs Failed\n");
-      return ret;
-    }
-    ret = drv->mapKernelControl(xrt_core::xclbin::get_dbg_ips_pair(buffer));
-    if (ret) {
-      printf("Map Debug IPs Failed\n");
-      return ret;
+    // Skipping if only loading xclbin metadata
+    if (!meta) {
+      ret = xrt_core::scheduler::init(handle, buffer);
+      if (ret) {
+	printf("Scheduler init failed\n");
+	return ret;
+      }
+      ret = drv->mapKernelControl(xrt_core::xclbin::get_cus_pair(buffer));
+      if (ret) {
+	printf("Map CUs Failed\n");
+	return ret;
+      }
+      ret = drv->mapKernelControl(xrt_core::xclbin::get_dbg_ips_pair(buffer));
+      if (ret) {
+	printf("Map Debug IPs Failed\n");
+	return ret;
+      }
     }
 
 #ifndef __HWEM__
@@ -1843,6 +1846,7 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
 #else
     xdp::hal::hw_emu::update_device(handle);
 #endif
+
     return 0;
   }
   catch (const xrt_core::error& ex) {
