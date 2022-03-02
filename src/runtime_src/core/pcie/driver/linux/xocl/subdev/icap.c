@@ -2494,6 +2494,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	const struct axlf_section_header *header = NULL;
+	void *bitstream = NULL;
+	void *bitstream_part_pdi = NULL;
 
 	err = icap_xclbin_wr_lock(icap);
 	if (err)
@@ -2509,6 +2511,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 
 	header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
+	bitstream = xrt_xclbin_get_section_hdr(xclbin, BITSTREAM);
+	bitstream_part_pdi = xrt_xclbin_get_section_hdr(xclbin, BITSTREAM_PARTIAL_PDI);
 	/*
 	 * don't check uuid if the xclbin is a lite one
 	 * the lite xclbin will not have BITSTREAM
@@ -2517,7 +2521,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 * The OBJ (soft kernel) is not needed, we can use xclbinutil to
 	 * add a temp small OBJ to reduce the lite xclbin size
 	 */
-	if (header && xrt_xclbin_get_section_hdr(xclbin, BITSTREAM)) {
+	if (header && (bitstream || bitstream_part_pdi)) {
 		ICAP_INFO(icap, "check interface uuid");
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
