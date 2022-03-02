@@ -34,11 +34,11 @@ to_map(const xrt_core::query::p2p_config::result_type& config)
   std::map<std::string, int64_t> config_map;
   for (auto& str : config) {
     // str is in key:value format obtained from p2p_config query
-    auto pos = str.find(":");
-    std::string key = str.substr(0, pos);
+    const auto pos = str.find(":");
+    const std::string config_item = str.substr(0, pos);
     try {
-      long long value = std::stoll(str.substr(pos + 1));
-      config_map[key] = value;
+      const int64_t value = std::stoll(str.substr(pos + 1));
+      config_map[config_item] = value;
     } catch (const std::exception&) {
       // Failed to parse a non long long BAR value. Dont parse it into the map and move on!
     }
