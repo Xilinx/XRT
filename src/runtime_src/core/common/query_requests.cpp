@@ -50,42 +50,19 @@ std::pair<xrt_core::query::p2p_config::value_type, std::string>
 xrt_core::query::p2p_config::
 parse(const xrt_core::query::p2p_config::result_type& config)
 {
-  int64_t bar = -1;
-  int64_t rbar = -1;
-  int64_t remap = -1;
-  int64_t exp_bar = -1;
-
-  // parse the query
-  for(const auto& val : config) {
-    auto pos = val.find(':') + 1;
-    if(val.find("rbar") == 0)
-      rbar = std::stoll(val.substr(pos));
-    else if(val.find("exp_bar") == 0)
-      exp_bar = std::stoll(val.substr(pos));
-    else if(val.find("bar") == 0)
-      bar = std::stoll(val.substr(pos));
-    else if(val.find("remap") == 0)
-      remap = std::stoll(val.substr(pos));
-  }
+  auto config_map = xrt_core::query::p2p_config::to_map(config);
 
   // return the config with a message
-  if (bar == -1) {
-    return {xrt_core::query::p2p_config::value_type::not_supported,
-            "P2P config failed. P2P is not supported. Can't find P2P BAR."};
-  }
-  else if (rbar != -1 && rbar > bar) {
-    return {xrt_core::query::p2p_config::value_type::reboot, 
-            "Warning:Please WARM reboot to enable p2p now."};
-  }
-  else if (remap > 0 && remap != bar) {
-    return {xrt_core::query::p2p_config::value_type::error,
-            "Error:P2P config failed. P2P remapper is not set correctly"};
-  }
-  else if (bar == exp_bar) {
+  if (config_map.find("bar") == config_map.end())
+    return {xrt_core::query::p2p_config::value_type::not_supported, "P2P config failed. P2P is not supported. Can't find P2P BAR."};
+  else if (config_map.find("rbar") != config_map.end() && config_map["rbar"] > config_map["bar"])
+    return {xrt_core::query::p2p_config::value_type::reboot, "Warning:Please WARM reboot to enable p2p now."};
+  else if (config_map.find("remap") != config_map.end() && config_map["remap"] > 0 && config_map["remap"] != config_map["bar"])
+    return {xrt_core::query::p2p_config::value_type::error, "Error:P2P config failed. P2P remapper is not set correctly"};
+  else if (config_map.find("exp_bar") != config_map.end() && config_map["exp_bar"] == config_map["bar"])
     return {xrt_core::query::p2p_config::value_type::enabled, ""};
-  }
-  return {xrt_core::query::p2p_config::value_type::disabled,
-          "P2P bar is not enabled"};
+
+  return {xrt_core::query::p2p_config::value_type::disabled, "P2P bar is not enabled"};
 }
 
 std::string
