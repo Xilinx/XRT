@@ -962,6 +962,10 @@ zocl_cma_create(struct drm_device *dev, size_t size)
 	}
 	cma_obj = container_of(gem_obj, struct drm_gem_cma_object, base);
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+	gem_obj->funcs = &zocl_cma_default_funcs;
+#endif
+
 	ret = drm_gem_object_init(dev, gem_obj, size);
 	if (ret) {
 		DRM_ERROR("cma_create: gem_obj_init failed\n");

@@ -987,6 +987,12 @@ const struct drm_gem_object_funcs zocl_gem_object_funcs = {
 	.vmap = drm_gem_cma_vmap,
 	.export = drm_gem_prime_export,
 };
+
+const struct drm_gem_object_funcs zocl_cma_default_funcs = {
+	.free = zocl_free_bo,
+	.get_sg_table = drm_gem_cma_get_sg_table,
+	.vm_ops = &zocl_bo_vm_ops,
+};
 #endif
 static const struct zdev_data zdev_data_mpsoc = {
 	.fpga_driver_name = "pcap",
