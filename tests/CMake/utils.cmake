@@ -20,6 +20,7 @@ if(NOT VITIS_COMPILER)
 endif()
 
 if(NOT XRT)
+  set(XRT_DIR ${XILINX_XRT}/share/cmake/XRT)
   find_package(XRT)
 endif()
 
