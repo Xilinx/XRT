@@ -1926,8 +1926,10 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 	// Soft Kernel Info
 	scu_info = kzalloc(MAX_CUS * sizeof(struct xrt_cu_info), GFP_KERNEL);
-	if (!scu_info)
+	if (!scu_info) {
+		kfree(cu_info);
 		return -ENOMEM;
+	}
 	num_scus = xocl_kds_fill_scu_info(xdev, slot_hdl, ip_layout, scu_info, MAX_CUS);
 
 	/*
@@ -1942,13 +1944,13 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 		goto out;
 	}
 
- 	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus, num_scus);
+	ret = xocl_kds_xgq_cfg_start(xdev, cfg, num_cus, num_scus);
 	if (ret)
 		goto create_regular_cu;
 
 	ret = xocl_kds_xgq_cfg_cu(xdev, uuid, cu_info, num_cus);
- 	if (ret)
- 		goto create_regular_cu;
+	if (ret)
+		goto create_regular_cu;
 
 	ret = xocl_kds_xgq_cfg_scu(xdev, uuid, scu_info, num_scus);
 	if (ret)
