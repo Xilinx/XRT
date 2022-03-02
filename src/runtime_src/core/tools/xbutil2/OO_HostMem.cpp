@@ -109,7 +109,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
   bool enable = false;
   try {
-    if ((boost::iequals(m_action, "ENABLE") != 0) && (boost::iequals(m_action, "DISABLE") != 0)) {
+    if (!boost::iequals(m_action, "ENABLE") && !boost::iequals(m_action, "DISABLE")) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
       printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
