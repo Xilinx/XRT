@@ -458,6 +458,13 @@ static void notify_execbuf_xgq(struct kds_command *xcmd, int status)
 	if (xcmd->opcode == OP_GET_STAT)
 		read_ert_stat(xcmd);
 
+	if (xcmd->opcode == OP_START_SK) {
+		struct ert_start_kernel_cmd *scmd;
+
+		scmd = (struct ert_start_kernel_cmd *)ecmd;
+		scmd->return_code = xcmd->rcode;
+	}
+
 	if (status == KDS_COMPLETED)
 		ecmd->state = ERT_CMD_STATE_COMPLETED;
 	else if (status == KDS_ERROR)
