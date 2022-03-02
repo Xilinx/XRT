@@ -156,7 +156,8 @@ enum class DW_TAG {
   reference_type,     // DW_TAG_reference_type
   _typedef,           // DW_TAG_typedef
   base_type,          // DW_TAG_base_type
-  const_type          // DW_TAG_const_type
+  const_type,         // DW_TAG_const_type
+  structure_type,     // DW_TAG_structure_type
 };
 
 
@@ -172,6 +173,7 @@ DWTags = {
   { DW_TAG::_typedef, "DW_TAG_typedef" },
   { DW_TAG::base_type, "DW_TAG_base_type" },
   { DW_TAG::const_type, "DW_TAG_const_type" },
+  { DW_TAG::structure_type, "DW_TAG_structure_type" },
 };
 
 static enum DW_TAG 
@@ -383,6 +385,33 @@ add_DWTAG_const_type(size_t& index,
   argTags.emplace_back(offset, ptDWTAG);
 }
 
+static void 
+add_DWTAG_structure_type(size_t& index,
+                         const std::vector<std::string>& dwarfEntries,
+                         AbbrevCollection& argTags)
+// <1><c9>: Abbrev Number: 7 (DW_TAG_structure_type)
+//    <ca>   DW_AT_name        : (indirect string, offset: 0xf2): sk_operations
+//    <ce>   DW_AT_byte_size   : 24
+//    <cf>   DW_AT_decl_file   : 5
+//    <d0>   DW_AT_decl_line   : 28
+//    <d1>   DW_AT_decl_column : 8
+//    <d2>   DW_AT_sibling     : <0xfe>
+{
+  auto offset = get_tag_offset(dwarfEntries[index]);
+
+  boost::property_tree::ptree ptDWTAG;
+  ptDWTAG.put("DW_TAG", enum_DW_TAG_to_string(get_DW_TAG(dwarfEntries[index])));
+
+  // Examine the DWTAG entries
+  while ((++index < dwarfEntries.size()) &&
+         (!isTag(dwarfEntries[index]))) {
+    const auto& entry = dwarfEntries[index];
+    if_exist_add_DW_AT(entry, "DW_AT_name", ptDWTAG);
+  }
+  argTags.emplace_back(offset, ptDWTAG);
+}
+
+
 static const boost::property_tree::ptree&
 get_dw_type(const std::string& typeOffset, 
             const AbbrevCollection& argTags)
@@ -395,9 +424,12 @@ get_dw_type(const std::string& typeOffset,
                          [&offset](const std::pair<unsigned long, boost::property_tree::ptree>& element) {return element.first == offset;});
 
   const static boost::property_tree::ptree ptEmpty;
-  if (it == argTags.end())
+  if (it == argTags.end()) {
+    XUtil::TRACE("Argument tag not found for: '" + typeOffset + "'");
     return ptEmpty;
+  }
 
+  XUtil::TRACE_PrintTree("Argument tag for: '" + typeOffset + "'", it->second);
   return it->second;
 }
 
@@ -406,6 +438,12 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
                      const AbbrevCollection& argTags,
                      boost::property_tree::ptree& ptArgument)
 {
+  // If there is no offset, do nothing.
+  if (typeOffset.empty()) {
+    ptArgument.put("type","void");
+    return;
+  }
+
   const boost::property_tree::ptree& ptTag = get_dw_type(typeOffset, argTags);
   if (ptTag.empty())
     throw std::runtime_error("ERROR: No cache value found for: '" + typeOffset + "'");
@@ -414,7 +452,7 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
 
   switch (dwTag) {
     case DW_TAG::pointer_type: {
-        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type"), argTags, ptArgument);
+        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
         ptArgument.put("primitive-byte-size", ptTag.get<std::string>("DW_AT_byte_size"));
         // Add pointer
         std::string argType = ptArgument.get<std::string>("type", "") + "*";
@@ -436,12 +474,17 @@ evaluate_DW_TAG_type(const std::string& typeOffset,
       break;
 
     case DW_TAG::const_type: {
-        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type"), argTags, ptArgument);
+        evaluate_DW_TAG_type(ptTag.get<std::string>("DW_AT_type",""), argTags, ptArgument);
         // Add const
         std::string argType = "const " + ptArgument.get<std::string>("type", "");
         ptArgument.put<std::string>("type", argType);
         break;
       }
+
+    case DW_TAG::structure_type: 
+      ptArgument.put("type", ptTag.get<std::string>("DW_AT_name"));
+      break;
+      
     default:
       throw std::runtime_error("ERROR: DW enum not supported: " + enum_DW_TAG_to_string(dwTag));
       break;
@@ -611,6 +654,10 @@ buildKernelMetadataFromDWARF(const std::vector<std::string>& dwarfEntries,
 
       case DW_TAG::const_type:
         add_DWTAG_const_type(index, dwarfEntries, argTags);
+        break;
+
+      case DW_TAG::structure_type:
+        add_DWTAG_structure_type(index, dwarfEntries, argTags);
         break;
 
       default:
