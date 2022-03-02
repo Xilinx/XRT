@@ -250,22 +250,27 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
 }
 
 static ptree_type
-read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
+read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
+                            std::vector<xq::sdm_sensor_info::data_type>& temp)
 {
   ptree_type root;
   ptree_type pt;
   ptree_type fan_array;
 
+  pt.put("location_id", fan.label);
+  pt.put("description", fan.label);
+  pt.put("speed_rpm", fan.input);
+  pt.put("is_present", "true");
   // iterate over output data, store it into property_tree
-  for(const auto& tmp : output)
+  for(const auto& tmp : temp)
   {
-    pt.put("location_id", tmp.label);
-    pt.put("description", tmp.label);
-    pt.put("speed_rpm", tmp.input);
-    pt.put("critical_trigger_temp_C", "N/A");
-    pt.put("is_present", "true");
-    fan_array.push_back({"", pt});
+    if (!strcmp("Vccint Temp", tmp.label))
+    {
+      pt.put("critical_trigger_temp_C", tmp.input);
+      break;
+    }
   }
+  fan_array.push_back({"", pt});
 
   root.add_child("fans", fan_array);
   return root;
@@ -499,11 +504,13 @@ read_mechanical(const xrt_core::device * device)
   ptree_type fan_array;
   bool is_data_driven = true;
   std::vector <xq::sdm_sensor_info::data_type> output;
+  std::vector <xq::sdm_sensor_info::data_type> temp_output;
 
   //Check if requested sensor data can be retrieved in data driven model.
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
-    if (output.empty())
+    temp_output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
+    if (output.empty() && temp_output.empty())
       is_data_driven = false;
   }
   catch(const xrt_core::query::no_such_key&) {
@@ -516,7 +523,7 @@ read_mechanical(const xrt_core::device * device)
   }
 
   if (is_data_driven)
-    return read_data_driven_mechanical(output);
+    return read_data_driven_mechanical(output, temp_output);
   else
     return read_legacy_mechanical(device);
 }
