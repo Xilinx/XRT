@@ -5,7 +5,6 @@
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "query_requests.h"
 #include "core/include/xclerr_int.h"
-#include <map>
 #include <string>
 
 #include <boost/algorithm/string.hpp>
@@ -26,6 +25,25 @@ to_string(xrt_core::query::p2p_config::value_type value)
   };
 
   return p2p_config_map[value];
+}
+
+std::map<std::string, int64_t>
+xrt_core::query::p2p_config::
+to_map(const xrt_core::query::p2p_config::result_type& config)
+{
+  std::map<std::string, int64_t> config_map;
+  for (auto& str : config) {
+    // str is in key:value format obtained from p2p_config query
+    auto pos = str.find(":");
+    std::string key = str.substr(0, pos);
+    try {
+      long long value = std::stoll(str.substr(pos + 1));
+      config_map[key] = value;
+    } catch (const std::exception&) {
+      // Failed to parse a non long long BAR value. Dont parse it into the map and move on!
+    }
+  }
+  return config_map;
 }
 
 std::pair<xrt_core::query::p2p_config::value_type, std::string>

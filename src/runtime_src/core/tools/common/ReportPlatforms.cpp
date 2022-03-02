@@ -75,7 +75,7 @@ ReportPlatforms::writeReport( const xrt_core::device* /*_pDevice*/,
 
     boost::optional<const boost::property_tree::ptree&> pt_config = pt_platform.get_child_optional("config.p2p");
     if (pt_config)
-      _output << boost::format("  %-23s: %s GB\n") % "P2P IO space required" % (*pt_config).get<std::string>("exp_bar");
+      _output << boost::format("  %-23s: %s\n") % "P2P IO space required" % (*pt_config).get<std::string>("exp_bar"); // Units appended when ptree is created
 
     const boost::property_tree::ptree& clocks = pt_platform.get_child("clocks", empty_ptree);
     if(!clocks.empty()) {

@@ -103,33 +103,15 @@ add_mig_info(const xrt_core::device* device, ptree_type& pt)
   }
 }
 
-static std::map<std::string, long long> 
-p2p_convert_config(xrt_core::query::p2p_config::result_type& config)
-{
-  std::map<std::string, long long> map;
-  for (auto& str : config) {
-    // str is in key:value format obtained from p2p_config query
-    auto pos = str.find(":");
-    std::string key = str.substr(0, pos);
-    try {
-      long long value = std::stoll(str.substr(pos + 1));
-      map[key] = value;
-    } catch (const std::exception&) {
-      // Failed to parse a non long long BAR value. Dont parse it into the map and move on!
-    }
-  }
-  return map;
-}
-
 void
 add_p2p_config(const xrt_core::device* device, ptree_type& pt)
 {
   try {
     ptree_type pt_p2p;
     auto config = xrt_core::device_query<xq::p2p_config>(device);
-    auto config_map = p2p_convert_config(config);
+    auto config_map = xrt_core::query::p2p_config::to_map(config);
     for(auto& pair : config_map)
-      pt_p2p.add(pair.first, std::to_string(pair.second/1024/1024/1024)); // Turn bytes into GB
+      pt_p2p.add(pair.first, xrt_core::utils::unit_convert(pair.second)); // Turn bytes into GB
     pt.put_child("p2p", pt_p2p);
   }
   catch (const xq::exception&) {
