@@ -257,16 +257,22 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
   ptree_type pt;
   ptree_type fan_array;
 
-  pt.put("location_id", fan.label);
-  pt.put("description", fan.label);
-  pt.put("speed_rpm", fan.input);
-  pt.put("is_present", "true");
+  // iterate over output data, store it into property_tree
+  for(const auto& tmp : output)
+  {
+    pt.put("location_id", tmp.label);
+    pt.put("description", tmp.label);
+    pt.put("speed_rpm", tmp.input);
+    pt.put("is_present", "true");
+  }
   // iterate over output data, store it into property_tree
   for(const auto& tmp : temp)
   {
-    if (!strcmp("Vccint Temp", tmp.label))
+    if (!strcmp("Vccint Temp", (tmp.label).c_str()))
     {
-      pt.put("critical_trigger_temp_C", tmp.input);
+      uint64_t fan_temp_C;
+      fan_temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
+      pt.put("critical_trigger_temp_C", fan_temp_C);
       break;
     }
   }
