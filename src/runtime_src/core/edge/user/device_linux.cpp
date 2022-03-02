@@ -59,7 +59,7 @@ xclDeviceInfo2 deviceInfo;
 struct drm_fd
 {
   int fd;
-  drm_fd(const std::string file_path, int flags)
+  drm_fd(const std::string& file_path, int flags)
   {
     fd = open(file_path.c_str(),flags);
   }
@@ -67,7 +67,6 @@ struct drm_fd
   {
     if(fd > 0) {
       close(fd);
-      fd = -1;
     }
   }
 };
@@ -511,7 +510,8 @@ struct aie_reg_read
   }
 };
 
-static std::unique_ptr<drm_fd> aie_get_drmfd(const xrt_core::device* device, std::string dev_path)
+static std::unique_ptr<drm_fd>
+aie_get_drmfd(const xrt_core::device* device, const std::string& dev_path)
 {
   const static std::string AIE_TAG = "aie_metadata";
   std::string err;
