@@ -2381,9 +2381,6 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
 void xocl_reload_vmr(xdev_handle_t xdev_hdl);
 
-int xocl_check_firewall(xdev_handle_t xdev_hdl, int *level);
-int xocl_clear_firewall(xdev_handle_t xdev_hdl);
-
 int xocl_count_iores_byname(struct platform_device *pdev, char *name);
 struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,
 				       char *name, int idx);

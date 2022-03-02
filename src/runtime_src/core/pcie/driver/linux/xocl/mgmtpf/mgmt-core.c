@@ -506,22 +506,11 @@ static void check_pcie_link_toggle(struct xclmgmt_dev *lro, int clear)
 }
 
 
-int xocl_check_firewall(xdev_handle_t xdev_hdl, int *level)
+static int xocl_check_firewall(struct xclmgmt_dev *lro, int *level)
 {
-	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
-
 	return (AF_CB(lro, check_firewall)) ?
 		xocl_af_check(lro, level) :
 		xocl_xgq_check_firewall(lro);
-}
-
-int xocl_clear_firewall(xdev_handle_t xdev_hdl)
-{
-	struct xclmgmt_dev *lro = (struct xclmgmt_dev *)xdev_hdl;
-
-	return (AF_CB(lro, clear_firewall)) ?
-		xocl_af_clear(lro) :
-		xocl_xgq_clear_firewall(lro);
 }
 
 static int health_check_cb(void *data)
