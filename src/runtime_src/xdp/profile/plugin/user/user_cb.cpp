@@ -89,6 +89,19 @@ namespace xdp {
     (db->getStats()).addEventCount(label);
   }
 
+  static void user_event_time_ns_cb(double time_ns, const char* label)
+  {
+    VPDatabase* db = userEventsPluginInstance.getDatabase() ;
+
+    uint64_t l = 0 ;
+    if (label != nullptr)
+      l = (db->getDynamicInfo()).addString(label) ;
+    VTFEvent* event = new UserMarker(0, time_ns, l) ;
+
+    (db->getDynamicInfo()).addEvent(event) ;
+    (db->getStats()).addEventCount(label);
+  }
+
 } // end namespace xdp
 
 extern "C" 
@@ -109,4 +122,10 @@ extern "C"
 void user_event_happened_cb(const char* label)
 {
   xdp::user_event_happened_cb(label) ;
+}
+
+extern "C"
+void user_event_time_ns_cb(double time_ns, const char* label)
+{
+  xdp::user_event_time_ns_cb(time_ns, label) ;
 }

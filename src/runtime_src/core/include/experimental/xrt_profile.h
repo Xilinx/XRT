@@ -123,10 +123,16 @@ namespace xrt { namespace profile {
     ~user_event() ;
     
     /**
-     * mark() - Mark a specific moment in time with a marker on the waveform
+     * mark() - Mark the current moment in time with a marker on the waveform
      */
     XCL_DRIVER_DLLESPEC
     void mark(const char* label = nullptr) ;
+
+    /**
+     * mark_time_ns() - Mark a custom moment in time with a marker on the waveform
+     */
+    XCL_DRIVER_DLLESPEC
+    void mark_time_ns(double time_ns, const char* label = nullptr) ;
   } ;
 
 } // end namespace profile
@@ -166,6 +172,17 @@ void xrtUREnd(unsigned int id) ;
  */
 XCL_DRIVER_DLLESPEC
 void xrtUEMark(const char* label) ;
+
+/**
+ * xrtUEMarkTimeNs() - Mark a custom time as when something happened
+ *
+ * @time_ns: Time in nanoseconds since application start
+ * @label:   An optional label that is added to the marker in the waveform
+ * Return:   none
+ *
+ */
+XCL_DRIVER_DLLESPEC
+void xrtUEMarkTimeNs(double time_ns, const char* label) ;
 
 #ifdef __cplusplus
 }

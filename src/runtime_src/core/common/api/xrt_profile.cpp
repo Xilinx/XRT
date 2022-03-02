@@ -80,6 +80,11 @@ namespace xrt { namespace profile {
     xrtUEMark(label) ;
   }
 
+  void user_event::mark_time_ns(double time_ns, const char* label)
+  {
+    xrtUEMarkTimeNs(time_ns, label) ;
+  }
+
 }} // end namespaces profile and xrt
 
 
@@ -89,20 +94,25 @@ namespace {
   std::function<void (unsigned int, const char*, const char*)> user_range_start_cb ;
   std::function<void (unsigned int)> user_range_end_cb ;
   std::function<void (const char*)> user_event_cb ;
+  std::function<void (double, const char*)> user_event_time_ns_cb ;
 
   static void register_user_functions(void* handle)
   {
-    typedef void (*dtype)(unsigned int, const char*, const char*) ;
+    using dtype = void(*)(unsigned int, const char*, const char*);
     user_range_start_cb = (dtype)(xrt_core::dlsym(handle, "user_event_start_cb"));
     if (xrt_core::dlerror() != NULL) user_range_start_cb = nullptr ;
 
-    typedef void (*ftype)(unsigned int) ;
+    using ftype = void(*)(unsigned int);
     user_range_end_cb = (ftype)(xrt_core::dlsym(handle, "user_event_end_cb")) ;
     if (xrt_core::dlerror() != NULL) user_range_end_cb = nullptr ;
 
-    typedef void (*btype)(const char*) ;
+    using btype = void(*)(const char*);
     user_event_cb = (btype)(xrt_core::dlsym(handle, "user_event_happened_cb")) ;
     if (xrt_core::dlerror() != NULL) user_event_cb = nullptr ;
+
+    using ctype = void(*)(double, const char*);
+    user_event_time_ns_cb = (ctype)(xrt_core::dlsym(handle, "user_event_time_ns_cb")) ;
+    if (xrt_core::dlerror() != NULL) user_event_time_ns_cb = nullptr ;
   }
 
   static void load_user_profiling_plugin()
@@ -148,6 +158,19 @@ extern "C"
       load_user_profiling_plugin() ;
       if (user_event_cb != nullptr) 
         user_event_cb(label) ;
+    }
+    catch(const std::exception& ex)
+    {
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what()) ;
+    }
+  }
+
+  void xrtUEMarkTimeNs(double time_ns, const char* label)
+  {
+    try {
+      load_user_profiling_plugin();
+      if (user_event_time_ns_cb != nullptr)
+        user_event_time_ns_cb(time_ns, label);
     }
     catch(const std::exception& ex)
     {

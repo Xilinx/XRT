@@ -98,6 +98,8 @@ namespace xdp {
                                       uint64_t &asmAppxLastTransTimeStamp, bool &unfinishedASMevents);
 
     uint64_t firstTimestamp = 0 ;
+    // Used to mark timeline trace if trace buffer gets full
+    double mLatestHostTimestamp = 0;
 
   public:
 
@@ -106,6 +108,7 @@ namespace xdp {
 
     XDP_EXPORT void processTraceData(void* data, uint64_t numBytes) ;
     XDP_EXPORT void endProcessTraceData();
+    XDP_EXPORT void addEventMarkers(bool isFIFOFull, bool isTS2MMFull);
   } ;
 
 }
