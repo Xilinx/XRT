@@ -118,7 +118,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	xdev_handle_t xdev = drm_p->xdev;
 
 	if (vma->vm_pgoff > MAX_CUS) {
-		xocl_err(&XDEV(xdev), "invalid native mmap offset: 0x%lx",
+		xocl_err(XDEV2DEV(xdev), "invalid native mmap offset: 0x%lx",
 			vma->vm_pgoff);
 		return -EINVAL;
 	}
@@ -128,7 +128,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	if (vma->vm_pgoff == 0) {
 		if (vsize > XDEV(xdev)->bar_size) {
-			xocl_err(&XDEV(xdev),
+			xocl_err(XDEV2DEV(xdev),
 				"bad size (0x%lx) for native BAR mmap", vsize);
 			return -EINVAL;
 		}
@@ -151,11 +151,11 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 				 res_start >> PAGE_SHIFT,
 				 vsize, vma->vm_page_prot);
 	if (ret != 0) {
-		xocl_err(&XDEV(xdev), "io_remap_pfn_range failed: %d", ret);
+		xocl_err(XDEV2DEV(xdev), "io_remap_pfn_range failed: %d", ret);
 		return ret;
 	}
 
-	xocl_info(&XDEV(xdev), "successful native mmap @0x%lx with size 0x%lx",
+	xocl_info(XDEV2DEV(xdev), "successful native mmap @0x%lx with size 0x%lx",
 		vma->vm_pgoff >> PAGE_SHIFT, vsize);
 	return ret;
 }

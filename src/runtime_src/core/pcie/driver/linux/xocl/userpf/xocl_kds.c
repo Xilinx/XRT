@@ -62,7 +62,7 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 
 	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
 	if (!obj) {
-		xocl_err(&XDEV(xdev), "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		xocl_err(XDEV2DEV(xdev), "Failed to look up GEM BO 0x%x\n", bo_hdl);
 		return -ENOENT;
 	}
 
@@ -74,7 +74,7 @@ get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
-		xocl_err(&XDEV(xdev), "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		xocl_err(XDEV2DEV(xdev), "Failed to get paddr for BO 0x%x\n", bo_hdl);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 		return -EINVAL;
 	}
@@ -124,11 +124,11 @@ static int copybo_ecmd2xcmd(struct xocl_dev *xdev, struct drm_file *filp,
 	if (cu_mgmt->num_cdma == 0)
 		return -EINVAL;
 
-	xocl_info(&XDEV(xdev),"checking alignment requirments for KDMA sz(%lu)",sz);
+	xocl_info(XDEV2DEV(xdev),"checking alignment requirments for KDMA sz(%lu)",sz);
 	if ((dst_addr + dst_off) % KDMA_BLOCK_SIZE ||
 	    (src_addr + src_off) % KDMA_BLOCK_SIZE ||
 	    sz % KDMA_BLOCK_SIZE) {
-		xocl_err(&XDEV(xdev),"improper alignment, cannot use KDMA");
+		xocl_err(XDEV2DEV(xdev),"improper alignment, cannot use KDMA");
 		return -EINVAL;
 	}
 
@@ -152,7 +152,7 @@ sk_ecmd2xcmd(struct xocl_dev *xdev, struct ert_packet *ecmd,
 	     struct kds_command *xcmd)
 {
 	if (XDEV(xdev)->kds.ert_disable) {
-		xocl_err(&XDEV(xdev), "Soft kernels cannot be used if ERT is off");
+		xocl_err(XDEV2DEV(xdev), "Soft kernels cannot be used if ERT is off");
 		return -EINVAL;
 	}
 
@@ -247,14 +247,14 @@ static int xocl_del_context(struct xocl_dev *xdev, struct kds_client *client,
 	/* xclCloseContext() would send xclbin_id and cu_idx.
 	 * Be more cautious while delete. Do sanity check */
 	if (!uuid) {
-		xocl_err(&XDEV(xdev), "No context was opened");
+		xocl_err(XDEV2DEV(xdev), "No context was opened");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	/* If xclbin id looks good, unlock bitstream should not fail. */
 	if (!uuid_equal(uuid, &args->xclbin_id)) {
-		xocl_err(&XDEV(xdev), "Try to delete CTX on wrong xclbin");
+		xocl_err(XDEV2DEV(xdev), "Try to delete CTX on wrong xclbin");
 		ret = -EBUSY;
 		goto out;
 	}
@@ -290,7 +290,7 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	int ret;
 
 	if (!kds->cu_intr_cap) {
-		xocl_err(&XDEV(xdev), "Shell not support CU to host interrupt");
+		xocl_err(XDEV2DEV(xdev), "Shell not support CU to host interrupt");
 		return -EOPNOTSUPP;
 	}
 
@@ -298,7 +298,7 @@ xocl_open_ucu(struct xocl_dev *xdev, struct kds_client *client,
 	if (ret < 0)
 		return ret;
 
-	xocl_info(&XDEV(xdev), "User manage interrupt found, disable ERT");
+	xocl_info(XDEV2DEV(xdev), "User manage interrupt found, disable ERT");
 	xocl_ert_user_disable(xdev);
 
 	return ret;
@@ -513,7 +513,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 
 	pkg_size = sizeof(ecmd->header) + ecmd->count * sizeof(u32);
 	if (xobj->base.size < pkg_size) {
-		xocl_err(&XDEV(xdev), "payload size bigger than exec buf\n");
+		xocl_err(XDEV2DEV(xdev), "payload size bigger than exec buf\n");
 		err_last.pid = pid_nr(task_tgid(current));
 		err_last.ts = 0; //TODO timestamp
 		err_last.err_code = XRT_ERROR_NUM_KDS_EXEC;
@@ -525,12 +525,12 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 
 	/* opcode specific validation */
 	if (!ert_valid_opcode(ecmd)) {
-		xocl_err(&XDEV(xdev), "opcode(%d) is invalid\n", ecmd->opcode);
+		xocl_err(XDEV2DEV(xdev), "opcode(%d) is invalid\n", ecmd->opcode);
 		return false;
 	}
 
 	if (get_size_with_timestamps_or_zero(ecmd) > xobj->base.size) {
-		xocl_err(&XDEV(xdev), "no space for timestamp in exec buf\n");
+		xocl_err(XDEV2DEV(xdev), "no space for timestamp in exec buf\n");
 		return false;
 	}
 
@@ -538,7 +538,7 @@ static bool copy_and_validate_execbuf(struct xocl_dev *xdev,
 		return true;
 
 	if (kds->ert && (kds->ert->slot_size > 0) && (kds->ert->slot_size < pkg_size)) {
-		xocl_err(&XDEV(xdev), "payload size bigger than CQ slot size\n");
+		xocl_err(XDEV2DEV(xdev), "payload size bigger than CQ slot size\n");
 		return false;
 	}
 
@@ -647,7 +647,7 @@ static int xocl_fill_payload_xgq(struct xocl_dev *xdev, struct kds_command *xcmd
 		}
 		break;
 	default:
-		xocl_err(&XDEV(xdev), "Unsupport command op(%d)\n", ecmd->opcode);
+		xocl_err(XDEV2DEV(xdev), "Unsupport command op(%d)\n", ecmd->opcode);
 		ret = -EINVAL;
 	}
 
@@ -667,18 +667,18 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	int ret = 0;
 
 	if (!client->ctx->xclbin_id) {
-		xocl_err(&XDEV(xdev), "The client has no opening context\n");
+		xocl_err(XDEV2DEV(xdev), "The client has no opening context\n");
 		return -EINVAL;
 	}
 
 	if (XDEV(xdev)->kds.bad_state) {
-		xocl_err(&XDEV(xdev), "KDS is in bad state\n");
+		xocl_err(XDEV2DEV(xdev), "KDS is in bad state\n");
 		return -EDEADLK;
 	}
 
 	obj = xocl_gem_object_lookup(ddev, filp, args->exec_bo_handle);
 	if (!obj) {
-		xocl_err(&XDEV(xdev), "Failed to look up GEM BO %d\n",
+		xocl_err(XDEV2DEV(xdev), "Failed to look up GEM BO %d\n",
 		args->exec_bo_handle);
 		return -ENOENT;
 	}
@@ -686,7 +686,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	xobj = to_xocl_bo(obj);
 
 	if (!xocl_bo_execbuf(xobj)) {
-		xocl_err(&XDEV(xdev), "Command buffer is not exec buf\n");
+		xocl_err(XDEV2DEV(xdev), "Command buffer is not exec buf\n");
 		return false;
 	}
 
@@ -695,7 +695,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	 * It is safe to make the assumption and validate will be simpler.
 	 */
 	if (xobj->base.size < PAGE_SIZE) {
-		xocl_err(&XDEV(xdev), "exec buf is too small\n");
+		xocl_err(XDEV2DEV(xdev), "exec buf is too small\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -708,7 +708,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 
 	/* If xobj contain a valid command, ecmd would be a copy */
 	if (!copy_and_validate_execbuf(xdev, xobj, ecmd)) {
-		xocl_err(&XDEV(xdev), "Invalid command\n");
+		xocl_err(XDEV2DEV(xdev), "Invalid command\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -718,7 +718,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 	 */
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
 	if (!xcmd) {
-		xocl_err(&XDEV(xdev), "Failed to alloc xcmd\n");
+		xocl_err(XDEV2DEV(xdev), "Failed to alloc xcmd\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -812,7 +812,7 @@ static int xocl_command_ioctl(struct xocl_dev *xdev, void *data,
 		abort_ecmd2xcmd(to_abort_pkg(ecmd), xcmd);
 		break;
 	default:
-		xocl_err(&XDEV(xdev), "Unsupport command\n");
+		xocl_err(XDEV2DEV(xdev), "Unsupport command\n");
 		ret = -EINVAL;
 		goto out1;
 	}
@@ -876,7 +876,7 @@ int xocl_create_client(struct xocl_dev *xdev, void **priv)
 	*priv = client;
 
 out:
-	xocl_info(&XDEV(xdev), "created KDS client for pid(%d), ret: %d\n",
+	xocl_info(XDEV2DEV(xdev), "created KDS client for pid(%d), ret: %d\n",
 		    pid_nr(task_tgid(current)), ret);
 	return ret;
 }
@@ -894,7 +894,7 @@ void xocl_destroy_client(struct xocl_dev *xdev, void **priv)
 		vfree(client->ctx->xclbin_id);
 	}
 	kfree(client);
-	xocl_info(&XDEV(xdev), "client exits pid(%d)\n", pid);
+	xocl_info(XDEV2DEV(xdev), "client exits pid(%d)\n", pid);
 }
 
 int xocl_poll_client(struct file *filp, poll_table *wait, void *priv)
@@ -1083,7 +1083,7 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 		size = FA_MEM_MAX_SIZE;
 	ret = xocl_p2p_get_bar_paddr(xdev, base_addr, size, &bar_paddr);
 	if (ret) {
-		xocl_err(&XDEV(xdev), "Cannot get p2p BAR address");
+		xocl_err(XDEV2DEV(xdev), "Cannot get p2p BAR address");
 		goto done;
 	}
 
@@ -1094,19 +1094,19 @@ static int xocl_detect_fa_cmdmem(struct xocl_dev *xdev)
 	args.flags = XCL_BO_FLAGS_P2P | mem_idx;
 	bo = xocl_drm_create_bo(XOCL_DRM(xdev), size, args.flags);
 	if (IS_ERR(bo)) {
-		xocl_err(&XDEV(xdev), "Cannot create bo for fast adapter");
+		xocl_err(XDEV2DEV(xdev), "Cannot create bo for fast adapter");
 		ret = -ENOMEM;
 		goto done;
 	}
 
 	vaddr = ioremap_wc(bar_paddr, size);
 	if (!vaddr) {
-		xocl_err(&XDEV(xdev), "Map failed");
+		xocl_err(XDEV2DEV(xdev), "Map failed");
 		ret = -ENOMEM;
 		goto done;
 	}
 
-	xocl_info(&XDEV(xdev), "fast adapter memory on bank(%d), size 0x%llx",
+	xocl_info(XDEV2DEV(xdev), "fast adapter memory on bank(%d), size 0x%llx",
 		   mem_idx, size);
 
 	XDEV(xdev)->kds.cmdmem.bo = bo;
@@ -1206,7 +1206,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
 	if (!xcmd) {
-		xocl_err(&XDEV(xdev), "Failed to alloc xcmd\n");
+		xocl_err(XDEV2DEV(xdev), "Failed to alloc xcmd\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -1224,7 +1224,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 
 	if (ecmd->state != ERT_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "Cfg command state %d. ERT will be disabled",
+		xocl_err(XDEV2DEV(xdev), "Cfg command state %d. ERT will be disabled",
 			   ecmd->state);
 		ret = 0;
 		kds->ert_disable = true;
@@ -1235,7 +1235,7 @@ static int xocl_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 	if (!kds->ini_disable)
 		kds->ert_disable = cfg->ert ? false : true;
 
-	xocl_info(&XDEV(xdev), "Cfg command completed");
+	xocl_info(XDEV2DEV(xdev), "Cfg command completed");
 
 out:
 	return ret;
@@ -1281,7 +1281,7 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 
 	xcmd = kds_alloc_command(client, ecmd->count * sizeof(u32));
 	if (!xcmd) {
-		xocl_err(&XDEV(xdev), "Failed to alloc xcmd\n");
+		xocl_err(XDEV2DEV(xdev), "Failed to alloc xcmd\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -1304,11 +1304,11 @@ static int xocl_scu_cfg_cmd(struct xocl_dev *xdev, struct kds_client *client,
 		goto out;
 
 	if (ecmd->state > ERT_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "PS kernel cfg command state %d", ecmd->state);
+		xocl_err(XDEV2DEV(xdev), "PS kernel cfg command state %d", ecmd->state);
 		ret = 0;
 		kds->ert_disable = true;
 	} else
-		xocl_info(&XDEV(xdev), "PS kernel cfg command completed");
+		xocl_info(XDEV2DEV(xdev), "PS kernel cfg command completed");
 
 out:
 	return ret;
@@ -1330,13 +1330,13 @@ static int xocl_config_ert(struct xocl_dev *xdev, struct drm_xocl_kds cfg,
 	client = kds->anon_client;
 	ret = xocl_cfg_cmd(xdev, client, ecmd, &cfg);
 	if (ret) {
-		xocl_err(&XDEV(xdev), "ERT config command failed");
+		xocl_err(XDEV2DEV(xdev), "ERT config command failed");
 		goto out;
 	}
 
 	ret = xocl_scu_cfg_cmd(xdev, client, ecmd, ps_kernel);
 	if (ret)
-		xocl_err(&XDEV(xdev), "PS kernel config failed");
+		xocl_err(XDEV2DEV(xdev), "PS kernel config failed");
 
 out:
 	vfree(ecmd);
@@ -1374,7 +1374,7 @@ xocl_kds_fill_cu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip_
 	for (i = 0; i < num_cus; i++) {
 		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
 		if (!krnl_info) {
-			xocl_info(&XDEV(xdev), "%s has no metadata. Ignore", cu_info[i].kname);
+			xocl_info(XDEV2DEV(xdev), "%s has no metadata. Ignore", cu_info[i].kname);
 			continue;
 		}
 
@@ -1434,7 +1434,7 @@ xocl_kds_fill_scu_info(struct xocl_dev *xdev, int slot_hdl, struct ip_layout *ip
 		krnl_info = xocl_query_kernel(xdev, cu_info[i].kname);
 		if (!krnl_info) {
 			/* Workaround for U30, maybe we can remove this in the future */
-			xocl_info(&XDEV(xdev), "%s has no metadata. Use default", cu_info[i].kname);
+			xocl_info(XDEV2DEV(xdev), "%s has no metadata. Use default", cu_info[i].kname);
 			continue;
 		}
 
@@ -1467,7 +1467,7 @@ xocl_kds_create_cus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
 		subdev_info.override_idx = i;
 		if (xocl_subdev_create(xdev, &subdev_info))
-			xocl_info(&XDEV(xdev), "Create CU %s failed. Skip", cu_info[i].iname);
+			xocl_info(XDEV2DEV(xdev), "Create CU %s failed. Skip", cu_info[i].iname);
 	}
 }
 
@@ -1484,7 +1484,7 @@ xocl_kds_create_scus(struct xocl_dev *xdev, struct xrt_cu_info *cu_info,
 		subdev_info.data_len = sizeof(struct xrt_cu_info);
 		subdev_info.override_idx = i;
 		if (xocl_subdev_create(xdev, &subdev_info))
-			xocl_info(&XDEV(xdev), "Create SCU %s failed. Skip", cu_info[i].iname);
+			xocl_info(XDEV2DEV(xdev), "Create SCU %s failed. Skip", cu_info[i].iname);
 	}
 }
 
@@ -1512,10 +1512,10 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 	 */
 	if (ret == -ENODEV || !brd.cap.cu_intr) {
 		ret = 0;
-		xocl_info(&XDEV(xdev), "Not support CU to host interrupt");
+		xocl_info(XDEV2DEV(xdev), "Not support CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 0;
 	} else {
-		xocl_info(&XDEV(xdev), "Shell supports CU to host interrupt");
+		xocl_info(XDEV2DEV(xdev), "Shell supports CU to host interrupt");
 		XDEV(xdev)->kds.cu_intr_cap = 1;
 	}
 
@@ -1523,7 +1523,7 @@ static int xocl_kds_update_legacy(struct xocl_dev *xdev, struct drm_xocl_kds cfg
 	xocl_ert_user_enable(xdev);
 	ret = xocl_config_ert(xdev, cfg, ps_kernel);
 	if (ret)
-		xocl_info(&XDEV(xdev), "ERT configure failed, ret %d", ret);
+		xocl_info(XDEV2DEV(xdev), "ERT configure failed, ret %d", ret);
 
 	kfree(cu_info);
 	return ret;
@@ -1579,7 +1579,7 @@ xocl_kds_xgq_identify(struct xocl_dev *xdev, int *major, int *minor)
 		return ret;
 
 	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "Config start failed cstate(%d) rcode(%d)",
+		xocl_err(XDEV2DEV(xdev), "Config start failed cstate(%d) rcode(%d)",
 			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
@@ -1632,12 +1632,12 @@ xocl_kds_xgq_cfg_start(struct xocl_dev *xdev, struct drm_xocl_kds cfg, int num_c
 		return ret;
 
 	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "Config start failed cstate(%d) rcode(%d)",
+		xocl_err(XDEV2DEV(xdev), "Config start failed cstate(%d) rcode(%d)",
 			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
 
-	xocl_info(&XDEV(xdev), "Config start completed, num_cus(%d), num_scus(%d)\n",
+	xocl_info(XDEV2DEV(xdev), "Config start completed, num_cus(%d), num_scus(%d)\n",
 		    cfg_start->num_cus, cfg_start->num_scus);
 	return 0;
 }
@@ -1676,11 +1676,11 @@ xocl_kds_xgq_cfg_end(struct xocl_dev *xdev)
 		return ret;
 
 	if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "Config end failed cstate(%d) rcode(%d)",
+		xocl_err(XDEV2DEV(xdev), "Config end failed cstate(%d) rcode(%d)",
 			   resp.hdr.cstate, resp.rcode);
 		return -EINVAL;
 	}
-	xocl_info(&XDEV(xdev), "Config end completed\n");
+	xocl_info(XDEV2DEV(xdev), "Config end completed\n");
 	return 0;
 }
 
@@ -1755,12 +1755,12 @@ xocl_kds_xgq_cfg_cu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_info
 			break;
 
 		if (resp.hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-			xocl_err(&XDEV(xdev), "Config CU failed cstate(%d) rcode(%d)",
+			xocl_err(XDEV2DEV(xdev), "Config CU failed cstate(%d) rcode(%d)",
 				   resp.hdr.cstate, resp.rcode);
 			ret = -EINVAL;
 			break;
 		}
-		xocl_info(&XDEV(xdev), "Config CU(%d) completed\n", cfg_cu->cu_idx);
+		xocl_info(XDEV2DEV(xdev), "Config CU(%d) completed\n", cfg_cu->cu_idx);
 	}
 
 	return ret;
@@ -1823,7 +1823,7 @@ xocl_kds_xgq_cfg_scu(struct xocl_dev *xdev, xuid_t *xclbin_id, struct xrt_cu_inf
 			break;
 
 		if (xcmd->status != KDS_COMPLETED) {
-			xocl_err(&XDEV(xdev), "Configure XGQ ERT failed");
+			xocl_err(XDEV2DEV(xdev), "Configure XGQ ERT failed");
 			ret = -EINVAL;
 			break;
 		}
@@ -1868,15 +1868,15 @@ static int xocl_kds_xgq_query_cu(struct xocl_dev *xdev, u32 cu_idx, u32 cu_domai
 		return ret;
 
 	if (resp->hdr.cstate != XGQ_CMD_STATE_COMPLETED) {
-		xocl_err(&XDEV(xdev), "Query CU(%d) failed cstate(%d) rcode(%d)",
+		xocl_err(XDEV2DEV(xdev), "Query CU(%d) failed cstate(%d) rcode(%d)",
 			   cu_idx, resp->hdr.cstate, resp->rcode);
 		return -EINVAL;
 	}
 
-	xocl_info(&XDEV(xdev), "Query Doamin(%d) CU(%d) completed\n", query_cu->cu_domain, query_cu->cu_idx);
-	xocl_info(&XDEV(xdev), "xgq_id %d\n", resp->xgq_id);
-	xocl_info(&XDEV(xdev), "size %d\n", resp->size);
-	xocl_info(&XDEV(xdev), "offset 0x%x\n", resp->offset);
+	xocl_info(XDEV2DEV(xdev), "Query Doamin(%d) CU(%d) completed\n", query_cu->cu_domain, query_cu->cu_idx);
+	xocl_info(XDEV2DEV(xdev), "xgq_id %d\n", resp->xgq_id);
+	xocl_info(XDEV2DEV(xdev), "size %d\n", resp->size);
+	xocl_info(XDEV2DEV(xdev), "offset 0x%x\n", resp->offset);
 	return 0;
 }
 
@@ -1903,7 +1903,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	  * We will re-looking at this once at supporting multiple xclbins.
 	  */
 	if (num_cus > 64) {
-		xocl_err(&XDEV(xdev), "More than 64 CUs found\n");
+		xocl_err(XDEV2DEV(xdev), "More than 64 CUs found\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1928,9 +1928,9 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 	 * can help host to know the different behaviors of the firmware.
 	 */
 	xocl_kds_xgq_identify(xdev, &major, &minor);
-	xocl_info(&XDEV(xdev), "Got ERT XGQ command version %d.%d\n", major, minor);
+	xocl_info(XDEV2DEV(xdev), "Got ERT XGQ command version %d.%d\n", major, minor);
 	if (major != 1 && minor != 0) {
-		xocl_err(&XDEV(xdev), "Only support ERT XGQ command 1.0\n");
+		xocl_err(XDEV2DEV(xdev), "Only support ERT XGQ command 1.0\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1965,7 +1965,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 		xgq = xocl_ert_ctrl_setup_xgq(xdev, resp.xgq_id, resp.offset);
 		if (IS_ERR(xgq)) {
-			xocl_err(&XDEV(xdev), "Setup XGQ failed\n");
+			xocl_err(XDEV2DEV(xdev), "Setup XGQ failed\n");
 			ret = PTR_ERR(xgq);
 			goto create_regular_cu;
 		}
@@ -1985,7 +1985,7 @@ static int xocl_kds_update_xgq(struct xocl_dev *xdev, int slot_hdl,
 
 		xgq = xocl_ert_ctrl_setup_xgq(xdev, resp.xgq_id, resp.offset);
 		if (IS_ERR(xgq)) {
-			xocl_err(&XDEV(xdev), "Setup XGQ failed\n");
+			xocl_err(XDEV2DEV(xdev), "Setup XGQ failed\n");
 			ret = PTR_ERR(xgq);
 			goto create_regular_cu;
 		}
@@ -2003,7 +2003,7 @@ create_regular_cu:
 	XDEV(xdev)->kds.xgq_enable = false;
 
 out:
-	xocl_info(&XDEV(xdev), "scheduler config ert(%d)\n",
+	xocl_info(XDEV2DEV(xdev), "scheduler config ert(%d)\n",
 		    XDEV(xdev)->kds.xgq_enable);
 	kfree(cu_info);
 	kfree(scu_info);
@@ -2021,7 +2021,7 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 
 	ret = xocl_detect_fa_cmdmem(xdev);
 	if (ret) {
-		xocl_info(&XDEV(xdev), "Detect FA cmdmem failed, ret %d", ret);
+		xocl_info(XDEV2DEV(xdev), "Detect FA cmdmem failed, ret %d", ret);
 		goto out;
 	}
 
@@ -2032,7 +2032,7 @@ int xocl_kds_update(struct xocl_dev *xdev, struct drm_xocl_kds cfg)
 		XDEV(xdev)->kds.cu_intr = 0;
 	ret = kds_cfg_update(&XDEV(xdev)->kds);
 	if (ret)
-		xocl_err(&XDEV(xdev), "KDS configure update failed, ret %d", ret);
+		xocl_err(XDEV2DEV(xdev), "KDS configure update failed, ret %d", ret);
 
 out:
 	return ret;
@@ -2058,10 +2058,10 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
 	if (ret == -ENODEV) {
-		xocl_info(&XDEV(xdev), "ERT will be disabled, ret %d\n", ret);
+		xocl_info(XDEV2DEV(xdev), "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
 	} else if (ret < 0) {
-		xocl_info(&XDEV(xdev), "ERT connect failed, ret %d\n", ret);
+		xocl_info(XDEV2DEV(xdev), "ERT connect failed, ret %d\n", ret);
 		ret = -EINVAL;
 		goto out;
 	}
@@ -2069,7 +2069,7 @@ int xocl_kds_register_cus(struct xocl_dev *xdev, int slot_hdl, xuid_t *uuid,
 	/* Try config legacy ERT firmware */
 	if (!xocl_ert_ctrl_is_version(xdev, 1, 0)) {
 		if (slot_hdl) {
-			xocl_err(&XDEV(xdev), "legacy ERT only support one xclbin\n");
+			xocl_err(XDEV2DEV(xdev), "legacy ERT only support one xclbin\n");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -2089,7 +2089,7 @@ void xocl_kds_unregister_cus(struct xocl_dev *xdev, int slot_hdl)
 	XDEV(xdev)->kds.xgq_enable = false;
 	ret = xocl_ert_ctrl_connect(xdev);
 	if (ret) {
-		xocl_info(&XDEV(xdev), "ERT will be disabled, ret %d\n", ret);
+		xocl_info(XDEV2DEV(xdev), "ERT will be disabled, ret %d\n", ret);
 		XDEV(xdev)->kds.ert_disable = true;
 	}
 
