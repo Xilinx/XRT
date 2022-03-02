@@ -118,7 +118,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 	xdev_handle_t xdev = drm_p->xdev;
 
 	if (vma->vm_pgoff > MAX_CUS) {
-		userpf_err(xdev, "invalid native mmap offset: 0x%lx",
+		xocl_err(&XDEV(xdev), "invalid native mmap offset: 0x%lx",
 			vma->vm_pgoff);
 		return -EINVAL;
 	}
@@ -128,7 +128,7 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 
 	if (vma->vm_pgoff == 0) {
 		if (vsize > XDEV(xdev)->bar_size) {
-			userpf_err(xdev,
+			xocl_err(&XDEV(xdev),
 				"bad size (0x%lx) for native BAR mmap", vsize);
 			return -EINVAL;
 		}
@@ -151,11 +151,11 @@ static int xocl_native_mmap(struct file *filp, struct vm_area_struct *vma)
 				 res_start >> PAGE_SHIFT,
 				 vsize, vma->vm_page_prot);
 	if (ret != 0) {
-		userpf_err(xdev, "io_remap_pfn_range failed: %d", ret);
+		xocl_err(&XDEV(xdev), "io_remap_pfn_range failed: %d", ret);
 		return ret;
 	}
 
-	userpf_info(xdev, "successful native mmap @0x%lx with size 0x%lx",
+	xocl_info(&XDEV(xdev), "successful native mmap @0x%lx with size 0x%lx",
 		vma->vm_pgoff >> PAGE_SHIFT, vsize);
 	return ret;
 }
@@ -554,14 +554,14 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 
 	ddev = drm_dev_alloc(&mm_drm_driver, &XDEV(xdev_hdl)->pdev->dev);
 	if (!ddev) {
-		xocl_xdev_err(xdev_hdl, "alloc drm dev failed");
+		xocl_err(XDEV2DEV(xdev_hdl), "alloc drm dev failed");
 		ret = -ENOMEM;
 		goto failed;
 	}
 
 	drm_p = xocl_drvinst_alloc(&XDEV(xdev_hdl)->pdev->dev, sizeof(*drm_p));
 	if (!drm_p) {
-		xocl_xdev_err(xdev_hdl, "alloc drm inst failed");
+		xocl_err(XDEV2DEV(xdev_hdl), "alloc drm inst failed");
 		ret = -ENOMEM;
 		goto failed;
 	}
@@ -578,7 +578,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 
 	ret = drm_dev_register(ddev, 0);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "register drm dev failed 0x%x", ret);
+		xocl_err(XDEV2DEV(xdev_hdl), "register drm dev failed 0x%x", ret);
 		goto failed;
 	}
 	drm_registered = true;
@@ -588,7 +588,7 @@ void *xocl_drm_init(xdev_handle_t xdev_hdl)
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 4, 0)
 	ret = drm_dev_set_unique(ddev, dev_name(ddev->dev));
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "set unique name failed 0x%x", ret);
+		xocl_err(XDEV2DEV(xdev_hdl), "set unique name failed 0x%x", ret);
 		goto failed;
 	}
 #endif

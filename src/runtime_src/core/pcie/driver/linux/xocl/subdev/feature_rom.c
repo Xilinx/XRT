@@ -595,7 +595,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 
 	memcpy(&rom->header, header, sizeof(*header));
 
-	xocl_xdev_dbg(xdev, "Searching CDMA in dtb.");
+	xocl_dbg(XDEV2DEV(xdev), "Searching CDMA in dtb.");
 	offset = xocl_fdt_path_offset(xdev, XDEV(xdev)->fdt_blob,
 				      "/" NODE_ENDPOINTS "/" RESNAME_KDMA);
 	if (offset < 0)
@@ -604,7 +604,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	io_off = xocl_fdt_getprop(xdev, XDEV(xdev)->fdt_blob, offset,
 				  PROP_IO_OFFSET, NULL);
 	if (!io_off) {
-		xocl_xdev_err(xdev, "dtb maybe corrupted\n");
+		xocl_err(XDEV2DEV(xdev), "dtb maybe corrupted\n");
 		return -EINVAL;
 	}
 	res.start = be64_to_cpu(io_off[0]);
@@ -612,7 +612,7 @@ static int get_header_from_peer(struct feature_rom *rom)
 	memset(rom->header.CDMABaseAddress, 0,
 	       sizeof(rom->header.CDMABaseAddress));
 	rom->header.CDMABaseAddress[0] = (uint32_t)res.start;
-	xocl_xdev_dbg(xdev, "CDMA is on, CU offset: 0x%x",
+	xocl_dbg(XDEV2DEV(xdev), "CDMA is on, CU offset: 0x%x",
 		       rom->header.CDMABaseAddress[0]);
 
 	return 0;
@@ -636,7 +636,7 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 	if (XDEV(xdev)->fdt_blob) {
 		vbnv = fdt_getprop(XDEV(xdev)->fdt_blob, 0, "vbnv", NULL);
 		if (vbnv) {
-			xocl_xdev_dbg(xdev, "found vbnv prop, %s", vbnv);
+			xocl_dbg(XDEV2DEV(xdev), "found vbnv prop, %s", vbnv);
 			strncpy(header->VBNVName, vbnv,
 				sizeof(header->VBNVName) - 1);
 			for (i = 0; i < strlen(header->VBNVName); i++)
@@ -646,18 +646,18 @@ static int init_rom_by_dtb(struct feature_rom *rom)
 		}
 	}
 
-	xocl_xdev_dbg(xdev, "Searching ERT and CMC in dtb.");
+	xocl_dbg(XDEV2DEV(xdev), "Searching ERT and CMC in dtb.");
 	ret = xocl_subdev_get_resource(xdev, NODE_CMC_FW_MEM,
 			IORESOURCE_MEM, &res);
 	if (!ret) {
-		xocl_xdev_dbg(xdev, "CMC is on");
+		xocl_dbg(XDEV2DEV(xdev), "CMC is on");
 		header->FeatureBitMap |= BOARD_MGMT_ENBLD;
 	}
 
 	ret = xocl_subdev_get_resource(xdev, NODE_ERT_FW_MEM,
 			IORESOURCE_MEM, &res);
 	if (!ret) {
-		xocl_xdev_dbg(xdev, "ERT is on");
+		xocl_dbg(XDEV2DEV(xdev), "ERT is on");
 		header->FeatureBitMap |= MB_SCHEDULER;
 	}
 
@@ -693,19 +693,19 @@ static int get_header_from_vsec(struct feature_rom *rom)
 		if (XDEV(xdev)->priv.flags & XOCL_DSAFLAG_CUSTOM_DTB) {
 			rom->uuid_len = strlen(rom_uuid);
 			if (rom->uuid_len == 0 || rom->uuid_len > 64) {
-				xocl_xdev_info(xdev, "Invalid ROM UUID");
+				xocl_info(XDEV2DEV(xdev), "Invalid ROM UUID");
 				return -EINVAL;
 			}
 			strcpy(rom->uuid,rom_uuid);
-			xocl_xdev_info(xdev, "rom UUID is: %s",rom->uuid);
+			xocl_info(XDEV2DEV(xdev), "rom UUID is: %s",rom->uuid);
 			return init_rom_by_dtb(rom);
 		}
-		xocl_xdev_info(xdev, "Does not get UUID ROM");
+		xocl_info(XDEV2DEV(xdev), "Does not get UUID ROM");
 		return -ENODEV;
 	}
 
 	offset += pci_resource_start(XDEV(xdev)->pdev, bar);
-	xocl_xdev_dbg(xdev, "Mapping uuid at offset 0x%llx", offset);
+	xocl_dbg(XDEV2DEV(xdev), "Mapping uuid at offset 0x%llx", offset);
 	rom->base = ioremap_nocache(offset, PAGE_SIZE);
 	rom->uuid_len = 32;
 

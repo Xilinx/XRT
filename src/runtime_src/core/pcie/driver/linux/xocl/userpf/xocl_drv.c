@@ -281,14 +281,14 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 	if (!force && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
 		BUG_ON(list_empty(&xdev->ctx_list));
-		userpf_err(xdev, "device is in use, can't program");
+		xocl_err(&XDEV(xdev), "device is in use, can't program");
 		ret = -EBUSY;
 	}
 	mutex_unlock(&xdev->dev_lock);
 	if (ret < 0)
 		return ret;
 
-	userpf_info(xdev, "program shell...");
+	xocl_info(&XDEV(xdev), "program shell...");
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 
@@ -305,7 +305,7 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	ret = xocl_subdev_offline_all(xdev);
 	if (ret) {
-		userpf_err(xdev, "failed to offline subdevs %d", ret);
+		xocl_err(&XDEV(xdev), "failed to offline subdevs %d", ret);
 		goto failed;
 	}
 
@@ -314,20 +314,20 @@ int xocl_program_shell(struct xocl_dev *xdev, bool force)
 
 	ret = xocl_subdev_online_by_id(xdev, XOCL_SUBDEV_MAILBOX);
 	if (ret) {
-		userpf_err(xdev, "online mailbox failed %d", ret);
+		xocl_err(&XDEV(xdev), "online mailbox failed %d", ret);
 		goto failed;
 	}
 	ret = xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
 	if (ret)
 		goto failed;
 
-	userpf_info(xdev, "request mgmtpf to program prp");
+	xocl_info(&XDEV(xdev), "request mgmtpf to program prp");
 	mbret = xocl_peer_request(xdev, &mbreq, sizeof(struct xcl_mailbox_req),
 		&ret, &resplen, NULL, NULL, 0, 0);
 	if (mbret)
 		ret = mbret;
 	if (ret) {
-		userpf_info(xdev, "request program prp failed %d, mret %d",
+		xocl_info(&XDEV(xdev), "request program prp failed %d, mret %d",
 				ret, mbret);
 		goto failed;
 	}
@@ -374,14 +374,14 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (!(flag & XOCL_RESET_FORCE) && !list_is_singular(&xdev->ctx_list)) {
 		/* We should have one context for ourselves. */
 		BUG_ON(list_empty(&xdev->ctx_list));
-		userpf_err(xdev, "device is in use, can't reset");
+		xocl_err(&XDEV(xdev), "device is in use, can't reset");
 		ret = -EBUSY;
 	}
 	mutex_unlock(&xdev->dev_lock);
 	if (ret < 0)
 		return ret;
 
-	userpf_info(xdev, "resetting device...");
+	xocl_info(&XDEV(xdev), "resetting device...");
 
 	if (flag & XOCL_RESET_FORCE)
 		xocl_drvinst_kill_proc(xdev->core.drm);
@@ -412,7 +412,7 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 		 *  successfully.
 		 */
 		if (mbret || (ret && ret != -ESHUTDOWN)) {
-			userpf_err(xdev, "reset request failed, mbret: %d, peer resp: %d",
+			xocl_err(&XDEV(xdev), "reset request failed, mbret: %d, peer resp: %d",
 					   mbret, ret);
 			xocl_reset_notify(xdev->core.pdev, false);
 			xocl_drvinst_set_offline(xdev->core.drm, false);
@@ -439,16 +439,16 @@ int xocl_hot_reset(struct xocl_dev *xdev, u32 flag)
 	if (!mbret && ret == -ESHUTDOWN)
 		flag |= XOCL_RESET_SHUTDOWN;
 	if (mbret) {
-		userpf_err(xdev, "Requested peer failed %d", mbret);
+		xocl_err(&XDEV(xdev), "Requested peer failed %d", mbret);
 		ret = mbret;
 		goto failed_notify;
 	}
 	if (ret) {
-		userpf_err(xdev, "Hotreset peer response %d", ret);
+		xocl_err(&XDEV(xdev), "Hotreset peer response %d", ret);
 		goto failed_notify;
 	}
 
-	userpf_info(xdev, "Set master off then wait it on");
+	xocl_info(&XDEV(xdev), "Set master off then wait it on");
 	pci_read_config_word(pdev, PCI_COMMAND, &pci_cmd);
 	pci_cmd &= ~PCI_COMMAND_MASTER;
 	pci_write_config_word(pdev, PCI_COMMAND, pci_cmd);
@@ -508,7 +508,7 @@ static int xocl_get_buddy_cb(struct device *dev, void *data)
 		strcmp(tgt_xdev->core.serial_num, "") &&
 		!strcmp(src_xdev->core.serial_num, tgt_xdev->core.serial_num)) {
 	       *(struct xocl_dev **)data = tgt_xdev;
-		xocl_xdev_info(src_xdev, "2nd FPGA found on same card: %x:%x:%x",
+		xocl_info(XDEV2DEV(src_xdev), "2nd FPGA found on same card: %x:%x:%x",
 			to_pci_dev(dev)->bus->number,
 			PCI_SLOT(to_pci_dev(dev)->devfn),
 			PCI_FUNC(to_pci_dev(dev)->devfn));
@@ -534,7 +534,7 @@ static void xocl_work_cb(struct work_struct *work)
 	struct xocl_dev *buddy_xdev = xdev;
 
 	if (XDEV(xdev)->shutdown && _work->op != XOCL_WORK_ONLINE) {
-		xocl_xdev_info(xdev, "device is shutdown please hotplug");
+		xocl_info(XDEV2DEV(xdev), "device is shutdown please hotplug");
 		return;
 	}
 
@@ -580,7 +580,7 @@ static void xocl_work_cb(struct work_struct *work)
 		(void) xocl_refresh_subdevs(xdev);
 		break;
 	default:
-		xocl_xdev_err(xdev, "Invalid op code %d", _work->op);
+		xocl_err(XDEV2DEV(xdev), "Invalid op code %d", _work->op);
 		break;
 	}
 }
@@ -631,7 +631,7 @@ static void xocl_mb_connect(struct xocl_dev *xdev)
 	 */
 	xocl_xmc_get_serial_num(xdev);
 
-	userpf_info(xdev, "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
+	xocl_info(&XDEV(xdev), "ch_state 0x%llx, ret %d\n", resp->conn_flags, ret);
 
 done:
 	kfree(kaddr);
@@ -670,7 +670,7 @@ int xocl_reclock(struct xocl_dev *xdev, void *data)
 	memcpy(req->data, data, data_len);
 
 	if (get_live_clients(xdev, NULL)) {
-		userpf_err(xdev, "device is in use, can't reset");
+		xocl_err(&XDEV(xdev), "device is in use, can't reset");
 		err = -EBUSY;
 	}
 
@@ -706,11 +706,11 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 	if (err != 0)
 		return;
 
-	userpf_info(xdev, "received request (%d) from peer\n", req->req);
+	xocl_info(&XDEV(xdev), "received request (%d) from peer\n", req->req);
 
 	switch (req->req) {
 	case XCL_MAILBOX_REQ_FIREWALL:
-		userpf_info(xdev,
+		xocl_info(&XDEV(xdev),
 			"Card is in a BAD state, please issue xbutil reset");
 		err_last.pid = 0;
 		err_last.ts = 0; //TODO timestamp
@@ -726,15 +726,15 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 		st = (struct xcl_mailbox_peer_state *)req->data;
 		if (st->state_flags & XCL_MB_STATE_ONLINE) {
 			/* Mgmt is online, try to probe peer */
-			userpf_info(xdev, "mgmt driver online\n");
+			xocl_info(&XDEV(xdev), "mgmt driver online\n");
 			xocl_queue_work(xdev, XOCL_WORK_REFRESH_SUBDEV, 1);
 
 		} else if (st->state_flags & XCL_MB_STATE_OFFLINE) {
 			/* Mgmt is offline, mark peer as not ready */
-			userpf_info(xdev, "mgmt driver offline\n");
+			xocl_info(&XDEV(xdev), "mgmt driver offline\n");
 			(void) xocl_mailbox_set(xdev, CHAN_STATE, 0);
 		} else {
-			userpf_err(xdev, "unknown peer state flag (0x%llx)\n",
+			xocl_err(&XDEV(xdev), "unknown peer state flag (0x%llx)\n",
 				st->state_flags);
 		}
 		break;
@@ -743,7 +743,7 @@ static void xocl_mailbox_srv(void *arg, void *data, size_t len,
 				XOCL_PROGRAM_SHELL_DELAY);
 		break;
 	default:
-		userpf_err(xdev, "dropped bad request (%d)\n", req->req);
+		xocl_err(&XDEV(xdev), "dropped bad request (%d)\n", req->req);
 		break;
 	}
 }
@@ -757,7 +757,7 @@ void store_pcie_link_info(struct xocl_dev *xdev)
 	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
 	if (result) {
 		xdev->pci_stat.link_width_max = xdev->pci_stat.link_speed_max = 0;
-		userpf_err(xdev, "Read pcie capability failed for offset: 0x%x", pos);
+		xocl_err(&XDEV(xdev), "Read pcie capability failed for offset: 0x%x", pos);
 	} else {
 		xdev->pci_stat.link_width_max = (stat & PCI_EXP_LNKSTA_NLW) >>
 			PCI_EXP_LNKSTA_NLW_SHIFT;
@@ -769,7 +769,7 @@ void store_pcie_link_info(struct xocl_dev *xdev)
 	result = pcie_capability_read_word(xdev->core.pdev, pos, &stat);
 	if (result) {
 		xdev->pci_stat.link_width = xdev->pci_stat.link_speed = 0;
-		userpf_err(xdev, "Read pcie capability failed for offset: 0x%x", pos);
+		xocl_err(&XDEV(xdev), "Read pcie capability failed for offset: 0x%x", pos);
 	} else {
 		xdev->pci_stat.link_width = (stat & PCI_EXP_LNKSTA_NLW) >>
 			PCI_EXP_LNKSTA_NLW_SHIFT;
@@ -802,7 +802,7 @@ uint64_t xocl_get_data(struct xocl_dev *xdev, enum data_kind kind)
 		ret = xocl_icap_get_data(xdev, MIG_CALIB);
 		break;
 	default:
-		userpf_err(xdev, "dropped bad request (%d)\n", kind);
+		xocl_err(&XDEV(xdev), "dropped bad request (%d)\n", kind);
 		break;
 	}
 
@@ -828,12 +828,12 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	ret = xocl_drvinst_get_offline(xdev->core.drm, &offline);
 	if (ret == -ENODEV || offline) {
-		userpf_info(xdev, "online current devices");
+		xocl_info(&XDEV(xdev), "online current devices");
 	        xocl_reset_notify(xdev->core.pdev, false);
 		xocl_drvinst_set_offline(xdev->core.drm, false);
 	}
 
-	userpf_info(xdev, "get fdt from peer");
+	xocl_info(&XDEV(xdev), "get fdt from peer");
 	mb_req = vzalloc(reqlen);
 	if (!mb_req) {
 		ret = -ENOMEM;
@@ -899,7 +899,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	if (resp->rtncode != XOCL_MSG_SUBDEV_RTN_COMPLETE &&
 		resp->rtncode != XOCL_MSG_SUBDEV_RTN_UNCHANGED) {
-		userpf_err(xdev, "Unexpected return code %d", resp->rtncode);
+		xocl_err(&XDEV(xdev), "Unexpected return code %d", resp->rtncode);
 		ret = -EINVAL;
 		goto failed;
 	}
@@ -914,7 +914,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 	if (blob) {
 		ret = xocl_fdt_blob_input(xdev, blob, blob_len, -1, NULL);
 		if (ret) {
-			userpf_err(xdev, "parse blob failed %d", ret);
+			xocl_err(&XDEV(xdev), "parse blob failed %d", ret);
 			goto failed;
 		}
 		blob = NULL;
@@ -932,25 +932,25 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	ret = identify_bar(xdev);
 	if (ret) {
-		userpf_err(xdev, "failed to identify bar");
+		xocl_err(&XDEV(xdev), "failed to identify bar");
 		goto failed;
 	}
 
 	ret = xocl_subdev_create_all(xdev);
 	if (ret) {
-		userpf_err(xdev, "create subdev failed %d", ret);
+		xocl_err(&XDEV(xdev), "create subdev failed %d", ret);
 		goto failed;
 	}
 
 	ret = xocl_p2p_init(xdev);
 	if (ret) {
-		userpf_err(xdev, "failed to init p2p memory");
+		xocl_err(&XDEV(xdev), "failed to init p2p memory");
 		goto failed;
 	}
 
 	ret = xocl_hwmon_sdm_init(xdev);
 	if (ret) {
-		userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+		xocl_err(&XDEV(xdev), "failed to init hwmon_sdm driver, err: %d", ret);
 		ret = 0;
 	}
 
@@ -958,14 +958,14 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 
 	ret = xocl_init_sysfs(xdev);
 	if (ret) {
-		userpf_err(xdev, "Unable to create sysfs %d", ret);
+		xocl_err(&XDEV(xdev), "Unable to create sysfs %d", ret);
 		goto failed;
 	}
 
 	if (!xdev->core.drm) {
 		xdev->core.drm = xocl_drm_init(xdev);
 		if (!xdev->core.drm) {
-			userpf_err(xdev, "Unable to init drm");
+			xocl_err(&XDEV(xdev), "Unable to init drm");
 			goto failed;
 		}
 	}
@@ -1005,7 +1005,7 @@ int xocl_p2p_init(struct xocl_dev *xdev)
 	/* create p2p subdev for legacy platform */
 	ret = xocl_subdev_create(xdev, &subdev_info);
 	if (ret && ret != -EEXIST) {
-		xocl_xdev_err(xdev, "create p2p subdev failed. ret %d", ret);
+		xocl_err(XDEV2DEV(xdev), "create p2p subdev failed. ret %d", ret);
 		return ret;
 	}
 
@@ -1039,7 +1039,7 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 
 	ret = xocl_peer_request(xdev, mb_req, reqlen, in_buf, &resp_len, NULL, NULL, 0, 0);
 	if (ret) {
-		userpf_err(xdev, "sdr peer request failed, err: %d", ret);
+		xocl_err(&XDEV(xdev), "sdr peer request failed, err: %d", ret);
 		goto done;
 	}
 
@@ -1049,9 +1049,9 @@ static int xocl_hwmon_sdm_init_sysfs(struct xocl_dev *xdev, enum xcl_group_kind 
 
 	ret = xocl_hwmon_sdm_create_sensors_sysfs(xdev, in_buf, resp_len, kind);
 	if (ret)
-		userpf_err(xdev, "hwmon_sdm sysfs creation failed for xcl_sdr 0x%x, err: %d", kind, ret);
+		xocl_err(&XDEV(xdev), "hwmon_sdm sysfs creation failed for xcl_sdr 0x%x, err: %d", kind, ret);
 	else
-		userpf_dbg(xdev, "successfully created hwmon_sdm sensor sysfs node for xcl_sdr 0x%x", kind);
+		xocl_dbg(&XDEV(xdev), "successfully created hwmon_sdm sensor sysfs node for xcl_sdr 0x%x", kind);
 
 done:
 	vfree(in_buf);
@@ -1131,7 +1131,7 @@ static int identify_bar_by_dts(struct xocl_dev *xdev)
 	xdev->core.bar_idx = bar_id;
 	xdev->core.bar_size = bar_len;
 
-	xocl_xdev_info(xdev, "user bar:%d size: %lld", bar_id, bar_len);
+	xocl_info(XDEV2DEV(xdev), "user bar:%d size: %lld", bar_id, bar_len);
 	return 0;
 }
 

@@ -242,14 +242,25 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 #define PDEV(dev)	(((dev)->bus == &platform_bus_type && (dev)->parent) ? (dev)->parent : (dev))
 #define PNAME(dev)	(((dev)->bus == &pci_bus_type) ? "" : dev_name(dev))
 
+/*
+ * Proposed changes for displaying messages
+ *
+ * function       in dmesg    in debugfs   carrying 'dev' info	
+ * xocl_info 	       n	          y             y	
+ * xocl_warn         y            n             y
+ * xocl_err          y            n             y
+ * xocl_dbg          n            y             y
+ * xocl_printk       y            y             y
+ * xocl_info_generic n            y             n
+ *
+ */
+
 #define xocl_err(dev, fmt, args...)			\
 	dev_err(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_warn(dev, fmt, args...)			\
 	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
 	do {						\
-		dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt,	\
-			   PNAME(dev), (u64)dev, __func__, ##args);	\
 		xocl_dbg_trace(XOCL_SUBDEV_DBG_HDL(dev), XRT_TRACE_LEVEL_INFO,\
 			       "%s %s %llx %s: "fmt"\n", PNAME(dev),	\
 			       dev_name(dev), (u64)dev, __func__, ##args);\
@@ -265,13 +276,13 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 		       "%s %s %llx %s: "fmt"\n", PNAME(dev),		\
 		       dev_name(dev), (u64)dev, __func__, ##args)
 
-#define xocl_xdev_info(xdev, fmt, args...)		\
+/*#define xocl_xdev_info(xdev, fmt, args...)		\
 	xocl_info(XDEV2DEV(xdev), fmt, ##args)
 #define xocl_xdev_err(xdev, fmt, args...)		\
 	xocl_err(XDEV2DEV(xdev), fmt, ##args)
 #define xocl_xdev_dbg(xdev, fmt, args...)		\
 	xocl_dbg(XDEV2DEV(xdev), fmt, ##args)
-
+*/
 #define	XOCL_DRV_VER_NUM(ma, mi, p)		\
 	((ma) * 1000 + (mi) * 100 + (p))
 

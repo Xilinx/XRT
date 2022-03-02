@@ -1093,19 +1093,19 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	mbreq.req = XCL_MAILBOX_REQ_CHG_SHELL;
 	mutex_lock(&icap->icap_lock);
 	if (flag == RP_DOWNLOAD_CLEAR) {
-		xocl_xdev_info(xdev, "Clear firmware bins");
+		xocl_info(XDEV2DEV(xdev), "Clear firmware bins");
 		icap_free_bins(icap);
 		goto end;
 	}
 	if (!icap->rp_bit || !icap->rp_fdt) {
-		xocl_xdev_err(xdev, "Invalid reprogram request %p.%p",
+		xocl_err(XDEV2DEV(xdev), "Invalid reprogram request %p.%p",
 			icap->rp_bit, icap->rp_fdt);
 		ret = -EINVAL;
 		goto failed;
 	}
 
 	if (!XDEV(xdev)->blp_blob) {
-		xocl_xdev_err(xdev, "Empty BLP blob");
+		xocl_err(XDEV2DEV(xdev), "Empty BLP blob");
 		ret = -EINVAL;
 		goto failed;
 	}
@@ -1113,7 +1113,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	ret = xocl_fdt_check_uuids(xdev, icap->rp_fdt,
 		XDEV(xdev)->blp_blob);
 	if (ret) {
-		xocl_xdev_err(xdev, "Incompatible uuids");
+		xocl_err(XDEV2DEV(xdev), "Incompatible uuids");
 		goto failed;
 	}
 
@@ -1129,13 +1129,13 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 	ret = xocl_fdt_blob_input(xdev, icap->rp_fdt, icap->rp_fdt_len,
 			XOCL_SUBDEV_LEVEL_PRP, icap->rp_vbnv);
 	if (ret) {
-		xocl_xdev_err(xdev, "failed to parse fdt %d", ret);
+		xocl_err(XDEV2DEV(xdev), "failed to parse fdt %d", ret);
 		goto failed;
 	}
 
 	ret = xocl_axigate_freeze(xdev, XOCL_SUBDEV_LEVEL_BLD);
 	if (ret) {
-		xocl_xdev_err(xdev, "freeze blp gate failed %d", ret);
+		xocl_err(XDEV2DEV(xdev), "freeze blp gate failed %d", ret);
 		goto failed;
 	}
 
@@ -1157,7 +1157,7 @@ static int icap_download_rp(struct platform_device *pdev, int level, int flag)
 
 	ret = xocl_axigate_free(xdev, XOCL_SUBDEV_LEVEL_BLD);
 	if (ret) {
-		xocl_xdev_err(xdev, "freeze blp gate failed %d", ret);
+		xocl_err(XDEV2DEV(xdev), "freeze blp gate failed %d", ret);
 		goto failed;
 	}
 

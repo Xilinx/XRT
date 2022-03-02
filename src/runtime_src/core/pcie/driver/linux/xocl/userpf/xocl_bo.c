@@ -286,12 +286,12 @@ static inline int check_bo_user_reqs(const struct drm_device *dev,
 
 	if (topo) {
 		if (XOCL_IS_STREAM(topo, ddr)) {
-			userpf_err(xdev, "Bank %d is Stream", ddr);
+			xocl_err(&XDEV(xdev), "Bank %d is Stream", ddr);
 			err = -EINVAL;
 			goto done;
 		}
 		if (!XOCL_IS_DDR_USED(topo, ddr)) {
-			userpf_err(xdev,
+			xocl_err(&XDEV(xdev),
 				"Bank %d is marked as unused in axlf", ddr);
 			err = -EINVAL;
 			goto done;
@@ -401,7 +401,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 		if (xobj->flags &
 		    (XOCL_USER_MEM | XOCL_DRM_IMPORT | XOCL_P2P_MEM)) {
 			err = -EINVAL;
-			xocl_xdev_err(xdev, "invalid HOST BO req. flag %x",
+			xocl_err(XDEV2DEV(xdev), "invalid HOST BO req. flag %x",
 				xobj->flags);
 			goto failed;
 		}
@@ -436,7 +436,7 @@ static struct drm_xocl_bo *xocl_create_bo(struct drm_device *dev,
 	}
 
 	/* Attempt to allocate buffer on the requested DDR */
-	xocl_xdev_dbg(xdev, "alloc bo from bank%u, flag %x, host bank %d",
+	xocl_dbg(XDEV2DEV(xdev), "alloc bo from bank%u, flag %x, host bank %d",
 		memidx, xobj->flags, drm_p->cma_bank_idx);
 
 	err = xocl_mm_insert_node(drm_p, memidx, xobj->mm_node,
@@ -569,7 +569,7 @@ __xocl_create_bo_ioctl(struct drm_device *dev,
 				xobj->base.size,
 				&bar_off);
 			if (ret) {
-				xocl_xdev_err(xdev, "map P2P failed,ret = %d",
+				xocl_err(XDEV2DEV(xdev), "map P2P failed,ret = %d",
 						ret);
 			} else
 				xobj->p2p_bar_offset = bar_off;
@@ -925,14 +925,14 @@ static int xocl_migrate_unmgd(struct xocl_dev *xdev, uint64_t data_ptr, uint64_t
 
 	ret = xocl_init_unmgd(&unmgd, data_ptr, size, dir);
 	if (ret) {
-		userpf_err(xdev, "init unmgd failed %d", ret);
+		xocl_err(&XDEV(xdev), "init unmgd failed %d", ret);
 		return ret;
 	}
 
 	channel = xocl_acquire_channel(xdev, dir);
 
 	if (channel < 0) {
-		userpf_err(xdev, "acquire channel failed");
+		xocl_err(&XDEV(xdev), "acquire channel failed");
 		ret = -EINVAL;
 		goto clear;
 	}
@@ -1412,7 +1412,7 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 
 	if (args->address_space != 0) {
-		userpf_err(xdev, "invalid addr space");
+		xocl_err(&XDEV(xdev), "invalid addr space");
 		return -EFAULT;
 	}
 
@@ -1423,7 +1423,7 @@ int xocl_pwrite_unmgd_ioctl(struct drm_device *dev, void *data,
 	 * it is unclear that what addresses are valid other than
 	 * ddr area. we should revisit this sometime.
 	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
+	 *	xocl_err(&XDEV(xdev), "invalid paddr: 0x%llx, size:0x%llx",
 	 *		args->paddr, args->size);
 	 *	return -EINVAL;
 	 * }
@@ -1444,7 +1444,7 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 
 	if (args->address_space != 0) {
-		userpf_err(xdev, "invalid addr space");
+		xocl_err(&XDEV(xdev), "invalid addr space");
 		return -EFAULT;
 	}
 
@@ -1455,7 +1455,7 @@ int xocl_pread_unmgd_ioctl(struct drm_device *dev, void *data,
 	 * it is unclear that what addresses are valid other than
 	 * ddr area. we should revisit this sometime.
 	 * if (!xocl_validate_paddr(xdev, args->paddr, args->size)) {
-	 *	userpf_err(xdev, "invalid paddr: 0x%llx, size:0x%llx",
+	 *	xocl_err(&XDEV(xdev), "invalid paddr: 0x%llx, size:0x%llx",
 	 *		args->paddr, args->size);
 	 *	return -EINVAL;
 	 * }
@@ -1501,7 +1501,7 @@ static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 
 	obj = xocl_gem_object_lookup(ddev, filp, bo_hdl);
 	if (!obj) {
-		userpf_err(xdev, "Failed to look up GEM BO 0x%x\n", bo_hdl);
+		xocl_err(&XDEV(xdev), "Failed to look up GEM BO 0x%x\n", bo_hdl);
 		return -ENOENT;
 	}
 
@@ -1513,7 +1513,7 @@ static int get_bo_paddr(struct xocl_dev *xdev, struct drm_file *filp,
 	}
 
 	if (obj->size <= off || obj->size < off + size) {
-		userpf_err(xdev, "Failed to get paddr for BO 0x%x\n", bo_hdl);
+		xocl_err(&XDEV(xdev), "Failed to get paddr for BO 0x%x\n", bo_hdl);
 		XOCL_DRM_GEM_OBJECT_PUT_UNLOCKED(obj);
 		return -EINVAL;
 	}

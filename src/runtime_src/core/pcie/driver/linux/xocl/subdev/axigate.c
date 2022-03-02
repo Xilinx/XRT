@@ -85,7 +85,7 @@ static int axigate_freeze(struct platform_device *pdev)
 done:
 	mutex_unlock(&gate->gate_lock);
 
-	xocl_xdev_info(xdev, "freeze gate %s level %d",
+	xocl_info(XDEV2DEV(xdev), "freeze gate %s level %d",
 			gate->ep_name, gate->level);
 	return 0;
 }
@@ -111,7 +111,7 @@ static int axigate_free(struct platform_device *pdev)
 
 done:
 	mutex_unlock(&gate->gate_lock);
-	xocl_xdev_info(xdev, "free gate %s level %d", gate->ep_name,
+	xocl_info(XDEV2DEV(xdev), "free gate %s level %d", gate->ep_name,
 			gate->level);
 	return 0;
 }
@@ -126,7 +126,7 @@ static int axigate_reset(struct platform_device *pdev)
 	reg_wr(gate, 0x1, iag_wr);
 	mutex_unlock(&gate->gate_lock);
 
-	xocl_xdev_info(xdev, "ep_name %s level %d", gate->ep_name, gate->level);
+	xocl_info(XDEV2DEV(xdev), "ep_name %s level %d", gate->ep_name, gate->level);
 	return 0;
 }
 

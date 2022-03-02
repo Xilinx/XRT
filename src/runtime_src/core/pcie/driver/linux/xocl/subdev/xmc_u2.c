@@ -3551,7 +3551,7 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		 */
 		addr = xocl_iores_get_offset(xdev, IORES_GAPPING);
 		if (addr == (uint64_t)-1) {
-			xocl_xdev_info(xdev, "No %s resource, skip.",
+			xocl_info(XDEV2DEV(xdev), "No %s resource, skip.",
 			    NODE_GAPPING);
 			return 0;
 		}
@@ -3567,17 +3567,17 @@ static int raptor_cmc_access(struct platform_device *pdev,
 		val &= ~0x1FFFFFF;
 		val |= ((addr & 0x01FFFFFF) | XMC_HOST_NEW_FEATURE_REG1_FEATURE_PRESENT);
 		WRITE_REG32(xmc, val, XMC_HOST_NEW_FEATURE_REG1);
-		xocl_xdev_info(xdev, "%s is 0x%llx, set New Feature Table to 0x%x\n",
+		xocl_info(XDEV2DEV(xdev), "%s is 0x%llx, set New Feature Table to 0x%x\n",
 		    NODE_GAPPING, addr, val);
 	} else if (flags == XOCL_XMC_FREEZE) {
 		grant = 0;
 	} else {
-		xocl_xdev_info(xdev, "invalid flags %d", flags);
+		xocl_info(XDEV2DEV(xdev), "invalid flags %d", flags);
 		return -EINVAL;
 	}
 
 	if (!xmc->base_addrs[IO_MUTEX]) {
-		xocl_xdev_info(xdev, "No %s resource, skip.",
+		xocl_info(XDEV2DEV(xdev), "No %s resource, skip.",
 		    NODE_CMC_MUTEX);
 		return 0;
 	}
@@ -3593,14 +3593,14 @@ static int raptor_cmc_access(struct platform_device *pdev,
 	}
 
 	if ((grant & MUTEX_GRANT_MASK) != (ack & MUTEX_ACK_MASK)) {
-		xocl_xdev_err(xdev,
+		xocl_err(XDEV2DEV(xdev),
 		    "Grant falied. The bit 0 in Ack (0x%x) is not the same "
 		    "in grant (0x%x)", ack, grant);
 		err = -EBUSY;
 		goto fail;
 	}
 
-	xocl_xdev_info(xdev, "%s CMC succeeded.",
+	xocl_info(XDEV2DEV(xdev), "%s CMC succeeded.",
 	    flags == XOCL_XMC_FREE ? "Grant" : "Release");
 fail:
 	return err;

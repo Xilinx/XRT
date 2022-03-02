@@ -47,7 +47,7 @@ static void *msix_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	if (node < 0)
 		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_MSIX_MGMT);
 	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "did not find msix node in %s", NODE_ENDPOINTS);
+		xocl_err(XDEV2DEV(xdev_hdl), "did not find msix node in %s", NODE_ENDPOINTS);
 		return NULL;
 	}
 
@@ -84,7 +84,7 @@ static void *ert_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
         node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_ERT_SCHED);
         if (node < 0) {
-                xocl_xdev_err(xdev_hdl, "did not find ert sched node in %s", NODE_ENDPOINTS);
+                xocl_err(XDEV2DEV(xdev_hdl), "did not find ert sched node in %s", NODE_ENDPOINTS);
                 return NULL;
         }
 
@@ -116,12 +116,12 @@ static void *rom_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	vrom = fdt_getprop(blob, 0, "vrom", &proplen);
 	if (!vrom) {
-		xocl_xdev_err(xdev_hdl, "did not find vrom prop");
+		xocl_err(XDEV2DEV(xdev_hdl), "did not find vrom prop");
 		goto failed;
 	}
 
 	if (proplen > sizeof(struct FeatureRomHeader)) {
-		xocl_xdev_err(xdev_hdl, "invalid vrom length");
+		xocl_err(XDEV2DEV(xdev_hdl), "invalid vrom length");
 		goto failed;
 	}
 
@@ -153,7 +153,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_FLASH);
 	if (node < 0) {
-		xocl_xdev_err(xdev_hdl, "did not find flash node");
+		xocl_err(XDEV2DEV(xdev_hdl), "did not find flash node");
 		return NULL;
 	}
 
@@ -164,7 +164,7 @@ static void *flash_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 	else if (!fdt_node_check_compatible(blob, node, "qspi_ps_x2_single"))
 		flash_type = FLASH_TYPE_QSPIPS_X2_SINGLE;
 	else {
-		xocl_xdev_err(xdev_hdl, "UNKNOWN flash type");
+		xocl_err(XDEV2DEV(xdev_hdl), "UNKNOWN flash type");
 		return NULL;
 	}
 
@@ -199,13 +199,13 @@ static void *xmc_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t *len)
 
 	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_CLK_SCALING_REG);
 	if (node < 0)
-		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_CLK_SCALING_REG, NODE_ENDPOINTS);
+		xocl_dbg(XDEV2DEV(xdev_hdl), "not found %s in %s", NODE_CMC_CLK_SCALING_REG, NODE_ENDPOINTS);
 	else
 		xmc_priv->flags = XOCL_XMC_CLK_SCALING;
 
 	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_CMC_FW_MEM);
 	if (node < 0) {
-		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_CMC_FW_MEM, NODE_ENDPOINTS);
+		xocl_dbg(XDEV2DEV(xdev_hdl), "not found %s in %s", NODE_CMC_FW_MEM, NODE_ENDPOINTS);
 		xmc_priv->flags |= XOCL_XMC_IN_BITFILE;
 	}
 
@@ -260,18 +260,18 @@ static void *icap_cntrl_build_priv(xdev_handle_t xdev_hdl, void *subdev, size_t 
 
 	node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_ICAP_CONTROLLER);
 	if (node < 0) {
-		xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_ICAP_CONTROLLER, NODE_ENDPOINTS);
+		xocl_dbg(XDEV2DEV(xdev_hdl), "not found %s in %s", NODE_ICAP_CONTROLLER, NODE_ENDPOINTS);
 		return NULL;
 	}
 
 	{
 		node = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_ULP);
 		if (node < 0)
-			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
+			xocl_dbg(XDEV2DEV(xdev_hdl), "not found %s in %s", NODE_GATE_ULP, NODE_ENDPOINTS);
 
 		node1 = fdt_path_offset(blob, "/" NODE_ENDPOINTS "/" NODE_GATE_PLP);
 		if (node1 < 0)
-			xocl_xdev_dbg(xdev_hdl, "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
+			xocl_dbg(XDEV2DEV(xdev_hdl), "not found %s in %s", NODE_GATE_PLP, NODE_ENDPOINTS);
 
 		if ((node < 0) && (node1 < 0))
 			priv->flags |= XOCL_IC_FLAT_SHELL;
@@ -1053,7 +1053,7 @@ static int xocl_fdt_parse_intr_alias(xdev_handle_t xdev_hdl, char *blob,
 			intr = fdt_getprop(blob, intr_node, PROP_INTERRUPTS,
 					NULL);
 			if (!intr) {
-				xocl_xdev_err(xdev_hdl,
+				xocl_err(XDEV2DEV(xdev_hdl),
 				    "intrrupts not found, %s", alias);
 				return -EINVAL;
 			}
@@ -1082,7 +1082,7 @@ static int xocl_fdt_parse_ip(xdev_handle_t xdev_hdl, char *blob,
 	/* Get PF index */
 	pfnum = fdt_getprop(blob, off, PROP_PF_NUM, NULL);
 	if (!pfnum) {
-		xocl_xdev_err(xdev_hdl,
+		xocl_err(XDEV2DEV(xdev_hdl),
 			"IP %s, PF index not found", ip->name);
 		return -EINVAL;
 	}
@@ -1254,7 +1254,7 @@ static int xocl_fdt_res_lookup(xdev_handle_t xdev_hdl, char *blob,
 
 	ret = xocl_fdt_parse_ip(xdev_hdl, blob, ip, subdev);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "parse ip failed, Node %s, ip %s",
+		xocl_err(XDEV2DEV(xdev_hdl), "parse ip failed, Node %s, ip %s",
 			ip->name, ipname);
 		return ret;
 	}
@@ -1269,11 +1269,11 @@ static void xocl_fdt_dump_subdev(xdev_handle_t xdev_hdl,
 {
 	int i;
 
-	xocl_xdev_dbg(xdev_hdl, "Device %s, PF%d, level %d",
+	xocl_dbg(XDEV2DEV(xdev_hdl), "Device %s, PF%d, level %d",
 		subdev->info.name, subdev->pf, subdev->info.level);
 
 	for (i = 0; i < subdev->info.num_res; i++) {
-		xocl_xdev_dbg(xdev_hdl, "Res%d: %s %pR", i,
+		xocl_dbg(XDEV2DEV(xdev_hdl), "Res%d: %s %pR", i,
 			subdev->info.res[i].name, &subdev->info.res[i]);
 	}
 }
@@ -1317,7 +1317,7 @@ static int xocl_fdt_get_devinfo(xdev_handle_t xdev_hdl, char *blob,
 		    subdev, ip, ip_num, res->regmap_name);
 
 		if (ret) {
-			xocl_xdev_err(xdev_hdl, "lookup dev %s, ip %s failed",
+			xocl_err(XDEV2DEV(xdev_hdl), "lookup dev %s, ip %s failed",
 			    map_p->dev_name, res->res_name);
 			num = ret;
 			goto failed;
@@ -1401,7 +1401,7 @@ static int xocl_fdt_parse_subdevs(xdev_handle_t xdev_hdl, char *blob,
 			num = xocl_fdt_get_devinfo(xdev_hdl, blob, map_p,
 					ip, ip_num, subdevs);
 			if (num < 0) {
-				xocl_xdev_err(xdev_hdl,
+				xocl_err(XDEV2DEV(xdev_hdl),
 					"get subdev info failed, dev name: %s",
 					map_p->dev_name);
 				vfree(ip);
@@ -1483,13 +1483,13 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
 #endif
 
         if (!core->fdt_blob) {
-                xocl_xdev_err(xdev_hdl, "fdt blob is empty");
+                xocl_err(XDEV2DEV(xdev_hdl), "fdt blob is empty");
                 return -EINVAL;
         }
 
         offset = fdt_path_offset(core->fdt_blob, "/" NODE_PCIE "/" NODE_BARS);
         if (offset < 0) {
-                xocl_xdev_dbg(xdev_hdl, "pcie bars nodes are not present in firmware data");
+                xocl_dbg(XDEV2DEV(xdev_hdl), "pcie bars nodes are not present in firmware data");
                 return -EINVAL;
         }
 
@@ -1506,7 +1506,7 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
 
                 pfn = fdt_getprop(core->fdt_blob, offset, PROP_PF_NUM, NULL);
                 if (!pfn) {
-                        xocl_xdev_err(xdev_hdl, "failed to get physical_function of pci node");
+                        xocl_err(XDEV2DEV(xdev_hdl), "failed to get physical_function of pci node");
                         ret = -EINVAL;
                         goto done;
                 }
@@ -1515,13 +1515,13 @@ static int xocl_fdt_get_pci_addr(xdev_handle_t xdev_hdl)
 
                 bar = fdt_getprop(core->fdt_blob, offset, PROP_BAR_IDX, NULL);
                 if (!bar) {
-                        xocl_xdev_err(xdev_hdl, "failed to get bar idx");
+                        xocl_err(XDEV2DEV(xdev_hdl), "failed to get bar idx");
                         ret = -EINVAL;
                         goto done;
                 }
                 io_off = fdt_getprop(core->fdt_blob, offset, PROP_IO_OFFSET, NULL);
                 if (!io_off) {
-                        xocl_xdev_err(xdev_hdl, "failed to get offset, range of pci node");
+                        xocl_err(XDEV2DEV(xdev_hdl), "failed to get offset, range of pci node");
                         ret = -EINVAL;
                         goto done;
                 }
@@ -1551,13 +1551,13 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		return -EINVAL;
 
 	if (fdt_totalsize(blob) > blob_sz) {
-		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		xocl_err(XDEV2DEV(xdev_hdl), "Invalid blob inbut size");
 		return -EINVAL;
 	}
 
 	dev_num = xocl_fdt_parse_subdevs(xdev_hdl, blob, NULL, 0);
 	if (dev_num < 0) {
-		xocl_xdev_err(xdev_hdl, "parse dev failed, ret = %d", dev_num);
+		xocl_err(XDEV2DEV(xdev_hdl), "parse dev failed, ret = %d", dev_num);
 		goto failed;
 	}
 
@@ -1582,7 +1582,7 @@ int xocl_fdt_parse_blob(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	xocl_fdt_parse_subdevs(xdev_hdl, blob, *subdevs, dev_num);
 
 	for (i = 0; i < dev_num; i++) {
-		xocl_xdev_info(xdev_hdl, "%s: dyn_subdev_num: %d",
+		xocl_info(XDEV2DEV(xdev_hdl), "%s: dyn_subdev_num: %d",
 			(*subdevs + i)->info.name, (*subdevs + i)->info.num_res);
 		xocl_pack_subdev(xdev_hdl, *subdevs + i);
 	}
@@ -1632,7 +1632,7 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	 * metadata
 	 */
 	if (!subset_blob || fdt_check_header(subset_blob)) {
-		xocl_xdev_err(xdev_hdl, "invalid subset blob");
+		xocl_err(XDEV2DEV(xdev_hdl), "invalid subset blob");
 		return -EINVAL;
 	}
 
@@ -1657,7 +1657,7 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 	 * there is interface uuid in xclbin. we need to check blp/plp
 	 */
 	if (!blob || fdt_check_header(blob)) {
-		xocl_xdev_err(xdev_hdl, "invalid blob");
+		xocl_err(XDEV2DEV(xdev_hdl), "invalid blob");
 		return -EINVAL;
 	}
 
@@ -1666,12 +1666,12 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 		subset_int_uuid = fdt_getprop(subset_blob, subset_offset,
 				"interface_uuid", NULL);
 		if (!subset_int_uuid) {
-			xocl_xdev_err(xdev_hdl, "failed to get subset uuid");
+			xocl_err(XDEV2DEV(xdev_hdl), "failed to get subset uuid");
 			return -EINVAL;
 		}
 		offset = fdt_path_offset(blob, INTERFACES_PATH);
 		if (offset < 0) {
-			xocl_xdev_err(xdev_hdl, "Invalid offset %d",
+			xocl_err(XDEV2DEV(xdev_hdl), "Invalid offset %d",
 			       	offset);
 			return -EINVAL;
 		}
@@ -1682,14 +1682,14 @@ int xocl_fdt_check_uuids(xdev_handle_t xdev_hdl, const void *blob,
 			int_uuid = fdt_getprop(blob, offset, "interface_uuid",
 					NULL);
 			if (!int_uuid) {
-				xocl_xdev_err(xdev_hdl, "failed to get uuid");
+				xocl_err(XDEV2DEV(xdev_hdl), "failed to get uuid");
 				return -EINVAL;
 			}
 			if (!strcmp(int_uuid, subset_int_uuid))
 				break;
 		}
 		if (offset < 0) {
-			xocl_xdev_err(xdev_hdl, "Can not find uuid %s",
+			xocl_err(XDEV2DEV(xdev_hdl), "Can not find uuid %s",
 				subset_int_uuid);
 			return -ENOENT;
 		}
@@ -1705,7 +1705,7 @@ int xocl_fdt_add_pair(xdev_handle_t xdev_hdl, void *blob, char *name,
 
 	ret = fdt_setprop(blob, 0, name, val, size);
 	if (ret)
-		xocl_xdev_err(xdev_hdl, "set %s prop failed %d", name, ret);
+		xocl_err(XDEV2DEV(xdev_hdl), "set %s prop failed %d", name, ret);
 
 	return ret;
 }
@@ -1736,7 +1736,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 
 	len = fdt_totalsize(blob);
 	if (len > blob_sz) {
-		xocl_xdev_err(xdev_hdl, "Invalid blob inbut size");
+		xocl_err(XDEV2DEV(xdev_hdl), "Invalid blob inbut size");
 		return -EINVAL;
 	}
 
@@ -1750,7 +1750,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 
 	ret = fdt_create_empty_tree(output_blob, len);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "create output blob failed %d", ret);
+		xocl_err(XDEV2DEV(xdev_hdl), "create output blob failed %d", ret);
 		goto failed;
 	}
 
@@ -1758,7 +1758,7 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 		ret = xocl_fdt_overlay(output_blob, 0, core->fdt_blob, 0,
 				XOCL_FDT_ALL, -1);
 		if (ret) {
-			xocl_xdev_err(xdev_hdl, "overlay fdt_blob failed %d", ret);
+			xocl_err(XDEV2DEV(xdev_hdl), "overlay fdt_blob failed %d", ret);
 			goto failed;
 		}
 	}
@@ -1766,16 +1766,16 @@ int xocl_fdt_blob_input(xdev_handle_t xdev_hdl, char *blob, u32 blob_sz,
 	ret = xocl_fdt_overlay(output_blob, 0, blob, 0,
 			XOCL_FDT_ALL, part_level);
 	if (ret) {
-		xocl_xdev_err(xdev_hdl, "Overlay output blob failed %d", ret);
+		xocl_err(XDEV2DEV(xdev_hdl), "Overlay output blob failed %d", ret);
 		goto failed;
 	}
 
 	if (vbnv && strlen(vbnv) > 0) {
-		xocl_xdev_dbg(xdev_hdl, "Board VBNV: %s", vbnv);
+		xocl_dbg(XDEV2DEV(xdev_hdl), "Board VBNV: %s", vbnv);
 		ret = xocl_fdt_add_pair(xdev_hdl, output_blob, "vbnv", vbnv,
 			strlen(vbnv) + 1);
 		if (ret) {
-			xocl_xdev_err(xdev_hdl, "Adding VBNV pair failed, %d",
+			xocl_err(XDEV2DEV(xdev_hdl), "Adding VBNV pair failed, %d",
 				ret);
 			goto failed;
 		}
@@ -1952,7 +1952,7 @@ int xocl_fdt_build_priv_data(xdev_handle_t xdev_hdl, struct xocl_subdev *subdev,
 
 	if (j == ARRAY_SIZE(subdev_map)) {
 		/* should never hit */
-		xocl_xdev_err(xdev_hdl, "did not find dev map");
+		xocl_err(XDEV2DEV(xdev_hdl), "did not find dev map");
 		return -EFAULT;
 	}
 
@@ -1974,16 +1974,16 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	int	i;
 	u32 num_sect = top->m_header.m_numSections;
 
-	xocl_xdev_dbg(xdev_hdl,
+	xocl_dbg(XDEV2DEV(xdev_hdl),
 		"trying to find section header for axlf section %d", kind);
 
 	if (num_sect > XCLBIN_MAX_NUM_SECTION) {
-		xocl_xdev_err(xdev_hdl, "too many sections: %d", num_sect);
+		xocl_err(XDEV2DEV(xdev_hdl), "too many sections: %d", num_sect);
 		return NULL;
 	}
 
 	for (i = 0; i < num_sect; i++) {
-		xocl_xdev_dbg(xdev_hdl, "saw section header: %d",
+		xocl_dbg(XDEV2DEV(xdev_hdl), "saw section header: %d",
 			top->m_sections[i].m_sectionKind);
 		if (top->m_sections[i].m_sectionKind == kind) {
 			hdr = &top->m_sections[i];
@@ -1994,14 +1994,14 @@ const struct axlf_section_header *xocl_axlf_section_header(
 	if (hdr) {
 		if ((hdr->m_sectionOffset + hdr->m_sectionSize) >
 				 top->m_header.m_length) {
-			xocl_xdev_err(xdev_hdl, "found section is invalid");
+			xocl_err(XDEV2DEV(xdev_hdl), "found section is invalid");
 			hdr = NULL;
 		} else
-			xocl_xdev_dbg(xdev_hdl,
+			xocl_dbg(XDEV2DEV(xdev_hdl),
 				"header offset: %llu, size: %llu",
 				hdr->m_sectionOffset, hdr->m_sectionSize);
 	} else
-		xocl_xdev_dbg(xdev_hdl, "skip section header %d",
+		xocl_dbg(XDEV2DEV(xdev_hdl), "skip section header %d",
 				kind);
 
 	return hdr;
@@ -2081,7 +2081,7 @@ const char *xocl_fdt_get_ert_fw_ver(xdev_handle_t xdev_hdl, void *blob)
 		}
 	}
 	if (fw_ver)
-		xocl_xdev_dbg(xdev_hdl, "Load embedded scheduler firmware %s", fw_ver);
+		xocl_dbg(XDEV2DEV(xdev_hdl), "Load embedded scheduler firmware %s", fw_ver);
 
 	return fw_ver;
 }

@@ -37,7 +37,7 @@ int xocl_info_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	struct pci_dev *pdev = xdev->core.pdev;
 	u32 major, minor, patch;
 
-	userpf_info(xdev, "INFO IOCTL");
+	xocl_info(&XDEV(xdev), "INFO IOCTL");
 
 	sscanf(XRT_DRIVER_VERSION, "%d.%d.%d", &major, &minor, &patch);
 
@@ -253,7 +253,7 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 
 	xocl_p2p_conf_status(xdev, &changed);
 	if (changed) {
-		userpf_info(xdev, "p2p configure changed\n");
+		xocl_info(&XDEV(xdev), "p2p configure changed\n");
 		return false;
 	}
 
@@ -263,7 +263,7 @@ static bool xclbin_downloaded(struct xocl_dev *xdev, xuid_t *xclbin_id)
 
 	if (downloaded_xclbin && uuid_equal(downloaded_xclbin, xclbin_id)) {
 		ret = true;
-		userpf_info(xdev, "xclbin is already downloaded\n");
+		xocl_info(&XDEV(xdev), "xclbin is already downloaded\n");
 	}
 	XOCL_PUT_XCLBIN_ID(xdev);
 
@@ -319,10 +319,10 @@ static int xocl_preserve_mem(struct xocl_drm *drm_p, struct mem_topology *new_to
 	if (xocl_icap_get_data(xdev, DATA_RETAIN) && (topology != NULL) && drm_p->mm) {
 		if ((size == sizeof_sect(topology, m_mem_data)) &&
 		    !xocl_preserve_memcmp(new_topology, topology, size)) {
-			userpf_info(xdev, "preserving mem_topology.");
+			xocl_info(&XDEV(xdev), "preserving mem_topology.");
 			ret = 1;
 		} else {
-			userpf_info(xdev, "not preserving mem_topology.");
+			xocl_info(&XDEV(xdev), "not preserving mem_topology.");
 		}
 	}
 	XOCL_PUT_MEM_TOPOLOGY(xdev);
@@ -335,7 +335,7 @@ static bool xocl_xclbin_in_use(struct xocl_dev *xdev)
 	BUG_ON(!xdev);
 
 	if (live_clients(xdev, NULL) || atomic_read(&xdev->outstanding_execs)) {
-		userpf_err(xdev, " Current xclbin is in-use, can't change\n");
+		xocl_err(&XDEV(xdev), " Current xclbin is in-use, can't change\n");
 		return true;
 	}
 	return false;
@@ -358,18 +358,18 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	bool force_download = false;
 
 	if (!xocl_is_unified(xdev)) {
-		userpf_err(xdev, "XOCL: not unified Shell\n");
+		xocl_err(&XDEV(xdev), "XOCL: not unified Shell\n");
 		return -EINVAL;
 	}
 
 	if (copy_from_user(&bin_obj, axlf_ptr->xclbin, sizeof(struct axlf)))
 		return -EFAULT;
 	if (memcmp(bin_obj.m_magic, ICAP_XCLBIN_V2, sizeof(ICAP_XCLBIN_V2))) {
-		userpf_err(xdev, "invalid xclbin magic string\n");
+		xocl_err(&XDEV(xdev), "invalid xclbin magic string\n");
 		return -EINVAL;
 	}
 	if (uuid_is_null(&bin_obj.m_header.uuid)) {
-		userpf_err(xdev, "invalid xclbin uuid\n");
+		xocl_err(&XDEV(xdev), "invalid xclbin uuid\n");
 		return -EINVAL;
 	}
 
@@ -404,14 +404,14 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 
 	/* Really need to download, sanity check xclbin, first. */
 	if (xocl_xrt_version_check(xdev, &bin_obj, true)) {
-		userpf_err(xdev, "Xclbin isn't supported by current XRT\n");
+		xocl_err(&XDEV(xdev), "Xclbin isn't supported by current XRT\n");
 		err = -EINVAL;
 		goto done;
 	}
 
 	if (!xocl_verify_timestamp(xdev,
 		bin_obj.m_header.m_featureRomTimeStamp)) {
-		userpf_err(xdev, "TimeStamp of ROM did not match Xclbin\n");
+		xocl_err(&XDEV(xdev), "TimeStamp of ROM did not match Xclbin\n");
 		err = -EOPNOTSUPP;
 		goto done;
 	}
@@ -419,7 +419,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	/* Copy bitstream from user space and proceed. */
 	axlf = vmalloc(bin_obj.m_header.m_length);
 	if (!axlf) {
-		userpf_err(xdev, "Unable to alloc mem for xclbin, size=%llu\n",
+		xocl_err(&XDEV(xdev), "Unable to alloc mem for xclbin, size=%llu\n",
 			bin_obj.m_header.m_length);
 		err = -ENOMEM;
 		goto done;
@@ -435,7 +435,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		ulp_blob = (char*)axlf + dtbHeader->m_sectionOffset;
 		if (fdt_check_header(ulp_blob) || fdt_totalsize(ulp_blob) >
 				dtbHeader->m_sectionSize) {
-			userpf_err(xdev, "Invalid PARTITION_METADATA");
+			xocl_err(&XDEV(xdev), "Invalid PARTITION_METADATA");
 			err = -EINVAL;
 			goto done;
 		}
@@ -455,12 +455,12 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		 * the lite xclbin will not have BITSTREAM 
 		 */
 		if (xocl_axlf_section_header(xdev, axlf, BITSTREAM)) {
-			xocl_xdev_info(xdev, "check interface uuid");
+			xocl_info(XDEV2DEV(xdev), "check interface uuid");
 			err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
 				(const void *)((char*)xdev->ulp_blob));
 			if (err) {
-				userpf_err(xdev, "interface uuids do not match");
+				xocl_err(&XDEV(xdev), "interface uuids do not match");
 				err = -EINVAL;
 				goto done;
 			}
@@ -505,7 +505,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 	if (axlf_ptr->ksize) {
 		kernels = vmalloc(axlf_ptr->ksize);
 		if (!kernels) {
-			userpf_err(xdev, "Unable to alloc mem for kernels, size=%u\n",
+			xocl_err(&XDEV(xdev), "Unable to alloc mem for kernels, size=%u\n",
 				   axlf_ptr->ksize);
 			err = -ENOMEM;
 			goto done;
@@ -551,10 +551,10 @@ done:
 	if (size < 0)
 		err = size;
 	if (err) {
-		userpf_err(xdev, "Failed to download xclbin, err: %ld\n", err);
+		xocl_err(&XDEV(xdev), "Failed to download xclbin, err: %ld\n", err);
 	}
 	else
-		userpf_info(xdev, "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
+		xocl_info(&XDEV(xdev), "Loaded xclbin %pUb", &bin_obj.m_header.uuid);
 
 	vfree(axlf);
 	return err;
@@ -592,7 +592,7 @@ int xocl_hot_reset_ioctl(struct drm_device *dev, void *data,
 
 	xocl_drvinst_set_offline(xdev->core.drm, true);
 	xocl_queue_work(xdev, XOCL_WORK_RESET, XOCL_RESET_DELAY);
-	xocl_xdev_info(xdev, "Scheduled reset");
+	xocl_info(XDEV2DEV(xdev), "Scheduled reset");
 
 	return 0;
 }
@@ -608,7 +608,7 @@ int xocl_reclock_ioctl(struct drm_device *dev, void *data,
 	err = xocl_reclock(xdev, data);
 	xocl_drvinst_set_offline(xdev->core.drm, false);
 
-	userpf_info(xdev, "%s err: %d\n", __func__, err);
+	xocl_info(&XDEV(xdev), "%s err: %d\n", __func__, err);
 	return err;
 }
 
