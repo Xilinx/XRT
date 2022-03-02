@@ -30,6 +30,9 @@ namespace xdp {
                                   const char* label,
                                   const char* tooltip)
   {
+    if (!VPDatabase::alive() || !UserEventsPlugin::alive())
+      return;
+
     uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
@@ -54,6 +57,9 @@ namespace xdp {
 
   static void user_event_end_cb(unsigned int functionID)
   {
+    if (!VPDatabase::alive() || !UserEventsPlugin::alive())
+      return;
+
     uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
@@ -75,6 +81,9 @@ namespace xdp {
 
   static void user_event_happened_cb(const char* label)
   {
+    if (!VPDatabase::alive() || !UserEventsPlugin::alive())
+      return;
+
     double timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
@@ -91,6 +100,13 @@ namespace xdp {
 
   static void user_event_time_ns_cb(double time_ns, const char* label)
   {
+    if (!VPDatabase::alive() || !UserEventsPlugin::alive())
+      return;
+
+    // Basic check to ensure a valid time is given
+    if (time_ns < 0)
+      return;
+
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
 
     uint64_t l = 0 ;
