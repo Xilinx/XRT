@@ -27,8 +27,8 @@ namespace xdp {
   static UserEventsPlugin userEventsPluginInstance ;
 
   static void user_event_start_cb(unsigned int functionID,
-				  const char* label,
-				  const char* tooltip) 
+                                  const char* label,
+                                  const char* tooltip)
   {
     uint64_t timestamp = xrt_core::time_ns() ;
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
@@ -37,10 +37,10 @@ namespace xdp {
     const char* tooltipStr = (tooltip == nullptr) ? "" : tooltip ;
 
     VTFEvent* event = new UserRange(0, 
-				    static_cast<double>(timestamp), 
-				    true, // isStart
-				    (db->getDynamicInfo()).addString(labelStr),
-				    (db->getDynamicInfo()).addString(tooltipStr)) ;
+                                    static_cast<double>(timestamp),
+                                    true, // isStart
+                                    (db->getDynamicInfo()).addString(labelStr),
+                                    (db->getDynamicInfo()).addString(tooltipStr)) ;
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getDynamicInfo()).markStart(functionID, event->getEventId()) ;
 
@@ -59,10 +59,10 @@ namespace xdp {
 
     uint64_t start = (db->getDynamicInfo()).matchingStart(functionID) ;
     VTFEvent* event = new UserRange(start, 
-				    static_cast<double>(timestamp), 
-				    false, // isStart
-				    0,
-				    0) ;
+                                    static_cast<double>(timestamp),
+                                    false, // isStart
+                                    0,
+                                    0) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
 
@@ -92,9 +92,9 @@ namespace xdp {
 } // end namespace xdp
 
 extern "C" 
-void user_event_start_cb(unsigned int functionID, 
-			 const char* label, 
-			 const char* tooltip) 
+void user_event_start_cb(unsigned int functionID,
+                         const char* label,
+                         const char* tooltip)
 {
   xdp::user_event_start_cb(functionID, label, tooltip) ;
 }

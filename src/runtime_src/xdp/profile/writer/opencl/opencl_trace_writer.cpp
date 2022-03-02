@@ -93,8 +93,8 @@ namespace xdp {
          << ",Write,Write data transfer from host to global memory"
          << std::endl ;
     fout << "Dynamic_Row," << copyBucket
-	 << ",Copy,Copy data transfers from global memory to global memory"
-	 << std::endl ;
+         << ",Copy,Copy data transfers from global memory to global memory"
+         << std::endl ;
     fout << "Group_End,Data Transfer" << std::endl ;
     fout << "Group_Start,Kernel Enqueues" << std::endl ;
     //fout << "Dynamic_Row_Summary," << enqueueSummaryBucket 
@@ -141,16 +141,16 @@ namespace xdp {
         bucket = writeBucket ;
       }
       else if (e->isCopyBuffer()) {
-	bucket = copyBucket ;
+        bucket = copyBucket ;
       }
       else if (e->isKernelEnqueue())
       {
-	// Construct the name
-	KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e.get()) ;
-	if (ke != nullptr)
-	  bucket = enqueueBuckets[ke->getIdentifier()] ;
-	else
-	  bucket = generalAPIBucket; // Should never happen
+        // Construct the name
+        KernelEnqueue* ke = dynamic_cast<KernelEnqueue*>(e.get()) ;
+        if (ke != nullptr)
+          bucket = enqueueBuckets[ke->getIdentifier()] ;
+        else
+          bucket = generalAPIBucket; // Should never happen
       }
       e->dump(fout, bucket) ;
     }

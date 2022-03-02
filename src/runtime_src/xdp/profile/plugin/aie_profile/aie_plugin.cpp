@@ -146,9 +146,9 @@ namespace xdp {
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
-	    {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+                                 XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+      {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                 XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
     };
     mMemoryEndEvents = {
       {"conflicts",             {XAIE_EVENT_GROUP_MEMORY_CONFLICT_MEM, XAIE_EVENT_GROUP_ERRORS_MEM}},
@@ -158,9 +158,9 @@ namespace xdp {
       {"dma_stalls_mm2s",       {XAIE_EVENT_DMA_MM2S_0_STALLED_LOCK_ACQUIRE_MEM,
                                  XAIE_EVENT_DMA_MM2S_1_STALLED_LOCK_ACQUIRE_MEM}},
       {"write_bandwidths",      {XAIE_EVENT_DMA_S2MM_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
-	    {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
-	                               XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
+                                 XAIE_EVENT_DMA_S2MM_1_FINISHED_BD_MEM}},
+      {"read_bandwidths",       {XAIE_EVENT_DMA_MM2S_0_FINISHED_BD_MEM,
+                                 XAIE_EVENT_DMA_MM2S_1_FINISHED_BD_MEM}}
     };
 
     // **** PL/Shim Counters ****
@@ -631,7 +631,7 @@ namespace xdp {
     constexpr int NUM_MODULES = 3;
 
     // Get AIE clock frequency
-	  std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
+    std::shared_ptr<xrt_core::device> device = xrt_core::get_userpf_device(handle);
     auto clockFreqMhz = xrt_core::edge::aie::get_clock_freq_mhz(device.get());
 
     int numCounters[NUM_MODULES] =

@@ -49,8 +49,8 @@ namespace xdp {
     {
       // Cannot rename summary file to checkpoint file
       xrt_core::message::send(xrt_core::message::severity_level::warning,
-			      "XRT",
-			      "Cannot create profile summary checkpoint file") ;
+                              "XRT",
+                              "Cannot create profile summary checkpoint file") ;
     }
 
     fout.open(getRawBasename()) ;

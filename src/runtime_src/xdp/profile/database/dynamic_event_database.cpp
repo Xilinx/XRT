@@ -143,7 +143,7 @@ namespace xdp {
           startEvent = (*iter);
           lst.erase(iter);
           break;
-	}
+        }
       }
     }
     return startEvent ;
