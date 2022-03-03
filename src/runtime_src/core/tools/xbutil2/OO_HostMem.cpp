@@ -107,14 +107,13 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
 
-  bool enable = false;
   try {
-    if (!boost::iequals(m_action, "ENABLE") && !boost::iequals(m_action, "DISABLE")) {
+    bool enable = boost::iequals(m_action, "ENABLE");
+    if (!enable && !boost::iequals(m_action, "DISABLE")) {
       std::cerr << boost::format("ERROR: Invalid action value: '%s'\n") % m_action;
       printHelp();
       throw xrt_core::error(std::errc::operation_canceled);
     }
-    enable =  boost::iequals(m_action, "ENABLE");
 
     // Exit if ENABLE action is specified and 
     // size is not 0 or size is not a power of 2
@@ -144,7 +143,8 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
 
     //Set host-mem
     host_mem(deviceCollection[0].get(), enable, size);
-  } 
+    std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
+  }
   catch(const xrt_core::error& e) {
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
@@ -153,6 +153,4 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     std::cerr << boost::format("\nERROR: %s\n") % e.what();
     throw xrt_core::error(std::errc::operation_canceled);
   }
-
-  std::cout << boost::format("\nHost-mem %s successfully\n") % (enable ? "enabled" : "disabled");
 }
