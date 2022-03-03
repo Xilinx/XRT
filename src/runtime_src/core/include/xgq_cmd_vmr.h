@@ -283,8 +283,8 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_ext_xsabin:1;
 	uint16_t has_ext_scfw:1;
 	uint16_t has_ext_sysdtb:1;
-	uint16_t pl_is_ready:1;
 	uint16_t ps_is_ready:1;
+	uint16_t pl_is_ready:1;
 	uint16_t resvd1:5;
 	uint16_t multi_boot_offset;
 	uint32_t debug_level:3;
