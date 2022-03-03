@@ -24,6 +24,7 @@
 #include "core/common/query_requests.h"
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 #include "flasher.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "core/tools/common/XBUtilities.h"
 #include "core/tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;

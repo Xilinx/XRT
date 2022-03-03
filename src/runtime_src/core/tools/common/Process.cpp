@@ -37,6 +37,7 @@
 #include "ProgressBar.h"
 #include "Process.h"
 #include "EscapeCodes.h"
+#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 
 // 3rd Party Library - Include Files

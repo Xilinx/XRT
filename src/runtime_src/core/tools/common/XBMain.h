@@ -20,6 +20,7 @@
 // Include files
 
 // Please keep these to the bare minimum
+#include "XBHelpMenusCore.h"
 #include "XBHelpMenus.h"
 #include <string>
     

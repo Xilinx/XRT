@@ -16,6 +16,8 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "XBHelpMenusCore.h"
+#include "XBUtilitiesCore.h"
 #include "XBHelpMenus.h"
 #include "XBUtilities.h"
 #include "core/common/time.h"

@@ -19,6 +19,7 @@
 #include "xrt.h"
 #include "SubCmdReset.h"
 #include "core/common/query_requests.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 

@@ -16,6 +16,7 @@
 
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
+#include "XBUtilitiesCore.h"
 #include "XBUtilities.h"
 #include "core/common/error.h"
 #include "core/common/utils.h"

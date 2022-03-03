@@ -32,6 +32,7 @@
 
 
 #include "core/common/error.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "core/tools/common/XBUtilities.h"
 #include "core/tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;

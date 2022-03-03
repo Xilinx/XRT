@@ -19,7 +19,6 @@
 
 // Include files
 // Please keep these to the bare minimum
-#include "XBHelpMenusCore.h"
 #include "Report.h"
 
 #include <string>

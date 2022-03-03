@@ -17,7 +17,6 @@
 #ifndef __XBUtilities_h_
 #define __XBUtilities_h_
 
-#include "XBUtilitiesCore.h"
 // Include files
 // Please keep these to the bare minimum
 #include "core/common/device.h"

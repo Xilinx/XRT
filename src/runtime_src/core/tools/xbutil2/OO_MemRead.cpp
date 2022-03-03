@@ -18,6 +18,7 @@
 #include "OO_MemRead.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 

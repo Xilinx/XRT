@@ -30,6 +30,7 @@
 #include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "core/tools/common/XBUtilities.h"
 #include "core/tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;

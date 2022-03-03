@@ -20,6 +20,8 @@
 #include "core/common/error.h"
 
 // Utilities
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 

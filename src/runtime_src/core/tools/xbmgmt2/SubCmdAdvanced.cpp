@@ -24,6 +24,7 @@
 #include "common/device.h"
 #include "common/xclbin_parser.h"
 
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 
