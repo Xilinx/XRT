@@ -207,12 +207,12 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     sensor_array.push_back({"", pt});
   }
 
-  std::string bd_power;
+  uint64_t bd_power;
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
-    if (!strcmp((tmp.label).c_str(), "POWER"))
-      bd_power = xrt_core::utils::format_base10_shiftdown6(tmp.input);
+    if (!strcmp((tmp.label).c_str(), "Total Power"))
+      bd_power = tmp.input;
   }
   ptree_type root;
 
