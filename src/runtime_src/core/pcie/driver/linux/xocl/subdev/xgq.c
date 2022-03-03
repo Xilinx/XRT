@@ -2103,13 +2103,19 @@ static int xgq_vmr_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
-
-	ret = xocl_subdev_create(xdev, &subdev_info);
+	ret = xgq_download_apu_firmware(pdev);
 	if (ret) {
-		xocl_err(&pdev->dev, "unable to create HWMON_SDM subdev, ret: %d", ret);
+		XGQ_WARN(xgq, "unable to download APU, ret: %d", ret);
 		ret = 0;
 	}
+		
+	ret = xocl_subdev_create(xdev, &subdev_info);
+	if (ret) {
+		XGQ_WARN(xgq, "unable to create HWMON_SDM subdev, ret: %d", ret);
+		ret = 0;
+	}
+
+	XGQ_INFO(xgq, "Initialized xgq subdev, polling (%d)", xgq->xgq_polling);
 
 	return ret;
 
