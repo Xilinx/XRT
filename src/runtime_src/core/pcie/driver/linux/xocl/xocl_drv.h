@@ -248,8 +248,8 @@ static inline void xocl_memcpy_toio(void *iomem, void *buf, u32 size)
 	dev_warn(PDEV(dev), "%s %llx %s: "fmt, PNAME(dev), (u64)dev, __func__, ##args)
 #define xocl_info(dev, fmt, args...)			\
 	do {						\
-		dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt,    \
-				PNAME(dev), (u64)dev, __func__, ##args);      \
+		dev_printk(KERN_DEBUG, PDEV(dev), "%s %llx %s: "fmt, 	\
+			   PNAME(dev), (u64)dev, __func__, ##args);	\
 		xocl_dbg_trace(XOCL_SUBDEV_DBG_HDL(dev), XRT_TRACE_LEVEL_INFO,\
 			       "%s %s %llx %s: "fmt"\n", PNAME(dev),	\
 			       dev_name(dev), (u64)dev, __func__, ##args);\
