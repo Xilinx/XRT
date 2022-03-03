@@ -444,7 +444,7 @@ update_default_only(xrt_core::device* device, bool value)
       if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
         if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
-          std::cout << "Backup image booted. Action will be performed only on deafult image." <<std::endl;
+          std::cout << "Backup image booted. Action will be performed only on default image.\n";
         }
         break;
       }
