@@ -234,13 +234,11 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   // iterate over temperature data, store to ptree by converting to Celcius
   for(const auto& tmp : output)
   {
-    uint64_t temp_C;
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
-    temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("temp_C", temp_C);
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    pt.put("temp_C", tmp.input);
+    pt.put("highest", tmp.highest);
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }
@@ -270,9 +268,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
   {
     if (!strcmp("Vccint Temp", (tmp.label).c_str()))
     {
-      uint64_t fan_temp_C;
-      fan_temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
-      pt.put("critical_trigger_temp_C", fan_temp_C);
+      pt.put("critical_trigger_temp_C", tmp.input);
       break;
     }
   }
