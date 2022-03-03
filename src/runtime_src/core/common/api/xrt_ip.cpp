@@ -227,6 +227,8 @@ class ip_impl
     return count++;
   }
 
+  //Address of ISR register in CU control register space
+  //This is based on contract between HLS/VITIS and XRT
   static constexpr uint32_t isr_reg_addr = 0x0c;
 
 private:
@@ -309,9 +311,11 @@ public:
     //Ensure interrupt object is created
     auto intr = get_interrupt();
     //Workaround needed
+    //Sometimes after cold power-up interrupts are in unexpected state
+    //To be fixed before this feature is made available for external use
     intr->disable();
     intr->enable();
-    auto intr_status = intr->wait(std::chrono::milliseconds(1000));
+    auto intr_status = intr->wait(std::chrono::milliseconds(10));
     if (intr_status != std::cv_status::timeout)
       throw xrt_core::error(-EINVAL, "xrt::ip::add_callback: Pending interrupt seen at start");
 
@@ -341,6 +345,8 @@ public:
       uint32_t interrupt_value = read_register(isr_reg_addr);
       if (!interrupt_value) {
         //Workaround needed
+        //Duplicate/invalid interrupt is seen sometimes
+        //To be fixed before this feature is made available for external use
         intr->wait();//Clear interrupt counter inside driver
         continue;
       }

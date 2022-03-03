@@ -11,10 +11,10 @@
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
-#include <bitset>
+# include <bitset>
 # include <condition_variable>
 # include <cstdint>
-#include <functional>
+# include <functional>
 # include <string>
 #endif
 
@@ -54,7 +54,7 @@ public:
    * xrt::ip::interrupt_vector represents an IP interrupt vector object 
    * with value from ISR register.
    * This object is passed to callback function as argument
-   * This has 32 bits
+   * This has 32 bits (number of bits in ISR register)
    */
   using interrupt_vector = std::bitset<isr_size>;
 
