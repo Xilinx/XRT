@@ -41,19 +41,20 @@
 	((XOCL_DRIVER_MAJOR)*1000 + (XOCL_DRIVER_MINOR)*100 +   \
 	XOCL_DRIVER_PATCHLEVEL)
 
-#define userpf_err(d, args...)                     \
-	xocl_err(&XDEV(d)->pdev->dev, ##args)
-#define userpf_info(d, args...)                    \
-	xocl_info(&XDEV(d)->pdev->dev, ##args)
-#define userpf_dbg(d, args...)                     \
-	xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+/*#define userpf_err(d, args...)                     \
+ *	xocl_err(&XDEV(d)->pdev->dev, ##args)
+ *#define userpf_info(d, args...)                    \
+ *	xocl_info(&XDEV(d)->pdev->dev, ##args)
+ *#define userpf_dbg(d, args...)                     \
+ *	xocl_dbg(&XDEV(d)->pdev->dev, ##args)
+ */
 #define userpf_info_once(d, args...)               \
 ({                                                 \
 	 static bool __info_once __read_mostly;    \
 						   \
 	 if (!__info_once) {                       \
 		 __info_once = true;               \
-		 userpf_info(d, ##args);           \
+		 xocl_info(XDEV2DEV(d), ##args);           \
 	 }                                         \
  })
 
