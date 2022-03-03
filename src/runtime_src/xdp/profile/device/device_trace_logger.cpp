@@ -298,8 +298,8 @@ namespace xdp {
         db->getDynamicInfo().addEvent(strmEvent);
         std::get<0>(matchingStart) = strmEvent->getEventType() ;
         std::get<1>(matchingStart) = strmEvent->getEventId(); 
-	std::get<2>(matchingStart) = hostTimestamp ;
-	std::get<3>(matchingStart) = deviceTimestamp ;
+        std::get<2>(matchingStart) = hostTimestamp ;
+        std::get<3>(matchingStart) = deviceTimestamp ;
         hostTimestamp += halfCycleTimeInMs;
       }
       // add end event
@@ -328,7 +328,7 @@ namespace xdp {
       //  then we must have dropped an end packet.  Add a dummy end packet
       //  here.
       if (db->getDynamicInfo().hasMatchingDeviceEventStart(traceId, ty)){
-	std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
+        std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
           db->getDynamicInfo().matchingDeviceEventStart(traceId, ty);
         memEvent =
           new DeviceMemoryAccess(std::get<1>(matchingStart),
@@ -357,10 +357,10 @@ namespace xdp {
         memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
         memEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(memEvent);
-	std::get<0>(matchingStart) = memEvent->getEventType() ;
-	std::get<1>(matchingStart) = memEvent->getEventId() ;
-	std::get<2>(matchingStart) = hostTimestamp ;
-	std::get<3>(matchingStart) = deviceTimestamp ;
+        std::get<0>(matchingStart) = memEvent->getEventType() ;
+        std::get<1>(matchingStart) = memEvent->getEventId() ;
+        std::get<2>(matchingStart) = hostTimestamp ;
+        std::get<3>(matchingStart) = deviceTimestamp ;
 
         // Also, progress time so the end is after the start
         hostTimestamp += halfCycleTimeInMs;
@@ -381,10 +381,10 @@ namespace xdp {
           memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
-	  std::get<0>(matchingStart) = memEvent->getEventType() ;
-	  std::get<1>(matchingStart) = memEvent->getEventId() ;
-	  std::get<2>(matchingStart) = hostTimestamp ;
-	  std::get<3>(matchingStart) = deviceTimestamp ;
+          std::get<0>(matchingStart) = memEvent->getEventType() ;
+          std::get<1>(matchingStart) = memEvent->getEventId() ;
+          std::get<2>(matchingStart) = hostTimestamp ;
+          std::get<3>(matchingStart) = deviceTimestamp ;
           // Also, progress time so the end is after the start
           hostTimestamp += halfCycleTimeInMs;
         }

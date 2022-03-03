@@ -25,9 +25,9 @@ namespace xdp {
   std::atomic<unsigned int> VPTraceWriter::traceIDCtr{0};
 
   VPTraceWriter::VPTraceWriter(const char* filename,
-				 const std::string& v,
-				 const std::string& c,
-				 uint16_t r) :
+                                 const std::string& v,
+                                 const std::string& c,
+                                 uint16_t r) :
     VPWriter(filename),
     version(v), creationTime(c), resolution(r),
     humanReadable(true)

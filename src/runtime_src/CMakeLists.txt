@@ -68,11 +68,12 @@ else()
   endif()
 
   # Build Subdirectories
-  add_subdirectory(xocl)
-  add_subdirectory(xrt)
-  add_subdirectory(tools/xclbinutil)
+  if (NOT MCDM)
+    add_subdirectory(xocl)
+    add_subdirectory(xrt)
+    add_subdirectory(tools/xclbinutil)
+    add_subdirectory(xdp)
+  endif (NOT MCDM)
   add_subdirectory(tools/scripts)
   add_subdirectory(core)
-  add_subdirectory(xdp)
 endif()
-

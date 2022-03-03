@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -108,8 +108,8 @@ namespace {
   static void load_user_profiling_plugin()
   {
     static xrt_core::module_loader user_event_loader("xdp_user_plugin",
-						     register_user_functions,
-						     nullptr) ;
+                                                     register_user_functions,
+                                                     nullptr) ;
   }
 
 } // end anonymous
@@ -121,13 +121,11 @@ extern "C"
     try {
       load_user_profiling_plugin() ;
       if (user_range_start_cb != nullptr) 
-	user_range_start_cb(id, label, tooltip) ;
+        user_range_start_cb(id, label, tooltip) ;
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::error,
-			      "XRT",
-			      ex.what()) ;
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what()) ;
     }
   }
 
@@ -136,13 +134,11 @@ extern "C"
     try {
       load_user_profiling_plugin() ;
       if (user_range_end_cb != nullptr) 
-	user_range_end_cb(id);
+        user_range_end_cb(id);
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::error,
-			      "XRT",
-			      ex.what()) ;
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what()) ;
     }
   }
 
@@ -151,13 +147,11 @@ extern "C"
     try {
       load_user_profiling_plugin() ;
       if (user_event_cb != nullptr) 
-	user_event_cb(label) ;
+        user_event_cb(label) ;
     }
     catch(const std::exception& ex)
     {
-      xrt_core::message::send(xrt_core::message::severity_level::error,
-			      "XRT",
-			      ex.what()) ;
+      xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", ex.what()) ;
     }
   }
 }

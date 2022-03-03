@@ -29,10 +29,10 @@ namespace xdp {
 
 
   HALDeviceTraceWriter::HALDeviceTraceWriter(const char* filename, uint64_t devId, 
-					     const std::string& version,
-					     const std::string& creationTime,
-					     const std::string& xrtV,
-					     const std::string& toolV)
+                                             const std::string& version,
+                                             const std::string& creationTime,
+                                             const std::string& xrtV,
+                                             const std::string& toolV)
       : VPTraceWriter(filename, version, creationTime, 9 /* ns */),
         xrtVersion(xrtV),
         toolVersion(toolV),
@@ -76,8 +76,8 @@ namespace xdp {
       fout << "Group_Start,KDMA" << std::endl ;
       for (unsigned int i = 0 ; i < numKDMA ; ++i)
       {
-	      fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl;
-	      fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl;
+              fout << "Dynamic_Row," << ++rowCount << ",Read, ,KERNEL_READ" << std::endl;
+              fout << "Dynamic_Row," << ++rowCount << ",Write, ,KERNEL_WRITE" << std::endl;
       }
       fout << "Group_End,KDMA" << std::endl ;
 #endif

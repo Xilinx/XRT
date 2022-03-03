@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,20 +14,24 @@
  * under the License.
  */
 
-#ifndef USER_EVENT_CALLBACKS_DOT_H
-#define USER_EVENT_CALLBACKS_DOT_H
+#ifndef __OO_AieClockFreq_h_
+#define __OO_AieClockFreq_h_
 
-// These are the functions that are visible when the plugin is dynamically
-//  linked in.  XRT should call them directly
-extern "C"
-void user_event_start_cb(unsigned int functionID,
-                         const char* label,
-                         const char* tooltip) ;
+#include "tools/common/OptionOptions.h"
 
-extern "C"
-void user_event_end_cb(unsigned int functionID) ;
+class OO_AieClockFreq : public OptionOptions {
+ public:
+  virtual void execute( const SubCmdOptions &_options ) const;
 
-extern "C"
-void user_event_happened_cb(const char* label) ;
+ public:
+  OO_AieClockFreq( const std::string &_longName, bool _isHidden = false );
+
+ private:
+   std::string m_device;
+   uint32_t m_partition_id;
+   bool m_get;
+   std::string m_setFreq;
+   bool m_help;
+};
 
 #endif

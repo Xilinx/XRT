@@ -64,7 +64,7 @@ namespace xdp {
       db->broadcast(VPDatabase::READ_TRACE, nullptr) ;
       for (auto w : writers)
       {
-	w->write(false) ;
+        w->write(false) ;
       }
       db->unregisterPlugin(this) ;
     }

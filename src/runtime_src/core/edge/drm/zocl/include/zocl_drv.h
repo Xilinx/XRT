@@ -243,6 +243,7 @@ int zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf,
 void zocl_destroy_aie(struct drm_zocl_dev *zdev);
 int zocl_aie_request_part_fd(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_reset(struct drm_zocl_dev *zdev);
+int zocl_aie_freqscale(struct drm_zocl_dev *zdev, void *data);
 int zocl_aie_graph_alloc_context(struct drm_zocl_dev *dev, u32 gid,
 		u32 ctx_code, struct sched_client_ctx *client);
 int zocl_aie_graph_free_context(struct drm_zocl_dev *dev, u32 gid,
@@ -326,5 +327,6 @@ extern u32 zocl_cu_get_status(struct platform_device *pdev);
 extern u32 zocl_scu_get_status(struct platform_device *pdev);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
 extern const struct drm_gem_object_funcs zocl_gem_object_funcs;
+extern const struct drm_gem_object_funcs zocl_cma_default_funcs;
 #endif
 #endif
