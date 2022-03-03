@@ -22,17 +22,19 @@
 #include "core/include/experimental/xrt_ip.h"
 #include "core/common/api/native_profile.h"
 
-#include "core/common/device.h"
 #include "core/common/config_reader.h"
 #include "core/common/debug.h"
+#include "core/common/device.h"
 #include "core/common/error.h"
+#include "core/common/thread.h"
 #include "core/common/xclbin_parser.h"
 
+#include <atomic>
 #include <cstdlib>
 #include <cstring>
-#include <atomic>
 #include <memory>
 #include <string>
+#include <thread>
 
 #ifdef _WIN32
 # pragma warning( disable : 4244 4996)
@@ -119,6 +121,8 @@ public:
     return device->wait_ip_interrupt(handle, static_cast<int32_t>(timeout.count()));
   }
 };
+
+using callback_function_type = std::function<void(xrt::ip::interrupt_vector)>;
 
 // struct ip_impl - The internals of an xrt::ip
 class ip_impl
@@ -223,11 +227,17 @@ class ip_impl
     return count++;
   }
 
+  static constexpr uint32_t isr_reg_addr = 0x0c;
+
 private:
   std::shared_ptr<xrt_core::device> device;      // shared ownership
   std::weak_ptr<ip::interrupt_impl> interrupt;   // interrupt if active
   ip_context ipctx;
   uint32_t uid;                                  // internal unique id for debug
+  callback_function_type callback;
+  //single worker thread to handle raised ip interrupts and run the callback
+  std::thread isr_thread;
+  std::atomic<bool> isr_stop {false};
 
 public:
   // ip_impl - constructor
@@ -246,6 +256,10 @@ public:
   ~ip_impl()
   {
     XRT_DEBUGF("ip_impl::~ip_impl(%d)\n" , uid);
+    if (callback) {
+      isr_stop = true;
+      isr_thread.join();
+    }
   }
 
   ip_impl(const ip_impl&) = delete;
@@ -284,6 +298,58 @@ public:
       interrupt = intr = std::shared_ptr<ip::interrupt_impl>(new ip::interrupt_impl(device, ipctx.get_idx()));
 
     return intr;
+  }
+
+  void
+  add_callback(callback_function_type&& fcn)
+  {
+    if (callback)
+      throw xrt_core::error(-EINVAL, "xrt::ip::add_callback: Only one callback is allowed");
+
+    //Ensure interrupt object is created
+    auto intr = get_interrupt();
+    //Workaround needed
+    intr->disable();
+    intr->enable();
+    auto intr_status = intr->wait(std::chrono::milliseconds(1000));
+    if (intr_status != std::cv_status::timeout)
+      throw xrt_core::error(-EINVAL, "xrt::ip::add_callback: Pending interrupt seen at start");
+
+    callback = std::move(fcn);
+    //Start ISR handler thread
+    isr_thread = xrt_core::thread(&xrt::ip_impl::isr_handler, this);
+  }
+
+  // Run registered callback
+  void
+  run_callback(xrt::ip::interrupt_vector vec)
+  {
+    if (callback)
+      callback(vec);
+  }
+
+  // worker thread ISR handler, executes callabck for a raised interrupt
+  void
+  isr_handler()
+  {
+    auto intr = get_interrupt();
+    while (!isr_stop) {
+      auto intr_status = intr->wait(std::chrono::milliseconds(1000));
+      if (intr_status == std::cv_status::timeout)
+        continue;
+
+      uint32_t interrupt_value = read_register(isr_reg_addr);
+      if (!interrupt_value) {
+        //Workaround needed
+        intr->wait();//Clear interrupt counter inside driver
+        continue;
+      }
+
+      run_callback(xrt::ip::interrupt_vector{interrupt_value});
+      write_register(isr_reg_addr, interrupt_value);
+      intr->enable();
+      //intr->wait();//Clear interrupt counter inside driver
+    }
   }
 
 };
@@ -331,6 +397,13 @@ ip::
 create_interrupt_notify()
 {
   return xrt::ip::interrupt{handle->get_interrupt()};
+}
+
+void
+ip::
+add_callback(std::function<void(xrt::ip::interrupt_vector, void*)> fcn, void* data)
+{
+  handle->add_callback([=](xrt::ip::interrupt_vector vec) {fcn(vec, data); });
 }
 
 ////////////////////////////////////////////////////////////////

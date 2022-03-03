@@ -11,8 +11,10 @@
 #include "xrt/detail/pimpl.h"
 
 #ifdef __cplusplus
+#include <bitset>
 # include <condition_variable>
 # include <cstdint>
+#include <functional>
 # include <string>
 #endif
 
@@ -44,6 +46,18 @@ class ip_impl;
 class ip : public detail::pimpl<ip_impl>
 {
 public:
+  static constexpr size_t isr_size = 32;
+  /*!
+   * @interrupt_vector
+   *
+   * @brief
+   * xrt::ip::interrupt_vector represents an IP interrupt vector object 
+   * with value from ISR register.
+   * This object is passed to callback function as argument
+   * This has 32 bits
+   */
+  using interrupt_vector = std::bitset<isr_size>;
+
   /*!
    * @class interrupt
    *
@@ -186,6 +200,22 @@ public:
   XCL_DRIVER_DLLESPEC
   interrupt
   create_interrupt_notify();
+
+  /**
+   * add_callback() - Add a callback function for user managed interrupts
+   *
+   * @param state       State to invoke callback on
+   * @param callback    Callback function
+   * @param data        User data to pass to callback function
+   *
+   * The function is called when the interrupts change state
+   * The function object's first parameter is an interrupt object with interrupt bit values
+   *
+   */
+  XCL_DRIVER_DLLESPEC
+  void
+  add_callback(std::function<void(xrt::ip::interrupt_vector, void*)> callback, void* data);
+
 };
 
 } // xrt
