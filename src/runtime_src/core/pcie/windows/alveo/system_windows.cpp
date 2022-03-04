@@ -18,7 +18,6 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
-#include <Winsock2.h>
 #include <windows.h>
 
 #include <boost/format.hpp>
