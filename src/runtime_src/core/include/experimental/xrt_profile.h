@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020, Xilinx Inc - All rights reserved
+ * Copyright (C) 2020-2022, Xilinx Inc - All rights reserved
  * Xilinx Runtime (XRT) Experimental APIs
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -22,7 +22,30 @@
 
 #ifdef __cplusplus
 
+#include <chrono>
+
 namespace xrt { namespace profile {
+
+  /*!
+   * @class user_range
+   *
+   * @brief
+   * xrt::profile::user_range measures time difference between two user defined points in host program
+   *
+   * @details
+   * A user range is associated with an ID and some user recognizable metadata
+   * in form of a label and tooltip. Time duration(s) between start() and stop()
+   * are measured and post processed. They're shown in summary and represented on trace waveforms.
+   * Usage -
+   * 1. If a user_range is instantiated using the default constructor, no time is marked
+   *    until the user calls start with two strings (label and tooltip)
+   * 2. The user must call start() and stop() to mark ranges of time they are interested in.
+   *    If stop() is not called, then any range being tracked lasts until the user_range object is destructed
+   * 3. As a shortcut, the user can instantiate a user_range object passing two strings (label and tooltip).  This starts monitoring the range immediately
+   *    The user_range object can be reused any number of times, by calling start()/stop() pairs in the host code
+   * 4. Multiple sequential calls to start() ignore all but the first call
+   * 5. Multiple sequential calls to stop() ignore all but the first call
+   */
 
   class user_range
   {
@@ -89,6 +112,11 @@ namespace xrt { namespace profile {
      *
      * If the range is still actively recording time, end the current
      * range and start a new one.
+     *
+     * @label: The string that appears embedded on the waveform for this range
+     * @tooltip: The string that appears on the waveform when hovering
+     * over the range
+     * Return:   none
      */
     XCL_DRIVER_DLLESPEC
     void start(const char* label, const char* tooltip = nullptr) ;
@@ -103,6 +131,16 @@ namespace xrt { namespace profile {
     void end() ;
   } ;
 
+  /*!
+   * @class user_event
+   *
+   * @brief
+   * xrt::profile::user_event mark a specific point in execution with a label for later visualization
+   *
+   * @details
+   * A user event can be generated from inside host code and optionally tagged with a label.
+   * These events are post-processed and represented on summary and trace waveforms as markers.
+   */
   class user_event
   {
   public:
@@ -124,15 +162,23 @@ namespace xrt { namespace profile {
     
     /**
      * mark() - Mark the current moment in time with a marker on the waveform
+     *
+     * @label: An optional label that will be displayed on top of marker in waveform
+     * Return:   none
      */
     XCL_DRIVER_DLLESPEC
     void mark(const char* label = nullptr) ;
 
     /**
      * mark_time_ns() - Mark a custom moment in time with a marker on the waveform
+     *
+     * @time_ns: Time duration in ns from start of appliction. Must be compatible with
+     * xrt_core::time_ns api
+     * @label: An optional label that will be displayed on top of marker in waveform
+     * Return:   none
      */
     XCL_DRIVER_DLLESPEC
-    void mark_time_ns(double time_ns, const char* label = nullptr) ;
+    void mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label = nullptr) ;
   } ;
 
 } // end namespace profile
@@ -182,7 +228,7 @@ void xrtUEMark(const char* label) ;
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtUEMarkTimeNs(double time_ns, const char* label) ;
+void xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label) ;
 
 #ifdef __cplusplus
 }

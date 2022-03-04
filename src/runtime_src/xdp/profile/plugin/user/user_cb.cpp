@@ -98,13 +98,9 @@ namespace xdp {
     (db->getStats()).addEventCount(label);
   }
 
-  static void user_event_time_ns_cb(double time_ns, const char* label)
+  static void user_event_time_ns_cb(unsigned long long int time_ns, const char* label)
   {
     if (!VPDatabase::alive() || !UserEventsPlugin::alive())
-      return;
-
-    // Basic check to ensure a valid time is given
-    if (time_ns < 0)
       return;
 
     VPDatabase* db = userEventsPluginInstance.getDatabase() ;
@@ -112,7 +108,7 @@ namespace xdp {
     uint64_t l = 0 ;
     if (label != nullptr)
       l = (db->getDynamicInfo()).addString(label) ;
-    VTFEvent* event = new UserMarker(0, time_ns, l) ;
+    VTFEvent* event = new UserMarker(0, static_cast<double>(time_ns), l) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
     (db->getStats()).addEventCount(label);
@@ -141,7 +137,7 @@ void user_event_happened_cb(const char* label)
 }
 
 extern "C"
-void user_event_time_ns_cb(double time_ns, const char* label)
+void user_event_time_ns_cb(unsigned long long int time_ns, const char* label)
 {
   xdp::user_event_time_ns_cb(time_ns, label) ;
 }

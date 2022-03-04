@@ -802,7 +802,7 @@ namespace xdp {
   void DeviceTraceLogger::addEventMarkers(bool isFIFOFull, bool isTS2MMFull)
   {
     // User event API takes ns as time
-    double mark_time = mLatestHostTimestampMs * 1e6;
+    std::chrono::nanoseconds mark_time(static_cast<uint64_t>(mLatestHostTimestampMs * 1e6));
 
     if (isFIFOFull) {
       xrt::profile::user_event events;

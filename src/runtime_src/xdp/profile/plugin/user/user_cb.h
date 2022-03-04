@@ -31,6 +31,6 @@ extern "C"
 void user_event_happened_cb(const char* label) ;
 
 extern "C"
-void user_event_time_ns_cb(double time_ns, const char* label) ;
+void user_event_time_ns_cb(unsigned long long int time_ns, const char* label) ;
 
 #endif

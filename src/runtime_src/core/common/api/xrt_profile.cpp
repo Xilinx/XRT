@@ -80,9 +80,9 @@ namespace xrt { namespace profile {
     xrtUEMark(label) ;
   }
 
-  void user_event::mark_time_ns(double time_ns, const char* label)
+  void user_event::mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label)
   {
-    xrtUEMarkTimeNs(time_ns, label) ;
+    xrtUEMarkTimeNs(static_cast<unsigned long long int>(time_ns.count()), label);
   }
 
 }} // end namespaces profile and xrt
@@ -94,7 +94,7 @@ namespace {
   std::function<void (unsigned int, const char*, const char*)> user_range_start_cb ;
   std::function<void (unsigned int)> user_range_end_cb ;
   std::function<void (const char*)> user_event_cb ;
-  std::function<void (double, const char*)> user_event_time_ns_cb ;
+  std::function<void (unsigned long long int, const char*)> user_event_time_ns_cb ;
 
   static void register_user_functions(void* handle)
   {
@@ -110,7 +110,7 @@ namespace {
     user_event_cb = (btype)(xrt_core::dlsym(handle, "user_event_happened_cb")) ;
     if (xrt_core::dlerror() != NULL) user_event_cb = nullptr ;
 
-    using ctype = void(*)(double, const char*);
+    using ctype = void(*)(unsigned long long int, const char*);
     user_event_time_ns_cb = (ctype)(xrt_core::dlsym(handle, "user_event_time_ns_cb")) ;
     if (xrt_core::dlerror() != NULL) user_event_time_ns_cb = nullptr ;
   }
@@ -165,7 +165,7 @@ extern "C"
     }
   }
 
-  void xrtUEMarkTimeNs(double time_ns, const char* label)
+  void xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label)
   {
     try {
       load_user_profiling_plugin();
