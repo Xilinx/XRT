@@ -126,17 +126,17 @@ get_os_info(boost::property_tree::ptree &pt)
   RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("model", value);
 
+  
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("hostname", value);
+
   MEMORYSTATUSEX mem;
   mem.dwLength = sizeof(mem);
   GlobalMemoryStatusEx(&mem);
   pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
 
   pt.put("cores", std::thread::hardware_concurrency());
-
-  char hostname[256] = {0};
-  gethostname(hostname, 256);
-  std::string hn(hostname);
-  pt.put("hostname", hn);
 }
 
 std::pair<device::id_type, device::id_type>
