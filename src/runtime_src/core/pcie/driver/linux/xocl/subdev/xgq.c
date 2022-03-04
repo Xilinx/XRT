@@ -901,7 +901,7 @@ acquire_failed:
 	return ret;
 }
 
-static int xgq_check_firewall(struct platform_device *pdev)
+static int xgq_firewall_op(struct platform_device *pdev, enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -936,7 +936,7 @@ static int xgq_check_firewall(struct platform_device *pdev)
 	payload->address = address;
 	payload->size = len;
 	payload->offset = 0;
-	payload->pid = XGQ_CMD_LOG_AF;
+	payload->pid = type_pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
@@ -1009,6 +1009,16 @@ acquire_failed:
 	kfree(cmd);
 
 	return ret;
+}
+
+static int xgq_check_firewall(struct platform_device *pdev)
+{
+	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CHECK);
+}
+
+static int xgq_clear_firewall(struct platform_device *pdev)
+{
+	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CLEAR);
 }
 
 static int vmr_verbose_info_query(struct platform_device *pdev,
@@ -1406,15 +1416,15 @@ static int xgq_download_apu_bin(struct platform_device *pdev, char *buf,
 			ret = -EIO;
 			break;
 		}
-		if (vmr_status->apu_is_ready) {
+		if (vmr_status->ps_is_ready) {
 			break;
 		}
 
 		msleep(WAIT_INTERVAL);
 	}
 
-	XGQ_INFO(xgq, "wait %d seconds for apu ready value: %d", i, vmr_status->apu_is_ready);
-	return vmr_status->apu_is_ready ? 0 : -ETIME;
+	XGQ_INFO(xgq, "wait %d seconds for PS ready value: %d", i, vmr_status->ps_is_ready);
+	return vmr_status->ps_is_ready ? 0 : -ETIME;
 }
 
 /* read firmware from /lib/firmware/xilinx, load via xgq */
@@ -1829,7 +1839,8 @@ static ssize_t vmr_status_show(struct device *dev,
 	cnt += sprintf(buf + cnt, "HAS_EXT_SYSTEM_DTB:%d\n", vmr_status->has_ext_sysdtb);
 	cnt += sprintf(buf + cnt, "DEBUG_LEVEL:%d\n", vmr_status->debug_level);
 	cnt += sprintf(buf + cnt, "PROGRAM_PROGRESS:%d\n", vmr_status->program_progress);
-	cnt += sprintf(buf + cnt, "APU_IS_READY:%d\n", vmr_status->apu_is_ready);
+	cnt += sprintf(buf + cnt, "PL_IS_READY:%d\n", vmr_status->pl_is_ready);
+	cnt += sprintf(buf + cnt, "PS_IS_READY:%d\n", vmr_status->ps_is_ready);
 
 	return cnt;
 }
@@ -2113,6 +2124,7 @@ attach_failed:
 static struct xocl_xgq_vmr_funcs xgq_vmr_ops = {
 	.xgq_load_xclbin = xgq_load_xclbin,
 	.xgq_check_firewall = xgq_check_firewall,
+	.xgq_clear_firewall = xgq_clear_firewall,
 	.xgq_freq_scaling = xgq_freq_scaling,
 	.xgq_freq_scaling_by_topo = xgq_freq_scaling_by_topo,
 	.xgq_get_data = xgq_get_data,

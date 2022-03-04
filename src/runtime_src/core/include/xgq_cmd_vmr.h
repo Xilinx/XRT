@@ -93,9 +93,10 @@ enum xgq_cmd_vmr_control_type {
  * log page type
  */
 enum xgq_cmd_log_page_type {
-	XGQ_CMD_LOG_AF		= 0x0,
+	XGQ_CMD_LOG_AF_CHECK	= 0x0,
 	XGQ_CMD_LOG_FW		= 0x1,
 	XGQ_CMD_LOG_INFO	= 0x2,
+	XGQ_CMD_LOG_AF_CLEAR	= 0x3,
 };
 
 /**
@@ -282,8 +283,9 @@ struct xgq_cmd_cq_vmr_payload {
 	uint16_t has_ext_xsabin:1;
 	uint16_t has_ext_scfw:1;
 	uint16_t has_ext_sysdtb:1;
-	uint16_t apu_is_ready:1;
-	uint16_t resvd1:6;
+	uint16_t ps_is_ready:1;
+	uint16_t pl_is_ready:1;
+	uint16_t resvd1:5;
 	uint16_t multi_boot_offset;
 	uint32_t debug_level:3;
 	uint32_t program_progress:7;
