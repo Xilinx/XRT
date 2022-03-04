@@ -1441,13 +1441,20 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	int i;
 
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
 
-	--scu_mgmt->num_cus;
-	scu_mgmt->xcus[xcu->info.cu_idx] = NULL;
-	cu_stat_write(scu_mgmt, usage[xcu->info.cu_idx], 0);
+	for (i = 0; i < MAX_CUS; i++) {
+		if (scu_mgmt->xcus[i] != xcu)
+			continue;
+
+		scu_mgmt->xcus[i] = NULL;
+		--scu_mgmt->num_cus;
+		cu_stat_write(scu_mgmt, usage[i], 0);
+		break;
+	}
 
 	return 0;
 }

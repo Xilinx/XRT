@@ -730,7 +730,6 @@ static int
 zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
 		char *xclbin_ptr)
 {
-	int ret = 0;
 	size_t size = axlf->m_header.m_length;
 
 	slot->axlf = vmalloc(size);

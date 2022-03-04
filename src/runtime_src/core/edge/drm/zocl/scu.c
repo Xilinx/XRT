@@ -187,7 +187,7 @@ static int scu_remove(struct platform_device *pdev)
 
 	xrt_cu_scu_fini(&zcu->base);
 
-	zocl_kds_del_cu(zdev, &zcu->base);
+	zocl_kds_del_scu(zdev, &zcu->base);
 
 	if (zcu->base.res)
 		vfree(zcu->base.res);
@@ -250,8 +250,9 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 		/* Clear Bit 0 and set Bit 1 */
 		*vaddr = 2 | (*vaddr & ~3);
 
-	if (down_killable(&cu_scu->sc_sem))
+	if (down_interruptible(&cu_scu->sc_sem)) {
 		ret = -EINTR;
+	}
 
 	if (ret) {
 		/* We are interrupted */
