@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,8 +20,8 @@
 #include <iostream>
 #include <boost/format.hpp>
 
-#include "XBUtilities.h"
-#include "XBHelpMenus.h"
+#include "XBUtilitiesCore.h"
+#include "XBHelpMenusCore.h"
 namespace XBU = XBUtilities;
 namespace po = boost::program_options;
 

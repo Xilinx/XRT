@@ -75,6 +75,7 @@ struct in_kernel_cb {
 struct kds_command {
 	struct kds_client	*client;
 	int			 status;
+	u32			 rcode;
 	int			 cu_idx;
 	u32			 type;
 	u32			 opcode;

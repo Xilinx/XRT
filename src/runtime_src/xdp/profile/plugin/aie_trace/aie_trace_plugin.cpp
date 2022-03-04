@@ -89,7 +89,7 @@ namespace xdp {
 
     // Check whether continuous trace is enabled in xrt.ini
     // AIE trace is now supported for HW only
-    continuousTrace = xrt_core::config::get_periodic_aie_trace_offload();
+    continuousTrace = xrt_core::config::get_aie_trace_periodic_offload();
     if (continuousTrace) {
       offloadIntervalms = xrt_core::config::get_aie_trace_buffer_offload_interval_ms();
     }

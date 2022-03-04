@@ -15,10 +15,11 @@
  */
 
 #include "xdp/profile/writer/aie_debug/aie_debug_writer.h"
+#include "xdp/profile/database/database.h"
 
 #include <vector>
-
-#include "xdp/profile/database/database.h"
+#include <boost/optional/optional.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace xdp {
 
@@ -36,10 +37,25 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (pt_aie.get_child_optional("error_msg"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
 
     if (openNewFile)
@@ -49,10 +65,25 @@ namespace xdp {
 
   bool AIEDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieInfoStr = xrtDevice.get_info<xrt::info::device::aie>();
+
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (pt_aie.get_child_optional("error_msg"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE report to file
+    refreshFile();
     fout << aieInfoStr << std::endl;
 
     if (openNewFile)
@@ -74,10 +105,25 @@ namespace xdp {
 
   bool AIEShimDebugWriter::write(bool openNewFile)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device((int)mDeviceIndex);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieShimInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieShimInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (pt_aie.get_child_optional("error_msg"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
 
     if (openNewFile)
@@ -87,10 +133,25 @@ namespace xdp {
 
   bool AIEShimDebugWriter::write(bool openNewFile, void* handle)
   {
-    refreshFile();
-
     auto xrtDevice = xrt::device(handle);
     auto aieShimInfoStr = xrtDevice.get_info<xrt::info::device::aie_shim>();
+    
+    // Make sure report is not empty and no error occurred
+    // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
+    if (aieShimInfoStr.empty())
+      return true;
+    try {
+      std::stringstream ss(aieShimInfoStr);
+      boost::property_tree::ptree pt_aie;
+      boost::property_tree::read_json(ss, pt_aie);
+      if (pt_aie.get_child_optional("error_msg"))
+        return true;
+    } catch (...) {
+      return true;
+    }
+
+    // Write approved AIE shim report to file
+    refreshFile();
     fout << aieShimInfoStr << std::endl;
 
     if (openNewFile)

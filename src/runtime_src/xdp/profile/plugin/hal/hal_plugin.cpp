@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -34,8 +34,12 @@
 
 namespace xdp {
 
+  bool HALPlugin::live = false;
+
   HALPlugin::HALPlugin() : XDPPlugin()
   {
+    HALPlugin::live = true;
+
     db->registerPlugin(this) ;
     db->registerInfo(info::hal) ;
 
@@ -69,6 +73,7 @@ namespace xdp {
       db->unregisterPlugin(this) ;
     }
 
+    HALPlugin::live = false;
     // If the database is dead, then we must have already forced a 
     //  write at the database destructor so we can just move on
   }
@@ -76,10 +81,6 @@ namespace xdp {
   void HALPlugin::writeAll(bool openNewFiles)
   {
     for (auto w : writers)
-    {
       w->write(openNewFiles) ;
-    }
   }
 }
-
-

@@ -211,6 +211,7 @@ static inline void __process_sq(struct xrt_cu *xcu)
 		if (xcu->done_cnt) {
 			/* Done command has priority */
 			xcmd->status = KDS_COMPLETED;
+			xcmd->rcode = xcu->rcode;
 			--xcu->done_cnt;
 			xrt_cu_circ_produce(xcu, CU_LOG_STAGE_SQ, (uintptr_t)xcmd);
 		} else if (unlikely(ev_client)) {
@@ -644,7 +645,7 @@ int xrt_cu_cfg_update(struct xrt_cu *xcu, int intr)
 		return -ENOSYS;
 
 	if (xrt_cu_get_protocol(xcu) == CTRL_NONE) {
-		xcu_err(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
+		xcu_warn(xcu, "Interrupt enabled value should be false for ap_ctrl_none cu\n");
 		return -ENOSYS;
 	}
 

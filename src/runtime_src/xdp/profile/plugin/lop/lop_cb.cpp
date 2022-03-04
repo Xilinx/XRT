@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -27,9 +27,12 @@ namespace xdp {
   static LowOverheadProfilingPlugin lopPluginInstance ;
 
   static void lop_cb_log_function_start(const char* functionName,
-					long long queueAddress,
-					unsigned long long int functionID)
+                                        long long queueAddress,
+                                        unsigned long long int functionID)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     // Since these are OpenCL level events, we must use the OpenCL
     //  level time functions to get the proper value of time zero.
     double timestamp = xrt_xocl::time_ns() ;
@@ -49,9 +52,12 @@ namespace xdp {
   }
 
   static void lop_cb_log_function_end(const char* functionName,
-				      long long queueAddress,
-				      unsigned long long int functionID)
+                                      long long queueAddress,
+                                      unsigned long long int functionID)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
@@ -68,6 +74,9 @@ namespace xdp {
 
   static void lop_read(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
     
@@ -76,8 +85,8 @@ namespace xdp {
     if (!isStart) start = (db->getDynamicInfo()).matchingStart(lopEventId) ;
 
     VTFEvent* event = new LOPBufferTransfer(start,
-					    timestamp,
-					    LOP_READ_BUFFER) ;
+                                            timestamp,
+                                            LOP_READ_BUFFER) ;
 
     (db->getDynamicInfo()).addEvent(event) ;
     if (isStart)
@@ -86,6 +95,9 @@ namespace xdp {
 
   static void lop_write(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
@@ -94,8 +106,8 @@ namespace xdp {
     if (!isStart) start = (db->getDynamicInfo()).matchingStart(lopEventId) ;
 
     VTFEvent* event = new LOPBufferTransfer(start,
-					    timestamp,
-					    LOP_WRITE_BUFFER) ;
+                                            timestamp,
+                                            LOP_WRITE_BUFFER) ;
     (db->getDynamicInfo()).addEvent(event) ;
     if (isStart)
       (db->getDynamicInfo()).markStart(lopEventId, event->getEventId()) ;
@@ -103,6 +115,9 @@ namespace xdp {
 
   static void lop_kernel_enqueue(unsigned int XRTEventId, bool isStart)
   {
+    if (!VPDatabase::alive() || !LowOverheadProfilingPlugin::alive())
+      return ;
+
     double timestamp = xrt_xocl::time_ns() ;
     VPDatabase* db = lopPluginInstance.getDatabase() ;
 
@@ -126,14 +141,14 @@ namespace xdp {
 
 extern "C"
 void lop_function_start(const char* functionName, long long queueAddress,
-			unsigned long long int functionID)
+                        unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_start(functionName, queueAddress, functionID) ;
 }
 
 extern "C"
 void lop_function_end(const char* functionName, long long queueAddress,
-		      unsigned long long int functionID)
+                      unsigned long long int functionID)
 {
   xdp::lop_cb_log_function_end(functionName, queueAddress, functionID) ;
 }

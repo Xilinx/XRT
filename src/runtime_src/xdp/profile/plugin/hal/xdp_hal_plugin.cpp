@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -124,9 +124,9 @@ namespace xdp {
 extern "C"
 void hal_generic_cb(bool isStart, const char* name, unsigned long long int id)
 {
-  if(!xdp::VPDatabase::alive()) {
+  if(!xdp::VPDatabase::alive() || !xdp::HALPlugin::alive())
     return;
-  }
+
   if (isStart)
     xdp::generic_log_function_start(name, static_cast<uint64_t>(id)) ;
   else
@@ -139,9 +139,8 @@ void buffer_transfer_cb(bool isWrite, bool isStart, const char* name,
                         unsigned long long int bufferId,
                         unsigned long long int size)
 {
-  if(!xdp::VPDatabase::alive()) {
+  if(!xdp::VPDatabase::alive() || !xdp::HALPlugin::alive())
     return;
-  }
 
   if (isWrite) {
     if (isStart) {

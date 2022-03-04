@@ -404,7 +404,7 @@ static int cu_probe(struct platform_device *pdev)
 		err = xrt_cu_fa_init(&xcu->base);
 		break;
 	case XCU_XGQ:
-		err = xrt_cu_xgq_init(&xcu->base);
+		err = xrt_cu_xgq_init(&xcu->base, 0 /* fast path */);
 		break;
 	default:
 		err = -EINVAL;
