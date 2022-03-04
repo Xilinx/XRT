@@ -52,9 +52,7 @@
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XMON_TRACE_PROPERTY_MASK       0x1
 
-namespace xdp {
-
-std::string convertMemoryName(std::string mem)
+static std::string convertMemoryName(const std::string &mem)
 {
   if (0 == mem.compare("DDR[0]"))
     return "bank0";
@@ -67,6 +65,8 @@ std::string convertMemoryName(std::string mem)
 
   return mem;
 }
+
+namespace xdp {
 
   VPStaticDatabase::VPStaticDatabase(VPDatabase* d)
     : db(d)
