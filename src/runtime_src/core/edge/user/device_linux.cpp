@@ -27,6 +27,7 @@
 #include <memory>
 #include <string>
 
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <boost/format.hpp>
@@ -54,6 +55,21 @@ namespace query = xrt_core::query;
 using key_type = query::key_type;
 xclDeviceHandle handle;
 xclDeviceInfo2 deviceInfo;
+
+struct drm_fd
+{
+  int fd;
+  drm_fd(const std::string& file_path, int flags)
+  {
+    fd = open(file_path.c_str(),flags);
+  }
+  ~drm_fd()
+  {
+    if(fd > 0) {
+      close(fd);
+    }
+  }
+};
 
 static std::map<query::key_type, std::unique_ptr<query::request>> query_tbl;
 
@@ -494,6 +510,81 @@ struct aie_reg_read
   }
 };
 
+static std::unique_ptr<drm_fd>
+aie_get_drmfd(const xrt_core::device* device, const std::string& dev_path)
+{
+  const static std::string AIE_TAG = "aie_metadata";
+  std::string err;
+  std::string value;
+
+  auto dev = get_edgedev(device);
+  // Reading the aie_metadata sysfs.
+  dev->sysfs_get(AIE_TAG, err, value);
+  if (!err.empty())
+    throw xrt_core::query::sysfs_error
+    (err + ", The loading xclbin acceleration image doesn't use the Artificial "
+     + "Intelligent Engines (AIE). No action will be performed.");
+
+  return std::make_unique<drm_fd>(dev_path, O_RDWR);
+}
+
+struct aie_get_freq
+{
+  using result_type = query::aie_get_freq::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id)
+  {
+    result_type freq = 0;
+#if defined(XRT_ENABLE_AIE)
+    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = freq;
+    aie_arg.dir = 0;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Reading clock frequency from AIE partition(%d) failed") % aie_arg.partition_id));
+
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return freq;
+  }
+};
+
+struct aie_set_freq
+{
+  using result_type = query::aie_set_freq::result_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
+  {
+#if defined(XRT_ENABLE_AIE)
+    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    if (fd_obj->fd < 0)
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+
+    struct drm_zocl_aie_freq_scale aie_arg;
+    aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
+    aie_arg.freq = boost::any_cast<uint64_t>(freq);
+    aie_arg.dir = 1;
+
+    if (ioctl(fd_obj->fd, DRM_IOCTL_ZOCL_AIE_FREQSCALE, &aie_arg))
+      throw xrt_core::error(-errno, boost::str(boost::format("Setting clock frequency for AIE partition (%d) failed") % aie_arg.partition_id));
+
+#else
+    throw xrt_core::error(-EINVAL, "AIE is not enabled for this device");
+#endif
+    return true;
+  }
+};
+
 struct aim_counter
 {
   using result_type = query::aim_counter::result_type;
@@ -653,6 +744,17 @@ struct function0_get : QueryRequestType
 };
 
 template <typename QueryRequestType, typename Getter>
+struct function2_get : QueryRequestType
+{
+  boost::any
+  get(const xrt_core::device* device, const boost::any& arg1, const boost::any& arg2) const
+  {
+    auto k = QueryRequestType::key;
+    return Getter::get(device, k, arg1, arg2);
+  }
+};
+
+template <typename QueryRequestType, typename Getter>
 struct function3_get : QueryRequestType
 {
   boost::any
@@ -692,6 +794,14 @@ emplace_func0_request()
 
 template <typename QueryRequestType, typename Getter>
 static void
+emplace_func2_request()
+{
+  auto k = QueryRequestType::key;
+  query_tbl.emplace(k, std::make_unique<function2_get<QueryRequestType, Getter>>());
+}
+
+template <typename QueryRequestType, typename Getter>
+static void
 emplace_func3_request()
 {
   auto k = QueryRequestType::key;
@@ -721,6 +831,8 @@ initialize_query_table()
   emplace_func0_request<query::aie_core_info,		aie_core_info>();
   emplace_func0_request<query::aie_shim_info,		aie_shim_info>();
   emplace_func3_request<query::aie_reg_read,            aie_reg_read>();
+  emplace_func4_request<query::aie_get_freq,		aie_get_freq>();
+  emplace_func2_request<query::aie_set_freq,            aie_set_freq>();
 
   emplace_sysfs_get<query::mem_topology_raw>          ("mem_topology");
   emplace_sysfs_get<query::group_topology>            ("mem_topology");

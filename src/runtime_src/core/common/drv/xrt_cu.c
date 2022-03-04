@@ -211,6 +211,7 @@ static inline void __process_sq(struct xrt_cu *xcu)
 		if (xcu->done_cnt) {
 			/* Done command has priority */
 			xcmd->status = KDS_COMPLETED;
+			xcmd->rcode = xcu->rcode;
 			--xcu->done_cnt;
 			xrt_cu_circ_produce(xcu, CU_LOG_STAGE_SQ, (uintptr_t)xcmd);
 		} else if (unlikely(ev_client)) {

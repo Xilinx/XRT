@@ -433,7 +433,7 @@ static void zcu_xgq_cmd_notify(struct kds_command *xcmd, int status)
 	struct xgq_cmd_sq_hdr *cmd = xcmd->info;
 
 	xcmd->info = NULL;
-	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, 0);
+	zcu_xgq_cmd_complete(ZCU_XGQ2PDEV(zcu_xgq), cmd, xcmd->rcode);
 
 	if (xcmd->cu_idx >= 0) {
 		if (cmd->cu_domain != 0)
