@@ -172,8 +172,8 @@ namespace xrt { namespace profile {
     /**
      * mark_time_ns() - Mark a custom moment in time with a marker on the waveform
      *
-     * @time_ns: Time duration in ns from start of appliction. Must be compatible with
-     * xrt_core::time_ns api
+     * @time_ns: Time duration in nanoseconds since appliction start.
+     * Must be compatible with xrt_core::time_ns() API
      * @label: An optional label that will be displayed on top of marker in waveform
      * Return:   none
      */
@@ -222,7 +222,8 @@ void xrtUEMark(const char* label) ;
 /**
  * xrtUEMarkTimeNs() - Mark a custom time as when something happened
  *
- * @time_ns: Time in nanoseconds since application start
+ * @time_ns: Time duration in nanoseconds since application start.
+ * Must be compatible with xrt_core::time_ns() API
  * @label:   An optional label that is added to the marker in the waveform
  * Return:   none
  *
