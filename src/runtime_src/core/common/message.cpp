@@ -19,7 +19,7 @@
 #include "time.h"
 #include "gen/version.h"
 #include "config_reader.h"
-#include "unistd.h"
+#include "utils.h"
 
 #include <map>
 #include <fstream>
@@ -34,6 +34,7 @@
 # include <linux/limits.h>
 # include <sys/stat.h>
 # include <sys/types.h>
+#include <unistd.h>
 #endif
 #ifdef _WIN32
 # include <process.h>
@@ -207,7 +208,7 @@ file_dispatch(const std::string &file)
   handle << "[" << xrt_core::timestamp() << "]" << "\n";
   handle << "PID: " << get_processid() << "\n";
   handle << "UID: " << get_userid() << "\n";
-  handle << "HOST: " <<  xrt_core::get_hostname() << "\n";
+  handle << "HOST: " <<  xrt_core::utils::get_hostname() << "\n";
   handle << "EXE: " << get_exe_path() << std::endl;
 }
 
@@ -237,7 +238,7 @@ console_dispatch()
   std::cerr << "PID: " << get_processid() << "\n";
   std::cerr << "UID: " << get_userid() << "\n";
   std::cerr << "[" << xrt_core::timestamp() << "]\n";
-  std::cerr << "HOST: " << xrt_core::get_hostname() << "\n";
+  std::cerr << "HOST: " << xrt_core::utils::get_hostname() << "\n";
   std::cerr << "EXE: " << get_exe_path() << std::endl;
 }
 

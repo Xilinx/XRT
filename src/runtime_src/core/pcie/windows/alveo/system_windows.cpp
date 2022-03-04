@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  */
 
 // This file is delivered with core library (libxrt_core), see
@@ -19,6 +19,7 @@
 #include <thread>
 #include <ctime>
 #include <windows.h>
+#include <Winsock2.h>
 
 #include <boost/format.hpp>
 
@@ -132,6 +133,11 @@ get_os_info(boost::property_tree::ptree &pt)
   pt.put("memory_bytes", (boost::format("0x%llx") % mem.ullTotalPhys).str());
 
   pt.put("cores", std::thread::hardware_concurrency());
+
+  char hostname[256] = {0};
+  gethostname(hostname, 256);
+  std::string hn(hostname);
+  pt.put("hostname", hn);
 }
 
 std::pair<device::id_type, device::id_type>

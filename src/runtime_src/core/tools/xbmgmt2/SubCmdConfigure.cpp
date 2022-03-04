@@ -19,7 +19,7 @@
 #include "SubCmdConfigure.h"
 #include "tools/common/XBUtilities.h"
 #include "core/common/system.h"
-#include "core/common/unistd.h"
+#include "core/common/utils.h"
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -123,7 +123,7 @@ static config
 get_daemon_conf()
 {
   config cfg;
-  cfg.host = xrt_core::get_hostname();
+  cfg.host = xrt_core::utils::get_hostname();
 
   std::ifstream istr(config_file);
   if (!istr)
