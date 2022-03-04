@@ -28,6 +28,7 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/error.h"
+#include "core/include/xrt/xrt_uuid.h"
 
 #include <cerrno>
 #include <iostream>
@@ -38,6 +39,7 @@
 #include <vector>
 #include <cassert>
 #include <cstdarg>
+#include <boost/filesystem.hpp>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -56,6 +58,12 @@
 #include "plugin/xdp/pl_deadlock.h"
 #else
 #include "plugin/xdp/hw_emu_device_offload.h"
+#endif
+
+#if defined(XRT_ENABLE_LIBDFX)
+extern "C" {
+#include <libdfx.h>
+}
 #endif
 
 namespace {
@@ -495,6 +503,123 @@ xclLoadXclBin(const xclBin *buffer)
   return ret;
 }
 
+#if defined(XRT_ENABLE_LIBDFX)
+static int
+libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top, const axlf_section_header *overlay_header, int& fd, int flags, int &dtbo_id)
+{
+  static const std::string ZOCL_DRM_DEVICE = "/dev/dri/renderD128";
+  static const std::string FPGA_DEVICE = "/dev/fpga0";
+
+  // check BITSTREAM section
+  const axlf_section_header *bit_header = xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
+  if(!bit_header) {
+    xclLog(XRT_ERROR, "%s: No BITSTREAM section in xclbin", __func__);
+    return -1;
+  }
+
+  //check if xclbin is already loaded
+  try {
+    if(core_dev->get_xclbin_uuid() == xrt::uuid(top->m_header.uuid) && !(flags & DRM_ZOCL_FORCE_PROGRAM)) {
+      xclLog(XRT_INFO, "%s: skipping as xclbin is already loaded", __func__);
+      return 0;
+    }
+  }
+  catch(const std::exception &e) {
+    // can happen when no bitstream is loaded and xclbinid sysfs is not created
+    // do nothing
+  }
+
+  // get dtbo_id of slot '0'
+  // TODO: read slot_id from xclbin
+  uint32_t slot_id = 0;
+  try {
+    dtbo_id = xrt_core::device_query<xrt_core::query::dtbo_id>(core_dev, slot_id);
+  }
+  catch(const std::exception &e) {
+    xclLog(XRT_ERROR, "%s: query for dtbo id failed, %s",__func__,e.what());
+    return -1;
+  }
+  if(dtbo_id > 0) {
+    // remove existing libdfx node
+    if(!dfx_cfg_remove(dtbo_id)) {
+      xclLog(XRT_ERROR, "%s: unable to remove dtbo and bitstream loaded earlier",__func__);
+      return -1;
+    }
+    dfx_cfg_destroy(dtbo_id);
+    dtbo_id = -1;
+    // close drm fd as zocl driver will be reloaded
+    close(fd);
+  }
+
+  // create a temp directory to extract bitstream and dtbo
+  char dir[] = "/tmp/xclbin.XXXXXX";
+  char *tmpdir = mkdtemp(dir);
+  if(tmpdir == NULL) {
+    xclLog(XRT_ERROR, "%s: failed to create tmp directory for xclbin files extraction",__func__);
+    return -1;
+  }
+
+  std::string xclbin_dir_path = tmpdir;
+  // create a file with BITSTREAM section
+  std::string bit_file_path = xclbin_dir_path + "/xclbin.bit";
+  std::ofstream bit_file(bit_file_path, std::ios::out | std::ios::binary);
+  if(!bit_file) {
+    xclLog(XRT_ERROR, "%s: failed to open '%s' for writing xclbin BITSTREAM section",__func__, bit_file_path);
+    return -1;
+  }
+  auto bit_buffer = reinterpret_cast<const char *>(top) + bit_header->m_sectionOffset;
+  bit_file.write(bit_buffer, bit_header->m_sectionSize);
+
+  // create a file with OVERLAY section
+  std::string overlay_file_path = xclbin_dir_path + "/xclbin.dtbo";
+  std::ofstream overlay_file(overlay_file_path, std::ios::out | std::ios::binary);
+  if(!overlay_file) {
+    xclLog(XRT_ERROR, "%s: failed to open '%s' for writing xclbin OVERLAY section",__func__, overlay_file_path);
+    return -1;
+  }
+  auto overlay_buffer = reinterpret_cast<const char *>(top) + overlay_header->m_sectionOffset;
+  overlay_file.write(overlay_buffer, overlay_header->m_sectionSize);
+
+  // function for cleaning
+  auto clean_fn = [&bit_file, &overlay_file](const std::string& file_path){
+    bit_file.close();
+    overlay_file.close();
+    namespace fs = boost::filesystem;
+    try {
+      if(fs::exists(fs::path(file_path)))
+      fs::remove_all(fs::path(file_path));
+    }
+    catch(std::exception& ex) { /* do nothing */ }
+  };
+
+  // call libdfx api to load bitstream and dtbo
+  dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), FPGA_DEVICE, 0);
+  if(dtbo_id <= 0) {
+    xclLog(XRT_ERROR, "%s: failed to initialize config with libdfx api",__func__);
+    clean_fn(xclbin_dir_path);
+    return -1;
+  }
+  if(dfx_cfg_load(dtbo_id)){
+    xclLog(XRT_ERROR, "%s: failed to load bitstream, dtbo with libdfx api",__func__);
+    dfx_cfg_destroy(dtbo_id);
+    clean_fn(xclbin_dir_path);
+    dtbo_id = -1;
+    return -1;
+  }
+
+  // create drm fd
+  fd = open(ZOCL_DRM_DEVICE, O_RDWR);
+  if (fd < 0) {
+    xclLog(XRT_ERROR, "%s: Cannot open %s", __func__, ZOCL_DRM_DEVICE);
+    return -1;
+  }
+
+  clean_fn(xclbin_dir_path);
+
+  return 0;
+}
+#endif
+
 int
 shim::
 xclLoadAxlf(const axlf *buffer)
@@ -502,6 +627,7 @@ xclLoadAxlf(const axlf *buffer)
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
   int off = 0;
+  int dtbo_id = -1;
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -535,6 +661,20 @@ xclLoadAxlf(const axlf *buffer)
   if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
   }
+
+#if defined(XRT_ENABLE_LIBDFX)
+  // check OVERLAY section
+  // if present use libdfx apis to load bitstream and dtbo(overlay)
+  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  if(overlay_header) {
+    ret = libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_id);
+    if(ret) {
+      xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed", __func__);
+      return ret;
+    }
+  }
+#endif
+
 #endif
 
     drm_zocl_axlf axlf_obj = {
@@ -543,6 +683,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_ksize = 0,
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
+      .za_dtbo_id = dtbo_id,
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();

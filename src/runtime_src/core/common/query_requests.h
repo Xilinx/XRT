@@ -260,6 +260,7 @@ enum class key_type
   get_xclbin_data,
   aie_get_freq,
   aie_set_freq,
+  dtbo_id,
 
   boot_partition,
   flush_default_only,
@@ -686,6 +687,16 @@ struct xclbin_uuid : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct dtbo_id : request
+{
+  using result_type = int;
+
+  static const key_type key = key_type::dtbo_id;
+
+  virtual boost::any
+  get(const device*, const boost::any& slot_id) const = 0;
 };
 
 struct group_topology : request

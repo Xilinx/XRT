@@ -16,6 +16,7 @@
 
 struct zocl_xclbin {
 	int		zx_refcnt;
+	int		zx_dtboId;
 	void		*zx_uuid;
 };
 

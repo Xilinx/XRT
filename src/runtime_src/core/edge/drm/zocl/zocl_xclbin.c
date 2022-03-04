@@ -1162,6 +1162,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
+	int dtbo_id = axlf_obj->za_dtbo_id;
 
 	if (slot_id > zdev->num_pr_slot) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
@@ -1463,6 +1464,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
+	slot->slot_xclbin->zx_dtboId = dtbo_id;
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
@@ -1671,6 +1673,7 @@ zocl_xclbin_init(struct drm_zocl_slot *slot)
 	}
 
 	z_xclbin->zx_refcnt = 0;
+	z_xclbin->zx_dtboId = -1;
 	z_xclbin->zx_uuid = NULL;
 
 	slot->slot_xclbin = z_xclbin;
