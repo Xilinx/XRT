@@ -5,9 +5,11 @@
 file(GLOB XBUTIL_V2_BASE_FILES
   "xbutil.cpp"
   "../common/XBMain.cpp"
+  "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
   "../common/OptionOptions.cpp"
+  "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/Report*.cpp"
   "../common/ProgressBar.cpp"
