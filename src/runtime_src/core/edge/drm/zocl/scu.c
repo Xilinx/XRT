@@ -88,7 +88,7 @@ static const struct attribute_group scu_attrgroup = {
 	.attrs = scu_attrs,
 };
 
-static int configure_soft_kernel(u32 cuidx, char kname[64], char uuid[16])
+static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[16])
 {
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct soft_krnl *sk = zdev->soft_kernel;
@@ -179,18 +179,14 @@ err:
 
 static int scu_remove(struct platform_device *pdev)
 {
-	struct zocl_scu *zcu = NULL;
-	struct drm_zocl_dev *zdev = NULL;
-	struct xrt_cu_info *info = NULL;
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+	struct drm_zocl_dev *zdev = zocl_get_zdev();
+	struct xrt_cu_info *info = &zcu->base.info;
 
-	zcu = platform_get_drvdata(pdev);
-	if (!zcu)
-		return -EINVAL;
-
-	info = &zcu->base.info;
 	xrt_cu_scu_fini(&zcu->base);
 
-	zdev = zocl_get_zdev();
 	zocl_kds_del_cu(zdev, &zcu->base);
 
 	if (zcu->base.res)
