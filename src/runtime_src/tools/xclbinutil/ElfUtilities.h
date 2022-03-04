@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -19,12 +19,13 @@
 // Include files
 
 // Please keep this list to a minimum
+#include <boost/property_tree/ptree.hpp>
 #include <string>
 #include <vector>
 
 namespace XclBinUtilities {
 
-std::vector<std::string> dataMineExportedFunctions(const std::string& elfLibrary);
+void dataMineExportedFunctionsDWARF(const std::string& elfLibrary, boost::property_tree::ptree &ptFunctions);
 
 };
 

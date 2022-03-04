@@ -1305,7 +1305,10 @@ std::string convertMemoryName(std::string mem)
       // This is the first time this device was loaded with an xclbin
       devInfo = new DeviceInfo();
       devInfo->deviceId = deviceId ;
-      if (isEdge()) devInfo->isEdgeDevice = true ;
+      if (isEdge())
+        devInfo->isEdgeDevice = true ;
+      if (device->is_nodma())
+        devInfo->isNoDMADevice = true ;
       deviceInfo[deviceId] = devInfo ;
 
     } else {

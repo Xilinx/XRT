@@ -41,7 +41,7 @@ namespace xdp {
   }
 
   UserRange::UserRange(uint64_t s_id, double ts, bool s, 
-		       uint64_t l, uint64_t tt) :
+                       uint64_t l, uint64_t tt) :
     VTFEvent(s_id, ts, USER_RANGE), isStart(s), label(l), tooltip(tt)
   {
   }

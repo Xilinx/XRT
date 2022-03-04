@@ -519,7 +519,7 @@ xocl_read_axlf_helper(struct xocl_drm *drm_p, struct drm_xocl_axlf *axlf_ptr)
 		XDEV(xdev)->kernels = kernels;
 	}
 
-	xocl_ert_ctrl_disconnect(xdev);
+	memcpy(&XDEV(xdev)->kds_cfg, &axlf_ptr->kds_cfg, sizeof(axlf_ptr->kds_cfg));
 
 	err = xocl_icap_download_axlf(xdev, axlf, force_download);
 	/*

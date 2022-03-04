@@ -25,6 +25,7 @@
 #define MAX_CU_NUM     128
 /* Apertures contains both ip and debug ip information */
 #define MAX_APT_NUM		2*MAX_CU_NUM
+#define EMPTY_APT_VALUE		((phys_addr_t) -1)
 #define CU_SIZE        _64KB
 #define PR_ISO_SIZE    _4KB
 
@@ -132,12 +133,9 @@ struct drm_zocl_dev {
 	phys_addr_t		 res_start;
 	unsigned int		 cu_num;
 	unsigned int             irq[MAX_CU_NUM];
-	/* Saif TODO : This is for old kds. Not required now */
 	struct sched_exec_core  *exec;
-	/* Saif TODO : Hopefully this is not required */
-	//unsigned int		 num_mem;
+	/* Zocl driver memory list head */
 	struct list_head	 zm_list_head;
-	struct zocl_mem		*mem;
 	struct drm_mm           *zm_drm_mm;    /* DRM MM node for PL-DDR */
 	struct mutex		 mm_lock;
 	struct mutex		 aie_lock;

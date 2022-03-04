@@ -1,0 +1,42 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2022 Xilinx, Inc. All rights reserved.
+#
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+PROJECT(UNIT_TEST)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
+set(XILINX_XRT $ENV{XILINX_XRT})
+set(XRT_CORE_LIBRARY xrt_core)
+
+if (NOT DEFINED ${INSTALL_DIR})
+  set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
+endif()
+
+add_subdirectory(001_basic_sincos)
+add_subdirectory(002_bitonic_sort)
+add_subdirectory(003_bringup0)
+add_subdirectory(004_bringup1)
+add_subdirectory(005_bringup2)
+add_subdirectory(006_copy)
+add_subdirectory(007_copy_loop)
+add_subdirectory(008_globalbandwidth)
+add_subdirectory(009_mmult1)
+add_subdirectory(010_mmult2)
+add_subdirectory(011_mmult3)
+add_subdirectory(012_mmult4)
+add_subdirectory(013_montecarlo)
+add_subdirectory(014_multikernel)
+add_subdirectory(015_outoforderqueue)
+add_subdirectory(016_parkernels)
+add_subdirectory(017_vectorswizzle)
+add_subdirectory(018_bringup3)
+add_subdirectory(019_bringup4)
+add_subdirectory(036_hello)
+add_subdirectory(2kernelglobal_002_rw_4ddr_512)
+add_subdirectory(cdma)
+add_subdirectory(cuselect)
+add_subdirectory(subdevice)
+add_subdirectory(vadd_bank3)
+

@@ -55,28 +55,30 @@ namespace po = boost::program_options;
 #include "tools/common/ReportMailbox.h"
 #include "tools/common/ReportQspiStatus.h"
 #include "tools/common/ReportCmcStatus.h"
+#include "tools/common/ReportBOStats.h"
 
 // Note: Please insert the reports in the order to be displayed (alphabetical)
   static ReportCollection fullReportCollection = {
   // Common reports
     std::make_shared<ReportAie>(),
     std::make_shared<ReportAieShim>(),
-    std::make_shared<ReportMemory>(),
-    std::make_shared<ReportHost>(),
-    std::make_shared<ReportDynamicRegion>(),
-    std::make_shared<ReportDebugIpStatus>(),
     std::make_shared<ReportAsyncError>(),
+    std::make_shared<ReportBOStats>(),
+    std::make_shared<ReportDebugIpStatus>(),
+    std::make_shared<ReportDynamicRegion>(),
+    std::make_shared<ReportHost>(),
+    std::make_shared<ReportMemory>(),
     std::make_shared<ReportPcieInfo>(),
     std::make_shared<ReportPlatforms>(),
   // Native only reports
   #ifdef ENABLE_NATIVE_SUBCMDS_AND_REPORTS
+    std::make_shared<ReportCmcStatus>(),
     std::make_shared<ReportElectrical>(),
+    std::make_shared<ReportFirewall>(),
     std::make_shared<ReportMailbox>(),
     std::make_shared<ReportMechanical>(),
-    std::make_shared<ReportFirewall>(),
-    std::make_shared<ReportThermal>(),
     std::make_shared<ReportQspiStatus>(),
-    std::make_shared<ReportCmcStatus>(),
+    std::make_shared<ReportThermal>(),
   #endif
   };
 
@@ -120,7 +122,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     ("report,r", boost::program_options::value<decltype(reportNames)>(&reportNames)->multitoken(), (std::string("The type of report to be produced. Reports currently available are:\n") + reportOptionValues).c_str() )
     ("format,f", boost::program_options::value<decltype(sFormat)>(&sFormat), (std::string("Report output format. Valid values are:\n") + formatOptionValues).c_str() )
     ("output,o", boost::program_options::value<decltype(sOutput)>(&sOutput), "Direct the output to the given file")
-    ("help,h", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&bHelp), "Help to use this sub-command")
   ;
 
   po::options_description hiddenOptions("Hidden Options");
@@ -132,11 +134,13 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   allOptions.add(commonOptions);
   allOptions.add(hiddenOptions);
 
+  po::positional_options_description positionals;
+
   // Parse sub-command ...
   po::variables_map vm;
 
   try {
-    po::store(po::command_line_parser(_options).options(allOptions).run(), vm);
+    po::store(po::command_line_parser(_options).options(allOptions).positional(positionals).run(), vm);
     po::notify(vm); // Can throw
   } catch (po::error& e) {
     std::cerr << "ERROR: " << e.what() << std::endl << std::endl;

@@ -62,6 +62,7 @@
 #include <linux/firmware.h>
 #include "kds_core.h"
 #include "xclerr_int.h"
+#include "ps_kernel.h"
 #if defined(RHEL_RELEASE_CODE)
 #if RHEL_RELEASE_CODE >= RHEL_RELEASE_VERSION(8, 3)
 #include <linux/sched/signal.h>
@@ -611,6 +612,7 @@ struct xocl_dev_core {
 	 */
 	int			ksize;
 	char			*kernels;
+	struct drm_xocl_kds	kds_cfg;
 
 	/*
 	 * Store information about pci bar mappings of CPM.
@@ -1546,12 +1548,14 @@ static inline u32 xocl_ddr_count_unified(xdev_handle_t xdev_hdl)
 #define XOCL_IS_STREAM(topo, idx)					\
 	(topo->m_mem_data[idx].m_type == MEM_STREAMING || \
 	 topo->m_mem_data[idx].m_type == MEM_STREAMING_CONNECTION)
+#define XOCL_IS_PS_KERNEL_MEM(topo, idx)				\
+	(topo->m_mem_data[idx].m_type == MEM_PS_KERNEL) 
 #define XOCL_IS_P2P_MEM(topo, idx)					\
 	((topo->m_mem_data[idx].m_type == MEM_DDR3 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DDR4 ||			\
 	 topo->m_mem_data[idx].m_type == MEM_DRAM ||			\
 	 topo->m_mem_data[idx].m_type == MEM_HBM) &&			\
-	!IS_HOST_MEM(topo->m_mem_data[i].m_tag))
+	!IS_HOST_MEM(topo->m_mem_data[idx].m_tag))
 
 struct xocl_mig_label {
 	unsigned char		tag[16];
@@ -1974,6 +1978,7 @@ struct xocl_ert_ctrl_funcs {
 	       int (* is_version)(struct platform_device *pdev, u32 major, u32 minor);
 	       u64 (* get_base)(struct platform_device *pdev);
 	       void *(* setup_xgq)(struct platform_device *pdev, int id, u64 offset);
+	       void (* unset_xgq)(struct platform_device *pdev);
 	};
 
 #define ERT_CTRL_DEV(xdev)     \
@@ -2003,6 +2008,9 @@ struct xocl_ert_ctrl_funcs {
 #define xocl_ert_ctrl_setup_xgq(xdev, id, offset) \
 	(ERT_CTRL_CB(xdev, setup_xgq) ? \
 	 ERT_CTRL_OPS(xdev)->setup_xgq(ERT_CTRL_DEV(xdev), id, offset) : NULL)
+#define xocl_ert_ctrl_unset_xgq(xdev) \
+	(ERT_CTRL_CB(xdev, unset_xgq) ? \
+	 ERT_CTRL_OPS(xdev)->unset_xgq(ERT_CTRL_DEV(xdev)) : NULL)
 
 /* helper functions */
 xdev_handle_t xocl_get_xdev(struct platform_device *pdev);
@@ -2116,6 +2124,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
+	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
@@ -2142,6 +2151,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_check_firewall(xdev)				\
 	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
+#define	xocl_xgq_clear_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_clear_firewall) ?			\
+	XGQ_OPS(xdev)->xgq_clear_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
 	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
@@ -2167,6 +2179,10 @@ struct xocl_xgq_vmr_funcs {
 struct xocl_sdm_funcs {
 	struct xocl_subdev_funcs common_funcs;
 	void (*hwmon_sdm_get_sensors_list)(struct platform_device *pdev, bool create_sysfs);
+	int (*hwmon_sdm_get_sensors)(struct platform_device *pdev, char *resp,
+                                 enum xcl_group_kind repo_type);
+	int (*hwmon_sdm_create_sensors_sysfs)(struct platform_device *pdev, char *in_buf,
+                                          size_t len, enum xcl_group_kind kind);
 };
 #define	SDM_DEV(xdev)						\
 	(SUBDEV(xdev, XOCL_SUBDEV_HWMON_SDM) ? 			\
@@ -2179,6 +2195,12 @@ struct xocl_sdm_funcs {
 #define	xocl_hwmon_sdm_get_sensors_list(xdev, create_sysfs)		\
 	(SDM_CB(xdev, hwmon_sdm_get_sensors_list) ?			\
 	SDM_OPS(xdev)->hwmon_sdm_get_sensors_list(SDM_DEV(xdev), create_sysfs) : -ENODEV)
+#define	xocl_hwmon_sdm_get_sensors(xdev, resp, repo_type)		\
+	(SDM_CB(xdev, hwmon_sdm_get_sensors) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_get_sensors(SDM_DEV(xdev), resp, repo_type) : -ENODEV)
+#define	xocl_hwmon_sdm_create_sensors_sysfs(xdev, buf, size, kind)		\
+	(SDM_CB(xdev, hwmon_sdm_create_sensors_sysfs) ?			\
+	SDM_OPS(xdev)->hwmon_sdm_create_sensors_sysfs(SDM_DEV(xdev), buf, size, kind) : -ENODEV)
  
 /* subdev mbx messages */
 #define XOCL_MSG_SUBDEV_VER	1
@@ -2432,6 +2454,24 @@ static inline int xocl_kds_fini_ert(xdev_handle_t xdev)
 {
 	return kds_fini_ert(&XDEV(xdev)->kds);
 }
+
+#if PF == MGMTPF
+static inline int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel)
+{
+	return 0;
+}
+static inline void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl)
+{
+	return;
+}
+#else
+int xocl_register_cus(xdev_handle_t xdev, int slot_hdl, xuid_t *uuid,
+		      struct ip_layout *ip_layout,
+		      struct ps_kernel_node *ps_kernel);
+void xocl_unregister_cus(xdev_handle_t xdev, int slot_hdl);
+#endif
 
 /* context helpers */
 extern struct mutex xocl_drvinst_mutex;

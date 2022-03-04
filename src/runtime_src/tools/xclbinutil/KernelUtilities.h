@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -25,7 +25,6 @@
 namespace XclBinUtilities {
   void addKernel(const boost::property_tree::ptree & ptKernel, bool isFixedPS, boost::property_tree::ptree & ptEmbeddedData);
   void addKernel(const boost::property_tree::ptree & ptKernel, boost::property_tree::ptree & ptMemTopology, boost::property_tree::ptree & ptIPLayout, boost::property_tree::ptree & ptConnectivity);
-  void transposeFunctions(const std::vector<std::string> &functionSigs, boost::property_tree::ptree &ptFunctions);
   void validateFunctions(const std::string &kernelLibrary, const boost::property_tree::ptree &ptFunctions);
   void createPSKernelMetadata(unsigned long numInstances, const boost::property_tree::ptree & ptFunctions, const std::string &kernelLibrary, boost::property_tree::ptree &ptPSKernels);
 };

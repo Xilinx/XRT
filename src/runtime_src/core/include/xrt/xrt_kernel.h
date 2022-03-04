@@ -1,22 +1,9 @@
 /*
- * Copyright (C) 2020-2021, Xilinx Inc - All rights reserved
- * Xilinx Runtime (XRT) Experimental APIs
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
+ * Copyright (C) 2020-2022 Xilinx, Inc
+ * SPDX-License-Identifier: Apache-2.0
  */
-
-#ifndef _XRT_KERNEL_H_
-#define _XRT_KERNEL_H_
+#ifndef XRT_KERNEL_H_
+#define XRT_KERNEL_H_
 
 #include "ert.h"
 #include "xrt.h"
@@ -56,19 +43,19 @@ namespace xrt {
 /*!
  * @class autostart
  *
- * @brief 
+ * @brief
  * xrt::autostart is a specific type used as template argument.
  *
- * @details 
+ * @details
  * When implicitly starting a kernel through templated operator, the
  * first argument can be specified as xrt::autostart indicating the
  * number of iterations the kernel run should perform.
  *
  * The default iterations, or xrt::autostart constructed with the
  * value 0, represents a for-ever running kernel.
- * 
+ *
  * When a kernel is auto-started, the running kernel can be manipulated
- * through a \ref xrt::mailbox object provided the kernel is synthesized 
+ * through a \ref xrt::mailbox object provided the kernel is synthesized
  * with mailbox.
  *
  * The counted auto-restart feature is supported only for kernels that
@@ -88,9 +75,9 @@ class kernel;
 class event_impl;
 
 /*!
- * @class run 
+ * @class run
  *
- * @brief 
+ * @brief
  * xrt::run represents one execution of a kernel
  *
  * @details
@@ -132,8 +119,8 @@ class run
   /**
    * start() - Start auto-restart execution of a run
    *
-   * @param iterations  
-   *   Number of times to iterate the same run.  
+   * @param iterations
+   *   Number of times to iterate the same run.
    *
    * An iteration count of zero means that the kernel should run
    * forever, or until explicitly stopped using ``stop()``.
@@ -159,9 +146,9 @@ class run
   /**
    * stop() - Stop kernel run object at next safe iteration
    *
-   * If the kernel run object has been started by specifying 
-   * an iteration count or by specifying default iteration count, 
-   * then this function can be used to stop the iteration early.  
+   * If the kernel run object has been started by specifying
+   * an iteration count or by specifying default iteration count,
+   * then this function can be used to stop the iteration early.
    *
    * The function is synchronous and waits for the kernel
    * run object to complete.
@@ -192,9 +179,9 @@ class run
   /**
    * wait() - Wait for a run to complete execution
    *
-   * @param timeout  
+   * @param timeout
    *  Timeout for wait (default block till run completes)
-   * @return 
+   * @return
    *  Command state upon return of wait, or ERT_CMD_STATE_TIMEOUT
    *  if timeout exceeded.
    *
@@ -256,7 +243,7 @@ class run
   /**
    * state() - Check the current state of a run object
    *
-   * @return 
+   * @return
    *  Current state of this run object
    *
    * The state values are defined in ``include/ert.h``
@@ -269,12 +256,12 @@ class run
    * add_callback() - Add a callback function for run state
    *
    * @param state       State to invoke callback on
-   * @param callback    Callback function 
+   * @param callback    Callback function
    * @param data        User data to pass to callback function
    *
    * The function is called when the run object changes state to
    * argument state or any error state.  Only
-   * ``ERT_CMD_STATE_COMPLETED`` is supported currently. 
+   * ``ERT_CMD_STATE_COMPLETED`` is supported currently.
    *
    * The function object's first parameter is a unique 'key'
    * for this xrt::run object implmentation on which the callback
@@ -294,7 +281,7 @@ class run
   /**
    * set_event() - Add event for enqueued operations
    *
-   * @param event    
+   * @param event
    *   Opaque implementation object
    *
    * This function is used when a run object is enqueued in an event
@@ -310,10 +297,10 @@ class run
   /**
    * operator bool() - Check if run handle is valid
    *
-   * @return 
+   * @return
    *   True if run is associated with kernel object, false otherwise
    */
-  explicit 
+  explicit
   operator bool() const
   {
     return handle != nullptr;
@@ -338,9 +325,9 @@ class run
    *
    * @param index
    *  Index of kernel argument to update
-   * @param arg        
+   * @param arg
    *  The scalar argument value to set.
-   * 
+   *
    * Use this API to explicit set or change a kernel argument prior
    * to starting kernel execution.  After setting arguments, the
    * kernel can be started using ``start()`` on the run object.
@@ -361,7 +348,7 @@ class run
    *  Index of kernel argument to set
    * @param boh
    *  The global buffer argument value to set (lvalue).
-   * 
+   *
    * Use this API to explicit set or change a kernel argument prior
    * to starting kernel execution.  After setting arguments, the
    * kernel can be started using ``start()`` on the run object.
@@ -419,7 +406,7 @@ class run
    *  Index of kernel argument to update
    * @param arg
    *  The scalar argument value to set.
-   * 
+   *
    * Use this API to asynchronously update a specific scalar argument
    * of the kernel associated with the run object.
    *
@@ -439,9 +426,9 @@ class run
    *  Index of kernel argument to update
    * @param boh
    *  The global buffer argument value to set.
-   * 
+   *
    * Use this API to asynchronously update a specific kernel
-   * argument of an existing run.  
+   * argument of an existing run.
    *
    * This API is only supported on Edge.
    */
@@ -457,7 +444,7 @@ class run
    * @param args
    *  Kernel arguments
    *
-   * Use this API to explicitly set all kernel arguments and 
+   * Use this API to explicitly set all kernel arguments and
    * start kernel execution.
    */
   template<typename ...Args>
@@ -547,16 +534,16 @@ private:
     set_arg(++argno, std::forward<Args>(args)...);
   }
 };
- 
+
 
 /*!
  * @class kernel
  *
  * A kernel object represents a set of instances matching a specified name.
- * The kernel is created by finding matching kernel instances in the 
+ * The kernel is created by finding matching kernel instances in the
  * currently loaded xclbin.
  *
- * Most interaction with kernel objects are through \ref xrt::run objects created 
+ * Most interaction with kernel objects are through \ref xrt::run objects created
  * from the kernel object to represent an execution of the kernel
  */
 class kernel_impl;
@@ -621,7 +608,7 @@ public:
    *
    * @param args
    *  Kernel arguments
-   * @return 
+   * @return
    *  Run object representing this kernel function invocation
    */
   template<typename ...Args>
@@ -656,7 +643,7 @@ public:
    *  The kernel register offset of the argument with specified index
    *
    * Use with ``read_register()`` and ``write_register()`` if manually
-   * reading or writing kernel registers for explicit arguments. 
+   * reading or writing kernel registers for explicit arguments.
    */
   XCL_DRIVER_DLLESPEC
   uint32_t
@@ -667,13 +654,13 @@ public:
    *
    * @param offset
    *  Offset in register space to write to
-   * @param data     
+   * @param data
    *  Data to write
    *
    * Throws std::out_or_range if offset is outside the
    * kernel address space
    *
-   * The kernel must be associated with exactly one kernel instance 
+   * The kernel must be associated with exactly one kernel instance
    * (compute unit), which must be opened for exclusive access.
    */
   XCL_DRIVER_DLLESPEC
@@ -683,15 +670,15 @@ public:
   /**
    * read() - Read data from kernel address range
    *
-   * @param offset  
+   * @param offset
    *  Offset in register space to read from
-   * @return 
+   * @return
    *  Value read from offset
    *
    * Throws std::out_or_range if offset is outside the
    * kernel address space
    *
-   * The kernel must be associated with exactly one kernel instance 
+   * The kernel must be associated with exactly one kernel instance
    * (compute unit), which must be opened for exclusive access.
    */
   XCL_DRIVER_DLLESPEC
@@ -738,9 +725,9 @@ extern "C" {
  * The kernel name must uniquely identify compatible kernel instances
  * (compute units).  Optionally specify which kernel instance(s) to
  * open using "kernelname:{instancename1,instancename2,...}" syntax.
- * The compute units are opened with shared access, meaning that 
+ * The compute units are opened with shared access, meaning that
  * other kernels and other process will have shared access to same
- * compute units.  If exclusive access is needed then open the 
+ * compute units.  If exclusive access is needed then open the
  * kernel using @xrtPLKernelOpenExclusve().
  *
  * An xclbin with the specified kernel must have been loaded prior
@@ -804,7 +791,7 @@ xrtKernelArgGroupId(xrtKernelHandle kernelHandle, int argno);
  * @argno:  Index of kernel argument
  * Return:  The kernel register offset of the argument with specified index
  *
- * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()`` 
+ * Use with ``xrtKernelReadRegister()`` and ``xrtKernelWriteRegister()``
  * if manually reading or writing kernel registers for explicit arguments.
  */
 XCL_DRIVER_DLLESPEC
@@ -819,7 +806,7 @@ xrtKernelArgOffset(xrtKernelHandle khdl, int argno);
  * @datap:        Pointer to location where to write data
  * Return:        0 on success, errcode otherwise
  *
- * The kernel must be associated with exactly one kernel instance 
+ * The kernel must be associated with exactly one kernel instance
  * (compute unit), which must be opened for exclusive access.
  */
 XCL_DRIVER_DLLESPEC
@@ -834,7 +821,7 @@ xrtKernelReadRegister(xrtKernelHandle kernelHandle, uint32_t offset, uint32_t* d
  * @data:         Data to write
  * Return:        0 on success, errcode otherwise
  *
- * The kernel must be associated with exactly one kernel instance 
+ * The kernel must be associated with exactly one kernel instance
  * (compute unit), which must be opened for exclusive access.
  */
 XCL_DRIVER_DLLESPEC
@@ -896,10 +883,10 @@ xrtRunSetArg(xrtRunHandle rhdl, int index, ...);
  * Return:      0 on success, -1 on error
  *
  * Use this API to asynchronously update a specific kernel
- * argument of an existing run.  
+ * argument of an existing run.
  *
  * This API is only supported on Edge.
- */  
+ */
 XCL_DRIVER_DLLESPEC
 int
 xrtRunUpdateArg(xrtRunHandle rhdl, int index, ...);
@@ -959,7 +946,7 @@ xrtRunState(xrtRunHandle rhdl);
  *
  * @rhdl:        Handle to set callback on
  * @state:       State to invoke callback on
- * @callback:    Callback function 
+ * @callback:    Callback function
  * @data:        User data to pass to callback function
  *
  * Register a run callback function that is invoked when the

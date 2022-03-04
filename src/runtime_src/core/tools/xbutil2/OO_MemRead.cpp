@@ -45,7 +45,7 @@ OO_MemRead::OO_MemRead( const std::string &_longName, bool _isHidden )
     ("output,o", boost::program_options::value<decltype(m_outputFile)>(&m_outputFile)->required(), "Output file")
     ("address", boost::program_options::value<decltype(m_baseAddress)>(&m_baseAddress)->required(), "Base address to start from")
     ("size", boost::program_options::value<decltype(m_sizeBytes)>(&m_sizeBytes)->required(), "Size (bytes) to read")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

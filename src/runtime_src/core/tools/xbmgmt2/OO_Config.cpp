@@ -268,7 +268,7 @@ OO_Config::OO_Config( const std::string &_longName, bool _isHidden)
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("retention", boost::program_options::value<decltype(m_retention)>(&m_retention),"Enables / Disables memory retention.  Valid values are: [ENABLE | DISABLE]")
     ("ddr", boost::program_options::bool_switch(&m_ddr), "Enable DDR memory for retention")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_optionsHidden.add_options()

@@ -248,23 +248,21 @@ get_stall_trace()
 inline bool
 get_continuous_trace()
 {
-  static bool value = detail::get_bool_value("Debug.continuous_trace",false);
+  static bool value = detail::get_bool_value("Debug.continuous_trace", false);
   return value;
 }
 
 inline unsigned int
 get_trace_buffer_offload_interval_ms()
 {
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.trace_buffer_offload_interval_ms",10);
+  static unsigned int value = detail::get_uint_value("Debug.trace_buffer_offload_interval_ms", 10);
   return value;
 }
 
 inline unsigned int
 get_trace_file_dump_interval_s()
 {
-  // NOLINTNEXTLINE
-  static unsigned int value = detail::get_uint_value("Debug.trace_file_dump_interval_s",5);
+  static unsigned int value = detail::get_uint_value("Debug.trace_file_dump_interval_s", 5);
   return value;
 }
 
@@ -360,7 +358,7 @@ get_aie_trace_flush()
 inline std::string
 get_aie_trace_counter_scheme()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es1");
+  static std::string value = detail::get_string_value("Debug.aie_trace_counter_scheme", "es2");
   return value;
 }
 
@@ -372,9 +370,9 @@ get_aie_trace_metrics()
 }
 
 inline std::string
-get_aie_trace_start_delay()
+get_aie_trace_start_time()
 {
-  static std::string value = detail::get_string_value("Debug.aie_trace_start_delay", "0");
+  static std::string value = detail::get_string_value("Debug.aie_trace_start_time", "0");
   return value;
 }
 
@@ -385,24 +383,45 @@ get_aie_trace_user_control()
   return value;
 }
 
+inline bool
+get_aie_trace_periodic_offload()
+{
+  static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_buffer_offload_interval_ms()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_buffer_offload_interval_ms", 10);
+  return value;
+}
+
+inline unsigned int
+get_aie_trace_file_dump_interval_s()
+{
+  static unsigned int value = detail::get_uint_value("Debug.aie_trace_file_dump_interval_s", 5);
+  return value;
+}
+
 inline std::string
 get_aie_profile_core_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "heat_map");
+  static std::string value = detail::get_string_value("Debug.aie_profile_core_metrics", "");
   return value;
 }
 
 inline std::string
 get_aie_profile_memory_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "conflicts");
+  static std::string value = detail::get_string_value("Debug.aie_profile_memory_metrics", "");
   return value;
 }
 
 inline std::string
-get_aie_profile_shim_metrics()
+get_aie_profile_interface_metrics()
 {
-  static std::string value = detail::get_string_value("Debug.aie_profile_shim_metrics", "bandwidths");
+  static std::string value = detail::get_string_value("Debug.aie_profile_interface_metrics", "");
   return value;
 }
 

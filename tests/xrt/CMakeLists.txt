@@ -2,44 +2,13 @@
 # Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+PROJECT(XRT_TESTCASES)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED OFF)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set(XILINX_XRT $ENV{XILINX_XRT})
 set(XRT_CORE_LIBRARY xrt_core)
-set(MODE hw)
-
-set(XRT_DIR ${XILINX_XRT}/share/cmake/XRT)
-message("XRT_DIR=${XRT_DIR}")
-find_package(XRT)
-
-set(xrt_core_LIBRARY XRT::xrt_core)
-set(xrt_coreutil_LIBRARY XRT::xrt_coreutil)
-set(xrt_xilinxopencl_LIBRARY XRT::xilinxopencl)
-set(xrt_core_static_LIBRARY XRT::xrt_core_static)
-set(xrt_coreutil_static_LIBRARY XRT::xrt_coreutil_static)
-set(xrt_xilinxopencl_static_LIBRARY XRT::xilinxopencl_static)
-
-if (DEFINED ENV{XCL_EMULATION_MODE})
-  set(MODE $ENV{XCL_EMULATION_MODE})
-  string(REPLACE "_" "" XCL_EMU_SUFFIX ${MODE})
-  set(xrt_core_LIBRARY XRT::xrt_${XCL_EMU_SUFFIX})
-  message("=============== XRT_CORE_LIB=${xrt_core_LIBRARY}")
-endif()
-
-include_directories(${XRT_INCLUDE_DIRS})
-
-if (NOT WIN32)
-find_library(uuid_LIBRARY
-  NAMES uuid)
-message("uuid_LIBRARY=${uuid_LIBRARY}")
-else()
-set(BOOST_ROOT C:/Xilinx/XRT/ext)
-find_package(Boost)
-include_directories(${Boost_INCLUDE_DIRS})
-endif(NOT WIN32)
-
 
 if (NOT DEFINED ${INSTALL_DIR})
   set(INSTALL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/build/${CMAKE_SYSTEM_NAME}/${CMAKE_BUILD_TYPE}/${MODE}")
@@ -60,6 +29,8 @@ add_subdirectory(fa_kernel)
 add_subdirectory(mailbox)
 add_subdirectory(query)
 add_subdirectory(perf_IOPS)
+add_subdirectory(enqueue)
+add_subdirectory(m2m_arg)
 if (NOT WIN32)
   add_subdirectory(reset)
   add_subdirectory(102_multiproc_verify)

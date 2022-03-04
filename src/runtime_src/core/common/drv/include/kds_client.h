@@ -61,7 +61,8 @@ struct kds_client {
 	struct pid	         *pid;
 	struct mutex		  lock;
 
-	struct kds_client_ctx	 *ctx;
+	/* TODO: xocl not suppot multiple xclbin context yet. */
+	struct kds_client_ctx    *ctx;
 	struct list_head          ctx_list;
 
 	struct list_head          graph_list;

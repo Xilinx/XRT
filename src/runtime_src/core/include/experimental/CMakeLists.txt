@@ -16,6 +16,7 @@ set(XRT_EXPERIMENTAL_HEADER_SRC
   xrt_message.h
   xrt_profile.h
   xrt_pskernel.h
+  xrt_queue.h
   xrt_system.h
   xrt_uuid.h
   xrt_xclbin.h

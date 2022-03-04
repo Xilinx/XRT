@@ -204,17 +204,13 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
-  void HwEmShim::parseHLSPrintf(const std::string& simPath)
+  void HwEmShim::parseString(const std::string& simPath , const std::string& searchString)
   {
     std::ifstream ifs(simPath + "/simulate.log");
-    std::string word = "HLS_PRINT";
-    std::string line;
-    while( getline(ifs, line ))
-    {
-      size_t pos = line.find(word);
-      if ( pos != std::string::npos) {
-        logMessage(line, 0);
-      }
+    std::string lineHandle;
+    while(getline(ifs, lineHandle)) {
+      if(lineHandle.find(searchString, 0) != std::string::npos)
+        logMessage(lineHandle, 0);
     }
   }
 
@@ -222,7 +218,7 @@ namespace xclhwemhal2 {
   {
     std::string simPath = getSimPath();
     std::string content = loadFileContentsToString(simPath + "/simulate.log");
-    parseHLSPrintf(simPath);
+    parseString(simPath,"HLS_PRINT");
     if (content.find("// ERROR!!! DEADLOCK DETECTED ") != std::string::npos) {
       size_t first = content.find("// ERROR!!! DEADLOCK DETECTED");
       size_t last = content.find("detected!", first);
@@ -230,6 +226,10 @@ namespace xclhwemhal2 {
       std::string deadlockMsg = content.substr(first , last + 9 - first);
       logMessage(deadlockMsg, 0);
     }
+
+    //CR-1120081 Changes Start
+    parseString(simPath,"SIM-IPC's external process can be connected to instance");
+    //CR-1120081 Changes End
   }
 
   static void sigHandler(int sn, siginfo_t *si, void *sc)
@@ -553,7 +553,8 @@ namespace xclhwemhal2 {
     }
 
     std::string instance_name = "";
-    auto base_address = 0;
+    //CR-1122692:'auto' is treated as 32 bit int.But 'uint64_t' is needed
+    uint64_t base_address = 0;
     for (const auto& kernel : xclbin_object.get_kernels())
     {
       // get properties of each kernel object
@@ -563,17 +564,19 @@ namespace xclhwemhal2 {
       for (const auto& cu : kernel.get_cus())
       {
         base_address = cu.get_base_address();
-        mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
-        //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
-        if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
-        {
-          mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+        //CR-1122692: Adding checks to validate base_address and adding 'mVersalPlatform' check
+        if (base_address != (uint64_t)-1 && mVersalPlatform) {
+          mCuBaseAddress = base_address & 0xFFFFFFFF00000000;
+          //BAD Worharound for vck5000 need to remove once SIM_QDMA supports PCIE bar
+          if(xclemulation::config::getInstance()->getCuBaseAddrForce()!=-1)
+          {
+            mCuBaseAddress = xclemulation::config::getInstance()->getCuBaseAddrForce();
+          }
+          else if(mVersalPlatform)
+          {
+            mCuBaseAddress = 0x20200000000;
+          }
         }
-        else if(mVersalPlatform)
-        {
-          mCuBaseAddress = 0x20200000000;
-        }
-
         //fetch instance name
         instance_name = cu.get_name();
         //iterate over arguments and populate kernelArg structure
@@ -2748,9 +2751,7 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
     return -1;
   }
    
-  // Enabling the copy buffer thru the M2M under the INI option enable_m2m and its default is false.
-  // Once the issues regarding this is resolved from the sim_m2m kernel, we will remove this ini option.
-  if (xclemulation::config::getInstance()->isM2MEnabled()) {
+  // Copy buffer thru the M2M.
     if (deviceQuery(key_type::m2m) && getM2MAddress() != 0) {
 
       char hostBuf[M2M_KERNEL_ARGS_SIZE];
@@ -2785,7 +2786,6 @@ int HwEmShim::xclCopyBO(unsigned int dst_boHandle, unsigned int src_boHandle, si
       PRINTENDFUNC;
       return 0;
     }
-  }
 
   // source buffer is host_only and destination buffer is device_only
   if (isHostOnlyBuffer(sBO) && !xclemulation::xocl_bo_p2p(sBO) && xclemulation::xocl_bo_dev_only(dBO)) {

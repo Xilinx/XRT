@@ -191,16 +191,6 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         return nullptr;
     }
 
-    if (kernel_info->kernel_channels) {
-        if (enc_session->base.channel_id > (int32_t)kernel_info->max_channel_id) {
-            xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD,
-                "Selected dataflow CU with channels has ini setting with max channel_id of %d. Cannot create session with higher channel_id of %d\n", kernel_info->max_channel_id, enc_session->base.channel_id);
-            
-            free(enc_session);
-            return nullptr;
-        }
-    }
-
     // Call the plugins initialization function with this session data
     int32_t xma_main_ver = -1;
     int32_t xma_sub_ver = -1;
@@ -220,7 +210,6 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
         return nullptr;
     }
 
-    XmaHwDevice& dev_tmp1 = hwcfg->devices[hwcfg_dev_index];
     // Allocate the private data
     enc_session->base.plugin_data =
         calloc(enc_session->encoder_plugin->plugin_data_size, sizeof(uint8_t));
@@ -250,20 +239,7 @@ xma_enc_session_create(XmaEncoderProperties *enc_props)
     //Obtain lock only for a) singleton changes & b) kernel_info changes
     std::unique_lock<std::mutex> guard1(g_xma_singleton->m_mutex);
     //Singleton lock acquired
-
-    if (!kernel_info->soft_kernel && !kernel_info->in_use && !kernel_info->context_opened) {
-        try {
-            dev_handle.get_handle()->open_context(dev_tmp1.uuid, kernel_info->cu_index_ert, true);
-        }
-        catch (const xrt_core::system_error&) {
-            xma_logmsg(XMA_ERROR_LOG, XMA_ENCODER_MOD, "Failed to open context to CU %s for this session\n", kernel_info->name);
-            free(enc_session->base.plugin_data);
-            free(enc_session);
-            delete priv1;
-            return nullptr;
-        }
-    }
-
+     
     enc_session->base.session_id = g_xma_singleton->num_of_sessions + 1;
     xma_logmsg(XMA_INFO_LOG, XMA_ENCODER_MOD,
                 "XMA session channel_id: %d; session_id: %d\n", enc_session->base.channel_id, enc_session->base.session_id);

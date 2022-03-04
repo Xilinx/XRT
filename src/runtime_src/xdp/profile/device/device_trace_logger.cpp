@@ -305,8 +305,8 @@ namespace xdp {
         db->getDynamicInfo().addEvent(strmEvent);
         std::get<0>(matchingStart) = strmEvent->getEventType() ;
         std::get<1>(matchingStart) = strmEvent->getEventId(); 
-	std::get<2>(matchingStart) = hostTimestamp ;
-	std::get<3>(matchingStart) = deviceTimestamp ;
+        std::get<2>(matchingStart) = hostTimestamp ;
+        std::get<3>(matchingStart) = deviceTimestamp ;
         hostTimestamp += halfCycleTimeInMs;
       }
       // add end event
@@ -336,7 +336,7 @@ namespace xdp {
       //  then we must have dropped an end packet.  Add a dummy end packet
       //  here.
       if (db->getDynamicInfo().hasMatchingDeviceEventStart(traceId, ty)){
-	std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
+        std::tuple<VTFEventType, uint64_t, double, uint64_t> matchingStart =
           db->getDynamicInfo().matchingDeviceEventStart(traceId, ty);
         memEvent =
           new DeviceMemoryAccess(std::get<1>(matchingStart),
@@ -366,10 +366,10 @@ namespace xdp {
         memEvent = new DeviceMemoryAccess(0, hostTimestamp, ty, deviceId, slot, cuId, memStrId);
         memEvent->setDeviceTimestamp(deviceTimestamp);
         db->getDynamicInfo().addEvent(memEvent);
-	std::get<0>(matchingStart) = memEvent->getEventType() ;
-	std::get<1>(matchingStart) = memEvent->getEventId() ;
-	std::get<2>(matchingStart) = hostTimestamp ;
-	std::get<3>(matchingStart) = deviceTimestamp ;
+        std::get<0>(matchingStart) = memEvent->getEventType() ;
+        std::get<1>(matchingStart) = memEvent->getEventId() ;
+        std::get<2>(matchingStart) = hostTimestamp ;
+        std::get<3>(matchingStart) = deviceTimestamp ;
 
         // Also, progress time so the end is after the start
         hostTimestamp += halfCycleTimeInMs;
@@ -393,10 +393,10 @@ namespace xdp {
                                             deviceId, slot, cuId, memStrId);
           memEvent->setDeviceTimestamp(deviceTimestamp);
           db->getDynamicInfo().addEvent(memEvent);
-	  std::get<0>(matchingStart) = memEvent->getEventType() ;
-	  std::get<1>(matchingStart) = memEvent->getEventId() ;
-	  std::get<2>(matchingStart) = hostTimestamp ;
-	  std::get<3>(matchingStart) = deviceTimestamp ;
+          std::get<0>(matchingStart) = memEvent->getEventType() ;
+          std::get<1>(matchingStart) = memEvent->getEventId() ;
+          std::get<2>(matchingStart) = hostTimestamp ;
+          std::get<3>(matchingStart) = deviceTimestamp ;
           // Also, progress time so the end is after the start
           hostTimestamp += halfCycleTimeInMs;
         }
@@ -740,20 +740,22 @@ namespace xdp {
 
     // Try to find 8 contiguous clock training packets.  Anything before that
     //  is garbage from the previous run
-    
-    bool found = false ;
-    for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
-      for (uint64_t j = i ; j < i + 8 ; ++j) {
-        uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
-        if (!isClockTraining(packet)) {
-          break ;
+    // Note: This needs to be done only in beginning chunk of data
+    static bool found = false ;
+    if (!found) {
+      for (uint64_t i = 0 ; i < numPackets - 8 ; ++i) {
+        for (uint64_t j = i ; j < i + 8 ; ++j) {
+          uint64_t packet = (static_cast<uint64_t*>(data))[j] ;
+          if (!isClockTraining(packet)) {
+            break ;
+          }
+          if (j == (i + 7)) {
+            start = i ;
+            found = true ;
+          }
         }
-        if (j == (i + 7)) {
-          start = i ;
-          found = true ;
-        }
+        if (found) break ;
       }
-      if (found) break ;
     }
     
     for (uint64_t i = start ; i < numPackets ; ++i) {

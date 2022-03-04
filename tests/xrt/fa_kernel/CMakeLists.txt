@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
+CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+PROJECT(fa_kernel)
 set(TESTNAME "fa_kernel")
+
+include(../../CMake/utils.cmake)
 
 add_executable(fa_xrt xrt.cpp)
 target_link_libraries(fa_xrt PRIVATE ${xrt_coreutil_LIBRARY})

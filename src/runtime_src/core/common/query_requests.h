@@ -82,6 +82,7 @@ enum class key_type
   clock_freq_topology_raw,
   dma_stream,
   kds_cu_info,
+  sdm_sensor_info,
   kds_scu_info,
   ps_kernel,
   xocl_errors,
@@ -257,6 +258,12 @@ enum class key_type
   spc_status,
   accel_deadlock_status,
   get_xclbin_data,
+  aie_get_freq,
+  aie_set_freq,
+
+  boot_partition,
+  flush_default_only,
+  vmr_status,
 
   noop
 };
@@ -794,6 +801,27 @@ struct aie_reg_read : request
   get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
 };
 
+struct aie_get_freq : request
+{
+  using result_type = uint64_t;
+  using partition_id_type = uint32_t;
+  static const key_type key = key_type::aie_get_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id) const = 0;
+};
+
+struct aie_set_freq : request
+{
+  using result_type = bool;
+  using partition_id_type = uint32_t;
+  using freq_type = uint64_t;
+  static const key_type key = key_type::aie_set_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id, const boost::any& freq) const = 0;
+};
+
 struct graph_status : request
 {
   using result_type = std::vector<std::string>;
@@ -819,6 +847,47 @@ struct debug_ip_layout_raw : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+struct sdm_sensor_info : request
+{
+  /**
+   * enum class sdr_req_type - request ids for specific sensor query requests
+   *
+   * Use request ids in this table to identify the desired sensor query request.
+   */
+  enum class sdr_req_type
+  {
+    current     = 0,
+    voltage     = 1,
+    power       = 2,
+    thermal     = 3,
+    mechanical  = 4,
+  };
+
+  /*
+   * struct sensor_data: used to store sensor information and
+   * each sensor contains following information.
+   *  label    : name
+   *  input    : instantaneous value
+   *  max      : maximum value
+   *  average  : average value
+   *  highest  : highest value (used for temperature sensors)
+   */
+  struct sensor_data {
+    std::string label;
+    uint32_t input {};
+    uint32_t max {};
+    uint32_t average {};
+    uint32_t highest {};
+  };
+  using result_type = std::vector<sensor_data>;
+  using req_type = sdr_req_type;
+  using data_type = sensor_data;
+  static const key_type key = key_type::sdm_sensor_info;
+
+  virtual boost::any
+  get(const device*, const boost::any& req_type) const = 0;
 };
 
 struct kds_cu_info : request
@@ -851,6 +920,7 @@ struct ps_kernel : request
 struct kds_scu_info : request
 {
   struct data {
+    uint32_t slot_index;
     uint32_t index;
     std::string name;
     uint32_t status;
@@ -2762,6 +2832,43 @@ struct accel_deadlock_status : request
   get(const xrt_core::device* device, const boost::any& dbg_ip_data) const = 0;
 };
 
+struct boot_partition : request
+{
+  // default: 0
+  // backup : 1
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::boot_partition;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct flush_default_only : request
+{
+  using result_type = uint32_t;
+  using value_type = uint32_t;
+  static const key_type key = key_type::flush_default_only;
+
+  virtual boost::any
+  get(const device*) const = 0;
+
+  virtual void
+  put(const device*, const boost::any&) const = 0;
+};
+
+struct vmr_status : request
+{
+  using result_type = std::vector<std::string>;
+  static const key_type key = key_type::vmr_status;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
 struct get_xclbin_data : request
 {
   struct xclbin_data {
@@ -2775,6 +2882,7 @@ struct get_xclbin_data : request
 
   virtual boost::any
   get(const xrt_core::device* device) const = 0;
+
 };
 
 } // query

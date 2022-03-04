@@ -329,9 +329,11 @@ kds_interrupt_store(struct device *dev, struct device_attribute *da,
 		return -EBUSY;
 	}
 
-	if (!kds->cu_intr_cap)
+	/* If cfg_gpio device exist, shell supports CU to host interrupt */
+	if (!CFG_GPIO_OPS(xdev))
 		goto done;
 
+	kds->cu_intr_cap = 1;
 	/* The last character of buf is '\n' */
 	if (!strncmp(buf, "ert", count-1))
 		cu_intr = 0;
@@ -340,18 +342,25 @@ kds_interrupt_store(struct device *dev, struct device_attribute *da,
 	else
 		goto done;
 
-	if (kds->cu_intr == cu_intr)
+	if (KDS_SETTING(kds->cu_intr) == cu_intr)
 		goto done;
 
-	if (cu_intr) {
-		xocl_ert_user_disable(xdev);
-		xocl_kds_cus_enable(xdev);
+	if (ERT_USER_DEV(xdev)) {
+		if (cu_intr) {
+			xocl_ert_user_disable(xdev);
+			xocl_kds_cus_enable(xdev);
+		} else {
+			xocl_kds_cus_disable(xdev);
+			xocl_ert_user_enable(xdev);
+		}
 	} else {
-		xocl_kds_cus_disable(xdev);
-		xocl_ert_user_enable(xdev);
+		if (cu_intr)
+			xocl_gpio_cfg(xdev, INTR_TO_CU);
+		else
+			xocl_gpio_cfg(xdev, INTR_TO_ERT);
 	}
 
-	kds->cu_intr = cu_intr;
+	kds->cu_intr = KDS_SET_SYSFS_BIT(cu_intr);
 	kds_cfg_update(&XDEV(xdev)->kds);
 
 done:

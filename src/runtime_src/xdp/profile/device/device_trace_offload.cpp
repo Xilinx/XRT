@@ -141,6 +141,11 @@ void DeviceTraceOffload::process_trace()
       q_read = true;
       q_empty = ts2mm_info.data_queue.empty();
     }
+    if (ts2mm_info.size_queue.size() > TS2MM_QUEUE_SZ_WARN_THRESHOLD) {
+      std::call_once(ts2mm_queue_warning_flag, [](){
+        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_QUEUE_SZ);
+      });
+    }
     ts2mm_info.process_queue_lock.unlock();
 
     // Processing takes a lot more time compared to everything else

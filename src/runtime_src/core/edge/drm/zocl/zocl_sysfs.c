@@ -179,17 +179,12 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 	size_t memory_usage = 0;
 	unsigned int bo_count = 0;
 	const char *txt_fmt = "[%s] 0x%012llx\t(%4lluMB):\t%lluKB\t%dBOs\n";
-	const char *raw_fmt = "%llu %d\n";
+	const char *raw_fmt = "%llu %d %llu\n";
 
 	if (!zdev)
 		return 0;
 
 	read_lock(&zdev->attr_rwlock);
-
-	if (!zdev || !zdev->mem) {
-		read_unlock(&zdev->attr_rwlock);
-		return 0;
-	}
 
         list_for_each_entry(memp, &zdev->zm_list_head, link) {
 		if (memp->zm_type == ZOCL_MEM_TYPE_STREAMING)
@@ -199,7 +194,7 @@ static ssize_t zocl_get_memstat(struct device *dev, char *buf, bool raw)
 		bo_count = memp->zm_stat.bo_count;
 
 		if (raw)
-			count = sprintf(buf, raw_fmt, memory_usage, bo_count);
+			count = sprintf(buf, raw_fmt, memory_usage, bo_count, 0);
 		else {
 			count = sprintf(buf, txt_fmt,
 			    memp->zm_used ? "IN-USE" : "UNUSED",

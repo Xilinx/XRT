@@ -25,9 +25,9 @@ namespace xdp {
 
   UserEventsTraceWriter::UserEventsTraceWriter(const char* filename) :
     VPTraceWriter(filename,
-		  "1.1",
-		  getCurrentDateTime(),
-		  9 /* ns */),
+                  "1.1",
+                  getCurrentDateTime(),
+                  9 /* ns */),
     bucketId(1)
   {
   }
@@ -47,7 +47,7 @@ namespace xdp {
     fout << "STRUCTURE" << std::endl ;
     fout << "Group_Start,User and Internal Events" << std::endl ;
     fout << "Dynamic_Row," << bucketId << ",General,User Events from APIs and Internally Generated Events"
-	 << std::endl ;
+         << std::endl ;
     fout << "Group_End,User and Internal Events" << std::endl ;
   }
 
@@ -62,10 +62,10 @@ namespace xdp {
     fout << "EVENTS" << std::endl ;
     std::vector<VTFEvent*> userEvents = 
       (db->getDynamicInfo()).filterEvents( [](VTFEvent* e)
-					   {
-					     return e->isUserEvent() ;
-					   }
-					 ) ;
+                                           {
+                                             return e->isUserEvent() ;
+                                           }
+                                         ) ;
     for (auto e : userEvents)
     {
       e->dump(fout, bucketId) ;

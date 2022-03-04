@@ -52,6 +52,8 @@ zocl-y := \
 	zocl_sk.o \
 	zocl_kds.o \
 	cu.o \
+	cu_scu.o \
+	scu.o \
 	zocl_error.o \
 	zocl_aie.o \
 	zocl_ctrl_ert.o \

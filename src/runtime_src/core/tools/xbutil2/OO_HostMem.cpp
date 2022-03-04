@@ -47,7 +47,7 @@ OO_HostMem::OO_HostMem( const std::string &_longName, bool _isHidden )
     ("device,d", boost::program_options::value<decltype(m_devices)>(&m_devices)->multitoken(), "The Bus:Device.Function (e.g., 0000:d8:00.0) device of interest")
     ("action", boost::program_options::value<decltype(m_action)>(&m_action)->required(), "Action to perform: ENABLE or DISABLE")
     ("size,s", boost::program_options::value<decltype(m_size)>(&m_size), "Size of host memory (bytes) to be enabled (e.g. 256M, 1G)")
-    ("help,h", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
+    ("help", boost::program_options::bool_switch(&m_help), "Help to use this sub-command")
   ;
 
   m_positionalOptions.

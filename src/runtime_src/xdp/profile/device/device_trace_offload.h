@@ -202,7 +202,8 @@ private:
     OffloadThreadStatus status = OffloadThreadStatus::IDLE;
     std::thread offload_thread;
     std::thread process_thread;
-    bool continuous = false ;
+    bool continuous = false;
+    std::once_flag ts2mm_queue_warning_flag;
 
     // Clock Training Params
     bool m_force_clk_train = true;

@@ -12,6 +12,7 @@ file(GLOB XBMGMT_V2_BASE_FILES
   "../common/ProgressBar.cpp"
   "../common/Process.cpp"
   "../common/Report*.cpp"
+  "../common/Table2D.cpp"
 )
 
 # Collect local directory files
