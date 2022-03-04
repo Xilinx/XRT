@@ -29,6 +29,7 @@ static std::string
 pretty_label(std::string label)
 {
   std::replace(label.begin(), label.end(), '_', ' ');
+  label[0] = toupper(label[0]);
   std::transform(label.begin()+1, label.end(), label.begin()+1, 
                   [](int c) { return static_cast<char>(::tolower(c)); });
   return label;
@@ -47,6 +48,8 @@ vmr_info(const xrt_core::device* device)
   std::vector<std::string> vmr_status_raw;
   try {
     vmr_status_raw = xrt_core::device_query<xq::vmr_status>(device);
+    auto vmr_version = xrt_core::device_query<xq::vmr_status>(device);
+    vmr_status_raw.insert(vmr_status_raw.end(), vmr_version.begin(), vmr_version.end());
   }
   catch (const xq::exception&) {
     // only available for versal
