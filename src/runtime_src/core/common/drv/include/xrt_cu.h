@@ -234,7 +234,7 @@ struct xrt_cu_info {
 	char			 kname[64];
 	void			*xgq;
 	int			 cu_domain;
-	char			 uuid[16];
+	unsigned char		 uuid[16];
 };
 
 struct per_custat {

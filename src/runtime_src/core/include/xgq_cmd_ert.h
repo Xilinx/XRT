@@ -234,7 +234,7 @@ struct xgq_cmd_config_cu {
 	uint32_t haddr;
 	uint32_t payload_size;
 	char name[64];
-	char uuid[16];
+	unsigned char uuid[16];
 };
 
 /**
