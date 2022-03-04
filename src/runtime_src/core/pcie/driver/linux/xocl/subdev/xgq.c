@@ -138,8 +138,8 @@ struct xocl_xgq_vmr {
 	struct vmr_shared_mem	xgq_vmr_shared_mem;
 	bool 			xgq_polling;
 	bool 			xgq_boot_from_backup;
-	bool 			xgq_flush_default_only;
-	bool 			xgq_flush_to_legacy;
+	bool 			xgq_flash_default_only;
+	bool 			xgq_flash_to_legacy;
 	u32			xgq_intr_base;
 	u32			xgq_intr_num;
 	struct list_head	xgq_submitted_cmds;
@@ -657,15 +657,15 @@ static inline void remove_xgq_cid(struct xocl_xgq_vmr *xgq, int id)
 	mutex_unlock(&xgq->xgq_lock);
 }
 
-static enum xgq_cmd_flush_type inline get_flush_type(struct xocl_xgq_vmr *xgq)
+static enum xgq_cmd_flash_type inline get_flash_type(struct xocl_xgq_vmr *xgq)
 {
 
-	if (xgq->xgq_flush_to_legacy)
-		return XGQ_CMD_FLUSH_TO_LEGACY;
-	if (xgq->xgq_flush_default_only)
-		return XGQ_CMD_FLUSH_NO_BACKUP;
+	if (xgq->xgq_flash_to_legacy)
+		return XGQ_CMD_FLASH_TO_LEGACY;
+	if (xgq->xgq_flash_default_only)
+		return XGQ_CMD_FLASH_NO_BACKUP;
 
-	return XGQ_CMD_FLUSH_DEFAULT;
+	return XGQ_CMD_FLASH_DEFAULT;
 }
 
 static void vmr_cq_result_copy(struct xocl_xgq_vmr *xgq, struct xocl_xgq_vmr_cmd *cmd)
@@ -731,7 +731,7 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	payload->address = address;
 	payload->size = len;
 	payload->addr_type = XGQ_CMD_ADD_TYPE_AP_OFFSET;
-	payload->flush_type = get_flush_type(xgq);
+	payload->flash_type = get_flash_type(xgq);
 
 	/* set up hdr */
 	hdr = &(cmd->xgq_cmd_entry.hdr);
@@ -1661,7 +1661,7 @@ static ssize_t boot_from_backup_show(struct device *dev,
 }
 static DEVICE_ATTR(boot_from_backup, 0644, boot_from_backup_show, boot_from_backup_store);
 
-static ssize_t flush_default_only_store(struct device *dev,
+static ssize_t flash_default_only_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
@@ -1671,27 +1671,27 @@ static ssize_t flush_default_only_store(struct device *dev,
 		return -EINVAL;
 
 	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_flush_default_only = val ? true : false;
+	xgq->xgq_flash_default_only = val ? true : false;
 	mutex_unlock(&xgq->xgq_lock);
 
 	return count;
 }
 
-static ssize_t flush_default_only_show(struct device *dev,
+static ssize_t flash_default_only_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
 	mutex_lock(&xgq->xgq_lock);
-	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flush_default_only);
+	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flash_default_only);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;
 }
-static DEVICE_ATTR(flush_default_only, 0644, flush_default_only_show, flush_default_only_store);
+static DEVICE_ATTR(flash_default_only, 0644, flash_default_only_show, flash_default_only_store);
 
-static ssize_t flush_to_legacy_store(struct device *dev,
+static ssize_t flash_to_legacy_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
@@ -1701,25 +1701,25 @@ static ssize_t flush_to_legacy_store(struct device *dev,
 		return -EINVAL;
 
 	mutex_lock(&xgq->xgq_lock);
-	xgq->xgq_flush_to_legacy = val ? true : false;
+	xgq->xgq_flash_to_legacy = val ? true : false;
 	mutex_unlock(&xgq->xgq_lock);
 
 	return count;
 }
 
-static ssize_t flush_to_legacy_show(struct device *dev,
+static ssize_t flash_to_legacy_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
 	ssize_t cnt = 0;
 
 	mutex_lock(&xgq->xgq_lock);
-	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flush_to_legacy);
+	cnt += sprintf(buf + cnt, "%d\n", xgq->xgq_flash_to_legacy);
 	mutex_unlock(&xgq->xgq_lock);
 
 	return cnt;
 }
-static DEVICE_ATTR(flush_to_legacy, 0644, flush_to_legacy_show, flush_to_legacy_store);
+static DEVICE_ATTR(flash_to_legacy, 0644, flash_to_legacy_show, flash_to_legacy_store);
 
 static ssize_t polling_store(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
@@ -1863,8 +1863,8 @@ static DEVICE_ATTR_RO(vmr_verbose_info);
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
-	&dev_attr_flush_default_only.attr,
-	&dev_attr_flush_to_legacy.attr,
+	&dev_attr_flash_default_only.attr,
+	&dev_attr_flash_to_legacy.attr,
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_verbose_info.attr,
 	&dev_attr_program_sc.attr,
