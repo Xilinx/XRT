@@ -5,8 +5,10 @@
 file(GLOB XBMGMT_V2_BASE_FILES
   "xbmgmt.cpp"
   "../common/XBMain.cpp"
+  "../common/XBUtilitiesCore.cpp"
   "../common/XBUtilities.cpp"
   "../common/SubCmd.cpp"
+  "../common/XBHelpMenusCore.cpp"
   "../common/XBHelpMenus.cpp"
   "../common/OptionOptions.cpp"
   "../common/ProgressBar.cpp"
