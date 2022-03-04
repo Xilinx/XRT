@@ -18,8 +18,8 @@
 #include <chrono>
 #include <thread>
 #include <ctime>
-#include <windows.h>
 #include <Winsock2.h>
+#include <windows.h>
 
 #include <boost/format.hpp>
 
