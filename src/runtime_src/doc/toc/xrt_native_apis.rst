@@ -789,7 +789,7 @@ The above code shows
 Asynchornous Programming with XRT (experimental)
 ------------------------------------------------
 
-From the 22.1 release, XRT offers a simple asynchronous programming mechanism through the user-defined queues. Though the queue implementation is defined in the ``xrt::`` namespace (``xrt::queue``) the underlying implementation is completely detached from core XRT native API data structures (such as ``xrt::bo``, ``xrt::kernel``, etc). The ``xrt::queue`` implementation is lightweight, independent from core XRT API infrastructure, general-purpose queue implementation (that can even be used completely outside the XRT native API scope as well). If needed, the user can also use their own queue implementation instead of the implementation offered by ``xrt::queue``. 
+From the 22.1 release, XRT offers a simple asynchronous programming mechanism through the user-defined queues. The ``xrt::queue`` is lightweight, general-purpose queue implementation which is completely separated from core XRT native API data structures. If needed, the user can also use their own queue implementation instead of the implementation offered by ``xrt::queue``. 
 
 XRT queue implementation needs ``#include <experimental/xrt_queue.h`` to be added as the header file. The implementation also use C++17 features so the host code must be compiled with ``g++ -std=c++17``
 
