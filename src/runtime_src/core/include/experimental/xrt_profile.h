@@ -30,12 +30,16 @@ namespace xrt { namespace profile {
    * @class user_range
    *
    * @brief
-   * xrt::profile::user_range measures time difference between two user defined points in host program
+   * xrt::profile::user_range xrt::profile::user_range is used to track start and stop times
+   * between two user defined points in host program and add them to profiling output for
+   * visualization using post-processing tools.
    *
    * @details
-   * A user range is associated with an ID and some user recognizable metadata
-   * in form of a label and tooltip. Time duration(s) between start() and stop()
-   * are measured and post processed. They're shown in summary and represented on trace waveforms.
+   * By turning on various trace options in the xrt.ini file,
+   * XRT applications will track events and generate files, which are turned into a
+   * timeline visualization and summary via post-processing tools.  A user range is used
+   * to explicitly add events measured from start to stop from the host code to that
+   * timeline visualization and summary.
    * Usage -
    * 1. If a user_range is instantiated using the default constructor, no time is marked
    *    until the user calls start with two strings (label and tooltip)
@@ -65,9 +69,10 @@ namespace xrt { namespace profile {
     /**
      * user_range() - Constructor for user range with text
      *
-     * @label:   The string that appears embedded on the waveform for this range
-     * @tooltip: The string that appears on the waveform when hovering 
-     *           over the range
+     * @param label
+     * The string that appears embedded on the waveform for this range
+     * @param tooltip
+     * The string that appears on the waveform when hovering over the range
      *
      * Construct an object and start keeping track of time immediately
      * upon construction.
@@ -110,13 +115,13 @@ namespace xrt { namespace profile {
     /**
      * start() - Mark the start position of a user range
      *
+     * @param label
+     * The string that appears embedded on the waveform for this range
+     * @param tooltip
+     * The string that appears on the waveform when hovering over the range
+     *
      * If the range is still actively recording time, end the current
      * range and start a new one.
-     *
-     * @label: The string that appears embedded on the waveform for this range
-     * @tooltip: The string that appears on the waveform when hovering
-     * over the range
-     * Return:   none
      */
     XCL_DRIVER_DLLESPEC
     void start(const char* label, const char* tooltip = nullptr) ;
@@ -163,8 +168,9 @@ namespace xrt { namespace profile {
     /**
      * mark() - Mark the current moment in time with a marker on the waveform
      *
-     * @label: An optional label that will be displayed on top of marker in waveform
-     * Return:   none
+     * @param label
+     * An optional label that will be displayed on top of marker in waveform
+     *
      */
     XCL_DRIVER_DLLESPEC
     void mark(const char* label = nullptr) ;
@@ -172,10 +178,12 @@ namespace xrt { namespace profile {
     /**
      * mark_time_ns() - Mark a custom moment in time with a marker on the waveform
      *
-     * @time_ns: Time duration in nanoseconds since appliction start.
-     * Must be compatible with xrt_core::time_ns() API
-     * @label: An optional label that will be displayed on top of marker in waveform
-     * Return:   none
+     * @param time_ns
+     * Time duration in nanoseconds since appliction start.
+     * This must be compatible with xrt_core::time_ns() API.
+     * @param label
+     * An optional label that will be displayed on top of marker in waveform
+     *
      */
     XCL_DRIVER_DLLESPEC
     void mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label = nullptr) ;
@@ -223,7 +231,7 @@ void xrtUEMark(const char* label) ;
  * xrtUEMarkTimeNs() - Mark a custom time as when something happened
  *
  * @time_ns: Time duration in nanoseconds since application start.
- * Must be compatible with xrt_core::time_ns() API
+ * This must be compatible with xrt_core::time_ns() API.
  * @label:   An optional label that is added to the marker in the waveform
  * Return:   none
  *
