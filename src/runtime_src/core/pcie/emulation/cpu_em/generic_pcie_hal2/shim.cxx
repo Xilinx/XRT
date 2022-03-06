@@ -28,8 +28,8 @@
 #include <boost/lexical_cast.hpp>
 #include <inttypes.h>
 
-//#define DEBUG_MSGS(format, ...)
-#define DEBUG_MSGS(format, ...) printf(format, ##__VA_ARGS__)
+#define DEBUG_MSGS(format, ...)
+//#define DEBUG_MSGS(format, ...) printf(format, ##__VA_ARGS__)
 
 namespace xclcpuemhal2 {
 
