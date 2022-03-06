@@ -50,6 +50,7 @@
 
 namespace xclcpuemhal2 {
   using key_type = xrt_core::query::key_type;
+  const uint64_t MEMSIZE = 0x0000000080000000;
   // XDMA Shim
   class CpuemShim {
     public:
@@ -478,9 +479,9 @@ namespace xclcpuemhal2 {
       // HAL2 RELATED member variables start
       std::map<int, xclemulation::drm_xocl_bo*> mXoclObjMap;
       static unsigned int mBufferCount;
-      static std::map<int, std::tuple<std::string,int,void*> > mFdToFileNameMap;
+      static std::map<int, std::tuple<std::string, uint64_t, void*> > mFdToFileNameMap;
       // HAL2 RELATED member variables end
-      std::list<std::tuple<uint64_t ,void*, std::map<uint64_t , uint64_t> > > mReqList;
+      std::list<std::tuple<uint64_t, void*, std::map<uint64_t, uint64_t> > > mReqList;
       uint64_t mReqCounter;
       FeatureRomHeader mFeatureRom;
       boost::property_tree::ptree mPlatformData;
