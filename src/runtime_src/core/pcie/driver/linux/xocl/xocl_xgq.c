@@ -17,7 +17,6 @@
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include "xocl_xgq.h"
-#include "xgq_xocl_plat.h"
 
 #define CLIENT_ID_BITS 7
 #define MAX_CLIENTS (1 << CLIENT_ID_BITS)
@@ -109,10 +108,9 @@ void xocl_xgq_notify(void *xgq_handle)
 	xocl_xgq_trigger_sq_intr(xgq);
 }
 
-int xocl_xgq_get_response(void *xgq_handle, int id)
+int xocl_xgq_get_response(void *xgq_handle, int id, struct xgq_com_queue_entry *resp)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
-	struct xgq_com_queue_entry resp = {0};
 	unsigned long flags = 0;
 	u64 addr = 0;
 	int ret = 0;
@@ -122,13 +120,13 @@ int xocl_xgq_get_response(void *xgq_handle, int id)
 	if (ret)
 		goto unlock_and_out;
 
-	/* Don't need to check response if there is only one client
+	/* Don't need to check response if client doesn't care about it.
 	 * This is for better performance.
 	 */
-	if (xgq->xx_num_client == 1)
+	if (!resp)
 		goto unlock_and_out;
 
-	xocl_xgq_read_queue((u32 *)&resp, (u32 __iomem *)addr, sizeof(resp)/4);
+	xocl_xgq_read_queue((u32 *)resp, (u32 __iomem *)addr, sizeof(*resp)/4);
 
 unlock_and_out:
 	xgq_notify_peer_consumed(&xgq->xx_xgq);

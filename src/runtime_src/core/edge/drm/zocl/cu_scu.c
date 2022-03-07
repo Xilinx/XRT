@@ -127,6 +127,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	status->num_done  = done_reg;
 	status->num_ready = ready_reg;
 	status->new_status = ctrl_reg;
+	status->rcode = cu_regfile[1];
 }
 
 static void scu_check(void *core, struct xcu_status *status, bool force)

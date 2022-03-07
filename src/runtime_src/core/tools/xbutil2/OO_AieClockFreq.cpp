@@ -19,6 +19,7 @@
 #include "core/common/device.h"
 #include "core/common/query_requests.h"
 #include "OO_AieClockFreq.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 
 namespace XBU = XBUtilities;

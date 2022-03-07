@@ -17,6 +17,8 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "SubCmdProgram.h"
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 #include "tools/common/ProgressBar.h"
@@ -444,8 +446,7 @@ update_default_only(xrt_core::device* device, bool value)
       if(boost::iequals(vmr_stat.get<std::string>("label"), "Boot on default")) {
         // if backup is booted, then do not proceed
         if(std::stoi(vmr_stat.get<std::string>("value")) != 1) {
-          std::cout << "ERROR: Please load default boot to use this option" <<std::endl;
-          throw xrt_core::error(std::errc::operation_canceled);
+          std::cout << "Backup image booted. Action will be performed only on default image.\n";
         }
         break;
       }

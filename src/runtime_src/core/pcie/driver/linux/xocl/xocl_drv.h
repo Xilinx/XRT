@@ -2124,6 +2124,7 @@ struct xocl_xgq_vmr_funcs {
 	int (*xgq_load_xclbin)(struct platform_device *pdev,
 		const void __user *arg);
 	int (*xgq_check_firewall)(struct platform_device *pdev);
+	int (*xgq_clear_firewall)(struct platform_device *pdev);
 	int (*xgq_freq_scaling)(struct platform_device *pdev,
 		unsigned short *freqs, int num_freqs, int verify);
 	int (*xgq_freq_scaling_by_topo)(struct platform_device *pdev,
@@ -2150,6 +2151,9 @@ struct xocl_xgq_vmr_funcs {
 #define	xocl_xgq_check_firewall(xdev)				\
 	(XGQ_CB(xdev, xgq_check_firewall) ?			\
 	XGQ_OPS(xdev)->xgq_check_firewall(XGQ_DEV(xdev)) : 0)
+#define	xocl_xgq_clear_firewall(xdev)				\
+	(XGQ_CB(xdev, xgq_clear_firewall) ?			\
+	XGQ_OPS(xdev)->xgq_clear_firewall(XGQ_DEV(xdev)) : 0)
 #define	xocl_xgq_freq_scaling(xdev, freqs, num_freqs, verify) 	\
 	(XGQ_CB(xdev, xgq_freq_scaling) ?			\
 	XGQ_OPS(xdev)->xgq_freq_scaling(XGQ_DEV(xdev), freqs, num_freqs, verify) : -ENODEV)
@@ -2375,7 +2379,6 @@ int xocl_alloc_dev_minor(xdev_handle_t xdev_hdl);
 void xocl_free_dev_minor(xdev_handle_t xdev_hdl);
 
 int xocl_enable_vmr_boot(xdev_handle_t xdev_hdl);
-void xocl_reload_vmr(xdev_handle_t xdev_hdl);
 
 int xocl_count_iores_byname(struct platform_device *pdev, char *name);
 struct resource *xocl_get_iores_with_idx_byname(struct platform_device *pdev,

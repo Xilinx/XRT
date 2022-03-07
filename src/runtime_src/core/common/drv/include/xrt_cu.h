@@ -102,6 +102,7 @@ struct xcu_status {
 	u32	num_done;
 	u32	num_ready;
 	u32	new_status;
+	u32	rcode;
 };
 
 typedef void *xcu_core_t;
@@ -234,7 +235,7 @@ struct xrt_cu_info {
 	char			 kname[64];
 	void			*xgq;
 	int			 cu_domain;
-	char			 uuid[16];
+	unsigned char		 uuid[16];
 };
 
 struct per_custat {
@@ -293,6 +294,7 @@ struct xrt_cu {
 	u32			  done_cnt;
 	u32			  ready_cnt;
 	u32			  status;
+	u32			  rcode;
 	u64			  run_timeout;
 	int			  busy_threshold;
 	u32			  interval_min;
@@ -391,11 +393,13 @@ static inline void __xrt_cu_check(struct xrt_cu *xcu, bool force)
 	status.num_done = 0;
 	status.num_ready = 0;
 	status.new_status = 0;
+	status.rcode = 0;
 	xcu->funcs->check(xcu->core, &status, force);
 	/* XRT CU assume command finished in order */
 	xcu->done_cnt += status.num_done;
 	xcu->ready_cnt += status.num_ready;
 	xcu->status = status.new_status;
+	xcu->rcode  = status.rcode;
 }
 
 static inline void xrt_cu_check(struct xrt_cu *xcu)

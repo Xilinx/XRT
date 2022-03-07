@@ -31,7 +31,7 @@ namespace xrt {
    * @param soft kernel CU index
    *
    */
-  skd::skd(xclDeviceHandle handle, int sk_meta_bohdl, int sk_bohdl, char *kname, uint32_t cu_index, char *uuid) {
+  skd::skd(xclDeviceHandle handle, int sk_meta_bohdl, int sk_bohdl, char *kname, uint32_t cu_index, unsigned char *uuid) {
     strcpy(sk_name,kname);
     devHdl = handle;
     xrtdHdl = xrtDeviceOpenFromXcl(handle);
@@ -101,6 +101,8 @@ namespace xrt {
       if(ret) {
 	syslog(LOG_ERR, "Cannot load xclbin from UUID!\n");
 	return -1;
+      } else {
+	syslog(LOG_INFO, "Finished loading xlcin from UUID.\n");
       }
       xrtHandle = kernel_init(devHdl,reinterpret_cast<unsigned char*>(xclbin_uuid));
       if(xrtHandle) {
@@ -181,7 +183,7 @@ namespace xrt {
       /* Reg file indicates the kernel should not be running. */
       if (!(args_from_host[0] & 0x1))
 	continue; //AP_START bit is not set; New Cmd is not available
-      
+
       // FFI PS Kernel implementation
       // Map buffers used by kernel
       for(int i=0;i<num_args;i++) {
@@ -193,7 +195,7 @@ namespace xrt {
 	  uint64_t *buf_size_ptr = (uint64_t*)(&args_from_host[(args[i].offset+PS_KERNEL_REG_OFFSET)/4+2]);
 	  uint64_t buf_size = reinterpret_cast<uint64_t>(*buf_size_ptr);
 	  boSize[i] = buf_size;
-	  
+
 	  boHandles[i] = xclGetHostBO(devHdl,buf_addr,buf_size);
 	  bos[i] = xclMapBO(devHdl,boHandles[i],true);
 	  ffi_arg_values[i] = &bos[i];

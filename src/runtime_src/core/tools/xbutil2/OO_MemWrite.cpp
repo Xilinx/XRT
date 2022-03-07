@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Licensed under the Apache License, Version
+ * Copyright (C) 2020-2022 Licensed under the Apache License, Version
  * 2.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is located
  * at
@@ -18,6 +18,7 @@
 #include "OO_MemWrite.h"
 #include "core/common/query_requests.h"
 #include "core/common/system.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 

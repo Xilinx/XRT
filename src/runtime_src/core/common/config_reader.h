@@ -384,9 +384,9 @@ get_aie_trace_user_control()
 }
 
 inline bool
-get_periodic_aie_trace_offload()
+get_aie_trace_periodic_offload()
 {
-  static bool value = detail::get_bool_value("Debug.periodic_aie_trace_offload", true);
+  static bool value = detail::get_bool_value("Debug.aie_trace_periodic_offload", true);
   return value;
 }
 
