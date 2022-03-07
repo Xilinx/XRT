@@ -7,6 +7,13 @@
 XRT Native Library C++ API
 **************************
 
+Buffer APIs
+~~~~~~~~~~~
+
+.. doxygenclass:: xrt::bo
+   :project: XRT
+   :members:
+
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
 
@@ -14,6 +21,12 @@ Configuration APIs
    :project: XRT
    :members:
 
+Custom IP APIs
+~~~~~~~~~~~~~~
+
+.. doxygenclass:: xrt::ip
+   :project: XRT
+   :members:
 
 Device APIs
 ~~~~~~~~~~~
@@ -22,21 +35,12 @@ Device APIs
    :project: XRT
    :members:
 
-XCLBIN APIs
-~~~~~~~~~~~
+Info APIs
+~~~~~~~~~
 
-.. doxygenclass:: xrt::xclbin
+.. doxygennamespace:: xrt::info
    :project: XRT
    :members:
-
-
-Buffer APIs
-~~~~~~~~~~~
-
-.. doxygenclass:: xrt::bo
-   :project: XRT
-   :members:
-
 
 Kernel APIs
 ~~~~~~~~~~~
@@ -49,20 +53,20 @@ Kernel APIs
    :project: XRT
    :members:
 
-Custom IP APIs
-~~~~~~~~~~~~~~
+Message APIs
+~~~~~~~~~~~~
 
-.. doxygenclass:: xrt::ip
+.. doxygennamespace:: xrt::message
    :project: XRT
    :members:
 
-Info APIs
-~~~~~~~~~
+System APIs
+~~~~~~~~~~~
 
-.. doxygennamespace:: xrt::info
+.. doxygennamespace:: xrt::system
    :project: XRT
    :members:
-   
+
 UUID APIs
 ~~~~~~~~~
 
@@ -70,9 +74,21 @@ UUID APIs
    :project: XRT
    :members:
 
+XCLBIN APIs
+~~~~~~~~~~~
+
+.. doxygenclass:: xrt::xclbin
+   :project: XRT
+   :members:
+
 
 XRT Native Library C API
 ************************
+
+Buffer APIs
+~~~~~~~~~~~
+
+.. include:: ../core/xrt_bo.rst
 
 Configuration APIs
 ~~~~~~~~~~~~~~~~~~
@@ -85,11 +101,6 @@ Device and XCLBIN APIs
 .. include:: ../core/xrt_device.rst
 
 .. include:: ../core/xrt_xclbin.rst
-
-Buffer APIs
-~~~~~~~~~~~
-
-.. include:: ../core/xrt_bo.rst
 
 Kernel APIs
 ~~~~~~~~~~~

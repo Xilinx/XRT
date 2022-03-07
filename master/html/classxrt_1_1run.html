@@ -113,6 +113,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a6452285402383d151df1fb1bc9f44227"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a00352eeb61b2c185e23c32840dfc61ea"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a00352eeb61b2c185e23c32840dfc61ea">set_arg</a> (int index, <a class="el" href="classxrt_1_1bo.html">xrt::bo</a> &amp;&amp;boh)</td></tr>
 <tr class="separator:a00352eeb61b2c185e23c32840dfc61ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae480cd01d778a871d421611c380d11d8"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
+<tr class="memitem:ae480cd01d778a871d421611c380d11d8"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#ae480cd01d778a871d421611c380d11d8">set_arg</a> (const std::string &amp;argnm, ArgType &amp;&amp;argvalue)</td></tr>
+<tr class="separator:ae480cd01d778a871d421611c380d11d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a53ee8f980ab4730a247015501feee605"><td class="memTemplParams" colspan="2">template&lt;typename ArgType &gt; </td></tr>
 <tr class="memitem:a53ee8f980ab4730a247015501feee605"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classxrt_1_1run.html#a53ee8f980ab4730a247015501feee605">update_arg</a> (int index, ArgType &amp;&amp;arg)</td></tr>
 <tr class="separator:a53ee8f980ab4730a247015501feee605"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -405,8 +408,55 @@ template&lt;typename ... Args&gt; </div>
 
 </div>
 </div>
+<a id="ae480cd01d778a871d421611c380d11d8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae480cd01d778a871d421611c380d11d8">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/5]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename ArgType &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void xrt::run::set_arg </td>
+          <td>(</td>
+          <td class="paramtype">const std::string &amp;&#160;</td>
+          <td class="paramname"><em>argnm</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ArgType &amp;&amp;&#160;</td>
+          <td class="paramname"><em>argvalue</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>set_arg - set named argument</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">argnm</td><td>Name of kernel argument </td></tr>
+    <tr><td class="paramname">argvalue</td><td>Argument value</td></tr>
+  </table>
+  </dd>
+</dl>
+<p>Throws if specified argument name doesn't match kernel specification. Throws if argument value is incompatible with specified argument </p>
+
+</div>
+</div>
 <a id="a8a86a2d453010753756d590e2032e21a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8a86a2d453010753756d590e2032e21a">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[1/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a8a86a2d453010753756d590e2032e21a">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -444,8 +494,7 @@ template&lt;typename ArgType &gt; </div>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">index</td><td>Index of kernel argument to update </td></tr>
-    <tr><td class="paramname">arg</td><td><br  />
- The scalar argument value to set.</td></tr>
+    <tr><td class="paramname">arg</td><td>The scalar argument value to set.</td></tr>
   </table>
   </dd>
 </dl>
@@ -455,7 +504,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a6452285402383d151df1fb1bc9f44227"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[2/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a6452285402383d151df1fb1bc9f44227">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -492,7 +541,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="a00352eeb61b2c185e23c32840dfc61ea"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[3/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a00352eeb61b2c185e23c32840dfc61ea">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -529,7 +578,7 @@ template&lt;typename ArgType &gt; </div>
 </div>
 </div>
 <a id="ac5f4e82835cdf8f601f2ef24e3067390"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[4/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac5f4e82835cdf8f601f2ef24e3067390">&#9670;&nbsp;</a></span>set_arg() <span class="overload">[5/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -611,16 +660,14 @@ template&lt;typename ArgType &gt; </div>
 <p><a class="el" href="classxrt_1_1run.html#ada025d6709796a6ea20182e5b720a96b">start()</a> - Start auto-restart execution of a run</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">iterations</td><td><br  />
- Number of times to iterate the same run. <br  />
-</td></tr>
+    <tr><td class="paramname">iterations</td><td>Number of times to iterate the same run.</td></tr>
   </table>
   </dd>
 </dl>
 <p>An iteration count of zero means that the kernel should run forever, or until explicitly stopped using <code><a class="el" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">stop()</a></code>.</p>
 <p>This function is asynchronous, run status must be expclicit checked or <code><a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait()</a></code> must be used to wait for the run to complete.</p>
 <p>The kernel run object is complete only after all iterations have completed, or until run object has been explicitly stopped.</p>
-<p>Changing kernel arguments <code><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg()</a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use xrt::mailbox.</p>
+<p>Changing kernel arguments <code><a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">set_arg()</a></code> while the kernel is running has undefined behavior. To synchronize change of arguments, please use <a class="el" href="classxrt_1_1mailbox.html">xrt::mailbox</a>.</p>
 <p>Currently autostart is only supported for kernels with one compute unit which must be opened in exclusive mode. </p>
 
 </div>
@@ -660,8 +707,7 @@ template&lt;typename ArgType &gt; </div>
       </table>
 </div><div class="memdoc">
 <p><a class="el" href="classxrt_1_1run.html#ae133bb9766ad5daac80bbad0bc748720">stop()</a> - Stop kernel run object at next safe iteration</p>
-<p>If the kernel run object has been started by specifying an iteration count or by specifying default iteration count, then this function can be used to stop the iteration early. <br  />
-</p>
+<p>If the kernel run object has been started by specifying an iteration count or by specifying default iteration count, then this function can be used to stop the iteration early.</p>
 <p>The function is synchronous and waits for the kernel run object to complete.</p>
 <p>If the kernel is not iterating, then calling this funciton is the same as calling <code><a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait()</a></code>. </p>
 
@@ -756,8 +802,7 @@ template&lt;typename ArgType &gt; </div>
   </table>
   </dd>
 </dl>
-<p>Use this API to asynchronously update a specific kernel argument of an existing run. <br  />
-</p>
+<p>Use this API to asynchronously update a specific kernel argument of an existing run.</p>
 <p>This API is only supported on Edge. </p>
 
 </div>
@@ -780,8 +825,7 @@ template&lt;typename ArgType &gt; </div>
 <p><a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">wait()</a> - Wait for a run to complete execution</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">timeout</td><td><br  />
- Timeout for wait (default block till run completes) </td></tr>
+    <tr><td class="paramname">timeout</td><td>Timeout for wait (default block till run completes) </td></tr>
   </table>
   </dd>
 </dl>

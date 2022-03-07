@@ -879,6 +879,7 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct kernel_info {
   char name;
+  uint32_t range;
   int anums;
   struct argument_info args;
 };
@@ -888,6 +889,8 @@ struct <code class="descname">kernel_info</code><a class="headerlink" href="#c.k
 <dl class="docutils">
 <dt><code class="docutils literal notranslate"><span class="pre">name</span></code></dt>
 <dd>kernel name</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">range</span></code></dt>
+<dd>kernel range</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">anums</span></code></dt>
 <dd>number of argument</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">args</span></code></dt>
@@ -948,7 +951,9 @@ struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" hre
   uint32_t start_cuidx;
   uint32_t cu_nums;
   char name;
-  uint32_t bohdl;
+  int bohdl;
+  int meta_bohdl;
+  unsigned char uuid;
 };
 </pre></div>
 </div>
@@ -964,6 +969,10 @@ struct <code class="descname">drm_zocl_sk_getcmd</code><a class="headerlink" hre
 <dd>symbol name of soft kernel</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">bohdl</span></code></dt>
 <dd>BO to hold soft kernel image</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">meta_bohdl</span></code></dt>
+<dd>BO to hold metadata</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">uuid</span></code></dt>
+<dd>UUID for the xclbin</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_zocl_aie_cmd">
@@ -997,7 +1006,7 @@ struct <code class="descname">drm_zocl_sk_create</code><a class="headerlink" hre
 <p><strong>Definition</strong></p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>struct drm_zocl_sk_create {
   uint32_t cu_idx;
-  uint32_t handle;
+  int handle;
 };
 </pre></div>
 </div>
@@ -1059,7 +1068,7 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 20, 2021.
+        Last updated on March 07, 2022.
       </span>
 
     </p>
