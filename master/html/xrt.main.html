@@ -909,7 +909,8 @@ XCL_DRIVER_DLLESPEC xclBufferExportHandle <code class="descname">xclExportBO</co
 <p>File handle to the BO or standard errno</p>
 <p>Export a BO for import into another device or Linux subsystem which
 accepts DMA-BUF fd This operation is backed by Linux DMA-BUF
-framework</p>
+framework.  The file handle must be explicitly closed when no
+longer needed.</p>
 <dl class="function">
 <dt id="c.xclImportBO">
 XCL_DRIVER_DLLESPEC xclBufferHandle <code class="descname">xclImportBO</code><span class="sig-paren">(</span><a class="reference internal" href="#c.xclDeviceHandle" title="xclDeviceHandle">xclDeviceHandle</a><em>&nbsp;handle</em>, xclBufferExportHandle<em>&nbsp;fd</em>, unsigned int<em>&nbsp;flags</em><span class="sig-paren">)</span><a class="headerlink" href="#c.xclImportBO" title="Permalink to this definition">¶</a></dt>
@@ -1097,7 +1098,7 @@ different threads.</p>
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 20, 2021.
+        Last updated on March 07, 2022.
       </span>
 
     </p>

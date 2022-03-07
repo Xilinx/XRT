@@ -67,6 +67,7 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="classxrt_1_1xclbin-members.html">List of all members</a>  </div>
   <div class="headertitle">
@@ -111,6 +112,15 @@ Classes</h2></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank">xrt::xclbin::mem</a> represents a physical device memory bank  <a href="classxrt_1_1xclbin_1_1mem.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a0746e80e19df9bebf75e08af51e4401d"><td class="memItemLeft" align="right" valign="top">enum &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a> { <a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da65c2a3d77127c15d068dec7e00e50649">target_type::hw</a>, 
+<a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da95c104ccd3426696d51fd70c33557992">target_type::sw_emu</a>, 
+<a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401da416133dd0f388d283d8ad6bd17b319a1">target_type::hw_emu</a>
+ }</td></tr>
+<tr class="memdesc:a0746e80e19df9bebf75e08af51e4401d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of xclbin.  <a href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">More...</a><br /></td></tr>
+<tr class="separator:a0746e80e19df9bebf75e08af51e4401d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a6ee5043fccb0572a789af39b370fe55a"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a6ee5043fccb0572a789af39b370fe55a">xclbin</a> ()=default</td></tr>
@@ -133,8 +143,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a4af895598626ead2a3f478e149a05778"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a523c96967160da1a6abf7f8029afac5f"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a523c96967160da1a6abf7f8029afac5f">get_xsa_name</a> () const</td></tr>
 <tr class="separator:a523c96967160da1a6abf7f8029afac5f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af08135286e0bd4a3bbbb047a42640725"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">get_fpga_device_name</a> () const</td></tr>
+<tr class="separator:af08135286e0bd4a3bbbb047a42640725"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a650f8a98861909e1ddeb53d0d09b1e28"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1uuid.html">uuid</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a650f8a98861909e1ddeb53d0d09b1e28">get_uuid</a> () const</td></tr>
 <tr class="separator:a650f8a98861909e1ddeb53d0d09b1e28"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a02b5a6a297f231dbec7dde96f963088a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">get_target_type</a> () const</td></tr>
+<tr class="separator:a02b5a6a297f231dbec7dde96f963088a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="classxrt_1_1xclbin.html" title="xrt::xclbin represents an xclbin and provides APIs to access meta data.">xrt::xclbin</a> represents an xclbin and provides APIs to access meta data. </p>
@@ -148,7 +162,38 @@ Public Member Functions</h2></td></tr>
 <p>In some cases the kernel concept is not needed, thus <a class="el" href="classxrt_1_1xclbin_1_1ip.html" title="xrt::xclbin::ip represents a IP in an xclbin.">xrt::xclbin::ip</a> objects corresponding to entries in the xclbin IP_LAYOUT sections can be accessed directly.</p>
 <p>An <a class="el" href="classxrt_1_1xclbin_1_1arg.html" title="class arg - xrt::xclbin::arg represents a compute unit argument">xrt::xclbin::arg</a> object corresponds to one or more entries in the xclbin CONNECTIVITY section decorated with additional meta data (offset, size, type, etc) from the XML section if available. An argument object represents a specific kernel or ip argument. If the argument is a global buffer, then it may connect to one or more memory objects.</p>
 <p>Finally the <a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank">xrt::xclbin::mem</a> object corresponds to an entry in the MEM_TOPOLOGY section of the xclbin. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a0746e80e19df9bebf75e08af51e4401d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0746e80e19df9bebf75e08af51e4401d">&#9670;&nbsp;</a></span>target_type</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum <a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">xrt::xclbin::target_type</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Type of xclbin. </p>
+<p>See <code>xclbin.h</code> </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a0746e80e19df9bebf75e08af51e4401da65c2a3d77127c15d068dec7e00e50649"></a>hw&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a0746e80e19df9bebf75e08af51e4401da95c104ccd3426696d51fd70c33557992"></a>sw_emu&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a0746e80e19df9bebf75e08af51e4401da416133dd0f388d283d8ad6bd17b319a1"></a>hw_emu&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a6ee5043fccb0572a789af39b370fe55a"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a6ee5043fccb0572a789af39b370fe55a">&#9670;&nbsp;</a></span>xclbin() <span class="overload">[1/4]</span></h2>
 
@@ -278,6 +323,25 @@ Public Member Functions</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="af08135286e0bd4a3bbbb047a42640725"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af08135286e0bd4a3bbbb047a42640725">&#9670;&nbsp;</a></span>get_fpga_device_name()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string xrt::xclbin::get_fpga_device_name </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">get_fpga_device_name()</a> - Get FPGA device name</p>
+<dl class="section return"><dt>Returns</dt><dd>Name of fpga device per XML metadata. </dd></dl>
+
+</div>
+</div>
 <a id="a0fd663b528ded292023776bbdb4c2a9c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0fd663b528ded292023776bbdb4c2a9c">&#9670;&nbsp;</a></span>get_ip()</h2>
 
@@ -383,6 +447,25 @@ Public Member Functions</h2></td></tr>
 <p><a class="el" href="classxrt_1_1xclbin.html#a4af895598626ead2a3f478e149a05778">get_mems()</a> - Get list of memory objects</p>
 <dl class="section return"><dt>Returns</dt><dd>A list of <a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank">xrt::xclbin::mem</a> objects from xclbin</dd></dl>
 <p>The returned <a class="el" href="classxrt_1_1xclbin_1_1mem.html" title="xrt::xclbin::mem represents a physical device memory bank">xrt::xclbin::mem</a> objects are extracted from the xclbin. </p>
+
+</div>
+</div>
+<a id="a02b5a6a297f231dbec7dde96f963088a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a02b5a6a297f231dbec7dde96f963088a">&#9670;&nbsp;</a></span>get_target_type()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classxrt_1_1xclbin.html#a0746e80e19df9bebf75e08af51e4401d">target_type</a> xrt::xclbin::get_target_type </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p><a class="el" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">get_target_type()</a> - Get the type of this xclbin</p>
+<dl class="section return"><dt>Returns</dt><dd>Target type, which can be hw, sw_emu, or hw_emu </dd></dl>
 
 </div>
 </div>

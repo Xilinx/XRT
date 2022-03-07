@@ -78,9 +78,9 @@ $(function() {
 <code>#include &quot;<a class="el" href="xrt__uuid_8h_source.html">xrt/xrt_uuid.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="xrt__xclbin_8h_source.html">experimental/xrt_xclbin.h</a>&quot;</code><br />
 <code>#include &quot;xrt/detail/abi.h&quot;</code><br />
+<code>#include &quot;xrt/detail/any.h&quot;</code><br />
 <code>#include &quot;xrt/detail/param_traits.h&quot;</code><br />
 <code>#include &lt;memory&gt;</code><br />
-<code>#include &lt;boost/any.hpp&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for xrt_device.h:</div>
 <div class="dyncontent">
@@ -91,9 +91,9 @@ Include dependency graph for xrt_device.h:</div>
 <area shape="rect" href="xrt__uuid_8h.html" title=" " alt="" coords="82,199,191,225"/>
 <area shape="rect" href="xrt__xclbin_8h.html" title=" " alt="" coords="174,124,363,151"/>
 <area shape="rect" title=" " alt="" coords="387,124,505,151"/>
-<area shape="rect" title=" " alt="" coords="529,124,709,151"/>
-<area shape="rect" title=" " alt="" coords="734,124,811,151"/>
-<area shape="rect" title=" " alt="" coords="835,124,947,151"/>
+<area shape="rect" title=" " alt="" coords="528,124,647,151"/>
+<area shape="rect" title=" " alt="" coords="671,124,851,151"/>
+<area shape="rect" title=" " alt="" coords="875,124,953,151"/>
 <area shape="rect" title=" " alt="" coords="89,273,184,300"/>
 <area shape="rect" title=" " alt="" coords="418,273,477,300"/>
 <area shape="rect" title=" " alt="" coords="216,199,289,225"/>
@@ -107,9 +107,10 @@ This graph shows which files directly or indirectly include this file:</div>
 <div class="dyncontent">
 <div class="center"><img src="xrt__device_8h__dep__incl.png" border="0" usemap="#_2scratch_2udayd_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep" alt=""/></div>
 <map name="_2scratch_2udayd_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep" id="_2scratch_2udayd_2DOC_2XRT_2src_2runtime__src_2core_2include_2xrt_2xrt__device_8hdep">
-<area shape="rect" title=" " alt="" coords="105,5,260,76"/>
-<area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="5,124,160,195"/>
-<area shape="rect" href="xrt__ip_8h.html" title=" " alt="" coords="185,124,381,195"/>
+<area shape="rect" title=" " alt="" coords="126,5,281,76"/>
+<area shape="rect" href="xrt__kernel_8h.html" title=" " alt="" coords="26,124,181,195"/>
+<area shape="rect" href="xrt__ip_8h.html" title=" " alt="" coords="205,124,401,195"/>
+<area shape="rect" href="xrt__mailbox_8h.html" title=" " alt="" coords="5,243,201,313"/>
 </map>
 </div>
 </div>
@@ -156,7 +157,11 @@ Enumerations</h2></td></tr>
 &#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa34a6e5d64ade17ef4e51612c50dd72f5">xrt::info::device::platform</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aab44657f9077b7ce4684c449e5144e02e">xrt::info::device::pcie_info</a>, 
 <a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa67b3dba8bc6778101892eb77249db32e">xrt::info::device::host</a>, 
-<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d">xrt::info::device::dynamic_regions</a>
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aaee998746ac0f9a4a542ba851c5d67041">xrt::info::device::aie</a>, 
+<br />
+&#160;&#160;<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa81f8fb4ba59f55acb77c9927bb79df08">xrt::info::device::aie_shim</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aabf6e19331b5e8553e0cb930c1457eb3d">xrt::info::device::dynamic_regions</a>, 
+<a class="el" href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829aa4a64b1714b324eda3928be5f063f7b59">xrt::info::device::vmr</a>
 <br />
  }</td></tr>
 <tr class="memdesc:a7a27ce3a06c2a28f53579eb4f02a829a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Device information parameters.  <a href="namespacexrt_1_1info.html#a7a27ce3a06c2a28f53579eb4f02a829a">More...</a><br /></td></tr>

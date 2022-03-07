@@ -121,7 +121,8 @@ $(function() {
 : <a class="el" href="classxrt_1_1uuid.html#a6360802cb258454a7aef1d5891b51677">xrt::uuid</a>
 </li>
 <li>get_arg()
-: <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a62bf76c1246a4face6174aebd9d11e86">xrt::xclbin::ip</a>
+: <a class="el" href="classxrt_1_1mailbox.html#a7149012b29d540bc9a520263191de51f">xrt::mailbox</a>
+, <a class="el" href="classxrt_1_1xclbin_1_1ip.html#a62bf76c1246a4face6174aebd9d11e86">xrt::xclbin::ip</a>
 , <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#af9ab604bab7d080bd98a8376941f98b2">xrt::xclbin::kernel</a>
 </li>
 <li>get_args()
@@ -140,6 +141,12 @@ $(function() {
 </li>
 <li>get_cus()
 : <a class="el" href="classxrt_1_1xclbin_1_1kernel.html#a613a09678d939532288ad7876b9bb13d">xrt::xclbin::kernel</a>
+</li>
+<li>get_flags()
+: <a class="el" href="classxrt_1_1bo.html#a57adfdd61a2c128b354d049eb2fa42c8">xrt::bo</a>
+</li>
+<li>get_fpga_device_name()
+: <a class="el" href="classxrt_1_1xclbin.html#af08135286e0bd4a3bbbb047a42640725">xrt::xclbin</a>
 </li>
 <li>get_host_type()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#a9b4d4ae4c4aace3003c3acbde25509db">xrt::xclbin::arg</a>
@@ -162,6 +169,9 @@ $(function() {
 </li>
 <li>get_kernels()
 : <a class="el" href="classxrt_1_1xclbin.html#ac8cc2768327b7456e943d97f2d5b8a27">xrt::xclbin</a>
+</li>
+<li>get_memory_group()
+: <a class="el" href="classxrt_1_1bo.html#a876dc0545d122b147c1b608b8c170f18">xrt::bo</a>
 </li>
 <li>get_mems()
 : <a class="el" href="classxrt_1_1xclbin_1_1arg.html#ae039158375adb0e3dddaf1de4d9c376b">xrt::xclbin::arg</a>
@@ -191,6 +201,9 @@ $(function() {
 </li>
 <li>get_tag()
 : <a class="el" href="classxrt_1_1xclbin_1_1mem.html#a4980c74f81239e91e6a403cec2b27225">xrt::xclbin::mem</a>
+</li>
+<li>get_target_type()
+: <a class="el" href="classxrt_1_1xclbin.html#a02b5a6a297f231dbec7dde96f963088a">xrt::xclbin</a>
 </li>
 <li>get_type()
 : <a class="el" href="classxrt_1_1xclbin_1_1mem.html#af39986bcb9942e0f4e5c553e0ac74434">xrt::xclbin::mem</a>
@@ -240,6 +253,9 @@ $(function() {
 
 
 <h3><a id="index_m"></a>- m -</h3><ul>
+<li>mailbox()
+: <a class="el" href="classxrt_1_1mailbox.html#a00f47492d1951c812b54690b0ef26376">xrt::mailbox</a>
+</li>
 <li>map()
 : <a class="el" href="classxrt_1_1bo.html#a7778be10aa42a273b879657c35b81f95">xrt::bo</a>
 </li>
@@ -284,20 +300,22 @@ $(function() {
 <h3><a id="index_r"></a>- r -</h3><ul>
 <li>read()
 : <a class="el" href="classxrt_1_1bo.html#aa2521f36f0045047d34ce72bb4618ac2">xrt::bo</a>
+, <a class="el" href="classxrt_1_1mailbox.html#a87f01921036dbaa961fa09402ceb7588">xrt::mailbox</a>
 </li>
 <li>read_register()
 : <a class="el" href="classxrt_1_1ip.html#a619d7d9654eeb2e1d7dcc8a9d284f0b4">xrt::ip</a>
 , <a class="el" href="classxrt_1_1kernel.html#a5b9c53ff845a8086428b568ea8be6d5b">xrt::kernel</a>
 </li>
 <li>run()
-: <a class="el" href="classxrt_1_1run.html#a519b58fe315478c16889ceab6597a76a">xrt::run</a>
+: <a class="el" href="classxrt_1_1run.html#a43f61719426fff8f5f24f0d550e0f29f">xrt::run</a>
 </li>
 </ul>
 
 
 <h3><a id="index_s"></a>- s -</h3><ul>
 <li>set_arg()
-: <a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">xrt::run</a>
+: <a class="el" href="classxrt_1_1mailbox.html#a19128c7c9a17bafd51beffc432b45b17">xrt::mailbox</a>
+, <a class="el" href="classxrt_1_1run.html#a8a86a2d453010753756d590e2032e21a">xrt::run</a>
 </li>
 <li>size()
 : <a class="el" href="classxrt_1_1bo.html#af1606fb5b8e71a072ad1101516f66975">xrt::bo</a>
@@ -337,10 +355,11 @@ $(function() {
 <h3><a id="index_w"></a>- w -</h3><ul>
 <li>wait()
 : <a class="el" href="classxrt_1_1ip_1_1interrupt.html#ad088741f7d266edf27c23f1e39dddf42">xrt::ip::interrupt</a>
-, <a class="el" href="classxrt_1_1run.html#a788df7565091221de5376d6c1d4a5f24">xrt::run</a>
+, <a class="el" href="classxrt_1_1run.html#afaf1ff8225e15d8802401982f62321e5">xrt::run</a>
 </li>
 <li>write()
 : <a class="el" href="classxrt_1_1bo.html#adbd9644b58d8866869621231d93d32b6">xrt::bo</a>
+, <a class="el" href="classxrt_1_1mailbox.html#a1f0b72b78c140a7c89bc35ad256f85f6">xrt::mailbox</a>
 </li>
 <li>write_register()
 : <a class="el" href="classxrt_1_1ip.html#a700445a4eebab2b6c01ed63403fe7d6e">xrt::ip</a>

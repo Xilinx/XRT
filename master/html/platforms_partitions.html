@@ -532,7 +532,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
 <div class="align-center figure" id="id3">
 <img alt="_images/XSA-shell-partitions-2RP.svg" src="_images/XSA-shell-partitions-2RP.svg" /><p class="caption"><span class="caption-text">Alveo shell partitions and loading for 2RP platform</span></p>
 </div>
-<p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">partition</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
+<p>In two stage platforms, Shell partition contains additional shell components such as PCIe DMA engine, AXI Firewalls, Address Re-mapper, ERT, etc. Shell partition is explicitly loaded by system administrator using <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span> <span class="pre">--shell</span> <span class="pre">&lt;shell-file</span> <span class="pre">w/</span> <span class="pre">path&gt;</span></code> command. After Shell partition is loaded, xclmgmt driver posts <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_MGMT_STATE</span></code> message to the xocl driver via mailbox to indicate shell has changed. xocl driver then requests for metadata via <code class="docutils literal notranslate"><span class="pre">XCL_MAILBOX_REQ_PEER_DATA</span></code> opcode. xclmgmt managemet driver responds by sending relevant information about shell components such as XDMA that should be managed by xocl driver. A system administrator can pre-load a Shell based on the workload the system is being provised for. A new Shell xsabin load clobbers previous Shell and User images.</p>
 </div>
 </div>
 <div class="section" id="user">
@@ -574,7 +574,7 @@ relationship. For complex two stage platforms Base → Shell → User forms the 
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on October 20, 2021.
+        Last updated on March 07, 2022.
       </span>
 
     </p>
