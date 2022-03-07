@@ -20,9 +20,9 @@
 // These are the functions that are visible when the plugin is dynamically
 //  linked in.  XRT should call them directly
 extern "C"
-void user_event_start_cb(unsigned int functionID, 
-			 const char* label, 
-			 const char* tooltip) ;
+void user_event_start_cb(unsigned int functionID,
+                         const char* label,
+                         const char* tooltip) ;
 
 extern "C"
 void user_event_end_cb(unsigned int functionID) ;

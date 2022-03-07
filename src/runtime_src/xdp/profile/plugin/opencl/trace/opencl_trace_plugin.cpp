@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -26,9 +26,13 @@
 
 namespace xdp {
 
+  bool OpenCLTracePlugin::live = false;
+
   OpenCLTracePlugin::OpenCLTracePlugin() :
     XDPPlugin()
   {
+    OpenCLTracePlugin::live = true;
+
     db->registerPlugin(this) ;
     db->registerInfo(info::opencl_trace) ;
 
@@ -55,6 +59,7 @@ namespace xdp {
       XDPPlugin::endWrite();
       db->unregisterPlugin(this) ;
     }
+    OpenCLTracePlugin::live = false;
   }
 
   void OpenCLTracePlugin::emulationSetup()

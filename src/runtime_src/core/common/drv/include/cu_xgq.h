@@ -15,7 +15,7 @@
 
 #include "xrt_cu.h"
 
-int xrt_cu_xgq_init(struct xrt_cu *xcu);
+int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path);
 void xrt_cu_xgq_fini(struct xrt_cu *xcu);
 
 #endif // _CU_XGQ_H

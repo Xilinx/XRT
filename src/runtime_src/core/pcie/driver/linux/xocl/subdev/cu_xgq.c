@@ -59,8 +59,22 @@ static void cu_xgq_check(void *core, struct xcu_status *status, bool force)
 
 	status->num_ready = 1;
 	status->num_done = 0;
-	while (!xocl_xgq_get_response(cu_xgq->xgq, cu_xgq->xgq_client_id)) {
+	while (!xocl_xgq_get_response(cu_xgq->xgq, cu_xgq->xgq_client_id, NULL)) {
 		status->num_done += 1;
+	}
+	status->new_status = 0x4;
+}
+
+static void cu_xgq_check_slow(void *core, struct xcu_status *status, bool force)
+{
+	struct xrt_cu_xgq *cu_xgq = core;
+	struct xgq_com_queue_entry resp = {0};
+
+	status->num_ready = 1;
+	status->num_done = 0;
+	if (!xocl_xgq_get_response(cu_xgq->xgq, cu_xgq->xgq_client_id, &resp)) {
+		status->num_done = 1;
+		status->rcode = resp.rcode;
 	}
 	status->new_status = 0x4;
 }
@@ -104,7 +118,7 @@ static struct xcu_funcs xrt_cu_xgq_funcs = {
 	.reset_done	= cu_xgq_reset_done,
 };
 
-int xrt_cu_xgq_init(struct xrt_cu *xcu)
+int xrt_cu_xgq_init(struct xrt_cu *xcu, int slow_path)
 {
 	struct xrt_cu_xgq *core = NULL;
 	int err = 0;
@@ -123,6 +137,9 @@ int xrt_cu_xgq_init(struct xrt_cu *xcu)
 
 	xcu->core = core;
 	xcu->funcs = &xrt_cu_xgq_funcs;
+
+	if (slow_path)
+		xcu->funcs->check = cu_xgq_check_slow;
 
 	xcu->busy_threshold = 2;
 	xcu->interval_min = 2;

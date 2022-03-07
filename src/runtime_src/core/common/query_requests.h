@@ -258,6 +258,8 @@ enum class key_type
   spc_status,
   accel_deadlock_status,
   get_xclbin_data,
+  aie_get_freq,
+  aie_set_freq,
 
   boot_partition,
   flush_default_only,
@@ -797,6 +799,27 @@ struct aie_reg_read : request
 
   virtual boost::any
   get(const device*, const boost::any& row, const boost::any& col, const boost::any& reg) const = 0;
+};
+
+struct aie_get_freq : request
+{
+  using result_type = uint64_t;
+  using partition_id_type = uint32_t;
+  static const key_type key = key_type::aie_get_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id) const = 0;
+};
+
+struct aie_set_freq : request
+{
+  using result_type = bool;
+  using partition_id_type = uint32_t;
+  using freq_type = uint64_t;
+  static const key_type key = key_type::aie_set_freq;
+
+  virtual boost::any
+  get(const device*, const boost::any& partition_id, const boost::any& freq) const = 0;
 };
 
 struct graph_status : request

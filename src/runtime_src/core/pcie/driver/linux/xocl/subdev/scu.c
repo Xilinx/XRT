@@ -251,7 +251,7 @@ static int scu_probe(struct platform_device *pdev)
 		XSCU_ERR(xcu, "Not able to add CU %p to KDS", xcu);
 		goto err;
 	}
-	err = xrt_cu_xgq_init(&xcu->base);
+	err = xrt_cu_xgq_init(&xcu->base, 1 /* slow path */);
 	if (err) {
 		XSCU_ERR(xcu, "Not able to initialize CU %p", xcu);
 		goto err2;
