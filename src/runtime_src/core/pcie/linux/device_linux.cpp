@@ -1009,6 +1009,8 @@ initialize_query_table()
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
+  emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
+  emplace_sysfs_get<query::hwmon_sdm_oem_id>                   ("hwmon_sdm", "oem_id");
 }
 
 struct X { X() { initialize_query_table(); }};

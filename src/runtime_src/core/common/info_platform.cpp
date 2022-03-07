@@ -156,8 +156,16 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
                           % ((versionValue >> (1 * 8)) & 0xFF) // Minor
                           % ((versionValue >> (0 * 8)) & 0xFF)); // Version
     cmc.add("version", version);
-    cmc.add("serial_number", xrt_core::device_query<xq::xmc_serial_num>(device));
-    cmc.add("oem_id", xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device)));
+    std::string sn = xrt_core::device_query<xq::xmc_serial_num>(device);
+    if(sn.empty())
+      sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
+    cmc.add("serial_number", sn);
+
+    std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
+    if(oid.empty() || !strcmp("N/A", oid.c_str()))
+      oid = xrt_core::device_query<xq::hwmon_sdm_oem_id>(device);
+    cmc.add("oem_id", oid);
+
     controller.put_child("satellite_controller", sc);
     controller.put_child("card_mgmt_controller", cmc);
     pt.put_child("controller", controller);
