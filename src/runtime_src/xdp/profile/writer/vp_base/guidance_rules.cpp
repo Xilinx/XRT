@@ -76,20 +76,20 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto cu : xclbin->pl.cus) {
-	    std::string cuName = cu.second->getName();
-	    std::vector<std::pair<std::string, xdp::TimeStatistics>> cuCalls =
+            std::string cuName = cu.second->getName();
+            std::vector<std::pair<std::string, xdp::TimeStatistics>> cuCalls =
               db->getStats().getComputeUnitExecutionStats(cuName);
             uint64_t execCount = 0;
             for (auto cuCall : cuCalls) {
               execCount += cuCall.second.numExecutions;
-	    }
+            }
             if (execCount != 0) {
               fout << "CU_CALLS," << device->getUniqueDeviceName() << "|"
                    << cu.second->getName() << ","
                    << execCount << ",\n";
-	    }
-	  }
-	}
+            }
+          }
+        }
       }
     }
   }
@@ -175,13 +175,13 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto memory : xclbin->pl.memoryInfo) {
-	    std::string memName = memory.second->name ;
+            std::string memName = memory.second->name ;
             if (memName.rfind("bank", 0) == 0)
               memName = "DDR[" + memName.substr(4,4) + "]" ;
 
             fout << "MEMORY_USAGE," << device->getUniqueDeviceName() << "|"
                  << memName << "," << memory.second->used << ",\n" ;
-	  }
+          }
         }
       }
     }
@@ -202,10 +202,10 @@ namespace {
             if (memory.second->name.find("PLRAM") != std::string::npos) {
               hasPLRAM = true ;
               break ;
-	    }
-	  }
+            }
+          }
           if (hasPLRAM) break ;
-	}
+        }
         if (hasPLRAM) break ;
       }
     }
@@ -235,10 +235,10 @@ namespace {
             if (memory.second->name.find("HBM") != std::string::npos) {
               hasHBM = true ;
               break ;
-	    }
-	  }
+            }
+          }
           if (hasHBM) break ;
-	}
+        }
         if (hasHBM) break ;
       }
     }
@@ -264,7 +264,7 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
-	std::string deviceName = device->deviceName ;
+        std::string deviceName = device->deviceName ;
         if (deviceName.find("xilinx_u200_xdma") != std::string::npos ||
             deviceName.find("xilinx_vcu1525_xdma") != std::string::npos) {
           hasKDMA = true ;
@@ -293,7 +293,7 @@ namespace {
     else {
       auto deviceInfos = db->getStaticInfo().getDeviceInfos() ;
       for (auto device : deviceInfos) {
-	std::string deviceName = device->deviceName ;
+        std::string deviceName = device->deviceName ;
         if (deviceName.find("xilinx_u200_xdma")    != std::string::npos ||
             deviceName.find("xilinx_u250_xdma")    != std::string::npos ||
             deviceName.find("samsung")             != std::string::npos ||
@@ -329,24 +329,24 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto cu : xclbin->pl.cus) {
-	    std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
-	    std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
+            std::vector<uint32_t>* aimIds = cu.second->getAIMs() ;
+            std::vector<uint32_t>* asmIds = cu.second->getASMs() ;
 
             for (auto aim : (*aimIds)) {
-	      xdp::Monitor* monitor =
+              xdp::Monitor* monitor =
                 db->getStaticInfo().getAIMonitor(device->deviceId, xclbin, aim);
               fout << "PORT_BIT_WIDTH," << cu.second->getName() << "/"
                    << monitor->port << "," << monitor->portWidth << ",\n" ;
             }
 
             for (auto asmId : (*asmIds)) {
-	      xdp::Monitor* monitor =
+              xdp::Monitor* monitor =
                 db->getStaticInfo().getASMonitor(device->deviceId,xclbin,asmId);
               fout << "PORT_BIT_WIDTH," << cu.second->getName() << "/"
                    << monitor->port << "," << monitor->portWidth << ",\n" ;
             }
-	  }
-	}
+          }
+        }
       }
     }
   }
@@ -363,15 +363,15 @@ namespace {
       for (auto device : deviceInfos) {
         for (auto xclbin : device->loadedXclbins) {
           for (auto cu : xclbin->pl.cus) {
-	    std::string kernelName = cu.second->getKernelName() ;
+            std::string kernelName = cu.second->getKernelName() ;
             if (kernelCounts.find(kernelName) == kernelCounts.end()) {
               kernelCounts[kernelName] = 1 ;
-	    }
+            }
             else {
               kernelCounts[kernelName] += 1 ;
-	    }
-	  }
-	}
+            }
+          }
+        }
       }
     }
 
@@ -414,8 +414,8 @@ namespace {
           if (xclbin->pl.usesTs2mm) {
             memType = "TS2MM" ;
             break ;
-	  }
-	}
+          }
+        }
       }
     }
     fout << "TRACE_MEMORY,all," << memType << ",\n" ;
@@ -461,8 +461,8 @@ namespace {
             // To match old flow and tools, print PLRAM_SIZE_BYTES for
             //  first match only.
             break ;
-	  }
-	}
+          }
+        }
         if (done) break ;
       }
       if (done) break ;

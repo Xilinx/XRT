@@ -60,7 +60,7 @@ namespace xdp {
 
   public:
     XDP_EXPORT VPTraceWriter(const char* filename, const std::string& v,
-			     const std::string& c, uint16_t r) ;
+                             const std::string& c, uint16_t r) ;
     XDP_EXPORT ~VPTraceWriter() ;
 
     void setHumanReadable() { humanReadable = true ; } 

@@ -23,7 +23,7 @@
 namespace xdp {
 
   AIEProfilingWriter::AIEProfilingWriter(const char* fileName,
-					     const char* deviceName, uint64_t deviceIndex) :
+                                         const char* deviceName, uint64_t deviceIndex) :
     VPWriter(fileName),
     mDeviceName(deviceName),
     mDeviceIndex(deviceIndex)

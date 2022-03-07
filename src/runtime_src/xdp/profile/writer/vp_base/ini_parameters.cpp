@@ -78,7 +78,7 @@ namespace xdp {
     addParameter("aie_trace_metrics",
                  xrt_core::config::get_aie_trace_metrics(),
                  "Configuration level used for AI Engine trace");
-    addParameter("periodic_aie_trace_offload", xrt_core::config::get_periodic_aie_trace_offload(),
+    addParameter("aie_trace_periodic_offload", xrt_core::config::get_aie_trace_periodic_offload(),
                  "Periodic offloading of aie trace from memory to host");
     addParameter("aie_trace_buffer_offload_interval_ms",
                  xrt_core::config::get_aie_trace_buffer_offload_interval_ms(),

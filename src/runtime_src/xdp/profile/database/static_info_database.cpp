@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -51,6 +51,20 @@
 
 #define XAM_STALL_PROPERTY_MASK        0x4
 #define XMON_TRACE_PROPERTY_MASK       0x1
+
+static std::string convertMemoryName(const std::string &mem)
+{
+  if (0 == mem.compare("DDR[0]"))
+    return "bank0";
+  if (0 == mem.compare("DDR[1]"))
+    return "bank1";
+  if (0 == mem.compare("DDR[2]"))
+    return "bank2";
+  if (0 == mem.compare("DDR[3]"))
+    return "bank3";
+
+  return mem;
+}
 
 namespace xdp {
 
@@ -1291,7 +1305,10 @@ namespace xdp {
       // This is the first time this device was loaded with an xclbin
       devInfo = new DeviceInfo();
       devInfo->deviceId = deviceId ;
-      if (isEdge()) devInfo->isEdgeDevice = true ;
+      if (isEdge())
+        devInfo->isEdgeDevice = true ;
+      if (device->is_nodma())
+        devInfo->isNoDMADevice = true ;
       deviceInfo[deviceId] = devInfo ;
 
     } else {
@@ -1585,11 +1602,13 @@ namespace xdp {
     }
 
     std::string memName = "" ;
+    std::string memName1 = "" ;
     std::string portName = "" ;
     size_t pos1 = name.find('-');
     if(pos1 != std::string::npos) {
       memName = name.substr(pos1+1);
       portName = name.substr(pos+1, pos1-pos-1);
+      memName1 = convertMemoryName(memName);
     }
 
     ComputeUnitInstance* cuObj = nullptr ;
@@ -1606,7 +1625,7 @@ namespace xdp {
       }
     }
     for(auto mem : xclbin->pl.memoryInfo) {
-      if(0 == memName.compare(mem.second->name)) {
+      if (0 == memName1.compare(mem.second->name) || 0 == memName.compare(mem.second->name)) {
         memId = mem.second->index;
         break;
       }

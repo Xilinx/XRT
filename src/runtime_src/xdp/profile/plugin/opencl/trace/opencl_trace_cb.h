@@ -23,53 +23,53 @@
 //  linked in.  XRT should call them directly.
 extern "C" 
 void function_start(const char* functionName, 
-		    unsigned long long int queueAddress, 
-		    unsigned long long int functionID);
+                    unsigned long long int queueAddress, 
+                    unsigned long long int functionID);
 
 extern "C"
 void function_end(const char* functionName, 
-		  unsigned long long int queueAddress,
-		  unsigned long long int functionID);
+                  unsigned long long int queueAddress,
+                  unsigned long long int functionID);
 
 extern "C"
 void add_dependency(unsigned long long int id,
-		    unsigned long long int dependency) ;
+                    unsigned long long int dependency) ;
 
 extern "C"
 void action_read(unsigned long long int id,
-		 bool isStart,
-		 unsigned long long int deviceAddress,
-		 const char* memoryResource,
-		 size_t bufferSize,
-		 bool isP2P) ;
+                 bool isStart,
+                 unsigned long long int deviceAddress,
+                 const char* memoryResource,
+                 size_t bufferSize,
+                 bool isP2P) ;
 
 extern "C"
 void action_write(unsigned long long int id,
-		  bool isStart,
-		  unsigned long long int deviceAddress,
-		  const char* memoryResource,
-		  size_t bufferSize,
-		  bool isP2P) ;
+                  bool isStart,
+                  unsigned long long int deviceAddress,
+                  const char* memoryResource,
+                  size_t bufferSize,
+                  bool isP2P) ;
 
 extern "C"
 void action_copy(unsigned long long int id,
-		 bool isStart,
-		 unsigned long long int srcDeviceAddress,
-		 const char* srcMemoryResource,
-		 unsigned long long int dstDeviceAddress,
-		 const char* dstMemoryResource,
-		 size_t bufferSize,
-		 bool isP2P) ;
+                 bool isStart,
+                 unsigned long long int srcDeviceAddress,
+                 const char* srcMemoryResource,
+                 unsigned long long int dstDeviceAddress,
+                 const char* dstMemoryResource,
+                 size_t bufferSize,
+                 bool isP2P) ;
 
 extern "C"
 void action_ndrange(unsigned long long int id,
-		    bool isStart,
-		    const char* deviceName,
-		    const char* binaryName,
-		    const char* kernelName,
-		    size_t workgroupConfigurationX,
-		    size_t workgroupConfigurationY,
-		    size_t workgroupConfiguraionZ,
-		    size_t workgroupSize) ;
+                    bool isStart,
+                    const char* deviceName,
+                    const char* binaryName,
+                    const char* kernelName,
+                    size_t workgroupConfigurationX,
+                    size_t workgroupConfigurationY,
+                    size_t workgroupConfiguraionZ,
+                    size_t workgroupSize) ;
 
 #endif

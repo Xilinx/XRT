@@ -1905,12 +1905,6 @@ void xocl_free_dev_minor(xdev_handle_t xdev_hdl)
  *       if any of this procedure fails due to fatal error, a hot reset warning
  *       will be reported.
  */
-void xocl_reload_vmr(xdev_handle_t xdev)
-{
-	if (!xocl_enable_vmr_boot(xdev))
-		(void) xocl_download_apu_firmware(xdev);
-}
-
 int xocl_enable_vmr_boot(xdev_handle_t xdev)
 {
 	int err = 0;

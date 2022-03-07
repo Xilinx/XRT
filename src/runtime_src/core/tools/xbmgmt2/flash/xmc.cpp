@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019-2021 Xilinx, Inc
+ * Copyright (C) 2019-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -30,6 +30,7 @@
 #include "core/common/device.h"
 #include "core/common/error.h"
 #include "core/common/query_requests.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "core/tools/common/XBUtilities.h"
 #include "core/tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,12 +20,12 @@
 #include <queue>
 #include <mutex>
 
+#include "core/common/time.h"
+
 #include "xdp/profile/database/database.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_cb.h"
 #include "xdp/profile/plugin/opencl/counters/opencl_counters_plugin.h"
 #include "xdp/profile/plugin/vp_base/utility.h"
-
-#include "core/common/time.h"
 
 namespace xdp {
 
@@ -33,6 +33,9 @@ namespace xdp {
 
   static void log_function_call_start(const char* functionName, uint64_t queueAddress, bool isOOO)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
 
@@ -43,6 +46,9 @@ namespace xdp {
 
   static void log_function_call_end(const char* functionName)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     auto timestamp = xrt_core::time_ns() ;
 
@@ -60,6 +66,9 @@ namespace xdp {
                                    const char** buffers,
                                    uint64_t numBuffers)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     static std::map<std::string, std::queue<uint64_t> > storedTimestamps ;
     static std::mutex timestampLock ;
 
@@ -67,31 +76,24 @@ namespace xdp {
     uint64_t timestamp = xrt_core::time_ns() ;
 
     if (getFlowMode() == HW_EMU)
-    {
       timestamp =
         openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    }
 
     // Since we don't have device information in software emulation,
     //  we have to piggyback this information here.
     if (getFlowMode() == SW_EMU)
-    {
       (db->getStaticInfo()).setSoftwareEmulationDeviceName(deviceName) ;
-    }
 
     std::lock_guard<std::mutex> lock(timestampLock) ;
-    if (isStart)
-    {
+    if (isStart) {
       (storedTimestamps[kernelName]).push(timestamp) ;
       
       // Also, for guidance, keep track of the total number of concurrent
       (db->getStats()).logMaxExecutions(kernelName,
                                         storedTimestamps[kernelName].size()) ;
     }
-    else
-    {
-      if (storedTimestamps[kernelName].size() <= 0)
-      {
+    else {
+      if (storedTimestamps[kernelName].size() <= 0) {
         // There are times we get ends with no corresponding starts.
         //  We can just ignore them.
         return ; 
@@ -121,6 +123,9 @@ namespace xdp {
                                          const char* globalWorkGroup,
                                          bool isStart)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     // Log the execution of a compute unit
     // NOTE: This is only valid for SW emulation. For HW and HW emulation, only the
     // scheduler knows which CU gets the job. For those flows, we need to get the
@@ -135,22 +140,13 @@ namespace xdp {
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     uint64_t timestamp = xrt_core::time_ns() ;
 
-    //if (getFlowMode() == HW_EMU)
-    //{
-    //  timestamp =
-    //    openclCountersPluginInstance.convertToEstimatedTimestamp(timestamp) ;
-    //}
-
     std::tuple<std::string, std::string, std::string> combinedName =
       std::make_tuple(cuName, localWorkGroup, globalWorkGroup) ;
 
     std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
-    {
       storedTimestamps[combinedName] = timestamp ;
-    }
-    else
-    {
+    else {
       auto executionTime = timestamp - storedTimestamps[combinedName] ;
       storedTimestamps.erase(combinedName) ;
 
@@ -172,6 +168,9 @@ namespace xdp {
                                   uint64_t address,
                                   uint64_t commandQueueId)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
     static std::mutex timestampLock ;
@@ -195,11 +194,8 @@ namespace xdp {
 
     std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
-    {
       storedTimestamps[identifier] = timestamp ;
-    }
-    else
-    {
+    else {
       uint64_t startTime = storedTimestamps[identifier] ;
       storedTimestamps.erase(identifier) ;
       uint64_t transferTime = timestamp - startTime ;
@@ -221,6 +217,9 @@ namespace xdp {
                                    uint64_t address,
                                    uint64_t commandQueueId)
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     static std::map<std::pair<uint64_t, std::string>, uint64_t> 
       storedTimestamps ;
     static std::mutex timestampLock ;
@@ -244,11 +243,8 @@ namespace xdp {
 
     std::lock_guard<std::mutex> lock(timestampLock) ;
     if (isStart)
-    {
       storedTimestamps[identifier] = timestamp ;
-    }
-    else
-    {
+    else {
       uint64_t startTime = storedTimestamps[identifier] ;
       storedTimestamps.erase(identifier) ;
 
@@ -263,6 +259,9 @@ namespace xdp {
 
   static void counter_mark_objects_released()
   {
+    if (!VPDatabase::alive() || !OpenCLCountersProfilingPlugin::alive())
+      return;
+
     VPDatabase* db = openclCountersPluginInstance.getDatabase() ;
     (db->getStats()).addOpenCLObjectReleased() ;
   }

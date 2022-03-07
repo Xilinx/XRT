@@ -22,8 +22,8 @@
 namespace xdp {
 
   PowerProfilingWriter::PowerProfilingWriter(const char* filename,
-					     const char* d,
-					     uint64_t index) :
+                                             const char* d,
+                                             uint64_t index) :
     VPWriter(filename), deviceName(d), deviceIndex(index)
   {
   }
@@ -37,31 +37,31 @@ namespace xdp {
     // Write header
     fout << "Target device: " << deviceName << std::endl ;
     fout << "timestamp"    << ","
-	 << "12v_aux_curr" << ","
-	 << "12v_aux_vol"  << ","
-	 << "12v_pex_curr" << ","
-	 << "12v_pex_vol"  << ","
-	 << "vccint_curr"  << ","
-	 << "vccint_vol"   << ","
-	 << "3v3_pex_curr" << ","
-	 << "3v3_pex_vol"  << ","
-	 << "cage_temp0"   << ","
-	 << "cage_temp1"   << ","
-	 << "cage_temp2"   << ","
-	 << "cage_temp3"   << ","
-	 << "dimm_temp0"   << ","
-	 << "dimm_temp1"   << ","
-	 << "dimm_temp2"   << ","
-	 << "dimm_temp3"   << ","
-	 << "fan_temp"     << ","
-	 << "fpga_temp"    << ","
-	 << "hbm_temp"     << ","
-	 << "se98_temp0"   << ","
-	 << "se98_temp1"   << ","
-	 << "se98_temp2"   << ","
-	 << "vccint_temp"  << ","
-	 << "fan_rpm"
-	 << std::endl;
+         << "12v_aux_curr" << ","
+         << "12v_aux_vol"  << ","
+         << "12v_pex_curr" << ","
+         << "12v_pex_vol"  << ","
+         << "vccint_curr"  << ","
+         << "vccint_vol"   << ","
+         << "3v3_pex_curr" << ","
+         << "3v3_pex_vol"  << ","
+         << "cage_temp0"   << ","
+         << "cage_temp1"   << ","
+         << "cage_temp2"   << ","
+         << "cage_temp3"   << ","
+         << "dimm_temp0"   << ","
+         << "dimm_temp1"   << ","
+         << "dimm_temp2"   << ","
+         << "dimm_temp3"   << ","
+         << "fan_temp"     << ","
+         << "fpga_temp"    << ","
+         << "hbm_temp"     << ","
+         << "se98_temp0"   << ","
+         << "se98_temp1"   << ","
+         << "se98_temp2"   << ","
+         << "vccint_temp"  << ","
+         << "fan_rpm"
+         << std::endl;
 
     // Write all of the data elements
     std::vector<VPDynamicDatabase::CounterSample> samples = 
@@ -72,7 +72,7 @@ namespace xdp {
       fout << sample.first << "," ; // Timestamp
       for (auto value : sample.second)
       {
-	fout << value << "," ;
+        fout << value << "," ;
       }
       fout << std::endl ;
     }

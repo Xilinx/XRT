@@ -931,6 +931,8 @@ static const struct drm_ioctl_desc zocl_ioctls[] = {
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 	DRM_IOCTL_DEF_DRV(ZOCL_AIE_PUTCMD, zocl_aie_putcmd_ioctl,
 			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
+	DRM_IOCTL_DEF_DRV(ZOCL_AIE_FREQSCALE, zocl_aie_freqscale_ioctl,
+			DRM_AUTH|DRM_UNLOCKED|DRM_RENDER_ALLOW),
 };
 
 static const struct file_operations zocl_driver_fops = {
@@ -986,6 +988,12 @@ const struct drm_gem_object_funcs zocl_gem_object_funcs = {
 	.get_sg_table = drm_gem_cma_get_sg_table,
 	.vmap = drm_gem_cma_vmap,
 	.export = drm_gem_prime_export,
+};
+
+const struct drm_gem_object_funcs zocl_cma_default_funcs = {
+	.free = zocl_free_bo,
+	.get_sg_table = drm_gem_cma_get_sg_table,
+	.vm_ops = &zocl_bo_vm_ops,
 };
 #endif
 static const struct zdev_data zdev_data_mpsoc = {

@@ -20,6 +20,7 @@ usage()
     echo "          -setup                          setup file to use"
     echo "          -clean, clean                   Remove build directories"
     echo "          -full, full                     Full Petalinux build which builds images along with XRT RPMs"
+    echo "          -archiver                       Generate archiver of the project. This is needed to generate LICENSE"
     echo ""
 }
 
@@ -171,6 +172,7 @@ PLATFROM=""
 XRT_REPO_DIR=`readlink -f ${THIS_SCRIPT_DIR}/..`
 clean=0
 full=0
+archiver=0
 SSTATE_CACHE=""
 SETTINGS_FILE="petalinux.build"
 while [ $# -gt 0 ]; do
@@ -191,6 +193,9 @@ while [ $# -gt 0 ]; do
 			;;
 		-full | full )
 			full=1
+			;;
+		-archiver | archiver )
+			archiver=1
 			;;
 		-cache )
                         shift
@@ -329,6 +334,10 @@ else
   $PETA_BIN/petalinux-build -c zocl
   echo "[CMD]: petalinux-build -c xrt"
   $PETA_BIN/petalinux-build -c xrt
+fi
+
+if [[ $archiver == 1 ]]; then
+  $PETA_BIN/petalinux-build --archiver
 fi
 
 if [ $? != 0 ]; then

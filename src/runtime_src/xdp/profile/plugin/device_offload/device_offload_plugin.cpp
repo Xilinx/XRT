@@ -107,7 +107,7 @@ namespace xdp {
     }
     else {
       if (xrt_core::config::get_continuous_trace()) {
-	xrt_core::message::send(xrt_core::message::severity_level::warning,
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
                                 "XRT",
                                 "Continuous offload and dumping of device data is not supported in emulation and has been disabled.");
       }
@@ -275,8 +275,8 @@ namespace xdp {
               std::to_string(requested_offload_rate);
             xrt_core::message::send(xrt_core::message::severity_level::warning,
                                     "XRT", msg);
-	  }
-	}
+          }
+        }
       }
     }
     else {

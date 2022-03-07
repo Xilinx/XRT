@@ -120,6 +120,8 @@ enum drm_zocl_ops {
 	DRM_ZOCL_AIE_GETCMD,
 	/* Put the aie info command */
 	DRM_ZOCL_AIE_PUTCMD,
+	/* Set/Get freq of AIE partition */
+	DRM_ZOCL_AIE_FREQSCALE,
 	DRM_ZOCL_NUM_IOCTLS
 };
 
@@ -315,6 +317,12 @@ struct drm_zocl_aie_reset {
 	uint32_t partition_id;
 };
 
+struct drm_zocl_aie_freq_scale {
+	uint32_t partition_id;
+	uint64_t freq;
+	bool dir;
+};
+
 /**
  * Opcodes for the embedded scheduler provided by the client to the driver
  */
@@ -442,7 +450,7 @@ struct drm_zocl_sk_getcmd {
 	char		name[ZOCL_MAX_NAME_LENGTH];
 	int		bohdl;
 	int		meta_bohdl;
-	char		uuid[16];
+	unsigned char	uuid[16];
 };
 
 enum aie_info_code {
@@ -553,4 +561,6 @@ struct drm_zocl_error_inject {
                                        DRM_ZOCL_AIE_GETCMD, struct drm_zocl_aie_cmd)
 #define DRM_IOCTL_ZOCL_AIE_PUTCMD      DRM_IOWR(DRM_COMMAND_BASE + \
                                        DRM_ZOCL_AIE_PUTCMD, struct drm_zocl_aie_cmd)
+#define DRM_IOCTL_ZOCL_AIE_FREQSCALE   DRM_IOWR(DRM_COMMAND_BASE + \
+				       DRM_ZOCL_AIE_FREQSCALE, struct drm_zocl_aie_freq_scale)
 #endif
