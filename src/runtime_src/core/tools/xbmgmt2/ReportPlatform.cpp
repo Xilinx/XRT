@@ -194,7 +194,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   std::string sn = "N/A";
   if(info.mSerialNum.empty())
     sn = xrt_core::device_query<xrt_core::query::hwmon_sdm_serial_num>(device);
-  pt_platform.put("hardware.serial_num", sn ? "N/A" : info.mSerialNum);
+  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? sn : info.mSerialNum);
   boost::property_tree::ptree dev_prop;
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
   std::string bn = "N/A";
