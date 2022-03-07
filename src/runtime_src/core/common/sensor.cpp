@@ -178,11 +178,11 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     auto max = xrt_core::utils::format_base10_shiftdown3(tmp.max);
     auto avg = xrt_core::utils::format_base10_shiftdown3(tmp.average);
 
-    for(auto& kv : sensor_array)
+    for (auto& kv : sensor_array)
     {
       auto id = kv.second.get<std::string>("id");
       //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
-      if(desc.find(id) != std::string::npos)
+      if (desc.find(id) != std::string::npos)
       {
         kv.second.put("current.amps", amps);
         kv.second.put("current.max", max);
@@ -193,7 +193,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
       }
     }
 
-    if(found)
+    if (found)
       continue;
 
     pt.put("id", tmp.label);
@@ -211,7 +211,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
-    if (!strcmp((tmp.label).c_str(), "Total Power"))
+    if (tmp.label == "Total Power")
       bd_power = tmp.input;
   }
   ptree_type root;
@@ -232,7 +232,7 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   ptree_type root;
 
   // iterate over temperature data, store to ptree by converting to Celcius
-  for(const auto& tmp : output)
+  for (const auto& tmp : output)
   {
     ptree_type pt;
     pt.put("location_id", tmp.label);
@@ -256,7 +256,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
   ptree_type fan_array;
 
   // iterate over output data, store it into property_tree
-  for(const auto& tmp : output)
+  for (const auto& tmp : output)
   {
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
@@ -264,9 +264,9 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
     pt.put("is_present", "true");
   }
   // iterate over output data, store it into property_tree
-  for(const auto& tmp : temp)
+  for (const auto& tmp : temp)
   {
-    if (!strcmp("Vccint Temp", (tmp.label).c_str()))
+    if (tmp.label == "Vccint Temp")
     {
       pt.put("critical_trigger_temp_C", tmp.input);
       break;
