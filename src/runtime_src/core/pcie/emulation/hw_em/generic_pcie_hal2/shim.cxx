@@ -579,24 +579,6 @@ namespace xclhwemhal2 {
         }
         //fetch instance name
         instance_name = cu.get_name();
-        //iterate over arguments and populate kernelArg structure
-        std::map<uint64_t, KernelArg> kernelArgInfo;
-        for (const auto& arg : cu.get_args())
-        {
-          auto arg_name = arg.get_name();
-          auto arg_port = arg.get_port();
-          auto arg_offset = arg.get_offset();
-          auto arg_size = arg.get_size();
-          auto arg_index = arg.get_index();
-          KernelArg k_arg;
-          k_arg.name = props.name + ":" + arg_name;
-          k_arg.size = arg_size;
-          kernelArgInfo[arg_offset] = k_arg;
-          if (mLogStream.is_open())
-            mLogStream << __func__ << " Filling kernel Args name: " << arg_name << " index: " << arg_index << " port: " <<
-            arg_port << " info from xrt_xclbin API's" << std::endl;
-        }
-        mKernelOffsetArgsInfoMap[base_address] = std::move(kernelArgInfo);
         if (xclemulation::config::getInstance()->isMemLogsEnabled())
         {
           //trim instance_name to get actual instance name
@@ -1165,40 +1147,10 @@ namespace xclhwemhal2 {
        case XCL_ADDR_KERNEL_CTRL:
          {
            std::map<uint64_t,std::pair<std::string,unsigned int>> offsetArgInfo;
-           unsigned int paddingFactor = xclemulation::config::getInstance()->getPaddingFactor();
 
            std::string kernelName("");
            uint32_t *hostBuf32 = ((uint32_t*)hostBuf);
           // if(hostBuf32[0] & CONTROL_AP_START)
-           {
-             auto offsetKernelArgInfoItr = mKernelOffsetArgsInfoMap.find(offset);
-             if(offsetKernelArgInfoItr != mKernelOffsetArgsInfoMap.end())
-             {
-               unsigned char* axibuf=((unsigned char*) hostBuf);
-               std::map<uint64_t, KernelArg> kernelArgInfo = (*offsetKernelArgInfoItr).second;
-               for (auto i : kernelArgInfo)
-               {
-                 uint64_t argOffset = i.first;
-                 KernelArg kArg = i.second;
-                 uint64_t argPointer = 0;
-                 std::memcpy(&argPointer,axibuf+ argOffset,kArg.size);
-                 std::map<uint64_t,uint64_t>::iterator it = mAddrMap.find(argPointer);
-                 if(it != mAddrMap.end())
-                 {
-                   uint64_t offsetSize =  (*it).second;
-                   uint64_t padding = (paddingFactor == 0) ? 0 : offsetSize/(1+(paddingFactor*2));
-                   std::pair<std::string,unsigned int> sizeNamePair(kArg.name,offsetSize);
-                   if(hostBuf32[0] & CONTROL_AP_START)
-                     offsetArgInfo[argPointer-padding] = sizeNamePair;
-                   size_t pos = kArg.name.find(":");
-                   if(pos != std::string::npos)
-                   {
-                     kernelName = kArg.name.substr(0,pos);
-                   }
-                 }
-               }
-             }
-           }
 
            auto controlStreamItr = mOffsetInstanceStreamMap.find(offset);
            if(controlStreamItr != mOffsetInstanceStreamMap.end())
