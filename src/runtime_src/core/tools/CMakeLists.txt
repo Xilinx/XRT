@@ -10,6 +10,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
   if(NOT WIN32)
     add_subdirectory(xbtop)
+    add_subdirectory(xbflash2)
   endif()
 endif()
 
