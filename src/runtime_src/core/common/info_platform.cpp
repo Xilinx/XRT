@@ -157,12 +157,12 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
                           % ((versionValue >> (0 * 8)) & 0xFF)); // Version
     cmc.add("version", version);
     std::string sn = xrt_core::device_query<xq::xmc_serial_num>(device);
-    if(sn.empty())
+    if(sn.empty() || (sn == "N/A"))
       sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
     cmc.add("serial_number", sn);
 
     std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
-    if(oid.empty() || !strcmp("N/A", oid.c_str()))
+    if(oid.empty() || (oid == "N/A"))
       oid = xrt_core::device_query<xq::hwmon_sdm_oem_id>(device);
     cmc.add("oem_id", oid);
 

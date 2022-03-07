@@ -190,11 +190,17 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   f.getBoardInfo(info);
   //create information tree for a device
   pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
-  pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device)); 
-  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? "N/A" : info.mSerialNum);
+  pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device));
+  std::string sn = "N/A";
+  if(info.mSerialNum.empty())
+    sn = xrt_core::device_query<xrt_core::query::hwmon_sdm_serial_num>(device);
+  pt_platform.put("hardware.serial_num", sn ? "N/A" : info.mSerialNum);
   boost::property_tree::ptree dev_prop;
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
-  dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
+  std::string bn = "N/A";
+  if(info.mName.empty())
+    bn = xrt_core::device_query<xrt_core::query::hwmon_sdm_board_name>(device);
+  dev_prop.put("board_name", info.mName.empty() ? bn : info.mName);
   dev_prop.put("config_mode", info.mConfigMode);
   dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
   pt_platform.add_child("device_properties", dev_prop);
