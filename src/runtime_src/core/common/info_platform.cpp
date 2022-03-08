@@ -160,15 +160,17 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     if (sn.empty() || boost::iequals(sn, "N/A")) {
       try {
         sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
-      } catch(...) {}
+      }
+      catch(...) {}
     }
     cmc.add("serial_number", sn);
 
     std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
     if (oid.empty() || boost::iequals(oid, "N/A")) {
       try {
-      oid = xrt_core::device_query<xq::hwmon_sdm_oem_id>(device);
-      } catch(...) {}
+        oid = xrt_core::device_query<xq::hwmon_sdm_oem_id>(device);
+      }
+      catch(...) {}
     }
     cmc.add("oem_id", oid);
 
