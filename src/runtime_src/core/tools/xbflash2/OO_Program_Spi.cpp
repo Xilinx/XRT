@@ -39,17 +39,21 @@ namespace po = boost::program_options;
 namespace {
 
 int
-reset(po::variables_map vm, int bar, size_t baroff) {
+reset(po::variables_map& vm) {
     std::string bdf;
     bool force = false;
     bool dualflash = false;
+    std::string sBar, sBarOffset;
+    size_t baroff = INVALID_OFFSET;
+    int bar = 0;
+
     XBFU::sudo_or_throw();
     //mandatory command line args
     try {
         bdf = vm["device"].as<std::string>();
     }
     catch (...) {
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     //optional command line args
@@ -58,6 +62,20 @@ reset(po::variables_map vm, int bar, size_t baroff) {
             force = true;
         if (vm.count("dual-flash"))
             dualflash = true;
+    }
+    catch (...) {
+    }
+
+    //optional command line args
+    try {
+        sBar = vm["bar"].as<std::string>();
+        if (!sBar.empty())
+            bar = std::stoi(sBar);
+        sBarOffset = vm["bar-offset"].as<std::string>();
+        if (!sBarOffset.empty()) {
+            std::stringstream sstream(sBarOffset);
+            sstream >> baroff;
+        }
     }
     catch (...) {
     }
@@ -73,12 +91,15 @@ reset(po::variables_map vm, int bar, size_t baroff) {
 }
 
 int
-flash(po::variables_map vm, int bar, size_t baroff) {
+flash(po::variables_map& vm) {
     std::string bdf;
     std::vector <std::string> primary_file;
     int ret = 0;
     bool force = false;
     bool dual_flash = false;
+    std::string sBar, sBarOffset;
+    size_t baroff = INVALID_OFFSET;
+    int bar = 0;
 
     XBFU::sudo_or_throw();
 
@@ -90,7 +111,21 @@ flash(po::variables_map vm, int bar, size_t baroff) {
             dual_flash = true;
     }
     catch (...) {
-        return -EINVAL;
+        throw std::errc::invalid_argument;
+    }
+
+    //optional command line args
+    try {
+        sBar = vm["bar"].as<std::string>();
+        if (!sBar.empty())
+            bar = std::stoi(sBar);
+        sBarOffset = vm["bar-offset"].as<std::string>();
+        if (!sBarOffset.empty()) {
+            std::stringstream sstream(sBarOffset);
+            sstream >> baroff;
+        }
+    }
+    catch (...) {
     }
 
     if (vm.count("force"))
@@ -109,48 +144,28 @@ flash(po::variables_map vm, int bar, size_t baroff) {
     if (!dual_flash) {
         firmwareImage pri(primary_file[0].c_str());
         if (pri.fail())
-            return -EINVAL;
+            throw std::errc::invalid_argument;
         ret = xspi.xclUpgradeFirmware1(pri);
     }
     else {
         firmwareImage pri(primary_file[0].c_str());
         firmwareImage sec(primary_file[1].c_str());
         if (pri.fail() || sec.fail())
-            return -EINVAL;
+            throw std::errc::invalid_argument;
         ret = xspi.xclUpgradeFirmware2(pri, sec);
     }
     return ret;
 }
 
 int
-spiCommand(po::variables_map vm) {
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-    int err = -EINVAL;
-
-    //optional command line args
-    try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
-        }
-    }
-    catch (...) {
-    }
-
+spiCommand(po::variables_map& vm) {    
     if (vm.count("revert-to-golden")) {
-        err = reset(vm, bar, baroff);
+        return reset(vm);
     }
     else if (vm.count("image")) {
-        err = flash(vm, bar, baroff);
+        return flash(vm);
     }
-
-    return err;
+    return 1;
 }
 } //end namespace 
 
@@ -206,12 +221,18 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
 
   XBFU::sudo_or_throw();
  
-  if (spiCommand(vm) == -EINVAL)
-  {
+  try {
+      if (!spiCommand(vm))
+      {
+          throw std::errc::operation_canceled;
+      }
+  }
+  catch(...) {
       std::cerr << "ERROR: Program execution - Flash type spi " << std::endl;
       printHelp();
-      return;
+      throw std::errc::operation_canceled;
   }
+
   std::cout << "****************************************************\n";
   std::cout << "Successfully flashed the image on device.\n ";
   std::cout << "Cold reboot machine to load the new image on device.\n ";

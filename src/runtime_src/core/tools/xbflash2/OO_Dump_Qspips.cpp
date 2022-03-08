@@ -39,7 +39,7 @@ namespace po = boost::program_options;
 namespace {
 
 int
-qspips_readback(po::variables_map vm, int bar, size_t baroff)
+qspips_readback(po::variables_map& vm)
 {
     size_t offset = 0, len = FLASH_SIZE;
     std::string bdf;
@@ -47,6 +47,9 @@ qspips_readback(po::variables_map vm, int bar, size_t baroff)
     std::string slength;
     std::string flash_type;
     std::string output;
+    std::string sBar, sBarOffset;
+    size_t baroff = INVALID_OFFSET;
+    int bar = 0;
 
     XBFU::sudo_or_throw();
 
@@ -55,7 +58,7 @@ qspips_readback(po::variables_map vm, int bar, size_t baroff)
         output = vm["output"].as<std::string>();
     }
     catch (...) {
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     try {
@@ -75,25 +78,7 @@ qspips_readback(po::variables_map vm, int bar, size_t baroff)
     catch (...) {
     }
 
-    if (bdf.empty() || output.empty())
-        return -EINVAL;
-
-    std::cout << "Read out flash"
-        << boost::format("[0x%x, 0x%x] on device %s to %s\n") % offset % (offset + len) % bdf % output;
-
-    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
-    XQSPIPS_Flasher qspips(&dev);
-
-    return qspips.xclReadBack(output, offset, len);
-}
-
-int
-qspipsCommand(po::variables_map vm)
-{
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-
+    //Optional arguments
     try {
         sBar = vm["bar"].as<std::string>();
         if (!sBar.empty())
@@ -107,9 +92,17 @@ qspipsCommand(po::variables_map vm)
     catch (...) {
     }
 
-    return qspips_readback(vm, bar, baroff);
-}
+    if (bdf.empty() || output.empty())
+        throw std::errc::invalid_argument;
 
+    std::cout << "Read out flash"
+        << boost::format("[0x%x, 0x%x] on device %s to %s\n") % offset % (offset + len) % bdf % output;
+
+    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+    XQSPIPS_Flasher qspips(&dev);
+
+    return qspips.xclReadBack(output, offset, len);
+}
 } //end namespace 
 
 // ----- C L A S S   M E T H O D S -------------------------------------------
@@ -165,12 +158,18 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
 
   XBFU::sudo_or_throw();
 
-  if (qspipsCommand(vm) == -EINVAL)
-  {
+  try {
+      if (!qspips_readback(vm))
+      {
+          throw std::errc::operation_canceled;
+      }
+  }
+  catch (...) {
       std::cerr << "ERROR: Dump execution - Flash type qspips " << std::endl;
       printHelp();
-      return;
+      throw std::errc::operation_canceled;
   }
+
   std::cout << "****************************************************\n";
   std::cout << "Successfully dumped the output to the given file.\n ";
   std::cout << "****************************************************\n";

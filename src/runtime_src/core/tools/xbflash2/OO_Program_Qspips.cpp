@@ -39,7 +39,7 @@ namespace po = boost::program_options;
 namespace {
 
 int 
-qspips_flash(po::variables_map vm, int bar, size_t baroff) {
+qspips_flash(po::variables_map& vm) {
     std::string bdf;
     std::string flash_type;
     std::string bin_file;
@@ -47,16 +47,19 @@ qspips_flash(po::variables_map vm, int bar, size_t baroff) {
     std::string soffset;
     size_t offset = 0;
     bool force = false;
+    std::string sBar, sBarOffset;
+    size_t baroff = INVALID_OFFSET;
+    int bar = 0;   
 
     XBFU::sudo_or_throw();
-
+     
     //mandatory command line args
     try {
         bdf = vm["device"].as<std::string>();
         bin_files = vm["image"].as<std::vector<std::string>>();
     }
     catch (...) {
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     //optional command line args
@@ -73,26 +76,40 @@ qspips_flash(po::variables_map vm, int bar, size_t baroff) {
     catch (...) {
     }
 
+    //optionals command line args
+    try {
+        sBar = vm["bar"].as<std::string>();
+        if (!sBar.empty())
+            bar = std::stoi(sBar);
+        sBarOffset = vm["bar-offset"].as<std::string>();
+        if (!sBarOffset.empty()) {
+            std::stringstream sstream(sBarOffset);
+            sstream >> baroff;
+        }
+    }
+    catch (...) {
+    }
+
     if (bdf.empty()) {
         std::cout << "Error: Please provide mgmt BDF\n";
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     if (!bin_files.size()) {
         std::cout << "Error: Please provide proper BIN file.\n";
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     firmwareImage bin(bin_files[0].c_str());
     if (bin.fail()) {
         std::cout << "Error: Please provide proper BIN file.\n";
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
     std::cout << "About to program flash on device "
         << boost::format(" %s at offset 0x%x\n") % bdf % offset;
 
     if (!force && !XBFU::can_proceed())
-        return -ECANCELED;
+        throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);
     XQSPIPS_Flasher qspips(&dev);
@@ -101,7 +118,7 @@ qspips_flash(po::variables_map vm, int bar, size_t baroff) {
 }
 
 int 
-qspips_erase(po::variables_map vm, int bar, size_t baroff) {
+qspips_erase(po::variables_map& vm) {
     std::string bdf;
     std::string flash_type;
     std::string soffset;
@@ -109,6 +126,9 @@ qspips_erase(po::variables_map vm, int bar, size_t baroff) {
     std::string output;
     size_t offset = 0, len = GOLDEN_BASE;
     bool force = false;
+    std::string sBar, sBarOffset;
+    size_t baroff = INVALID_OFFSET;
+    int bar = 0;    
 
     XBFU::sudo_or_throw();
     //mandatory command options
@@ -116,7 +136,7 @@ qspips_erase(po::variables_map vm, int bar, size_t baroff) {
         bdf = vm["device"].as<std::string>();
     }
     catch (...) {
-        return -EINVAL;
+        throw std::errc::invalid_argument;
     }
 
     //optionals command options
@@ -137,34 +157,6 @@ qspips_erase(po::variables_map vm, int bar, size_t baroff) {
     catch (...) {
     }
 
-    if (bdf.empty()) {
-        std::cout << "Error: Please provide mgmt BDF\n";
-        return -EINVAL;
-    }
-
-    std::cout << "About to erase flash"
-        << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset + len) % bdf;
-
-    if (offset + len > GOLDEN_BASE)
-        std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;
-
-    if (!force && !XBFU::can_proceed())
-        return -ECANCELED;
-
-    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
-    XQSPIPS_Flasher qspips(&dev);
-
-    return qspips.xclErase(offset, len);
-}
-
-int
-qspipsCommand(po::variables_map vm)
-{
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-    int err = 0;
-
     //optionals command line args
     try {
         sBar = vm["bar"].as<std::string>();
@@ -179,14 +171,36 @@ qspipsCommand(po::variables_map vm)
     catch (...) {
     }
 
-    if (vm.count("erase")) {
-        err = qspips_erase(vm, bar, baroff);
-    }
-    else if (vm.count("image")) {
-        err = qspips_flash(vm, bar, baroff);
+    if (bdf.empty()) {
+        std::cout << "Error: Please provide mgmt BDF\n";
+        throw std::errc::invalid_argument;
     }
 
-    return err;
+    std::cout << "About to erase flash"
+        << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset + len) % bdf;
+
+    if (offset + len > GOLDEN_BASE)
+        std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;
+
+    if (!force && !XBFU::can_proceed())
+        throw std::errc::operation_canceled;
+
+    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+    XQSPIPS_Flasher qspips(&dev);
+
+    return qspips.xclErase(offset, len);
+}
+
+int
+qspipsCommand(po::variables_map& vm)
+{
+    if (vm.count("erase")) {
+        return qspips_erase(vm);
+    }
+    else if (vm.count("image")) {
+        return qspips_flash(vm);
+    }
+    return 1;
 }
 } //end namespace 
 
@@ -242,13 +256,18 @@ OO_Program_Qspips::execute(const SubCmdOptions& _options) const
   }
 
   XBFU::sudo_or_throw();
-
-  if (qspipsCommand(vm) == -EINVAL)
-  {
+  try {
+      if (!qspipsCommand(vm))
+      {
+          throw std::errc::operation_canceled;
+      }
+  }
+  catch (...) {
       std::cerr << "ERROR: Program execution - Flash type qspips " << std::endl;
       printHelp();
-      return;
+      throw std::errc::operation_canceled;
   }
+
   std::cout << "****************************************************\n";
   std::cout << "Successfully flashed the image on device.\n ";
   std::cout << "Cold reboot machine to load the new image on device.\n ";
