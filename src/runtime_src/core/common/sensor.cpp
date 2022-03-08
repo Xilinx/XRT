@@ -19,6 +19,7 @@
 #include "utils.h"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <sstream>
 #include <iomanip>
@@ -211,7 +212,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   // iterate over power data, store to ptree by converting to watts.
   for (const auto& tmp : power)
   {
-    if (boost::isequals(tmp.label, "Total Power"))
+    if (boost::iequals(tmp.label, "Total Power"))
       bd_power = tmp.input;
   }
   ptree_type root;
@@ -266,7 +267,7 @@ read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
   // iterate over output data, store it into property_tree
   for (const auto& tmp : temp)
   {
-    if (boost::isequals(tmp.label, "Vccint Temp"))
+    if (boost::iequals(tmp.label, "Vccint Temp"))
     {
       pt.put("critical_trigger_temp_C", tmp.input);
       break;
