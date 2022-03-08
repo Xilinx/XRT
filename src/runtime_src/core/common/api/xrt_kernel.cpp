@@ -1426,7 +1426,7 @@ public:
       if (cu.get_control_type() == xrt::xclbin::ip::control_type::none)
         throw xrt_core::error(ENOTSUP, "AP_CTRL_NONE is only supported by XRT native API xrt::ip");
 
-      auto cuidx = device->core_device->get_cuidx(cu.get_name(), xclbin_id);
+      auto cuidx = device->core_device->get_cuidx(cu.get_name());
       ipctxs.emplace_back(ip_context::open(device->get_core_device(), xclbin, cu, cuidx, am));
       cumask.set(cuidx.domain_index);
       num_cumasks = std::max<size_t>(num_cumasks, (cuidx.domain_index / cus_per_word) + 1);

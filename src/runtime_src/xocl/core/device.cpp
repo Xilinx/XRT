@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -38,7 +38,6 @@
 #ifdef _WIN32
 #pragma warning ( disable : 4244 4245 4267 4996 4505 )
 #endif
-
 
 namespace {
 
@@ -844,7 +843,7 @@ load_program(program* program)
   // Add compute units for each kernel in the program.
   clear_cus();
   m_cu_memidx = -2;
-  auto cu2addr = m_cdevice->get_cus(uuid);
+  auto cu2addr = m_cdevice->get_cus();
   for (const auto& xkernel : m_xclbin.get_kernels()) {
     for (const auto& xcu : xkernel.get_cus()) {
       if (auto cu = compute_unit::create(xkernel, xcu, this, cu2addr))

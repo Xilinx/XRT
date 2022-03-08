@@ -154,7 +154,7 @@ class ip_impl
 
       ip = ips.front();
 
-      const auto& all_cus = device->get_cus(xclbin_uuid);  // sort order
+      const auto& all_cus = device->get_cus();  // sort order
       auto itr = std::find(all_cus.begin(), all_cus.end(), ip->m_base_address);
       if (itr == all_cus.end())
         throw xrt_core::internal_error("unexpected error");
@@ -202,7 +202,7 @@ class ip_impl
       return default_address_range;
 
     // Normalize ipname to kernel name
-    std::string kname(ipname.substr(0,ipname.find(":"))); 
+    std::string kname(ipname.substr(0,ipname.find(":")));
     auto kprop = xrt_core::xclbin::get_kernel_properties(xml_section.first, xml_section.second, kname);
     return kprop.address_range;
   }

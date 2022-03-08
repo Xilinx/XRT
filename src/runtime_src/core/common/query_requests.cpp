@@ -151,5 +151,15 @@ to_errors(const std::vector<char>& buf)
 
   return errors;
 }
-  
+
+std::map<xrt_core::query::xclbin_slots::slot_id, xrt::uuid>
+xrt_core::query::xclbin_slots::
+to_map(const result_type& value)
+{
+  std::map<xrt_core::query::xclbin_slots::slot_id, xrt::uuid> s2u;
+  for (const auto& data : value)
+    s2u.emplace(data.slot, xrt::uuid{data.uuid});
+  return s2u;
+}
+
 }} // query, xrt_core
