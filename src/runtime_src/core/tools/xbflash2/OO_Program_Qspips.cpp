@@ -64,11 +64,14 @@ qspips_flash(po::variables_map& vm) {
 
     //optional command line args
     try {
-        flash_type = vm["flash-part"].as<std::string>();
-        soffset = vm["offset"].as<std::string>();
-        if (!soffset.empty()) {
-            std::stringstream sstream(soffset);
-            sstream >> offset;
+        if (vm.count("flash-part"))
+            flash_type = vm["flash-part"].as<std::string>();
+        if (vm.count("offset")) {
+            soffset = vm["offset"].as<std::string>();
+            if (!soffset.empty()) {
+                std::stringstream sstream(soffset);
+                sstream >> offset;
+            }
         }
         if (vm.count("force"))
             force = true;
@@ -78,13 +81,17 @@ qspips_flash(po::variables_map& vm) {
 
     //optionals command line args
     try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
+        if (vm.count("bar")) {
+            sBar = vm["bar"].as<std::string>();
+            if (!sBar.empty())
+                bar = std::stoi(sBar);
+        }
+        if (vm.count("bar-offset")) {
+            sBarOffset = vm["bar-offset"].as<std::string>();
+            if (!sBarOffset.empty()) {
+                std::stringstream sstream(sBarOffset);
+                sstream >> baroff;
+            }
         }
     }
     catch (...) {
@@ -141,17 +148,22 @@ qspips_erase(po::variables_map& vm) {
 
     //optionals command options
     try {
-        flash_type = vm["flash-part"].as<std::string>();
-        soffset = vm["offset"].as<std::string>();
-        if (!soffset.empty()) {
-            std::stringstream sstream(soffset);
-            if (offset != INVALID_OFFSET)
-                sstream >> offset;
+        if (vm.count("flash-part"))
+            flash_type = vm["flash-part"].as<std::string>();
+        if (vm.count("offset")) {
+            soffset = vm["offset"].as<std::string>();
+            if (!soffset.empty()) {
+                std::stringstream sstream(soffset);
+                if (offset != INVALID_OFFSET)
+                    sstream >> offset;
+            }
         }
-        slength = vm["length"].as<std::string>();
-        if (!slength.empty()) {
-            std::stringstream sstream(slength);
-            sstream >> len;
+        if (vm.count("length")) {
+            slength = vm["length"].as<std::string>();
+            if (!slength.empty()) {
+                std::stringstream sstream(slength);
+                sstream >> len;
+            }
         }
     }
     catch (...) {
@@ -159,13 +171,18 @@ qspips_erase(po::variables_map& vm) {
 
     //optionals command line args
     try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
+        if (vm.count("bar")) {
+            sBar = vm["bar"].as<std::string>();
+            if (!sBar.empty())
+                bar = std::stoi(sBar);
+        }
+
+        if (vm.count("bar-offset")) {
+            sBarOffset = vm["bar-offset"].as<std::string>();
+            if (!sBarOffset.empty()) {
+                std::stringstream sstream(sBarOffset);
+                sstream >> baroff;
+            }
         }
     }
     catch (...) {
@@ -194,12 +211,18 @@ qspips_erase(po::variables_map& vm) {
 int
 qspipsCommand(po::variables_map& vm)
 {
+    if (!vm.count("device")) {
+        std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
+        throw std::errc::invalid_argument;
+    }
+
     if (vm.count("erase")) {
         return qspips_erase(vm);
     }
     else if (vm.count("image")) {
         return qspips_flash(vm);
     }
+    std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
     return 1;
 }
 } //end namespace 
@@ -257,8 +280,7 @@ OO_Program_Qspips::execute(const SubCmdOptions& _options) const
 
   XBFU::sudo_or_throw();
   try {
-      if (!qspipsCommand(vm))
-      {
+      if (qspipsCommand(vm)) {
           throw std::errc::operation_canceled;
       }
   }
@@ -269,8 +291,7 @@ OO_Program_Qspips::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "****************************************************\n";
-  std::cout << "Successfully flashed the image on device.\n ";
-  std::cout << "Cold reboot machine to load the new image on device.\n ";
+  std::cout << "Cold reboot machine to load the new image on device.\n";
   std::cout << "****************************************************\n";
   return;
 }

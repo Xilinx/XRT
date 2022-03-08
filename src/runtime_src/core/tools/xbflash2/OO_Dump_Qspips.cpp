@@ -54,8 +54,21 @@ qspips_readback(po::variables_map& vm)
     XBFU::sudo_or_throw();
 
     try {
-        bdf = vm["device"].as<std::string>();
-        output = vm["output"].as<std::string>();
+        if (vm.count("device")) {
+            bdf = vm["device"].as<std::string>();
+        }
+        else {
+            std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
+            throw std::errc::invalid_argument;
+        }
+
+        if (vm.count("output")) {
+            output = vm["output"].as<std::string>();
+        }
+        else {
+            std::cerr << "\nERROR: output not specified. Please specify the output file path using --output option\n";
+            throw std::errc::invalid_argument;
+        }
     }
     catch (...) {
         throw std::errc::invalid_argument;
@@ -63,16 +76,23 @@ qspips_readback(po::variables_map& vm)
 
     try {
         //Optional arguments
-        flash_type = vm["flash-part"].as<std::string>();
-        soffset = vm["offset"].as<std::string>();
-        if (!soffset.empty()) {
-            std::stringstream sstream(soffset);
-            sstream >> offset;
+        if (vm.count("flash-part"))
+            flash_type = vm["flash-part"].as<std::string>();
+
+        if (vm.count("offset")) {
+            soffset = vm["offset"].as<std::string>();
+            if (!soffset.empty()) {
+                std::stringstream sstream(soffset);
+                sstream >> offset;
+            }
         }
-        slength = vm["length"].as<std::string>();
-        if (!slength.empty()) {
-            std::stringstream sstream(slength);
-            sstream >> len;
+
+        if (vm.count("length")) {
+            slength = vm["length"].as<std::string>();
+            if (!slength.empty()) {
+                std::stringstream sstream(slength);
+                sstream >> len;
+            }
         }
     }
     catch (...) {
@@ -80,13 +100,17 @@ qspips_readback(po::variables_map& vm)
 
     //Optional arguments
     try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
+        if (vm.count("bar")) {
+            sBar = vm["bar"].as<std::string>();
+            if (!sBar.empty())
+                bar = std::stoi(sBar);
+        }
+        if (vm.count("bar-offset")) {
+            sBarOffset = vm["bar-offset"].as<std::string>();
+            if (!sBarOffset.empty()) {
+                std::stringstream sstream(sBarOffset);
+                sstream >> baroff;
+            }
         }
     }
     catch (...) {
@@ -159,8 +183,7 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
   XBFU::sudo_or_throw();
 
   try {
-      if (!qspips_readback(vm))
-      {
+      if (qspips_readback(vm)) {
           throw std::errc::operation_canceled;
       }
   }
@@ -171,7 +194,7 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "****************************************************\n";
-  std::cout << "Successfully dumped the output to the given file.\n ";
+  std::cout << "Successfully dumped the output to the given file.\n";
   std::cout << "****************************************************\n";
   return;
 }

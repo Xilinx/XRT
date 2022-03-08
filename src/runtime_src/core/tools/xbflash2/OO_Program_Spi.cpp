@@ -49,8 +49,8 @@ reset(po::variables_map& vm) {
 
     XBFU::sudo_or_throw();
     //mandatory command line args
-    try {
-        bdf = vm["device"].as<std::string>();
+    try {        
+        bdf = vm["device"].as<std::string>();        
     }
     catch (...) {
         throw std::errc::invalid_argument;
@@ -62,19 +62,17 @@ reset(po::variables_map& vm) {
             force = true;
         if (vm.count("dual-flash"))
             dualflash = true;
-    }
-    catch (...) {
-    }
-
-    //optional command line args
-    try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
+        if (vm.count("bar")) {
+            sBar = vm["bar"].as<std::string>();
+            if (!sBar.empty())
+                bar = std::stoi(sBar);
+        }
+        if (vm.count("bar-offset")) {
+            sBarOffset = vm["bar-offset"].as<std::string>();
+            if (!sBarOffset.empty()) {
+                std::stringstream sstream(sBarOffset);
+                sstream >> baroff;
+            }
         }
     }
     catch (...) {
@@ -83,7 +81,7 @@ reset(po::variables_map& vm) {
     std::cout << "About to revert to golden image for device " << bdf << std::endl;
 
     if (!force && !XBFU::can_proceed())
-        return -ECANCELED;
+        throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff);
     XSPI_Flasher xspi(&dev, dualflash);
@@ -104,8 +102,8 @@ flash(po::variables_map& vm) {
     XBFU::sudo_or_throw();
 
     //mandatory command line args
-    try {
-        bdf = vm["device"].as<std::string>();
+    try {        
+        bdf = vm["device"].as<std::string>();        
         primary_file = vm["image"].as<std::vector<std::string>>();
         if (primary_file.size() == 2)
             dual_flash = true;
@@ -116,13 +114,17 @@ flash(po::variables_map& vm) {
 
     //optional command line args
     try {
-        sBar = vm["bar"].as<std::string>();
-        if (!sBar.empty())
-            bar = std::stoi(sBar);
-        sBarOffset = vm["bar-offset"].as<std::string>();
-        if (!sBarOffset.empty()) {
-            std::stringstream sstream(sBarOffset);
-            sstream >> baroff;
+        if (vm.count("bar")) {
+            sBar = vm["bar"].as<std::string>();
+            if (!sBar.empty())
+                bar = std::stoi(sBar);
+        }
+        if (vm.count("bar-offset")) {
+            sBarOffset = vm["bar-offset"].as<std::string>();
+            if (!sBarOffset.empty()) {
+                std::stringstream sstream(sBarOffset);
+                sstream >> baroff;
+            }
         }
     }
     catch (...) {
@@ -158,13 +160,19 @@ flash(po::variables_map& vm) {
 }
 
 int
-spiCommand(po::variables_map& vm) {    
+spiCommand(po::variables_map& vm) {
+    if (!vm.count("device")) {
+        std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
+        throw std::errc::invalid_argument;
+    }
+
     if (vm.count("revert-to-golden")) {
         return reset(vm);
     }
     else if (vm.count("image")) {
         return flash(vm);
     }
+    std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
     return 1;
 }
 } //end namespace 
@@ -222,8 +230,7 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
   XBFU::sudo_or_throw();
  
   try {
-      if (!spiCommand(vm))
-      {
+      if (spiCommand(vm)) {
           throw std::errc::operation_canceled;
       }
   }
@@ -234,8 +241,7 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
   }
 
   std::cout << "****************************************************\n";
-  std::cout << "Successfully flashed the image on device.\n ";
-  std::cout << "Cold reboot machine to load the new image on device.\n ";
+  std::cout << "Cold reboot machine to load the new image on device.\n";
   std::cout << "****************************************************\n";
   return;
 }
