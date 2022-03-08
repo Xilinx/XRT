@@ -44,7 +44,7 @@ Configuring a device's memory settings with a premade image
     xbmgmt configure [--device| -d] <management bdf> [--input] <filename with .ini extension>
 
 
-Enabling/Disabling memory retention on a device
+Enabling/Disabling DDR memory retention on a device
 
 .. code-block:: shell
 
@@ -59,7 +59,7 @@ Enabling/Disabling memory retention on a device
 
 
 - The ``--input`` specifies an INI file with the memory configuration.
-- The ``--retention`` option enables / disables memory retention.
+- The ``--retention`` option enables / disables DDR memory retention.
 
 
 **Example commands** 
@@ -69,9 +69,9 @@ Enabling/Disabling memory retention on a device
 
 
     #Configure a device's memory settings using an image
-    xbmgmt configure --device 0000:b3:00.0 -o /tmp/memory_config.ini
+    xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
     
-    #Enable a device's memory retention 
+    #Enable a device's DDR memory retention 
     xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
 
