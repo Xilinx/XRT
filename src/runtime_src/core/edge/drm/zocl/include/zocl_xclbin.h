@@ -16,7 +16,7 @@
 
 struct zocl_xclbin {
 	int		zx_refcnt;
-	int		zx_dtboId;
+	char		*zx_dtbo_path;
 	void		*zx_uuid;
 };
 
@@ -39,5 +39,6 @@ int zocl_xclbin_load_pdi(struct drm_zocl_dev *zdev, void *data,
 			struct drm_zocl_slot *slot);
 int zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data);
 bool zocl_xclbin_accel_adapter(int kds_mask);
+int zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path);
 
 #endif /* _ZOCL_XCLBIN_H_ */

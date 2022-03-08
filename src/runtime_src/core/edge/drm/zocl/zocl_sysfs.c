@@ -81,12 +81,12 @@ static ssize_t xclbinid_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(xclbinid);
 
-static ssize_t dtbo_id_show(struct device *dev,
+static ssize_t dtbo_path_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct drm_zocl_dev *zdev = dev_get_drvdata(dev);
 	struct drm_zocl_slot *zocl_slot = NULL;
-	const char *raw_fmt = "%d %d\n";
+	const char *raw_fmt = "%d %s\n";
 	ssize_t size = 0;
 	ssize_t count = 0;
 	int i = 0;
@@ -94,17 +94,17 @@ static ssize_t dtbo_id_show(struct device *dev,
 	for (i = 0; i < zdev->num_pr_slot; i++) {
 		zocl_slot = zdev->pr_slot[i];
 		if (!zocl_slot || !zocl_slot->slot_xclbin ||
-		    !zocl_slot->slot_xclbin->zx_dtboId)
-			return 0;
+		    !zocl_slot->slot_xclbin->zx_dtbo_path)
+			continue;
 
 		count = sprintf(buf+size, raw_fmt, zocl_slot->slot_idx,
-				zocl_slot->slot_xclbin->zx_dtboId);
+				zocl_slot->slot_xclbin->zx_dtbo_path);
 		size += count;
 	}
 
 	return size;
 }
-static DEVICE_ATTR_RO(dtbo_id);
+static DEVICE_ATTR_RO(dtbo_path);
 
 static ssize_t kds_numcus_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -398,7 +398,7 @@ static struct attribute *zocl_attrs[] = {
 	&dev_attr_memstat_raw.attr,
 	&dev_attr_errors.attr,
 	&dev_attr_graph_status.attr,
-	&dev_attr_dtbo_id.attr,
+	&dev_attr_dtbo_path.attr,
 	NULL,
 };
 

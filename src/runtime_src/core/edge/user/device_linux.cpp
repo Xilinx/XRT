@@ -663,24 +663,25 @@ struct accel_deadlock_status
   }
 };
 
-struct dtbo_id
+struct dtbo_path
 {
-  using result_type = query::dtbo_id::result_type;
+  using result_type = query::dtbo_path::result_type;
+  using slot_id_type = query::dtbo_path::slot_id_type;
 
   static result_type
   get(const xrt_core::device* device, key_type key, const boost::any& slot_id)
   {
-    std::vector<std::string> dtbo_id_vec;
+    std::vector<std::string> dtbo_path_vec;
     std::string errmsg;
     auto edev = get_edgedev(device);
-    edev->sysfs_get("dtbo_id", errmsg, dtbo_id_vec);
-    if (!errmsg.empty()) {
+    edev->sysfs_get("dtbo_path", errmsg, dtbo_path_vec);
+    if (!errmsg.empty() || dtbo_path_vec.empty()) {
       // sysfs node is not accessible when bitstream is not loaded
-      return -1;
+      return {};
     }
 
     using tokenizer = boost::tokenizer< boost::char_separator<char> >;
-    for(auto &line : dtbo_id_vec) {
+    for(auto &line : dtbo_path_vec) {
       boost::char_separator<char> sep(" ");
       tokenizer tokens(line, sep);
 
@@ -689,9 +690,9 @@ struct dtbo_id
 
       tokenizer::iterator tok_it = tokens.begin();
 
-      uint32_t slotId = static_cast<uint32_t>(std::stoi(std::string(*tok_it++)));
-      if(slotId == boost::any_cast<uint32_t>(slot_id))
-        return std::stoi(std::string(*tok_it++));
+      uint32_t slotId = static_cast<slot_id_type>(std::stoi(std::string(*tok_it++)));
+      if(slotId == boost::any_cast<slot_id_type>(slot_id))
+        return std::string(*tok_it);
     }
     //if we reach here no matching slot is found
     throw xrt_core::query::sysfs_error("no matching slot is found");
@@ -894,7 +895,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
-  emplace_func4_request<query::dtbo_id,                 dtbo_id>();
+  emplace_func4_request<query::dtbo_path,               dtbo_path>();
 }
 
 struct X { X() { initialize_query_table(); } };
