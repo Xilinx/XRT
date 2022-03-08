@@ -51,7 +51,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("graphs"))
         return true;
     } catch (...) {
-      return true;
+        return true;
     }
 
     // Write approved AIE report to file
@@ -70,7 +70,6 @@ namespace xdp {
 
     // Make sure report is not empty and no error occurred
     // NOTE: catch json parser errors (e.g., non-UTF-8 characters)
-  
     if (aieInfoStr.empty())
       return true;
     try {
@@ -78,7 +77,7 @@ namespace xdp {
       boost::property_tree::ptree pt_aie;
       boost::property_tree::read_json(ss, pt_aie);
       if (!pt_aie.get_child_optional("graphs")) 
-         return true;
+        return true;
     } catch (...) {
 	return true;
     }
@@ -91,9 +90,8 @@ namespace xdp {
       switchFiles();
     return true;
   }
-
   /*
- * e
+   * 
    * Writer for AIE shim tiles status
    */
 
@@ -121,7 +119,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("tiles"))
         return true;   
     } catch (...) {
-      return true;
+        return true;
     }
 
     // Write approved AIE shim report to file
@@ -149,7 +147,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("tiles"))
         return true;
     } catch (...) {
-      return true;
+        return true;
     }
 
     // Write approved AIE shim report to file
