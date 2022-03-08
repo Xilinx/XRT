@@ -3,6 +3,7 @@
 #define XCL_DRIVER_DLL_EXPORT
 
 #include "shim.h"
+#include "core/include/shim_int.h"
 #include "core/include/experimental/xrt-next.h"
 #include "core/common/dlfcn.h"
 #include "core/common/device.h"
@@ -363,6 +364,13 @@ xclReClock2(xclDeviceHandle handle, unsigned short region,
 // Compute Unit Execution Management APIs
 int
 xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex, bool shared)
+{
+  not_supported(__func__);
+  return -1;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbinId, const char* cuname, bool shared)
 {
   not_supported(__func__);
   return -1;

@@ -16,6 +16,7 @@
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_NOOP_SOURCE
 #include "shim.h"
+#include "core/include/shim_int.h"
 #include "core/include/ert.h"
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
@@ -188,7 +189,7 @@ static X x;
 
 } // cmd
 
-  
+
 struct shim
 {
   using buffer_handle_type = xclBufferHandle; // xrt.h
@@ -243,6 +244,12 @@ struct shim
 
   int
   open_context(const xrt::uuid&, unsigned int, bool)
+  {
+    return 0;
+  }
+
+  int
+  open_context(uint32_t, const xrt::uuid&, const char*, bool)
   {
     return 0;
   }
@@ -459,6 +466,23 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
   return (ipIndex == (unsigned int)-1)
 	  ? 0
 	  : shim->open_context(xclbinId, ipIndex, shared);
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  try {
+    auto shim = get_shim_object(handle);
+    return shim->open_context(slot, xclbin_uuid, cuname, shared);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
@@ -692,7 +716,7 @@ xclCmaEnable(xclDeviceHandle handle, bool enable, uint64_t force)
   return -ENOSYS;
 }
 
-int 
+int
 xclInternalResetDevice(xclDeviceHandle handle, xclResetKind kind)
 {
   return 1; // -ENOSYS;
