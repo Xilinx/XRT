@@ -123,7 +123,8 @@ public:
    * range and start a new one.
    */
   XCL_DRIVER_DLLESPEC
-  void start(const char* label, const char* tooltip = nullptr);
+  void
+  start(const char* label, const char* tooltip = nullptr);
 
   /**
    * end() - Mark the end position of a user range
@@ -132,7 +133,8 @@ public:
    * mark the end position of the range and stop tracking time.
    */
   XCL_DRIVER_DLLESPEC
-  void end();
+  void
+  end();
 };
 
 /*!
@@ -172,7 +174,8 @@ public:
    *
    */
   XCL_DRIVER_DLLESPEC
-  void mark(const char* label = nullptr);
+  void
+  mark(const char* label = nullptr);
 
   /**
    * mark_time_ns() - Mark a custom moment in time with a marker on the waveform
@@ -185,7 +188,8 @@ public:
    *
    */
   XCL_DRIVER_DLLESPEC
-  void mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label = nullptr);
+  void
+  mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label = nullptr);
 };
 
 } // end namespace profile
@@ -204,7 +208,8 @@ extern "C" {
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtURStart(unsigned int id, const char* label, const char* tooltip = nullptr);
+void
+xrtURStart(unsigned int id, const char* label, const char* tooltip = nullptr);
 
 /**
  * xrtUREnd() - Mark the end time in the user code of a range
@@ -214,7 +219,8 @@ void xrtURStart(unsigned int id, const char* label, const char* tooltip = nullpt
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtUREnd(unsigned int id);
+void
+xrtUREnd(unsigned int id);
 
 /**
  * xrtUEMark() - Mark the current time as when something happened
@@ -224,7 +230,8 @@ void xrtUREnd(unsigned int id);
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtUEMark(const char* label);
+void
+xrtUEMark(const char* label);
 
 /**
  * xrtUEMarkTimeNs() - Mark a custom time as when something happened
@@ -236,7 +243,8 @@ void xrtUEMark(const char* label);
  *
  */
 XCL_DRIVER_DLLESPEC
-void xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label);
+void
+xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label);
 
 #ifdef __cplusplus
 }

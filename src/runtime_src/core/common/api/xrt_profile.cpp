@@ -32,24 +32,29 @@
 
 namespace xrt { namespace profile {
 
-user_range::user_range(const char* label, const char* tooltip) : active(true)
+user_range::
+user_range(const char* label, const char* tooltip)
+: id(static_cast<uint32_t>(xrt_core::utils::issue_id()))
+, active(true)
 {
-  id = static_cast<uint32_t>(xrt_core::utils::issue_id());
-
   xrtURStart(id, label, tooltip);
 }
 
-user_range::user_range() : id(0), active(false)
-{
-}
+user_range::
+user_range()
+: id(0)
+, active(false)
+{}
 
-user_range::~user_range()
+user_range::
+~user_range()
 {
   if (active)
     xrtUREnd(id);
 }
 
-void user_range::start(const char* label, const char* tooltip)
+void user_range::
+start(const char* label, const char* tooltip)
 {
   // Handle case where start is called while started
   if (active)
@@ -60,7 +65,8 @@ void user_range::start(const char* label, const char* tooltip)
   active = true;
 }
 
-void user_range::end()
+void user_range::
+end()
 {
   // Handle case when end when not tracking time
   if (!active)
@@ -70,20 +76,22 @@ void user_range::end()
   active = false;
 }
 
-user_event::user_event()
-{
-}
+user_event::
+user_event()
+{}
 
-user_event::~user_event()
-{
-}
+user_event::
+~user_event()
+{}
 
-void user_event::mark(const char* label)
+void user_event::
+mark(const char* label)
 {
   xrtUEMark(label);
 }
 
-void user_event::mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label)
+void user_event::
+mark_time_ns(const std::chrono::nanoseconds& time_ns, const char* label)
 {
   xrtUEMarkTimeNs(static_cast<unsigned long long int>(time_ns.count()), label);
 }
@@ -99,7 +107,8 @@ std::function<void (unsigned int)> user_range_end_cb;
 std::function<void (const char*)> user_event_cb;
 std::function<void (unsigned long long int, const char*)> user_event_time_ns_cb;
 
-static void register_user_functions(void* handle)
+static void
+register_user_functions(void* handle)
 {
   using dtype = void(*)(unsigned int, const char*, const char*);
   user_range_start_cb = (dtype)(xrt_core::dlsym(handle, "user_event_start_cb"));
@@ -122,7 +131,8 @@ static void register_user_functions(void* handle)
     user_event_time_ns_cb = nullptr;
 }
 
-static void load_user_profiling_plugin()
+static void
+load_user_profiling_plugin()
 {
   static xrt_core::module_loader user_event_loader("xdp_user_plugin",
                                                    register_user_functions,
@@ -133,7 +143,8 @@ static void load_user_profiling_plugin()
 
 extern "C" {
 
-void xrtURStart(unsigned int id, const char* label, const char* tooltip)
+void
+xrtURStart(unsigned int id, const char* label, const char* tooltip)
 {
   try {
     load_user_profiling_plugin();
@@ -146,7 +157,8 @@ void xrtURStart(unsigned int id, const char* label, const char* tooltip)
   }
 }
 
-void xrtUREnd(unsigned int id)
+void
+xrtUREnd(unsigned int id)
 {
   try {
     load_user_profiling_plugin();
@@ -159,7 +171,8 @@ void xrtUREnd(unsigned int id)
   }
 }
 
-void xrtUEMark(const char* label)
+void
+xrtUEMark(const char* label)
 {
   try {
     load_user_profiling_plugin();
@@ -172,7 +185,8 @@ void xrtUEMark(const char* label)
   }
 }
 
-void xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label)
+void
+xrtUEMarkTimeNs(unsigned long long int time_ns, const char* label)
 {
   try {
     load_user_profiling_plugin();
