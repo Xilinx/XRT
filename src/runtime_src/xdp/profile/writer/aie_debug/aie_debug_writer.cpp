@@ -51,7 +51,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("graphs"))
         return true;
     } catch (...) {
-        return true;
+      return true;
     }
 
     // Write approved AIE report to file
@@ -79,7 +79,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("graphs")) 
         return true;
     } catch (...) {
-	return true;
+      return true;
     }
 
     // Write approved AIE report to file
@@ -90,8 +90,8 @@ namespace xdp {
       switchFiles();
     return true;
   }
+
   /*
-   * 
    * Writer for AIE shim tiles status
    */
 
@@ -119,7 +119,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("tiles"))
         return true;   
     } catch (...) {
-        return true;
+      return true;
     }
 
     // Write approved AIE shim report to file
@@ -147,7 +147,7 @@ namespace xdp {
       if (!pt_aie.get_child_optional("tiles"))
         return true;
     } catch (...) {
-        return true;
+      return true;
     }
 
     // Write approved AIE shim report to file
