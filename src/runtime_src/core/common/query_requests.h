@@ -2896,12 +2896,6 @@ struct hwmon_sdm_serial_num : request
 
   virtual boost::any
   get(const device*) const = 0;
-
-  static result_type
-  to_string(const result_type& value)
-  {
-    return value;
-  }
 };
 
 struct hwmon_sdm_oem_id : request
@@ -2925,12 +2919,6 @@ struct hwmon_sdm_board_name : request
 
   virtual boost::any
   get(const device*) const = 0;
-
-  static result_type
-  to_string(const result_type& value)
-  {
-    return value;
-  }
 };
 
 } // query
