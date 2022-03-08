@@ -50,7 +50,6 @@ namespace xrt { namespace profile {
  * 4. Multiple sequential calls to start() ignore all but the first call
  * 5. Multiple sequential calls to stop() ignore all but the first call
  */
-
 class user_range
 {
 private:
