@@ -2893,7 +2893,6 @@ struct hwmon_sdm_serial_num : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_serial_num;
-  static const char* name() { return "serial_number"; }
 
   virtual boost::any
   get(const device*) const = 0;
@@ -2909,7 +2908,6 @@ struct hwmon_sdm_oem_id : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_oem_id;
-  static const char* name() { return "oem_id"; }
 
   // parse an oem_id and return value as string
   XRT_CORE_COMMON_EXPORT
@@ -2924,7 +2922,6 @@ struct hwmon_sdm_board_name : request
 {
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_board_name;
-  static const char* name() { return "hwmon_sdm_board_name"; }
 
   virtual boost::any
   get(const device*) const = 0;
