@@ -1641,8 +1641,9 @@ int kds_cfg_update(struct kds_sched *kds)
 			if (!xcu)
 				continue;
 			if (!xcu->info.intr_enable) {
-				kds->cu_intr = false;
 				u32 cu_idx = xcu->info.cu_idx;
+
+				kds->cu_intr = false;
 				xcu_info(xcu, "CU(%d) doesnt support interrupt, running polling thread for all cus", cu_idx);
 				goto run_polling;
 			}
