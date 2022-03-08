@@ -839,8 +839,6 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
   if (!flashType.empty()) {
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", 
         "Overriding flash mode is not recommended.\nYou may damage your device with this option.");
-      if(!XBU::can_proceed(XBU::getForce()))
-        throw xrt_core::error(std::errc::operation_canceled);
   } 
   Flasher working_flasher(working_device->get_device_id());
   auto flash_type = working_flasher.getFlashType(flashType);
