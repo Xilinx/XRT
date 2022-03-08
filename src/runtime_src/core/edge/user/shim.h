@@ -1,7 +1,5 @@
 /**
  * Copyright (C) 2016-2022 Xilinx, Inc
- * Author(s): Hem C. Neema
- *          : Min Ma
  * ZNYQ HAL Driver layered on top of ZYNQ kernel driver
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
@@ -78,6 +76,7 @@ public:
   int xclExecWait(int timeoutMilliSec);
 
   int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared);
+  int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared);
   int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
   int xclSKGetCmd(xclSKCmd *cmd);

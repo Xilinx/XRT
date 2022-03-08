@@ -15,27 +15,28 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#include "xrt.h"
 #include "shim.h"
+#include "core/include/shim_int.h"
+
+#include "ert.h"
 #include "scan.h"
 #include "system_linux.h"
-#include "core/common/message.h"
-#include "core/common/xclbin_parser.h"
-#include "core/common/scheduler.h"
+#include "xclbin.h"
+
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
+#include "core/common/scheduler.h"
+#include "core/common/xclbin_parser.h"
 #include "core/common/AlignedAllocator.h"
 
-#include "plugin/xdp/hal_profile.h"
+#include "plugin/xdp/aie_trace.h"
 #include "plugin/xdp/hal_api_interface.h"
 #include "plugin/xdp/hal_device_offload.h"
-#include "plugin/xdp/aie_trace.h"
+#include "plugin/xdp/hal_profile.h"
 #include "plugin/xdp/pl_deadlock.h"
-
-#include "xclbin.h"
-#include "ert.h"
-#include "shim_int.h"
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
@@ -1754,6 +1755,14 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
     return ret ? -errno : ret;
 }
 
+int shim::
+xclOpenContext(uint32_t, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
+{
+  // Alveo Linux PCIE does not yet support multiple xclbins.
+  // Call regular flow
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(cuname).index, shared);
+}
+
 /*
  * xclCloseContext
  */
@@ -2799,6 +2808,23 @@ int xclOpenContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned int i
   xocl::shim *drv = xocl::shim::handleCheck(handle);
   return drv ? drv->xclOpenContext(xclbinId, ipIndex, shared) : -ENODEV;
   }) ;
+}
+
+int
+xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+{
+  try {
+    xocl::shim *drv = xocl::shim::handleCheck(handle);
+    return drv ? drv->xclOpenContext(slot, xclbin_uuid, cuname, shared) : -ENODEV;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int xclCloseContext(xclDeviceHandle handle, const uuid_t xclbinId, unsigned ipIndex)

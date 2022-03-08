@@ -147,6 +147,7 @@ public:
     int xclRegisterEventNotify(unsigned int userInterrupt, int fd);
     int xclExecWait(int timeoutMilliSec);
     int xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared) const;
+    int xclOpenContext(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const;
     int xclCloseContext(const uuid_t xclbinId, unsigned int ipIndex);
 
     int getBoardNumber( void ) { return mBoardNumber; }
