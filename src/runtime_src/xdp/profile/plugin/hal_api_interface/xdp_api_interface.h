@@ -51,14 +51,12 @@ namespace xdp {
      ~HALAPIInterface();
 
      void startProfiling(xclDeviceHandle);
-     void endProfiling();
 
      void createProfileResults(xclDeviceHandle, void*);
      void getProfileResults(xclDeviceHandle, void*);
      void destroyProfileResults(xclDeviceHandle, void*);
      
      void startCounters();
-     void stopCounters();
      void readCounters();
 
      static bool alive() { return HALAPIInterface::live; }

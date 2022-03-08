@@ -39,8 +39,6 @@ namespace xdp {
 
   HALAPIInterface::~HALAPIInterface()
   {
-    endProfiling();
-    
     for(auto &itr : devices) {
       delete itr.second;
       itr.second = nullptr;
@@ -74,11 +72,6 @@ namespace xdp {
     dev->readDebugIPlayout();
     
     dev->startCounters();
-}
-
-  void HALAPIInterface::endProfiling()
-  {
-    stopCounters();
   }
 
   void HALAPIInterface::startCounters()
@@ -86,10 +79,6 @@ namespace xdp {
     for(auto itr : devices) {
       itr.second->startCounters();
     }
-  }
-
-  void HALAPIInterface::stopCounters()
-  {
   }
 
   void HALAPIInterface::readCounters()
