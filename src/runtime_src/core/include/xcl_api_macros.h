@@ -882,6 +882,7 @@ mtx.unlock();
 
 #define xclGraphWait_RPC_CALL(func_name,graphhandle) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphWait_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphWait_SET_PROTO_RESPONSE(); \
@@ -923,6 +924,7 @@ mtx.unlock();
 
 #define xclGraphUpdateRTP_RPC_CALL(func_name,graphhandle,portname,buffer,size) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphUpdateRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphUpdateRTP_SET_PROTO_RESPONSE(); \
@@ -946,6 +948,7 @@ mtx.unlock();
 
 #define xclGraphReadRTP_RPC_CALL(func_name,graphhandle,portname,buffer,size) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphReadRTP_SET_PROTOMESSAGE(func_name,graphhandle,portname,buffer,size); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphReadRTP_SET_PROTO_RESPONSE(buffer); \
@@ -969,6 +972,7 @@ mtx.unlock();
 
 #define xclSyncBOAIENB_RPC_CALL(func_name,gmioname,dir,size,offset,boh) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclSyncBOAIENB_SET_PROTOMESSAGE(func_name,gmioname,dir,size,offset,boh); \
     SERIALIZE_AND_SEND_MSG(func_name); \
     xclSyncBOAIENB_SET_PROTO_RESPONSE(); \
@@ -987,6 +991,7 @@ mtx.unlock();
 
 #define xclGMIOWait_RPC_CALL(func_name,gmioname) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGMIOWait_SET_PROTOMESSAGE(func_name,gmioname); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGMIOWait_SET_PROTO_RESPONSE(); \
@@ -1006,6 +1011,7 @@ mtx.unlock();
 
 #define xclGraphTimedWait_RPC_CALL(func_name,graphhandle,cycle) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphTimedWait_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedWait_SET_PROTO_RESPONSE(); \
@@ -1025,6 +1031,7 @@ mtx.unlock();
 
 #define xclGraphTimedEnd_RPC_CALL(func_name,graphhandle,cycle) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphTimedEnd_SET_PROTOMESSAGE(func_name,graphhandle,cycle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphTimedEnd_SET_PROTO_RESPONSE(); \
@@ -1043,6 +1050,7 @@ mtx.unlock();
 
 #define xclGraphResume_RPC_CALL(func_name,graphhandle) \
     RPC_PROLOGUE(func_name); \
+    if(aiesim_sock != nullptr) { _s_inst = aiesim_sock; } \
     xclGraphResume_SET_PROTOMESSAGE(func_name,graphhandle); \
     SERIALIZE_AND_SEND_MSG(func_name)\
     xclGraphResume_SET_PROTO_RESPONSE(); \

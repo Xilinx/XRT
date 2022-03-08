@@ -35,6 +35,12 @@ namespace plugins {
       xocl::appdebug::load_xdp_app_debug() ;
     }
 
+    if (xrt_core::config::get_opencl_trace() ||
+        xrt_core::utils::load_host_trace()) {
+      xdp::opencl_trace::load() ;
+      xocl::profile::load_xdp_opencl_counters() ;
+    }
+
     if (xrt_core::config::get_data_transfer_trace() != "off" ||
         xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_opencl_device_counter() ||
@@ -44,12 +50,6 @@ namespace plugins {
 
     if (xrt_core::config::get_opencl_summary()) {
       xocl::profile::load_xdp_opencl_counters() ;
-    }
-
-    if (xrt_core::config::get_opencl_trace() ||
-        xrt_core::utils::load_host_trace()) {
-      xocl::profile::load_xdp_opencl_counters() ;
-      xdp::opencl_trace::load() ;
     }
 
     if (xrt_core::config::get_lop_trace()) {
