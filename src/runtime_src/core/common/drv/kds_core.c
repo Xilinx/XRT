@@ -1441,7 +1441,7 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	int i;
+	int i = 0;
 
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
