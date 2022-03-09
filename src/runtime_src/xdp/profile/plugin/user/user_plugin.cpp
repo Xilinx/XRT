@@ -20,8 +20,12 @@
 
 namespace xdp {
 
+  bool UserEventsPlugin::live = false;
+
   UserEventsPlugin::UserEventsPlugin() : XDPPlugin()
   {
+    UserEventsPlugin::live = true;
+
     db->registerPlugin(this) ;
     db->registerInfo(info::user) ;
 
@@ -41,6 +45,7 @@ namespace xdp {
       }
       db->unregisterPlugin(this) ;
     }
+    UserEventsPlugin::live = false;
   }
 
   void UserEventsPlugin::writeAll(bool openNewFiles)

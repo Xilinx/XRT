@@ -21,6 +21,7 @@
 #include "xdp/profile/plugin/vp_base/utility.h"
 
 #include "core/common/message.h"
+#include "experimental/xrt_profile.h"
 
 #ifdef _WIN32
 #pragma warning (disable : 4244)
@@ -809,11 +810,14 @@ namespace xdp {
         addAMEvent(packet, hostTimestamp);
       }
       if (AIMPacket) {
-        addAIMEvent(packet, hostTimestamp) ;
+        addAIMEvent(packet, hostTimestamp);
       }
       if (ASMPacket) {
-        addASMEvent(packet, hostTimestamp) ;
+        addASMEvent(packet, hostTimestamp);
       }
+
+      // keep track of latest timestamp that comes through trace
+      mLatestHostTimestampMs = hostTimestamp;
     }
 
   }
@@ -823,6 +827,22 @@ namespace xdp {
     addApproximateCUEndEvents() ;
     addApproximateDataTransferEndEvents() ;
     addApproximateStreamEndEvents() ;
+  }
+
+  void DeviceTraceLogger::addEventMarkers(bool isFIFOFull, bool isTS2MMFull)
+  {
+    // User event API takes ns as time
+    std::chrono::nanoseconds mark_time(static_cast<uint64_t>(mLatestHostTimestampMs * 1e6));
+
+    if (isFIFOFull) {
+      xrt::profile::user_event events;
+      events.mark_time_ns(mark_time, "Device Trace FIFO Full");
+    }
+
+    if (isTS2MMFull) {
+        xrt::profile::user_event events;
+        events.mark_time_ns(mark_time, "Device Trace Buffer Full");
+    }
   }
 
 } // end namespace xdp
