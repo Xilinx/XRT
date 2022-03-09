@@ -26,9 +26,12 @@ namespace xdp {
   class UserEventsPlugin : public XDPPlugin
   {
   private:
+    static bool live;
   public:
     UserEventsPlugin() ;
     ~UserEventsPlugin() ;
+
+    static bool alive() { return UserEventsPlugin::live; }
 
     // Called when the database is destroyed before the plugin
     virtual void writeAll(bool openNewFiles = true) ;

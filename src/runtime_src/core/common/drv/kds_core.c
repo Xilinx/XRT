@@ -777,7 +777,7 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	u32 prop = 0;
 	bool shared;
 	int ret = 0;
@@ -1441,13 +1441,20 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
+	int i = 0;
 
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
 
-	--scu_mgmt->num_cus;
-	scu_mgmt->xcus[xcu->info.cu_idx] = NULL;
-	cu_stat_write(scu_mgmt, usage[xcu->info.cu_idx], 0);
+	for (i = 0; i < MAX_CUS; i++) {
+		if (scu_mgmt->xcus[i] != xcu)
+			continue;
+
+		scu_mgmt->xcus[i] = NULL;
+		--scu_mgmt->num_cus;
+		cu_stat_write(scu_mgmt, usage[i], 0);
+		break;
+	}
 
 	return 0;
 }
@@ -1634,8 +1641,9 @@ int kds_cfg_update(struct kds_sched *kds)
 			if (!xcu)
 				continue;
 			if (!xcu->info.intr_enable) {
-				kds->cu_intr = false;
 				u32 cu_idx = xcu->info.cu_idx;
+
+				kds->cu_intr = false;
 				xcu_info(xcu, "CU(%d) doesnt support interrupt, running polling thread for all cus", cu_idx);
 				goto run_polling;
 			}

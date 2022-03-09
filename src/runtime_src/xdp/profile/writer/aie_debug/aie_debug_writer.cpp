@@ -48,7 +48,7 @@ namespace xdp {
       std::stringstream ss(aieInfoStr);
       boost::property_tree::ptree pt_aie;
       boost::property_tree::read_json(ss, pt_aie);
-      if (pt_aie.get_child_optional("error_msg"))
+      if (!pt_aie.get_child_optional("graphs"))
         return true;
     } catch (...) {
       return true;
@@ -76,7 +76,7 @@ namespace xdp {
       std::stringstream ss(aieInfoStr);
       boost::property_tree::ptree pt_aie;
       boost::property_tree::read_json(ss, pt_aie);
-      if (pt_aie.get_child_optional("error_msg"))
+      if (!pt_aie.get_child_optional("graphs")) 
         return true;
     } catch (...) {
       return true;
@@ -116,8 +116,8 @@ namespace xdp {
       std::stringstream ss(aieShimInfoStr);
       boost::property_tree::ptree pt_aie;
       boost::property_tree::read_json(ss, pt_aie);
-      if (pt_aie.get_child_optional("error_msg"))
-        return true;
+      if (!pt_aie.get_child_optional("tiles"))
+        return true;   
     } catch (...) {
       return true;
     }
@@ -144,7 +144,7 @@ namespace xdp {
       std::stringstream ss(aieShimInfoStr);
       boost::property_tree::ptree pt_aie;
       boost::property_tree::read_json(ss, pt_aie);
-      if (pt_aie.get_child_optional("error_msg"))
+      if (!pt_aie.get_child_optional("tiles"))
         return true;
     } catch (...) {
       return true;

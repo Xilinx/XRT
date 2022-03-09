@@ -30,4 +30,7 @@ void user_event_end_cb(unsigned int functionID) ;
 extern "C"
 void user_event_happened_cb(const char* label) ;
 
+extern "C"
+void user_event_time_ns_cb(unsigned long long int time_ns, const char* label) ;
+
 #endif

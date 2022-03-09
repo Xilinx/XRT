@@ -278,6 +278,12 @@ void DeviceTraceOffload::read_trace_end()
   // Trace logger will clear it's state and add approximations 
   // for pending events
   deviceTraceLogger->endProcessTraceData();
+
+  // Add event markers at end of trace data
+  bool isFIFOFull = fifo_full;
+  bool isTS2MMFull = (dev_intf->hasTs2mm() && trace_buffer_full()) ? true : false;
+  deviceTraceLogger->addEventMarkers(isFIFOFull, isTS2MMFull);
+
   if (dev_intf->hasTs2mm()) {
     reset_s2mm();
     m_initialized = false;

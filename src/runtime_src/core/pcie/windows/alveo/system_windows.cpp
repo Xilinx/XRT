@@ -1,6 +1,6 @@
 /*
  * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
  */
 
 // This file is delivered with core library (libxrt_core), see
@@ -125,6 +125,11 @@ get_os_info(boost::property_tree::ptree &pt)
   BufferSize = sizeof value;
   RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\SystemInformation", "SystemProductName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
   pt.put("model", value);
+
+  
+  BufferSize = sizeof value;
+  RegGetValueA(HKEY_LOCAL_MACHINE, "SYSTEM\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", RRF_RT_ANY, NULL, (PVOID)&value, &BufferSize);
+  pt.put("hostname", value);
 
   MEMORYSTATUSEX mem;
   mem.dwLength = sizeof(mem);

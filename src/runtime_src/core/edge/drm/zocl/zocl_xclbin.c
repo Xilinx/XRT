@@ -200,7 +200,7 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
 	if(header) {
 		DRM_INFO("Found EMBEDDED_METADATA section\n");
-		DRM_INFO("EMBEDDED_METADATA section size = %d\n",header->m_sectionSize);
+		DRM_INFO("EMBEDDED_METADATA section size = %lld\n",header->m_sectionSize);
 	} else {
 		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
 		mutex_unlock(&sk->sk_lock);
@@ -223,12 +223,12 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL, header);
 	while (header) {
-		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		struct soft_kernel *sp =
 		    (struct soft_kernel *)&xclbin[header->m_sectionOffset];
 		char *begin = (char *)sp;
 		struct scu_image *sip = &sk->sk_img[sec_idx++];
 
+		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
 		if (sip->si_end >= MAX_SOFT_KERNEL) {
@@ -730,7 +730,6 @@ static int
 zocl_kernel_cache_xclbin(struct drm_zocl_slot *slot, struct axlf *axlf,
 		char *xclbin_ptr)
 {
-	int ret = 0;
 	size_t size = axlf->m_header.m_length;
 
 	slot->axlf = vmalloc(size);

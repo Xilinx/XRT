@@ -223,6 +223,7 @@ namespace xrt {
     std::string finiExtension = "_fini";
     char sk_fini[PS_KERNEL_NAME_LENGTH+finiExtension.size()];
     int ret = 0;
+
     snprintf(sk_fini,PS_KERNEL_NAME_LENGTH+finiExtension.size(),"%s%s",sk_name,finiExtension.c_str());
     kernel_fini = (kernel_fini_t)dlsym(sk_handle, sk_fini);
     if (!kernel_fini) {
