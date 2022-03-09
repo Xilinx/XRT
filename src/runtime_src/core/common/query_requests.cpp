@@ -32,10 +32,12 @@ xrt_core::query::p2p_config::
 to_map(const xrt_core::query::p2p_config::result_type& config)
 {
   std::map<std::string, int64_t> config_map;
-  for (auto& str : config) {
+  for (auto& str_untrimmed : config) {
+    const std::string str = boost::trim_copy(str_untrimmed);
     // str is in key:value format obtained from p2p_config query
     const auto pos = str.find(":");
-    const std::string config_item = str.substr(0, pos);
+    const std::string config_item_untrimmed = str.substr(0, pos);
+    const std::string config_item = boost::trim_copy(config_item_untrimmed);
     try {
       const int64_t value = std::stoll(str.substr(pos + 1));
       config_map[config_item] = value;
@@ -55,11 +57,14 @@ parse(const xrt_core::query::p2p_config::result_type& config)
   // return the config with a message
   if (config_map.find("bar") == config_map.end())
     return {xrt_core::query::p2p_config::value_type::not_supported, "P2P config failed. P2P is not supported. Can't find P2P BAR."};
-  else if (config_map.find("rbar") != config_map.end() && config_map["rbar"] > config_map["bar"])
+
+  if (config_map.find("rbar") != config_map.end() && config_map["rbar"] > config_map["bar"])
     return {xrt_core::query::p2p_config::value_type::reboot, "Warning:Please WARM reboot to enable p2p now."};
-  else if (config_map.find("remap") != config_map.end() && config_map["remap"] > 0 && config_map["remap"] != config_map["bar"])
+
+  if (config_map.find("remap") != config_map.end() && config_map["remap"] > 0 && config_map["remap"] != config_map["bar"])
     return {xrt_core::query::p2p_config::value_type::error, "Error:P2P config failed. P2P remapper is not set correctly"};
-  else if (config_map.find("exp_bar") != config_map.end() && config_map["exp_bar"] == config_map["bar"])
+
+  if (config_map.find("exp_bar") != config_map.end() && config_map["exp_bar"] == config_map["bar"])
     return {xrt_core::query::p2p_config::value_type::enabled, ""};
 
   return {xrt_core::query::p2p_config::value_type::disabled, "P2P bar is not enabled"};
