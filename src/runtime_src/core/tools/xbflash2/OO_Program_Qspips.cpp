@@ -17,13 +17,11 @@
 // Local - Include Files
 #include "OO_Program_Qspips.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "XBFUtilities.h"
 
 #include "core/pcie/tools/xbflash.qspi/firmware_image.h"
 #include "core/pcie/tools/xbflash.qspi/pcidev.h"
 #include "core/pcie/tools/xbflash.qspi/xqspips.h"
 
-namespace XBFU = XBFUtilities;
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -51,7 +49,7 @@ qspips_flash(po::variables_map& vm) {
     size_t baroff = INVALID_OFFSET;
     int bar = 0;   
 
-    XBFU::sudo_or_throw();
+    XBU::sudo_or_throw_err();
      
     //mandatory command line args
     try {
@@ -115,7 +113,7 @@ qspips_flash(po::variables_map& vm) {
     std::cout << "About to program flash on device "
         << boost::format(" %s at offset 0x%x\n") % bdf % offset;
 
-    if (!force && !XBFU::can_proceed())
+    if (!force && !XBU::can_proceed())
         throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);
@@ -137,7 +135,7 @@ qspips_erase(po::variables_map& vm) {
     size_t baroff = INVALID_OFFSET;
     int bar = 0;    
 
-    XBFU::sudo_or_throw();
+    XBU::sudo_or_throw_err();
     //mandatory command options
     try {
         bdf = vm["device"].as<std::string>();
@@ -199,7 +197,7 @@ qspips_erase(po::variables_map& vm) {
     if (offset + len > GOLDEN_BASE)
         std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;
 
-    if (!force && !XBFU::can_proceed())
+    if (!force && !XBU::can_proceed())
         throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);
@@ -278,7 +276,7 @@ OO_Program_Qspips::execute(const SubCmdOptions& _options) const
     throw std::errc::operation_canceled;
   }
 
-  XBFU::sudo_or_throw();
+  XBU::sudo_or_throw_err();
   try {
       if (qspipsCommand(vm)) {
           throw std::errc::operation_canceled;

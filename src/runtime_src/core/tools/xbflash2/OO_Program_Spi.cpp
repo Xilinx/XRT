@@ -17,13 +17,11 @@
 // Local - Include Files
 #include "OO_Program_Spi.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "XBFUtilities.h"
 
 #include "core/pcie/tools/xbflash.qspi/firmware_image.h"
 #include "core/pcie/tools/xbflash.qspi/pcidev.h"
 #include "core/pcie/tools/xbflash.qspi/xspi.h"
 
-namespace XBFU = XBFUtilities;
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -47,7 +45,7 @@ reset(po::variables_map& vm) {
     size_t baroff = INVALID_OFFSET;
     int bar = 0;
 
-    XBFU::sudo_or_throw();
+    XBU::sudo_or_throw_err();
     //mandatory command line args
     try {        
         bdf = vm["device"].as<std::string>();        
@@ -80,7 +78,7 @@ reset(po::variables_map& vm) {
 
     std::cout << "About to revert to golden image for device " << bdf << std::endl;
 
-    if (!force && !XBFU::can_proceed())
+    if (!force && !XBU::can_proceed())
         throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff);
@@ -99,7 +97,7 @@ flash(po::variables_map& vm) {
     size_t baroff = INVALID_OFFSET;
     int bar = 0;
 
-    XBFU::sudo_or_throw();
+    XBU::sudo_or_throw_err();
 
     //mandatory command line args
     try {        
@@ -137,8 +135,8 @@ flash(po::variables_map& vm) {
         << "About to flash below MCS bitstream onto device "
         << bdf << ":" << std::endl;
 
-    if (!force && !XBFU::can_proceed())
-        return -ECANCELED;
+    if (!force && !XBU::can_proceed())
+        throw std::errc::operation_canceled;
 
     pcidev::pci_device dev(bdf, bar, baroff);
     XSPI_Flasher xspi(&dev, dual_flash);
@@ -172,7 +170,7 @@ spiCommand(po::variables_map& vm) {
     else if (vm.count("image")) {
         return flash(vm);
     }
-    std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
+    std::cout << "\nERROR: Missing program operation. No action taken.\n";
     return 1;
 }
 } //end namespace 
@@ -227,7 +225,7 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
     throw std::errc::operation_canceled;
   }
 
-  XBFU::sudo_or_throw();
+  XBU::sudo_or_throw_err();
  
   try {
       if (spiCommand(vm)) {

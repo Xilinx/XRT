@@ -17,13 +17,11 @@
 // Local - Include Files
 #include "OO_Dump_Qspips.h"
 #include "tools/common/XBUtilitiesCore.h"
-#include "XBFUtilities.h"
 
 #include "core/pcie/tools/xbflash.qspi/firmware_image.h"
 #include "core/pcie/tools/xbflash.qspi/pcidev.h"
 #include "core/pcie/tools/xbflash.qspi/xqspips.h"
 
-namespace XBFU = XBFUtilities;
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
@@ -51,7 +49,7 @@ qspips_readback(po::variables_map& vm)
     size_t baroff = INVALID_OFFSET;
     int bar = 0;
 
-    XBFU::sudo_or_throw();
+    XBU::sudo_or_throw_err();
 
     try {
         if (vm.count("device")) {
@@ -180,7 +178,7 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
     throw std::errc::operation_canceled;
   }
 
-  XBFU::sudo_or_throw();
+  XBU::sudo_or_throw_err();
 
   try {
       if (qspips_readback(vm)) {
