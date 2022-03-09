@@ -85,6 +85,8 @@ edge=0
 nocmake=0
 nobuild=0
 noctest=0
+docker=0
+base=""
 static_boost=""
 ertfw=""
 cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -178,6 +180,12 @@ while [ $# -gt 0 ]; do
             static_boost=$1
             shift
             ;;
+        -docker)
+            docker=1
+            shift
+            base=$1
+            shift
+            ;;
         *)
             echo "unknown option"
             usage
@@ -196,6 +204,31 @@ if [[ $clean == 1 ]]; then
     echo $PWD
     echo "/bin/rm -rf $debug_dir $release_dir $edge_dir"
     /bin/rm -rf $debug_dir $release_dir $edge_dir
+    exit 0
+fi
+
+if [[ $docker == 1 ]]; then
+    echo "Building XRT with Docker"
+    echo "Using base image: $base"
+
+    supported=0
+    for b in ubuntu:18.04 ubuntu:20.04
+    do
+        if [[ $base == $b ]]; then
+            supported=1
+        fi
+    done
+
+    if [[ $supported == 0 ]]; then
+        echo "Base Image is not supported"
+        exit 1
+    fi
+
+    cp ../src/runtime_src/tools/scripts/xrtdeps.sh .
+
+    docker build -t xrt-build --build-arg BASE_IMAGE=$base .
+    docker run --user $UID -v $PWD/../:$PWD/../ -w $PWD  xrt-build /bin/bash ./build.sh
+
     exit 0
 fi
 
