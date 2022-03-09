@@ -17,21 +17,22 @@
 #ifndef XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
 #define XDP_PROFILE_DEVICE_TRACE_OFFLOAD_H_
 
-#include <fstream>
-#include <mutex>
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <queue>
-#include <functional>
-#include <memory>
-#include <cstring>
-#include <atomic>
-
+#include "core/common/message.h"
 #include "xdp/config.h"
 #include "xdp/profile/device/device_intf.h"
-#include "xdp/profile/device/tracedefs.h"
 #include "xdp/profile/device/device_trace_logger.h"
+#include "xdp/profile/device/tracedefs.h"
+
+#include <atomic>
+#include <chrono>
+#include <cstring>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <mutex>
+#include <queue>
+#include <thread>
 
 namespace xdp {
 
@@ -135,12 +136,25 @@ public:
 
     bool trace_buffer_full() {
       if (has_fifo()) {
+        if (fifo_full) {
+          // Throw warning for this offloader if we detect full fifo
+          std::call_once(fifo_full_warning_flag, [](){
+            xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                    "XRT", FIFO_WARN_MSG);
+          });
+        }
         return fifo_full;
       }
       bool isFull = false;
       for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
         isFull |= ts2mm_info.buffers[i].full;
       }
+      // Throw warning for this offloader if we detect full buffer
+      if (isFull)
+        std::call_once(fifo_full_warning_flag, [](){
+            xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                    "XRT", TS2MM_WARN_MSG_BUF_FULL);
+          });
       return isFull;
     }
 
@@ -204,6 +218,8 @@ private:
     std::thread process_thread;
     bool continuous = false;
     std::once_flag ts2mm_queue_warning_flag;
+    std::once_flag fifo_full_warning_flag;
+    std::once_flag ts2mm_full_warning_flag;
 
     // Clock Training Params
     bool m_force_clk_train = true;

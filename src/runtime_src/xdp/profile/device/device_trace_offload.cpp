@@ -18,7 +18,6 @@
 
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
-#include "core/common/message.h"
 #include "experimental/xrt_profile.h"
 
 namespace xdp {
@@ -245,7 +244,6 @@ void DeviceTraceOffload::read_trace_fifo(bool)
 
     if (num_packets >= fifo_size)
       fifo_full = true;
-
   }
 }
 
