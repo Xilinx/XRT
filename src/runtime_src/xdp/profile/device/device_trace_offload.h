@@ -151,7 +151,7 @@ public:
       }
       // Throw warning for this offloader if we detect full buffer
       if (isFull)
-        std::call_once(fifo_full_warning_flag, [](){
+        std::call_once(ts2mm_full_warning_flag, [](){
             xrt_core::message::send(xrt_core::message::severity_level::warning,
                                     "XRT", TS2MM_WARN_MSG_BUF_FULL);
           });
