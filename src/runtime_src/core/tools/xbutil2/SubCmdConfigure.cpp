@@ -122,11 +122,12 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     if (help) {
       printHelp(commonOptions, hiddenOptions, subOptionOptions);
       return;
-    } else {
-      std::cerr << "ERROR: Suboption missing" << std::endl;
-      printHelp(commonOptions, hiddenOptions, subOptionOptions);
-      throw xrt_core::error(std::errc::operation_canceled);
     }
+    // If help was not requested and additional options dont match we must throw to prevent
+    // invalid positional arguments from passing through without warnings
+    std::cerr << "ERROR: Suboption missing" << std::endl;
+    printHelp(commonOptions, hiddenOptions, subOptionOptions);
+    throw xrt_core::error(std::errc::operation_canceled);
   }
 
   // 2) Process the top level options
