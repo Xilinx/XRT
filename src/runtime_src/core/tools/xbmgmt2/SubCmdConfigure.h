@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2019 Xilinx, Inc
+ * Copyright (C) 2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -14,25 +14,19 @@
  * under the License.
  */
 
-#ifndef core_common_unistd_h_
-#define core_common_unistd_h_
+#ifndef __SubCmdConfigure_h_
+#define __SubCmdConfigure_h_
 
-#ifndef _WIN32
-#include <unistd.h>
-#else
+#include "tools/common/SubCmd.h"
+
+class SubCmdConfigure : public SubCmd {
+ public:
+  virtual void execute(const SubCmdOptions &_options) const;
+
+ public:
+  SubCmdConfigure(bool _isHidden, bool _isDepricated, bool _isPreliminary);
+  virtual ~SubCmdConfigure() {};
+};
+
 #endif
 
-namespace xrt_core {
-
-inline int
-getpagesize()
-{
-#ifndef _WIN32
-  return ::getpagesize();
-#else
-  return 4096;
-#endif
-}
-
-} // xrt_core
-#endif
