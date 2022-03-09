@@ -298,6 +298,8 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		lro->instance, ep_name,
 		PCI_SLOT(pdev->devfn), PCI_FUNC(pdev->devfn));
 
+	xocl_thread_stop(lro);
+
 	err = xocl_enable_vmr_boot(lro);
 	if (err) {
 		mgmt_err(lro, "enable reset failed");
@@ -311,8 +313,6 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 		if (err)
 			goto failed;
 	}
-
-	xocl_thread_stop(lro);
 
 	/*
 	 * lock pci config space access from userspace,
@@ -380,12 +380,11 @@ long xclmgmt_hot_reset(struct xclmgmt_dev *lro, bool force)
 
 	xocl_clear_pci_errors(lro);
 	store_pcie_link_info(lro);
+
 	if (xrt_reset_syncup)
 		xocl_set_master_on(lro);
 	else if (!force)
 		xclmgmt_connect_notify(lro, true);
-
-	(void) xocl_reload_vmr(lro);
 
 	return 0;
 

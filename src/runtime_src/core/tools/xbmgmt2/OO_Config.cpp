@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Licensed under the Apache License,
+ * Copyright (C) 2020-2022 Licensed under the Apache License,
  * Version 2.0 (the "License"). You may not use this file except
  * in compliance with the License. A copy of the License is
  * located at
@@ -16,6 +16,7 @@
 // ------ I N C L U D E   F I L E S -------------------------------------------
 // Local - Include Files
 #include "OO_Config.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 

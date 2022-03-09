@@ -18,6 +18,7 @@
 // Local - Include Files
 #include "ReportDebugIpStatus.h"
 
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 namespace XBU = XBUtilities;
 

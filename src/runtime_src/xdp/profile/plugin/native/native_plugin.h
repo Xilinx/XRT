@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -24,9 +24,12 @@ namespace xdp {
   class NativeProfilingPlugin : public XDPPlugin
   {
   private:
+    static bool live;
   public:
     NativeProfilingPlugin() ;
     ~NativeProfilingPlugin() ;
+
+    static bool alive() { return NativeProfilingPlugin::live; }
   } ;
 
 } // end namespace xdp

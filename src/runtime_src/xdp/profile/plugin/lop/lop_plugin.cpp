@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2020 Xilinx, Inc
+ * Copyright (C) 2016-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -20,6 +20,8 @@
 #include "core/common/config_reader.h"
 
 namespace xdp {
+
+  bool LowOverheadProfilingPlugin::live = false;
 
   const char* LowOverheadProfilingPlugin::APIs[] =
     {
@@ -128,6 +130,8 @@ namespace xdp {
 
   LowOverheadProfilingPlugin::LowOverheadProfilingPlugin() : XDPPlugin()
   {
+    LowOverheadProfilingPlugin::live = true ;
+
     db->registerPlugin(this) ;
     db->registerInfo(info::lop);
 
@@ -162,6 +166,6 @@ namespace xdp {
 
       db->unregisterPlugin(this) ;
     }
+    LowOverheadProfilingPlugin::live = false ;
   }
-
 }

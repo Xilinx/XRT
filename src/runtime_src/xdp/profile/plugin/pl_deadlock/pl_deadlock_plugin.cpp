@@ -71,8 +71,11 @@ namespace xdp {
 
     if (deviceIntf == nullptr)
       return;
-    if (!deviceIntf->hasDeadlockDetector())
+    if (!deviceIntf->hasDeadlockDetector()) {
+      std::string msg = "System Deadlock Detector not found on device " + deviceName;
+      xrt_core::message::send(severity_level::warning, "XRT", msg);
       return;
+    }
 
     auto it = mThreadCtrlMap.find(handle);
     if (it == mThreadCtrlMap.end())

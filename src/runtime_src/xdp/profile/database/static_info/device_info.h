@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2021 Xilinx, Inc
+ * Copyright (C) 2021-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -59,6 +59,7 @@ namespace xdp {
     uint64_t kdmaCount = 0 ;
     bool isEdgeDevice  = false ;
     bool isReady       = false ;
+    bool isNoDMADevice = false ;
 
     // *******************************************************************
     // ****** Information specific to all previously loaded XCLBINs ******
@@ -80,6 +81,7 @@ namespace xdp {
     XDP_EXPORT xrt_core::uuid currentXclbinUUID() ;
     inline std::vector<XclbinInfo*> getLoadedXclbins() { return loadedXclbins ;}
     XDP_EXPORT void cleanCurrentXclbinInfo() ;
+    inline bool isNoDMA() const { return isNoDMADevice ; }
 
     // ****** Functions for information on the currently loaded xclbin *******
     XDP_EXPORT XclbinInfo* currentXclbin() ;

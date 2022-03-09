@@ -1457,49 +1457,6 @@ static int icap_create_subdev_debugip(struct platform_device *pdev)
 	return err;
 }
 
-// Create subdev for PS kernels
-static int icap_create_subdev_scu(struct platform_device *pdev)
-{
-	struct icap *icap = platform_get_drvdata(pdev);
-	xdev_handle_t xdev = xocl_get_xdev(pdev);
-	struct ps_kernel_node *ps_kernel = icap->ps_kernel;
-	struct ps_kernel_data *scu_data;
-	struct xrt_cu_info info;
-	int err = 0, i, j;
-	int inst = 0;
-
-	/* Let SCU controller know the dynamic resources */
-	for (i = 0; i < ps_kernel->pkn_count; ++i) {
-		scu_data = &ps_kernel->pkn_data[i];
-
-		for (j=0; j < scu_data->pkd_num_instances; ++j) {
-			struct xocl_subdev_info subdev_info = XOCL_DEVINFO_SCU;
-			
-			memset(&info, 0, sizeof(info));
-			strncpy(info.kname, scu_data->pkd_sym_name, sizeof(info.kname));
-			info.kname[sizeof(info.kname)-1] = '\0';
-			info.inst_idx = inst++;
-			sprintf(info.iname, "%d",info.inst_idx);
-			info.iname[sizeof(info.iname)-1] = '\0';
-			
-			/* PS kernel do not have base address */
-			info.addr = 0;
-			info.size = 0;
-			info.num_res = 0;
-			info.intr_enable = 0;
-			info.protocol = CTRL_HS;
-			info.intr_id = 0;
-			
-			subdev_info.override_idx = info.inst_idx;
-			err = xocl_subdev_create(xdev, &subdev_info);
-			if (err)
-				ICAP_ERR(icap, "Create SCU %s instance %d failed. Skip", scu_data->pkd_sym_name, info.inst_idx);
-		}
-	}
-
-	return err;
-}
-
 /*
  * TODO: clear the comments, it seems that different subdev has different
  *    flow during creation. Using specific function to create specific subdev
@@ -2331,7 +2288,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	struct icap *icap = platform_get_drvdata(pdev);
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	int err = 0;
-	int count = 0;
 
 	/* TODO: Use slot handle to unregister CUs. CU subdev will be destroyed */
 	xocl_unregister_cus(xdev, 0);
@@ -2352,11 +2308,6 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_cache_clock_freq_topology(icap, xclbin);
 
 	icap_create_subdev_ip_layout(pdev);
-
-	// Create scu subdev if SOFT_KERNEL section is found
-//	count = xrt_xclbin_get_section_num(xclbin, SOFT_KERNEL);
-//	if (count > 0)
-//		icap_create_subdev_scu(pdev);
 
 	/* Create cu/scu subdev by slot */
 	xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
@@ -2494,6 +2445,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	int err = 0;
 	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	const struct axlf_section_header *header = NULL;
+	const void *bitstream = NULL;
+	const void *bitstream_part_pdi = NULL;
 
 	err = icap_xclbin_wr_lock(icap);
 	if (err)
@@ -2509,6 +2462,8 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	}
 
 	header = xrt_xclbin_get_section_hdr(xclbin, PARTITION_METADATA);
+	bitstream = xrt_xclbin_get_section_hdr(xclbin, BITSTREAM);
+	bitstream_part_pdi = xrt_xclbin_get_section_hdr(xclbin, BITSTREAM_PARTIAL_PDI);
 	/*
 	 * don't check uuid if the xclbin is a lite one
 	 * the lite xclbin will not have BITSTREAM
@@ -2517,7 +2472,7 @@ static int icap_download_bitstream_axlf(struct platform_device *pdev,
 	 * The OBJ (soft kernel) is not needed, we can use xclbinutil to
 	 * add a temp small OBJ to reduce the lite xclbin size
 	 */
-	if (header && xrt_xclbin_get_section_hdr(xclbin, BITSTREAM)) {
+	if (header && (bitstream || bitstream_part_pdi)) {
 		ICAP_INFO(icap, "check interface uuid");
 		err = xocl_fdt_check_uuids(xdev,
 				(const void *)XDEV(xdev)->fdt_blob,
