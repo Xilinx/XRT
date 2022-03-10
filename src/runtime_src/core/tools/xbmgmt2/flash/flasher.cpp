@@ -279,21 +279,21 @@ int Flasher::getBoardInfo(BoardInfo& board)
     int ret = flasher.xclGetBoardInfo(info);
     if (ret == -EOPNOTSUPP) {
         //Check if we can get data from vmr
-        std::map<char, std::string> info;
-        XGQ_VMR_Flasher flasher(m_device);
-        ret = flasher.xclGetBoardInfo(info);
+        std::map<char, std::string> sdr_info;
+        XGQ_VMR_Flasher xgq_flasher(m_device);
+        ret = xgq_flasher.xclGetBoardInfo(sdr_info);
         if (ret != 0)
             return ret;
-        board.mBMCVer = info[BDINFO_BMC_VER];
-        board.mSerialNum = info[BDINFO_SN];
-        board.mName = info[BDINFO_NAME];
-        board.mRev = info[BDINFO_REV];
-        board.mFanPresence = info[BDINFO_FAN_PRESENCE][0];
-        board.mMaxPower = info[BDINFO_MAX_PWR];
-        board.mMacAddr0 = info[BDINFO_MAC0].compare(unassigned_mac) ?
-            info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
-        board.mMacAddr1 = info[BDINFO_MAC1].compare(unassigned_mac) ?
-            info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
+        board.mBMCVer = sdr_info[BDINFO_BMC_VER];
+        board.mSerialNum = sdr_info[BDINFO_SN];
+        board.mName = sdr_info[BDINFO_NAME];
+        board.mRev = sdr_info[BDINFO_REV];
+        board.mFanPresence = sdr_info[BDINFO_FAN_PRESENCE][0];
+        board.mMaxPower = sdr_info[BDINFO_MAX_PWR];
+        board.mMacAddr0 = sdr_info[BDINFO_MAC0].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
+        board.mMacAddr1 = sdr_info[BDINFO_MAC1].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
         return 0;
     }
     if (ret != 0)
