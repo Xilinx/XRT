@@ -32,21 +32,10 @@ namespace xdp {
   private:
     std::map<xclDeviceHandle, DeviceIntf*> devices;
     std::map<std::string, xclCounterResults> mFinalCounterResultsMap;
-    std::map<std::string, xclCounterResults> mRolloverCounterResultsMap;
-    std::map<std::string, xclCounterResults> mRolloverCountsMap;
 
     static bool live;
 
   private:
-    
-    void calculateAIMRolloverResult(const std::string& key, 
-				    unsigned int numAIM, 
-				    xclCounterResults& counterResult, 
-				    bool firstReadAfterProgram);
-    void calculateAMRolloverResult(const std::string& key, 
-				   unsigned int numAM, 
-				   xclCounterResults& counterResults, 
-				   bool firstReadAfterProgram);
     void recordAMResult(ProfileResults* results, 
 			DeviceIntf* currDevice, 
 			const std::string& key);
@@ -62,14 +51,12 @@ namespace xdp {
      ~HALAPIInterface();
 
      void startProfiling(xclDeviceHandle);
-     void endProfiling();
 
      void createProfileResults(xclDeviceHandle, void*);
      void getProfileResults(xclDeviceHandle, void*);
      void destroyProfileResults(xclDeviceHandle, void*);
      
      void startCounters();
-     void stopCounters();
      void readCounters();
 
      static bool alive() { return HALAPIInterface::live; }
