@@ -308,7 +308,6 @@ using addr_type = uint64_t;
       std::vector<xclemulation::MemoryManager *> mDDRMemoryManager;
       xclemulation::MemoryManager* mDataSpace;
       std::list<xclemulation::DDRBank> mDdrBanks;
-      std::map<uint64_t,std::map<uint64_t, KernelArg>> mKernelOffsetArgsInfoMap;
       std::map<uint64_t,uint64_t> mAddrMap;
       std::map<std::string,std::string> mBinaryDirectories;
       std::map<uint64_t , std::ofstream*> mOffsetInstanceStreamMap;
