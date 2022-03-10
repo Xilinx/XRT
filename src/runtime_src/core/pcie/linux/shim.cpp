@@ -1756,11 +1756,11 @@ int shim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool share
 }
 
 int shim::
-xclOpenContext(uint32_t, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
+xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared) const
 {
   // Alveo Linux PCIE does not yet support multiple xclbins.
   // Call regular flow
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(cuname).index, shared);
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 /*

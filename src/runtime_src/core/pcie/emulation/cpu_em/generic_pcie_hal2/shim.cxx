@@ -2114,9 +2114,9 @@ int CpuemShim::xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool 
   return 0;
 }
 
-int CpuemShim::xclOpenContextByName(uint32_t, const uuid_t xclbinId, const char* cuname, bool shared) const
+int CpuemShim::xclOpenContextByName(uint32_t slot, const uuid_t xclbinId, const char* cuname, bool shared) const
 {
-  return xclOpenContext(xclbinId, mCoreDevice->get_cuidx(cuname).index, shared);
+  return xclOpenContext(xclbinId, mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 /*

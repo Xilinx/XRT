@@ -1109,10 +1109,10 @@ xclOpenContext(const uuid_t xclbinId, unsigned int ipIndex, bool shared)
 
 int
 shim::
-xclOpenContext(uint32_t, const uuid_t xclbin_uuid, const char* cuname, bool shared)
+xclOpenContext(uint32_t slot, const uuid_t xclbin_uuid, const char* cuname, bool shared)
 {
   // TODO: implement for full support of multiple xclbins
-  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(cuname).index, shared);
+  return xclOpenContext(xclbin_uuid, mCoreDevice->get_cuidx(slot, cuname).index, shared);
 }
 
 int
