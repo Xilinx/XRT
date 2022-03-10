@@ -32,6 +32,31 @@ if (NOT ${CMAKE_SYSTEM_PROCESSOR} STREQUAL ${CMAKE_HOST_SYSTEM_PROCESSOR})
   set(XRT_NATIVE_BUILD "no")
 endif()
 
+if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
+  set(XRT_WARN_OPTS 
+  -Wall -Werror
+  -Wno-mismatched-tags 
+  -Wno-unused-const-variable
+  -Wno-unused-private-field 
+  -Wno-missing-braces
+  -Wno-self-assign
+  -Wno-pessimizing-move 
+  -Wno-unused-function 
+  -Wno-unused-variable
+  -Wno-parentheses     
+  # These are dangerous and should be reviewed
+  -Wno-inconsistent-missing-override
+  -Wno-delete-non-abstract-non-virtual-dtor
+  -Wno-overloaded-virtual 
+  -Wno-string-plus-int
+  -Wno-non-pod-varargs 
+  -Wno-dangling        
+  -Wno-shift-negative-value
+   )
+else()
+  set(XRT_WARN_OPTS -Wall -Werror )
+endif()
+
 if (DEFINED ENV{XRT_NATIVE_BUILD})
   set(XRT_NATIVE_BUILD $ENV{XRT_NATIVE_BUILD})
 endif()
