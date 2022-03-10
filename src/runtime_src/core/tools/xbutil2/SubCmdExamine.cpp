@@ -229,7 +229,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
         }
 
-        std::cout << boost::format("Warning: Due to missing device, the following reports will not be generated:\n");
+        std::cout << boost::format("Error: The following reports require specifying a device using the --device option:\n");
         for (const auto & report : missingReports)
           std::cout << boost::format("         - %s\n") % report;
       }
