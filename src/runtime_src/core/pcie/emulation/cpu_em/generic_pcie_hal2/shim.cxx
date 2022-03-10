@@ -430,19 +430,21 @@ namespace xclcpuemhal2 {
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "fpo_v7_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "dds_v6_0" + ":";
           sLdLibs += sHlsBinDir +  DS + sPlatform + DS + "tools" + DS + "opencv"   + ":";
-          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";         
+          sLdLibs += sHlsBinDir + DS + sPlatform + DS + "lib" + DS + "csim" + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
           sLdLibs += sHlsBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
+          sLdLibs += sVivadoBinDir + DS + "data" + DS + "emulation" + DS + "ip_utils" + DS + "xtlm_ipc" + DS + "xtlm_ipc_v1_0" + DS + "cpp" + DS + "lib" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + ":";
           sLdLibs += sVivadoBinDir + DS + "lib" + DS + "lnx64.o" + DS + "Default" + DS + ":";
+          sLdLibs += sVitisBinDir + DS + "tps" + DS + "lnx64" + DS + "python-3.8.3" + DS + "lib" + DS + ":";
           sLdLibs += sVitisBinDir + DS + "lib" + DS + "lnx64.o" + DS;
           
           setenv("LD_LIBRARY_PATH",sLdLibs.c_str(),true);
         }
         
         if (xilinxInstall.empty()) {
-           std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
-           exit(1);
+          std::cerr << "ERROR : [SW-EM 10] Please make sure that the XILINX_VITIS environment variable is set correctly" << std::endl;
+          exit(1);
         }
 
         std::string modelDirectory("");
@@ -1465,6 +1467,7 @@ int CpuemShim::xclExportBO(unsigned int boHandle)
     return -1;
 
   std::string sFileName = bo->filename;
+  DEBUG_MSGS("%s, %d(sFileName: %s)\n", __func__, __LINE__, sFileName.c_str());
   if(sFileName.empty()) {
     std::cout<<"Exported Buffer is not P2P "<<std::endl;
     PRINTENDFUNC;
@@ -1660,6 +1663,7 @@ void *CpuemShim::xclMapBO(unsigned int boHandle, bool write)
   }
 
   std::string sFileName = bo->filename;
+  DEBUG_MSGS("%s, %d(sFileName: %s)\n", __func__, __LINE__, sFileName.c_str());
   if(!sFileName.empty()) //P2P or non cacheable scenario: TODO: modify the condition to check for flags instead of filename empty check
   {
     int fd = open(sFileName.c_str(), (O_CREAT | O_RDWR), 0666);
