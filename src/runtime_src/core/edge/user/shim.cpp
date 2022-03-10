@@ -512,8 +512,9 @@ libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path,
   uint32_t slot_id = 0;
   static const std::string dtbo_dir_path = "/configfs/device-tree/overlays/";
 
-  // get dtbo_path of slot '0'
-  // TODO: read slot_id from xclbin
+  // get dtbo_path of slot '0' for now, in future when we support multi slot we need
+  // info about which slot this xclbin needs to be loaded
+  // TODO: read slot id from xclbin or get it as an arg to this function
   try {
     dtbo_path = xrt_core::device_query<xrt_core::query::dtbo_path>(core_dev, slot_id);
   }
