@@ -27,7 +27,7 @@ DeviceTraceOffload
   ( DeviceIntf* dInt
   , DeviceTraceLogger* dTraceLogger
   , uint64_t sleep_interval_ms
-  ,uint64_t trbuf_sz
+  , uint64_t trbuf_sz
   )
   : dev_intf(dInt)
   , deviceTraceLogger(dTraceLogger)
