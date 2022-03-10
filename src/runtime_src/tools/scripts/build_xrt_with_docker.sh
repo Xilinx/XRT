@@ -6,7 +6,7 @@
 
 # Must be Ubuntu 18.04 or Ubuntu 20.04
 # This will define the linux distro used inside of the docker container
-BASE_IMAGE=$1:-ubuntu:18.04
+BASE_IMAGE=${1:-ubuntu:18.04}
 
 # Directory where this script exists
 SCRIPT_DIR=$(dirname $(readlink -f $0))
@@ -20,12 +20,13 @@ XRTDEPS_DIR=$SCRIPT_DIR
 # Directory where the build.sh script exists
 BUILD_DIR=$REPO_DIR/build
 
-echo "Creating xrt-build-ubuntu Docker Image with xrtdeps.sh"
+echo "Creating xrt-build-ubuntu Docker Image with xrtdeps.sh using $BASE_IMAGE"
 
 # Create an ubuntu based docker image that has all of XRT's required dependencies
 # This container will run in detached mode
 CONTAINER_ID=$(docker run -d -e DEBIAN_FRONTEND=noninteractive -v $REPO_DIR:$REPO_DIR -w $XRTDEPS_DIR $BASE_IMAGE /bin/bash -c "apt-get update && ./xrtdeps.sh -docker")
 
+echo "Waiting for xrt-build-ubuntu Docker Image to be ready"
 # Wait for the above detached container to stop running
 docker wait $CONTAINER_ID
 
