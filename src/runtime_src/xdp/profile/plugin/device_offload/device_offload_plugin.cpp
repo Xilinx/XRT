@@ -31,7 +31,6 @@
 
 #include "core/common/config_reader.h"
 #include "core/common/message.h"
-#include "experimental/xrt_profile.h"
 
 // Anonymous namespace for helper functions
 namespace {
@@ -382,20 +381,7 @@ namespace xdp {
   {
     if (!(getFlowMode() == HW))
       return;
-
     db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
-
-    if (offloader->has_fifo() && offloader->trace_buffer_full()) {
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", FIFO_WARN_MSG);
-      xrt::profile::user_event events;
-      events.mark("Trace FIFO Full");
-    }
-
-    if (offloader->has_ts2mm() && offloader->trace_buffer_full()) {
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
-        xrt::profile::user_event events;
-        events.mark("Trace Buffer Full");
-    }
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

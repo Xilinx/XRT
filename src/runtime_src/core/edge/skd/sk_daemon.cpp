@@ -38,6 +38,7 @@ xclDeviceHandle initXRTHandle(unsigned deviceIndex)
 static void stacktrace_logger(const int sig)
 {
   const int stack_depth = STACKTRACE_DEPTH;
+  
   syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
   if (sig == SIGCHLD)
     return;
@@ -51,12 +52,22 @@ static void stacktrace_logger(const int sig)
   }
 }
 
+xrt::skd* skd_inst = nullptr;
+
 /* Define a signal handler for the child to handle signals */
 static void sigLog(const int sig)
 {
-  syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
-  stacktrace_logger(sig);
-  exit(EXIT_FAILURE);
+  if(sig == SIGTERM) {
+    if(skd_inst != nullptr) {
+      syslog(LOG_INFO,"Terminating PS kernel\n");
+      delete skd_inst;
+    }
+    exit(EXIT_SUCCESS);
+  } else {
+    syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
+    stacktrace_logger(sig);
+    exit(EXIT_FAILURE);
+  }
 }
 
 #define PNAME_LEN	(16)
@@ -78,6 +89,7 @@ void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
       char path[XRT_MAX_PATH_LENGTH];
       char proc_name[PNAME_LEN] = {};
       int ret;
+      skd_inst = new xrt::skd(handle,cmd->meta_bohdl,cmd->bohdl,cmd->krnl_name,i,cmd->uuid);
       
       /* Install Signal Handler for the Child Processes/Soft-Kernels */
       struct sigaction act;
@@ -106,7 +118,6 @@ void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
       }
 
       /* Start the soft kernel loop for each CU. */
-      xrt::skd* skd_inst = new xrt::skd(handle,cmd->meta_bohdl,cmd->bohdl,cmd->krnl_name,i,cmd->uuid);
       ret = skd_inst->init();
       if(ret) {
 	syslog(LOG_ERR, "Soft kernel initialization failed!\n");
