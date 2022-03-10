@@ -197,6 +197,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   ReportCollection reportsToProcess;            // Reports of interest
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
 
+  bool is_report_output_valid = true;
   try {
     // Collect the reports to be processed
     XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
@@ -207,7 +208,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
       deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
 
     XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-
     // DRC check on devices and reports
     if (deviceCollection.empty()) {
       std::vector<std::string> missingReports;
@@ -216,7 +216,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           missingReports.push_back(report->getReportName());
       }
       if (!missingReports.empty()) {
-
+        is_report_output_valid = false;
         auto dev_pt = XBU::get_available_devices(true);
         if(dev_pt.empty())
           std::cout << "0 devices found" << std::endl;
@@ -229,7 +229,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
           std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
         }
 
-        std::cout << boost::format("Error: The following reports require specifying a device using the --device option:\n");
+        std::cerr << boost::format("Error: The following report(a) require specifying a device using the --device option:\n");
         for (const auto & report : missingReports)
           std::cout << boost::format("         - %s\n") % report;
       }
@@ -240,7 +240,6 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
 
   // Create the report
   std::ostringstream oSchemaOutput;
-  bool is_report_output_valid = true;
   try {
     XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
