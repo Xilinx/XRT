@@ -125,6 +125,8 @@ public:
     void train_clock();
     XDP_EXPORT
     void process_trace();
+    XDP_EXPORT
+    bool trace_buffer_full();
 
     bool has_fifo() {
       return dev_intf->hasFIFO();
@@ -133,30 +135,6 @@ public:
     bool has_ts2mm() {
       return dev_intf->hasTs2mm();
     };
-
-    bool trace_buffer_full() {
-      if (has_fifo()) {
-        if (fifo_full) {
-          // Throw warning for this offloader if we detect full fifo
-          std::call_once(fifo_full_warning_flag, [](){
-            xrt_core::message::send(xrt_core::message::severity_level::warning,
-                                    "XRT", FIFO_WARN_MSG);
-          });
-        }
-        return fifo_full;
-      }
-      bool isFull = false;
-      for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
-        isFull |= ts2mm_info.buffers[i].full;
-      }
-      // Throw warning for this offloader if we detect full buffer
-      if (isFull)
-        std::call_once(ts2mm_full_warning_flag, [](){
-            xrt_core::message::send(xrt_core::message::severity_level::warning,
-                                    "XRT", TS2MM_WARN_MSG_BUF_FULL);
-          });
-      return isFull;
-    }
 
     void read_trace() {
       m_read_trace(true);
@@ -168,10 +146,12 @@ public:
       requested_offload_rate = ts2mm_info.circ_buf_cur_rate;
       return ts2mm_info.use_circ_buf;
     };
+
     inline OffloadThreadStatus get_status() {
       std::lock_guard<std::mutex> lock(status_lock);
       return status;
     };
+
     inline bool continuous_offload() { return continuous ; }
     inline void set_continuous(bool value = true) { continuous = value ; }
 
