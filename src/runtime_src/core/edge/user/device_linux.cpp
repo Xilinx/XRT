@@ -680,6 +680,10 @@ struct dtbo_path
       return {};
     }
 
+    // sysfs node data eg:
+    // <slot_id> <dtbo_path>
+    //     0     <path 0>
+    //     1     <path 1>
     using tokenizer = boost::tokenizer< boost::char_separator<char> >;
     for(auto &line : dtbo_path_vec) {
       boost::char_separator<char> sep(" ");
