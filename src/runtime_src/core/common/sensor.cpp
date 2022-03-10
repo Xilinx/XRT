@@ -156,8 +156,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   ptree_type pt;
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
-  for (const auto& tmp : voltage)
-  {
+  for (const auto& tmp : voltage) {
     auto desc = tmp.label;
     pt.put("id", desc);
     pt.put("description", desc);
@@ -171,18 +170,15 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   }
 
   // iterate over voltage data, store to ptree by converting to Volts from milli Volts
-  for (const auto& tmp : current)
-  {
+  for (const auto& tmp : current) {
     bool found =false;
     auto desc = tmp.label;
     auto amps = xrt_core::utils::format_base10_shiftdown3(tmp.input);
     auto max = xrt_core::utils::format_base10_shiftdown3(tmp.max);
     auto avg = xrt_core::utils::format_base10_shiftdown3(tmp.average);
 
-    for (auto& kv : sensor_array)
-    {
+    for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
-      //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
       if (desc.find(id) != std::string::npos)
       {
         kv.second.put("current.amps", amps);
@@ -210,8 +206,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
 
   uint64_t bd_power;
   // iterate over power data, store to ptree by converting to watts.
-  for (const auto& tmp : power)
-  {
+  for (const auto& tmp : power) {
     if (boost::iequals(tmp.label, "Total Power"))
       bd_power = tmp.input;
   }
@@ -233,13 +228,11 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   ptree_type root;
 
   // iterate over temperature data, store to ptree by converting to Celcius
-  for (const auto& tmp : output)
-  {
+  for (const auto& tmp : output) {
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
     pt.put("temp_C", tmp.input);
-    pt.put("highest", tmp.highest);
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }
@@ -249,31 +242,21 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
 }
 
 static ptree_type
-read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output,
-                            std::vector<xq::sdm_sensor_info::data_type>& temp)
+read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output)
 {
   ptree_type root;
   ptree_type pt;
   ptree_type fan_array;
 
   // iterate over output data, store it into property_tree
-  for (const auto& tmp : output)
-  {
+  for (const auto& tmp : output) {
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
+    pt.put("critical_trigger_temp_C", "N/A");
     pt.put("speed_rpm", tmp.input);
     pt.put("is_present", "true");
+    fan_array.push_back({"", pt});
   }
-  // iterate over output data, store it into property_tree
-  for (const auto& tmp : temp)
-  {
-    if (boost::iequals(tmp.label, "Vccint Temp"))
-    {
-      pt.put("critical_trigger_temp_C", tmp.input);
-      break;
-    }
-  }
-  fan_array.push_back({"", pt});
 
   root.add_child("fans", fan_array);
   return root;
@@ -507,13 +490,11 @@ read_mechanical(const xrt_core::device * device)
   ptree_type fan_array;
   bool is_data_driven = true;
   std::vector <xq::sdm_sensor_info::data_type> output;
-  std::vector <xq::sdm_sensor_info::data_type> temp_output;
 
   //Check if requested sensor data can be retrieved in data driven model.
   try {
     output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::mechanical);
-    temp_output = xrt_core::device_query<xq::sdm_sensor_info>(device, xq::sdm_sensor_info::sdr_req_type::thermal);
-    if (output.empty() && temp_output.empty())
+    if (output.empty())
       is_data_driven = false;
   }
   catch(const xrt_core::query::no_such_key&) {
@@ -526,7 +507,7 @@ read_mechanical(const xrt_core::device * device)
   }
 
   if (is_data_driven)
-    return read_data_driven_mechanical(output, temp_output);
+    return read_data_driven_mechanical(output);
   else
     return read_legacy_mechanical(device);
 }
