@@ -4,9 +4,44 @@
 # Copyright (C) 2022 Xilinx, Inc. All rights reserved.
 #
 
-# Must be Ubuntu 18.04 or Ubuntu 20.04
-# This will define the linux distro used inside of the docker container
-BASE_IMAGE=${1:-ubuntu:18.04}
+base="ubuntu:18.04"
+arg=""
+
+usage()
+{
+    echo "Usage: build_xrt_with_docker.sh [options]"
+    echo
+    echo "[-help]          List this help"
+    echo "[-dbg]           Build debug library (default)"
+    echo "[-opt]           Build optimized library (default)"
+    echo "[-base <image>   Build binaries using specified base docker image; must be ubuntu:18.04 or ubuntu:20.04"
+    exit 1
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -help)
+            usage
+            ;;
+        -dbg)
+            arg="-dbg"
+            shift
+            ;;
+        -opt)
+            arg="-opt"
+            shift
+            ;;
+        -base)
+            shift
+            base=$1
+            shift
+            ;;
+        *)
+            echo "unknown option"
+            usage
+            ;;
+    esac
+done
 
 # Directory where this script exists
 SCRIPT_DIR=$(dirname $(readlink -f $0))
@@ -20,11 +55,11 @@ XRTDEPS_DIR=$SCRIPT_DIR
 # Directory where the build.sh script exists
 BUILD_DIR=$REPO_DIR/build
 
-echo "Creating xrt-build-ubuntu Docker Image with xrtdeps.sh using $BASE_IMAGE"
+echo "Creating xrt-build-ubuntu Docker Image with xrtdeps.sh using $base"
 
 # Create an ubuntu based docker image that has all of XRT's required dependencies
 # This container will run in detached mode
-CONTAINER_ID=$(docker run -d -e DEBIAN_FRONTEND=noninteractive -v $REPO_DIR:$REPO_DIR -w $XRTDEPS_DIR $BASE_IMAGE /bin/bash -c "apt-get update && ./xrtdeps.sh -docker")
+CONTAINER_ID=$(docker run -d -e DEBIAN_FRONTEND=noninteractive -v $REPO_DIR:$REPO_DIR -w $XRTDEPS_DIR $base /bin/bash -c "apt-get update && ./xrtdeps.sh -docker")
 
 echo "Waiting for xrt-build-ubuntu Docker Image to be ready"
 # Wait for the above detached container to stop running
@@ -36,7 +71,7 @@ docker commit $CONTAINER_ID xrt-build-ubuntu
 echo "Building XRT inside of Docker container"
 echo "Outputs will be in: $BUILD_DIR"
 # Run a new temporary container that will build XRT
-docker run --rm --user $UID -v $REPO_DIR:$REPO_DIR -w $BUILD_DIR xrt-build-ubuntu /bin/bash -c "./build.sh"
+docker run --rm --user $UID -v $REPO_DIR:$REPO_DIR -w $BUILD_DIR xrt-build-ubuntu /bin/bash -c "./build.sh $arg"
 
 # Delete the detached container
 docker rm $CONTAINER_ID
