@@ -191,22 +191,10 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   //create information tree for a device
   pt_platform.put("bdf", xrt_core::query::pcie_bdf::to_string(xrt_core::device_query<xrt_core::query::pcie_bdf>(device)));
   pt_platform.put("flash_type", xrt_core::device_query<xrt_core::query::flash_type>(device));
-  std::string sn = "N/A";
-  if (info.mSerialNum.empty()) {
-    try {
-      sn = xrt_core::device_query<xrt_core::query::hwmon_sdm_serial_num>(device);
-    } catch(...) {}
-  }
-  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? sn : info.mSerialNum);
+  pt_platform.put("hardware.serial_num", info.mSerialNum.empty() ? "N/A" : info.mSerialNum);
   boost::property_tree::ptree dev_prop;
   dev_prop.put("board_type", xrt_core::device_query<xrt_core::query::board_name>(device));
-  std::string bn = "N/A";
-  if (info.mName.empty()) {
-    try {
-      bn = xrt_core::device_query<xrt_core::query::hwmon_sdm_board_name>(device);
-    } catch(...) {}
-  }
-  dev_prop.put("board_name", info.mName.empty() ? bn : info.mName);
+  dev_prop.put("board_name", info.mName.empty() ? "N/A" : info.mName);
   dev_prop.put("config_mode", info.mConfigMode);
   dev_prop.put("max_power_watts", info.mMaxPower.empty() ? "N/A" : info.mMaxPower);
   pt_platform.add_child("device_properties", dev_prop);
@@ -256,12 +244,14 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     pt_current_shell.put("id", (boost::format("0x%x") % xrt_core::device_query<xrt_core::query::rom_time_since_epoch>(device)));
   }
 
-  std::string sc_ver;
-  try {
-    sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
-  } catch (...) {
-    auto board = f.getOnBoardDSA();
-    sc_ver = board.bmc_ver();
+  std::string sc_ver = info.mBMCVer;
+  if (sc_ver.empty()) {
+    try {
+      sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
+    } catch (...) {
+      auto board = f.getOnBoardDSA();
+      sc_ver = board.bmc_ver();
+    }
   }
 
   pt_current_shell.put("sc_version", sc_ver);

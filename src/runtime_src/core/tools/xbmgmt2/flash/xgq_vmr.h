@@ -28,6 +28,7 @@ public:
     XGQ_VMR_Flasher(std::shared_ptr<xrt_core::device> dev);
     /* API of flashing binStream via ospi_xgq driver */
     int xclUpgradeFirmware(std::istream& binStream);
+    int xclGetBoardInfo(std::map<char, std::string>& info);
 
 private:
     std::shared_ptr<xrt_core::device> m_device;
