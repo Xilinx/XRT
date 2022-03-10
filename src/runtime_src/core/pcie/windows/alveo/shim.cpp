@@ -415,11 +415,11 @@ done:
   }
 
   int
-  open_context(uint32_t, const xuid_t xclbin_id, const char* cuname, bool shared)
+  open_context(uint32_t slot, const xuid_t xclbin_id, const char* cuname, bool shared)
   {
     // Alveo Windows PCIE does not yet support multiple xclbins.
     // Call regular flow
-    return open_context(xclbin_id, m_core_device->get_cuidx(cuname).index, shared);
+    return open_context(xclbin_id, m_core_device->get_cuidx(slot, cuname).index, shared);
   }
 
   int

@@ -169,7 +169,9 @@ update_xclbin_info()
     m_xclbins.reset(xrt_core::query::xclbin_slots::to_map(xclbin_slot_info));
   }
   catch (const query::no_such_key&) {
-    // device does not support multiple xclbins, nothing to update
+    // device does not support multiple xclbins, assume slot 0
+    // for current loaded xclbin
+    m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
   }
 
   // Compute CU sort order, kernel driver zocl and xocl now assign and
@@ -180,25 +182,33 @@ update_xclbin_info()
   try {
     // Regular CUs
     auto cudata = xrt_core::device_query<xrt_core::query::kds_cu_info>(this);
+
+    // TODO: m_cus is legacy, need to fix for multiple slots
     std::sort(cudata.begin(), cudata.end(), [](const auto& d1, const auto& d2) { return d1.index < d2.index; });
     std::transform(cudata.begin(), cudata.end(), std::back_inserter(m_cus), [](const auto& d) { return d.base_addr; });
-    for (const auto& d : cudata)
-      m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+
+    for (const auto& d : cudata) {
+      auto& cu2idx = m_cu2idx[d.slot_index];
+      cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+    }
 
     // Soft kernels, not an error if query doesn't exist (edge)
     try {
       auto scudata = xrt_core::device_query<xrt_core::query::kds_scu_info>(this);
-      for (const auto& d : scudata)
-        m_cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+      for (const auto& d : scudata) {
+        auto& cu2idx = m_cu2idx[d.slot_index];
+        cu2idx.emplace(std::move(d.name), cuidx_type{d.index});
+      }
     }
     catch (const query::no_such_key&) {
     }
   }
   catch (const query::no_such_key&) {
     auto ip_layout = get_axlf_section<const ::ip_layout*>(IP_LAYOUT);
+    auto& cu2idx = m_cu2idx[0]; // default slot 0
     if (ip_layout != nullptr) {
       m_cus = xclbin::get_cus(ip_layout);
-      m_cu2idx = xclbin::get_cu_indices(ip_layout);
+      cu2idx = xclbin::get_cu_indices(ip_layout);
     }
   }
 }
@@ -291,21 +301,20 @@ get_memory_type(size_t memidx) const
     : mtype;
 }
 
-const std::vector<uint64_t>&
-device::
-get_cus() const
-{
-  return m_cus;
-}
-
 cuidx_type
 device::
-get_cuidx(const std::string& cuname) const
+get_cuidx(slot_id slot, const std::string& cuname) const
 {
-  auto itr = m_cu2idx.find(cuname);
-  if (itr == m_cu2idx.end())
+  auto slot_itr = m_cu2idx.find(slot);
+  if (slot_itr == m_cu2idx.end())
+  if (slot_itr == m_cu2idx.end())
     throw error(EINVAL, "No such compute unit '" + cuname + "'");
-  return (*itr).second;
+
+  const auto& cu2idx = (*slot_itr).second;
+  auto cu_itr = cu2idx.find(cuname);
+  if (cu_itr == cu2idx.end())
+    throw error(EINVAL, "No such compute unit '" + cuname + "'");
+  return (*cu_itr).second;
 }
 
 std::pair<size_t, size_t>
