@@ -281,6 +281,8 @@ using addr_type = uint64_t;
       void constructQueryTable();
       //CR-1120081
       void parseString(const std::string& simPath , const std::string& searchString);
+      //CR-1120700
+      int parseLog(std::ifstream& ifs);
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }
