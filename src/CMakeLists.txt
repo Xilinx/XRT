@@ -45,7 +45,6 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   -Wno-unused-variable
   -Wno-parentheses     
   # These are dangerous and should be reviewed
-  -Wno-inconsistent-missing-override
   -Wno-delete-non-abstract-non-virtual-dtor
   -Wno-overloaded-virtual 
   -Wno-string-plus-int
