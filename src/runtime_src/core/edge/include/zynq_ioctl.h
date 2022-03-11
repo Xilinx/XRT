@@ -422,6 +422,7 @@ struct drm_zocl_axlf {
 	int			za_ksize;
 	char			*za_kernels;
 	uint32_t		za_slot_id;
+	char			*za_dtbo_path;
 	struct drm_zocl_kds	kds_cfg;
 };
 
