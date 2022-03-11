@@ -1793,8 +1793,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       if(testSuite[index].ptTest.get<bool>("explicit"))
         continue;
       testObjectsToRun.push_back(&testSuite[index]);
-      // add custom param to the ptree
-      if (param[0].compare(testSuiteName) == 0) {
+      // add custom param to the ptree if available
+      if (!param.empty() && param[0].compare(testSuiteName) == 0) {
         testSuite[index].ptTest.put(param[1], param[2]);
       }
       if(!xclbin_location.empty())
@@ -1816,8 +1816,8 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     for (const auto & testName : testsToRun) {
       if (testName.compare(testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
-        // add custom param to the ptree
-        if (testName.compare(param[0]) == 0) {
+        // add custom param to the ptree if available
+        if (!param.empty() && testName.compare(param[0]) == 0) {
           testSuite[index].ptTest.put(param[1], param[2]);
         }
         if(!xclbin_location.empty())
