@@ -66,7 +66,8 @@ public:
   void setExampleSyntax(const std::string &_exampleSyntax) {m_exampleSyntax = _exampleSyntax; };
   void printHelp(const boost::program_options::options_description & _optionDescription,
                  const boost::program_options::options_description & _optionHidden,
-                 bool removeLongOptDashes = false) const;
+                 bool removeLongOptDashes = false,
+                 const std::string customHelpSection = "") const;
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;
