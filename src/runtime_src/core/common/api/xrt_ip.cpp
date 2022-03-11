@@ -20,13 +20,14 @@
 #define XCL_DRIVER_DLL_EXPORT  // exporting xrt_ip.h
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "core/include/experimental/xrt_ip.h"
+#include "core/include/experimental/xrt_xclbin.h"
 #include "core/common/api/native_profile.h"
 
 #include "core/common/device.h"
 #include "core/common/config_reader.h"
+#include "core/common/cuidx_type.h"
 #include "core/common/debug.h"
 #include "core/common/error.h"
-#include "core/common/xclbin_parser.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -131,42 +132,42 @@ class ip_impl
   struct ip_context
   {
     std::shared_ptr<xrt_core::device> device;
-    xrt::uuid xclbin_uuid;         //
-    unsigned int idx;      // index of ip per driver
-    const ip_data* ip;
-    uint64_t size;         // address range of ip, To-Be-Computed
+    xrt::uuid xclbin_uuid;    //
+    xrt_core::cuidx_type idx; // index of ip per driver, for open context
+    xrt::xclbin::ip ip;
+    uint64_t size;            // address range of ip
 
-    ip_context(std::shared_ptr<xrt_core::device> dev, xrt::uuid xid, const std::string& nm, size_t range)
+    ip_context(std::shared_ptr<xrt_core::device> dev, xrt::uuid xid, const std::string& nm)
       : device(std::move(dev))
       , xclbin_uuid(std::move(xid))
-      , size(range)
     {
-      auto ip_section = device->get_axlf_section(IP_LAYOUT, xclbin_uuid);
-      if (!ip_section.first)
-        throw std::runtime_error("No ip layout available to construct ip, make sure xclbin is loaded");
-      auto ip_layout = reinterpret_cast<const ::ip_layout*>(ip_section.first);
+      std::string ipnm = nm;
+      auto pos1 = ipnm.find(":{");
+      if (pos1 != std::string::npos && ipnm.rfind('}') == nm.size() - 1)
+        ipnm.erase(pos1 + 1, 1).pop_back();
 
-      auto ips = xrt_core::xclbin::get_cus(ip_layout, nm);
-      if (ips.empty())
+      auto xclbin = device->get_xclbin(xclbin_uuid);
+      ip = xclbin.get_ip(ipnm);
+
+      if (!ip)
         throw xrt_core::error(EINVAL, "No IP matching '" + nm + "'");
-      if (ips.size() > 1)
-        throw xrt_core::error(EINVAL, "More than one IP matching '" + nm + "'");
 
-      ip = ips.front();
+      // default to first matching slot
+      auto slot = device->get_slots(xclbin_uuid).front();
 
-      const auto& all_cus = device->get_cus();  // sort order
-      auto itr = std::find(all_cus.begin(), all_cus.end(), ip->m_base_address);
-      if (itr == all_cus.end())
-        throw xrt_core::internal_error("unexpected error");
+      // address range
+      size = ip.get_size();
 
-      idx = std::distance(all_cus.begin(), itr);
+      // context, driver allows shared context per xrt.ini
+      device->open_context(slot, xclbin_uuid.get(), ipnm.c_str(), xrt_core::config::get_rw_shared());
 
-      device->open_context(xclbin_uuid.get(), idx, xrt_core::config::get_rw_shared());
+      // idx is guaranteed valid only after context creation
+      idx = device->get_cuidx(slot, ipnm);
     }
 
     ~ip_context()
     {
-      device->close_context(xclbin_uuid.get(), idx);
+      device->close_context(xclbin_uuid.get(), idx.index);
     }
 
     ip_context(const ip_context&) = delete;
@@ -177,13 +178,13 @@ class ip_impl
     unsigned int
     get_idx() const
     {
-      return idx;
+      return idx.index;
     }
 
     uint64_t
     get_address() const
     {
-      return ip->m_base_address;
+      return ip.get_base_address();
     }
 
     uint64_t
@@ -192,20 +193,6 @@ class ip_impl
       return size;
     }
   };
-
-  size_t
-  address_range(const xrt::uuid& xid, const std::string& ipname) const
-  {
-    constexpr auto default_address_range = 64_kb;
-    auto xml_section = device->get_axlf_section(EMBEDDED_METADATA, xid);
-    if (!xml_section.first)
-      return default_address_range;
-
-    // Normalize ipname to kernel name
-    std::string kname(ipname.substr(0,ipname.find(":")));
-    auto kprop = xrt_core::xclbin::get_kernel_properties(xml_section.first, xml_section.second, kname);
-    return kprop.address_range;
-  }
 
   unsigned int
   get_cuidx_or_error(size_t offset) const
@@ -237,7 +224,7 @@ public:
   // @nm:      name identifying an ip in IP_LAYOUT of xclbin
   ip_impl(std::shared_ptr<xrt_core::device> dev, const xrt::uuid& xid, const std::string& nm)
     : device(std::move(dev))                                   // share ownership
-    , ipctx(device, xid, nm, address_range(xid, nm))
+    , ipctx(device, xid, nm)
     , uid(create_uid())
   {
     XRT_DEBUGF("ip_impl::ip_impl(%d)\n" , uid);

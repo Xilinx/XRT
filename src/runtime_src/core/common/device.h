@@ -363,13 +363,12 @@ public:
   memory_type
   get_memory_type(size_t memidx) const;
 
-  // get_cus() - Get list cu base addresses sorted by cu inidex
+  // get_cus() - Get list cu base addresses sorted by cu indices
+  // This is a legacy single slot function.
+  // An exception is thrown if called in multi-xclbin flow
   XRT_CORE_COMMON_EXPORT
   const std::vector<uint64_t>&
-  get_cus() const
-  {
-    return m_cus;
-  }
+  get_cus() const;
 
   // get_cuidx() - Get index of cu identified by name and slot
   //
