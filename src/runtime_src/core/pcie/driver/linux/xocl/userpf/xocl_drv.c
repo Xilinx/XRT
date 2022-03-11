@@ -948,10 +948,13 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		goto failed;
 	}
 
-	ret = xocl_hwmon_sdm_init(xdev);
-	if (ret) {
-		userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
-		ret = 0;
+	if (XOCL_DSA_IS_VERSAL_ES3(xdev)) {
+		//probe & initialize hwmon_sdm driver only on versal
+		ret = xocl_hwmon_sdm_init(xdev);
+		if (ret) {
+			userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
+			ret = 0;
+		}
 	}
 
 	(void) xocl_peer_listen(xdev, xocl_mailbox_srv, (void *)xdev);
