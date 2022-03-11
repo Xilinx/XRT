@@ -46,7 +46,6 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   -Wno-parentheses     
   # These are dangerous and should be reviewed
   -Wno-overloaded-virtual
-  -Wno-shift-negative-value
    )
 else()
   set(XRT_WARN_OPTS -Wall -Werror )
