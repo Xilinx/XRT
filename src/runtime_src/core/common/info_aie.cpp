@@ -420,14 +420,16 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
         ....
 */
 
-// This funtion populate a specific AIE core given as an input of [row:col]
+// This function populate a specific AIE core given as an input of [row:col]
 void
-populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile,
-		  int row, int col)
+populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile)
 {
   try {
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
+
+    int row = tile.get<int>("row");
+    int col = tile.get<int>("column");
     pt = pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
 
     std::string status;
@@ -531,27 +533,27 @@ populate_aie_core_gmio(const boost::property_tree::ptree& pt, boost::property_tr
   pt_array.add_child("gmios",gmio_array);
 }
 
-// This funtion check the duplicate entry in tile_aaray for the same core [row:col]
+// This function check the duplicate entry in tile_aaray for the same core [row:col]
 bool
-is_duplicate_core(const boost::property_tree::ptree& tile_array, int row, int col)
+is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property_tree::ptree& tile)
 {
-  for (auto& tile : tile_array) {
-      if ((tile.second.get<int>("column") == col)
-	  && (tile.second.get<int>("row") == row)) {
+  int row = tile.get<int>("row");
+  int col = tile.get<int>("column");
+  for (auto& node : tile_array) {
+      if ((node.second.get<int>("column") == col) && (node.second.get<int>("row") == row))
         return true;
-    }
   }
 
   return false;
 }
 
-// This funtion populate a specific AIE core which is unused but memory buffers exists [row:col]
+// This function populate a specific AIE core which is unused but memory buffers exists [row:col]
 void
 populate_buffer_only_cores(const boost::property_tree::ptree& pt,
 			  const boost::property_tree::ptree& core_info, int gr_id,
 			  boost::property_tree::ptree& tile_array)
 {
-  boost::property_tree::ptree empty_pt;
+  const boost::property_tree::ptree empty_pt;
 
   for (const auto& g_node : pt.get_child("aie_metadata.EventGraphs", empty_pt)) {
     if (gr_id != g_node.second.get<int>("id"))
@@ -567,10 +569,10 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       int col = tile.get<int>("column");
 
       // Check whether this core is already added
-      if (is_duplicate_core(tile_array, row, col))
+      if (is_duplicate_core(tile_array, tile))
         continue;
 
-      populate_aie_core(core_info, tile, row, col);
+      populate_aie_core(core_info, tile);
       dma_row_it++;
       tile_array.push_back(std::make_pair("", tile));
     }
@@ -725,9 +727,7 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
         tile.put("memory_column", memcol_it->second.data());
         tile.put("memory_row", memrow_it->second.data());
         tile.put("memory_address", memaddr_it->second.data());
-        int row = tile.get<int>("row");
-        int col = tile.get<int>("column");
-        populate_aie_core(core_info, tile, row, col);
+        populate_aie_core(core_info, tile);
         row_it++;
         memcol_it++;
         memrow_it++;
