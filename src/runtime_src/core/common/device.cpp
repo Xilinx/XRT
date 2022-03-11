@@ -301,6 +301,16 @@ get_memory_type(size_t memidx) const
     : mtype;
 }
 
+const std::vector<uint64_t>&
+device::
+get_cus() const
+{
+  if (m_cu2idx.size() > 1)
+    throw error(std::errc::not_supported, "multiple xclbins not supported");
+
+  return m_cus;
+}
+
 cuidx_type
 device::
 get_cuidx(slot_id slot, const std::string& cuname) const
