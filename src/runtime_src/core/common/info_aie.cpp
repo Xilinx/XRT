@@ -420,6 +420,21 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
         ....
 */
 
+// This funtion check the duplicate entry in graph_aaray for the same core [row:col]
+bool
+is_duplicate_core(const boost::property_tree::ptree& gr_array, int row, int col)
+{
+  for (auto& gr: gr_array) {
+    const boost::property_tree::ptree& graph = gr.second;
+    for (auto& tile : graph.get_child("tile")) {
+      if ((tile.second.get<int>("column") == col) && (tile.second.get<int>("row") == row))
+        return true;
+    }
+  }
+
+  return false;
+}
+
 // This funtion populate a specific AIE core given as an input of [row:col]
 void
 populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile,
@@ -703,6 +718,31 @@ populate_aie(const xrt_core::device *device, const std::string& desc)
       graph_array.push_back(std::make_pair("", igraph));
     }
     pt.add_child("graphs", graph_array);
+
+    // Core in a tile is unused but memory buffers exists
+    boost::property_tree::ptree buf_array;
+    for (auto& gr: pt_aie.get_child("aie_metadata.EventGraphs", empty_pt)) {
+      boost::property_tree::ptree tile_array;
+      boost::property_tree::ptree igraph;
+      auto dma_row_it = gr.second.get_child("dma_rows").begin();
+      for (const auto& node : gr.second.get_child("dma_columns", empty_pt)) {
+        boost::property_tree::ptree tile;
+        tile.put("column", node.second.data());
+        tile.put("row", dma_row_it->second.data());
+        int row = tile.get<int>("row");
+        int col = tile.get<int>("column");
+	// Check whether this core is already enabled
+	if (is_duplicate_core(graph_array, row, col))
+	  continue;
+
+	populate_aie_core(core_info, tile, row, col);
+        dma_row_it++;
+        tile_array.push_back(std::make_pair("", tile));
+      }
+      igraph.add_child("tile", tile_array);
+      buf_array.push_back(std::make_pair("", igraph));
+    }
+    pt.add_child("buf_only_cores", buf_array);
 
     // Extract RTPs from aie_metadata and populate the aie_core
     populate_aie_core_rtp(pt_aie, pt);
