@@ -65,7 +65,7 @@ public:
     : m_hal(std::move(rhs.m_hal)), m_setup_done(rhs.m_setup_done)
   {}
 
-  ~device()
+  virtual ~device()
   {}
 
   device(const device &dev) = delete;

@@ -60,6 +60,9 @@ class Report {
 
   void getFormattedReport(const xrt_core::device *_pDevice, SchemaVersion _schemaVersion, const std::vector<std::string> & _elementFilter, std::ostream & consoleStream, boost::property_tree::ptree & pt) const;
 
+ // Needs a virtual destructor
+  virtual ~Report() {};
+
  // Child methods that need to be implemented
  protected:
   virtual void writeReport(const xrt_core::device* _pDevice, const boost::property_tree::ptree& pt, const std::vector<std::string>& _elementsFilter,std::ostream & _output) const = 0;
