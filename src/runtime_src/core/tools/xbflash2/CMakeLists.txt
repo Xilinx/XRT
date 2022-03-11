@@ -34,7 +34,6 @@ set(XBFLASH_COMPONENT "xbflash2")
 add_executable(${XBFLASH_NAME} ${XBFLASH_QSPI_SRC})
 
 set(Boost_USE_STATIC_LIBS ON)
-#target_link_options(${XBFLASH_NAME} PRIVATE "-static")
 target_link_libraries(${XBFLASH_NAME}
       PRIVATE
       boost_filesystem

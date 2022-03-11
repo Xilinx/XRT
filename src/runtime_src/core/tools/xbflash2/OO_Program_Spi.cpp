@@ -36,142 +36,69 @@ namespace po = boost::program_options;
 
 namespace {
 
-int
-reset(po::variables_map& vm) {
-    std::string bdf;
-    bool force = false;
-    bool dualflash = false;
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-
+//
+void
+spiCommand(po::variables_map& vm) {
+    //root privileges required.
     XBU::sudo_or_throw_err();
-    //mandatory command line args
-    try {        
-        bdf = vm["device"].as<std::string>();        
-    }
-    catch (...) {
-        throw std::errc::invalid_argument;
-    }
 
+    //mandatory command line args
+    std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
+    if (bdf.empty()) {
+        throw std::runtime_error("Device not specified. Please specify a single device using --device option");
+    }
     //optional command line args
-    try {
-        if (vm.count("force"))
-            force = true;
-        if (vm.count("dual-flash"))
-            dualflash = true;
-        if (vm.count("bar")) {
-            sBar = vm["bar"].as<std::string>();
-            if (!sBar.empty())
-                bar = std::stoi(sBar);
-        }
-        if (vm.count("bar-offset")) {
-            sBarOffset = vm["bar-offset"].as<std::string>();
-            if (!sBarOffset.empty()) {
-                std::stringstream sstream(sBarOffset);
-                sstream >> baroff;
-            }
+    std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
+    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;
+    bool force = vm.count("force") ? true : false;
+    bool dualflash = vm.count("dual-flash") ? true : false;    
+
+    if (vm.count("revert-to-golden")) { //spi - reset/revert-to-golden
+        std::cout << "About to revert to golden image for device " << bdf << std::endl;
+        if (!force && !XBU::can_proceed())
+            return;
+
+        pcidev::pci_device dev(bdf, bar, baroff);
+        XSPI_Flasher xspi(&dev, dualflash);
+        if (xspi.revertToMFG()) {
+            throw std::runtime_error("Flash type - spi, Reset failed.");
         }
     }
-    catch (...) {
-    }
-
-    std::cout << "About to revert to golden image for device " << bdf << std::endl;
-
-    if (!force && !XBU::can_proceed())
-        throw std::errc::operation_canceled;
-
-    pcidev::pci_device dev(bdf, bar, baroff);
-    XSPI_Flasher xspi(&dev, dualflash);
-    return xspi.revertToMFG();
-}
-
-int
-flash(po::variables_map& vm) {
-    std::string bdf;
-    std::vector <std::string> primary_file;
-    int ret = 0;
-    bool force = false;
-    bool dual_flash = false;
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-
-    XBU::sudo_or_throw_err();
-
-    //mandatory command line args
-    try {        
-        bdf = vm["device"].as<std::string>();        
+    else if (vm.count("image")) { // spi - flash/image
+        std::vector <std::string> primary_file;
         primary_file = vm["image"].as<std::vector<std::string>>();
         if (primary_file.size() == 2)
-            dual_flash = true;
-    }
-    catch (...) {
-        throw std::errc::invalid_argument;
-    }
+            dualflash = true;
+        
+        std::cout << "Preparing to program flash on device: " << bdf << std::endl;
+        if (!force && !XBU::can_proceed())
+            return;
 
-    //optional command line args
-    try {
-        if (vm.count("bar")) {
-            sBar = vm["bar"].as<std::string>();
-            if (!sBar.empty())
-                bar = std::stoi(sBar);
+        pcidev::pci_device dev(bdf, bar, baroff);
+        XSPI_Flasher xspi(&dev, dualflash);
+
+        if (!dualflash) {
+            firmwareImage pri(primary_file[0].c_str());
+            if (pri.fail())
+                throw std::runtime_error("firmwareImage object creation failed.");
+            if (xspi.xclUpgradeFirmware1(pri))
+                throw std::runtime_error("spi flash failed.");
         }
-        if (vm.count("bar-offset")) {
-            sBarOffset = vm["bar-offset"].as<std::string>();
-            if (!sBarOffset.empty()) {
-                std::stringstream sstream(sBarOffset);
-                sstream >> baroff;
-            }
+        else {
+            firmwareImage pri(primary_file[0].c_str());
+            firmwareImage sec(primary_file[1].c_str());
+            if (pri.fail() || sec.fail())
+                throw std::runtime_error("firmwareImage object creation failed.");
+            if (xspi.xclUpgradeFirmware2(pri, sec))
+                throw std::runtime_error("spi flash failed.");
         }
-    }
-    catch (...) {
-    }
-
-    if (vm.count("force"))
-        force = true;
-
-    std::cout
-        << "About to flash below MCS bitstream onto device "
-        << bdf << ":" << std::endl;
-
-    if (!force && !XBU::can_proceed())
-        throw std::errc::operation_canceled;
-
-    pcidev::pci_device dev(bdf, bar, baroff);
-    XSPI_Flasher xspi(&dev, dual_flash);
-
-    if (!dual_flash) {
-        firmwareImage pri(primary_file[0].c_str());
-        if (pri.fail())
-            throw std::errc::invalid_argument;
-        ret = xspi.xclUpgradeFirmware1(pri);
     }
     else {
-        firmwareImage pri(primary_file[0].c_str());
-        firmwareImage sec(primary_file[1].c_str());
-        if (pri.fail() || sec.fail())
-            throw std::errc::invalid_argument;
-        ret = xspi.xclUpgradeFirmware2(pri, sec);
+        throw std::runtime_error("Missing program operation.No action taken.");
     }
-    return ret;
-}
-
-int
-spiCommand(po::variables_map& vm) {
-    if (!vm.count("device")) {
-        std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
-        throw std::errc::invalid_argument;
-    }
-
-    if (vm.count("revert-to-golden")) {
-        return reset(vm);
-    }
-    else if (vm.count("image")) {
-        return flash(vm);
-    }
-    std::cout << "\nERROR: Missing program operation. No action taken.\n";
-    return 1;
+    return;
 }
 } //end namespace 
 
@@ -222,20 +149,22 @@ OO_Program_Spi::execute(const SubCmdOptions& _options) const
 
   if(m_help) {
     printHelp();
-    throw std::errc::operation_canceled;
+    return;
   }
 
   XBU::sudo_or_throw_err();
  
   try {
-      if (spiCommand(vm)) {
-          throw std::errc::operation_canceled;
-      }
+      spiCommand(vm);
   }
-  catch(...) {
-      std::cerr << "ERROR: Program execution - Flash type spi " << std::endl;
+  catch (const std::runtime_error& e) {
+      // Catch only the exceptions that we have generated earlier
+      std::cerr << boost::format("ERROR: %s\n") % e.what() << std::endl;
+      throw std::runtime_error("Program execution failed - Flash type spi.");
+  }
+  catch (...) {
       printHelp();
-      throw std::errc::operation_canceled;
+      throw std::runtime_error("Program execution failed - Flash type spi.");
   }
 
   std::cout << "****************************************************\n";

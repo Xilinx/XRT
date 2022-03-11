@@ -54,8 +54,9 @@ int main( int argc, char** argv )
     main_( argc, argv, executable, description, subCommands);
     return 0;
   } catch (const std::exception &e) {
-      std::cerr << "xbflash2 Error: " << e.what() << "\n";
-  } catch (...) {
+      std::cerr << "ERROR: " << e.what() << std::endl;
+  }  catch (...) {
+      std::cerr << "Unknown Error :  " << executable << std::endl;
   }
   return 1;
 }

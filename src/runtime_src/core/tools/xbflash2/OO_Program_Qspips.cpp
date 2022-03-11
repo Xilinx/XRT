@@ -25,9 +25,10 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
+
 namespace po = boost::program_options;
 
 // System - Include Files
@@ -36,192 +37,72 @@ namespace po = boost::program_options;
 
 namespace {
 
-int 
-qspips_flash(po::variables_map& vm) {
-    std::string bdf;
-    std::string flash_type;
-    std::string bin_file;
-    std::vector<std::string> bin_files;
-    std::string soffset;
-    size_t offset = 0;
-    bool force = false;
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;   
-
-    XBU::sudo_or_throw_err();
-     
-    //mandatory command line args
-    try {
-        bdf = vm["device"].as<std::string>();
-        bin_files = vm["image"].as<std::vector<std::string>>();
-    }
-    catch (...) {
-        throw std::errc::invalid_argument;
-    }
-
-    //optional command line args
-    try {
-        if (vm.count("flash-part"))
-            flash_type = vm["flash-part"].as<std::string>();
-        if (vm.count("offset")) {
-            soffset = vm["offset"].as<std::string>();
-            if (!soffset.empty()) {
-                std::stringstream sstream(soffset);
-                sstream >> offset;
-            }
-        }
-        if (vm.count("force"))
-            force = true;
-    }
-    catch (...) {
-    }
-
-    //optionals command line args
-    try {
-        if (vm.count("bar")) {
-            sBar = vm["bar"].as<std::string>();
-            if (!sBar.empty())
-                bar = std::stoi(sBar);
-        }
-        if (vm.count("bar-offset")) {
-            sBarOffset = vm["bar-offset"].as<std::string>();
-            if (!sBarOffset.empty()) {
-                std::stringstream sstream(sBarOffset);
-                sstream >> baroff;
-            }
-        }
-    }
-    catch (...) {
-    }
-
-    if (bdf.empty()) {
-        std::cout << "Error: Please provide mgmt BDF\n";
-        throw std::errc::invalid_argument;
-    }
-
-    if (!bin_files.size()) {
-        std::cout << "Error: Please provide proper BIN file.\n";
-        throw std::errc::invalid_argument;
-    }
-
-    firmwareImage bin(bin_files[0].c_str());
-    if (bin.fail()) {
-        std::cout << "Error: Please provide proper BIN file.\n";
-        throw std::errc::invalid_argument;
-    }
-    std::cout << "About to program flash on device "
-        << boost::format(" %s at offset 0x%x\n") % bdf % offset;
-
-    if (!force && !XBU::can_proceed())
-        throw std::errc::operation_canceled;
-
-    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
-    XQSPIPS_Flasher qspips(&dev);
-
-    return qspips.xclUpgradeFirmware(bin, offset);
-}
-
-int 
-qspips_erase(po::variables_map& vm) {
-    std::string bdf;
-    std::string flash_type;
-    std::string soffset;
-    std::string slength;
-    std::string output;
-    size_t offset = 0, len = GOLDEN_BASE;
-    bool force = false;
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;    
-
-    XBU::sudo_or_throw_err();
-    //mandatory command options
-    try {
-        bdf = vm["device"].as<std::string>();
-    }
-    catch (...) {
-        throw std::errc::invalid_argument;
-    }
-
-    //optionals command options
-    try {
-        if (vm.count("flash-part"))
-            flash_type = vm["flash-part"].as<std::string>();
-        if (vm.count("offset")) {
-            soffset = vm["offset"].as<std::string>();
-            if (!soffset.empty()) {
-                std::stringstream sstream(soffset);
-                if (offset != INVALID_OFFSET)
-                    sstream >> offset;
-            }
-        }
-        if (vm.count("length")) {
-            slength = vm["length"].as<std::string>();
-            if (!slength.empty()) {
-                std::stringstream sstream(slength);
-                sstream >> len;
-            }
-        }
-    }
-    catch (...) {
-    }
-
-    //optionals command line args
-    try {
-        if (vm.count("bar")) {
-            sBar = vm["bar"].as<std::string>();
-            if (!sBar.empty())
-                bar = std::stoi(sBar);
-        }
-
-        if (vm.count("bar-offset")) {
-            sBarOffset = vm["bar-offset"].as<std::string>();
-            if (!sBarOffset.empty()) {
-                std::stringstream sstream(sBarOffset);
-                sstream >> baroff;
-            }
-        }
-    }
-    catch (...) {
-    }
-
-    if (bdf.empty()) {
-        std::cout << "Error: Please provide mgmt BDF\n";
-        throw std::errc::invalid_argument;
-    }
-
-    std::cout << "About to erase flash"
-        << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset + len) % bdf;
-
-    if (offset + len > GOLDEN_BASE)
-        std::cout << "\nThis might erase golden image if there is !!\n" << std::endl;
-
-    if (!force && !XBU::can_proceed())
-        throw std::errc::operation_canceled;
-
-    pcidev::pci_device dev(bdf, bar, baroff, flash_type);
-    XQSPIPS_Flasher qspips(&dev);
-
-    return qspips.xclErase(offset, len);
-}
-
-int
+void
 qspipsCommand(po::variables_map& vm)
 {
-    if (!vm.count("device")) {
-        std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
-        throw std::errc::invalid_argument;
-    }
+    //root privileges required.
+    XBU::sudo_or_throw_err();
 
-    if (vm.count("erase")) {
-        return qspips_erase(vm);
+    //mandatory command line args
+    std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
+    if (bdf.empty()) {
+        throw std::runtime_error("Device not specified. Please specify a single device using --device option");
     }
-    else if (vm.count("image")) {
-        return qspips_flash(vm);
+    //optional command line args
+    std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";
+    std::string soffset = vm.count("offset") ? vm["offset"].as<std::string>() : "";
+    size_t offset = !soffset.empty() ? std::stoul(soffset) : 0;
+    bool force = vm.count("force") ? true : false;
+    std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
+    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;   
+
+    if (vm.count("erase")) { //qspips erase
+        std::string slength = vm.count("length") ? vm["length"].as<std::string>() : "";
+        size_t len = !slength.empty()  ? std::stoi(slength) : GOLDEN_BASE;    
+
+        std::cout << "About to erase flash"
+            << boost::format(" [0x%x, 0x%x] on device %s\n") % offset % (offset + len) % bdf;
+
+        if (offset + len > GOLDEN_BASE)
+            std::cout << "\nProvided length from the offset is crossing golden image boundary, This might erase golden image.\n" << std::endl;
+
+        if (!force && !XBU::can_proceed())
+            return;
+
+        pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+        XQSPIPS_Flasher qspips(&dev);
+
+        if (qspips.xclErase(offset, len))
+            throw std::runtime_error("qspips erase failed.");
     }
-    std::cout << "\nERROR: Missing program operation. No action taken.\n\n";
-    return 1;
+    else if (vm.count("image")) {// qspips flash 
+        std::vector<std::string> bin_files = vm["image"].as<std::vector<std::string>>();
+        if (!bin_files.size()) {
+            throw std::runtime_error("Please provide proper BIN file.");
+        }
+        firmwareImage bin(bin_files[0].c_str());
+        if (bin.fail()) {
+            throw std::runtime_error("Please provide proper BIN file.");
+        }
+
+        std::cout << "Preparing to program flash on device: "
+            << boost::format(" %s at offset 0x%x\n") % bdf % offset;
+
+        if (!force && !XBU::can_proceed())
+            return;
+
+        pcidev::pci_device dev(bdf, bar, baroff, flash_type);
+        XQSPIPS_Flasher qspips(&dev);
+
+        if (qspips.xclUpgradeFirmware(bin, offset))
+            throw std::runtime_error("qspips flash failed.");
+    }
+    else {
+        throw std::runtime_error("Missing program operation.No action taken.");
+    }
+    return;
 }
 } //end namespace 
 
@@ -273,19 +154,21 @@ OO_Program_Qspips::execute(const SubCmdOptions& _options) const
 
   if(m_help) {
     printHelp();
-    throw std::errc::operation_canceled;
+    return;
   }
 
   XBU::sudo_or_throw_err();
   try {
-      if (qspipsCommand(vm)) {
-          throw std::errc::operation_canceled;
-      }
+      qspipsCommand(vm);      
+  }
+  catch (const std::runtime_error& e) {
+      // Catch only the exceptions that we have generated earlier
+      std::cerr << boost::format("ERROR: %s\n") % e.what() << std::endl;
+      throw std::runtime_error("Program execution failed - Flash type qspips.");
   }
   catch (...) {
-      std::cerr << "ERROR: Program execution - Flash type qspips " << std::endl;
       printHelp();
-      throw std::errc::operation_canceled;
+      throw std::runtime_error("Program execution failed - Flash type qspips.");
   }
 
   std::cout << "****************************************************\n";

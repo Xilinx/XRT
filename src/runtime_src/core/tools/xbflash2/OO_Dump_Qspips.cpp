@@ -25,9 +25,9 @@
 namespace XBU = XBUtilities;
 
 // 3rd Party Library - Include Files
-#include <boost/program_options.hpp>
-#include <boost/format.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
 
@@ -36,86 +36,32 @@ namespace po = boost::program_options;
 
 namespace {
 
-int
+void
 qspips_readback(po::variables_map& vm)
 {
-    size_t offset = 0, len = FLASH_SIZE;
-    std::string bdf;
-    std::string soffset;
-    std::string slength;
-    std::string flash_type;
-    std::string output;
-    std::string sBar, sBarOffset;
-    size_t baroff = INVALID_OFFSET;
-    int bar = 0;
-
-    XBU::sudo_or_throw_err();
-
-    try {
-        if (vm.count("device")) {
-            bdf = vm["device"].as<std::string>();
-        }
-        else {
-            std::cerr << "\nERROR: Device not specified. Please specify a single device using --device option\n";
-            throw std::errc::invalid_argument;
-        }
-
-        if (vm.count("output")) {
-            output = vm["output"].as<std::string>();
-        }
-        else {
-            std::cerr << "\nERROR: output not specified. Please specify the output file path using --output option\n";
-            throw std::errc::invalid_argument;
-        }
+    //root privileges required.
+    XBU::sudo_or_throw_err();    
+   
+    //mandatory command line args
+    std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
+    if (bdf.empty()) {
+        throw std::runtime_error("Device not specified. Please specify a single device using --device option");
     }
-    catch (...) {
-        throw std::errc::invalid_argument;
-    }
-
-    try {
-        //Optional arguments
-        if (vm.count("flash-part"))
-            flash_type = vm["flash-part"].as<std::string>();
-
-        if (vm.count("offset")) {
-            soffset = vm["offset"].as<std::string>();
-            if (!soffset.empty()) {
-                std::stringstream sstream(soffset);
-                sstream >> offset;
-            }
-        }
-
-        if (vm.count("length")) {
-            slength = vm["length"].as<std::string>();
-            if (!slength.empty()) {
-                std::stringstream sstream(slength);
-                sstream >> len;
-            }
-        }
-    }
-    catch (...) {
+    std::string output = vm.count("output") ? vm["output"].as<std::string>() : "";
+    if (output.empty()) {
+        throw std::runtime_error("Output not specified. Please specify the output file path using --output option");
     }
 
     //Optional arguments
-    try {
-        if (vm.count("bar")) {
-            sBar = vm["bar"].as<std::string>();
-            if (!sBar.empty())
-                bar = std::stoi(sBar);
-        }
-        if (vm.count("bar-offset")) {
-            sBarOffset = vm["bar-offset"].as<std::string>();
-            if (!sBarOffset.empty()) {
-                std::stringstream sstream(sBarOffset);
-                sstream >> baroff;
-            }
-        }
-    }
-    catch (...) {
-    }
-
-    if (bdf.empty() || output.empty())
-        throw std::errc::invalid_argument;
+    std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";
+    std::string soffset = vm.count("offset") ? vm["offset"].as<std::string>() : "";
+    size_t offset = !soffset.empty() ? std::stoul(soffset) : 0;
+    std::string slength = vm.count("length") ? vm["length"].as<std::string>() : "";
+    size_t len = !slength.empty() ? std::stoul(slength) : FLASH_SIZE;
+    std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
+    int bar = !sBar.empty() ? std::stoi(sBar) : 0;
+    std::string sBarOffset = vm.count("bar-offset") ? vm["bar-offset"].as<std::string>() : "";
+    size_t baroff = !sBarOffset.empty() ? std::stoul(sBarOffset) : INVALID_OFFSET;    
 
     std::cout << "Read out flash"
         << boost::format("[0x%x, 0x%x] on device %s to %s\n") % offset % (offset + len) % bdf % output;
@@ -123,7 +69,9 @@ qspips_readback(po::variables_map& vm)
     pcidev::pci_device dev(bdf, bar, baroff, flash_type);
     XQSPIPS_Flasher qspips(&dev);
 
-    return qspips.xclReadBack(output, offset, len);
+    if(qspips.xclReadBack(output, offset, len))
+        throw std::runtime_error("qspips flash readback failed.");
+    return;
 }
 } //end namespace 
 
@@ -175,20 +123,21 @@ OO_Dump_Qspips::execute(const SubCmdOptions& _options) const
 
   if(m_help) {
     printHelp();
-    throw std::errc::operation_canceled;
+    return;
   }
 
   XBU::sudo_or_throw_err();
 
   try {
-      if (qspips_readback(vm)) {
-          throw std::errc::operation_canceled;
-      }
+      qspips_readback(vm);
   }
-  catch (...) {
-      std::cerr << "ERROR: Dump execution - Flash type qspips " << std::endl;
+  catch (const std::runtime_error& e) {
+      // Catch only the exceptions that we have generated earlier
+      std::cerr << boost::format("ERROR: %s\n") % e.what() << std::endl;
+      throw std::runtime_error("Dump execution failed - Flash type qspips.");
+  } catch (...) {
       printHelp();
-      throw std::errc::operation_canceled;
+      throw std::runtime_error("Dump execution failed - Flash type qspips.");
   }
 
   std::cout << "****************************************************\n";

@@ -27,7 +27,7 @@ class OO_Program_Spi : public OptionOptions {
   OO_Program_Spi( const std::string &_longName, bool _isHidden = false);
 
  private:
-	bool m_help;
+  bool m_help;
 };
 
 #endif

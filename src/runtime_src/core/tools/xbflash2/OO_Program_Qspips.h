@@ -27,7 +27,7 @@ class OO_Program_Qspips : public OptionOptions {
   OO_Program_Qspips( const std::string &_longName, bool _isHidden = false);
  
  private:
-	bool m_help;
+  bool m_help;
 };
 
 #endif
