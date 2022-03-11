@@ -407,6 +407,12 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
 
     std::shared_ptr<xrt_core::device>& workingDevice = deviceCollection[0];
 
+    // If in factory mode the device is not ready for use
+    if (xrt_core::device_query<xrt_core::query::is_mfg>(workingDevice.get())) {
+      std::cout << boost::format("ERROR: Device is in factory mode and cannot be configured\n");
+      throw xrt_core::error(std::errc::operation_canceled);
+    }
+
     // Load Config commands
     // -- process "input" option -----------------------------------------------
     if (!path.empty()) {
