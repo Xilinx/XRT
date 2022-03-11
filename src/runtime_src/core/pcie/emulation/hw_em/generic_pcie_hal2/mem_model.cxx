@@ -38,13 +38,13 @@ mem_model::mem_model(std::string deviceName):
           uint64_t src_offset = written_bytes;
 
           unsigned char* page_ptr  = get_page(addr);
-          uint64_t       page_addr = addr & ~(-1 << ADDRBITS);
+          uint64_t       page_addr = addr & ~( ~uint64_t(0) << ADDRBITS);
 
           unsigned char* dest_buf_ptr = page_ptr + page_addr;
           unsigned char* src_buf_ptr  = (unsigned char*)(src)      + src_offset;
 
           uint64_t remaining_bytes_to_write = size - written_bytes;
-          uint64_t unaligned_bytes_in_addr = (addr & ~(-1 << ADDRBITS));
+          uint64_t unaligned_bytes_in_addr = (addr & ~(~uint64_t(0) << ADDRBITS));
           uint64_t bytes_upto_next_alignment = (0x1 << ADDRBITS) - unaligned_bytes_in_addr;
 
           uint64_t buf_size = 0;
@@ -85,13 +85,13 @@ mem_model::mem_model(std::string deviceName):
 		  uint64_t dest_offset = read_bytes;
 
 		  unsigned char* page_ptr  = get_page(addr);
-		  uint64_t       page_addr = addr & ~(-1 << ADDRBITS);
+		  uint64_t       page_addr = addr & ~(~uint64_t(0) << ADDRBITS);
 
 		  unsigned char* src_buf_ptr = page_ptr + page_addr;
 		  unsigned char* dest_buf_ptr  = (unsigned char*)(dest)      + dest_offset;
 
 		  uint64_t remaining_bytes_to_read = size - read_bytes;
-		  uint64_t unaligned_bytes_in_addr = (addr & ~(-1 << ADDRBITS));
+		  uint64_t unaligned_bytes_in_addr = (addr & ~(~uint64_t(0) << ADDRBITS));
 		  uint64_t bytes_upto_next_alignment = (0x1 << ADDRBITS) - unaligned_bytes_in_addr;
 
 		  uint64_t buf_size = 0;

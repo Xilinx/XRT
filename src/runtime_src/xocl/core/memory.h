@@ -673,67 +673,67 @@ public:
   }
 
   virtual cl_mem_object_type
-  get_type() const
+  get_type() const override
   {
     return m_image_type;
   }
 
   virtual cl_image_format
-  get_image_format()
+  get_image_format() override
   {
     return m_format;
   }
 
   virtual size_t
-  get_image_data_offset() const
+  get_image_data_offset() const override
   {
     return sizeof(image_info);
   }
 
   virtual size_t
-  get_image_width() const
+  get_image_width() const override
   {
     return m_width;
   }
 
   virtual size_t
-  get_image_height() const
+  get_image_height() const override
   {
     return m_height;
   }
 
   virtual size_t
-  get_image_depth() const
+  get_image_depth() const override
   {
     return m_depth;
   }
 
   virtual size_t
-  get_image_bytes_per_pixel() const
+  get_image_bytes_per_pixel() const override
   {
     return m_bpp;
   }
 
   virtual size_t
-  get_image_row_pitch() const
+  get_image_row_pitch() const override
   {
     return m_row_pitch;
   }
 
   virtual size_t
-  get_image_slice_pitch() const
+  get_image_slice_pitch() const override
   {
     return m_slice_pitch;
   }
 
   virtual void
-  set_image_row_pitch(size_t pitch)
+  set_image_row_pitch(size_t pitch) override
   {
     m_row_pitch = pitch;
   }
 
   virtual void
-  set_image_slice_pitch(size_t pitch)
+  set_image_slice_pitch(size_t pitch) override
   {
     m_slice_pitch = pitch;
   }
