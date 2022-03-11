@@ -253,7 +253,7 @@ read_trace_fifo(bool)
   if (!fifo_full) {
     auto fifo_size = dev_intf->getFifoSize();
 
-    if (num_packets >= fifo_size)
+    if ((num_packets >= fifo_size) && (has_finite_fifo()))
       fifo_full = true;
   }
 }
@@ -452,9 +452,10 @@ init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
     // Data Mover will write input stream to this address
     ts2mm_info.buffers[i].address = dev_intf->getDeviceAddr(ts2mm_info.buffers[i].buf);
     dev_intf->initTS2MM(i, ts2mm_info.buffers[i].buf_size, ts2mm_info.buffers[i].address, ts2mm_info.use_circ_buf);
-  debug_stream
-    << "DeviceTraceOffload::init_s2mm with each size : " << ts2mm_info.buffers[i].buf_size << " initiated " << i << " ts2mm "
-    << std::endl;
+
+    debug_stream
+    << "DeviceTraceOffload::init_s2mm with each size : " << ts2mm_info.buffers[i].buf_size
+    << " initiated " << i << " ts2mm " << std::endl;
   }
   return true;
 }
