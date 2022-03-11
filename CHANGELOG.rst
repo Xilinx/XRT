@@ -7,9 +7,14 @@ Added
 .....
 
 * Added the xrt.ini profiling flags "device_counter" and "device_trace".
-* xrt::run::set_arg and xrt::mailbox::set_arg both supporting setting arguments by name in addition to by index.
+* ``xrt::run::set_arg`` and ``xrt::mailbox::set_arg`` both supporting setting arguments by name in addition to by index.
 * Fixed latency issue when using xrt::ip::read_register and xrt::ip::write_register per issue #6053.
 * Support M2M insertion for incompatible read-only kernel buffer object arguments.
+* Added experimental ``xrt::queue`` APIs for asynchronous execution of synchronous operations.
+* Added experimental ``xrt::system`` and ``xrt::message`` APIs.
+* Added support on Linux for contructing an xrt::bo object from a buffer exported by another process.  Requires pidfd kernel support.
+* Support building XRT with Visual Studio 2019.
+* Switched from ``boost::any`` to ``std::any`` in public APIs.  Requires compiling host code with -std=c++17.
 
 Removed
 .......

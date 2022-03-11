@@ -10,6 +10,7 @@
  * License version 2 or Apache License, Version 2.0.
  */
 
+#include <linux/delay.h>
 #include "xrt_cu.h"
 #include "xgq_cmd_ert.h"
 #include "zocl_drv.h"
@@ -55,9 +56,8 @@ static void scu_xgq_start(struct xrt_cu_scu *scu, u32 *data)
 	struct xgq_cmd_start_cuidx *cmd = (struct xgq_cmd_start_cuidx *)data;
 	u32 num_reg = 0;
 	u32 i = 0;
-	u32 *cu_regfile = NULL;
+	u32 *cu_regfile = scu->vaddr;
 
-	cu_regfile = scu->vaddr;
 	num_reg = (cmd->hdr.count - (sizeof(struct xgq_cmd_start_cuidx)
 				     - sizeof(cmd->hdr) - sizeof(cmd->data)))/sizeof(u32);
 	for (i = 0; i < num_reg; ++i) {
@@ -83,11 +83,9 @@ static int scu_configure(void *core, u32 *data, size_t sz, int type)
 static void scu_start(void *core)
 {
 	struct xrt_cu_scu *scu = (struct xrt_cu_scu *)core;
-	u32 *cu_regfile = NULL;
+	u32 *cu_regfile = scu->vaddr;
 
-	cu_regfile = scu->vaddr;
 	scu->run_cnts++;
-
 	if (kds_echo)
 		return;
 
@@ -107,7 +105,7 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	u32 ctrl_reg = 0;
 	u32 done_reg = 0;
 	u32 ready_reg = 0;
-	u32 *cu_regfile = NULL;
+	u32 *cu_regfile = scu->vaddr;
 
 	/* Avoid access CU register unless we do have running commands.
 	 * This has a huge impact on performance.
@@ -115,7 +113,6 @@ scu_ctrl_hs_check(struct xrt_cu_scu *scu, struct xcu_status *status, bool force)
 	if (!force && !scu->run_cnts)
 		return;
 
-	cu_regfile = scu->vaddr;
 	ctrl_reg = *cu_regfile;
 	/* ap_ready and ap_done would assert at the same cycle */
 	if (ctrl_reg & CU_AP_DONE) {
@@ -202,9 +199,42 @@ err:
 void xrt_cu_scu_fini(struct xrt_cu *xcu)
 {
 	struct xrt_cu_scu *core = xcu->core;
+	struct pid *p = NULL;
+	struct task_struct *task = NULL;
+	int ret = 0;
+
+	// Wait for PS Kernel Process to finish
+	p = find_get_pid(core->sc_pid);
+	if(!p) {
+		// Process already gone
+		goto skip_kill;
+	}
+
+	task = pid_task(p, PIDTYPE_PID);
+	if(!task) {
+		DRM_WARN("Failed to get task for pid %d\n",core->sc_pid);
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	if(core->sc_parent_pid != task_ppid_nr(task)) {
+		DRM_WARN("Parent pid does not match\n");
+		put_pid(p);
+		goto skip_kill;
+	}
+
+	ret = kill_pid(p, SIGTERM, 1);
+	if (ret) {
+		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
+		kill_pid(p, SIGKILL, 1);
+	}
+	udelay(1);
+	put_pid(p);
 
 	xrt_cu_fini(xcu);
 
+ skip_kill:
+	// Free Command Buffer BO
 	zocl_drm_free_bo(core->sc_bo);
 	if (xcu->core) {
 		kfree(xcu->core);

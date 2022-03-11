@@ -450,7 +450,7 @@ struct drm_zocl_sk_getcmd {
 	char		name[ZOCL_MAX_NAME_LENGTH];
 	int		bohdl;
 	int		meta_bohdl;
-	char		uuid[16];
+	unsigned char	uuid[16];
 };
 
 enum aie_info_code {

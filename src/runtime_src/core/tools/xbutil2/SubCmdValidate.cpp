@@ -19,6 +19,8 @@
 #include "SubCmdValidate.h"
 #include "tools/common/Report.h"
 #include "tools/common/ReportPlatforms.h"
+#include "tools/common/XBHelpMenusCore.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "tools/common/XBUtilities.h"
 #include "tools/common/XBHelpMenus.h"
 #include "core/common/utils.h"

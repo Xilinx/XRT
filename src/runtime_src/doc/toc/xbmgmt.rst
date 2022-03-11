@@ -2,7 +2,7 @@
 
 ..
    comment:: SPDX-License-Identifier: Apache-2.0
-   comment:: Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+   comment:: Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 
 xbmgmt
 ======
@@ -23,10 +23,56 @@ P.S: The older version of the commands can only be executed by adding ``--legacy
 
 Currently supported ``xbmgmt`` commands are
 
+    - ``xbmgmt configure``
     - ``xbmgmt dump``
     - ``xbmgmt examine``
     - ``xbmgmt program``
     - ``xbmgmt reset``
+
+
+xbmgmt configure
+~~~~~~~~~~~
+
+The ``xbmgmt configure`` command provides advanced options for configuring a device
+
+**The supported options**
+
+Configuring a device's memory settings with a premade image
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> [--input] <filename with .ini extension>
+
+
+Enabling/Disabling DDR memory retention on a device
+
+.. code-block:: shell
+
+    xbmgmt configure [--device| -d] <management bdf> --retention [ENABLE|DISABLE]
+
+
+**The details of the supported options**
+
+- The ``--device`` (or ``-d``) specifies the target device 
+    
+    - <management bdf> : The Bus:Device.Function of the device of interest
+
+
+- The ``--input`` specifies an INI file with the memory configuration.
+- The ``--retention`` option enables / disables DDR memory retention.
+
+
+**Example commands** 
+
+
+.. code-block:: shell
+
+
+    #Configure a device's memory settings using an image
+    xbmgmt configure --device 0000:b3:00.0 --input /tmp/memory_config.ini
+    
+    #Enable a device's DDR memory retention 
+    xbmgmt configure --device 0000:b3:00.0 --retention ENABLE
 
 
 xbmgmt dump

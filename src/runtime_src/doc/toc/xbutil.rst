@@ -107,7 +107,11 @@ The command ``xbutil validate`` validates the installed card by running precompi
     
 - The ``--output`` (or ``-o``) specifies the output file to direct the output
 
-- The ``--param`` specifies the extended parameters that can be passed to a test
+- The ``--param`` specifies the extended parameters that can be passed to a test. Valid values:
+        
+    - ``test``: dma
+    - ``key``: block-size
+    - ``value``: value in bytes
 
 
 **Example commands**

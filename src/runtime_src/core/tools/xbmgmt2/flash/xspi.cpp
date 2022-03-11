@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2016-2021
+ * Copyright (C) 2016-2022
  * Xilinx, Inc Author(s) : Sonal Santan 
  *           : Hem Neema : Ryan Radjabi
  *
@@ -32,6 +32,7 @@
 
 
 #include "core/common/error.h"
+#include "tools/common/XBUtilitiesCore.h"
 #include "core/tools/common/XBUtilities.h"
 #include "core/tools/common/ProgressBar.h"
 namespace XBU = XBUtilities;

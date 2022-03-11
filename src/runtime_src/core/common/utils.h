@@ -46,6 +46,10 @@ ios_restore(std::ostream& ostr)
   return {std::bind(restore, std::ref(ostr), ostr.flags())};
 }
 
+XRT_CORE_COMMON_EXPORT
+std::string
+get_hostname();
+
 /**
  * parse_cu_status() -
  */

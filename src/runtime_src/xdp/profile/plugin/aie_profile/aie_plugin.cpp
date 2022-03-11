@@ -647,9 +647,13 @@ namespace xdp {
     // Configure core, memory, and shim counters
     for (int module=0; module < NUM_MODULES; ++module) {
       std::string metricsStr = metricSettings[module];
-      if (metricsStr.empty())
+      if (metricsStr.empty()){
+        std::string modName = moduleNames[module].substr(0, moduleNames[module].find(" "));
+        std::string metricMsg = "No metric set specified for " + modName + " module. "
+        "Please specify the aie_profile_" + modName + "_metrics setting in your xrt.ini.";
+        xrt_core::message::send(severity_level::warning, "XRT", metricMsg);
         continue;
-
+      }
       int NUM_COUNTERS       = numCounters[module];
       XAie_ModuleType mod    = falModuleTypes[module];
       std::string moduleName = moduleNames[module];

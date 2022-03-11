@@ -19,6 +19,7 @@
 #include "utils.h"
 
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <sstream>
 #include <iomanip>
@@ -155,8 +156,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   ptree_type pt;
 
   // iterate over current data, store to ptree by converting to Amps from milli Amps
-  for (const auto& tmp : voltage)
-  {
+  for (const auto& tmp : voltage) {
     auto desc = tmp.label;
     pt.put("id", desc);
     pt.put("description", desc);
@@ -170,19 +170,16 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
   }
 
   // iterate over voltage data, store to ptree by converting to Volts from milli Volts
-  for (const auto& tmp : current)
-  {
+  for (const auto& tmp : current) {
     bool found =false;
     auto desc = tmp.label;
     auto amps = xrt_core::utils::format_base10_shiftdown3(tmp.input);
     auto max = xrt_core::utils::format_base10_shiftdown3(tmp.max);
     auto avg = xrt_core::utils::format_base10_shiftdown3(tmp.average);
 
-    for(auto& kv : sensor_array)
-    {
+    for (auto& kv : sensor_array) {
       auto id = kv.second.get<std::string>("id");
-      //TODO: add exact string match once SC team provides the same names for Voltage/Current rails
-      if(desc.find(id) != std::string::npos)
+      if (desc.find(id) != std::string::npos)
       {
         kv.second.put("current.amps", amps);
         kv.second.put("current.max", max);
@@ -193,7 +190,7 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
       }
     }
 
-    if(found)
+    if (found)
       continue;
 
     pt.put("id", tmp.label);
@@ -207,12 +204,11 @@ read_data_driven_electrical(const std::vector<xq::sdm_sensor_info::data_type>& c
     sensor_array.push_back({"", pt});
   }
 
-  std::string bd_power;
+  uint64_t bd_power;
   // iterate over power data, store to ptree by converting to watts.
-  for (const auto& tmp : power)
-  {
-    if (!strcmp((tmp.label).c_str(), "POWER"))
-      bd_power = xrt_core::utils::format_base10_shiftdown6(tmp.input);
+  for (const auto& tmp : power) {
+    if (boost::iequals(tmp.label, "Total Power"))
+      bd_power = tmp.input;
   }
   ptree_type root;
 
@@ -232,15 +228,11 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
   ptree_type root;
 
   // iterate over temperature data, store to ptree by converting to Celcius
-  for(const auto& tmp : output)
-  {
-    uint64_t temp_C;
+  for (const auto& tmp : output) {
     ptree_type pt;
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
-    temp_C = std::stoull(xrt_core::utils::format_base10_shiftdown3(tmp.input));
-    pt.put("temp_C", temp_C);
-    pt.put("highest", xrt_core::utils::format_base10_shiftdown3(tmp.highest));
+    pt.put("temp_C", tmp.input);
     pt.put("is_present", "true");
     thermal_array.push_back({"", pt});
   }
@@ -250,19 +242,18 @@ read_data_driven_thermals(const std::vector<xq::sdm_sensor_info::data_type>& out
 }
 
 static ptree_type
-read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type> output)
+read_data_driven_mechanical(std::vector<xq::sdm_sensor_info::data_type>& output)
 {
   ptree_type root;
   ptree_type pt;
   ptree_type fan_array;
 
   // iterate over output data, store it into property_tree
-  for(const auto& tmp : output)
-  {
+  for (const auto& tmp : output) {
     pt.put("location_id", tmp.label);
     pt.put("description", tmp.label);
-    pt.put("speed_rpm", tmp.input);
     pt.put("critical_trigger_temp_C", "N/A");
+    pt.put("speed_rpm", tmp.input);
     pt.put("is_present", "true");
     fan_array.push_back({"", pt});
   }
