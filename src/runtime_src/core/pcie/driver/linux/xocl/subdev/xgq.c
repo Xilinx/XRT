@@ -90,7 +90,7 @@ static DEFINE_IDR(xocl_xgq_vmr_cid_idr);
  * reserved shared memory size and number for log page.
  * currently, only 1 resource controlled by sema. Can be extended to n.
  */
-#define LOG_PAGE_SIZE	(1024 * 64)
+#define LOG_PAGE_SIZE	(1024 * 1024)
 #define LOG_PAGE_NUM	1
 
 /*
