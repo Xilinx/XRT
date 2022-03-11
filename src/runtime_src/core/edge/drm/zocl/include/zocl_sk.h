@@ -17,6 +17,7 @@
 #define _ZOCL_SK_H_
 
 #include "ps_kernel.h"
+#include "xrt_cu.h"
 
 #define	MAX_SOFT_KERNEL		128
 
@@ -83,10 +84,18 @@ struct soft_krnl_cmd {
 	struct config_sk_image	*skc_packet;
 };
 
+struct zocl_scu {
+	struct xrt_cu		 base;
+	struct platform_device	*pdev;
+	spinlock_t		 lock;
+};
+
 int zocl_init_soft_kernel(struct drm_zocl_dev *zdev);
 void zocl_fini_soft_kernel(struct drm_zocl_dev *zdev);
 extern struct platform_device *zert_get_scu_pdev(struct platform_device *pdev, u32 cu_idx);
 extern int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, struct drm_file *filp, int *boHandle);
 extern int zocl_scu_wait_cmd_sk(struct platform_device *pdev);
+extern int zocl_scu_sk_ready(struct platform_device *pdev);
+extern int zocl_scu_sk_crash(struct platform_device *pdev);
 
 #endif

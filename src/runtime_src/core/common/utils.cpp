@@ -50,6 +50,14 @@ precision(double value, int p)
 namespace xrt_core { namespace utils {
 
 std::string
+get_hostname()
+{
+  boost::property_tree::ptree pt_os_info;
+  xrt_core::get_os_info(pt_os_info);
+  return pt_os_info.get("hostname", "");
+}
+
+std::string
 parse_cu_status(unsigned int val)
 {
   char delim = '(';

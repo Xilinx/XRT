@@ -422,6 +422,7 @@ struct drm_zocl_axlf {
 	int			za_ksize;
 	char			*za_kernels;
 	uint32_t		za_slot_id;
+	char			*za_dtbo_path;
 	struct drm_zocl_kds	kds_cfg;
 };
 
@@ -488,6 +489,8 @@ struct drm_zocl_sk_create {
  */
 enum drm_zocl_scu_state {
 	ZOCL_SCU_STATE_DONE,
+	ZOCL_SCU_STATE_READY,
+	ZOCL_SCU_STATE_CRASH,
 };
 
 /**

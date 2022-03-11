@@ -663,6 +663,46 @@ struct accel_deadlock_status
   }
 };
 
+struct dtbo_path
+{
+  using result_type = query::dtbo_path::result_type;
+  using slot_id_type = query::dtbo_path::slot_id_type;
+
+  static result_type
+  get(const xrt_core::device* device, key_type key, const boost::any& slot_id)
+  {
+    std::vector<std::string> dtbo_path_vec;
+    std::string errmsg;
+    auto edev = get_edgedev(device);
+    edev->sysfs_get("dtbo_path", errmsg, dtbo_path_vec);
+    if (!errmsg.empty() || dtbo_path_vec.empty()) {
+      // sysfs node is not accessible when bitstream is not loaded
+      return {};
+    }
+
+    // sysfs node data eg:
+    // <slot_id> <dtbo_path>
+    //     0     <path 0>
+    //     1     <path 1>
+    using tokenizer = boost::tokenizer< boost::char_separator<char> >;
+    for(auto &line : dtbo_path_vec) {
+      boost::char_separator<char> sep(" ");
+      tokenizer tokens(line, sep);
+
+      if (std::distance(tokens.begin(), tokens.end()) != 2)
+        throw xrt_core::query::sysfs_error("xclbinid sysfs node corrupted");
+
+      tokenizer::iterator tok_it = tokens.begin();
+
+      uint32_t slotId = static_cast<slot_id_type>(std::stoi(std::string(*tok_it++)));
+      if(slotId == boost::any_cast<slot_id_type>(slot_id))
+        return std::string(*tok_it);
+    }
+    //if we reach here no matching slot is found
+    throw xrt_core::query::sysfs_error("no matching slot is found");
+  }
+};
+
 // Specialize for other value types.
 template <typename ValueType>
 struct sysfs_fcn
@@ -859,6 +899,7 @@ initialize_query_table()
   emplace_func4_request<query::lapc_status,             lapc_status>();
   emplace_func4_request<query::spc_status,              spc_status>();
   emplace_func4_request<query::accel_deadlock_status,   accel_deadlock_status>();
+  emplace_func4_request<query::dtbo_path,               dtbo_path>();
 }
 
 struct X { X() { initialize_query_table(); } };

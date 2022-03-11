@@ -64,7 +64,6 @@ static void sigLog(const int sig)
     }
     exit(EXIT_SUCCESS);
   } else {
-    syslog(LOG_ERR, "%s - got %d\n", __func__, sig);
     stacktrace_logger(sig);
     exit(EXIT_FAILURE);
   }
@@ -123,6 +122,7 @@ void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
 	syslog(LOG_ERR, "Soft kernel initialization failed!\n");
 	goto err;
       }
+      skd_inst->report_ready();
       skd_inst->run();
 err:
       syslog(LOG_INFO, "Kernel %s was terminated\n", cmd->krnl_name);

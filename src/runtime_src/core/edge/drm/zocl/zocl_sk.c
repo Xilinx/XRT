@@ -144,7 +144,6 @@ zocl_sk_create_ioctl(struct drm_device *dev, void *data, struct drm_file *filp)
 	}
 
 	ret = zocl_scu_create_sk(scu_pdev,task_pid_nr(current),task_ppid_nr(current), filp, &boHandle);
-
 	if (ret) {
 		DRM_WARN("%s Failed to create SK command BO handle: %d\n",
 			 __func__, ret);
@@ -172,17 +171,30 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 	scu_pdev = zert_get_scu_pdev(zert, cu_idx);
-	scu = platform_get_drvdata(scu_pdev);
-	if (!scu) {
-		DRM_ERROR("SCU %d does not exist.\n", cu_idx);
+	if (scu_pdev) {
+		scu = platform_get_drvdata(scu_pdev);
+		if (!scu) {
+			DRM_ERROR("SCU %d does not exist.\n", cu_idx);
+			return -EINVAL;
+		}
+	} else
 		return -EINVAL;
-	}
 
 	switch (state) {
 
 	case ZOCL_SCU_STATE_DONE:
 
 		ret = zocl_scu_wait_cmd_sk(scu_pdev);
+		break;
+
+	case ZOCL_SCU_STATE_READY:
+
+		ret = zocl_scu_sk_ready(scu_pdev);
+		break;
+
+	case ZOCL_SCU_STATE_CRASH:
+
+		ret = zocl_scu_sk_crash(scu_pdev);
 		break;
 
 	default:

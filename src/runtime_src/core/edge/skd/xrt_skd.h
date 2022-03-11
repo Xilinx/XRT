@@ -84,6 +84,9 @@ class skd
   void
   fini();
 
+  void report_ready();
+  void report_crash();
+
  private:
     xclDeviceHandle devHdl;
     xrtDeviceHandle xrtdHdl;

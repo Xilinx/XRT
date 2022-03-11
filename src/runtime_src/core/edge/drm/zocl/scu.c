@@ -12,13 +12,6 @@
 
 #include "zocl_drv.h"
 #include "zocl_sk.h"
-#include "xrt_cu.h"
-
-struct zocl_scu {
-	struct xrt_cu		 base;
-	struct platform_device	*pdev;
-	spinlock_t		 lock;
-};
 
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -146,16 +139,11 @@ static int scu_probe(struct platform_device *pdev)
 	memcpy(&zcu->base.info, info, sizeof(struct xrt_cu_info));
 
 	zdev = zocl_get_zdev();
-	err = zocl_kds_add_scu(zdev, &zcu->base);
-	if (err) {
-		DRM_ERROR("Not able to add SCU %p to KDS", zcu);
-		goto err;
-	}
 
 	err = xrt_cu_scu_init(&zcu->base);
 	if (err) {
 		DRM_ERROR("Not able to initial SCU %p\n", zcu);
-		goto err2;
+		goto err;
 	}
 
 	platform_set_drvdata(pdev, zcu);
@@ -167,11 +155,9 @@ static int scu_probe(struct platform_device *pdev)
 	err = configure_soft_kernel(info->cu_idx,info->kname,info->uuid);
 	if (err)
 		zocl_err(&pdev->dev, "configuring SCU failed: %d", err);
-	
+
 	zocl_info(&pdev->dev, "SCU[%d] created", info->cu_idx);
 	return 0;
-err2:
-	zocl_kds_del_scu(zdev, &zcu->base);
 err:
 	kfree(zcu);
 	return err;
@@ -180,8 +166,6 @@ err:
 static int scu_remove(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
-	struct xrt_cu *xcu = &zcu->base;
-	struct xrt_cu_scu *cu_scu = xcu->core;
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct xrt_cu_info *info = &zcu->base.info;
 
@@ -232,7 +216,6 @@ int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, st
 	}
 	cu_scu->sc_pid = pid;
 	cu_scu->sc_parent_pid = parent_pid;
-	sema_init(&cu_scu->sc_sem, 0);
 	ret = drm_gem_handle_create(filp,
 				    &cu_scu->sc_bo->cma_base.base, boHandle);
 	return(ret);
@@ -261,6 +244,23 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 
 	/* Clear Bit 1 and set Bit 0 */
 	*vaddr = 1 | (*vaddr & ~3);
+
+	return 0;
+}
+int zocl_scu_sk_ready(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+
+	up(&cu_scu->sc_sem);
+	return 0;
+}
+int zocl_scu_sk_crash(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
 
 	return 0;
 }

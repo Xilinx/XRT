@@ -200,7 +200,6 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 	header = xrt_xclbin_get_section_hdr_next(axlf, EMBEDDED_METADATA, header);
 	if(header) {
 		DRM_INFO("Found EMBEDDED_METADATA section\n");
-		DRM_INFO("EMBEDDED_METADATA section size = %d\n",header->m_sectionSize);
 	} else {
 		DRM_ERROR("EMBEDDED_METADATA section not found!\n");
 		mutex_unlock(&sk->sk_lock);
@@ -223,12 +222,12 @@ zocl_load_pskernel(struct drm_zocl_dev *zdev, struct axlf *axlf)
 
 	header = xrt_xclbin_get_section_hdr_next(axlf, SOFT_KERNEL, header);
 	while (header) {
-		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		struct soft_kernel *sp =
 		    (struct soft_kernel *)&xclbin[header->m_sectionOffset];
 		char *begin = (char *)sp;
 		struct scu_image *sip = &sk->sk_img[sec_idx++];
 
+		DRM_INFO("Found soft kernel %d\n",sec_idx);
 		sip->si_start = scu_idx;
 		sip->si_end = scu_idx + sp->m_num_instances - 1;
 		if (sip->si_end >= MAX_SOFT_KERNEL) {
@@ -1463,6 +1462,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
+	zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
@@ -1671,6 +1671,7 @@ zocl_xclbin_init(struct drm_zocl_slot *slot)
 	}
 
 	z_xclbin->zx_refcnt = 0;
+	z_xclbin->zx_dtbo_path = NULL;
 	z_xclbin->zx_uuid = NULL;
 
 	slot->slot_xclbin = z_xclbin;
@@ -1700,4 +1701,33 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 
 	/* Delete CU devices if exist for this slot */
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+}
+
+/*
+ * Set dtbo path for this slot.
+ *
+ * @param       slot:   slot specific structure
+ * @param       dtbo_path: path that stores device tree overlay
+ *
+ * @return      0 on success Error code on failure.
+ */
+int
+zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
+{
+        char *path = slot->slot_xclbin->zx_dtbo_path;
+
+        if (path) {
+                vfree(path);
+                path = NULL;
+        }
+
+	if(dtbo_path) {
+		path = vmalloc(strlen(dtbo_path) + 1);
+		if (!path)
+			return -ENOMEM;
+		copy_from_user(path, dtbo_path, strlen(dtbo_path));
+	}
+
+        slot->slot_xclbin->zx_dtbo_path = path;
+        return 0;
 }

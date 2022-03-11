@@ -777,7 +777,7 @@ kds_add_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	u32 prop = 0;
 	bool shared;
 	int ret = 0;
@@ -830,7 +830,7 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
 
@@ -1183,18 +1183,6 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 		kds_del_context(kds, client, &info);
 	}
 
-	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
-	while (bit < MAX_CUS) {
-		/* Check whether this CU belongs to current slot */
-	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0)) {
-			info.cu_idx = bit;
-			info.cu_domain = 0;
-			info.curr_ctx = cctx;
-			kds_del_context(kds, client, &info);
-		}
-		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
-	};
-	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	bit = find_first_bit(client->scu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this SCU belongs to current slot */
@@ -1204,9 +1192,23 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 			info.curr_ctx = cctx;
 			kds_del_context(kds, client, &info);
 		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
 		bit = find_next_bit(client->scu_bitmap, MAX_CUS, bit + 1);
 	};
 	bitmap_zero(client->scu_bitmap, MAX_CUS);
+	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
+	while (bit < MAX_CUS) {
+		/* Check whether this CU belongs to current slot */
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0)) {
+			info.cu_idx = bit;
+			info.cu_domain = 0;
+			info.curr_ctx = cctx;
+			kds_del_context(kds, client, &info);
+		}
+		kds_info(client,"Removing CU Domain[%d] CU Index [%d]",info.cu_domain,info.cu_idx);
+		bit = find_next_bit(client->cu_bitmap, MAX_CUS, bit + 1);
+	};
+	bitmap_zero(client->cu_bitmap, MAX_CUS);
 	mutex_unlock(&client->lock);
 
 	WARN_ON(cctx->num_ctx);
@@ -1277,8 +1279,8 @@ int kds_add_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	++cctx->num_ctx;
-	kds_info(client, "Client pid(%d) add context CU(0x%x) shared(%s)",
-		 pid_nr(client->pid), cu_idx, shared? "true" : "false");
+	kds_info(client, "Client pid(%d) add context Domain(%d) CU(0x%x) shared(%s)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx, shared? "true" : "false");
 	return 0;
 }
 
@@ -1322,8 +1324,8 @@ int kds_del_context(struct kds_sched *kds, struct kds_client *client,
 	}
 
 	--cctx->num_ctx;
-	kds_info(client, "Client pid(%d) del context CU(0x%x)",
-		 pid_nr(client->pid), cu_idx);
+	kds_info(client, "Client pid(%d) del context Domain(%d) CU(0x%x)",
+		 pid_nr(client->pid), info->cu_domain, cu_idx);
 	return 0;
 }
 
@@ -1404,6 +1406,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			continue;
 
 		cu_mgmt->xcus[i] = NULL;
+		cu_mgmt->cu_intr[i] = 0;
 		--cu_mgmt->num_cus;
 		cu_stat_write(cu_mgmt, usage[i], 0);
 		break;
@@ -1441,7 +1444,7 @@ int kds_add_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 int kds_del_scu(struct kds_sched *kds, struct xrt_cu *xcu)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	int i;
+	int i = 0;
 
 	if (scu_mgmt->num_cus == 0)
 		return -EINVAL;
@@ -1641,8 +1644,9 @@ int kds_cfg_update(struct kds_sched *kds)
 			if (!xcu)
 				continue;
 			if (!xcu->info.intr_enable) {
-				kds->cu_intr = false;
 				u32 cu_idx = xcu->info.cu_idx;
+
+				kds->cu_intr = false;
 				xcu_info(xcu, "CU(%d) doesnt support interrupt, running polling thread for all cus", cu_idx);
 				goto run_polling;
 			}
