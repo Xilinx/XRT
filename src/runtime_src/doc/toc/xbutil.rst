@@ -73,7 +73,7 @@ The command ``xbutil validate`` validates the installed card by running precompi
 
 .. code-block:: shell
 
-   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename>
+   xbutil validate [--device| -d] <user bdf> [--run| -r] <test> [--format| -f] <report format> [--output| -o] <filename> [--param] <test>:<key>:<value>
  
  
 
@@ -107,6 +107,8 @@ The command ``xbutil validate`` validates the installed card by running precompi
     
 - The ``--output`` (or ``-o``) specifies the output file to direct the output
 
+- The ``--param`` specifies the extended parameters that can be passed to a test
+
 
 **Example commands**
 
@@ -121,6 +123,9 @@ The command ``xbutil validate`` validates the installed card by running precompi
  
     # Run "DMA" and "Validate Kernel" test and generates Json format
     xbutil validate --device 0000:b3:00.1 --run DMA "Verify Kernel" --format JSON --output xyz.json
+
+    # Pass in a custom block size to dma test
+    xbutil validate --device 0000:b3:00.1 --run DMA --param dma:block-size:1024
 
 
 xbutil examine 
