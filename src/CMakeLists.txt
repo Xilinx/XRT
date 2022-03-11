@@ -48,7 +48,6 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   -Wno-delete-non-abstract-non-virtual-dtor
   -Wno-overloaded-virtual 
   -Wno-non-pod-varargs 
-  -Wno-dangling        
   -Wno-shift-negative-value
    )
 else()
