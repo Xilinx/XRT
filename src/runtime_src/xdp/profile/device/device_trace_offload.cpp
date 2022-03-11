@@ -253,7 +253,8 @@ read_trace_fifo(bool)
   if (!fifo_full) {
     auto fifo_size = dev_intf->getFifoSize();
 
-    if ((num_packets >= fifo_size) && (has_finite_fifo()))
+    // hw emulation has infinite fifo
+    if ((num_packets >= fifo_size) && (xdp::getFlowMode() == xdp::Flow::HW))
       fifo_full = true;
   }
 }

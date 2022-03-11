@@ -170,11 +170,6 @@ private:
   void process_trace_continuous();
   void read_leftover_circular_buf();
 
-private:
-  bool has_finite_fifo() {
-    return (xdp::getFlowMode() == xdp::Flow::HW);
-  };
-
 protected:
   DeviceIntf* dev_intf;
   bool m_initialized = false;
