@@ -124,7 +124,7 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   for (auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
     std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv"), dev.get<std::string>("id"), dev.get<std::string>("instance")};
+    std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a")};
     device_table.addEntry(entry_data);
   }
 
