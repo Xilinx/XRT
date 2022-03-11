@@ -565,9 +565,6 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       boost::property_tree::ptree tile;
       tile.put("column", node.second.data());
       tile.put("row", dma_row_it->second.data());
-      int row = tile.get<int>("row");
-      int col = tile.get<int>("column");
-
       // Check whether this core is already added
       if (is_duplicate_core(tile_array, tile))
         continue;
