@@ -47,7 +47,6 @@ if ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" )
   # These are dangerous and should be reviewed
   -Wno-delete-non-abstract-non-virtual-dtor
   -Wno-overloaded-virtual 
-  -Wno-string-plus-int
   -Wno-non-pod-varargs 
   -Wno-dangling        
   -Wno-shift-negative-value
