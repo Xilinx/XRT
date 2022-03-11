@@ -198,44 +198,57 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   xrt_core::device_collection deviceCollection;  // The collection of devices to examine
 
   bool is_report_output_valid = true;
-  try {
-    // Collect the reports to be processed
-    XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
+  // Collect the reports to be processed
+  XBU::collect_and_validate_reports(fullReportCollection, reportNames, reportsToProcess);
 
-    // Collect all of the devices of interest
-    std::set<std::string> deviceNames;
-    if (!sDevice.empty()) 
-      deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
+  // Collect all of the devices of interest
+  std::set<std::string> deviceNames;
+  if (!sDevice.empty())
+    deviceNames.insert(boost::algorithm::to_lower_copy(sDevice));
 
-    XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
-    // DRC check on devices and reports
-    if (deviceCollection.empty()) {
-      std::vector<std::string> missingReports;
-      for (const auto & report : reportsToProcess) {
-        if (report->isDeviceRequired())
-          missingReports.push_back(report->getReportName());
-      }
-      if (!missingReports.empty()) {
-        is_report_output_valid = false;
-        auto dev_pt = XBU::get_available_devices(true);
-        if(dev_pt.empty())
-          std::cout << "0 devices found" << std::endl;
-        else
-          std::cout << "Device list" << std::endl;
+  XBU::collect_devices(deviceNames, true /*inUserDomain*/, deviceCollection);
 
-        for(auto& kd : dev_pt) {
-          boost::property_tree::ptree& dev = kd.second;
-          std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
-          std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
-        }
+  // enforce 1 device specification
+  if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
+    std::cerr << "\nERROR: Programming multiple device is not supported. Please specify a single device using --device option\n\n";
+    std::cout << "List of available devices:" << std::endl;
+    boost::property_tree::ptree available_devices = XBU::get_available_devices(true);
+    for(auto& kd : available_devices) {
+      boost::property_tree::ptree& _dev = kd.second;
+      std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
+    }
+    std::cout << std::endl;
+    throw xrt_core::error(std::errc::operation_canceled);
+  }
 
-        std::cerr << boost::format("Error: The following report(a) require specifying a device using the --device option:\n");
-        for (const auto & report : missingReports)
-          std::cout << boost::format("         - %s\n") % report;
+  // DRC check on devices and reports
+  if (deviceCollection.empty()) {
+    std::vector<std::string> missingReports;
+    for (const auto & report : reportsToProcess) {
+      if (report->isDeviceRequired())
+        missingReports.push_back(report->getReportName());
+    }
+
+    if (!missingReports.empty()) {
+      is_report_output_valid = false;
+      // Print error message
+      std::cerr << boost::format("Error: The following report(s) require specifying a device using the --device option:\n");
+      for (const auto & report : missingReports)
+        std::cout << boost::format("         - %s\n") % report;
+
+      // Print available devices
+      auto dev_pt = XBU::get_available_devices(true);
+      if(dev_pt.empty())
+        std::cout << "0 devices found" << std::endl;
+      else
+        std::cout << "Device list" << std::endl;
+
+      for(auto& kd : dev_pt) {
+        boost::property_tree::ptree& dev = kd.second;
+        std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+        std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
       }
     }
-  } catch (const std::runtime_error& e) {
-    XBU::print_exception_and_throw_cancel(e);
   }
 
   // Create the report
