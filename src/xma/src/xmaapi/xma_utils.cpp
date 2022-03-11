@@ -120,7 +120,7 @@ namespace xma_core {
                 std::string cu_name{ reinterpret_cast<char*>(priv->kernel_info->name) };
                 auto pos = cu_name.find(":");
                 if (pos == std::string::npos) {
-                    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo - Invalid cu name %s\n", cu_name);
+                    xma_logmsg(XMA_ERROR_LOG, XMAUTILS_MOD, "create_session_execbo - Invalid cu name %s\n", cu_name.c_str());
                     return XMA_ERROR;
                 }
                 std::string kernel_name = cu_name.substr(0, pos);
