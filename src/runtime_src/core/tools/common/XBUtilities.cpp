@@ -120,7 +120,6 @@ XBUtilities::get_available_devices(bool inUserDomain)
        pt_dev.put("instance",boost::str(boost::format("%s(inst=%d)") % pf % instance));
      } catch(const xrt_core::query::exception&) {
          // The instance wasn't added
-         pt_dev.put("instance", "n/a");
        }
 
     }
