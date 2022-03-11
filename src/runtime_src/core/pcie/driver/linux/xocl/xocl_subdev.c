@@ -1718,12 +1718,10 @@ int xocl_subdev_create_vsec_devs(xdev_handle_t xdev)
 		xocl_xdev_dbg(xdev, "xdev flash_type %s", core->priv.flash_type);
 
 		ret = xocl_subdev_create(xdev, &subdev_info);
-		if (ret) {
-			xocl_xdev_err(xdev, "Create VMR subdev failed. %d", ret);
+		if (ret)
 			goto done;
-		}
 
-		xocl_xdev_dbg(xdev, "VSEC VMR created.");
+		xocl_xdev_info(xdev, "VSEC VMR created.");
 	}
 
 	ret = xocl_subdev_vsec(xdev, XOCL_VSEC_MAILBOX, &bar, &offset, NULL);
