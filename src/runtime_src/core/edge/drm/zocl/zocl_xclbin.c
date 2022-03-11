@@ -125,8 +125,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 {
 	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
-	unsigned int i = 0;
-	char temp;
+	size_t i;
 
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
@@ -141,27 +140,17 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	}
 
 	/*
-	 * Can we do this more efficiently by APIs from byteorder.h?
+	 * Swap bytes to big endian
 	 */
 	data = buffer + bit_header.HeaderLength;
-	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
-		temp = data[i];
-		data[i] = data[i+3];
-		data[i+3] = temp;
-
-		temp = data[i+1];
-		data[i+1] = data[i+2];
-		data[i+2] = temp;
-	}
+	for (i = 0; i < (bit_header.BitstreamLength / 4) ; ++i)
+		cpu_to_be32s((u32*)(data) + i);
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (slot->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength,
-					 slot);
-	else {
-		/* 0 is for full bitstream */
-		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
-	}
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
+	/* 0 is for full bitstream */
+	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 }
 
 static int
