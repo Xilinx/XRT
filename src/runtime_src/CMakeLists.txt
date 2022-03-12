@@ -25,7 +25,7 @@ add_compile_options("-fPIC")
 
 # TODO CL_TARGET_OPENCL_VERSION is not defined..
 if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_compile_options("-Wall" "-Werror")
+  add_compile_options( ${XRT_WARN_OPTS} )
 endif()
 add_subdirectory(xdp)
 
@@ -64,7 +64,7 @@ else()
   else()
     # lots of warnings and all warnings as errors
     # add_compile_options(-Wall -Wextra -pedantic -Werror)
-    add_compile_options("-Wall" "-Werror")
+    add_compile_options( ${XRT_WARN_OPTS} )
   endif()
 
   # Build Subdirectories

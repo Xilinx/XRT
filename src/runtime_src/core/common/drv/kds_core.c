@@ -1404,6 +1404,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			continue;
 
 		cu_mgmt->xcus[i] = NULL;
+		cu_mgmt->cu_intr[i] = 0;
 		--cu_mgmt->num_cus;
 		cu_stat_write(cu_mgmt, usage[i], 0);
 		break;
