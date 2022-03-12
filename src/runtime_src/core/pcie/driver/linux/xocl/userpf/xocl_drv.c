@@ -953,7 +953,7 @@ int xocl_refresh_subdevs(struct xocl_dev *xdev)
 		ret = xocl_hwmon_sdm_init(xdev);
 		if (ret) {
 			userpf_err(xdev, "failed to init hwmon_sdm driver, err: %d", ret);
-			ret = 0;
+			goto failed;
 		}
 	}
 
