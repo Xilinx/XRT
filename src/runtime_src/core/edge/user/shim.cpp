@@ -28,7 +28,11 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/error.h"
+<<<<<<< HEAD
 #include "core/include/xrt/xrt_uuid.h"
+=======
+#include "core/edge/common/aie_parser.h"
+>>>>>>> 637c47c... Disabling resources and error managemen for aie-ml
 
 #include <cerrno>
 #include <iostream>
@@ -707,6 +711,9 @@ xclLoadAxlf(const axlf *buffer)
 
 #endif
 
+    /* Get the AIE_METADATA and get the hw_gen information */
+    uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
+
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
       .za_flags = flags,
@@ -714,6 +721,7 @@ xclLoadAxlf(const axlf *buffer)
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
       .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
+      .hw_gen = hw_gen,
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();

@@ -415,6 +415,8 @@ struct drm_zocl_kds {
  * @za_flags:   platform flags
  * @za_ksize:	size of kernels in bytes
  * @za_kernels:	pointer of argument array
+ * @za_slot_id:	xclbin slot
+ * @hw_gen:	aie generation
  **/
 struct drm_zocl_axlf {
 	struct axlf		*za_xclbin_ptr;
@@ -423,6 +425,7 @@ struct drm_zocl_axlf {
 	char			*za_kernels;
 	uint32_t		za_slot_id;
 	char			*za_dtbo_path;
+	uint8_t		        hw_gen;
 	struct drm_zocl_kds	kds_cfg;
 };
 
