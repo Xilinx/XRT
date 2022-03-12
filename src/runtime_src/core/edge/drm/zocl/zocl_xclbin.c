@@ -915,7 +915,8 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 
 	// Cache full xclbin
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	//last argument represents aie generation. 1. aie, 2. aie-ml ...
+	zocl_create_aie(zdev, axlf, aie_res,1);
 	write_lock(&zdev->attr_rwlock);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
@@ -1162,6 +1163,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
+	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	if (slot_id > zdev->num_pr_slot) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
@@ -1237,7 +1239,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
 					write_unlock(&zdev->attr_rwlock);
-					zocl_create_aie(zdev, axlf, aie_res);
+					zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(slot, axlf, xclbin);
 				}
@@ -1456,7 +1458,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Createing AIE Partition */
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 	write_lock(&zdev->attr_rwlock);
 
 	/*
