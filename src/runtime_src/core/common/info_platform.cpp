@@ -135,7 +135,16 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
 
   try {
     ptree_type sc;
-    sc.add("version", xrt_core::device_query<xq::xmc_sc_version>(device));
+    std::string sc_ver = xrt_core::device_query<xq::xmc_sc_version>(device);
+    if (sc_ver.empty()) {
+      try {
+        sc_ver = xrt_core::device_query<xq::hwmon_sdm_active_msp_ver>(device);
+      }
+      catch (const xq::no_such_key&) {
+        // Ignoring if not available
+      }
+    }
+    sc.add("version", sc_ver);
     sc.add("expected_version", xrt_core::device_query<xq::expected_sc_version>(device));
     ptree_type cmc;
 
