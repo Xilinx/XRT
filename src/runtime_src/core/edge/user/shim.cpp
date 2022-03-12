@@ -28,11 +28,8 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/error.h"
-<<<<<<< HEAD
 #include "core/include/xrt/xrt_uuid.h"
-=======
 #include "core/edge/common/aie_parser.h"
->>>>>>> 637c47c... Disabling resources and error managemen for aie-ml
 
 #include <cerrno>
 #include <iostream>
