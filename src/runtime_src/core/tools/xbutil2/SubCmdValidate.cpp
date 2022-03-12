@@ -1162,16 +1162,22 @@ m2mTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
 void
 hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptree& _ptTest)
 {
-  uint64_t enabled_host_mem = 0;
+  auto shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(_dev);
+
   try {
-    enabled_host_mem = xrt_core::device_query<xrt_core::query::enabled_host_mem>(_dev);
+    xrt_core::device_query<xrt_core::query::enabled_host_mem>(_dev);
   } catch(...) {
-    logger(_ptTest, "Details", "Address translator IP is not available");
-    _ptTest.put("status", test_token_skipped);
+    if (shared_host_mem) {
+        logger(_ptTest, "Details", "Host memory is enabled, device does not support the feature");
+        _ptTest.put("status", test_token_failed);
+    } else {
+        logger(_ptTest, "Details", "Address translator IP is not available");
+        _ptTest.put("status", test_token_skipped);
+    }
     return;
   }
 
-  if (!enabled_host_mem) {
+  if (!shared_host_mem) {
       logger(_ptTest, "Details", "Host memory is not enabled");
       _ptTest.put("status", test_token_skipped);
       return;
