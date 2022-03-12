@@ -1932,6 +1932,7 @@ static int xgq_ospi_close(struct inode *inode, struct file *file)
 
 static int xgq_vmr_remove(struct platform_device *pdev)
 {
+	xdev_handle_t xdev = xocl_get_xdev(pdev);
 	struct xocl_xgq_vmr	*xgq;
 	void *hdl;
 
@@ -1950,6 +1951,8 @@ static int xgq_vmr_remove(struct platform_device *pdev)
 		iounmap(xgq->xgq_payload_base);
 	if (xgq->xgq_sq_base)
 		iounmap(xgq->xgq_sq_base);
+
+	xocl_subdev_destroy_by_id(xdev, XOCL_SUBDEV_HWMON_SDM);
 
 	sysfs_remove_group(&pdev->dev.kobj, &xgq_attr_group);
 	mutex_destroy(&xgq->xgq_lock);
