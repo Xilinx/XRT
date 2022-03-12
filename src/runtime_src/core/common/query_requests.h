@@ -260,6 +260,7 @@ enum class key_type
   get_xclbin_data,
   aie_get_freq,
   aie_set_freq,
+  dtbo_path,
 
   boot_partition,
   flush_default_only,
@@ -695,6 +696,20 @@ struct xclbin_uuid : request
 
   virtual boost::any
   get(const device*) const = 0;
+};
+
+// dtbo_path is unique path used by libdfx library to load bitstream and device tree
+// overlay(dtbo), this query reads dtbo_path from sysfs node
+// Applicable only for embedded platforms
+struct dtbo_path : request
+{
+  using result_type = std::string;
+  using slot_id_type = uint32_t;
+
+  static const key_type key = key_type::dtbo_path;
+
+  virtual boost::any
+  get(const device*, const boost::any& slot_id) const = 0;
 };
 
 struct group_topology : request

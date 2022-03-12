@@ -802,7 +802,7 @@ public:
   }
 
   xclbin::target_type
-  get_target_type() const
+  get_target_type() const override
   {
     switch (m_top->m_header.m_mode) {
     case XCLBIN_FLAT:

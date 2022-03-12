@@ -15,10 +15,10 @@ user:
   host_exe: host.exe
   host_src: main.cpp
   kernels:
-  - {cflags: {add: ' -I.'}, file: hello.xo, ksrc: hello.cl, name: hello, type: C}
+  - {cflags: {add: ' -I.'}, file: kernel.xo, ksrc: kernel.cl, name: hello, type: C}
   name: 22_verify
   xclbins:
-  - files: 'hello.xo '
+  - files: 'kernel.xo '
     kernels:
     - cus: [hello_1]
       name: hello

@@ -451,7 +451,22 @@ struct mac_addr_list
     for (int i=0; i < LEGACY_COUNT; i++) {
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
-      list.push_back(addr);
+      if (!addr.empty())
+        list.push_back(addr);
+    }
+
+    if (list.empty()) {
+      //check if the data can be retrieved from vmr.
+      std::string errmsg;
+      int i = 0;
+      do {
+        std::string addr;
+        errmsg.clear();
+        pdev->sysfs_get("hwmon_sdm", "mac_addr"+std::to_string(i), errmsg, addr);
+        if (!addr.empty())
+          list.push_back(addr);
+        i++;
+      } while (errmsg.empty());
     }
 
     return list;

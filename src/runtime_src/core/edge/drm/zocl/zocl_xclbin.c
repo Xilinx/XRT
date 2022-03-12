@@ -125,8 +125,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 {
 	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
-	unsigned int i = 0;
-	char temp;
+	size_t i;
 
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
@@ -141,27 +140,17 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	}
 
 	/*
-	 * Can we do this more efficiently by APIs from byteorder.h?
+	 * Swap bytes to big endian
 	 */
 	data = buffer + bit_header.HeaderLength;
-	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
-		temp = data[i];
-		data[i] = data[i+3];
-		data[i+3] = temp;
-
-		temp = data[i+1];
-		data[i+1] = data[i+2];
-		data[i+2] = temp;
-	}
+	for (i = 0; i < (bit_header.BitstreamLength / 4) ; ++i)
+		cpu_to_be32s((u32*)(data) + i);
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (slot->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength,
-					 slot);
-	else {
-		/* 0 is for full bitstream */
-		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
-	}
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
+	/* 0 is for full bitstream */
+	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 }
 
 static int
@@ -915,7 +904,8 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 
 	// Cache full xclbin
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	//last argument represents aie generation. 1. aie, 2. aie-ml ...
+	zocl_create_aie(zdev, axlf, aie_res,1);
 	write_lock(&zdev->attr_rwlock);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
@@ -1162,6 +1152,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
+	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	if (slot_id > zdev->num_pr_slot) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
@@ -1237,7 +1228,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
 					write_unlock(&zdev->attr_rwlock);
-					zocl_create_aie(zdev, axlf, aie_res);
+					zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(slot, axlf, xclbin);
 				}
@@ -1456,13 +1447,14 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Createing AIE Partition */
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 	write_lock(&zdev->attr_rwlock);
 
 	/*
 	 * Remember xclbin_uuid for opencontext.
 	 */
 	slot->slot_xclbin->zx_refcnt = 0;
+	zocl_xclbin_set_dtbo_path(slot, axlf_obj->za_dtbo_path);
 	zocl_xclbin_set_uuid(slot, &axlf_head.m_header.uuid);
 
 	/*
@@ -1671,6 +1663,7 @@ zocl_xclbin_init(struct drm_zocl_slot *slot)
 	}
 
 	z_xclbin->zx_refcnt = 0;
+	z_xclbin->zx_dtbo_path = NULL;
 	z_xclbin->zx_uuid = NULL;
 
 	slot->slot_xclbin = z_xclbin;
@@ -1700,4 +1693,33 @@ zocl_xclbin_fini(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 
 	/* Delete CU devices if exist for this slot */
 	zocl_destroy_cu_slot(zdev, slot->slot_idx);
+}
+
+/*
+ * Set dtbo path for this slot.
+ *
+ * @param       slot:   slot specific structure
+ * @param       dtbo_path: path that stores device tree overlay
+ *
+ * @return      0 on success Error code on failure.
+ */
+int
+zocl_xclbin_set_dtbo_path(struct drm_zocl_slot *slot, char *dtbo_path)
+{
+        char *path = slot->slot_xclbin->zx_dtbo_path;
+
+        if (path) {
+                vfree(path);
+                path = NULL;
+        }
+
+	if(dtbo_path) {
+		path = vmalloc(strlen(dtbo_path) + 1);
+		if (!path)
+			return -ENOMEM;
+		copy_from_user(path, dtbo_path, strlen(dtbo_path));
+	}
+
+        slot->slot_xclbin->zx_dtbo_path = path;
+        return 0;
 }
