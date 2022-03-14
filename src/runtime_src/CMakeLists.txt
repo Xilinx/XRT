@@ -29,11 +29,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
 endif()
 add_subdirectory(xdp)
 
-# TODO version.h was included.
-# Remove this limitation once we can generate version.h for mpsoc.
-if (${XRT_NATIVE_BUILD} STREQUAL "yes")
-  add_subdirectory(tools/xclbinutil)
-endif()
+add_subdirectory(tools/xclbinutil)
 add_subdirectory(xocl)
 add_subdirectory(xrt)
 add_subdirectory(ert)
