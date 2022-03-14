@@ -246,6 +246,8 @@ using addr_type = uint64_t;
        */
       std::string mRunDeviceBinDir;
 
+      std::vector<std::string> parsedMsgs;
+
       //QDMA Support
       int xclCreateWriteQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
       int xclCreateReadQueue(xclQueueContext *q_ctx, uint64_t *q_hdl);
@@ -282,7 +284,7 @@ using addr_type = uint64_t;
       //CR-1120081
       void parseString(const std::string& simPath , const std::string& searchString);
       //CR-1120700
-      int parseLog(std::ifstream& ifs);
+      int parseLog();
       void parseSimulateLog();
       void setSimPath(std::string simPath) { sim_path = simPath; }
       std::string getSimPath () { return sim_path; }

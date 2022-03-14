@@ -204,10 +204,12 @@ namespace xclhwemhal2 {
     return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
   }
 
-  int HwEmShim::parseLog(std::ifstream &ifs)
+  int HwEmShim::parseLog()
   {
     std::vector<std::string> myvector = {"SIM-IPC's external process can be connected to instance",
                                          "SystemC TLM functional mode"};
+
+    std::ifstream ifs(getSimPath() + "/simulate.log");
 
     if (ifs.is_open()) {
       std::string line;
@@ -215,9 +217,10 @@ namespace xclhwemhal2 {
         for (auto matchString : myvector) {
           std::string::size_type index = line.find(matchString);
           if (index != std::string::npos) {
-            logMessage(line);
-            std::iostream::pos_type savedLocation = ifs.tellg();
-            ifs.seekg(savedLocation);            
+            if(std::find(parsedMsgs.begin(), parsedMsgs.end(), line) == parsedMsgs.end()) {
+              logMessage(line);
+              parsedMsgs.push_back(line);
+            }
           }
         }
       }
@@ -691,14 +694,14 @@ namespace xclhwemhal2 {
 
         if (boost::filesystem::exists(sim_path) != false) {
           waveformDebugfilePath = sim_path + "/waveform_debug_enable.txt";
-	        if (simulatorType == "xsim") {
-                cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
-                << " --protoinst " << protoFileName;
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        } else {
-                cmdLineOption << " gui ";
-                launcherArgs = launcherArgs + cmdLineOption.str();
-	        }
+          if (simulatorType == "xsim") {
+            cmdLineOption << " -g --wdb " << wdbFileName << ".wdb"
+                          << " --protoinst " << protoFileName;
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          } else {
+            cmdLineOption << " gui ";
+            launcherArgs = launcherArgs + cmdLineOption.str();
+          }
         }
 
         std::string generatedWcfgFileName = sim_path + "/" + bdName + "_behav.wcfg";
@@ -1628,10 +1631,7 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
     }
 
-    std::string logPath = getSimPath() + "/" + "simulate.log";
-    std::ifstream ifs;
-    ifs.open(logPath);
-    parseLog(ifs);
+    parseLog();
 
     for (auto& it: mFdToFileNameMap) {
       int fd=it.first;
@@ -1700,6 +1700,9 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     {
       std::string waitingMsg ="INFO: [HW-EMU 06-1] All the simulator processes exited successfully";
       logMessage(waitingMsg);
+
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      logMessage(consoleMsg);
     }
 
     saveWaveDataBase();
@@ -1876,6 +1879,8 @@ uint32_t HwEmShim::getAddressSpace (uint32_t topology)
     free(ci_buf);
     free(ri_buf);
     free(buf);
+    parsedMsgs.clear();
+
     if (mLogStream.is_open()) {
       mLogStream << __func__ << ", " << std::this_thread::get_id() << std::endl;
       mLogStream.close();
