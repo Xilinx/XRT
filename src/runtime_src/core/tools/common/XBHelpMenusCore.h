@@ -46,7 +46,7 @@ namespace XBUtilities {
                             const boost::program_options::positional_options_description & _positionalDescription,
                             const boost::program_options::options_description &_globalOptions,
                             bool removeLongOptDashes = false,
-                            const std::string customHelpSection = "");
+                            const std::string& customHelpSection = "");
 
   void 
     report_subcommand_help( const std::string &_executableName,

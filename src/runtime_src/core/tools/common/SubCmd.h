@@ -67,7 +67,7 @@ public:
   void printHelp(const boost::program_options::options_description & _optionDescription,
                  const boost::program_options::options_description & _optionHidden,
                  bool removeLongOptDashes = false,
-                 const std::string customHelpSection = "") const;
+                 const std::string& customHelpSection = "") const;
   void printHelp( const boost::program_options::options_description & _optionDescription,
                   const boost::program_options::options_description & _optionHidden,
                   const SubOptionOptions & _subOptionOptions) const;

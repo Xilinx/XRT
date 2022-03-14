@@ -49,6 +49,6 @@ namespace EscapeCodes {
   static const uint8_t FGC_WARN          = 226;
 
   static const uint8_t FGC_HEADER        = 3;
-  static const uint8_t FGC_OPTION        = 65;  // 65 
-  static const uint8_t FGC_OPTION_BODY   = 111; // 111
+  static const uint8_t FGC_OPTION        = 65;
+  static const uint8_t FGC_OPTION_BODY   = 111;
 }

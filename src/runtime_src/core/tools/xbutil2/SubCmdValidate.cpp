@@ -75,18 +75,13 @@ static const std::string test_token_passed = "PASSED";
 void
 doesTestExists(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
 {
-  bool nameFound = false;
-  for (auto &test : testNameDescription) {
-    if (userTestName.compare(test.first) == 0) {
-      nameFound = true;
-      break;
-    }
-  }
+  auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
+    [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
 
-  if (nameFound == false) {
+  if (iter == testNameDescription.end())
     throw xrt_core::error((boost::format("Invalid test name: '%s'") % userTestName).str());
-  }
 }
+
 /*
  * mini logger to log errors, warnings and details produced by the test cases
  */
@@ -996,7 +991,9 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
         block_size = static_cast<size_t>(std::stoll(str_block_size, nullptr, 0));
       }
       catch(const std::invalid_argument&) {
-        std::cerr << boost::format("ERROR: '%s' is an invalid argument. Please specify block-size in bytes like 'p2p::block-size:1024'\n") % str_block_size;
+        std::cerr << boost::format(
+          "ERROR: The parameter '%s' value '%s' is invalid for the test '%s'. Please specify and integer byte block-size.'\n") 
+          % "block-size" % str_block_size % "dma" ;
         throw xrt_core::error(std::errc::operation_canceled);
       }
     }
@@ -1598,6 +1595,19 @@ getTestNameDescriptions(bool addAdditionOptions)
   return reportDescriptionCollection;
 }
 
+/*
+ * Extended keys helper struct
+ */
+struct ExtendedKeysStruct {
+  std::string test_name;
+  std::string param_name;
+  std::string description;
+};
+
+static std::vector<ExtendedKeysStruct>  extendedKeysCollection = {
+  {"dma", "block-size", "Memory transfer size (bytes)"}
+};
+
 std::string
 extendedKeysOptions()
 {
@@ -1612,19 +1622,16 @@ extendedKeysOptions()
 
   // Report option group name (if defined)
   boost::format fmtHeader(fgc_header + "\n%s:\n" + fgc_reset);
-    fmt_output << fmtHeader % "EXTENDED KEYS";
-
-  static std::map<std::string, std::string> test_to_parameter = {
-    { "dma", "block-size:<value> - Memory transfer size (bytes)"}
-  };
+  fmt_output << fmtHeader % "EXTENDED KEYS";
 
   // Report the options
   boost::format fmtOption(fgc_optionName + "  %-18s " + fgc_optionBody + "- %s\n" + fgc_reset);
   unsigned int optionDescTab = 23;
 
-  for (auto& param : test_to_parameter) {
-    auto formattedString = XBU::wrap_paragraphs(param.second, optionDescTab, m_maxColumnWidth - optionDescTab, false);
-    fmt_output << fmtOption % param.first % formattedString;
+  for (auto& param : extendedKeysCollection) {
+    auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
+    auto formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    fmt_output << fmtOption % param.test_name % formattedString;
   }
 
   return fmt_output.str();
@@ -1733,17 +1740,19 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       XBU::verbose("Sub command: --param");
       boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
 
-      //check parameter format
-      if (param.size() != 3)
-        throw xrt_core::error((boost::format("Invalid parameter format : '%s'") % sParam).str());
-      
       //check test case name
       doesTestExists(param[0], testNameDescription);
 
       //check parameter name
-      std::vector<std::string> valid_param_list = {"block-size"};
-      if (std::find(valid_param_list.begin(), valid_param_list.end(), param[1]) == valid_param_list.end())
-        throw xrt_core::error((boost::format("Invalid parameter name : '%s'") % param[1]).str());
+      // std::vector<std::string> valid_param_list = {"block-size"};
+      auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(), 
+          [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
+      if (iter == extendedKeysCollection.end())
+        throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
+
+      //check parameter format
+      if (param.size() != 3)
+        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
     }
 
   } catch (const xrt_core::error& e) {
@@ -1794,7 +1803,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         continue;
       testObjectsToRun.push_back(&testSuite[index]);
       // add custom param to the ptree if available
-      if (!param.empty() && param[0].compare(testSuiteName) == 0) {
+      if (!param.empty() && boost::equals(param[0], testSuiteName)) {
         testSuite[index].ptTest.put(param[1], param[2]);
       }
       if(!xclbin_location.empty())
@@ -1814,10 +1823,10 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // Logic for individually defined tests
     // Enqueue the matching test suites to be executed
     for (const auto & testName : testsToRun) {
-      if (testName.compare(testSuiteName) == 0) {
+      if (boost::equals(testName, testSuiteName) == 0) {
         testObjectsToRun.push_back(&testSuite[index]);
         // add custom param to the ptree if available
-        if (!param.empty() && testName.compare(param[0]) == 0) {
+        if (!param.empty() && boost::equals(param[0], testSuiteName)) {
           testSuite[index].ptTest.put(param[1], param[2]);
         }
         if(!xclbin_location.empty())
