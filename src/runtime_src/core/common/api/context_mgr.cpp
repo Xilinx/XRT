@@ -1,8 +1,6 @@
-/*
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021 Xilinx, Inc. All rights reserved.
- */
-
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+#define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "context_mgr.h"
 #include "core/common/cuidx_type.h"
 #include "core/common/debug.h"
@@ -38,7 +36,7 @@ class device_context_mgr
   xrt_core::device* m_device;
 
   // CU contexts are managed per domain where indicies are
-  // in the range [0..max_cus[.  This sllows for a compact
+  // in the range [0..max_cus[.  This allows for a compact
   // bitset representation.
   using domain_type = cuidx_type::domain_type;
   std::map<domain_type, std::bitset<max_cus>> m_d2ctx; // domain -> cxt

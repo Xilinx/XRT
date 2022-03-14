@@ -1,27 +1,21 @@
-/**
- * Copyright (C) 2021-2022 Xilinx, Inc
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
+
+// This file implements a dummy (no-op) shim level driver that is
+// used exclusively for debugging user space XRT with HW xclbins
+//
+// The code is not beautified in any way or fashion, it is meant
+// for quick and dirty validation of user space code changes.
 #define XCL_DRIVER_DLL_EXPORT
 #define XRT_CORE_PCIE_NOOP_SOURCE
-#include "shim.h"
-#include "core/include/shim_int.h"
+#include "shim.h"                  // This file implements shim.h
+#include "core/include/shim_int.h" // This file implements shim_int.h
 #include "core/include/ert.h"
+
 #include "core/common/config_reader.h"
+#include "core/common/device.h"
 #include "core/common/message.h"
 #include "core/common/system.h"
-#include "core/common/device.h"
 #include "core/common/task.h"
 #include "core/common/thread.h"
 
@@ -31,6 +25,8 @@
 #include <string>
 
 namespace { // private implementation details
+
+using device_index_type = unsigned int;
 
 namespace buffer {
 
@@ -108,6 +104,173 @@ free(unsigned int handle)
 }
 
 } // buffer
+
+// Model the programming part of the device.
+// Pretend a device that supports multiple xclbins, which can can be
+// loaded by host application into different slots, where slots are
+// chosen by the driver (this code).
+namespace pl {
+
+class device
+{
+  // model multiple partitions
+  using slot_id = xrt_core::device::slot_id;
+  std::map<slot_id, xrt::xclbin> xclbins;
+
+  // capture cu data based on which slot it is associated with
+  struct cu_data {
+    std::string name;  // cu name
+    slot_id slot = 0;  // slot in which this cu is opened
+    uint32_t ctx = 0;  // how many contexts are opened on the cu
+  };
+  std::map<uint32_t, cu_data> idx2cu;  // idx -> cu_data
+
+  // cu indices are per device from 0..127.
+  // keep a stack of indices that can be used
+  // once last context on cu is released, its index is recycled
+  static constexpr uint32_t cu_max = 128;
+  std::vector<uint32_t> free_cu_indices;  // push, back, pop
+
+  // slot index for xclbin is a running incremented index
+  slot_id slot_index = 0; // running index
+
+  // exclusive locking to prevent race
+  std::mutex mutex;
+
+  // assign a slot index to an xclbin
+  void
+  register_xclbin(slot_id slot, const xrt::xclbin& xclbin)
+  {
+    xclbins[slot] = xclbin;
+  }
+
+public:
+  // device ctor, initialize free cu indices
+  device()
+  {
+    free_cu_indices.reserve(128);
+    for (int i = 127; i >=0; --i)
+      free_cu_indices.push_back(i);
+  }
+
+  // assign next slot index to an xclbin
+  void
+  register_xclbin(const xrt::xclbin& xclbin)
+  {
+    std::lock_guard lk(mutex);
+    register_xclbin(slot_index++, xclbin);
+  }
+
+  // unload an xclbin (todo)
+  void
+  unload_xclbin(slot_id slot)
+  {
+    std::lock_guard lk(mutex);
+    xclbins.erase(slot);
+  }
+
+  // open context on cu
+  // return: 0 on success, EAGAIN if xclbin was re-loaded, else error
+  int
+  open_context(slot_id slot, const xrt::uuid& xid, const std::string& cuname, bool shared)
+  {
+    std::lock_guard lk(mutex);
+
+    // this xclbin must have been registered
+    const auto& xclbin = xclbins[slot];
+    if (!xclbin)
+      throw xrt_core::error("Slot xclbin mismatch, no such registered xclbin in slot: " + std::to_string(slot));
+
+    // find cu in xclbin
+    auto cu = xclbin.get_ip(cuname);
+    if (!cu)
+      throw xrt_core::error("No such cu: " + cuname);
+
+    // Current user-level implementation only attempts opening of context
+    // once per CU.  In other words, it is an error if this function is
+    // called twice on same CU within same process and since this noop driver
+    // is tied to a process we simply throw.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+    for (const auto& [idx, cud] : idx2cu)
+      if (cud.name == cuname && cud.slot == slot)
+        throw xrt_core::error("Context already opened on cu: " + cuname);
+#pragma GCC diagnostic pop
+
+#if 0 // enable to pretend to fail and re-load xclbin to different additional slot
+    if (slot == 0) {
+      register_xclbin(slot_index++, xclbin);
+      return EAGAIN;
+    }
+#endif
+
+    auto idx = free_cu_indices.back();
+    auto& cudata = idx2cu[idx];
+    cudata.name = cuname;
+    cudata.slot = slot;
+    cudata.ctx = 1;
+    free_cu_indices.pop_back();
+
+    return 0;
+  }
+
+  // close the cu context
+  void
+  close_context(const xrt::uuid& xid, uint32_t cuidx)
+  {
+    std::lock_guard lk(mutex);
+
+    auto cu_itr = idx2cu.find(cuidx);
+    if (cu_itr == idx2cu.end())
+      throw xrt_core::error("No such cu with index: " + std::to_string(cuidx));
+    auto& cudata  = (*cu_itr).second;
+    if (cudata.ctx < 1)
+      throw xrt_core::error("No context aquired on cu: " + std::to_string(cuidx));
+
+    // clean up if last context was released
+    if (!--cudata.ctx) {
+      auto nm = cudata.name;
+      idx2cu.erase(cuidx);
+      free_cu_indices.push_back(cuidx);
+    }
+  }
+
+  xrt_core::query::kds_cu_info::result_type
+  kds_cu_info()
+  {
+    xrt_core::query::kds_cu_info::result_type vec;
+    for (const auto& [idx, cud] : idx2cu) {
+      xrt_core::query::kds_cu_info::data data;
+      data.slot_index = cud.slot;
+      data.index = idx;
+      data.name = cud.name;
+      data.base_addr = 0xdeadbeef;
+      data.status = 0;
+      data.usages = 0;
+      vec.push_back(std::move(data));
+    }
+    return vec;
+  }
+
+  xrt_core::query::xclbin_slots::result_type
+  xclbin_slots()
+  {
+    xrt_core::query::xclbin_slots::result_type vec;
+    for (const auto& [slot, xclbin] : xclbins) {
+      xrt_core::query::xclbin_slots::slot_info data;
+      data.slot = slot;
+      data.uuid = xclbin.get_uuid().to_string();
+      vec.push_back(std::move(data));
+    }
+    return vec;
+  }
+
+};
+
+} // pl
+
+static std::vector<std::shared_ptr<pl::device>> s_devices;
+
 
 // Simulate asynchronous command completion.
 //
@@ -195,12 +358,20 @@ struct shim
   using buffer_handle_type = xclBufferHandle; // xrt.h
   unsigned int m_devidx;
   bool m_locked = false;
+  pl::device* m_pldev;
   std::shared_ptr<xrt_core::device> m_core_device;
 
   // create shim object, open the device, store the device handle
   shim(unsigned int devidx)
     : m_devidx(devidx), m_core_device(xrt_core::get_userpf_device(this, m_devidx))
-  {}
+  {
+    if (s_devices.size() <= devidx)
+      s_devices.resize(devidx + 1);
+
+    if (!s_devices[devidx])
+      s_devices[devidx] = std::make_shared<pl::device>();
+    m_pldev = s_devices[devidx].get();
+  }
 
   // destruct shim object, close the device
   ~shim()
@@ -249,14 +420,15 @@ struct shim
   }
 
   int
-  open_context(uint32_t, const xrt::uuid&, const char*, bool)
+  open_context(uint32_t slot, const xrt::uuid& uuid, const char* cuname, bool shared)
   {
-    return 0;
+    return m_pldev->open_context(slot, uuid, cuname, shared);
   }
 
   int
-  close_context(const xrt::uuid&, unsigned int)
+  close_context(const xrt::uuid& xid, unsigned int idx)
   {
+    m_pldev->close_context(xid, idx);
     return 0;
   }
 
@@ -287,8 +459,10 @@ struct shim
   }
 
   int
-  load_xclbin(const struct axlf*)
+  load_xclbin(const struct axlf* top)
   {
+    auto xclbin = m_core_device->get_xclbin(top->m_header.uuid);
+    m_pldev->register_xclbin(xclbin);
     return 0;
   }
 
@@ -344,6 +518,32 @@ get_shim_object(xclDeviceHandle handle)
 }
 
 } // namespace
+
+namespace userpf {
+
+xrt_core::query::kds_cu_info::result_type
+kds_cu_info(const xrt_core::device* device)
+{
+  auto id = device->get_device_id();
+  if (s_devices.size() < id)
+    throw xrt_core::error("Unknown device id: " + std::to_string(id));
+
+  xrt_core::query::kds_cu_info::result_type vec;
+  return s_devices[id]->kds_cu_info();
+}
+
+xrt_core::query::xclbin_slots::result_type
+xclbin_slots(const xrt_core::device* device)
+{
+  auto id = device->get_device_id();
+  if (s_devices.size() < id)
+    throw xrt_core::error("Unknown device id: " + std::to_string(id));
+
+  xrt_core::query::xclbin_slots::result_type vec;
+  return s_devices[id]->xclbin_slots();
+}
+
+}
 
 // Basic
 unsigned int
@@ -462,10 +662,10 @@ xclOpenContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipInd
     send(xrt_core::message::severity_level::debug, "XRT", "xclOpenContext()");
   auto shim = get_shim_object(handle);
 
-  //Virtual resources are not currently supported by driver
+  // Virtual resources are not currently supported by driver
   return (ipIndex == (unsigned int)-1)
-	  ? 0
-	  : shim->open_context(xclbinId, ipIndex, shared);
+    ? 0
+    : shim->open_context(xclbinId, ipIndex, shared);
 }
 
 int
@@ -485,16 +685,25 @@ xclOpenContextByName(xclDeviceHandle handle, uint32_t slot, const xuid_t xclbin_
   }
 }
 
-int xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
+int
+xclCloseContext(xclDeviceHandle handle, const xuid_t xclbinId, unsigned int ipIndex)
 {
   xrt_core::message::
     send(xrt_core::message::severity_level::debug, "XRT", "xclCloseContext()");
   auto shim = get_shim_object(handle);
 
-  //Virtual resources are not currently supported by driver
-  return (ipIndex == (unsigned int) -1)
-	  ? 0
-	  : shim->close_context(xclbinId, ipIndex);
+  try {
+    // Virtual resources are not currently supported by driver
+    return (ipIndex == (unsigned int) -1) ? 0 : shim->close_context(xclbinId, ipIndex);
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+    return -ENOENT;
+  }
 }
 
 int

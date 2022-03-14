@@ -147,9 +147,13 @@ xrt::xclbin
 device::
 get_xclbin(const uuid& xclbin_id) const
 {
-  return xclbin_id
-    ? m_xclbins.get(xclbin_id)
-    : m_xclbin;
+  // Allow access to xclbin in process of loading via device::load_xclbin
+  if (xclbin_id && xclbin_id == m_xclbin.get_uuid())
+    return m_xclbin;
+  if (xclbin_id)
+    return m_xclbins.get(xclbin_id);
+
+  return m_xclbin;
 }
 
 // Update cached xclbin data based on data queried from driver. This
@@ -173,7 +177,12 @@ update_xclbin_info()
     // for current loaded xclbin
     m_xclbins.reset(std::map<slot_id, xrt::uuid>{{0, get_xclbin_uuid()}});
   }
+}
 
+void
+device::
+update_cu_info()
+{
   // Compute CU sort order, kernel driver zocl and xocl now assign and
   // control the sort order, which is accessible via a query request.
   // For emulation old xclbin_parser::get_cus is used.
@@ -225,6 +234,9 @@ register_axlf(const axlf* top)
 
   // Update xclbin caching from [slot, xclbin_uuid]+ data
   update_xclbin_info();
+
+  // Update cu caching from [slot, uuid, cuidx]+ data
+  update_cu_info();
 
   // Do not recreate the xclbin if m_xclbin is set, which implies the
   // xclbin is loaded via xrt::device::load_xclbin where the user
@@ -317,7 +329,6 @@ get_cuidx(slot_id slot, const std::string& cuname) const
 {
   auto slot_itr = m_cu2idx.find(slot);
   if (slot_itr == m_cu2idx.end())
-  if (slot_itr == m_cu2idx.end())
     throw error(EINVAL, "No such compute unit '" + cuname + "'");
 
   const auto& cu2idx = (*slot_itr).second;
@@ -325,6 +336,21 @@ get_cuidx(slot_id slot, const std::string& cuname) const
   if (cu_itr == cu2idx.end())
     throw error(EINVAL, "No such compute unit '" + cuname + "'");
   return (*cu_itr).second;
+}
+
+cuidx_type
+device::
+get_cuidx(slot_id slot, const std::string& cuname)
+{
+  // Leverage const member function
+  const auto cdev = static_cast<const device*>(this);
+  try {
+    return cdev->get_cuidx(slot, cuname);
+  }
+  catch (const xrt_core::error&) {
+    update_cu_info();
+    return cdev->get_cuidx(slot, cuname);
+  }
 }
 
 std::pair<size_t, size_t>

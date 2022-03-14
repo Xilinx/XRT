@@ -283,9 +283,13 @@ public:
     return m_xclbins.get_slots(xclbin_id);
   }
 
-  // Updates cached xclbin data based in data quieried from driver
+  // Updates cached xclbin data based in data queried from driver
   void
   update_xclbin_info();
+
+  // Updates cached compute unit data based in data queried from driver
+  void
+  update_cu_info();
 
   // This function is called after an axlf has been succesfully loaded
   // by the shim layer API xclLoadXclBin().  Since xclLoadXclBin() can
@@ -383,6 +387,11 @@ public:
   XRT_CORE_COMMON_EXPORT
   cuidx_type
   get_cuidx(slot_id slot, const std::string& cuname) const;
+
+  // get_cuidx() - As const version, but update cu indices if necessary
+  XRT_CORE_COMMON_EXPORT
+  cuidx_type
+  get_cuidx(slot_id slot, const std::string& cuname);
 
   /**
    * get_ert_slots() - Get number of ERT CQ slots

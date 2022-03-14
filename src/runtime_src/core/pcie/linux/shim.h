@@ -1,47 +1,29 @@
-#ifndef _XOCL_GEM_SHIM_H_
-#define _XOCL_GEM_SHIM_H_
-
-/**
- * Copyright (C) 2016-2020 Xilinx, Inc
- * Copyright (C) 2022 Advanced Micro Devices, Inc. - All rights reserved
- * Author(s): Umang Parekh
- *          : Sonal Santan
- *          : Ryan Radjabi
- *
- * XRT PCIe library layered on top of xocl kernel driver
- *
- * Licensed under the Apache License, Version 2.0 (the "License"). You may
- * not use this file except in compliance with the License. A copy of the
- * License is located at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations
- * under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
+#ifndef PCIE_LINUX_SHIM_H_
+#define PCIE_LINUX_SHIM_H_
 
 #include "scan.h"
-#include "core/common/system.h"
-#include "core/common/device.h"
 #include "xclhal2.h"
-#include "core/pcie/driver/linux/include/xocl_ioctl.h"
-#include "core/pcie/driver/linux/include/qdma_ioctl.h"
+
+#include "core/common/device.h"
+#include "core/common/system.h"
 #include "core/common/xrt_profiling.h"
+#include "core/pcie/driver/linux/include/qdma_ioctl.h"
+#include "core/pcie/driver/linux/include/xocl_ioctl.h"
+
 #include "core/include/xstream.h" /* for stream_opt_type */
 
 #include <linux/aio_abi.h>
 #include <libdrm/drm.h>
 
-#include <mutex>
+#include <cassert>
 #include <fstream>
 #include <list>
 #include <map>
-#include <cassert>
-#include <vector>
 #include <memory>
+#include <mutex>
+#include <vector>
 
 // Forward declaration
 namespace xrt_core {

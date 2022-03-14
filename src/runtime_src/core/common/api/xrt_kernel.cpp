@@ -51,7 +51,7 @@
 using namespace std::chrono_literals;
 
 #ifdef _WIN32
-# pragma warning( disable : 4244 4267 4996 4100)
+# pragma warning( disable : 4244 4267 4996 4100 4201)
 #endif
 
 ////////////////////////////////////////////////////////////////
@@ -501,21 +501,6 @@ public:
     return ipctx;
   }
 
-  // open() - open a context in a specific IP/CU
-  //
-  // @device:    Device on which context should opened
-  // @xclbin:    xclbin containeing the IP definition
-  // @ip:        The ip_data defintion for this IP from the xclbin
-  // @cuidx:     Index of CU used when opening context and populating cmd pkt
-  // @am:        Access mode, how this CU should be opened
-  static std::shared_ptr<ip_context>
-  open(xrt_core::device* device, const xrt::xclbin& xclbin, const xrt::xclbin::ip& ip,
-       xrt_core::cuidx_type cuidx, access_mode am)
-  {
-    // Testing transition to multi xclbin
-    return open(device, xclbin, 0, ip, am);
-  }
-
   // open() - open a context on the device virtual CU
   //
   // @device:    The device on which to open the virtual CU
@@ -535,16 +520,6 @@ public:
       // NOLINTNEXTLINE(modernize-make-shared)  used in weak_ptr
       vip = ipctx = std::shared_ptr<ip_context>(new ip_context(device, xclbin));
     return ipctx;
-  }
-
-  // Access mode can be set only if it starts out as unspecifed (none).
-  void
-  set_access_mode(access_mode am)
-  {
-    if (access != access_mode::none)
-      throw std::runtime_error("Cannot change current access mode");
-    xrt_core::context_mgr::open_context(device, xid, idx, std::underlying_type<access_mode>::type(am));
-    access = am;
   }
 
   access_mode
@@ -576,6 +551,12 @@ public:
     return idx.domain_index; // index used for execution cumask
   }
 
+  slot_id
+  get_slot() const
+  {
+    return slot;
+  }
+
   // Check if arg is connected to specified memory bank
   bool
   valid_connection(size_t argidx, int32_t memidx)
@@ -604,17 +585,21 @@ public:
 
 private:
   // regular CU
-  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, slot_id slot, xrt::xclbin::ip xip, access_mode am)
+  ip_context(xrt_core::device* dev, const xrt::xclbin& xclbin, slot_id slot_idx, xrt::xclbin::ip xip, access_mode am)
     : device(dev)
     , xid(xclbin.get_uuid())
     , ip(std::move(xip))
     , args(dev, xclbin, ip)
+    , slot(slot_idx)
     , address(ip.get_base_address())
     , size(ip.get_size())
     , access(am)
   {
-    if (access != access_mode::none)
-      xrt_core::context_mgr::open_context(device, slot, xid, ip.get_name(), std::underlying_type<access_mode>::type(access));
+    if (access == access_mode::none)
+      // access_mode::none is not used anywhere
+      throw xrt_core::error("Unexpected access mode 'none'");
+
+    xrt_core::context_mgr::open_context(device, slot, xid, ip.get_name(), std::underlying_type<access_mode>::type(access));
 
     // If open context was successful, then the cuidx is recorded in device
     idx = dev->get_cuidx(slot, ip.get_name());
@@ -625,6 +610,7 @@ private:
     : device(dev)
     , xid(xclbin.get_uuid())
     , idx{virtual_cu_idx}   // virtual CU is in default (0) domain
+    , slot(0)               // virtual CU is in default (0) slot
     , address(0)
     , size(0)
     , access(access_mode::shared)
@@ -637,6 +623,7 @@ private:
   xrt::xclbin::ip ip;       // the xclbin ip object
   connectivity args;        // argument memory connections
   xrt_core::cuidx_type idx; // cu domain and index
+  slot_id slot;             // xclbin slot in which this context is opened
   uint64_t address;         // cache base address for programming
   size_t size;              // cache address space size
   access_mode access;       // compute unit access mode
@@ -1308,7 +1295,7 @@ private:
           cumask.set(cuidx);
           num_cumasks = std::max<size_t>(num_cumasks, (cuidx / cus_per_word) + 1);
         }
-        catch (const xrt_core::error& ex) {
+        catch (const xrt_core::system_error& ex) {
           if (ex.get_code() == EAGAIN)
             // open context caused re-load of xclbin into a different slot
             // must try all new slots after all current slots have been attempted
@@ -1617,10 +1604,21 @@ public:
   int
   group_id(int argno)
   {
+    // This is a tight coupling with driver.  The group index is encoded
+    // in a uint32_t that represents BO flags used when constructing the BO.
+    // The flags are divided into 16 bits for memory bank index, 8 bits
+    // for the xclbin slot, and 8 bits reserved for bo flags.  The latter
+    // flags are populated when the xrt::bo object is constructed.
+
     // Last (for group id) connection of first ip in this kernel
     // The group id can change if cus are trimmed based on argument
     auto& ip = ipctxs.front();  // guaranteed to be non empty
-    return ip->arg_memidx(argno);
+    xcl_bo_flags grp = {0};     // xrt_mem.h
+    grp.bank = ip->arg_memidx(argno);
+    grp.slot = ip->get_slot();
+
+    // This function should return uint32_t or some same symbolic type
+    return static_cast<int>(grp.flags);
   }
 
   int
