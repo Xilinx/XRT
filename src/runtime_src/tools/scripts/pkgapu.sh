@@ -198,7 +198,6 @@ all:
         { load=$KERNEL_ADDR, file=$IMAGE_UB }
         { load=0x20000000, file=$BUILD_DIR/boot.scr }
         { load=$METADATA_ADDR file=$BUILD_DIR/metadata.dat }
-	{ load=0x40000, file=/group/sdx_platforms/jeffli/pskernel/vck5000/system.dtb }
     }
 }
 EOF
