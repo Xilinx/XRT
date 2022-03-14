@@ -225,7 +225,7 @@ done:
 }
 
 int
-zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
+zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res, uint8_t hw_gen)
 {
 	uint64_t offset;
 	uint64_t size;
@@ -279,7 +279,9 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
 	/* TODO figure out the partition id and uid from xclbin or PDI */
 	req.partition_id = 1;
 	req.uid = 0;
-	req.meta_data = (u64)aie_res;
+	/* only aie-1 supports resources */
+	if (hw_gen == 1)
+		req.meta_data = (u64)aie_res;
 
 	if (zdev->aie->aie_dev) {
 		DRM_INFO("Partition %d already requested\n",
@@ -300,9 +302,11 @@ zocl_create_aie(struct drm_zocl_dev *zdev, struct axlf *axlf, void *aie_res)
 	zdev->aie->uid = req.uid;
 
 	/* Register AIE error call back function. */
-	rval = aie_register_error_notification(zdev->aie->aie_dev,
-	    zocl_aie_error_cb, zdev);
-
+	/* only aie-1 supports error management*/
+	if (hw_gen == 1) {
+		rval = aie_register_error_notification(zdev->aie->aie_dev,
+		zocl_aie_error_cb, zdev);
+	}
 	mutex_unlock(&zdev->aie_lock);
 
 	zocl_init_aie(zdev);

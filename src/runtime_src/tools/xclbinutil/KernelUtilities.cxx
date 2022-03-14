@@ -111,6 +111,8 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
                          bool isFixedPS,
                          boost::property_tree::ptree& ptKernelXML)
 {
+  const boost::property_tree::ptree ptEmpty;
+
   const std::string& kernelName = ptKernel.get<std::string>("name", "");
   if (kernelName.empty())
     throw std::runtime_error("Missing kernel name");
@@ -122,8 +124,16 @@ void buildXMLKernelEntry(const boost::property_tree::ptree& ptKernel,
   ptKernelAttributes.put("type", isFixedPS ? "dpu" : "ps");
   ptKernelXML.add_child("<xmlattr>", ptKernelAttributes);
 
+  // -- Extended-data
+  // Blindly add it.  In the future add a JSON schema to validate it
+  const boost::property_tree::ptree& ptExtendedData = ptKernel.get_child("extended-data", ptEmpty);
+  if (!ptExtendedData.empty()) {
+    boost::property_tree::ptree ptEntry;
+    ptEntry.add_child("<xmlattr>", ptExtendedData);
+    ptKernelXML.add_child("extended-data", ptEntry);
+  }
+
   // -- Build kernel arguments
-  const boost::property_tree::ptree ptEmpty;
   const boost::property_tree::ptree& ptArguments = ptKernel.get_child("arguments", ptEmpty);
 
   unsigned int argID = 0;

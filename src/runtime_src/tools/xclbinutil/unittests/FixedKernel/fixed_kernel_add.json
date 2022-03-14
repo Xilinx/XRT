@@ -2,7 +2,11 @@
   "ps-kernels" : {             
     "kernels" : [
       {
-        "name" : "DPU",          
+        "name" : "DPU",   
+        "type" : "dpu",
+        "extended-data" : {
+            "functional" : "0"
+        },
         "arguments" : [         
           {
             "name" : "ifm",

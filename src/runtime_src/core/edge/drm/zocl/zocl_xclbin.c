@@ -125,8 +125,7 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 {
 	struct XHwIcap_Bit_Header bit_header = { 0 };
 	char *data = NULL;
-	unsigned int i = 0;
-	char temp;
+	size_t i;
 
 	memset(&bit_header, 0, sizeof(bit_header));
 	if (xrt_xclbin_parse_header(buffer, DMA_HWICAP_BITFILE_BUFFER_SIZE,
@@ -141,27 +140,17 @@ zocl_load_bitstream(struct drm_zocl_dev *zdev, char *buffer, int length,
 	}
 
 	/*
-	 * Can we do this more efficiently by APIs from byteorder.h?
+	 * Swap bytes to big endian
 	 */
 	data = buffer + bit_header.HeaderLength;
-	for (i = 0; i < bit_header.BitstreamLength ; i = i+4) {
-		temp = data[i];
-		data[i] = data[i+3];
-		data[i+3] = temp;
-
-		temp = data[i+1];
-		data[i+1] = data[i+2];
-		data[i+2] = temp;
-	}
+	for (i = 0; i < (bit_header.BitstreamLength / 4) ; ++i)
+		cpu_to_be32s((u32*)(data) + i);
 
 	/* On pr platofrm load partial bitstream and on Flat platform load full bitstream */
 	if (slot->pr_isolation_addr)
-		return zocl_load_partial(zdev, data, bit_header.BitstreamLength,
-					 slot);
-	else {
-		/* 0 is for full bitstream */
-		return zocl_fpga_mgr_load(zdev, buffer, length, 0);
-	}
+		return zocl_load_partial(zdev, data, bit_header.BitstreamLength, slot);
+	/* 0 is for full bitstream */
+	return zocl_fpga_mgr_load(zdev, buffer, length, 0);
 }
 
 static int
@@ -914,7 +903,8 @@ zocl_xclbin_load_pskernel(struct drm_zocl_dev *zdev, void *data)
 
 	// Cache full xclbin
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	//last argument represents aie generation. 1. aie, 2. aie-ml ...
+	zocl_create_aie(zdev, axlf, aie_res,1);
 	write_lock(&zdev->attr_rwlock);
 
 	count = xrt_xclbin_get_section_num(axlf, SOFT_KERNEL);
@@ -1161,6 +1151,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 	int ret = 0;
 	struct drm_zocl_slot *slot = NULL;
 	int slot_id = axlf_obj->za_slot_id;
+	uint8_t hw_gen = axlf_obj->hw_gen;
 
 	if (slot_id > zdev->num_pr_slot) {
 		DRM_ERROR("Invalid Slot[%d]", slot_id);
@@ -1236,7 +1227,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 					DRM_WARN("read xclbin: fail to load AIE");
 				else {
 					write_unlock(&zdev->attr_rwlock);
-					zocl_create_aie(zdev, axlf, aie_res);
+					zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 					write_lock(&zdev->attr_rwlock);
 					zocl_cache_xclbin(slot, axlf, xclbin);
 				}
@@ -1455,7 +1446,7 @@ zocl_xclbin_read_axlf(struct drm_zocl_dev *zdev, struct drm_zocl_axlf *axlf_obj,
 
 	/* Createing AIE Partition */
 	write_unlock(&zdev->attr_rwlock);
-	zocl_create_aie(zdev, axlf, aie_res);
+	zocl_create_aie(zdev, axlf, aie_res,hw_gen);
 	write_lock(&zdev->attr_rwlock);
 
 	/*

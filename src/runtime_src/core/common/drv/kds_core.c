@@ -707,7 +707,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (submitted == completed)
 		goto skip;
 
-	if (kds->ert_disable) {
+	if (kds->ert_disable || kds->xgq_enable) {
 		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 

@@ -420,7 +420,7 @@ std::vector<DSAInfo> firmwareImage::getIntalledDSAs()
 {
     std::vector<DSAInfo> installedDSA;
     // Obtain installed DSA info.
-    for (auto root : std::initializer_list<const char*>(FIRMWARE_DIRS)) {
+    for (auto root : FIRMWARE_DIRS) {
       try {
         if (!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root))
             continue;
