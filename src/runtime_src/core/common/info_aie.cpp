@@ -533,7 +533,7 @@ populate_aie_core_gmio(const boost::property_tree::ptree& pt, boost::property_tr
   pt_array.add_child("gmios",gmio_array);
 }
 
-// This function check the duplicate entry in tile_aaray for the same core [row:col]
+// Check for duplicate entry in tile_array for the same core [row:col]
 bool
 is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property_tree::ptree& tile)
 {
