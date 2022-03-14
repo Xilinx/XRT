@@ -75,7 +75,7 @@ static const std::string test_token_passed = "PASSED";
 void
 doesTestExists(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
 {
-  auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
+  const auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
     [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
 
   if (iter == testNameDescription.end())
@@ -985,7 +985,7 @@ dmaTest(const std::shared_ptr<xrt_core::device>& _dev, boost::property_tree::ptr
     size_t block_size = 16 * 1024 * 1024; // Default block size 16MB
 
     //check custom argument from user
-    auto str_block_size = _ptTest.get<std::string>("block-size", "");
+    const auto& str_block_size = _ptTest.get<std::string>("block-size", "");
     if (!str_block_size.empty()) {
       try {
         block_size = static_cast<size_t>(std::stoll(str_block_size, nullptr, 0));
@@ -1629,8 +1629,8 @@ extendedKeysOptions()
   unsigned int optionDescTab = 23;
 
   for (auto& param : extendedKeysCollection) {
-    auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
-    auto formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
+    const auto key_desc = (boost::format("%s:<value> - %s") % param.param_name % param.description).str();
+    const auto& formattedString = XBU::wrap_paragraphs(key_desc, optionDescTab, m_maxColumnWidth - optionDescTab, false);
     fmt_output << fmtOption % param.test_name % formattedString;
   }
 
@@ -1651,7 +1651,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
   std::vector<std::string> device;
   std::vector<std::string> testsToRun = {"all"};
   std::string sFormat = "JSON";
-  std::string sOutput = "";
+  std::string sOutput;
   std::string sParam;
   std::string xclbin_location;
   bool help = false;

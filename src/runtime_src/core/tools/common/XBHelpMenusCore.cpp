@@ -183,7 +183,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
     if (completeOptionName.size() != SHORT_OPTION_STRING_SIZE)
       continue;
 
-    buffer << " [" << completeOptionName << " arg]";
+    buffer << boost::format(" [%s arg]") % completeOptionName;
   }
 
   // Gather up the options with arguments (options with no short versions)
@@ -204,7 +204,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
 
     const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
       option->canonical_display_name(po::command_line_style::allow_long);
-      buffer << " [" << completeOptionName << " arg]";
+      buffer << boost::format(" [%s arg]") % completeOptionName;
   }
 
   // Gather up the required options with arguments
@@ -224,7 +224,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
     }
 
-    buffer << " " << completeOptionName << " arg";
+    buffer << boost::format(" %s arg") % completeOptionName;
   }
 
   // Report the positional arguments
