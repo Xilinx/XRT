@@ -73,7 +73,7 @@ static const std::string test_token_passed = "PASSED";
 
 
 void
-doesTestExists(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
+doesTestExist(const std::string& userTestName, const XBU::VectorPairStrings& testNameDescription)
 {
   const auto iter = std::find_if( testNameDescription.begin(), testNameDescription.end(),
     [&userTestName](const std::pair<std::string, std::string>& pair){ return pair.first == userTestName;} );
@@ -1721,7 +1721,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
         throw xrt_core::error("The 'quick' value for the tests to run cannot be used with any other name tests.");
 
       // Verify the current user test request exists in the test suite
-      doesTestExists(userTestName, testNameDescription);
+      doesTestExist(userTestName, testNameDescription);
     }
 
     // check if xclbin folder path is provided
@@ -1741,7 +1741,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
 
       //check test case name
-      doesTestExists(param[0], testNameDescription);
+      doesTestExist(param[0], testNameDescription);
 
       //check parameter name
       // std::vector<std::string> valid_param_list = {"block-size"};
