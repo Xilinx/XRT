@@ -428,8 +428,8 @@ populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tr
     boost::property_tree::ptree pt;
     boost::property_tree::ptree empty_pt;
 
-    int row = tile.get<int>("row");
-    int col = tile.get<int>("column");
+    auto row = tile.get<int>("row");
+    auto col = tile.get<int>("column");
     pt = pt_core.get_child("aie_core." + std::to_string(col) + "_" + std::to_string(row));
 
     std::string status;
