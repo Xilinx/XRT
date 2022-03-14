@@ -212,7 +212,8 @@ ReportAie::writeReport(const xrt_core::device* /*_pDevice*/,
     }
 
     count = 0;
-    for (auto& rtp_node : _pt.get_child("aie_metadata.rtps")) {
+    for (const auto& rtp_node : _pt.get_child("aie_metadata.rtps")) {
+
       _output << boost::format("  %-3s:[%2d]\n") % "RTP" % count;
       _output << fmtCommon("%s") % "Port Name" % rtp_node.second.get<std::string>("port_name");
       _output << fmtCommon("%d") % "Selector Row" % rtp_node.second.get<uint16_t>("selector_row");
