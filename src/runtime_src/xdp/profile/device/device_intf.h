@@ -201,11 +201,12 @@ class DeviceIntf {
      *   bw_per_lane = 985 MB/s (Wikipedia on PCIE 3.0)
      *   num_lanes = 16/8/4 depending on host system
      *   total bw = bw_per_lane * num_lanes
+     *   encoding = 128b/130b
      * For Edge Device:
      *  total bw = DDR4 memory bandwidth
      */
-    double mMaxReadBW  = 9600.0;
-    double mMaxWriteBW = 9600.0;
+    double mMaxReadBW  = 15753.85;
+    double mMaxWriteBW = 15753.85;
 
 }; /* DeviceIntf */
 

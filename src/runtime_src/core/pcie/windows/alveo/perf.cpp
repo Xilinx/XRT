@@ -34,14 +34,18 @@ xclGetDeviceTimestamp(xclDeviceHandle handle)
   return 0;
 }
 
+// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
+//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
 double xclGetReadMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 9600.0;
+  return 15753.85;
 }
 
+// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
+//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
 double xclGetWriteMaxBandwidthMBps(xclDeviceHandle handle)
 {
-  return 9600.0;
+  return 15753.85;
 }
 
 #if 0

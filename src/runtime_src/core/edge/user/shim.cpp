@@ -738,22 +738,24 @@ xclReadTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint6
   return 0;
 }
 
-// Get the maximum bandwidth for host reads from the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+// Get the maximum bandwidth for host reads from the device (in MB/s)
+// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
+//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
 double
 shim::
 xclGetReadMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 15753.85;
 }
 
-// Get the maximum bandwidth for host writes to the device (in MB/sec)
-// NOTE: for now, set to: (256/8 bytes) * 300 MHz = 9600 MBps
+// Get the maximum bandwidth for host writes to the device (in MB/s)
+// NOTE: For now, this is limited to PCIe gen 3x16 or 4x8, where:
+//       Max bandwidth = 16000 * (128b/130b encoding) = 15753.85 MB/s
 double
 shim::
 xclGetWriteMaxBandwidthMBps()
 {
-  return 9600.0;
+  return 15753.85;
 }
 
 int

@@ -909,6 +909,7 @@ namespace xdp {
 
         double maxReadBW = db->getStaticInfo().getMaxReadBW(deviceID);
         double aveBWUtil = (one_hundred * transferRate) / maxReadBW;
+        if (aveBWUtil > one_hundred) aveBWUtil = one_hundred;
 
         printNA ? (fout << "N/A,") : (fout << transferRate << ",");
         printNA ? (fout << "N/A,") : (fout << aveBWUtil << ",");
