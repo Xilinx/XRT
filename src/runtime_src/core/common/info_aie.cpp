@@ -550,7 +550,7 @@ is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property
 // Populate a specific AIE core which is unused but memory buffers exist [row:col]
 void
 populate_buffer_only_cores(const boost::property_tree::ptree& pt,
-			  const boost::property_tree::ptree& core_info, int gr_id,
+			    const boost::property_tree::ptree& core_info, int gr_id,
 			  boost::property_tree::ptree& tile_array)
 {
   const boost::property_tree::ptree empty_pt;
