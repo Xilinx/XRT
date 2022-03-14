@@ -16,8 +16,9 @@
 
 #include <iostream>
 #include <sstream>
-#include <fstream>
 #include <cstring>
+#include <boost/filesystem.hpp>
+#include <regex>
 #include "zynq_dev.h"
 
 static std::fstream sysfs_open_path(const std::string& path, std::string& err,
@@ -161,17 +162,20 @@ get_render_devname()
 
     // On Edge platforms 'zyxclmm_drm' is the name of zocl node in device tree
     // A symlink to render device is created based on this node name
-    const std::regex filter{"platform.*zyxclmm_drm-render"};
+    static const std::regex filter{"platform.*zyxclmm_drm-render"};
 
     boost::filesystem::directory_iterator end_itr;
     for( boost::filesystem::directory_iterator itr( render_dev_sym_dir ); itr != end_itr; ++itr) {
-        if(std::regex_match(itr->path().filename().string(), filter)) {
-	    if(boost::filesystem::is_symlink(itr->path()))
-	        render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
-	    break;
-	}
+        if (!std::regex_match(itr->path().filename().string(), filter))
+	    continue;
+
+	if (boost::filesystem::is_symlink(itr->path()))
+	    render_devname = boost::filesystem::read_symlink(itr->path()).filename().string();
+
+	break;
     }
-    if(render_devname.empty())
+
+    if (render_devname.empty())
         render_devname = "renderD128";
 
     return render_devname;

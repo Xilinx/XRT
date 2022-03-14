@@ -421,8 +421,8 @@ struct aie_reg_read
 
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
-  const static std::string AIE_TAG = "aie_metadata";
-  const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
+  const static std::string aie_tag = "aie_metadata";
+  const std::string zocl_device = "/dev/dri/" + get_render_devname();
   const uint32_t major = 1;
   const uint32_t minor = 0;
   const uint32_t patch = 0;
@@ -431,7 +431,7 @@ struct aie_reg_read
   std::string value;
 
   // Reading the aie_metadata sysfs.
-  dev->sysfs_get(AIE_TAG, err, value);
+  dev->sysfs_get(aie_tag, err, value);
   if (!err.empty())
     throw xrt_core::query::sysfs_error
       (err + ", The loading xclbin acceleration image doesn't use the Artificial "
@@ -449,9 +449,9 @@ struct aie_reg_read
                                                              % pt.get<uint32_t>("schema_version.minor")
                                                              % pt.get<uint32_t>("schema_version.patch")));
 
-  int mKernelFD = open(ZOCL_DEVICE.c_str(), O_RDWR);
+  int mKernelFD = open(zocl_device.c_str(), O_RDWR);
   if (!mKernelFD)
-    throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+    throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
   XAie_DevInst* devInst;         // AIE Device Instance
 
@@ -513,13 +513,13 @@ struct aie_reg_read
 static std::unique_ptr<drm_fd>
 aie_get_drmfd(const xrt_core::device* device, const std::string& dev_path)
 {
-  const static std::string AIE_TAG = "aie_metadata";
+  const static std::string aie_tag = "aie_metadata";
   std::string err;
   std::string value;
 
   auto dev = get_edgedev(device);
   // Reading the aie_metadata sysfs.
-  dev->sysfs_get(AIE_TAG, err, value);
+  dev->sysfs_get(aie_tag, err, value);
   if (!err.empty())
     throw xrt_core::query::sysfs_error
     (err + ", The loading xclbin acceleration image doesn't use the Artificial "
@@ -537,10 +537,10 @@ struct aie_get_freq
   {
     result_type freq = 0;
 #if defined(XRT_ENABLE_AIE)
-    const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
-    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
     if (fd_obj->fd < 0)
-      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
     aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);
@@ -565,10 +565,10 @@ struct aie_set_freq
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
   {
 #if defined(XRT_ENABLE_AIE)
-    const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
-    auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
+    const std::string zocl_device = "/dev/dri/" + get_render_devname();
+    auto fd_obj = aie_get_drmfd(device, zocl_device);
     if (fd_obj->fd < 0)
-      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
+      throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % zocl_device));
 
     struct drm_zocl_aie_freq_scale aie_arg;
     aie_arg.partition_id = boost::any_cast<uint32_t>(partition_id);

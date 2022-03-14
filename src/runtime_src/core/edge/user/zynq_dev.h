@@ -16,11 +16,9 @@
 #ifndef _XCL_ZYNQ_DEV_H_
 #define _XCL_ZYNQ_DEV_H_
 
-#include <boost/filesystem.hpp>
-#include <regex>
+#include <fstream>
 #include <string>
 #include <vector>
-#include <fstream>
 
 class zynq_device {
 public:
