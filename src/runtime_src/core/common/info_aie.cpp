@@ -537,8 +537,8 @@ populate_aie_core_gmio(const boost::property_tree::ptree& pt, boost::property_tr
 bool
 is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property_tree::ptree& tile)
 {
-  int row = tile.get<int>("row");
-  int col = tile.get<int>("column");
+  auto row = tile.get<int>("row");
+  auto col = tile.get<int>("column");
   for (auto& node : tile_array) {
       if ((node.second.get<int>("column") == col) && (node.second.get<int>("row") == row))
         return true;
