@@ -262,26 +262,24 @@ namespace xclhwemhal2
     }
     static auto l_time = std::chrono::high_resolution_clock::now();
     static auto start_time = std::chrono::high_resolution_clock::now();
-    //CR-1120081: CR-1120700: Creating ifstream
-    std::ifstream ifs;
-    if (inst && inst->get_simulator_started()) {
-      sleep(6);
-      std::string simPath = inst->getSimPath();
-      std::string logPath = simPath + "/" + "simulate.log";
-      ifs.open(logPath);
-    }
 
     unsigned int timeCheck = 0;
     unsigned int parseCount = 0;
     while (inst && inst->get_simulator_started())
     {
+      sleep(10);
       if (inst->get_simulator_started() == false) {
         return;
       }
 
+      std::string consoleMsg = "INFO: [HW-EMU 07-0] Please refer the path \"" + inst->getSimPath() + "/simulate.log\" for more detailed simulation infos, errors and warnings.";
+      if (std::find(inst->parsedMsgs.begin(), inst->parsedMsgs.end(), consoleMsg) == inst->parsedMsgs.end()) {
+        inst->logMessage(consoleMsg);
+        inst->parsedMsgs.push_back(consoleMsg);
+      }
+
       auto l_time_end = std::chrono::high_resolution_clock::now();
-      if (std::chrono::duration<double>(l_time_end - l_time).count() > 300)
-      {
+      if (std::chrono::duration<double>(l_time_end - l_time).count() > 300) {
         l_time = std::chrono::high_resolution_clock::now();
         inst->mPrintMessagesLock.lock();
         if (inst->get_simulator_started() == false)
@@ -294,26 +292,25 @@ namespace xclhwemhal2
         inst->mPrintMessagesLock.unlock();
       }
 
-      if (ifs.is_open()) {
-        auto end_time = std::chrono::high_resolution_clock::now();
-        if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
+      auto end_time = std::chrono::high_resolution_clock::now();
+      if (std::chrono::duration<double>(end_time - start_time).count() > timeCheck) {
 
-          start_time = std::chrono::high_resolution_clock::now();
-          inst->mPrintMessagesLock.lock();
-          if (inst->get_simulator_started() == false) {
-            inst->mPrintMessagesLock.unlock();
-            return;
-          }
+        start_time = std::chrono::high_resolution_clock::now();
+        inst->mPrintMessagesLock.lock();
 
-          inst->parseLog(ifs);
-          parseCount++;
-
-          if (parseCount%5 == 0 && timeCheck < 300) {
-            timeCheck += 10;
-          }
-
+        if (inst->get_simulator_started() == false) {
           inst->mPrintMessagesLock.unlock();
+          return;
         }
+
+        inst->parseLog();
+        parseCount++;
+
+        if (parseCount%5 == 0 && timeCheck < 300) {
+          timeCheck += 10;
+        }
+
+        inst->mPrintMessagesLock.unlock();
       }
     }
   }
