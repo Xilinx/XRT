@@ -560,7 +560,7 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
       continue;
 
     boost::property_tree::ptree igraph;
-    auto dma_row_it = g_node.second.get_child("dma_rows").begin();
+    auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
     for (const auto& node : g_node.second.get_child("dma_columns", empty_pt)) {
       boost::property_tree::ptree tile;
       tile.put("column", node.second.data());
