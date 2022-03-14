@@ -230,6 +230,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
     }
 
     if (!missingReports.empty()) {
+      // Exception is thrown at the end of this function to allow for report writing
       is_report_output_valid = false;
       // Print error message
       std::cerr << boost::format("Error: The following report(s) require specifying a device using the --device option:\n");
@@ -256,6 +257,7 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   try {
     XBU::produce_reports(deviceCollection, reportsToProcess, schemaVersion, elementsFilter, std::cout, oSchemaOutput);
   } catch (const std::exception&) {
+    // Exception is thrown at the end of this function to allow for report writing
     is_report_output_valid = false;
   }
 
