@@ -422,7 +422,7 @@ struct aie_reg_read
 #ifdef XRT_ENABLE_AIE
 #ifndef __AIESIM__
   const static std::string AIE_TAG = "aie_metadata";
-  const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+  const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
   const uint32_t major = 1;
   const uint32_t minor = 0;
   const uint32_t patch = 0;
@@ -537,7 +537,7 @@ struct aie_get_freq
   {
     result_type freq = 0;
 #if defined(XRT_ENABLE_AIE)
-    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
     auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
     if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));
@@ -565,7 +565,7 @@ struct aie_set_freq
   get(const xrt_core::device* device, key_type key, const boost::any& partition_id, const boost::any& freq)
   {
 #if defined(XRT_ENABLE_AIE)
-    const static std::string ZOCL_DEVICE = "/dev/dri/renderD128";
+    const std::string ZOCL_DEVICE = "/dev/dri/" + get_render_devname();
     auto fd_obj = aie_get_drmfd(device, ZOCL_DEVICE);
     if (fd_obj->fd < 0)
       throw xrt_core::error(-EINVAL, boost::str(boost::format("Cannot open %s") % ZOCL_DEVICE));

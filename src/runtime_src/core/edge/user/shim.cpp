@@ -121,9 +121,10 @@ shim(unsigned index)
 {
   xclLog(XRT_INFO, "%s", __func__);
 
-  mKernelFD = open("/dev/dri/renderD128", O_RDWR);
+  const std::string ZOCL_DRM_DEVICE = "/dev/dri/" + get_render_devname();
+  mKernelFD = open(ZOCL_DRM_DEVICE.c_str(), O_RDWR);
   if (mKernelFD < 0) {
-    xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
+    xclLog(XRT_ERROR, "%s: Cannot open %s", __func__,ZOCL_DRM_DEVICE);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
@@ -583,7 +584,6 @@ static int
 libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
 	       const axlf_section_header *overlay_header, int& fd, int flags, std::string& dtbo_path)
 {
-  static const std::string ZOCL_DRM_DEVICE = "/dev/dri/renderD128";
   static const std::string FPGA_DEVICE = "/dev/fpga0";
 
   // check BITSTREAM section
@@ -631,8 +631,14 @@ libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
   // asynchronously check for drm device node
   const static int timeout_sec = 10;
   int count = 0;
-  while(!boost::filesystem::exists(boost::filesystem::path(ZOCL_DRM_DEVICE)) && count++ < timeout_sec)
+  const std::string render_dev_dir{"/dev/dri/"};
+  std::string ZOCL_DRM_DEVICE;
+  while(count++ < timeout_sec) {
+    ZOCL_DRM_DEVICE = render_dev_dir + get_render_devname();
+    if(boost::filesystem::exists(boost::filesystem::path(ZOCL_DRM_DEVICE)))
+      break;
     std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
 
   // create drm fd
   fd = open(ZOCL_DRM_DEVICE.c_str(), O_RDWR);
@@ -1721,7 +1727,8 @@ xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
 
-  int fd = open("/dev/dri/renderD128", O_RDWR);
+  const std::string ZOCL_DRM_DEVICE = "/dev/dri/" + get_render_devname();
+  int fd = open(ZOCL_DRM_DEVICE.c_str(), O_RDWR);
   if (fd < 0) {
     return 0;
   }
