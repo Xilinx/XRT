@@ -1165,6 +1165,7 @@ hostMemBandwidthKernelTest(const std::shared_ptr<xrt_core::device>& _dev, boost:
   auto shared_host_mem = xrt_core::device_query<xrt_core::query::shared_host_mem>(_dev);
 
   try {
+    /* check if shell supports host mem */
     xrt_core::device_query<xrt_core::query::enabled_host_mem>(_dev);
   } catch(...) {
     if (shared_host_mem) {
