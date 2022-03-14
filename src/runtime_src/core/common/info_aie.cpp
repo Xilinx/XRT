@@ -540,8 +540,8 @@ is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property
   const auto row = tile.get<int>("row");
   const auto col = tile.get<int>("column");
   for (auto& node : tile_array) {
-      if ((node.second.get<int>("column") == col) && (node.second.get<int>("row") == row))
-        return true;
+    if ((node.second.get<int>("column") == col) && (node.second.get<int>("row") == row))
+      return true;
   }
 
   return false;
@@ -550,8 +550,8 @@ is_duplicate_core(const boost::property_tree::ptree& tile_array, boost::property
 // Populate a specific AIE core which is unused but memory buffers exist [row:col]
 void
 populate_buffer_only_cores(const boost::property_tree::ptree& pt,
-			    const boost::property_tree::ptree& core_info, int gr_id,
-		  	  boost::property_tree::ptree& tile_array)
+			   const boost::property_tree::ptree& core_info, int gr_id,
+			   boost::property_tree::ptree& tile_array)
 {
   const boost::property_tree::ptree empty_pt;
 
@@ -562,16 +562,22 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
     boost::property_tree::ptree igraph;
     auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
     for (const auto& node : g_node.second.get_child("dma_columns", empty_pt)) {
-      boost::property_tree::ptree tile;
-      tile.put("column", node.second.data());
-      tile.put("row", dma_row_it->second.data());
-      // Check whether this core is already added
-      if (is_duplicate_core(tile_array, tile))
-        continue;
+      try {
+        boost::property_tree::ptree tile;
+        tile.put("column", node.second.data());
+        tile.put("row", dma_row_it->second.data());
+        // Check whether this core is already added
+        if (is_duplicate_core(tile_array, tile))
+          continue;
 
-      populate_aie_core(core_info, tile);
-      dma_row_it++;
-      tile_array.push_back(std::make_pair("", tile));
+        populate_aie_core(core_info, tile);
+        tile_array.push_back(std::make_pair("", tile));
+	if (dma_row_it != g_node.second.end())
+          dma_row_it++;
+      } catch (const std::exception& ex) {
+        pt.put("error_msg", ex.what());
+        return;
+      }
     }
   }
 }
