@@ -420,7 +420,7 @@ populate_aie_shim(const xrt_core::device *device, const std::string& desc)
         ....
 */
 
-// This function populate a specific AIE core given as an input of [row:col]
+// Populate a specific AIE core given as an input of [row:col]
 void
 populate_aie_core(const boost::property_tree::ptree& pt_core, boost::property_tree::ptree& tile)
 {
