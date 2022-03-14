@@ -16,11 +16,12 @@
 
 #ifndef xrt_core_common_query_requests_h
 #define xrt_core_common_query_requests_h
+#include "error.h"
+#include "query.h"
+#include "uuid.h"
 
 #include "core/include/xclerr_int.h"
-#include "query.h"
-#include "error.h"
-#include "uuid.h"
+
 #include <iomanip>
 #include <map>
 #include <string>

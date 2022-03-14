@@ -15,18 +15,19 @@
  * under the License.
  */
 #include "shim.h"
+#include "system_linux.h"
+
 #include "core/include/shim_int.h"
 #include "core/include/xcl_perfmon_parameters.h"
 #include "core/include/xrt/xrt_uuid.h"
 
-#include "system_linux.h"
 #include "core/edge/common/aie_parser.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
-#include "core/common/message.h"
 #include "core/common/config_reader.h"
 #include "core/common/error.h"
+#include "core/common/message.h"
 #include "core/common/query_requests.h"
 #include "core/common/scheduler.h"
 #include "core/common/xclbin_parser.h"

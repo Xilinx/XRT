@@ -1,7 +1,5 @@
-/**
- * SPDX-License-Identifier: Apache-2.0
- * Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
- */
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (C) 2021-2022 Xilinx, Inc. All rights reserved.
 #define XRT_CORE_COMMON_SOURCE // in same dll as core_common
 #include "query_requests.h"
 #include "core/include/xclerr_int.h"

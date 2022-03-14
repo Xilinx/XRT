@@ -15,14 +15,15 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-#include "xrt.h"
-#include "shim.h"
-#include "core/include/shim_int.h"
+#include "shim.h"  // This file implements shim.h
+#include "xrt.h"   // This file implements xrt.h
 
 #include "ert.h"
 #include "scan.h"
 #include "system_linux.h"
 #include "xclbin.h"
+
+#include "core/include/shim_int.h"
 
 #include "core/common/bo_cache.h"
 #include "core/common/config_reader.h"
@@ -40,34 +41,30 @@
 
 #include "core/pcie/driver/linux/include/mgmt-reg.h"
 
+#include <cassert>
+#include <cerrno>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
+#include <condition_variable>
+#include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <fstream>
 #include <sstream>
-#include <vector>
-#include <cstring>
 #include <thread>
-#include <chrono>
-#include <cstdio>
-#include <cstdarg>
-#include <cerrno>
-#include <condition_variable>
+#include <vector>
 
 #include <unistd.h>
 #include <poll.h>
 
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/uio.h>
 #include <sys/syscall.h>
-#include <sys/file.h>
-#include <linux/aio_abi.h>
+#include <sys/uio.h>
 #include <asm/mman.h>
-
-#ifdef NDEBUG
-# undef NDEBUG
-# include<cassert>
-#endif
+#include <linux/aio_abi.h>
 
 #if defined(__GNUC__)
 #define SHIM_UNUSED __attribute__((unused))
