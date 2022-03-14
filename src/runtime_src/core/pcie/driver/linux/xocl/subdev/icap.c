@@ -2310,8 +2310,10 @@ static int __icap_download_bitstream_user(struct platform_device *pdev,
 	icap_create_subdev_ip_layout(pdev);
 
 	/* Create cu/scu subdev by slot */
-	xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
-			  icap->ip_layout, icap->ps_kernel);
+	err = xocl_register_cus(xdev, 0, &xclbin->m_header.uuid,
+				icap->ip_layout, icap->ps_kernel);
+	if (err)
+		goto done;
 
 	icap_create_subdev_debugip(pdev);
 
