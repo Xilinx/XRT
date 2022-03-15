@@ -247,20 +247,20 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 
 	return 0;
 }
-int zocl_scu_sk_ready(struct platform_device *pdev)
+void zocl_scu_sk_ready(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &zcu->base;
 	struct xrt_cu_scu *cu_scu = xcu->core;
 
 	up(&cu_scu->sc_sem);
-	return 0;
 }
-int zocl_scu_sk_crash(struct platform_device *pdev)
+void zocl_scu_sk_crash(struct platform_device *pdev)
 {
 	struct zocl_scu *zcu = platform_get_drvdata(pdev);
 	struct xrt_cu *xcu = &zcu->base;
 	struct xrt_cu_scu *cu_scu = xcu->core;
 
-	return 0;
+	// TO-DO
+	// Add taks to indicate PS kernel crash
 }

@@ -209,7 +209,7 @@ static int zert_create_cu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *
 static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu *conf)
 {
 	int ret = 0;
-	struct xrt_cu_info info;
+	struct xrt_cu_info info = {0};
 	struct zocl_scu *zcu = NULL;
 	struct xrt_cu *xcu = NULL;
 	struct xrt_cu_scu *cu_scu = NULL;

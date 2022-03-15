@@ -189,12 +189,12 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 
 	case ZOCL_SCU_STATE_READY:
 
-		ret = zocl_scu_sk_ready(scu_pdev);
+		zocl_scu_sk_ready(scu_pdev);
 		break;
 
 	case ZOCL_SCU_STATE_CRASH:
 
-		ret = zocl_scu_sk_crash(scu_pdev);
+		zocl_scu_sk_crash(scu_pdev);
 		break;
 
 	default:

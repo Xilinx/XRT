@@ -95,7 +95,7 @@ void zocl_fini_soft_kernel(struct drm_zocl_dev *zdev);
 extern struct platform_device *zert_get_scu_pdev(struct platform_device *pdev, u32 cu_idx);
 extern int zocl_scu_create_sk(struct platform_device *pdev, u32 pid, u32 parent_pid, struct drm_file *filp, int *boHandle);
 extern int zocl_scu_wait_cmd_sk(struct platform_device *pdev);
-extern int zocl_scu_sk_ready(struct platform_device *pdev);
-extern int zocl_scu_sk_crash(struct platform_device *pdev);
+extern void zocl_scu_sk_ready(struct platform_device *pdev);
+extern void zocl_scu_sk_crash(struct platform_device *pdev);
 
 #endif

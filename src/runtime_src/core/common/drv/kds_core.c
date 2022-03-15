@@ -1199,7 +1199,7 @@ _kds_fini_client(struct kds_sched *kds, struct kds_client *client,
 	bit = find_first_bit(client->cu_bitmap, MAX_CUS);
 	while (bit < MAX_CUS) {
 		/* Check whether this CU belongs to current slot */
-	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0)) {
+	        if (is_cu_in_ctx_slot(kds, cctx, bit, 0 /* regular CUs */)) {
 			info.cu_idx = bit;
 			info.cu_domain = 0;
 			info.curr_ctx = cctx;
