@@ -1021,8 +1021,8 @@ static int xgq_clear_firewall(struct platform_device *pdev)
 	return xgq_firewall_op(pdev, XGQ_CMD_LOG_AF_CLEAR);
 }
 
-static int vmr_verbose_info_query(struct platform_device *pdev,
-	char *buf, size_t *cnt)
+static int vmr_info_query_op(struct platform_device *pdev,
+	char *buf, size_t *cnt, enum xgq_cmd_log_page_type type_pid)
 {
 	struct xocl_xgq_vmr *xgq = platform_get_drvdata(pdev);
 	struct xocl_xgq_vmr_cmd *cmd = NULL;
@@ -1052,7 +1052,7 @@ static int vmr_verbose_info_query(struct platform_device *pdev,
 	payload->address = address;
 	payload->size = len;
 	payload->offset = 0;
-	payload->pid = XGQ_CMD_LOG_INFO;
+	payload->pid = type_pid;
 
 	hdr = &(cmd->xgq_cmd_entry.hdr);
 	hdr->opcode = XGQ_CMD_OP_GET_LOG_PAGE;
@@ -1099,7 +1099,7 @@ static int vmr_verbose_info_query(struct platform_device *pdev,
 				info->count, len);
 			info_size = len;
 		} else if (info_size == 0) {
-			XGQ_WARN(xgq, "verbose info size is zero");
+			XGQ_WARN(xgq, "info size is zero");
 			ret = -EINVAL;
 		} else {
 			char *info_data = vmalloc(info_size);
@@ -1124,6 +1124,17 @@ acquire_failed:
 	kfree(cmd);
 
 	return ret;
+}
+
+static int vmr_verbose_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_INFO);
+}
+static int vmr_endpoint_info_query(struct platform_device *pdev,
+	char *buf, size_t *cnt)
+{
+	return vmr_info_query_op(pdev, buf, cnt, XGQ_CMD_LOG_ENDPOINT);
 }
 
 /* On versal, verify is enforced. */
@@ -1860,6 +1871,20 @@ static ssize_t vmr_verbose_info_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(vmr_verbose_info);
 
+static ssize_t vmr_endpoint_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct xocl_xgq_vmr *xgq = platform_get_drvdata(to_platform_device(dev));
+	ssize_t cnt = 0;
+
+	/* update boot status */
+	if (vmr_endpoint_info_query(xgq->xgq_pdev, buf, &cnt))
+		return -EINVAL;
+
+	return cnt;
+}
+static DEVICE_ATTR_RO(vmr_endpoint);
+
 static struct attribute *xgq_attrs[] = {
 	&dev_attr_polling.attr,
 	&dev_attr_boot_from_backup.attr,
@@ -1867,6 +1892,7 @@ static struct attribute *xgq_attrs[] = {
 	&dev_attr_flash_to_legacy.attr,
 	&dev_attr_vmr_status.attr,
 	&dev_attr_vmr_verbose_info.attr,
+	&dev_attr_vmr_endpoint.attr,
 	&dev_attr_program_sc.attr,
 	&dev_attr_vmr_debug_level.attr,
 	&dev_attr_vmr_debug_dump.attr,
