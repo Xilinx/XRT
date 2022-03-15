@@ -31,6 +31,7 @@ std::map<std::string, int64_t>
 xrt_core::query::p2p_config::
 to_map(const xrt_core::query::p2p_config::result_type& config)
 {
+  static std::vector<std::string> config_whitelist = {"bar", "rbar", "max_bar", "exp_bar"};
   std::map<std::string, int64_t> config_map;
   for (auto& str_untrimmed : config) {
     const std::string str = boost::trim_copy(str_untrimmed);
@@ -38,11 +39,14 @@ to_map(const xrt_core::query::p2p_config::result_type& config)
     const auto pos = str.find(":");
     const std::string config_item_untrimmed = str.substr(0, pos);
     const std::string config_item = boost::trim_copy(config_item_untrimmed);
-    try {
-      const int64_t value = std::stoll(str.substr(pos + 1));
-      config_map[config_item] = value;
-    } catch (const std::exception&) {
-      // Failed to parse a non long long BAR value. Dont parse it into the map and move on!
+    if (std::find(config_whitelist.begin(), config_whitelist.end(), config_item) != config_whitelist.end()) {
+      try {
+        const int64_t value = std::stoll(str.substr(pos + 1));
+        config_map[config_item] = value;
+      } catch (const std::exception& ex) {
+        // Failed to parse a non long long BAR value for a whitelisted value. Something has gone very wrong in the p2p sysfs node
+        throw xrt_core::system_error(EINVAL, boost::str(boost::format("ERROR: P2P configuration failed to parse sysfs data: %s") % ex.what()));
+      }
     }
   }
   return config_map;
