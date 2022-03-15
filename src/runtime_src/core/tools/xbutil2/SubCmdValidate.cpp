@@ -1740,19 +1740,18 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
       XBU::verbose("Sub command: --param");
       boost::split(param, sParam, boost::is_any_of(":")); // eg: dma:block-size:1024
 
+      //check parameter format
+      if (param.size() != 3)
+        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
+
       //check test case name
       doesTestExist(param[0], testNameDescription);
 
       //check parameter name
-      // std::vector<std::string> valid_param_list = {"block-size"};
       auto iter = std::find_if( extendedKeysCollection.begin(), extendedKeysCollection.end(), 
           [&param](const ExtendedKeysStruct& collection){ return collection.param_name == param[1];} );
       if (iter == extendedKeysCollection.end())
         throw xrt_core::error((boost::format("Unsupported parameter name '%s' for validation test '%s'") % param[1] % param[2]).str());
-
-      //check parameter format
-      if (param.size() != 3)
-        throw xrt_core::error((boost::format("Invalid parameter format (expected 3 positional arguments): '%s'") % sParam).str());
     }
 
   } catch (const xrt_core::error& e) {
