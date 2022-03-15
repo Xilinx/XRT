@@ -118,15 +118,18 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
   Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
   Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
-  std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance};
+  Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::right};
+  const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
   Table2D device_table(table_headers);
 
-  for (auto& kd : available_devices) {
+  for (const auto& kd : available_devices) {
     const boost::property_tree::ptree& dev = kd.second;
-    std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
-    std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a")};
+    const std::string bdf_string = "[" + dev.get<std::string>("bdf") + "]";
+    const std::string ready_string = dev.get<bool>("is_ready", false) ? "Yes" : "No";
+    const std::vector<std::string> entry_data = {bdf_string, ":", dev.get<std::string>("vbnv", "n/a"), dev.get<std::string>("id", "n/a"), dev.get<std::string>("instance", "n/a"), ready_string};
     device_table.addEntry(entry_data);
   }
 
-  _output << device_table << std::endl;
+  _output << boost::str(boost::format("%s\n") % device_table);
+  _output << "* Devices that are not ready will have reduced functionality when using XRT tools\n";
 }
