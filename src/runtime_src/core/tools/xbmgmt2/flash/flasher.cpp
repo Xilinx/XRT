@@ -267,6 +267,7 @@ std::string int2PowerString(unsigned int lvl)
 int Flasher::getBoardInfo(BoardInfo& board)
 {
     std::map<char, std::vector<char>> info;
+    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     XMC_Flasher flasher(m_device->get_device_id());
 
     if (!flasher.probingErrMsg().empty())
@@ -276,10 +277,28 @@ int Flasher::getBoardInfo(BoardInfo& board)
     }
 
     int ret = flasher.xclGetBoardInfo(info);
+    if (ret == -EOPNOTSUPP) {
+        //Check if we can get data from vmr
+        std::map<char, std::string> sdr_info;
+        XGQ_VMR_Flasher xgq_flasher(m_device);
+        ret = xgq_flasher.xclGetBoardInfo(sdr_info);
+        if (ret != 0)
+            return ret;
+        board.mBMCVer = sdr_info[BDINFO_BMC_VER];
+        board.mSerialNum = sdr_info[BDINFO_SN];
+        board.mName = sdr_info[BDINFO_NAME];
+        board.mRev = sdr_info[BDINFO_REV];
+        board.mFanPresence = sdr_info[BDINFO_FAN_PRESENCE][0];
+        board.mMaxPower = sdr_info[BDINFO_MAX_PWR];
+        board.mMacAddr0 = sdr_info[BDINFO_MAC0].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC0] : std::move(std::string("Unassigned"));
+        board.mMacAddr1 = sdr_info[BDINFO_MAC1].compare(unassigned_mac) ?
+            sdr_info[BDINFO_MAC1] : std::move(std::string("Unassigned"));
+        return 0;
+    }
     if (ret != 0)
         return ret;
 
-    std::string unassigned_mac = "FF:FF:FF:FF:FF:FF";
     board.mBMCVer = std::move(charVec2String(info[BDINFO_BMC_VER]));
     if (flasher.fixedSC())
         board.mBMCVer += "(FIXED)";

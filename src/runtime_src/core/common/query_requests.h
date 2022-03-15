@@ -266,6 +266,15 @@ enum class key_type
   flush_default_only,
   vmr_status,
 
+  hwmon_sdm_serial_num,
+  hwmon_sdm_oem_id,
+  hwmon_sdm_board_name,
+  hwmon_sdm_active_msp_ver,
+  hwmon_sdm_mac_addr0,
+  hwmon_sdm_mac_addr1,
+  hwmon_sdm_revision,
+  hwmon_sdm_fan_presence,
+
   noop
 };
 
@@ -2898,6 +2907,78 @@ struct get_xclbin_data : request
   virtual boost::any
   get(const xrt_core::device* device) const = 0;
 
+};
+
+struct hwmon_sdm_serial_num : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_serial_num;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_oem_id : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_oem_id;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_board_name : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_board_name;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_active_msp_ver : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_active_msp_ver;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_mac_addr0 : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mac_addr0;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_mac_addr1 : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_mac_addr1;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_revision : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_revision;
+
+  virtual boost::any
+  get(const device*) const = 0;
+};
+
+struct hwmon_sdm_fan_presence : request
+{
+  using result_type = std::string;
+  static const key_type key = key_type::hwmon_sdm_fan_presence;
+
+  virtual boost::any
+  get(const device*) const = 0;
 };
 
 } // query
