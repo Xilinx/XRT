@@ -36,7 +36,7 @@ Currently supported ``xbutil`` commands are
 xbutil program
 ~~~~~~~~~~~~~~
 
-The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4>`_.
+The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card `<video reference> <https://youtu.be/nvU2ZBnAaz4?t=245>`_.
 
 **The supported options**
 
