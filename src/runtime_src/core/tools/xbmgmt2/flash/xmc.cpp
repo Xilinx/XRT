@@ -235,7 +235,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     if (ret == 0) {
         sc_flash.finish(true, "SC successfully updated");
     } else {
-        sc_flash.finish(false, "WARN: Failed to flash firmware");
+        sc_flash.finish(false, "Failed to flash firmware");
     }
 
     // End of flashing BMC firmware
