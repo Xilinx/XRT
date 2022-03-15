@@ -163,7 +163,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       
       const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
 				option->canonical_display_name(po::command_line_style::allow_long);
-      buffer << " [" << completeOptionName << "]";
+      buffer << boost::format(" [%s]") % completeOptionName;
     }
   }
 
@@ -174,7 +174,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
 
     // This option shouldn't be required
-    if (option->semantic()->is_required() == true) 
+    if (option->semantic()->is_required()) 
       continue;
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
@@ -193,7 +193,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
 
     // This option shouldn't be required
-    if (option->semantic()->is_required() == true) 
+    if (option->semantic()->is_required()) 
       continue;
 
     const std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
