@@ -117,11 +117,9 @@ SubCmdProgram::execute(const SubCmdOptions& _options) const
           printHelp(commonOptions, hiddenOptions, subOptionOptions);
           return;
       }
-      else {
-          std::cerr << "\nERROR: Suboption missing" << std::endl;
-          printHelp(commonOptions, hiddenOptions, subOptionOptions);
-          throw std::errc::operation_canceled;
-      }
+      std::cerr << "\nERROR: Suboption missing" << std::endl;
+      printHelp(commonOptions, hiddenOptions, subOptionOptions);
+      throw std::errc::operation_canceled;
   }
 
   // 2) Process the top level options

@@ -41,9 +41,8 @@ int main( int argc, char** argv )
     subCommands.emplace_back(std::make_shared<  SubCmdDump  >(false,  false, false));
   }
 
-  for (auto & subCommand : subCommands) {
-    subCommand->setExecutableName(executable);
-  }
+  for (auto & subCommand : subCommands)
+      subCommand->setExecutableName(executable);
 
   // -- Program Description
   const std::string description =

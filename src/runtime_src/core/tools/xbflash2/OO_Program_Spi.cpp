@@ -44,9 +44,9 @@ spiCommand(po::variables_map& vm) {
 
     //mandatory command line args
     std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
-    if (bdf.empty()) {
+    if (bdf.empty())
         throw std::runtime_error("Device not specified. Please specify a single device using --device option");
-    }
+
     //optional command line args
     std::string sBar = vm.count("bar") ? vm["bar"].as<std::string>() : "";
     int bar = !sBar.empty() ? std::stoi(sBar) : 0;
@@ -62,16 +62,17 @@ spiCommand(po::variables_map& vm) {
 
         pcidev::pci_device dev(bdf, bar, baroff);
         XSPI_Flasher xspi(&dev, dualflash);
-        if (xspi.revertToMFG()) {
+        if (xspi.revertToMFG())
             throw std::runtime_error("Flash type - spi, Reset failed.");
-        }
+        return;
     }
-    else if (vm.count("image")) { // spi - flash/image
+
+    if (vm.count("image")) { // spi - flash/image
         std::vector <std::string> primary_file;
         primary_file = vm["image"].as<std::vector<std::string>>();
         if (primary_file.size() == 2)
             dualflash = true;
-        
+
         std::cout << "Preparing to program flash on device: " << bdf << std::endl;
         if (!force && !XBU::can_proceed())
             return;
@@ -94,11 +95,9 @@ spiCommand(po::variables_map& vm) {
             if (xspi.xclUpgradeFirmware2(pri, sec))
                 throw std::runtime_error("spi flash failed.");
         }
+        return;
     }
-    else {
-        throw std::runtime_error("Missing program operation.No action taken.");
-    }
-    return;
+    throw std::runtime_error("Missing program operation.No action taken.");
 }
 } //end namespace 
 

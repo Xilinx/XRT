@@ -44,13 +44,12 @@ qspips_readback(po::variables_map& vm)
    
     //mandatory command line args
     std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
-    if (bdf.empty()) {
+    if (bdf.empty())
         throw std::runtime_error("Device not specified. Please specify a single device using --device option");
-    }
+    
     std::string output = vm.count("output") ? vm["output"].as<std::string>() : "";
-    if (output.empty()) {
-        throw std::runtime_error("Output not specified. Please specify the output file path using --output option");
-    }
+    if (output.empty())
+        throw std::runtime_error("Output not specified. Please specify the output file path using --output option");    
 
     //Optional arguments
     std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";

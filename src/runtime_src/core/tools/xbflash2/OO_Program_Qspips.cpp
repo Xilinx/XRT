@@ -45,9 +45,9 @@ qspipsCommand(po::variables_map& vm)
 
     //mandatory command line args
     std::string bdf = vm.count("device") ? vm["device"].as<std::string>() : "";
-    if (bdf.empty()) {
+    if (bdf.empty())
         throw std::runtime_error("Device not specified. Please specify a single device using --device option");
-    }
+
     //optional command line args
     std::string flash_type = vm.count("flash-part") ? vm["flash-part"].as<std::string>() : "";
     std::string soffset = vm.count("offset") ? vm["offset"].as<std::string>() : "";
@@ -76,16 +76,18 @@ qspipsCommand(po::variables_map& vm)
 
         if (qspips.xclErase(offset, len))
             throw std::runtime_error("qspips erase failed.");
+        return;
     }
-    else if (vm.count("image")) {// qspips flash 
+        
+    if (vm.count("image")) {// qspips flash 
         std::vector<std::string> bin_files = vm["image"].as<std::vector<std::string>>();
-        if (!bin_files.size()) {
+
+        if (!bin_files.size())
             throw std::runtime_error("Please provide proper BIN file.");
-        }
+
         firmwareImage bin(bin_files[0].c_str());
-        if (bin.fail()) {
+        if (bin.fail())
             throw std::runtime_error("Please provide proper BIN file.");
-        }
 
         std::cout << "Preparing to program flash on device: "
             << boost::format(" %s at offset 0x%x\n") % bdf % offset;
@@ -98,11 +100,10 @@ qspipsCommand(po::variables_map& vm)
 
         if (qspips.xclUpgradeFirmware(bin, offset))
             throw std::runtime_error("qspips flash failed.");
+        return;
     }
-    else {
-        throw std::runtime_error("Missing program operation.No action taken.");
-    }
-    return;
+
+    throw std::runtime_error("Missing program operation.No action taken.");
 }
 } //end namespace 
 
