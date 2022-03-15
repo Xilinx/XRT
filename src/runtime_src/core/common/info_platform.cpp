@@ -177,9 +177,11 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
     cmc.add("serial_number", sn);
 
     std::string oid = xq::oem_id::parse(xrt_core::device_query<xq::oem_id>(device));
+    if (boost::iequal(oid, "N/A")
+      old.clear();
     if (oid.empty()) {
       try {
-        oid = xrt_core::device_query<xq::hwmon_sdm_oem_id>(device);
+        oid = xq::oem_id::parse(xrt_core::device_query<xq::hwmon_sdm_oem_id>(device));
       }
       catch (const xq::no_such_key&) {
         // Ignoring if not available
