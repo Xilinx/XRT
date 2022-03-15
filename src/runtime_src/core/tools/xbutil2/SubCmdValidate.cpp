@@ -1823,7 +1823,7 @@ SubCmdValidate::execute(const SubCmdOptions& _options) const
     // Logic for individually defined tests
     // Enqueue the matching test suites to be executed
     for (const auto & testName : testsToRun) {
-      if (boost::equals(testName, testSuiteName) == 0) {
+      if (boost::equals(testName, testSuiteName)) {
         testObjectsToRun.push_back(&testSuite[index]);
         // add custom param to the ptree if available
         if (!param.empty() && boost::equals(param[0], testSuiteName)) {
