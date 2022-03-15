@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2020-2021 Xilinx, Inc
+ * Copyright (C) 2020-2022 Xilinx, Inc
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -39,6 +39,7 @@ namespace EscapeCodes {
       std::string up() const { return std::string("\033[1A"); };
       std::string prev_line() const { return std::string("\r") + up(); };  // Note: "\033[1F" is not ANSI
       std::string clear_line() const { return std::string("\033[2K"); };
+      static const std::string reset() { return "\033[39m"; };
   };
   
   // ------ C O L O R S -------------------------------------------------------
@@ -46,4 +47,8 @@ namespace EscapeCodes {
   static const uint8_t FGC_PASS          = 2;
   static const uint8_t FGC_FAIL          = 1;
   static const uint8_t FGC_WARN          = 226;
+
+  static const uint8_t FGC_HEADER        = 3;
+  static const uint8_t FGC_OPTION        = 65;
+  static const uint8_t FGC_OPTION_BODY   = 111;
 }
