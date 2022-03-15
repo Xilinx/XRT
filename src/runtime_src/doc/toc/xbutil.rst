@@ -36,7 +36,7 @@ Currently supported ``xbutil`` commands are
 xbutil program
 ~~~~~~~~~~~~~~
 
-The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card. `<youtube reference> <https://youtu.be/nvU2ZBnAaz4>`_.
+The ``xbutil program`` command downloads a specified xclbin binary to the programmable region on the card `<youtube reference> <https://youtu.be/nvU2ZBnAaz4>`_.
 
 **The supported options**
 
@@ -68,7 +68,7 @@ The ``xbutil program`` command downloads a specified xclbin binary to the progra
 xbutil validate
 ~~~~~~~~~~~~~~~
 
-The command ``xbutil validate`` validates the installed card by running precompiled basic tests. `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
+The command ``xbutil validate`` validates the installed card by running precompiled basic tests `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=110>`_.
 
 **The supported options**
 
@@ -128,7 +128,7 @@ The command ``xbutil validate`` validates the installed card by running precompi
 xbutil examine 
 ~~~~~~~~~~~~~~
 
-The command ``xbutil examine``  can be used to find the details of the specific device. `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
+The command ``xbutil examine``  can be used to find the details of the specific device `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=80>`_.
 
 
 **The supported options**
@@ -193,7 +193,7 @@ The command ``xbutil examine``  can be used to find the details of the specific 
  
 xbutil configure
 ~~~~~~~~~~~~~~~~
-Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo). `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
+Command ``xbutil configure`` is used to configure specific settings based on the need of user application (requires sudo) `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=280>`_.
 
 
 **The supported options**
@@ -242,7 +242,7 @@ Command ``xbutil configure`` is used to configure specific settings based on the
 
 xbutil reset
 ~~~~~~~~~~~~
-This ``xbutil reset`` command can be used to reset device. `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
+This ``xbutil reset`` command can be used to reset device `<youtube reference> <https://youtu.be/nvU2ZBnAaz4?t=350>`_.
 
 **The supported options**
 
