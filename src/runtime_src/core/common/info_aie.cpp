@@ -562,22 +562,17 @@ populate_buffer_only_cores(const boost::property_tree::ptree& pt,
     boost::property_tree::ptree igraph;
     auto dma_row_it = g_node.second.get_child("dma_rows", empty_pt).begin();
     for (const auto& node : g_node.second.get_child("dma_columns", empty_pt)) {
-      try {
-        boost::property_tree::ptree tile;
-        tile.put("column", node.second.data());
-        tile.put("row", dma_row_it->second.data());
-        // Check whether this core is already added
-        if (is_duplicate_core(tile_array, tile))
-          continue;
+      boost::property_tree::ptree tile;
+      tile.put("column", node.second.data());
+      tile.put("row", dma_row_it->second.data());
+      // Check whether this core is already added
+      if (is_duplicate_core(tile_array, tile))
+        continue;
 
-        populate_aie_core(core_info, tile);
-        tile_array.push_back(std::make_pair("", tile));
-	if (dma_row_it != g_node.second.end())
-          dma_row_it++;
-      } catch (const std::exception& ex) {
-        pt.put("error_msg", ex.what());
-        return;
-      }
+      populate_aie_core(core_info, tile);
+      tile_array.push_back(std::make_pair("", tile));
+      if (dma_row_it != g_node.second.end())
+        dma_row_it++;
     }
   }
 }
