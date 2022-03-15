@@ -140,7 +140,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
       try {
         sc_ver = xrt_core::device_query<xq::hwmon_sdm_active_msp_ver>(device);
       }
-      catch (const xq::no_such_key&) {
+      catch (const xq::exception&) {
         // Ignoring if not available
       }
     }
@@ -170,7 +170,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
       try {
         sn = xrt_core::device_query<xq::hwmon_sdm_serial_num>(device);
       }
-      catch (const xq::no_such_key&) {
+      catch (const xq::exception&) {
         // Ignoring if not available
       }
     }
@@ -183,7 +183,7 @@ add_controller_info(const xrt_core::device* device, ptree_type& pt)
       try {
         oid = xq::oem_id::parse(xrt_core::device_query<xq::hwmon_sdm_oem_id>(device));
       }
-      catch (const xq::no_such_key&) {
+      catch (const xq::exception&) {
         // Ignoring if not available
       }
     }

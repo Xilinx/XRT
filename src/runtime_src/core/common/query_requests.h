@@ -2923,11 +2923,6 @@ struct hwmon_sdm_oem_id : request
   using result_type = std::string;
   static const key_type key = key_type::hwmon_sdm_oem_id;
 
-  // parse an oem_id and return value as string
-  XRT_CORE_COMMON_EXPORT
-  static std::string
-  parse(const result_type& value);
-
   virtual boost::any
   get(const device*) const = 0;
 };

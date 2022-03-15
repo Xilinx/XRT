@@ -66,7 +66,7 @@ int XGQ_VMR_Flasher::xclGetBoardInfo(std::map<char, std::string>& info)
     info[BDINFO_BMC_VER] = xrt_core::device_query<xrt_core::query::hwmon_sdm_active_msp_ver>(m_device);
     info[BDINFO_FAN_PRESENCE] = xrt_core::device_query<xrt_core::query::hwmon_sdm_fan_presence>(m_device);
   }
-  catch (const xrt_core::query::no_such_key&) {
+  catch (const xrt_core::query::exception&) {
     ret = -EOPNOTSUPP;
   }
 

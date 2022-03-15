@@ -56,7 +56,8 @@ mac_addresses(const xrt_core::device * dev)
     mac_contiguous_num = xrt_core::device_query<xrt_core::query::mac_contiguous_num>(dev);
     mac_addr_first = xrt_core::device_query<xrt_core::query::mac_addr_first>(dev);
   }
-  catch (...) {  }
+  catch (const xrt_core::query::exception&) {
+  }
 
   //new flow
   if (mac_contiguous_num && !mac_addr_first.empty()) {
@@ -84,7 +85,8 @@ mac_addresses(const xrt_core::device * dev)
     try {
       mac_addr = xrt_core::device_query<xrt_core::query::mac_addr_list>(dev);
     }
-    catch (...) {  }
+    catch (const xrt_core::query::exception&) {
+    }
     for (const auto& a : mac_addr) {
       boost::property_tree::ptree addr;
       if (!a.empty() && a.compare("FF:FF:FF:FF:FF:FF") != 0) {
@@ -208,13 +210,15 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
     logic_uuids.erase(
       std::remove_if(logic_uuids.begin(), logic_uuids.end(),
                       [](const std::string& s) { return s.empty(); }), logic_uuids.end());
-  } catch (...) {}
+  } catch (const xrt_core::query::exception&) {
+  }
   try {
     interface_uuids = xrt_core::device_query<xrt_core::query::interface_uuids>(device);
     interface_uuids.erase(
       std::remove_if(interface_uuids.begin(), interface_uuids.end(),
                   [](const std::string& s) { return s.empty(); }), interface_uuids.end());
-  } catch (...) {}
+  } catch (const xrt_core::query::exception&) {
+  }
 
   boost::property_tree::ptree pt_current_shell;
   if (xrt_core::device_query<xrt_core::query::is_mfg>(device)) { // golden
@@ -248,7 +252,7 @@ ReportPlatform::getPropertyTree20202( const xrt_core::device * device,
   if (sc_ver.empty()) {
     try {
       sc_ver = xrt_core::device_query<xrt_core::query::xmc_sc_version>(device);
-    } catch (...) {
+    } catch (const xrt_core::query::exception&) {
       auto board = f.getOnBoardDSA();
       sc_ver = board.bmc_ver();
     }
