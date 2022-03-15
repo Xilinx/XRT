@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: chienwei@xilinx.com
  *
@@ -1508,7 +1508,7 @@ static ssize_t status_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	safe_read32(xmc, XMC_STATUS_REG, &val);
 
@@ -1520,7 +1520,7 @@ static ssize_t core_version_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val;
+	u32 val = 0;
 
 	safe_read32(xmc, XMC_CORE_VERSION_REG, &val);
 

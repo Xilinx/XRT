@@ -228,8 +228,7 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     int counter = 0;
     for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
         ret = program(tiTxtStream, *i);
-        sc_flash.update(counter);
-        counter++;
+        sc_flash.update(counter++);
     }
 
     if (ret == 0) {
