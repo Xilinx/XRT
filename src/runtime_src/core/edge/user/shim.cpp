@@ -123,18 +123,8 @@ shim(unsigned index)
   xclLog(XRT_INFO, "%s", __func__);
 
   const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
-  if (boost::filesystem::exists(zocl_drm_device)) {
-    mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
-    if (mKernelFD < 0)
-      xclLog(XRT_ERROR, "%s: Cannot open %s", __func__,zocl_drm_device);
-  }
-  /*
-   * Zocl node is not present in some platforms static dtb, it gets loaded
-   * using overlay dtb, drm device node is not created until zocl is present
-   * So if enable_flat=true return 1 valid device
-   */
-  else if (!xrt_core::config::get_enable_flat())
-    xclLog(XRT_ERROR, "%s: File '%s' does not exist", __func__,zocl_drm_device);
+  mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
+  // Validity of mKernelFD is checked using handleCheck in every shim function
 
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
@@ -703,8 +693,13 @@ xclLoadAxlf(const axlf *buffer)
    * bitstream. But if OVERLAY section is present in xclbin, userspace apis are
    * used to download full bitstream
    */
-  else if (is_flat_enabled && !overlay_header)
+  else if (is_flat_enabled && !overlay_header) {
+    if (!ZYNQ::shim::handleCheck(this)) {
+      xclLog(XRT_ERROR, "%s: No DRM render device found", __func__);
+      return -ENODEV;
+    }
     flags = DRM_ZOCL_PLATFORM_FLAT;
+  }
 
   if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
@@ -849,13 +844,13 @@ isGood() const
 
 shim *
 shim::
-handleCheck(void *handle)
+handleCheck(void *handle, bool checkDrmFd /*= true*/)
 {
   // Sanity checks
   if (!handle)
     return 0;
 
-  if (!((shim *) handle)->isGood()) {
+  if (checkDrmFd && !((shim *) handle)->isGood()) {
     return 0;
   }
 
@@ -1794,7 +1789,8 @@ xclOpen(unsigned deviceIndex, const char*, xclVerbosityLevel)
     }
 
     auto handle = new ZYNQ::shim(deviceIndex);
-    if (!ZYNQ::shim::handleCheck(handle)) {
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    if (!ZYNQ::shim::handleCheck(handle, checkDrmFD)) {
       delete handle;
       handle = XRT_NULL_HANDLE;
     }
@@ -1989,7 +1985,8 @@ xclLoadXclBinImpl(xclDeviceHandle handle, const xclBin *buffer, bool meta)
   return xdp::hal::profiling_wrapper("xclLoadXclbin", [handle, buffer, meta] {
 
   try {
-    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle);
+    bool checkDrmFD = xrt_core::config::get_enable_flat() ? false : true;
+    ZYNQ::shim *drv = ZYNQ::shim::handleCheck(handle, checkDrmFD);
 
 #ifndef __HWEM__
     xdp::hal::flush_device(handle);
