@@ -241,13 +241,12 @@ remove_daemon_config()
     throw xrt_core::error(std::errc::operation_canceled);
 
   try {
-    bool is_removed = boost::filesystem::remove(config_file);
-    if(is_removed)
+    if (boost::filesystem::remove(config_file))
       std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
     else
       std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
 
-  } catch (boost::filesystem::filesystem_error &e) {
+  } catch (const boost::filesystem::filesystem_error &e) {
       std::cerr << boost::format("ERROR: %s\n") % e.what();
       throw xrt_core::error(std::errc::operation_canceled);
   }
