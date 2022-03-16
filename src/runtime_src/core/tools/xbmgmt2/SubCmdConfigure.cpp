@@ -234,14 +234,13 @@ show_device_conf(xrt_core::device* device)
 static void 
 remove_daemon_config()
 {
-  XBU::sudo_or_throw("Removing daemon configuration file requires sudo");
+  XBU::sudo_or_throw("Removing Daemon configuration file requires sudo");
+  
+  std::cout << boost::format("Removing Daemon configuration file \"%s\"\n") % config_file;
+  if(!XBU::can_proceed(XBU::getForce()))
+    throw xrt_core::error(std::errc::operation_canceled);
+
   try {
-    /* 
-     * boost::filesystem::remove function returns 
-     * True  : if file is removed succesfully
-     * False : if file does not exist
-     * Throws an exception if there are some other errors 
-     */
     bool is_removed = boost::filesystem::remove(config_file);
     if(is_removed)
       std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
