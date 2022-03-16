@@ -108,9 +108,9 @@ add_p2p_config(const xrt_core::device* device, ptree_type& pt)
 {
   try {
     ptree_type pt_p2p;
-    auto config = xrt_core::device_query<xq::p2p_config>(device);
-    auto config_map = xrt_core::query::p2p_config::to_map(config);
-    for(auto& pair : config_map)
+    const auto config = xrt_core::device_query<xq::p2p_config>(device);
+    const auto config_map = xrt_core::query::p2p_config::to_map(config);
+    for(const auto& pair : config_map)
       pt_p2p.add(pair.first, xrt_core::utils::unit_convert(pair.second)); // Turn bytes into GB
     pt.put_child("p2p", pt_p2p);
   }
