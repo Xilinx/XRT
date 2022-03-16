@@ -41,6 +41,7 @@
 #include <cassert>
 #include <cstdarg>
 #include <boost/filesystem.hpp>
+#include <regex>
 
 #include <fcntl.h>
 #include <poll.h>
