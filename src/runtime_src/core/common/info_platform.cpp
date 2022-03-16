@@ -104,6 +104,32 @@ add_mig_info(const xrt_core::device* device, ptree_type& pt)
 }
 
 void
+add_p2p_config(const xrt_core::device* device, ptree_type& pt)
+{
+  try {
+    ptree_type pt_p2p;
+    const auto config = xrt_core::device_query<xq::p2p_config>(device);
+    const auto config_map = xrt_core::query::p2p_config::to_map(config);
+    for(const auto& pair : config_map)
+      pt_p2p.add(pair.first, xrt_core::utils::unit_convert(pair.second)); // Turn bytes into GB
+    pt.put_child("p2p", pt_p2p);
+  }
+  catch (const xq::exception&) {
+    // Devices that do not suport p2p will not add anything to the passed in ptree
+  }
+}
+
+void
+add_config_info(const xrt_core::device* device, ptree_type& pt)
+{
+  ptree_type pt_config;
+
+  add_p2p_config(device, pt_config);
+
+  pt.put_child("config", pt_config);
+}
+
+void
 add_p2p_info(const xrt_core::device* device, ptree_type& pt)
 {
   auto value = xq::p2p_config::value_type::not_supported;
@@ -292,6 +318,7 @@ add_platform_info(const xrt_core::device* device, ptree_type& pt_platform_array)
   add_controller_info(device, pt_platform);
   add_clock_info(device, pt_platform);
   add_mac_info(device, pt_platform);
+  add_config_info(device, pt_platform);
 
   pt_platforms.push_back(std::make_pair("", pt_platform));
   pt_platform_array.add_child("platforms", pt_platforms);

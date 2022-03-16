@@ -25,6 +25,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <map>
 #include <stdexcept>
 #include <boost/any.hpp>
 #include <boost/format.hpp>
@@ -1479,6 +1480,10 @@ struct p2p_config : request
   {
     return value;
   }
+
+  XRT_CORE_COMMON_EXPORT
+  static std::map<std::string, int64_t>
+  to_map(const xrt_core::query::p2p_config::result_type& config);
 };
 
 struct temp_card_top_front : request
