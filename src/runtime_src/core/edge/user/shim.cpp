@@ -28,6 +28,8 @@
 #include "core/common/config_reader.h"
 #include "core/common/query_requests.h"
 #include "core/common/error.h"
+#include "core/include/xrt/xrt_uuid.h"
+#include "core/edge/common/aie_parser.h"
 
 #include <cerrno>
 #include <iostream>
@@ -38,6 +40,7 @@
 #include <vector>
 #include <cassert>
 #include <cstdarg>
+#include <boost/filesystem.hpp>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -56,6 +59,12 @@
 #include "plugin/xdp/pl_deadlock.h"
 #else
 #include "plugin/xdp/hw_emu_device_offload.h"
+#endif
+
+#if defined(XRT_ENABLE_LIBDFX)
+extern "C" {
+#include <libdfx.h>
+}
 #endif
 
 namespace {
@@ -112,9 +121,10 @@ shim(unsigned index)
 {
   xclLog(XRT_INFO, "%s", __func__);
 
-  mKernelFD = open("/dev/dri/renderD128", O_RDWR);
+  const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
+  mKernelFD = open(zocl_drm_device.c_str(), O_RDWR);
   if (mKernelFD < 0) {
-    xclLog(XRT_ERROR, "%s: Cannot open /dev/dri/renderD128", __func__);
+    xclLog(XRT_ERROR, "%s: Cannot open %s", __func__,zocl_drm_device);
   }
   mCmdBOCache = std::make_unique<xrt_core::bo_cache>(this, xrt_core::config::get_cmdbo_cache());
   mDev = zynq_device::get_dev();
@@ -495,6 +505,154 @@ xclLoadXclBin(const xclBin *buffer)
   return ret;
 }
 
+#if defined(XRT_ENABLE_LIBDFX)
+namespace libdfx {
+
+static void
+libdfxHelper(std::shared_ptr<xrt_core::device> core_dev, std::string& dtbo_path, int& fd)
+{
+  uint32_t slot_id = 0;
+  static const std::string dtbo_dir_path = "/configfs/device-tree/overlays/";
+
+  // get dtbo_path of slot '0' for now, in future when we support multi slot we need
+  // info about which slot this xclbin needs to be loaded
+  // TODO: read slot id from xclbin or get it as an arg to this function
+  try {
+    dtbo_path = xrt_core::device_query<xrt_core::query::dtbo_path>(core_dev, slot_id);
+  }
+  catch(const std::exception &e) {
+    const std::string errmsg{"Query for dtbo path failed: "};
+    throw std::runtime_error(errmsg + e.what());
+  }
+  if (!dtbo_path.empty()) {
+    // remove existing libdfx node
+    rmdir((dtbo_dir_path + dtbo_path).c_str());
+    dtbo_path.clear();
+    // close drm fd as zocl driver will be reloaded
+    close(fd);
+  }
+}
+
+static void
+copyBufferToFile(const std::string& file_path, const char* buf, uint64_t size)
+{
+  std::ofstream file(file_path, std::ios::out | std::ios::binary);
+
+  if (!file)
+    throw std::runtime_error("Failed to open " + file_path + " for writing xclbin section");
+
+  file.write(buf, size);
+  file.close();
+}
+
+static void
+libdfxConfig(std::string& xclbin_dir_path, const axlf *top,
+	     const axlf_section_header *bit_header, const axlf_section_header *overlay_header)
+{
+  // create a temp directory to extract bitstream and dtbo
+  char dir[] = "/tmp/xclbin.XXXXXX";
+  char *tmpdir = mkdtemp(dir);
+  if (tmpdir == nullptr)
+    throw std::runtime_error("Failed to create tmp directory for xclbin files extraction");
+
+  xclbin_dir_path = tmpdir;
+  // create a file with BITSTREAM section
+  const std::string bit_file_path = xclbin_dir_path + "/xclbin.bit";
+  auto bit_buffer = reinterpret_cast<const char *>(top) + bit_header->m_sectionOffset;
+  copyBufferToFile(bit_file_path, bit_buffer, bit_header->m_sectionSize);
+
+  // create a file with OVERLAY(dtbo) section
+  const std::string overlay_file_path = xclbin_dir_path + "/xclbin.dtbo";
+  auto overlay_buffer = reinterpret_cast<const char *>(top) + overlay_header->m_sectionOffset;
+  copyBufferToFile(overlay_file_path, overlay_buffer, overlay_header->m_sectionSize);
+}
+
+// function for cleaning temp files
+static void
+libdfxClean(const std::string& file_path)
+{
+  try {
+    if (boost::filesystem::exists(boost::filesystem::path(file_path)))
+      boost::filesystem::remove_all(boost::filesystem::path(file_path));
+  }
+  catch(std::exception& ex) {
+    xclLog(XRT_WARNING, "%s: unable to remove '%s' folder",__func__,file_path);
+  }
+}
+
+static int
+libdfxLoadAxlf(std::shared_ptr<xrt_core::device> core_dev, const axlf *top,
+	       const axlf_section_header *overlay_header, int& fd, int flags, std::string& dtbo_path)
+{
+  static const std::string fpga_device = "/dev/fpga0";
+
+  // check BITSTREAM section
+  const axlf_section_header *bit_header = xclbin::get_axlf_section(top, axlf_section_kind::BITSTREAM);
+  if (!bit_header)
+    throw std::runtime_error("No BITSTREAM section in xclbin");
+
+  //check if xclbin is already loaded
+  try {
+    if (core_dev->get_xclbin_uuid() == xrt::uuid(top->m_header.uuid) && !(flags & DRM_ZOCL_FORCE_PROGRAM)) {
+      xclLog(XRT_WARNING, "%s: skipping as xclbin is already loaded", __func__);
+      return 1;
+    }
+  }
+  catch(const std::exception &e) {
+    // can happen when no bitstream is loaded and xclbinid sysfs is not created
+    // do nothing
+  }
+
+  libdfxHelper(core_dev, dtbo_path, fd);
+
+  std::string xclbin_dir_path;
+  libdfxConfig(xclbin_dir_path, top, bit_header, overlay_header);
+
+  // call libdfx api to load bitstream and dtbo
+  int dtbo_id = dfx_cfg_init(xclbin_dir_path.c_str(), fpga_device.c_str(), 0);
+  if (dtbo_id <= 0) {
+    libdfxClean(xclbin_dir_path);
+    throw std::runtime_error("Failed to initialize config with libdfx api");
+  }
+  if (dfx_cfg_load(dtbo_id)){
+    dfx_cfg_destroy(dtbo_id);
+    libdfxClean(xclbin_dir_path);
+    throw std::runtime_error("Failed to load bitstream, dtbo with libdfx api");
+  }
+
+  // save dtbo_path as load is successful
+  dtbo_path = boost::filesystem::path(xclbin_dir_path).filename().string()
+			+ "_image_" + std::to_string(dtbo_id);
+
+  // clean tmp files of libdfx
+  dfx_cfg_destroy(dtbo_id);
+  libdfxClean(xclbin_dir_path);
+
+  // asynchronously check for drm device node
+  const static int timeout_sec = 10;
+  int count = 0;
+  const std::string render_dev_dir{"/dev/dri/"};
+  std::string zocl_drm_device;
+  while (count++ < timeout_sec) {
+    zocl_drm_device = render_dev_dir + get_render_devname();
+    if (boost::filesystem::exists(boost::filesystem::path(zocl_drm_device)))
+      break;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // create drm fd
+  fd = open(zocl_drm_device.c_str(), O_RDWR);
+  if (fd < 0) {
+    dtbo_path.clear();
+    throw std::runtime_error("Cannot create file descriptor with device " + zocl_drm_device);
+  }
+
+  return 0;
+}
+
+}
+#endif
+
 int
 shim::
 xclLoadAxlf(const axlf *buffer)
@@ -502,6 +660,7 @@ xclLoadAxlf(const axlf *buffer)
   int ret = 0;
   unsigned int flags = DRM_ZOCL_PLATFORM_BASE;
   int off = 0;
+  std::string dtbo_path("");
 
   /*
    * If platform is a non-PR-platform, Following check will fail. Dont download
@@ -535,7 +694,28 @@ xclLoadAxlf(const axlf *buffer)
   if (force_program) {
     flags = flags | DRM_ZOCL_FORCE_PROGRAM;
   }
+
+#if defined(XRT_ENABLE_LIBDFX)
+  // check OVERLAY section
+  // if present use libdfx apis to load bitstream and dtbo(overlay)
+  auto overlay_header = xclbin::get_axlf_section(buffer, axlf_section_kind::OVERLAY);
+  if(overlay_header) {
+    try {
+      // if xclbin is already loaded ret val is '1', dont call ioctl in this case
+      if (libdfx::libdfxLoadAxlf(this->mCoreDevice, buffer, overlay_header, mKernelFD, flags, dtbo_path))
+        return 0;
+    }
+    catch(const std::exception& e){
+      xclLog(XRT_ERROR, "%s: loading xclbin with OVERLAY section failed: %s", __func__,e.what());
+      return -EPERM;
+    }
+  }
 #endif
+
+#endif
+
+    /* Get the AIE_METADATA and get the hw_gen information */
+    uint8_t hw_gen = xrt_core::edge::aie::get_hw_gen(mCoreDevice.get());
 
     drm_zocl_axlf axlf_obj = {
       .za_xclbin_ptr = const_cast<axlf *>(buffer),
@@ -543,6 +723,8 @@ xclLoadAxlf(const axlf *buffer)
       .za_ksize = 0,
       .za_kernels = NULL,
       .za_slot_id = 0, // TODO Cleanup: Once uuid interface id available we need to remove this
+      .za_dtbo_path = const_cast<char *>(dtbo_path.c_str()),
+      .hw_gen = hw_gen,
     };
 
   axlf_obj.kds_cfg.polling = xrt_core::config::get_ert_polling();
@@ -1545,7 +1727,8 @@ xclProbe()
 {
   return xdp::hal::profiling_wrapper("xclProbe", [] {
 
-  int fd = open("/dev/dri/renderD128", O_RDWR);
+  const std::string zocl_drm_device = "/dev/dri/" + get_render_devname();
+  int fd = open(zocl_drm_device.c_str(), O_RDWR);
   if (fd < 0) {
     return 0;
   }

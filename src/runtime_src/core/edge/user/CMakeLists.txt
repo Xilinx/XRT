@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 include_directories(
   ${DRM_INCLUDE_DIRS}
@@ -89,6 +89,16 @@ else()
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     )
+
+endif()
+
+if (DEFINED XRT_LIBDFX)
+  cmake_policy(PUSH)
+    #Setting this policy makes linking libraries simple
+    cmake_policy(SET CMP0079 NEW)
+    target_link_libraries(xrt_core PRIVATE dfx)
+    target_compile_definitions(xrt_core PRIVATE XRT_ENABLE_LIBDFX)
+  cmake_policy(POP)
 endif()
 
 install (TARGETS xrt_core 

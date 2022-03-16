@@ -451,7 +451,22 @@ struct mac_addr_list
     for (int i=0; i < LEGACY_COUNT; i++) {
       std::string addr, errmsg;
       pdev->sysfs_get("xmc", "mac_addr"+std::to_string(i), errmsg, addr);
-      list.push_back(addr);
+      if (!addr.empty())
+        list.push_back(addr);
+    }
+
+    if (list.empty()) {
+      //check if the data can be retrieved from vmr.
+      std::string errmsg;
+      int i = 0;
+      do {
+        std::string addr;
+        errmsg.clear();
+        pdev->sysfs_get("hwmon_sdm", "mac_addr"+std::to_string(i), errmsg, addr);
+        if (!addr.empty())
+          list.push_back(addr);
+        i++;
+      } while (errmsg.empty());
     }
 
     return list;
@@ -1009,6 +1024,14 @@ initialize_query_table()
   emplace_sysfs_get<query::vmr_status>                         ("xgq_vmr", "vmr_status");
 
   emplace_func4_request<query::sdm_sensor_info,                sdm_sensor_info>();
+  emplace_sysfs_get<query::hwmon_sdm_serial_num>               ("hwmon_sdm", "serial_num");
+  emplace_sysfs_get<query::hwmon_sdm_oem_id>                   ("hwmon_sdm", "oem_id");
+  emplace_sysfs_get<query::hwmon_sdm_board_name>               ("hwmon_sdm", "bd_name");
+  emplace_sysfs_get<query::hwmon_sdm_active_msp_ver>           ("hwmon_sdm", "active_msp_ver");
+  emplace_sysfs_get<query::hwmon_sdm_mac_addr0>                ("hwmon_sdm", "mac_addr0");
+  emplace_sysfs_get<query::hwmon_sdm_mac_addr1>                ("hwmon_sdm", "mac_addr1");
+  emplace_sysfs_get<query::hwmon_sdm_fan_presence>             ("hwmon_sdm", "fan_presence");
+  emplace_sysfs_get<query::hwmon_sdm_revision>                 ("hwmon_sdm", "revision");
 }
 
 struct X { X() { initialize_query_table(); }};

@@ -819,6 +819,7 @@ int xrt_cu_init(struct xrt_cu *xcu)
 	atomic_set(&xcu->tick, 0);
 	xcu->thread = NULL;
 
+	mod_timer(&xcu->timer, jiffies + CU_TIMER);
 	return err;
 }
 
@@ -834,6 +835,7 @@ void xrt_cu_fini(struct xrt_cu *xcu)
 	if (xcu->thread && !IS_ERR(xcu->thread))
 		(void) kthread_stop(xcu->thread);
 
+	del_timer_sync(&xcu->timer);
 	return;
 }
 

@@ -381,15 +381,7 @@ namespace xdp {
   {
     if (!(getFlowMode() == HW))
       return;
-
     db->getDynamicInfo().setTraceBufferFull(deviceId, offloader->trace_buffer_full());
-
-    if (offloader->has_fifo() && offloader->trace_buffer_full())
-      xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", FIFO_WARN_MSG);
-
-    if (offloader->has_ts2mm() && offloader->trace_buffer_full())
-        xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", TS2MM_WARN_MSG_BUF_FULL);
-
   }
 
   void DeviceOffloadPlugin::broadcast(VPDatabase::MessageType msg, void* /*blob*/)

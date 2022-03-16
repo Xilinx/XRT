@@ -18,19 +18,23 @@
 
 #include "xdp/profile/device/device_trace_offload.h"
 #include "xdp/profile/device/device_trace_logger.h"
-#include "core/common/message.h"
 #include "experimental/xrt_profile.h"
 
 namespace xdp {
 
-DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
-                                       DeviceTraceLogger* dTraceLogger,
-                                       uint64_t sleep_interval_ms,
-                                       uint64_t trbuf_sz)
-                   : dev_intf(dInt),
-                     deviceTraceLogger(dTraceLogger),
-                     sleep_interval_ms(sleep_interval_ms)
-                     
+DeviceTraceOffload::
+DeviceTraceOffload
+  ( DeviceIntf* dInt
+  , DeviceTraceLogger* dTraceLogger
+  , uint64_t sleep_interval_ms
+  , uint64_t trbuf_sz
+  )
+  : dev_intf(dInt)
+  , deviceTraceLogger(dTraceLogger)
+  , sleep_interval_ms(sleep_interval_ms)
+  , m_prev_clk_train_time(std::chrono::system_clock::now())
+  , m_process_trace(false)
+  , m_process_trace_done(false)
 {
   // Select appropriate reader
   if(has_fifo()) {
@@ -41,14 +45,10 @@ DeviceTraceOffload::DeviceTraceOffload(DeviceIntf* dInt,
 
   ts2mm_info.num_ts2mm = dev_intf->getNumberTS2MM();
   ts2mm_info.full_buf_size = trbuf_sz;
-
-  // Initialize internal variables
-  m_prev_clk_train_time = std::chrono::system_clock::now();
-  m_process_trace = false;
-  m_process_trace_done = false;
 }
 
-DeviceTraceOffload::~DeviceTraceOffload()
+DeviceTraceOffload::
+~DeviceTraceOffload()
 {
   stop_offload();
   if (offload_thread.joinable()) {
@@ -59,7 +59,8 @@ DeviceTraceOffload::~DeviceTraceOffload()
   }
 }
 
-void DeviceTraceOffload::offload_device_continuous()
+void DeviceTraceOffload::
+offload_device_continuous()
 {
   std::vector<uint64_t> buf_sizes;
   if(!ts2mm_info.buffers.empty()) {
@@ -94,7 +95,8 @@ void DeviceTraceOffload::offload_device_continuous()
   offload_finished();
 }
 
-void DeviceTraceOffload::train_clock_continuous()
+void DeviceTraceOffload::
+train_clock_continuous()
 {
   while (should_continue()) {
     train_clock();
@@ -104,7 +106,8 @@ void DeviceTraceOffload::train_clock_continuous()
   offload_finished();
 }
 
-void DeviceTraceOffload::process_trace_continuous()
+void DeviceTraceOffload::
+process_trace_continuous()
 {
   if (!has_ts2mm())
     return;
@@ -121,7 +124,8 @@ void DeviceTraceOffload::process_trace_continuous()
   m_process_trace_done = true;
 }
 
-void DeviceTraceOffload::process_trace()
+void DeviceTraceOffload::
+process_trace()
 {
   if (!has_ts2mm())
     return;
@@ -157,13 +161,15 @@ void DeviceTraceOffload::process_trace()
   } while (!q_empty);
 }
 
-bool DeviceTraceOffload::should_continue()
+bool DeviceTraceOffload::
+should_continue()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   return status == OffloadThreadStatus::RUNNING;
 }
 
-void DeviceTraceOffload::start_offload(OffloadThreadType type)
+void DeviceTraceOffload::
+start_offload(OffloadThreadType type)
 {
   if (status == OffloadThreadStatus::RUNNING)
     return;
@@ -180,21 +186,24 @@ void DeviceTraceOffload::start_offload(OffloadThreadType type)
 
 }
 
-void DeviceTraceOffload::stop_offload()
+void DeviceTraceOffload::
+stop_offload()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPING;
 }
 
-void DeviceTraceOffload::offload_finished()
+void DeviceTraceOffload::
+offload_finished()
 {
   std::lock_guard<std::mutex> lock(status_lock);
   if (status == OffloadThreadStatus::STOPPED) return ;
   status = OffloadThreadStatus::STOPPED;
 }
 
-void DeviceTraceOffload::train_clock()
+void DeviceTraceOffload::
+train_clock()
 {
   auto now = std::chrono::system_clock::now();
   auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_prev_clk_train_time).count();
@@ -215,7 +224,8 @@ void DeviceTraceOffload::train_clock()
   m_force_clk_train = false;
 }
 
-void DeviceTraceOffload::read_trace_fifo(bool)
+void DeviceTraceOffload::
+read_trace_fifo(bool)
 {
   debug_stream
     << "DeviceTraceOffload::read_trace_fifo " << std::endl;
@@ -243,13 +253,14 @@ void DeviceTraceOffload::read_trace_fifo(bool)
   if (!fifo_full) {
     auto fifo_size = dev_intf->getFifoSize();
 
-    if (num_packets >= fifo_size)
+    // hw emulation has infinite fifo
+    if ((num_packets >= fifo_size) && (xdp::getFlowMode() == xdp::Flow::HW))
       fifo_full = true;
-
   }
 }
 
-bool DeviceTraceOffload::read_trace_init(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
+bool DeviceTraceOffload::
+read_trace_init(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 {
   if (has_ts2mm()) {
     m_initialized = init_s2mm(circ_buf, buf_sizes);
@@ -261,7 +272,8 @@ bool DeviceTraceOffload::read_trace_init(bool circ_buf, const std::vector<uint64
   return m_initialized;
 }
 
-void DeviceTraceOffload::read_leftover_circular_buf()
+void DeviceTraceOffload::
+read_leftover_circular_buf()
 {
   // If we use circular buffer then, final trace read
   // might stop at trace buffer boundry and to read the entire
@@ -273,7 +285,8 @@ void DeviceTraceOffload::read_leftover_circular_buf()
   }
 }
 
-void DeviceTraceOffload::read_trace_end()
+void DeviceTraceOffload::
+read_trace_end()
 {
   // Trace logger will clear it's state and add approximations 
   // for pending events
@@ -290,10 +303,12 @@ void DeviceTraceOffload::read_trace_end()
   }
 }
 
-void DeviceTraceOffload::read_trace_s2mm(bool force)
+void DeviceTraceOffload::
+read_trace_s2mm(bool force)
 {
   debug_stream
-    << "DeviceTraceOffload::read_trace_s2mm : number of ts2mm in design " << ts2mm_info.num_ts2mm << std::endl;
+    << "DeviceTraceOffload::read_trace_s2mm : number of ts2mm in design "
+    << ts2mm_info.num_ts2mm << std::endl;
 
   for(uint64_t i = 0; i < ts2mm_info.num_ts2mm; i++) {
   auto wordcount = dev_intf->getWordCountTs2mm(i);
@@ -314,7 +329,7 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   uint64_t nBytes = ts2mm_info.buffers[i].used_size - ts2mm_info.buffers[i].offset;
 
   auto start = std::chrono::steady_clock::now();
-  void* host_buf = dev_intf->syncTraceBuf( ts2mm_info.buffers[i].buf, ts2mm_info.buffers[i].offset, nBytes);
+  void* host_buf = dev_intf->syncTraceBuf(ts2mm_info.buffers[i].buf, ts2mm_info.buffers[i].offset, nBytes);
   auto end = std::chrono::steady_clock::now();
   debug_stream
     << "For " << i << " ts2mm : Elapsed time in microseconds for sync : "
@@ -343,7 +358,8 @@ void DeviceTraceOffload::read_trace_s2mm(bool force)
   }
 }
 
-bool DeviceTraceOffload::config_s2mm_reader(uint64_t i, uint64_t wordCount)
+bool DeviceTraceOffload::
+config_s2mm_reader(uint64_t i, uint64_t wordCount)
 {
   if (ts2mm_info.buffers[i].offload_done)
     return false;
@@ -396,7 +412,8 @@ bool DeviceTraceOffload::config_s2mm_reader(uint64_t i, uint64_t wordCount)
   return true;
 }
 
-bool DeviceTraceOffload::init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
+bool DeviceTraceOffload::
+init_s2mm(bool circ_buf, const std::vector<uint64_t> &buf_sizes)
 {
   debug_stream
     << "DeviceTraceOffload::init_s2mm with size : " << ts2mm_info.full_buf_size
@@ -436,14 +453,16 @@ bool DeviceTraceOffload::init_s2mm(bool circ_buf, const std::vector<uint64_t> &b
     // Data Mover will write input stream to this address
     ts2mm_info.buffers[i].address = dev_intf->getDeviceAddr(ts2mm_info.buffers[i].buf);
     dev_intf->initTS2MM(i, ts2mm_info.buffers[i].buf_size, ts2mm_info.buffers[i].address, ts2mm_info.use_circ_buf);
-  debug_stream
-    << "DeviceTraceOffload::init_s2mm with each size : " << ts2mm_info.buffers[i].buf_size << " initiated " << i << " ts2mm "
-    << std::endl;
+
+    debug_stream
+    << "DeviceTraceOffload::init_s2mm with each size : " << ts2mm_info.buffers[i].buf_size
+    << " initiated " << i << " ts2mm " << std::endl;
   }
   return true;
 }
 
-void DeviceTraceOffload::reset_s2mm()
+void DeviceTraceOffload::
+reset_s2mm()
 {
   debug_stream << "DeviceTraceOffload::reset_s2mm" << std::endl;
   if (ts2mm_info.buffers.empty())
@@ -459,6 +478,32 @@ void DeviceTraceOffload::reset_s2mm()
     ts2mm_info.buffers[i].buf = 0;
   }
   ts2mm_info.buffers.clear();
+}
+
+bool DeviceTraceOffload::
+trace_buffer_full()
+{
+  if (has_fifo()) {
+    if (fifo_full) {
+      // Throw warning for this offloader if we detect full fifo
+      std::call_once(fifo_full_warning_flag, [](){
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT", FIFO_WARN_MSG);
+      });
+    }
+    return fifo_full;
+  }
+  bool isFull = false;
+  for(uint32_t i = 0 ; i < ts2mm_info.num_ts2mm && !isFull; i++) {
+    isFull |= ts2mm_info.buffers[i].full;
+  }
+  // Throw warning for this offloader if we detect full buffer
+  if (isFull)
+    std::call_once(ts2mm_full_warning_flag, [](){
+        xrt_core::message::send(xrt_core::message::severity_level::warning,
+                                "XRT", TS2MM_WARN_MSG_BUF_FULL);
+      });
+  return isFull;
 }
 
 }

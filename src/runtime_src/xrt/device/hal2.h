@@ -156,8 +156,8 @@ public:
    * If the device supports DMA threads then they are started by
    * this function.
    */
-  void
-  setup();
+  virtual void
+  setup() override;
 
   /**
    * Open the device.
@@ -167,55 +167,55 @@ public:
    * Throws if device could not be opened
    */
   virtual bool
-  open();
+  open() override;
 
   virtual void
-  close();
+  close() override;
 
   virtual xclDeviceHandle
-  get_xcl_handle() const
+  get_xcl_handle() const override
   {
     return m_handle; // cast to xclDeviceHandle
   }
 
   xrt::device
-  get_xrt_device() const
+  get_xrt_device() const override
   {
     return m_handle;
   }
 
   std::shared_ptr<xrt_core::device>
-  get_core_device() const;
+  get_core_device() const override;
 
   bool
   is_nodma() const;
 
   virtual void
-  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared);
+  acquire_cu_context(const uuid& uuid,size_t cuidx,bool shared) override;
 
   virtual void
-  release_cu_context(const uuid& uuid,size_t cuidx);
+  release_cu_context(const uuid& uuid,size_t cuidx) override;
 
   virtual task::queue*
-  getQueue(hal::queue_type qt)
+  getQueue(hal::queue_type qt) override
   {
     return &m_queue[static_cast<qtype>(qt)];
   }
 
   virtual std::string
-  getDriverLibraryName() const
+  getDriverLibraryName() const override
   {
     return m_ops->getFileName();
   }
 
   virtual std::string
-  getName() const
+  getName() const override
   {
     return get_device_info()->mName;
   }
 
   virtual unsigned int
-  getBankCount() const
+  getBankCount() const override
   {
     return get_device_info()->mDDRBankCount;
   }
@@ -227,103 +227,103 @@ public:
   }
 
   virtual size_t
-  getAlignment() const
+  getAlignment() const override
   {
     return get_device_info()->mDataAlignment;
   }
 
   virtual range<const unsigned short*>
-  getClockFrequencies() const
+  getClockFrequencies() const override
   {
     return {get_device_info()->mOCLFrequency,get_device_info()->mOCLFrequency+4};
   }
 
   virtual std::ostream&
-  printDeviceInfo(std::ostream& ostr) const;
+  printDeviceInfo(std::ostream& ostr) const override;
 
   virtual size_t
-  get_cdma_count() const
+  get_cdma_count() const override
   {
     return get_device_info()->mNumCDMA;
   }
 
   virtual execbuffer_object_handle
-  allocExecBuffer(size_t sz);
+  allocExecBuffer(size_t sz) override;
 
   virtual buffer_object_handle
-  alloc(size_t sz, Domain domain, uint64_t memoryIndex, void* user_ptr);
+  alloc(size_t sz, Domain domain, uint64_t memoryIndex, void* user_ptr) override;
 
   virtual buffer_object_handle
-  alloc(const buffer_object_handle& bo, size_t sz, size_t offset);
+  alloc(const buffer_object_handle& bo, size_t sz, size_t offset) override;
 
   buffer_object_handle
   alloc_nodma(size_t sz, Domain domain, uint64_t memory_index, void* userptr);
 
   virtual void*
-  alloc_svm(size_t sz);
+  alloc_svm(size_t sz) override;
 
   virtual void
-  free_svm(void* svm_ptr);
+  free_svm(void* svm_ptr) override;
 
   virtual event
-  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async);
+  write(const buffer_object_handle& bo, const void* buffer, size_t sz, size_t offset,bool async) override;
 
   virtual event
-  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset,bool async);
+  read(const buffer_object_handle& bo, void* buffer, size_t sz, size_t offset,bool async) override;
 
   virtual event
-  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async);
+  sync(const buffer_object_handle& bo, size_t sz, size_t offset, direction dir, bool async) override;
 
   virtual event
-  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset);
+  copy(const buffer_object_handle& dst_bo, const buffer_object_handle& src_bo, size_t sz, size_t dst_offset, size_t src_offset) override;
 
   virtual void
   fill_copy_pkt(const buffer_object_handle& dst_boh, const buffer_object_handle& src_boh
-                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt);
+                ,size_t sz, size_t dst_offset, size_t src_offset,ert_start_copybo_cmd* pkt) override;
 
   virtual size_t
-  read_register(size_t offset, void* buffer, size_t size);
+  read_register(size_t offset, void* buffer, size_t size) override;
 
   virtual size_t
-  write_register(size_t offset, const void* buffer, size_t size);
+  write_register(size_t offset, const void* buffer, size_t size) override;
 
   virtual void*
-  map(const buffer_object_handle& bo);
+  map(const buffer_object_handle& bo) override;
 
   virtual void
-  unmap(const buffer_object_handle& bo);
+  unmap(const buffer_object_handle& bo) override;
 
   virtual void*
-  map(const execbuffer_object_handle& bo);
+  map(const execbuffer_object_handle& bo) override;
 
   virtual void
-  unmap(const execbuffer_object_handle& bo);
+  unmap(const execbuffer_object_handle& bo) override;
 
   virtual int
-  exec_buf(const execbuffer_object_handle& bo);
+  exec_buf(const execbuffer_object_handle& bo) override;
 
   virtual int
-  exec_wait(int timeout_ms) const;
+  exec_wait(int timeout_ms) const override;
 
 public:
   virtual bool
-  is_imported(const buffer_object_handle& boh) const;
+  is_imported(const buffer_object_handle& boh) const override;
 
   virtual uint64_t
-  getDeviceAddr(const buffer_object_handle& boh);
+  getDeviceAddr(const buffer_object_handle& boh) override;
 
   virtual int
-  getMemObjectFd(const buffer_object_handle& boh);
+  getMemObjectFd(const buffer_object_handle& boh) override;
 
   virtual buffer_object_handle
-  getBufferFromFd(const int fd, size_t& size, unsigned flags);
+  getBufferFromFd(const int fd, size_t& size, unsigned flags) override;
 
 public:
   virtual hal::operations_result<int>
-  loadXclBin(const xclBin* xclbin);
+  loadXclBin(const xclBin* xclbin) override;
 
   virtual bool
-  hasBankAlloc() const
+  hasBankAlloc() const override
   {
     // PCIe DSAs have device DDRs which allow bank allocation/selection
     // Zynq PL based devices set device id to 0xffff.
@@ -331,7 +331,7 @@ public:
   }
 
   virtual hal::operations_result<ssize_t>
-  readKernelCtrl(uint64_t offset,void* hbuf,size_t size)
+  readKernelCtrl(uint64_t offset,void* hbuf,size_t size) override
   {
     if (!m_ops->mRead)
       return hal::operations_result<ssize_t>();
@@ -339,7 +339,7 @@ public:
   }
 
   virtual hal::operations_result<ssize_t>
-  writeKernelCtrl(uint64_t offset,const void* hbuf,size_t size)
+  writeKernelCtrl(uint64_t offset,const void* hbuf,size_t size) override
   {
     if (!m_ops->mWrite)
       return hal::operations_result<ssize_t>();
@@ -347,7 +347,7 @@ public:
   }
 
   virtual hal::operations_result<int>
-  reClock2(unsigned short region, unsigned short *freqMHz)
+  reClock2(unsigned short region, unsigned short *freqMHz) override
   {
     if (!m_ops->mReClock2)
       return hal::operations_result<int>();
@@ -356,7 +356,7 @@ public:
 
   // Following functions are profiling functions
   virtual hal::operations_result<size_t>
-  clockTraining(xclPerfMonType type)
+  clockTraining(xclPerfMonType type) override
   {
     if (!m_ops->mClockTraining)
       return hal::operations_result<size_t>();
@@ -364,7 +364,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  countTrace(xclPerfMonType type)
+  countTrace(xclPerfMonType type) override
   {
     if (!m_ops->mCountTrace)
       return hal::operations_result<uint32_t>();
@@ -372,7 +372,7 @@ public:
   }
 
   virtual hal::operations_result<double>
-  getDeviceClock()
+  getDeviceClock() override
   {
     if (!m_ops->mGetDeviceClock)
       return hal::operations_result<double>();
@@ -380,7 +380,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  getDeviceTime()
+  getDeviceTime() override
   {
     if (!m_ops->mGetDeviceTime)
       return hal::operations_result<size_t>();
@@ -388,7 +388,7 @@ public:
   }
 
   virtual hal::operations_result<double>
-  getDeviceMaxRead()
+  getDeviceMaxRead() override
   {
     if (!m_ops->mGetDeviceMaxRead)
       return hal::operations_result<double>();
@@ -396,7 +396,7 @@ public:
   }
 
   virtual hal::operations_result<double>
-  getDeviceMaxWrite()
+  getDeviceMaxWrite() override
   {
     if (!m_ops->mGetDeviceMaxWrite)
       return hal::operations_result<double>();
@@ -404,7 +404,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  readCounters(xclPerfMonType type, xclCounterResults& results)
+  readCounters(xclPerfMonType type, xclCounterResults& results) override
   {
     if (!m_ops->mReadCounters)
       return hal::operations_result<size_t>();
@@ -412,7 +412,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  debugReadIPStatus(xclDebugReadType type, void* results)
+  debugReadIPStatus(xclDebugReadType type, void* results) override
   {
     if (!m_ops->mDebugReadIPStatus)
       return hal::operations_result<size_t>();
@@ -420,7 +420,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  readTrace(xclPerfMonType type, xclTraceResultsVector& vec)
+  readTrace(xclPerfMonType type, xclTraceResultsVector& vec) override
   {
     if (!m_ops->mReadTrace)
       return hal::operations_result<size_t>();
@@ -428,7 +428,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size)
+  xclRead(xclAddressSpace space, uint64_t offset, void *hostBuf, size_t size) override
   {
     if (!m_ops->mRead)
       return hal::operations_result<void>();
@@ -437,7 +437,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size)
+  xclWrite(xclAddressSpace space, uint64_t offset, const void *hostBuf, size_t size) override
   {
     if (!m_ops->mWrite)
       return hal::operations_result<void>();
@@ -446,7 +446,7 @@ public:
   }
 
   virtual hal::operations_result<ssize_t>
-  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset)
+  xclUnmgdPread(unsigned flags, void *buf, size_t count, uint64_t offset) override
   {
     if (!m_ops->mUnmgdPread)
       return hal::operations_result<ssize_t>();
@@ -454,7 +454,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  setProfilingSlots(xclPerfMonType type, uint32_t slots)
+  setProfilingSlots(xclPerfMonType type, uint32_t slots) override
   {
     if (!m_ops->mSetProfilingSlots)
       return hal::operations_result<void>();
@@ -463,7 +463,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  getProfilingSlots(xclPerfMonType type)
+  getProfilingSlots(xclPerfMonType type) override
   {
     if (!m_ops->mGetProfilingSlots)
       return hal::operations_result<uint32_t>();
@@ -472,7 +472,7 @@ public:
 
   virtual hal::operations_result<void>
   getProfilingSlotName(xclPerfMonType type, uint32_t slotnum,
-                       char* slotName, uint32_t length)
+                       char* slotName, uint32_t length) override
   {
     if (!m_ops->mGetProfilingSlotName)
       return hal::operations_result<void>();
@@ -481,7 +481,7 @@ public:
   }
 
   virtual hal::operations_result<uint32_t>
-  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum)
+  getProfilingSlotProperties(xclPerfMonType type, uint32_t slotnum) override
   {
     if (!m_ops->mGetProfilingSlotProperties)
       return hal::operations_result<uint32_t>();
@@ -489,7 +489,7 @@ public:
   }
 
   virtual hal::operations_result<void>
-  configureDataflow(xclPerfMonType type, unsigned *ip_config)
+  configureDataflow(xclPerfMonType type, unsigned *ip_config) override
   {
     if (!m_ops->mConfigureDataflow)
       return hal::operations_result<void>();
@@ -498,7 +498,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  startCounters(xclPerfMonType type)
+  startCounters(xclPerfMonType type) override
   {
     if (!m_ops->mStartCounters)
       return hal::operations_result<size_t>();
@@ -506,7 +506,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  startTrace(xclPerfMonType type, uint32_t options)
+  startTrace(xclPerfMonType type, uint32_t options) override
   {
     if (!m_ops->mStartTrace)
       return hal::operations_result<size_t>();
@@ -514,7 +514,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  stopCounters(xclPerfMonType type)
+  stopCounters(xclPerfMonType type) override
   {
     if (!m_ops->mStopCounters)
       return hal::operations_result<size_t>();
@@ -522,7 +522,7 @@ public:
   }
 
   virtual hal::operations_result<size_t>
-  stopTrace(xclPerfMonType type)
+  stopTrace(xclPerfMonType type) override
   {
     if (!m_ops->mStopTrace)
       return hal::operations_result<size_t>();
@@ -530,12 +530,12 @@ public:
   }
 
   virtual void*
-  getHalDeviceHandle() {
+  getHalDeviceHandle() override {
     return m_handle;
   }
 
   virtual hal::operations_result<uint32_t>
-  getNumLiveProcesses()
+  getNumLiveProcesses() override
   {
     if(!m_ops->mGetNumLiveProcesses)
       return hal::operations_result<uint32_t>();
@@ -543,7 +543,7 @@ public:
   }
 
   virtual hal::operations_result<std::string>
-  getSysfsPath(const std::string& subdev, const std::string& entry)
+  getSysfsPath(const std::string& subdev, const std::string& entry) override
   {
     if (!m_ops->mGetSysfsPath)
       return hal::operations_result<std::string>("");
@@ -558,7 +558,7 @@ public:
   }
 
   virtual hal::operations_result<std::string>
-  getSubdevPath(const std::string& subdev, uint32_t idx)
+  getSubdevPath(const std::string& subdev, uint32_t idx) override
   {
     if (!m_ops->mGetSubdevPath)
       return hal::operations_result<std::string>("");
@@ -573,7 +573,7 @@ public:
   }
 
   virtual hal::operations_result<std::string>
-  getDebugIPlayoutPath()
+  getDebugIPlayoutPath() override
   {
     if(!m_ops->mGetDebugIPlayoutPath)
       return hal::operations_result<std::string>("");
@@ -589,7 +589,7 @@ public:
   }
 
   virtual hal::operations_result<int>
-  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz)
+  getTraceBufferInfo(uint32_t nSamples, uint32_t& traceSamples, uint32_t& traceBufSz) override
   {
     if(!m_ops->mGetTraceBufferInfo)
       return hal::operations_result<int>();
@@ -597,7 +597,7 @@ public:
   }
 
   hal::operations_result<int>
-  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample)
+  readTraceData(void* traceBuf, uint32_t traceBufSz, uint32_t numSamples, uint64_t ipBaseAddress, uint32_t& wordsPerSample) override
   {
     if(!m_ops->mReadTraceData)
       return hal::operations_result<int>();
@@ -605,7 +605,7 @@ public:
   }
 
   hal::operations_result<void>
-  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret)
+  getDebugIpLayout(char* buffer, size_t size, size_t* size_ret) override
   {
     if(!m_ops->mGetDebugIpLayout) {
       return hal::operations_result<void>();

@@ -707,7 +707,7 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	if (submitted == completed)
 		goto skip;
 
-	if (kds->ert_disable) {
+	if (kds->ert_disable || kds->xgq_enable) {
 		wait_ms = 500;
 		xrt_cu_abort(cu_mgmt->xcus[cu_idx], client);
 
@@ -830,7 +830,7 @@ kds_del_scu_context(struct kds_sched *kds, struct kds_client *client,
 		   struct kds_ctx_info *info)
 {
 	struct kds_scu_mgmt *scu_mgmt = &kds->scu_mgmt;
-	u32 cu_idx = 0;
+	u32 cu_idx = info->cu_idx;
 	unsigned long submitted = 0;
 	unsigned long completed = 0;
 
@@ -1404,6 +1404,7 @@ int kds_del_cu(struct kds_sched *kds, struct xrt_cu *xcu)
 			continue;
 
 		cu_mgmt->xcus[i] = NULL;
+		cu_mgmt->cu_intr[i] = 0;
 		--cu_mgmt->num_cus;
 		cu_stat_write(cu_mgmt, usage[i], 0);
 		break;
