@@ -32,7 +32,6 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
-#include <filesystem>
 
 constexpr const char* config_file  = "/etc/msd.conf";
 
@@ -238,18 +237,18 @@ remove_daemon_config()
   XBU::sudo_or_throw("Removing daemon configuration file requires sudo");
   try {
     /* 
-     * std::filesyste::remove function returns 
+     * boost::filesystem::remove function returns 
      * True  : if file is removed succesfully
-     * False : if file is not available
+     * False : if file does not exist
      * Throws an exception if there are some other errors 
      */
-    bool is_removed = std::filesystem::remove(config_file);
+    bool is_removed = boost::filesystem::remove(config_file);
     if(is_removed)
       std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
     else
       std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
 
-  } catch (std::filesystem::filesystem_error &e) {
+  } catch (boost::filesystem::filesystem_error &e) {
       std::cerr << boost::format("ERROR: %s\n") % e.what();
       throw xrt_core::error(std::errc::operation_canceled);
   }
