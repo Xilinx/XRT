@@ -32,6 +32,7 @@ namespace po = boost::program_options;
 
 // System - Include Files
 #include <iostream>
+#include <filesystem>
 
 constexpr const char* config_file  = "/etc/msd.conf";
 
@@ -228,6 +229,33 @@ show_device_conf(xrt_core::device* device)
 }
 
 /*
+ * helper function for option:purge
+ * remove the daemon config file
+ */
+static void 
+remove_daemon_config()
+{
+  XBU::sudo_or_throw("Removing daemon configuration file requires sudo");
+  try {
+    /* 
+     * std::filesyste::remove function returns 
+     * True  : if file is removed succesfully
+     * False : if file is not available
+     * Throws an exception if there are some other errors 
+     */
+    bool is_removed = std::filesystem::remove(config_file);
+    if(is_removed)
+      std::cout << boost::format("INFO: Daemon configuration file is removed successfully\n");
+    else
+      std::cout << boost::format("WARNING: Daemon configuration file does not exist\n");
+
+  } catch (std::filesystem::filesystem_error &e) {
+      std::cerr << boost::format("ERROR: %s\n") % e.what();
+      throw xrt_core::error(std::errc::operation_canceled);
+  }
+}
+
+/*
  * helper function for option:daemon
  * change host name in config
  */
@@ -245,6 +273,7 @@ update_daemon_config(const std::string& host)
   std::cout << boost::str(boost::format("%s\n") % cfg);
   // update the configuration file
   cfile << boost::str(boost::format("%s\n") % cfg);
+  std::cout << boost::format("INFO: Daemon configuration is updated successfully\n");
 }
 
 /*
@@ -298,6 +327,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     bool help = false;
     // Hidden options
     bool daemon = false;
+    bool purge  = false;
     std::string host;
     std::string security;
     std::string clk_scale;
@@ -331,6 +361,7 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
     po::options_description configHiddenOptions("Hidden Options");
     configHiddenOptions.add_options()
         ("daemon", boost::program_options::bool_switch(&daemon), "Update the device daemon configuration")
+        ("purge", boost::program_options::bool_switch(&purge), "Remove the daemon configuration file")
         ("host", boost::program_options::value<decltype(host)>(&host), "IP or hostname for device peer")
         ("security", boost::program_options::value<decltype(security)>(&security), "Update the security level for the device")
         ("runtime_clk_scale", boost::program_options::value<decltype(clk_scale)>(&clk_scale), "Enable/disable the device runtime clock scaling")
@@ -447,6 +478,13 @@ SubCmdConfigure::execute(const SubCmdOptions& _options) const
             show_daemon_conf();
 
         show_device_conf(workingDevice.get());
+        return;
+    }
+    
+    // Remove the daemon config file
+    if (purge) {
+        XBU::verbose("Sub command: --purge");
+        remove_daemon_config();
         return;
     }
 
