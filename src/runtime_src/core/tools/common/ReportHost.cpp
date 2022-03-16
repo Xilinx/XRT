@@ -113,12 +113,12 @@ ReportHost::writeReport(const xrt_core::device* /*_pDevice*/,
   if (available_devices.empty())
     _output << "  0 devices found" << std::endl;
 
-  Table2D::HeaderData bdf = {"BDF", Table2D::Justification::right};
-  Table2D::HeaderData colon = {":", Table2D::Justification::right};
-  Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
-  Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
-  Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
-  Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::right};
+  const Table2D::HeaderData bdf = {"BDF", Table2D::Justification::right};
+  const Table2D::HeaderData colon = {":", Table2D::Justification::right};
+  const Table2D::HeaderData vbnv = {"Shell", Table2D::Justification::right};
+  const Table2D::HeaderData id = {"Platform UUID", Table2D::Justification::right};
+  const Table2D::HeaderData instance = {"Device ID", Table2D::Justification::right};
+  const Table2D::HeaderData ready = {"Device Ready*", Table2D::Justification::right};
   const std::vector<Table2D::HeaderData> table_headers = {bdf, colon, vbnv, id, instance, ready};
   Table2D device_table(table_headers);
 

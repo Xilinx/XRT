@@ -271,12 +271,11 @@ XBUtilities::produce_reports( xrt_core::device_collection devices,
       // 1. Is in factory mode and is not in recovery mode
       // 2. Is not ready and is not in recovery mode
       if((is_mfg || !is_ready) && !is_recovery) {
-        std::cerr << "Error: Device is not ready - Limited functionality available with XRT tools.\n\n";
-        is_report_output_valid = false;
+        std::cout << "Warning: Device is not ready - Limited functionality available with XRT tools.\n\n";
       }
 
       for (auto &report : reportsToProcess) {
-        if (report->isDeviceRequired() == false)
+        if (!report->isDeviceRequired())
           continue;
 
         boost::property_tree::ptree ptReport;
