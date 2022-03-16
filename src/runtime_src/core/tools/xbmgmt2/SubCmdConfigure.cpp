@@ -245,9 +245,9 @@ remove_daemon_config()
      */
     bool is_removed = std::filesystem::remove(config_file);
     if(is_removed)
-      std::cout << boost::format("INFO: Daemon configuration file is removed successfully\n");
+      std::cout << boost::format("Succesfully removed the Daemon configuration file.\n");
     else
-      std::cout << boost::format("WARNING: Daemon configuration file does not exist\n");
+      std::cout << boost::format("WARNING: Daemon configuration file does not exist.\n");
 
   } catch (std::filesystem::filesystem_error &e) {
       std::cerr << boost::format("ERROR: %s\n") % e.what();
@@ -270,10 +270,9 @@ update_daemon_config(const std::string& host)
     throw xrt_core::system_error(std::errc::invalid_argument, "Missing '" + std::string(config_file) + "'.  Cannot update");
 
   cfg.host = host;
-  std::cout << boost::str(boost::format("%s\n") % cfg);
   // update the configuration file
   cfile << boost::str(boost::format("%s\n") % cfg);
-  std::cout << boost::format("INFO: Daemon configuration is updated successfully\n");
+  std::cout << boost::format("Successfully updated the Daemon configuration.\n");
 }
 
 /*
