@@ -172,9 +172,9 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
   if(deviceCollection.size() > 1 && (reportsToProcess.size() > 1 || reportNames.front().compare("host") != 0)) {
     std::cerr << "\nERROR: Examining multiple devices is not supported. Please specify a single device using --device option\n\n";
     std::cout << "List of available devices:" << std::endl;
-    boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
-    for(auto& kd : available_devices) {
-      boost::property_tree::ptree& _dev = kd.second;
+    const boost::property_tree::ptree available_devices = XBU::get_available_devices(false);
+    for(const auto& kd : available_devices) {
+      const boost::property_tree::ptree& _dev = kd.second;
       std::cout << boost::format("  [%s] : %s\n") % _dev.get<std::string>("bdf") % _dev.get<std::string>("vbnv");
     }
     std::cout << std::endl;
@@ -199,15 +199,15 @@ SubCmdExamine::execute(const SubCmdOptions& _options) const
         std::cout << boost::format("         - %s\n") % report;
 
       // Print available devices
-      auto dev_pt = XBU::get_available_devices(true);
+      const auto dev_pt = XBU::get_available_devices(true);
       if(dev_pt.empty())
         std::cout << "0 devices found" << std::endl;
       else
         std::cout << "Device list" << std::endl;
 
-      for(auto& kd : dev_pt) {
-        boost::property_tree::ptree& dev = kd.second;
-        std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
+      for(const auto& kd : dev_pt) {
+        const boost::property_tree::ptree& dev = kd.second;
+        const std::string note = dev.get<bool>("is_ready") ? "" : "NOTE: Device not ready for use";
         std::cout << boost::format("  [%s] : %s %s\n") % dev.get<std::string>("bdf") % dev.get<std::string>("vbnv") % note;
       }
     }
