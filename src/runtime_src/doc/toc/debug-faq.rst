@@ -40,13 +40,12 @@ Board Enumeration
 
   Check if XRT can see the board and reports sane values ::
 
-    xbutil scan
-    xbutil query
+    xbutil examine
 
 XSA Sanity Test
-  Card validation on kernel, bandwidth, dmatest and etc. (-d for pointing a specific board) ::
+  Card validation on kernel, bandwidth, dmatest and etc. (--device <bdf> for pointing a specific board) ::
 
-    xbutil validate -d 0
+    xbutil validate --device <bdf>
 
   Check DDR and PCIe bandwidth ::
 
