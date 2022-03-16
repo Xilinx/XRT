@@ -746,10 +746,10 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 	}
 	hdr->cid = id;
 
-	/* init condition veriable */
+	/* init condition variable */
 	init_completion(&cmd->xgq_cmd_complete);
 
-	/* set timout actual jiffies */
+	/* set timeout actual jiffies */
 	cmd->xgq_cmd_timeout_jiffies = jiffies + timer;
 
 	if (submit_cmd(xgq, cmd)) {
@@ -757,11 +757,11 @@ static ssize_t xgq_transfer_data(struct xocl_xgq_vmr *xgq, const void *buf,
 		goto done;
 	}
 
-	/* wait for command completion */
-	if (wait_for_completion_killable(&cmd->xgq_cmd_complete)) {
-		XGQ_ERR(xgq, "submitted cmd killed");
-		xgq_submitted_cmd_remove(xgq, cmd);
-	}
+	/*
+	 * For pdi/xclbin data transfer, we block any cancellation and
+	 * wait till command completed and then release resources safely.
+	 */
+	wait_for_completion(&cmd->xgq_cmd_complete);
 
 	/* If return is 0, we set length as return value */
 	if (cmd->xgq_cmd_rcode) {
