@@ -96,12 +96,12 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
       _output << boost::format("  %s : %s sec\n\n") % "err time" % cmc_hb.get<std::string>("heartbeat_err_time");
   } catch(...) {}
   try {
-    auto cmc_support = cmc_scale.get<std::string>("supported");
+    boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
+    auto cmc_support = cmc_scale.get<bool>("supported");
     if (!cmc_support) {
       _output << "  Information unavailable or not applicable" << std::endl;
       return;
     }
-    boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
     _output << boost::format("  %-22s :\n") % "Runtime clock scaling feature";
     _output << boost::format("    %s : %s\n") % "Supported" % cmc_scale.get<std::string>("supported");
     _output << boost::format("    %s : %s\n") % "Enabled" % cmc_scale.get<std::string>("enabled");
