@@ -84,12 +84,13 @@ enum imageType
     BMC_FIRMWARE,
     MCS_FIRMWARE_PRIMARY,
     MCS_FIRMWARE_SECONDARY,
+    STRIPPED_FIRMWARE
 };
 
 class firmwareImage : public std::istringstream
 {
 public:
-    firmwareImage(const char *file, imageType type);
+    firmwareImage(const std::string& file, imageType type);
     ~firmwareImage();
     static std::vector<DSAInfo> getIntalledDSAs();
 private:
