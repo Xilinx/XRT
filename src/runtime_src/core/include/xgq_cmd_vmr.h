@@ -97,6 +97,7 @@ enum xgq_cmd_log_page_type {
 	XGQ_CMD_LOG_FW		= 0x1,
 	XGQ_CMD_LOG_INFO	= 0x2,
 	XGQ_CMD_LOG_AF_CLEAR	= 0x3,
+	XGQ_CMD_LOG_ENDPOINT	= 0x4,
 };
 
 /**
