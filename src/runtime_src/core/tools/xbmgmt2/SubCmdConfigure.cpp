@@ -243,6 +243,8 @@ update_daemon_config(const std::string& host)
 
   cfg.host = host;
   std::cout << boost::str(boost::format("%s\n") % cfg);
+  // update the configuration file
+  cfile << boost::str(boost::format("%s\n") % cfg);
 }
 
 /*
