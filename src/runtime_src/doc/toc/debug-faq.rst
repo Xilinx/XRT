@@ -105,7 +105,7 @@ Platform Bugs
 
 Bitsream Download Failures
   Bitstream download failures are usually
-  caused because of incompatible ``xclbin``\ s. ``dmesg`` log would
+  caused because of incompatible xclbin(s). ``dmesg`` log would
   provide more insight into why the download failed. At OpenCL level
   they usually manifest as Invalid Binary (error -44).
 
