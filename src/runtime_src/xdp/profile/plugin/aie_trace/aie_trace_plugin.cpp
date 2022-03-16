@@ -448,7 +448,7 @@ namespace xdp {
         std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
         xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
       }
-    }else{  
+    } else {  
       std::string msg("Unable to parse aie_trace_start_time. Setting start time to 0.");
       xrt_core::message::send(xrt_core::message::severity_level::warning, "XRT", msg);
     }
