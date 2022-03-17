@@ -2282,27 +2282,42 @@ int XSPI_Flasher::upgradeFirmware2Drv(std::istream& mcsStream0,
     return removeBitstreamGuard(mDev.get(), mFlashDev, bsGuardAddr);
 }
 
-static const std::string magic = "XRTDATA";
-struct flash_data_header {
-    char magic[7];
-    char ver;
-    uint32_t data_len;
-    uint32_t parity;
-    uint8_t reserved[16];
+struct flash_data_ident {
+    char fdi_magic[7];
+    char fdi_version;
 };
 
-static uint32_t 
-getParity32(const std::vector<unsigned char>& data)
-{
-    uint32_t parity = 0;
+struct flash_data_header {
+    struct flash_data_ident fdh_id_begin;
+    uint32_t fdh_data_offset;
+    uint32_t fdh_data_len;
+    uint32_t fdh_data_parity;
+    uint8_t fdh_reserved[16];
+    struct flash_data_ident fdh_id_end;
+};
 
-    for (size_t len = 0; len < data.size(); len += 4) {
-        uint32_t tmp = 0;
-        std::memcpy(&tmp, data.data() + len, std::min(4ul, data.size() - len));
-        parity ^= tmp;
-    }
-    return parity;
+static inline uint32_t 
+flash_xrt_data_get_parity32(const unsigned char *buf, size_t n)
+{
+	uint32_t parity = 0;
+
+	for (size_t len = 0; len < n; len += 4) {
+		uint32_t tmp = 0;
+		size_t thislen = n - len;
+
+		/* One word at a time. */
+		if (thislen > 4)
+			thislen = 4;
+		for (size_t i = 0; i < thislen; i++) {
+            char *p = reinterpret_cast<char *>(&tmp);
+			p[i] = buf[len + i];
+        }
+		parity ^= tmp;
+	}
+	return parity;
 }
+
+static const std::string magic = "XRTDATA";
 
 int XSPI_Flasher::
 xclWriteData(const std::vector<unsigned char>& data)
@@ -2314,10 +2329,8 @@ xclWriteData(const std::vector<unsigned char>& data)
         return -EINVAL;
 
     if (data.size() > xrt_max_data_len) {
-        std::cout << "meta data is too big (" << data.size() << "B) to flash: "
-            << std::endl;
-        std::cout << "max data length is " << xrt_max_data_len << " bytes"
-            << std::endl;
+        std::cout << boost::format("ERROR: meta data is too big (%d B) to flash: \n") % data.size();
+        std::cout << boost::format("ERROR: max data length is %d bytes\n") % xrt_max_data_len;
         return -EINVAL;
     }
     auto size = xrt_core::device_query<xrt_core::query::flash_size>(mDev);
@@ -2329,26 +2342,30 @@ xclWriteData(const std::vector<unsigned char>& data)
     int ret = writeToFlash(mFlashDev, 0, addr,
         data.data(), data.size());
     if (ret) {
-        std::cout << "failed to write meta data to flash: " << ret << std::endl;
+        std::cout << boost::format("ERROR: Failed to write meta data header to flash: %d\n") %ret;
         return ret;
     }
     // Write meta data onto flash
+    flash_data_ident ident = { 0 };
+    std::memcpy(ident.fdi_magic, magic.c_str(), sizeof(ident.fdi_magic));
+    ident.fdi_version = 0;
+
     flash_data_header header = { 0 };
-    std::memcpy(header.magic, magic.c_str(), magic.size());
-    header.ver = 0;
-    header.data_len = data.size();
-    header.parity = getParity32(data);
+    header.fdh_id_begin = ident;
+    header.fdh_id_end = ident;
+    header.fdh_data_offset = addr;
+    header.fdh_data_len = data.size();
+    header.fdh_data_parity = flash_xrt_data_get_parity32(data.data(), data.size());
+
     addr += data.size();
     ret = writeToFlash(mFlashDev, 0, addr,
         reinterpret_cast<unsigned char *>(&header), sizeof(header));
     if (ret) {
-        std::cout << "failed to write meta data header to flash: " << ret
-            << std::endl;
+        std::cout << boost::format("ERROR: Failed to write meta data header to flash: %d\n") %ret;
         return ret;
     }
-    std::cout << boost::format(
-        "Persisted %d bytes of meta data to flash %d @0x%x\n")
-        %data.size() %0 %(addr - data.size());
+    std::cout << boost::format( "Persisted %d bytes of meta data to flash 0 @0x%x\n")
+                %data.size() %(addr - data.size());
     return 0;
 }
 
@@ -2356,13 +2373,13 @@ int XSPI_Flasher::
 xclReadData(std::vector<unsigned char>& data)
 {
     if (mFlashDev == nullptr) {
-        std::cout << "failed to find flash device" << std::endl;
+        std::cout << "ERROR: Failed to find flash device" << std::endl;
         return -EINVAL;
     }
 
     auto size = xrt_core::device_query<xrt_core::query::flash_size>(mDev);
     if (size == 0) {
-        std::cout << "failed to find meta data on flash" << std::endl;
+        std::cout << "ERROR: Failed to find meta data header to flash\n";
         return -EINVAL;
     }
 
@@ -2370,38 +2387,42 @@ xclReadData(std::vector<unsigned char>& data)
     flash_data_header header;
 
     unsigned int addr = size - sizeof(header);
-    std::cout << "reading " << sizeof(header) << " bytes of header from flash "
-        << 0 << " @0x" << std::hex << addr << std::dec << std::endl;
-    std::cout << boost::format(
-        "Reading %d bytes of header from flash %d @0x%x\n")
-        %sizeof(header) %0 %addr;
     int ret = readFromFlash(mFlashDev, 0, addr,
             reinterpret_cast<unsigned char *>(&header), sizeof(header));
     if (ret) {
-        std::cout << "failed to read header from flash: " << ret << std::endl;
+        std::cout << boost::format("ERROR: Failed to read header from flash: %d\n") %ret;
         return ret;
     }
-    if (std::memcmp(header.magic, magic.c_str(), magic.size())) {
-        std::cout << "corrupted meta data detected on flash, bad header magic: "
-            << header.magic << std::endl;
-        std::cout << "expected header magic: " << magic << std::endl;
+    
+    // Sanity check header
+    flash_data_ident ident = header.fdh_id_end;
+    const size_t magiclen = sizeof(ident.fdi_magic);
+    if (std::memcmp(ident.fdi_magic, magic.c_str(), magiclen)) {
+        char tmp[sizeof(ident.fdi_magic) + 1] = { 0 };
+        std::memcpy(tmp, ident.fdi_magic, magiclen);
+        std::cout << boost::format("ERROR: corrupted meta data detected on flash, bad header magic: %s. Expected header magic: %s\n") 
+                    % tmp % magic;
         return -EINVAL;
+    } else if (ident.fdi_version != 0) {
+        std::cout << boost::format("ERROR: Header version %d is not supported\n") % ident.fdi_version;
+        return -ENOTSUP;
     }
 
     // Read file data from flash
-    data.resize(header.data_len);
-    addr -= header.data_len;
-    std::cout << "reading " << header.data_len << " bytes of data from flash "
-        << 0 << " @0x" << std::hex << addr << std::dec << std::endl;
+    data.resize(header.fdh_data_len);
+    addr = header.fdh_data_offset;
     ret = readFromFlash(mFlashDev, 0, addr, data.data(), data.size());
     if (ret) {
-        std::cout << "failed to read data from flash: " << ret << std::endl;
+        std::cout << boost::format("ERROR: Failed to read data from flash: %d\n") %ret;
         return ret;
     }
-    if (header.parity ^ getParity32(data)) {
-        std::cout << "data is corrupted" << std::endl;
+    if (header.fdh_data_parity ^
+        flash_xrt_data_get_parity32(data.data(), data.size())) {
+        std::cout << "ERROR: Data on flash is corrupted" << std::endl;
         return -EINVAL;
     }
 
+    std::cout << boost::format("Loaded %d bytes of meta data from flash 0 @0x%x\n")
+                % header.fdh_data_len % addr;
     return 0;
 }
