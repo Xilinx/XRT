@@ -93,9 +93,9 @@ static int configure_soft_kernel(u32 cuidx, char kname[64], unsigned char uuid[1
 	struct drm_zocl_dev *zdev = zocl_get_zdev();
 	struct soft_krnl *sk = zdev->soft_kernel;
 	struct soft_krnl_cmd *scmd = NULL;
-	struct config_sk_image *cp = NULL;
+	struct config_sk_image_uuid *cp = NULL;
 
-	cp = kmalloc(sizeof(struct config_sk_image), GFP_KERNEL);
+	cp = kmalloc(sizeof(struct config_sk_image_uuid), GFP_KERNEL);
 	cp->start_cuidx = cuidx;
 	cp->num_cus = 1;
 	strncpy((char *)cp->sk_name,kname,PS_KERNEL_NAME_LENGTH);
