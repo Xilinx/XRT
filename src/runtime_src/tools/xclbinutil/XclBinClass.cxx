@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2018-2021 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. 
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -915,10 +916,6 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
 
   // See if there is a subsection to add
   std::string sSubSection = _PSD.getSubSectionName();
-  if (sSubSection.empty()) {
-    std::string errMsg = XUtil::format("ERROR: No subsection specified: '%s'", _PSD.getOriginalFormattedString().c_str());
-    throw std::runtime_error(errMsg);
-  }
 
   // Get the section kind
   enum axlf_section_kind eKind;
@@ -926,7 +923,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' doesn't support sub sections.") % _PSD.getSectionName());
     throw std::runtime_error(errMsg);
   }
 
@@ -936,14 +933,14 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   if (pSection != nullptr) {
     // Check to see if the subsection is supported
     if (pSection->supportsSubSection(sSubSection) == false) {
-      std::string errMsg = XUtil::format("ERROR: Section '%s' does not support the subsection: '%s'", pSection->getSectionKindAsString().c_str(), sSubSection.c_str());
+      const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection);
       throw std::runtime_error(errMsg);
     }
 
     // Check to see if this subsection exists, if so bail
     std::ostringstream buffer;
     if (pSection->subSectionExists(_PSD.getSubSectionName()) == true) {
-      std::string errMsg = XUtil::format("ERROR: Section '%s' subsection '%s' already exists", pSection->getSectionKindAsString().c_str(), sSubSection.c_str());
+      const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' subsection '%s' already exists") % pSection->getSectionKindAsString() % sSubSection);
       throw std::runtime_error(errMsg);
     }
   } else {
@@ -952,7 +949,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
 
     // Check to see if the subsection is supported
     if (pSection->supportsSubSection(sSubSection) == false) {
-      std::string errMsg = XUtil::format("ERROR: Section '%s' does not support the subsection: '%s'", pSection->getSectionKindAsString().c_str(), sSubSection.c_str());
+      const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection);
       throw std::runtime_error(errMsg);
     }
 
@@ -968,7 +965,7 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   std::fstream iSectionFile;
   iSectionFile.open(sSectionFileName, std::ifstream::in | std::ifstream::binary);
   if (!iSectionFile.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + sSectionFileName;
+    const auto & errMsg = "ERROR: Unable to open the file for reading: " + sSectionFileName;
     throw std::runtime_error(errMsg);
   }
 
@@ -976,25 +973,30 @@ XclBin::addSubSection(ParameterSectionData& _PSD)
   pSection->readSubPayload(iSectionFile, _PSD.getSubSectionName(), _PSD.getFormatType());
 
   // Clean-up
-  if (bNewSection == true) {
+  if (bNewSection == true) 
     addSection(pSection);
-  }
 
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
-  XUtil::TRACE(XUtil::format("Section '%s-%s' (%d) successfully added.", sSectionAddedName.c_str(), sSubSection.c_str(), pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format(
+                          "Section '%s%s%s' (%d) successfully added.")
+                          % sSectionAddedName
+                          % (sSubSection.empty() ? "" : "-")
+                          % sSubSection % pSection->getSectionKind()));
   std::string optionalIndex;
   if (!(pSection->getSectionIndexName().empty())) {
     optionalIndex = XUtil::format("[%s]", pSection->getSectionIndexName().c_str());
   }
 
   XUtil::QUIET("");
-  XUtil::QUIET(XUtil::format("Section: '%s%s-%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'",
-                             sSectionAddedName.c_str(),
-                             optionalIndex.c_str(),
-                             sSubSection.c_str(), pSection->getSectionKind(),
-                             pSection->getSize(),
-                             _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
+  XUtil::QUIET(boost::str(boost::format(
+                         "Section: '%s%s%s%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
+                         % sSectionAddedName
+                         % optionalIndex
+                         % (sSubSection.empty() ? "" : "-")
+                         % sSubSection.c_str() % pSection->getSectionKind()
+                         % pSection->getSize()
+                         % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
 
 
@@ -1003,29 +1005,34 @@ XclBin::addSection(ParameterSectionData& _PSD)
 {
   XUtil::TRACE("Add Section");
 
-  // See if the user is attempting to add a sub-section
-  if (!_PSD.getSubSectionName().empty()) {
-    addSubSection(_PSD);
-    return;
-  }
-
   // Get the section kind
   enum axlf_section_kind eKind;
   Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
+
+  // See if the user is attempting to add a sub-section
+  {
+    std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
+
+    if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
+        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+      addSubSection(_PSD);
+      return;
+    }
+  }
 
   // Open the file to be read.
   std::string sSectionFileName = _PSD.getFile();
   std::fstream iSectionFile;
   iSectionFile.open(sSectionFileName, std::ifstream::in | std::ifstream::binary);
   if (!iSectionFile.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for reading: " + sSectionFileName;
+    const auto & errMsg = "ERROR: Unable to open the file for reading: " + sSectionFileName;
     throw std::runtime_error(errMsg);
   }
 
   // Determine if the section already exists
   Section* pSection = findSection(eKind);
   if (pSection != nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' already exists.", _PSD.getSectionName().c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' already exists.") % _PSD.getSectionName());
     throw std::runtime_error(errMsg);
   }
 
@@ -1033,9 +1040,10 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   // Check to see if the given format type is supported
   if (pSection->doesSupportAddFormatType(_PSD.getFormatType()) == false) {
-    std::string errMsg = XUtil::format("ERROR: The %s section does not support reading the %s file type.",
-                                       pSection->getSectionKindAsString().c_str(),
-                                       _PSD.getFormatTypeAsStr().c_str());
+    const auto & errMsg = boost::str(boost::format(
+                                     "ERROR: The %s section does not support reading the %s file type.")
+                                     % pSection->getSectionKindAsString()
+                                     % _PSD.getFormatTypeAsStr());
     throw std::runtime_error(errMsg);
   }
 
@@ -1053,10 +1061,11 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   if ((!bAllowZeroSize) && (pSection->getSize() == 0)) {
     XUtil::QUIET("");
-    XUtil::QUIET(XUtil::format("Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'",
-                               pSection->getSectionKindAsString().c_str(),
-                               pSection->getSectionKind(),
-                               _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
+    XUtil::QUIET(boost::str(boost::format(
+                            "Section: '%s'(%d) was empty.  No action taken.\nFormat : %s\nFile   : '%s'")
+                             % pSection->getSectionKindAsString()
+                             % pSection->getSectionKind()
+                             % _PSD.getFormatTypeAsStr() % sSectionFileName));
     delete pSection;
     pSection = nullptr;
     return;
@@ -1067,12 +1076,13 @@ XclBin::addSection(ParameterSectionData& _PSD)
 
   std::string sSectionAddedName = pSection->getSectionKindAsString();
 
-  XUtil::TRACE(XUtil::format("Section '%s' (%d) successfully added.", sSectionAddedName.c_str(), pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) successfully added.") % sSectionAddedName % pSection->getSectionKind()));
   XUtil::QUIET("");
-  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'",
-                             sSectionAddedName.c_str(), pSection->getSectionKind(),
-                             pSection->getSize(),
-                             _PSD.getFormatTypeAsStr().c_str(), sSectionFileName.c_str()));
+  XUtil::QUIET(boost::str(boost::format(
+                         "Section: '%s'(%d) was successfully added.\nSize   : %ld bytes\nFormat : %s\nFile   : '%s'")
+                          % sSectionAddedName % pSection->getSectionKind()
+                          % pSection->getSize()
+                          % _PSD.getFormatTypeAsStr() % sSectionFileName));
 }
 
 
@@ -1250,40 +1260,34 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
 {
   XUtil::TRACE("Dump Sub-Section");
 
-  // See if there is a subsection to add
   std::string sSubSection = _PSD.getSubSectionName();
-  if (sSubSection.empty()) {
-    std::string errMsg = XUtil::format("ERROR: No subsection specified: '%s'", _PSD.getOriginalFormattedString().c_str());
-    throw std::runtime_error(errMsg);
-  }
-
   // Get the section kind
   enum axlf_section_kind eKind;
   Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
   // See if the section support sub-sections
   if (Section::supportsSubSections(eKind) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", _PSD.getSectionName().c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' doesn't support sub sections.") % _PSD.getSectionName());
     throw std::runtime_error(errMsg);
   }
 
   // Determine if the section exists
   Section* pSection = findSection(eKind, _PSD.getSectionIndexName());
   if (pSection == nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Section %s[%s] does not exist.", _PSD.getSectionName().c_str(), _PSD.getSectionIndexName().c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section %s[%s] does not exist.") % _PSD.getSectionName() % _PSD.getSectionIndexName());
     throw std::runtime_error(errMsg);
   }
 
   // Check to see if the subsection is supported
   if (pSection->supportsSubSection(sSubSection) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' does not support the subsection: '%s'", pSection->getSectionKindAsString().c_str(), sSubSection.c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' does not support the subsection: '%s'") % pSection->getSectionKindAsString() % sSubSection);
     throw std::runtime_error(errMsg);
   }
 
   // Check to see if this subsection exists
   std::ostringstream buffer;
   if (pSection->subSectionExists(_PSD.getSubSectionName()) == false) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' subsection '%s' doesn't exists", pSection->getSectionKindAsString().c_str(), sSubSection.c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' subsection '%s' doesn't exists") % pSection->getSectionKindAsString() % sSubSection);
     throw std::runtime_error(errMsg);
   }
 
@@ -1293,17 +1297,25 @@ XclBin::dumpSubSection(ParameterSectionData& _PSD)
   std::fstream oDumpFile;
   oDumpFile.open(sDumpFileName, std::ifstream::out | std::ifstream::binary);
   if (!oDumpFile.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
+    const auto & errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
     throw std::runtime_error(errMsg);
   }
 
   pSection->dumpSubSection(oDumpFile, sSubSection, _PSD.getFormatType());
-  XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % pSection->getSectionKind()));
   XUtil::QUIET("");
-  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'",
-                             pSection->getSectionKindAsString().c_str(),
-                             pSection->getSectionKind(),
-                             _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()));
+
+  std::string optionalIndex;
+  if (!(pSection->getSectionIndexName().empty())) 
+    optionalIndex = boost::str(boost::format("[%s]") % pSection->getSectionIndexName());
+
+  XUtil::QUIET(boost::str(boost::format(
+                          "Section: '%s%s%s%s'(%d) was successfully written.\nFormat : %s\nFile   : '%s'")
+                           % pSection->getSectionKindAsString()
+                           % optionalIndex
+                           % (sSubSection.empty() ? "" : "-")
+                           % sSubSection % pSection->getSectionKind()
+                           % _PSD.getFormatTypeAsStr() % sDumpFileName));
 }
 
 
@@ -1312,35 +1324,41 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
 {
   XUtil::TRACE("Dump Section");
 
-  // See if the user is attempting to dump a sub-section
-  if (!_PSD.getSubSectionName().empty()) {
-    dumpSubSection(_PSD);
-    return;
-  }
-
   enum axlf_section_kind eKind;
   Section::translateSectionKindStrToKind(_PSD.getSectionName(), eKind);
 
+  // See if the user is attempting to dump a sub-section
+  {
+    std::unique_ptr<Section> pSection(Section::createSectionObjectOfKind(eKind));
+
+    if (!_PSD.getSubSectionName().empty() ||       // A subsection name has been added
+        pSection.get()->supportsSubSection("")) {  // The section supports default empty subsection 
+      dumpSubSection(_PSD);
+      return;
+    }
+  }
+
   const Section* pSection = findSection(eKind);
   if (pSection == nullptr) {
-    std::string errMsg = XUtil::format("ERROR: Section '%s' does not exists.", _PSD.getSectionName().c_str());
+    const auto & errMsg = boost::str(boost::format("ERROR: Section '%s' does not exists.") % _PSD.getSectionName());
     throw XUtil::XclBinUtilException(XET_MISSING_SECTION, errMsg);
   }
 
   if (_PSD.getFormatType() == Section::FT_UNKNOWN) {
-    std::string errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
+    const auto & errMsg = "ERROR: Unknown format type '" + _PSD.getFormatTypeAsStr() + "' in the dump section option: '" + _PSD.getOriginalFormattedString() + "'";
     throw std::runtime_error(errMsg);
   }
 
   if (_PSD.getFormatType() == Section::FT_UNDEFINED) {
-    std::string errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
+    const auto & errMsg = "ERROR: The format type is missing from the dump section option: '" + _PSD.getOriginalFormattedString() + "'.  Expected: <SECTION>:<FORMAT>:<OUTPUT_FILE>.  See help for more format details.";
     throw std::runtime_error(errMsg);
   }
 
   if (pSection->doesSupportDumpFormatType(_PSD.getFormatType()) == false) {
-    std::string errMsg = XUtil::format("ERROR: The %s section does not support writing to a %s file type.",
-                                       pSection->getSectionKindAsString().c_str(),
-                                       _PSD.getFormatTypeAsStr().c_str());
+    const auto & errMsg = boost::str(boost::format(
+                                     "ERROR: The %s section does not support writing to a %s file type.")
+                                     % pSection->getSectionKindAsString()
+                                     % _PSD.getFormatTypeAsStr());
     throw std::runtime_error(errMsg);
   }
 
@@ -1349,17 +1367,18 @@ XclBin::dumpSection(ParameterSectionData& _PSD)
   std::fstream oDumpFile;
   oDumpFile.open(sDumpFileName, std::ifstream::out | std::ifstream::binary);
   if (!oDumpFile.is_open()) {
-    std::string errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
+    const auto & errMsg = "ERROR: Unable to open the file for writing: " + sDumpFileName;
     throw std::runtime_error(errMsg);
   }
 
   pSection->dumpContents(oDumpFile, _PSD.getFormatType());
-  XUtil::TRACE(XUtil::format("Section '%s' (%d) dumped.", pSection->getSectionKindAsString().c_str(), pSection->getSectionKind()));
+  XUtil::TRACE(boost::str(boost::format("Section '%s' (%d) dumped.") % pSection->getSectionKindAsString() % pSection->getSectionKind()));
   XUtil::QUIET("");
-  XUtil::QUIET(XUtil::format("Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'",
-                             pSection->getSectionKindAsString().c_str(),
-                             pSection->getSectionKind(),
-                             _PSD.getFormatTypeAsStr().c_str(), sDumpFileName.c_str()));
+  XUtil::QUIET(boost::str(boost::format(
+                          "Section: '%s'(%d) was successfully written.\nFormat: %s\nFile  : '%s'")
+                          % pSection->getSectionKindAsString()
+                          % pSection->getSectionKind()
+                          % _PSD.getFormatTypeAsStr() % sDumpFileName));
 }
 
 void
