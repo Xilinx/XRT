@@ -925,6 +925,8 @@ struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c
   uint32_t za_flags;
   int za_ksize;
   char * za_kernels;
+  uint32_t za_slot_id;
+  uint8_t hw_gen;
 };
 </pre></div>
 </div>
@@ -938,6 +940,10 @@ struct <code class="descname">drm_zocl_axlf</code><a class="headerlink" href="#c
 <dd>size of kernels in bytes</dd>
 <dt><code class="docutils literal notranslate"><span class="pre">za_kernels</span></code></dt>
 <dd>pointer of argument array</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">za_slot_id</span></code></dt>
+<dd>xclbin slot</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">hw_gen</span></code></dt>
+<dd>aie generation</dd>
 </dl>
 <dl class="type">
 <dt id="c.drm_zocl_sk_getcmd">
@@ -1068,7 +1074,7 @@ struct <code class="descname">drm_zocl_sk_report</code><a class="headerlink" hre
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 07, 2022.
+        Last updated on March 17, 2022.
       </span>
 
     </p>

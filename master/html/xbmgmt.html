@@ -382,6 +382,7 @@
 <li class="toctree-l1"><a class="reference internal" href="xclbintools.html">xclbinutil</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xbutil.html">xbutil</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">xbmgmt</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#xbmgmt-configure">xbmgmt configure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt-dump">xbmgmt dump</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt-examine">xbmgmt examine</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#xbmgmt-program">xbmgmt program</a></li>
@@ -489,6 +490,7 @@
 <h1>xbmgmt<a class="headerlink" href="#xbmgmt" title="Permalink to this headline">¶</a></h1>
 <p>This document describes the latest <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands. These latest commands are default from 21.1 release.</p>
 <p>P.S: The older version of the commands can only be executed by adding <code class="docutils literal notranslate"><span class="pre">--legacy</span></code> switch. The documentation link of legacy version: <a class="reference external" href="https://www.xilinx.com/html_docs/xilinx2021_1/vitis_doc/Chunk778393017.html">Vitis Application Acceleration Development Flow Documentation</a></p>
+<p>For an instructive video on xbmgmt commands listed below click <a class="reference external" href="https://www.youtube.com/watch?v=ORYSrYegX_g">here</a>.</p>
 <p><strong>Global options</strong>: These are the global options can be used with any command.</p>
 <blockquote>
 <div><ul class="simple">
@@ -502,12 +504,48 @@
 <p>Currently supported <code class="docutils literal notranslate"><span class="pre">xbmgmt</span></code> commands are</p>
 <blockquote>
 <div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">program</span></code></li>
 <li><code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code></li>
 </ul>
 </div></blockquote>
+<div class="section" id="xbmgmt-configure">
+<h2>xbmgmt configure<a class="headerlink" href="#xbmgmt-configure" title="Permalink to this headline">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">configure</span></code> command provides advanced options for configuring a device</p>
+<p><strong>The supported options</strong></p>
+<p>Configuring a device’s memory settings with a premade image</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--input<span class="o">]</span> &lt;filename with .ini extension&gt;
+</pre></div>
+</div>
+<p>Enabling/Disabling DDR memory retention on a device</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt configure <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --retention <span class="o">[</span>ENABLE<span class="p">|</span>DISABLE<span class="o">]</span>
+</pre></div>
+</div>
+<p><strong>The details of the supported options</strong></p>
+<ul>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--device</span></code> (or <code class="docutils literal notranslate"><span class="pre">-d</span></code>) specifies the target device</p>
+<blockquote>
+<div><ul class="simple">
+<li>&lt;management bdf&gt; : The Bus:Device.Function of the device of interest</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--input</span></code> specifies an INI file with the memory configuration.</p>
+</li>
+<li><p class="first">The <code class="docutils literal notranslate"><span class="pre">--retention</span></code> option enables / disables DDR memory retention.</p>
+</li>
+</ul>
+<p><strong>Example commands</strong></p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1">#Configure a device&#39;s memory settings using an image</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --input /tmp/memory_config.ini
+
+<span class="c1">#Enable a device&#39;s DDR memory retention</span>
+xbmgmt configure --device <span class="m">0000</span>:b3:00.0 --retention ENABLE
+</pre></div>
+</div>
+</div>
 <div class="section" id="xbmgmt-dump">
 <h2>xbmgmt dump<a class="headerlink" href="#xbmgmt-dump" title="Permalink to this headline">¶</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">dump</span></code> command dump out content of the specified option</p>
@@ -547,7 +585,7 @@ xbmgmt dump --device <span class="m">0000</span>:b3:00.0 --config -o /tmp/config
 </div>
 <div class="section" id="xbmgmt-examine">
 <h2>xbmgmt examine<a class="headerlink" href="#xbmgmt-examine" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> command reports detail status information of the specified device</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">examine</span></code> command reports detail status information of the specified device <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=137">&lt;video reference&gt;</a>.</p>
 <p><strong>The supported options</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt examine <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--report<span class="p">|</span> -r<span class="o">]</span> &lt;report of interest&gt; <span class="o">[</span>--format<span class="p">|</span> -f<span class="o">]</span> &lt;report format&gt; <span class="o">[</span>--output<span class="p">|</span> -o<span class="o">]</span> &lt;filename&gt;
 </pre></div>
@@ -596,7 +634,7 @@ xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --
 <div class="section" id="xbmgmt-program">
 <h2>xbmgmt program<a class="headerlink" href="#xbmgmt-program" title="Permalink to this headline">¶</a></h2>
 <p><strong>The supported usecases and their options</strong></p>
-<p>Program the Base partition (applicable for 1RP platform too)</p>
+<p>Program the Base partition (applicable for 1RP platform too) <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=193">&lt;video reference&gt;</a></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span>
 </pre></div>
 </div>
@@ -604,7 +642,7 @@ xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span>-d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--base<span class="p">|</span>-b<span class="o">]</span> <span class="o">[</span>--image<span class="p">|</span>-i<span class="o">]</span> &lt;partition name&gt;
 </pre></div>
 </div>
-<p>Program the Shell Partition for 2RP platform</p>
+<p>Program the Shell Partition for 2RP platform <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=300">&lt;video reference&gt;</a></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--shell<span class="p">|</span>-s<span class="o">]</span> &lt;shell partition file with path&gt;
 </pre></div>
 </div>
@@ -612,7 +650,7 @@ xbmgmt examine --device <span class="m">0000</span>:b3:00.0 --report platform --
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; <span class="o">[</span>--user<span class="p">|</span>-u<span class="o">]</span> &lt;XCLBIN file with path&gt;
 </pre></div>
 </div>
-<p>Revert to golden image</p>
+<p>Revert to golden image <a class="reference external" href="https://youtu.be/ORYSrYegX_g?t=280">&lt;video reference&gt;</a></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt program <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt; --revert-to-golden
 </pre></div>
 </div>
@@ -663,7 +701,7 @@ xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
 </div>
 <div class="section" id="xbmgmt-reset">
 <h2>xbmgmt reset<a class="headerlink" href="#xbmgmt-reset" title="Permalink to this headline">¶</a></h2>
-<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code> command can be used to reset device.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">xbmgmt</span> <span class="pre">reset</span></code> command can be used to reset device .</p>
 <p><strong>The supported options</strong></p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>xbmgmt reset <span class="o">[</span>--device<span class="p">|</span> -d<span class="o">]</span> &lt;management bdf&gt;
 </pre></div>
@@ -714,7 +752,7 @@ xbmgmt program --device <span class="m">0000</span>:d8:00.0 --revert-to-golden
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 07, 2022.
+        Last updated on March 17, 2022.
       </span>
 
     </p>
