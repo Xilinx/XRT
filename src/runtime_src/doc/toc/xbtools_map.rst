@@ -209,7 +209,7 @@ xbmgmt
 Few examples of legacy vs new commands 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Here are few example use-cases of old vs new commands
+Here are few example use-cases of legacy vs new commands
 
 1. Getting all the information obtained from the userspace kernel driver 
 
