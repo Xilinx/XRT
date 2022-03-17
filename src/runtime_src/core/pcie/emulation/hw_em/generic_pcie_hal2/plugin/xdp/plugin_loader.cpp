@@ -19,10 +19,10 @@
 
 #include "device_offload.h"
 #include "hal_trace.h"
+#include "sc_profile.h"
 #include "plugin_loader.h"
 
-namespace xdp {
-namespace hw_emu {
+namespace xdp::hw_emu {
 
   // This function is responsible for checking all of the relevant xrt.ini file
   //  options and loading the appropriate debug/profile plugins.
@@ -35,7 +35,8 @@ namespace hw_emu {
         xrt_core::config::get_device_trace() != "off" ||
         xrt_core::config::get_device_counters())
       xdp::hw_emu::device_offload::load() ;
+    if (xrt_core::config::get_sc_profile())
+      xdp::hw_emu::sc::load();
   }
 
-} // end namespace hw_emu
-} // end namespace xdp
+} // end namespace xdp::hw_emu

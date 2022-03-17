@@ -984,6 +984,7 @@ int xocl_kds_reset(struct xocl_dev *xdev, const xuid_t *xclbin_id)
 {
 	xocl_kds_fa_clear(xdev);
 
+	XDEV(xdev)->kds.bad_state = 0;
 	return 0;
 }
 

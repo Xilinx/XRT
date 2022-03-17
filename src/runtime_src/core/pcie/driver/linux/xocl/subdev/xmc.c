@@ -1,7 +1,7 @@
 /*
  * A GEM style device manager for PCIe based OpenCL accelerators.
  *
- * Copyright (C) 2016-2021 Xilinx, Inc. All rights reserved.
+ * Copyright (C) 2016-2022 Xilinx, Inc. All rights reserved.
  *
  * Authors: chienwei@xilinx.com
  *
@@ -1508,7 +1508,9 @@ static ssize_t status_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val = READ_REG32(xmc, XMC_STATUS_REG);
+	u32 val = 0;
+
+	safe_read32(xmc, XMC_STATUS_REG, &val);
 
 	return sprintf(buf, "0x%x\n", val);
 }
@@ -1518,7 +1520,9 @@ static ssize_t core_version_show(struct device *dev,
 	struct device_attribute *da, char *buf)
 {
 	struct xocl_xmc *xmc = dev_get_drvdata(dev);
-	u32 val = READ_REG32(xmc, XMC_CORE_VERSION_REG);
+	u32 val = 0;
+
+	safe_read32(xmc, XMC_CORE_VERSION_REG, &val);
 
 	return sprintf(buf, "%u.%u.%u\n",
 	    (val & 0xff0000) >> 16, (val & 0xff00) >> 8, (val & 0xff));
@@ -4217,6 +4221,8 @@ static int xmc_mailbox_wait(struct xocl_xmc *xmc)
 
 	if (val) {
 		xocl_err(&xmc->pdev->dev, "XMC packet error: %d\n", val);
+		xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
+		xmc->state = XMC_STATE_ERROR;
 		safe_read32(xmc, XMC_CONTROL_REG, &ctrl_val);
 		safe_write32(xmc, XMC_CONTROL_REG, ctrl_val | XMC_CTRL_ERR_CLR);
 		return -EIO;
@@ -5065,6 +5071,15 @@ xmc_update_sc_firmware(struct file *file, const char __user *ubuf,
 	ssize_t ret = 0;
 	u8 *kbuf;
 
+	mutex_lock(&xmc->xmc_lock);
+	if (xmc->state != XMC_STATE_ENABLED) {
+		xocl_err(&xmc->pdev->dev, "Card requires pci hot reset\n");
+		ret = -EACCES;
+	}
+	mutex_unlock(&xmc->xmc_lock);
+
+	if (ret)
+		return ret;
 	/* Sanity check input 'n' */
 	if (n == 0 || n > jump_offset || n > 100 * 1024 * 1024)
 		return -EINVAL;

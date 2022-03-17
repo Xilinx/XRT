@@ -129,7 +129,6 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
     ELARecord record;
     bool endRecordFound = false;
     bool errorFound = false;
-    int retries = 5;
     int ret = 0;
 
     if (!isXMCReady())
@@ -223,25 +222,20 @@ int XMC_Flasher::xclUpgradeFirmware(std::istream& tiTxtStream) {
 
     // Start of flashing BMC firmware
     std::cout << boost::format("%-8s : %s %s %s\n") % "INFO" % "found" % mRecordList.size() % "sections";
-    while(retries != 0) {
-        retries--;
 
-        ret = erase();
-        XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_escape_codes_disabled(), std::cout);
-        int counter = 0;
-        for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
-            ret = program(tiTxtStream, *i);
-            sc_flash.update(counter);
-            counter++;
-        }
-
-        if(ret == 0) {
-            sc_flash.finish(true, "SC successfully updated");
-            break;
-        } else {
-            sc_flash.finish(false, "WARN: Failed to flash firmware, retrying...");
-        }
+    ret = erase();
+    XBU::ProgressBar sc_flash("Programming SC", static_cast<unsigned int>(mRecordList.size()), XBU::is_escape_codes_disabled(), std::cout);
+    int counter = 0;
+    for (auto i = mRecordList.begin(); ret == 0 && i != mRecordList.end(); ++i) {
+        ret = program(tiTxtStream, *i);
+        sc_flash.update(counter++);
     }
+
+    if (ret == 0)
+        sc_flash.finish(true, "SC successfully updated");
+    else
+        sc_flash.finish(false, "Failed to flash firmware");
+
     // End of flashing BMC firmware
 
     if (ret != 0)

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# Copyright (C) 2019-2021 Xilinx, Inc. All rights reserved.
+# Copyright (C) 2019-2022 Xilinx, Inc. All rights reserved.
 #
 if (${XRT_BOOST_VERSION} VERSION_LESS 1.64.0)
   add_compile_options(-DNO_BOOST_PROCESS)
@@ -10,6 +10,7 @@ if (${XRT_NATIVE_BUILD} STREQUAL "yes")
   add_subdirectory(xbmgmt2)
   if(NOT WIN32)
     add_subdirectory(xbtop)
+    add_subdirectory(xbflash2)
   endif()
 endif()
 

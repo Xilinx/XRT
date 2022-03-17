@@ -163,7 +163,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       
       const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
 				option->canonical_display_name(po::command_line_style::allow_long);
-      buffer << " [" << completeOptionName << "]";
+      buffer << boost::format(" [%s]") % completeOptionName;
     }
   }
 
@@ -174,12 +174,37 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
 
     // This option shouldn't be required
-    if (option->semantic()->is_required() == true) 
+    if (option->semantic()->is_required()) 
       continue;
 
     std::string completeOptionName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+    
+    // See if we have a long flag
+    if (completeOptionName.size() != SHORT_OPTION_STRING_SIZE)
+      continue;
 
-    buffer << " [" << completeOptionName << " arg]";
+    buffer << boost::format(" [%s arg]") % completeOptionName;
+  }
+
+  // Gather up the options with arguments (options with no short versions)
+  for (auto & option : options) {
+    // Skip if there are no arguments
+    if (option->semantic()->max_tokens() == 0)
+      continue;
+
+    // This option shouldn't be required
+    if (option->semantic()->is_required()) 
+      continue;
+
+    const std::string optionDisplayName = option->canonical_display_name(po::command_line_style::allow_dash_for_short);
+
+    // See if we have a short flag
+    if (optionDisplayName.size() == SHORT_OPTION_STRING_SIZE)
+      continue;
+
+    const std::string completeOptionName = removeLongOptDashes ? option->long_name() : 
+      option->canonical_display_name(po::command_line_style::allow_long);
+      buffer << boost::format(" [%s arg]") % completeOptionName;
   }
 
   // Gather up the required options with arguments
@@ -199,7 +224,7 @@ XBUtilities::create_usage_string( const boost::program_options::options_descript
       continue;
     }
 
-    buffer << " " << completeOptionName << " arg";
+    buffer << boost::format(" %s arg") % completeOptionName;
   }
 
   // Report the positional arguments
@@ -398,7 +423,8 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
                                      const boost::program_options::options_description &_optionHidden,
                                      const boost::program_options::positional_options_description & _positionalDescription,
                                      const boost::program_options::options_description &_globalOptions,
-                                     bool removeLongOptDashes)
+                                     bool removeLongOptDashes,
+                                     const std::string& customHelpSection)
 {
   // Formatting color parameters
   // Color references: https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -420,7 +446,7 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
   }
 
   // -- Command usage
-  std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
+  const std::string usage = XBU::create_usage_string(_optionDescription, _positionalDescription, removeLongOptDashes);
   boost::format fmtUsage(fgc_header + "\nUSAGE: " + fgc_usageBody + "%s %s%s\n" + fgc_reset);
   std::cout << fmtUsage % _executableName % _subCommand % usage;
   
@@ -443,6 +469,9 @@ XBUtilities::report_subcommand_help( const std::string &_executableName,
 
   // -- Options
   report_option_help("OPTIONS", _optionDescription, _positionalDescription, false, removeLongOptDashes);
+
+  // -- Custom Section
+  std::cout << customHelpSection << "\n";
 
   // -- Global Options
   report_option_help("GLOBAL OPTIONS", _globalOptions, _positionalDescription, false);

@@ -96,7 +96,7 @@ OO_HostMem::execute(const SubCmdOptions& _options) const
     throw xrt_core::error(std::errc::operation_canceled);
   }
   if(m_devices.empty()) {
-    printHelp();
+    std::cerr << boost::format("ERROR: A device needs to be specified.\n");
     throw xrt_core::error(std::errc::operation_canceled);
   }
 

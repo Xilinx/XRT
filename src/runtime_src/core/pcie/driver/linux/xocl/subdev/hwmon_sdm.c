@@ -50,10 +50,10 @@ struct xocl_sdr_bdinfo {
 	uint64_t mfg_date;
 	uint64_t pcie_info;
 	uint64_t uuid;
-	uint64_t mac_addr0;
-	uint64_t mac_addr1;
-	uint64_t active_msp_ver;
-	uint64_t target_msp_ver;
+	char mac_addr0[SDR_BDINFO_ENTRY_LEN_MAX];
+	char mac_addr1[SDR_BDINFO_ENTRY_LEN_MAX];
+	char active_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
+	char target_msp_ver[SDR_BDINFO_ENTRY_LEN_MAX];
 	uint64_t oem_id;
 	bool fan_presence;
 };
@@ -406,9 +406,9 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 	else if (!strcmp(sensor_name, "UUID"))
 		memcpy(&sdm->bdinfo.uuid, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 0"))
-		memcpy(&sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.mac_addr0, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "MAC 1"))
-		memcpy(&sdm->bdinfo.mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
+		memcpy(sdm->bdinfo.mac_addr1, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "Fan Presence"))
 	{
 		char sensor_val[60];
@@ -418,10 +418,10 @@ static void hwmon_sdm_load_bdinfo(struct xocl_hwmon_sdm *sdm, uint8_t repo_id,
 		else
 			sdm->bdinfo.fan_presence = false;
 	}
-	else if (!strcmp(sensor_name, "Active MSP Ver"))
-		memcpy(&sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
-	else if (!strcmp(sensor_name, "Target MSP Ver"))
-		memcpy(&sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Active SC Ver"))
+		memcpy(sdm->bdinfo.active_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
+	else if (!strcmp(sensor_name, "Target SC Ver"))
+		memcpy(sdm->bdinfo.target_msp_ver, &sdm->sensor_data[repo_id][ins_index], val_len);
 	else if (!strcmp(sensor_name, "OEM ID"))
 		memcpy(&sdm->bdinfo.oem_id, &sdm->sensor_data[repo_id][ins_index], val_len);
 }
@@ -833,7 +833,10 @@ mac_addr0_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mac_addr0);
+	return sprintf(buf, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n",
+				   sdm->bdinfo.mac_addr0[0], sdm->bdinfo.mac_addr0[1], sdm->bdinfo.mac_addr0[2],
+				   sdm->bdinfo.mac_addr0[3], sdm->bdinfo.mac_addr0[4], sdm->bdinfo.mac_addr0[5],
+				   sdm->bdinfo.mac_addr0[6], sdm->bdinfo.mac_addr0[7]);
 };
 static DEVICE_ATTR_RO(mac_addr0);
 
@@ -842,7 +845,10 @@ mac_addr1_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.mac_addr1);
+	return sprintf(buf, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX\n",
+				   sdm->bdinfo.mac_addr1[0], sdm->bdinfo.mac_addr1[1], sdm->bdinfo.mac_addr1[2],
+				   sdm->bdinfo.mac_addr1[3], sdm->bdinfo.mac_addr1[4], sdm->bdinfo.mac_addr1[5],
+				   sdm->bdinfo.mac_addr1[6], sdm->bdinfo.mac_addr1[7]);
 };
 static DEVICE_ATTR_RO(mac_addr1);
 
@@ -860,7 +866,8 @@ active_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.active_msp_ver);
+	return sprintf(buf, "%d.%d.%d\n", sdm->bdinfo.active_msp_ver[0],
+				   sdm->bdinfo.active_msp_ver[1], sdm->bdinfo.active_msp_ver[2]);
 };
 static DEVICE_ATTR_RO(active_msp_ver);
 
@@ -869,7 +876,8 @@ target_msp_ver_show(struct device *dev, struct device_attribute *attr, char *buf
 {
 	struct xocl_hwmon_sdm *sdm = dev_get_drvdata(dev);
 
-	return sprintf(buf, "0x%llx\n", sdm->bdinfo.target_msp_ver);
+	return sprintf(buf, "%d.%d.%d\n", sdm->bdinfo.target_msp_ver[0],
+				   sdm->bdinfo.target_msp_ver[1], sdm->bdinfo.target_msp_ver[2]);
 };
 static DEVICE_ATTR_RO(target_msp_ver);
 

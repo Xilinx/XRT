@@ -28,7 +28,6 @@
 
 namespace XBUtilities {
 
-
   using VectorPairStrings = std::vector< std::pair< std::string, std::string > >;
 
   std::string 

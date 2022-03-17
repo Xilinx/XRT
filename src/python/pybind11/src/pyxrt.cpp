@@ -188,6 +188,9 @@ PYBIND11_MODULE(pyxrt, m) {
                           xrt::kernel::cu_access_mode m) {
                            return new xrt::kernel(d, u, n, m);
                        }))
+  	.def(py::init([](const xrt::device& d, const xrt::uuid& u, const std::string& n) {
+                           return new xrt::kernel(d, u, n);
+                       }))
         .def("__call__", [](xrt::kernel& k, py::args args) -> xrt::run {
                              int i = 0;
                              xrt::run r(k);
