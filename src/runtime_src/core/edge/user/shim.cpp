@@ -756,6 +756,10 @@ xclLoadAxlf(const axlf *buffer)
       krnl->range = kernel.range;
       krnl->anums = kernel.args.size();
 
+      krnl->features = 0;
+      if (kernel.sw_reset)
+        krnl->features |= KRNL_SW_RESET;
+
       int ai = 0;
       for (auto& arg : kernel.args) {
         if (arg.name.size() > sizeof(krnl->args[ai].name)) {

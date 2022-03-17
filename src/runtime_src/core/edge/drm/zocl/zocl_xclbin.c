@@ -608,17 +608,8 @@ zocl_create_cu(struct drm_zocl_dev *zdev, struct drm_zocl_slot *slot)
 			cu_info[i].size = krnl_info->range;
 		}
 
-		krnl_info = zocl_query_kernel(slot, cu_info[i].kname);
-		if (!krnl_info) {
-			DRM_WARN("%s CU has no metadata, using default",cu_info[i].kname);
-			cu_info[i].args = NULL;
-			cu_info[i].num_args = 0;
-			cu_info[i].size = 0x10000;
-		} else {
-			cu_info[i].args = (struct xrt_cu_arg *)&krnl_info->args[i];
-			cu_info[i].num_args = krnl_info->anums;
-			cu_info[i].size = krnl_info->range;
-		}
+		if (krnl_info->features & KRNL_SW_RESET)
+			cu_info[i].sw_reset = true;
 
 		/* CU sub device is a virtual device, which means there is no
 		 * device tree nodes
