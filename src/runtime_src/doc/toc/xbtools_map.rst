@@ -260,7 +260,7 @@ or
 
 .. code-block:: shell
 
-   xbmgmt examine --device 0000:b3:00.1 --report platform 
+   xbmgmt examine --device 0000:b3:00.0 --report platform 
    
    
 You need to use a combination of ``xball xbmgmt`` command if you prefer to see information from all the cards attached to the host server. Please see ``xball`` page for more details. 
@@ -297,6 +297,6 @@ or when a specific partition to choose
 
 .. code-block:: shell
 
-   xbutil --reset --device 0000:d8:00.0  
+   xbutil --reset --device 0000:d8:00.1  
 
 
