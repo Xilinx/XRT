@@ -262,6 +262,9 @@ or
 
    xbmgmt examine --device 0000:b3:00.1 --report platform 
    
+   
+You need to use a combination of ``xball xbmgmt`` command if you prefer to see information from all the cards attached to the host server. Please see ``xball`` page for more details. 
+   
 4. Programming the base partition 
 
 **Legacy command**
