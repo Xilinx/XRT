@@ -568,7 +568,7 @@ namespace {
 
   static void totalKernelRunTimeMs(xdp::VPDatabase* db, std::ofstream& fout)
   {
-    if (!db->infoAvailable(xdp::info::opencl_trace)) return ;
+    if (!db->infoAvailable(xdp::info::device_offload)) return ;
 
     double firstKernelStartTime = db->getStats().getFirstKernelStartTime() ;
     double lastKernelEndTime = db->getStats().getLastKernelEndTime() ;
