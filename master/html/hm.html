@@ -562,63 +562,80 @@
 </div>
 <div class="section" id="enabling-the-host-memory-by-xrt">
 <h3>Enabling the Host Memory by XRT<a class="headerlink" href="#enabling-the-host-memory-by-xrt" title="Permalink to this headline">¶</a></h3>
-<p>Irrespective of the Hugepages settings, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">host_mem</span></code> command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">host_mem</span></code> command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>xbutil host_mem -d <span class="m">0</span> --enable --size 1G
-xbutil host_mem -d <span class="m">1</span> --enable --size 4G
-xbutil host_mem -d <span class="m">2</span> --enable --size 16G
+<p>Irrespective of the Hugepages settings, <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span></code> command must be used to reserve the host memory for the kernel. This has to be done upfront before the XCLBIN download. In the example below, <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span> <span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code> command is used to reserve 1G, 4G, and 16G host memory respectively for 3 cards.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo xbutil configure --host-mem -d <span class="m">0000</span>:a6:00.1 --size 1G <span class="nb">enable</span>
+sudo xbutil configure --host-mem -d <span class="m">0000</span>:73:00.1 --size 4G <span class="nb">enable</span>
+sudo xbutil configure --host-mem -d <span class="m">0000</span>:17:00.1 --size 16G <span class="nb">enable</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="maximum-host-memory-supported-by-the-platform">
 <h3>Maximum Host memory supported by the platform<a class="headerlink" href="#maximum-host-memory-supported-by-the-platform" title="Permalink to this headline">¶</a></h3>
-<p>For the platform supporting the host memory access feature, we can observe the following two data from the <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">query</span></code> output</p>
+<p>For the platform supporting the host memory access feature, we can observe the following two data from the <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">examine</span> <span class="pre">-r</span> <span class="pre">pcie-info</span> <span class="pre">-d</span> <span class="pre">&lt;bdf&gt;</span></code> output</p>
 <blockquote>
 <div><ul class="simple">
-<li><strong>Max HOST_MEM</strong>: The maximum host memory supported by the platform.</li>
-<li><strong>HOST_MEM size</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">host_mem</span></code>)</li>
+<li><strong>Max Shared Host Memory</strong>: The maximum host memory supported by the platform.</li>
+<li><strong>Shared Host Memory</strong>: The host memory specified for this card (by <code class="docutils literal notranslate"><span class="pre">xbutil</span> <span class="pre">configure</span> <span class="pre">--host-mem</span></code>)</li>
 </ul>
 </div></blockquote>
-<p>Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 4GB host memory.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;&gt;xbutil host_mem --enable 4G
-xbutil host_mem <span class="k">done</span> successfully
-shell&gt;&gt;xbutil query
-INFO: Found total <span class="m">1</span> card<span class="o">(</span>s<span class="o">)</span>, <span class="m">1</span> are usable
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-System Configuration
-OS name:      Linux
-Release:      <span class="m">5</span>.7.0+
-Version:      <span class="c1">#1 SMP Thu Jun 11 16:19:41 PDT 2020</span>
-Machine:      x86_64
-Model:        Super Server
-CPU cores:    <span class="m">16</span>
-Memory:       <span class="m">15547</span> MB
-Glibc:        <span class="m">2</span>.23
-Distribution: Ubuntu <span class="m">16</span>.04.5 LTS
-Now:          Tue Sep <span class="m">22</span> <span class="m">18</span>:30:33 <span class="m">2020</span> GMT
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-XRT Information
-Version:      <span class="m">2</span>.8.0
-Git Hash:     64ece8bdbd553e0538e99612f11d1926c609a54f
-Git Branch:   ssv3_0921
-Build Date:   <span class="m">2020</span>-09-21 <span class="m">14</span>:25:40
-XOCL:         <span class="m">2</span>.6.0,cd2fcd72498afa91f2a6a60d4e3c1697291cd16e
-XCLMGMT:      <span class="m">2</span>.6.0,cd2fcd72498afa91f2a6a60d4e3c1697291cd16e
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Shell                           FPGA                            IDCode
-xilinx_u250_gen3x16_xdma_shell_2_1                                0x4b57093
-Vendor          Device          SubDevice       SubVendor       SerNum
-0x10ee          0x5005          0x000e          0x10ee
-DDR size        DDR count       Clock0          Clock1          Clock2
-<span class="m">0</span> Byte          <span class="m">0</span>               <span class="m">300</span>             <span class="m">500</span>             <span class="m">0</span>
-PCIe            DMA chan<span class="o">(</span>bidir<span class="o">)</span> MIG Calibrated  P2P Enabled     OEM ID
-GEN 3x16        <span class="m">2</span>               <span class="nb">true</span>            <span class="nb">false</span>           0x0<span class="o">(</span>N/A<span class="o">)</span>
-Interface UUID
-8e4e5c27e1d0742bd3d00d65c691a382
-Logic UUID
-abad927204cb200a2e88751e9d582807
-DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
-                                <span class="m">0</span>-15            <span class="m">4</span> GB            <span class="m">16</span> GB
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+<p>Assuming the platform supported maximum host memory is 16GB, the following output will be observed when the card is configured for 1GB host memory, no xclbin loaded.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;&gt;sudo xbutil configure --host-mem -d <span class="m">0000</span>:17:00.1 --size 1G <span class="nb">enable</span>
+
+Host-mem enabled successfully
+shell&gt;&gt;xbutil examine -r pcie-info -d <span class="m">0000</span>:17:00.1
+
+-----------------------------------------------
+<span class="m">1</span>/1 <span class="o">[</span><span class="m">0000</span>:a6:00.1<span class="o">]</span> : xilinx_u250_gen3x16_xdma_shell_3_1
+-----------------------------------------------
+Pcie Info
+  Vendor                 : 0x10ee
+  Device                 : 0x5005
+  Sub Device             : 0x000e
+  Sub Vendor             : 0x10ee
+  PCIe                   : Gen3x16
+  DMA Thread Count       : <span class="m">2</span>
+  CPU Affinity           : <span class="m">16</span>-31,48-63
+  Shared Host Memory     : <span class="m">1</span> GB
+  Max Shared Host Memory : <span class="m">0</span> Byte
+  Enabled Host Memory    : <span class="m">0</span> Byte
+</pre></div>
+</div>
+<p>When you load an xclbin with the host mem support, the <code class="docutils literal notranslate"><span class="pre">Max</span> <span class="pre">Shared</span> <span class="pre">Host</span> <span class="pre">Mem</span></code> gets populated.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;&gt;xbutil examine -r pcie-info -d <span class="m">0000</span>:17:00.1
+
+-----------------------------------------------
+<span class="m">1</span>/1 <span class="o">[</span><span class="m">0000</span>:a6:00.1<span class="o">]</span> : xilinx_u250_gen3x16_xdma_shell_3_1
+-----------------------------------------------
+Pcie Info
+  Vendor                 : 0x10ee
+  Device                 : 0x5005
+  Sub Device             : 0x000e
+  Sub Vendor             : 0x10ee
+  PCIe                   : Gen3x16
+  DMA Thread Count       : <span class="m">2</span>
+  CPU Affinity           : <span class="m">16</span>-31,48-63
+  Shared Host Memory     : <span class="m">1</span> GB
+  Max Shared Host Memory : <span class="m">16</span> GB
+  Enabled Host Memory    : <span class="m">0</span> Byte
+</pre></div>
+</div>
+<p>Finally, when you run an application which exercises HOST[0], <code class="docutils literal notranslate"><span class="pre">Enabled</span> <span class="pre">Host</span> <span class="pre">Memory</span></code> is populated.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>shell&gt;&gt;xbutil examine -r pcie-info -d <span class="m">0000</span>:17:00.1
+
+-----------------------------------------------
+<span class="m">1</span>/1 <span class="o">[</span><span class="m">0000</span>:a6:00.1<span class="o">]</span> : xilinx_u250_gen3x16_xdma_shell_3_1
+-----------------------------------------------
+Pcie Info
+  Vendor                 : 0x10ee
+  Device                 : 0x5005
+  Sub Device             : 0x000e
+  Sub Vendor             : 0x10ee
+  PCIe                   : Gen3x16
+  DMA Thread Count       : <span class="m">2</span>
+  CPU Affinity           : <span class="m">16</span>-31,48-63
+  Shared Host Memory     : <span class="m">1</span> GB
+  Max Shared Host Memory : <span class="m">16</span> GB
+  Enabled Host Memory    : <span class="m">1</span> GB
 </pre></div>
 </div>
 </div>
@@ -679,7 +696,7 @@ DNA                             CPU_AFFINITY    HOST_MEM size   Max HOST_MEM
   <div role="contentinfo" class="copyright">
     <p class="footerinfo">
       <span class="lastupdated">
-        Last updated on March 07, 2022.
+        Last updated on March 17, 2022.
       </span>
 
     </p>
