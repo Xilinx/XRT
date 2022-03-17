@@ -203,3 +203,28 @@ xbmgmt
 |             |             |``--disable_retention``    |                                  |
 |             |             |                           |                                  |
 +-------------+-------------+---------------------------+----------------------------------+
+
+
+
+Few examples of legacy vs new commands 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here are few example use-cases of old vs new commands
+
+1. Getting all the user-space related information
+
+**Old command**
+
+
+.. code-block:: shell
+
+       xbutil dump
+
+
+**New command**
+
+.. code-block:: shell
+
+       xbutil examine --report all
+
+ 2. 
