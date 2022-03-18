@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, In
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -31,16 +32,15 @@ namespace XUtil = XclBinUtilities;
   #pragma warning( disable : 4100)      // 4100 - Unreferenced formal parameter
 #endif
 
-
-
-// Static Variables Initialization
-std::map<enum axlf_section_kind, std::string> Section::m_mapIdToName;
-std::map<std::string, enum axlf_section_kind> Section::m_mapNameToId;
-std::map<enum axlf_section_kind, Section::Section_factory> Section::m_mapIdToCtor;
-std::map<std::string, enum axlf_section_kind> Section::m_mapJSONNameToKind;
-std::map<enum axlf_section_kind, std::string> Section::m_mapKindToJSONName;
-std::map<enum axlf_section_kind, bool> Section::m_mapIdToSubSectionSupport;
-std::map<enum axlf_section_kind, bool> Section::m_mapIdToSectionIndexSupport;
+Section::FactoryData& Section::factoryData()
+{
+  // We allocate an object instead of using a local static to avoid potential
+  // order problems during teardown destruction. One might suggest this is a
+  // memory leak, but it will be reclaimed by the OS when the program exits.
+  // See https://isocpp.org/wiki/faq/ctors#construct-on-first-use-v2
+  static FactoryData* pData = new FactoryData();
+  return *pData;
+}
 
 Section::Section()
     : m_eKind(BITSTREAM)
@@ -74,7 +74,7 @@ Section::setName(const std::string &_sSectionName)
 
 void
 Section::getKinds(std::vector< std::string > & kinds) {
-  for (auto & item : m_mapNameToId) {
+  for (auto & item : factoryData().m_mapNameToId) {
     kinds.push_back(item.first);
   }
 }
@@ -92,67 +92,72 @@ Section::registerSectionCtor(enum axlf_section_kind _eKind,
     throw std::runtime_error(errMsg);
   }
 
-  if (m_mapIdToName.find(_eKind) != m_mapIdToName.end()) {
+  FactoryData& data = factoryData();
+
+  if (data.m_mapIdToName.find(_eKind) != data.m_mapIdToName.end()) {
     std::string errMsg = XUtil::format("ERROR: Attempting to register (%d : %s). Constructor enum of kind (%d) already registered.",
                                        (unsigned int)_eKind, _sKindStr.c_str(), (unsigned int)_eKind);
     throw std::runtime_error(errMsg);
   }
 
-  if (m_mapNameToId.find(_sKindStr) != m_mapNameToId.end()) {
+  if (data.m_mapNameToId.find(_sKindStr) != data.m_mapNameToId.end()) {
     std::string errMsg = XUtil::format("ERROR: Attempting to register: (%d : %s). Constructor name '%s' already registered to eKind (%d).",
                                        (unsigned int)_eKind, _sKindStr.c_str(),
-                                       _sKindStr.c_str(), (unsigned int)m_mapNameToId[_sKindStr]);
+                                       _sKindStr.c_str(), (unsigned int)data.m_mapNameToId[_sKindStr]);
     throw std::runtime_error(errMsg);
   }
 
   if (!_sHeaderJSONName.empty()) {
-    if (m_mapJSONNameToKind.find(_sHeaderJSONName) != m_mapJSONNameToKind.end()) {
+    if (data.m_mapJSONNameToKind.find(_sHeaderJSONName) != data.m_mapJSONNameToKind.end()) {
       std::string errMsg = XUtil::format("ERROR: Attempting to register: (%d : %s). JSON mapping name '%s' already registered to eKind (%d).",
                                          (unsigned int)_eKind, _sKindStr.c_str(),
-                                         _sHeaderJSONName.c_str(), (unsigned int)m_mapJSONNameToKind[_sHeaderJSONName]);
+                                         _sHeaderJSONName.c_str(), (unsigned int)data.m_mapJSONNameToKind[_sHeaderJSONName]);
       throw std::runtime_error(errMsg);
     }
-    m_mapJSONNameToKind[_sHeaderJSONName] = _eKind;
+    data.m_mapJSONNameToKind[_sHeaderJSONName] = _eKind;
   }
 
   
   // At this point we know we are good, lets initialize the arrays
   // TODO: These mappings are no longer scalable. 
   //       Please refactor to a cleaner solution at the next earliest possibility.
-  m_mapKindToJSONName[_eKind] = _sHeaderJSONName;
-  m_mapIdToName[_eKind] = _sKindStr;
-  m_mapNameToId[_sKindStr] = _eKind;
-  m_mapIdToCtor[_eKind] = _Section_factory;
-  m_mapIdToSubSectionSupport[_eKind] = _bSupportsSubSections;
-  m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
+  data.m_mapKindToJSONName[_eKind] = _sHeaderJSONName;
+  data.m_mapIdToName[_eKind] = _sKindStr;
+  data.m_mapNameToId[_sKindStr] = _eKind;
+  data.m_mapIdToCtor[_eKind] = _Section_factory;
+  data.m_mapIdToSubSectionSupport[_eKind] = _bSupportsSubSections;
+  data.m_mapIdToSectionIndexSupport[_eKind] = _bSupportsIndexing;
 }
 
 void
 Section::translateSectionKindStrToKind(const std::string & sKind, enum axlf_section_kind & eKind)
 {
-  if (m_mapNameToId.find(sKind) == m_mapNameToId.end()) {
+  FactoryData& data = factoryData();
+  if (data.m_mapNameToId.find(sKind) == data.m_mapNameToId.end()) {
     std::string errMsg = XUtil::format("ERROR: Section '%s' isn't a valid section name.", sKind.c_str());
     throw std::runtime_error(errMsg);
   }
-  eKind = m_mapNameToId[sKind];
+  eKind = data.m_mapNameToId[sKind];
 }
 
 bool
 Section::supportsSubSections(enum axlf_section_kind &_eKind)
 {
-  if (m_mapIdToSubSectionSupport.find(_eKind) == m_mapIdToSubSectionSupport.end()) {
+  FactoryData& data = factoryData();
+  if (data.m_mapIdToSubSectionSupport.find(_eKind) == data.m_mapIdToSubSectionSupport.end()) {
     return false;   
   }
-  return m_mapIdToSubSectionSupport[_eKind];
+  return data.m_mapIdToSubSectionSupport[_eKind];
 }
 
 bool
 Section::supportsSectionIndex(enum axlf_section_kind &_eKind)
 {
-  if (m_mapIdToSectionIndexSupport.find(_eKind) == m_mapIdToSectionIndexSupport.end()) {
+  FactoryData& data = factoryData();
+  if (data.m_mapIdToSectionIndexSupport.find(_eKind) == data.m_mapIdToSectionIndexSupport.end()) {
     return false;   
   }
-  return m_mapIdToSectionIndexSupport[_eKind];
+  return data.m_mapIdToSectionIndexSupport[_eKind];
 }
 
 // -------------------------------------------------------------------------
@@ -181,18 +186,20 @@ Section::getFormatType(const std::string _sFormatType)
 
 bool 
 Section::getKindOfJSON(const std::string &_sJSONStr, enum axlf_section_kind &_eKind) {
+  FactoryData& data = factoryData();
   if (_sJSONStr.empty() ||
-     (m_mapJSONNameToKind.find(_sJSONStr) == m_mapJSONNameToKind.end()) ) {
+     (data.m_mapJSONNameToKind.find(_sJSONStr) == data.m_mapJSONNameToKind.end()) ) {
     return false;
   }
 
-  _eKind = m_mapJSONNameToKind[_sJSONStr];
+  _eKind = data.m_mapJSONNameToKind[_sJSONStr];
   return true;
 }
 
 std::string
 Section::getJSONOfKind(enum axlf_section_kind _eKind) {
-  return m_mapKindToJSONName[_eKind];
+  FactoryData& data = factoryData();
+  return data.m_mapKindToJSONName[_eKind];
 }
 
 Section*
@@ -200,14 +207,16 @@ Section::createSectionObjectOfKind( enum axlf_section_kind _eKind,
                                     const std::string _sIndexName) {
   Section* pSection = nullptr;
 
-  if (m_mapIdToCtor.find(_eKind) == m_mapIdToCtor.end()) {
+  FactoryData& data = factoryData();
+
+  if (data.m_mapIdToCtor.find(_eKind) == data.m_mapIdToCtor.end()) {
     std::string errMsg = XUtil::format("ERROR: Section constructor for the archive section ID '%d' does not exist.  This error is most likely the result of examining a newer version of an archive image than this version of software supports.", (unsigned int)_eKind);
     throw std::runtime_error(errMsg);
   }
 
-  pSection = m_mapIdToCtor[_eKind]();
+  pSection = data.m_mapIdToCtor[_eKind]();
   pSection->m_eKind = _eKind;
-  pSection->m_sKindName = m_mapIdToName[_eKind];
+  pSection->m_sKindName = data.m_mapIdToName[_eKind];
   pSection->m_sIndexName = _sIndexName;
 
   XUtil::TRACE(XUtil::format("Created segment: %s (%d), index: '%s'",

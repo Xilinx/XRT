@@ -1,5 +1,6 @@
 /**
- * Copyright (C) 2018 - 2021 Xilinx, Inc
+ * Copyright (C) 2018 - 2021 Xilinx, Inc 
+ * Copyright (C) 2022 Advanced Micro Devices, Inc. 
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -121,13 +122,25 @@ class Section {
   std::string m_pathAndName;
 
  private:
-  static std::map<enum axlf_section_kind, std::string> m_mapIdToName;
-  static std::map<std::string, enum axlf_section_kind> m_mapNameToId;
-  static std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
-  static std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
-  static std::map<enum axlf_section_kind, std::string> m_mapKindToJSONName;
-  static std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
-  static std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
+  // Section used to have a bunch of static factory data, but it needed to be
+  // initialized before any call to static class method registerSectionCtor.
+  // But C++ doesn't define static initialization order across compilation
+  // units, and we found cases where this data was being accessed by a section
+  // registration before being initialized. So we are now using the construct
+  // on first use idiom, https://isocpp.org/wiki/faq/ctors#static-init-order-on-first-use
+  // wtih this class and static method to get it.
+  class FactoryData {
+  public: // You can only get to this class from a private method, but once you get it ...
+    std::map<enum axlf_section_kind, std::string> m_mapIdToName;
+    std::map<std::string, enum axlf_section_kind> m_mapNameToId;
+    std::map<enum axlf_section_kind, Section_factory> m_mapIdToCtor;
+    std::map<std::string, enum axlf_section_kind> m_mapJSONNameToKind;
+    std::map<enum axlf_section_kind, std::string> m_mapKindToJSONName;
+    std::map<enum axlf_section_kind, bool> m_mapIdToSubSectionSupport;
+    std::map<enum axlf_section_kind, bool> m_mapIdToSectionIndexSupport;
+    FactoryData() { /* all members are self initializing */ }
+  };
+  static FactoryData& factoryData();
 
  private:
   Section(const Section& obj) = delete;
