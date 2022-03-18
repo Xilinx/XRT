@@ -107,8 +107,6 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
       return;
     }
 
-    _output << boost::format("    %s : %s\n") % "Supported" % cmc_scale.get<std::string>("supported");
-    _output << boost::format("    %s : %s\n") % "Enabled" % cmc_scale.get<std::string>("enabled");
     cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");
     _output << boost::format("    %-22s:\n") % "Critical threshold (clock shutdown) limits";
     _output << boost::format("      %s : %s W\n") % "Power" % cmc_scale.get<std::string>("power_watts");
