@@ -187,7 +187,7 @@ show_device_conf(xrt_core::device* device)
   std::string not_supported = "Not supported";
   std::string sec_level = not_supported;
   try {
-    sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
+    sec_level = std::to_string(xrt_core::device_query<xrt_core::query::sec_level>(device));
   }
   catch (xrt_core::query::exception&) {
     //safe to ignore. These sysfs nodes are not present for vck5000 
