@@ -1,5 +1,6 @@
 /**
  * Copyright (C) 2019-2022 Xilinx, Inc
+ * Copyright (C) 2022 Advanced Micro Devices, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"). You may
  * not use this file except in compliance with the License. A copy of the
@@ -755,8 +756,7 @@ firmwareImage::firmwareImage(const std::string& file, imageType type) :
         if (type != MCS_FIRMWARE_PRIMARY)
         {
             this->setstate(failbit);
-            std::cout << "non-dsabin supports only primary bitstream: "
-                << file << std::endl;
+            std::cout << "non-dsabin supports only primary bitstream: " << file << std::endl;
             return;
         }
         // For non-dsabin file, the entire file is the image.
