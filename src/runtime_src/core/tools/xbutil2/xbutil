@@ -20,6 +20,7 @@ XRT_PROG=xbutil2
 XRTWARP_PROG_ARGS_size=0
 XRTWRAP_PROG_ARGS=()
 while [ $# -gt 0 ]; do
+    case "$1" in
 	# Copy the options the remaining options
 	*)
 	    XRTWRAP_PROG_ARGS[$XRTWARP_PROG_ARGS_size]="$1"
