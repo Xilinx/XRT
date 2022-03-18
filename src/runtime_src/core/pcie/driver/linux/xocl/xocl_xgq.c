@@ -20,8 +20,15 @@
 
 #define CLIENT_ID_BITS 7
 #define MAX_CLIENTS (1 << CLIENT_ID_BITS)
+#define CLIENT_ID_MASK (MAX_CLIENTS - 1)
 
 static uint16_t xocl_xgq_cid;
+
+struct xocl_xgq_resp {
+	struct xgq_com_queue_entry	 xxr_resp[MAX_CLIENTS];
+	u32				 xxr_head;
+	u32				 xxr_tail;
+};
 
 struct xocl_xgq_client {
 	void			*xxc_client;
@@ -36,6 +43,7 @@ struct xocl_xgq {
 	struct xocl_xgq_client	 xx_clients[MAX_CLIENTS];
 	u32			 xx_num_client;
 	void __iomem		*xx_sq_prod_int;
+	struct xocl_xgq_resp	 xx_pending_resp;
 };
 
 ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count)
@@ -47,6 +55,16 @@ ssize_t xocl_xgq_dump_info(void *xgq_handle, char *buf, int count)
 	sz = scnprintf(buf, count, fmt, xgq->xx_id, xgq->xx_addr);
 
 	return sz;
+}
+
+static inline int xocl_xgq_resp_len(struct xocl_xgq_resp *resp)
+{
+	return resp->xxr_tail - resp->xxr_head;
+}
+
+static inline bool xocl_xgq_resp_full(struct xocl_xgq_resp *resp)
+{
+	return (xocl_xgq_resp_len(resp) >= sizeof(resp->xxr_resp));
 }
 
 static inline void
@@ -111,25 +129,59 @@ void xocl_xgq_notify(void *xgq_handle)
 int xocl_xgq_get_response(void *xgq_handle, int id, struct xgq_com_queue_entry *resp)
 {
 	struct xocl_xgq *xgq = (struct xocl_xgq *)xgq_handle;
+	struct xgq_cmd_cq_hdr hdr;
 	unsigned long flags = 0;
 	u64 addr = 0;
+	u32 tail = 0;
 	int ret = 0;
 
 	spin_lock_irqsave(&xgq->xx_lock, flags);
+
+	if (xocl_xgq_resp_len(&xgq->xx_pending_resp)) {
+		struct xgq_com_queue_entry *rsp;
+		u32 head = xgq->xx_pending_resp.xxr_head;
+
+		rsp = &xgq->xx_pending_resp.xxr_resp[head];
+		if (id == (rsp->hdr.cid & CLIENT_ID_MASK)) {
+			if (resp)
+				memcpy(resp, rsp, sizeof(*resp));
+			xgq->xx_pending_resp.xxr_head++;
+			goto unlock_and_out;
+		}
+	}
+
+	if (xocl_xgq_resp_full(&xgq->xx_pending_resp)) {
+		ret = -ENOENT;
+		goto unlock_and_out;
+	}
+
 	ret = xgq_consume(&xgq->xx_xgq, &addr);
 	if (ret)
 		goto unlock_and_out;
+
+	xocl_xgq_read_queue((u32 *)&hdr, (u32 __iomem *)addr, sizeof(hdr)/4);
+	if (id != (hdr.cid & CLIENT_ID_MASK)) {
+		struct xgq_com_queue_entry *curr_resp;
+
+		tail = xgq->xx_pending_resp.xxr_tail;
+		curr_resp = &xgq->xx_pending_resp.xxr_resp[tail];
+		xocl_xgq_read_queue((u32 *)curr_resp, (u32 __iomem *)addr, sizeof(*curr_resp));
+		xgq->xx_pending_resp.xxr_tail++;
+		ret = -ENOENT;
+		goto notify_and_out;
+	}
 
 	/* Don't need to check response if client doesn't care about it.
 	 * This is for better performance.
 	 */
 	if (!resp)
-		goto unlock_and_out;
+		goto notify_and_out;
 
 	xocl_xgq_read_queue((u32 *)resp, (u32 __iomem *)addr, sizeof(*resp)/4);
 
-unlock_and_out:
+notify_and_out:
 	xgq_notify_peer_consumed(&xgq->xx_xgq);
+unlock_and_out:
 	spin_unlock_irqrestore(&xgq->xx_lock, flags);
 	return ret;
 }
