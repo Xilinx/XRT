@@ -45,7 +45,7 @@ Table2D::addEntry(const std::vector<std::string>& entry)
 }
 
 void
-Table2D::appendToOutput(std::string& output, const ColumnData& column, const std::string& data)
+Table2D::appendToOutput(std::string& output, const ColumnData& column, const std::string& data) const
 {
     // Format for table data
     boost::format fmt("%s%s%s  ");
@@ -56,7 +56,7 @@ Table2D::appendToOutput(std::string& output, const ColumnData& column, const std
 }
 
 std::ostream&
-Table2D::print(std::ostream& os)
+Table2D::print(std::ostream& os) const
 {
     // Iterate through each row and column of the table to format the output
     // Add one to account for the header row
@@ -80,7 +80,7 @@ Table2D::print(std::ostream& os)
 }
 
 void
-Table2D::getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks)
+Table2D::getBlankSizes(ColumnData col_data, size_t string_size, size_t& left_blanks, size_t& right_blanks) const
 {
     const size_t required_buffer = col_data.max_element_size - string_size;
     switch (col_data.header.justification) {

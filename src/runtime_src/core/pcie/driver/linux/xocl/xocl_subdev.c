@@ -1791,6 +1791,10 @@ void xocl_fill_dsa_priv(xdev_handle_t xdev_hdl, struct xocl_board_private *in)
 				ptype);
 		xocl_fetch_dynamic_platform(core, &in, ptype);
 		vsec = true;
+	} else if (ret == -ENOENT) {
+		/* VSEC is found but PLATFORM_INFO does not exist. (versal) */
+		xocl_fetch_dynamic_platform(core, &in, -1);
+		vsec = true;
 	}
 		
 	/* workaround firewall completer abort issue */
