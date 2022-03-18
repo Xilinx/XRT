@@ -512,7 +512,7 @@ remove_xsabin_section(void * xsabin_buffer, enum axlf_section_kind section_to_re
   for (uint64_t index = 0; index < axlf_header->m_header.m_numSections; ++index) {
     axlf_section_header *sectionHeaderArray = &axlf_header->m_sections[0];
     // Is this a section of interest, if not then go to the next section
-    if (sectionHeaderArray[index].m_sectionKind != section_to_remove)
+    if (sectionHeaderArray[index].m_sectionKind != reinterpret_cast<uint32_t>(section_to_remove))
       continue;
     // Record the buffer size
     uint64_t bufferSize = axlf_header->m_header.m_length;
