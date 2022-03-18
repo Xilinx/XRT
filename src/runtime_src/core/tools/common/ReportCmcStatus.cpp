@@ -102,9 +102,9 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << "  Heartbeat information unavailable\n";
   }
 
-  boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
-  _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
   try {
+    boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
+    _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
     _output << boost::format("    %s : %s\n") % "Supported" % cmc_scale.get<std::string>("supported");
     _output << boost::format("    %s : %s\n") % "Enabled" % cmc_scale.get<std::string>("enabled");
     cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");
