@@ -12,6 +12,13 @@
 
 #include "zocl_drv.h"
 #include "zocl_sk.h"
+#include "xrt_cu.h"
+
+struct zocl_scu {
+	struct xrt_cu		 base;
+	struct platform_device	*pdev;
+	spinlock_t		 lock;
+};
 
 static ssize_t debug_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -245,6 +252,25 @@ int zocl_scu_wait_cmd_sk(struct platform_device *pdev)
 	/* Clear Bit 1 and set Bit 0 */
 	*vaddr = 1 | (*vaddr & ~3);
 
+	return 0;
+}
+int zocl_scu_wait_ready(struct platform_device *pdev)
+{
+	struct zocl_scu *zcu = platform_get_drvdata(pdev);
+	struct xrt_cu *xcu = &zcu->base;
+	struct xrt_cu_scu *cu_scu = xcu->core;
+	int ret = 0;
+
+	// Wait for PS kernel initizliation complete
+	if(down_timeout(&cu_scu->sc_sem,100)) {
+		zocl_err(&pdev->dev, "PS kernel initialization timed out!");
+		return -ETIME;
+	}
+	ret = zocl_kds_add_scu(zocl_get_zdev(), xcu);
+	if (ret) {
+		zocl_err(&pdev->dev, "Not able to add SCU %p to KDS", zcu);
+		return ret;
+	}
 	return 0;
 }
 void zocl_scu_sk_ready(struct platform_device *pdev)

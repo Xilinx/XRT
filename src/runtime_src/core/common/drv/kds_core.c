@@ -685,12 +685,12 @@ kds_del_cu_context(struct kds_sched *kds, struct kds_client *client,
 	int wait_ms;
 
 	if ((cu_idx >= MAX_CUS) || (!cu_mgmt->xcus[cu_idx])) {
-		kds_err(client, "CU(%d) not found", cu_idx);
+	        kds_err(client, "Client pid(%d) CU(%d) not found", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 
 	if (!test_and_clear_bit(cu_idx, client->cu_bitmap)) {
-		kds_err(client, "CU(%d) has never been reserved", cu_idx);
+		kds_err(client, "Client pid(%d) CU(%d) has never been reserved", pid_nr(client->pid), cu_idx);
 		return -EINVAL;
 	}
 

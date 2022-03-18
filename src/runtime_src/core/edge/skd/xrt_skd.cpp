@@ -33,8 +33,7 @@ namespace xrt {
    */
   skd::skd(xclDeviceHandle handle, int sk_meta_bohdl, int sk_bohdl, char *kname, uint32_t cu_index, unsigned char *uuid) {
     strcpy(sk_name,kname);
-    devHdl = handle;
-    xrtdHdl = xrtDeviceOpenFromXcl(handle);
+    parent_devHdl = handle;
     cu_idx = cu_index;
     sk_bo = sk_bohdl;
     sk_meta_bo = sk_meta_bohdl;
@@ -53,7 +52,7 @@ namespace xrt {
     int ret = 0;
 
     // Create soft kernel file from sk_bo
-    if(createSoftKernelFile(devHdl, sk_bo) != 0)
+    if(createSoftKernelFile(parent_devHdl, sk_bo) != 0)
       return -1;
 
     /* Open and load the soft kernel. */
@@ -69,16 +68,16 @@ namespace xrt {
     }
 
     // Extract arguments from sk_meta_bohdl
-    if (xclGetBOProperties(devHdl, sk_meta_bo, &prop)) {
+    if (xclGetBOProperties(parent_devHdl, sk_meta_bo, &prop)) {
       syslog(LOG_ERR, "Cannot get metadata BO info.\n");
-      xclFreeBO(devHdl, sk_meta_bo);
+      xclFreeBO(parent_devHdl, sk_meta_bo);
       return -1;
     }
     
-    buf = xclMapBO(devHdl, sk_meta_bo, false);
+    buf = xclMapBO(parent_devHdl, sk_meta_bo, false);
     if (!buf) {
       syslog(LOG_ERR, "Cannot map metadata BO.\n");
-      xclFreeBO(devHdl, sk_meta_bo);
+      xclFreeBO(parent_devHdl, sk_meta_bo);
       return -1;
     }
     args = xrt_core::xclbin::get_kernel_arguments((char *)buf,prop.size,sk_name);
@@ -86,10 +85,9 @@ namespace xrt {
     syslog(LOG_INFO,"Num args = %d\n",num_args);
     munmap(buf, prop.size);
     
-    // Closing initial device handle and create a
     // new device handle for the current instance
-    xclClose(devHdl);
     devHdl = xclOpen(0, NULL, XCL_QUIET);
+    xrtdHdl = xrtDeviceOpenFromXcl(devHdl);
 
     // Check for soft kernel init function
     kernel_init_t kernel_init;
@@ -252,6 +250,7 @@ namespace xrt {
       }
     }
     xclClose(devHdl);
+    xclClose(parent_devHdl);
   }
 
   int skd::createSoftKernel(int *boh) {

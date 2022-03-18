@@ -57,16 +57,13 @@ xrt::skd* skd_inst = nullptr;
 /* Define a signal handler for the child to handle signals */
 static void sigLog(const int sig)
 {
-  if(sig == SIGTERM) {
-    if(skd_inst != nullptr) {
-      syslog(LOG_INFO,"Terminating PS kernel\n");
-      delete skd_inst;
-    }
-    exit(EXIT_SUCCESS);
-  } else {
+  if(sig != SIGTERM)
     stacktrace_logger(sig);
-    exit(EXIT_FAILURE);
+  if(skd_inst != nullptr) {
+    syslog(LOG_INFO,"Terminating PS kernel\n");
+    delete skd_inst;
   }
+  exit(EXIT_SUCCESS);
 }
 
 #define PNAME_LEN	(16)
@@ -126,7 +123,8 @@ void configSoftKernel(xclDeviceHandle handle, xclSKCmd *cmd)
       skd_inst->run();
 err:
       syslog(LOG_INFO, "Kernel %s was terminated\n", cmd->krnl_name);
-      delete skd_inst;
+      if(skd_inst)
+	delete skd_inst;
       exit(EXIT_SUCCESS);
     }
 

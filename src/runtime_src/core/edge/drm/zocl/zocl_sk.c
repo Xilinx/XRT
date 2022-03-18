@@ -171,14 +171,16 @@ zocl_sk_report_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 	}
 	scu_pdev = zert_get_scu_pdev(zert, cu_idx);
-	if (scu_pdev) {
-		scu = platform_get_drvdata(scu_pdev);
-		if (!scu) {
-			DRM_ERROR("SCU %d does not exist.\n", cu_idx);
-			return -EINVAL;
-		}
-	} else
+	if (!scu_pdev) {
+		DRM_ERROR("SCU %d does not exist.\n", cu_idx);
 		return -EINVAL;
+	}
+
+	scu = platform_get_drvdata(scu_pdev);
+	if (!scu) {
+		DRM_ERROR("SCU %d does not exist.\n", cu_idx);
+		return -EINVAL;
+	}
 
 	switch (state) {
 

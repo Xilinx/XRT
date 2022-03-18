@@ -231,18 +231,10 @@ static int zert_create_scu(struct zocl_ctrl_ert *zert, struct xgq_cmd_config_cu 
 	if (conf->payload_size > zert->zce_max_scu_size)
 		zert->zce_max_scu_size = conf->payload_size;
 
-	zcu = platform_get_drvdata(zert->zce_scus[cuidx].zcec_pdev);
-	xcu = &zcu->base;
-	cu_scu = xcu->core;
-	// Wait for PS kernel initizliation complete
-	if(down_timeout(&cu_scu->sc_sem,100)) {
-		zert_err(zert, "PS kernel initialization timed out!");
-		return -ETIME;
-	}
-	ret = zocl_kds_add_scu(zocl_get_zdev(), xcu);
-	if (ret) {
-		DRM_ERROR("Not able to add SCU %p to KDS", zcu);
-		return ret;
+	ret = zocl_scu_wait_ready(zert->zce_scus[cuidx].zcec_pdev);
+	if(ret) {
+		zert_err(zert, "SCU.%d failed to initialize", cuidx);
+		return -EINVAL;
 	}
 
 	return 0;
@@ -981,9 +973,9 @@ struct platform_device *zert_get_scu_pdev(struct platform_device *pdev, u32 cu_i
 	struct zocl_ctrl_ert *zert = platform_get_drvdata(pdev);
 	struct zocl_ctrl_ert_cu *cu = NULL;
 
-	if((zert->zce_num_scus > 0) && (cu_idx < zert->zce_num_scus)) {
-		cu = &zert->zce_scus[cu_idx];
-		return(cu->zcec_pdev);
-	} else
-		return(NULL);
+	if((zert->zce_num_scus <= 0) && (cu_idx >= zert->zce_num_scus))
+		return NULL;
+
+	cu = &zert->zce_scus[cu_idx];
+	return(cu->zcec_pdev);
 }
