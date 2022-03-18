@@ -35,6 +35,7 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
 {
   boost::property_tree::ptree pt;
   pt.put("Description", "CMC");
+
   try {
     boost::property_tree::ptree pth;
     pth.put("Description", "CMC heartbeat");
@@ -47,9 +48,10 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
   }
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
+
+  boost::property_tree::ptree pts;
+  pts.put("Description", "Runtime Clock Scaling");
   try {
-    boost::property_tree::ptree pts;
-    pts.put("Description", "Runtime Clock Scaling");
     pts.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_enabled>(_pDevice));
     pts.put("supported", xrt_core::device_query<xrt_core::query::xmc_scaling_support>(_pDevice));
     boost::property_tree::ptree pts1;
@@ -68,10 +70,11 @@ ReportCmcStatus::getPropertyTree20202( const xrt_core::device * _pDevice,
     pts4.put("enabled", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override_enable>(_pDevice));
     pts4.put("temp_celsius", xrt_core::device_query<xrt_core::query::xmc_scaling_temp_override>(_pDevice));
     pts.add_child("temp_threshold_override", pts4);
-    pt.add_child("scaling", pts);
   }
   catch(const xrt_core::query::no_such_key&) {}
   catch(const xrt_core::query::sysfs_error&) {}
+  pt.add_child("scaling", pts);
+
   // There can only be 1 root node
   _pt.add_child("cmc", pt);
 }
@@ -88,16 +91,20 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << "  Information unavailable" << std::endl;
     return;
   }
+
   try {
     boost::property_tree::ptree cmc_hb = cmc.get_child("cmc_heartbeat");
     uint32_t err_code = cmc_hb.get<uint32_t>("heartbeat_err_code");
     _output << boost::format("  %s : 0x%x %s\n") % "Status" % err_code % cmc_hb.get<std::string>("status");
     if (err_code)
       _output << boost::format("  %s : %s sec\n\n") % "err time" % cmc_hb.get<std::string>("heartbeat_err_time");
-  } catch(...) {}
+  } catch(...) {
+    _output << "  Heartbeat information unavailable\n";
+  }
+
+  boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
+  _output << boost::format("  %-22s:\n") % cmc_scale.get<std::string>("Description");
   try {
-    boost::property_tree::ptree cmc_scale = cmc.get_child("scaling");
-    _output << boost::format("  %-22s :\n") % "Runtime clock scaling feature";
     _output << boost::format("    %s : %s\n") % "Supported" % cmc_scale.get<std::string>("supported");
     _output << boost::format("    %s : %s\n") % "Enabled" % cmc_scale.get<std::string>("enabled");
     cmc_scale = cmc.get_child("scaling").get_child("shutdown_threshold_limits");
@@ -116,5 +123,7 @@ ReportCmcStatus::writeReport( const xrt_core::device* /*_pDevice*/,
     _output << boost::format("    %-22s:\n") % "Temperature threshold override";
     _output << boost::format("      %s : %s\n") % "Override" % cmc_scale.get<std::string>("enabled");
     _output << boost::format("      %s : %s C\n") % "Override limit" % cmc_scale.get<std::string>("temp_celsius");
-  } catch(...) {}
+  } catch(...) {
+    _output << "    Information unavailable\n";
+  }
 }
