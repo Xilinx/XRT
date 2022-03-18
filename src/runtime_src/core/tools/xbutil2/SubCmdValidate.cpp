@@ -265,12 +265,14 @@ runTestCase( const std::shared_ptr<xrt_core::device>& _dev, const std::string& p
     return;
   }
 
-  // log xclbin path for debugging purposes
-  logger(_ptTest, "Xclbin", xclbinPath);
-  auto json_exists = [xclbinPath]() {
+  // log xclbin test dir for debugging purposes
+  boost::filesystem::path xclbin_path(xclbinPath);
+  auto test_dir = xclbin_path.parent_path().string();
+  logger(_ptTest, "Xclbin", test_dir);
+
+  auto json_exists = [test_dir]() {
     const static std::string platform_metadata = "/platform.json";
-    boost::filesystem::path test_dir(xclbinPath);
-    std::string platform_json_path(test_dir.parent_path().string() + platform_metadata);
+    std::string platform_json_path(test_dir + platform_metadata);
     return boost::filesystem::exists(platform_json_path) ? true : false;
   };
 
