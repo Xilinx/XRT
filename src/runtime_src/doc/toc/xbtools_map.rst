@@ -212,7 +212,7 @@ Few examples of legacy vs new commands
 Here are few example use-cases of legacy vs new commands
 
 1. Getting all the information obtained from the userspace kernel driver
-************************************************************************
+########################################################################
 
 **Legacy command**
 
@@ -236,7 +236,7 @@ or
        xbutil examine --device 0000:b3:00.1 --report all
 
 2. Validate the card
-********************
+####################
 
 **Legacy command**
 
@@ -251,6 +251,7 @@ or
         xbutil validate --device 0000:b3:00.1
         
 3. Obtaining platform related information such as SC version, flashed partition(s) running on the card, etc. 
+############################################################################################################
 
 **Legacy command**
 
@@ -267,7 +268,8 @@ or
    
 You need to use a combination of ``xball xbmgmt`` command if you prefer to see information from all the cards attached to the host server. Please see ``xball`` page for more details. 
    
-4. Programming the base partition 
+4. Programming the base partition
+#################################
 
 **Legacy command**
 
@@ -288,6 +290,7 @@ or when a specific partition to choose
    xbmgmt program --base --device 0000:d8:00.0 --base --image <partition name> 
 
 5. Resetting the device
+#######################
 
 **Legacy command**
 
