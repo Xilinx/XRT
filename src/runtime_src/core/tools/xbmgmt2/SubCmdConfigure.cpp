@@ -185,7 +185,7 @@ show_device_conf(xrt_core::device* device)
 
   boost::format node_data_format("  %-33s: %s\n");
   std::string not_supported = "Not supported";
-  uint16_t sec_level = not_supported;
+  std::string sec_level = not_supported;
   try {
     sec_level = xrt_core::device_query<xrt_core::query::sec_level>(device);
   }
