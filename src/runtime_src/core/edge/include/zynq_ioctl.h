@@ -496,6 +496,8 @@ struct drm_zocl_sk_create {
  */
 enum drm_zocl_scu_state {
 	ZOCL_SCU_STATE_DONE,
+	ZOCL_SCU_STATE_READY,
+	ZOCL_SCU_STATE_CRASH,
 };
 
 /**

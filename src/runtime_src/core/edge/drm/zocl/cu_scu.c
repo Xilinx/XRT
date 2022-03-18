@@ -170,6 +170,7 @@ int xrt_cu_scu_init(struct xrt_cu *xcu)
 	core->credits = core->max_credits;
 	core->run_cnts = 0;
 	spin_lock_init(&core->cu_lock);
+	sema_init(&core->sc_sem, 0);
 	size = SOFT_KERNEL_REG_SIZE;
 	core->sc_bo = zocl_drm_create_bo(zdev->ddev, size, ZOCL_BO_FLAGS_CMA);
 	if (IS_ERR(core->sc_bo))
@@ -228,7 +229,6 @@ void xrt_cu_scu_fini(struct xrt_cu *xcu)
 		DRM_WARN("Failed to terminate SCU pid %d.  Performing SIGKILL.\n",core->sc_pid);
 		kill_pid(p, SIGKILL, 1);
 	}
-	udelay(1);
 	put_pid(p);
 
 	xrt_cu_fini(xcu);
