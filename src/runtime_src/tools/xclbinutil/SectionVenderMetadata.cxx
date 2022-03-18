@@ -85,10 +85,9 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
 
   // Do we have enough room to overlay the header structure
   if (_origSectionSize < sizeof(vender_metadata)) {
-    const auto& errMsg = boost::str(boost::format(
-                                        "ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
-                                    % _origSectionSize % sizeof(vender_metadata));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
+                                % _origSectionSize % sizeof(vender_metadata);
+    throw std::runtime_error(boost::str(errMsg));
   }
 
   // Prepare our destination header buffer
@@ -125,7 +124,10 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
   boost::property_tree::read_json(ss, pt);
 
   // Extract and update the data
-  boost::property_tree::ptree& ptSK = pt.get_child("vender_metadata");
+  const boost::property_tree::ptree ptEmpty;
+  const boost::property_tree::ptree& ptSK = pt.get_child("vender_metadata", ptEmpty);
+  if (ptSK.empty())
+    throw std::runtime_error("ERROR: copyBufferUpdateMetadata could not find the vender_metadata section.");
 
   // Update and record the variables
   // mpo_name
@@ -134,10 +136,9 @@ SectionVenderMetadata::copyBufferUpdateMetadata(const char* _pOrigDataSection,
     std::string sValue = ptSK.get<std::string>("mpo_name", sDefault);
 
     if (sValue.compare(getSectionIndexName()) != 0) {
-      const auto& errMsg = boost::str(boost::format(
-                                          "ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'")
-                                      % sValue % getSectionIndexName());
-      throw std::runtime_error(errMsg);
+      auto errMsg = boost::format("ERROR: Metadata data mpo_name '%s' does not match expected section name '%s'")
+                                  % sValue % getSectionIndexName();
+      throw std::runtime_error(boost::str(errMsg));
     }
 
     venderMetadataHdr.mpo_name = sizeof(vender_metadata) + stringBlock.tellp();
@@ -220,10 +221,9 @@ SectionVenderMetadata::readSubPayload(const char* _pOrigDataSection,
 {
   // Only default (e.g. empty) sub sections are supported
   if (!_sSubSectionName.empty()) {
-    const auto& errMsg = boost::str(boost::format(
-                                        "ERROR: Subsection '%s' not support by section '%s")
-                                    % _sSubSectionName % getSectionKindAsString());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s")
+                                % _sSubSectionName % getSectionKindAsString();
+    throw std::runtime_error(boost::str(errMsg));
   }
 
   // Some basic DRC checks
@@ -250,8 +250,8 @@ SectionVenderMetadata::writeObjImage(std::ostream& _oStream) const
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
-    const auto& errMsg = boost::str(boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(vender_metadata));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the bmc structure (%d)") % m_bufferSize % sizeof(vender_metadata);
+    throw std::runtime_error(boost::str(errMsg));
   }
 
   // No look at the data
@@ -271,10 +271,9 @@ SectionVenderMetadata::writeMetadata(std::ostream& _oStream) const
   // Overlay the structure
   // Do we have enough room to overlay the header structure
   if (m_bufferSize < sizeof(vender_metadata)) {
-    const auto& errMsg = boost::str(boost::format(
-                                        "ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
-                                    % m_bufferSize % sizeof(vender_metadata));
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Segment size (%d) is smaller than the size of the vender_metadata structure (%d)")
+                                % m_bufferSize % sizeof(vender_metadata);
+    throw std::runtime_error(boost::str(errMsg));
   }
 
   vender_metadata* pHdr = reinterpret_cast<vender_metadata*>(m_pBuffer);
@@ -311,10 +310,9 @@ SectionVenderMetadata::writeSubPayload(const std::string& _sSubSectionName,
   }
 
   if (!_sSubSectionName.empty()) {
-    const auto& errMsg = boost::str(boost::format(
-                                        "ERROR: Subsection '%s' not support by section '%s")
-                                    % _sSubSectionName % getSectionKindAsString());
-    throw std::runtime_error(errMsg);
+    auto errMsg = boost::format("ERROR: Subsection '%s' not support by section '%s")
+                                % _sSubSectionName % getSectionKindAsString();
+    throw std::runtime_error(boost::str(errMsg));
   }
 
   // Some basic DRC checks
@@ -345,7 +343,10 @@ SectionVenderMetadata::readXclBinBinary(std::fstream& _istream, const axlf_secti
   boost::property_tree::ptree pt;
   boost::property_tree::read_json(ss, pt);
 
-  boost::property_tree::ptree& ptVenderMetadata = pt.get_child("vender_metadata");
+  const boost::property_tree::ptree ptEmpty;
+  const boost::property_tree::ptree& ptVenderMetadata = pt.get_child("vender_metadata", ptEmpty);
+  if (ptVenderMetadata.empty())
+    throw std::runtime_error("ERROR: copyBufferUpdateMetadata could not find the vender_metadata section.");
 
   XUtil::TRACE_PrintTree("Current VENDER_METADATA contents", pt);
   std::string sName = ptVenderMetadata.get<std::string>("mpo_name");
