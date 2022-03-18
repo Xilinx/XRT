@@ -417,4 +417,117 @@ start_profiling_event_count(const std::string& port_name)
   return handle;
 }
 
+void
+Aie::
+configure_bd(int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+  uint64_t address,
+  uint32_t length,
+  const std::vector<uint32_t>& stepsize,
+  const std::vector<uint32_t>& wrap,
+  const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+  bool enable_packet,
+  uint8_t packet_id,
+  uint8_t out_of_order_bd_id,
+  bool tlast_suppress,
+  uint32_t iteration_stepsize,
+  uint16_t iteration_wrap,
+  uint8_t iteration_current,
+  bool enable_compression,
+  bool lock_acq_enable,
+  int8_t lock_acq_value,
+  uint8_t lock_acq_id,
+  int8_t lock_rel_value,
+  uint8_t lock_rel_id,
+  bool use_next_bd,
+  uint8_t next_bd,
+  uint8_t burst_length)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't configure bd: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't configure bd");
+
+  adf::dma_api::configureBD(tileType, column, row, bdId,
+    {address, length, stepsize, wrap, padding, enable_packet, packet_id, out_of_order_bd_id, tlast_suppress, iteration_stepsize, iteration_wrap, iteration_current, enable_compression, lock_acq_enable, lock_acq_value, lock_acq_id, lock_rel_value, lock_rel_id, use_next_bd, next_bd, burst_length});
+}
+
+void
+Aie::
+enqueue_task(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't enqueue task: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't enqueue task");
+
+  adf::dma_api::enqueueTask(tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, startBdId);
+}
+
+void
+Aie::
+wait_dma_channel_task_queue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't wait for dma channel task queue: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't wait for dma channel task queue");
+
+  adf::dma_api::waitDMAChannelTaskQueue(tileType, column, row, dir, channel);
+}
+
+void
+Aie::
+wait_dma_channel_done(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't wait for dma channel done: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't wait for dma channel done");
+
+  adf::dma_api::waitDMAChannelDone(tileType, column, row, dir, channel);
+}
+
+void
+Aie::
+initialize_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't initialize lock: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't initialize lock");
+
+  adf::lock_api::initializeLock(tileType, column, row, lockId, initVal);
+}
+
+void
+Aie::
+acquire_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't acquire lock: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't  acquire lock");
+
+  adf::lock_api::acquireLock(tileType, column, row, lockId, acqVal);
+}
+
+void
+Aie::
+release_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+{
+  if (!devInst)
+    throw xrt_core::error(-EINVAL, "Can't release lock: AIE is not initialized");
+
+  if (access_mode == xrt::aie::access_mode::shared)
+    throw xrt_core::error(-EPERM, "Shared AIE context can't release lock");
+
+  adf::lock_api::releaseLock(tileType, column, row, lockId, relVal);
+}
+
 }

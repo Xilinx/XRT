@@ -228,6 +228,76 @@ send_exception_message(const char* msg)
   xrt_core::message::send(xrt_core::message::severity_level::error, "XRT", msg);
 }
 
+static void
+configure_bd(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+  uint64_t address,
+  uint32_t length,
+  const std::vector<uint32_t>& stepsize,
+  const std::vector<uint32_t>& wrap,
+  const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+  bool enable_packet,
+  uint8_t packet_id,
+  uint8_t out_of_order_bd_id,
+  bool tlast_suppress,
+  uint32_t iteration_stepsize,
+  uint16_t iteration_wrap,
+  uint8_t iteration_current,
+  bool enable_compression,
+  bool lock_acq_enable,
+  int8_t lock_acq_value,
+  uint8_t lock_acq_id,
+  int8_t lock_rel_value,
+  uint8_t lock_rel_id,
+  bool use_next_bd,
+  uint8_t next_bd,
+  uint8_t burst_length)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->configure_bd(tileType, column, row, bdId, address, length, stepsize, wrap, padding, enable_packet, packet_id, out_of_order_bd_id, tlast_suppress, iteration_stepsize, iteration_wrap, iteration_current, enable_compression, lock_acq_enable, lock_acq_value, lock_acq_id, lock_rel_value, lock_rel_id, use_next_bd, next_bd, burst_length);
+}
+
+static void
+enqueue_task(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->enqueue_task(tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, startBdId);
+}
+
+static void
+wait_dma_channel_task_queue(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->wait_dma_channel_task_queue(tileType, column, row, dir, channel);
+}
+
+static void
+wait_dma_channel_done(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->wait_dma_channel_done(tileType, column, row, dir, channel);
+}
+
+static void
+initialize_lock(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->initialize_lock(tileType, column, row, lockId, initVal);
+}
+
+static void
+acquire_lock(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->acquire_lock(tileType, column, row, lockId, acqVal);
+}
+
+static void
+release_lock(xrtDeviceHandle dhdl, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+{
+  auto device = xrt_core::device_int::get_core_device(dhdl);
+  device->release_lock(tileType, column, row, lockId, relVal);
+}
+
 }
 
 //////////////////////////////////////////////////////////////
@@ -801,6 +871,146 @@ xrtAIEStopProfiling(xrtDeviceHandle handle, int pHandle)
 {
   try {
     stop_profiling(handle, pHandle);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtConfigureBD(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+    uint64_t address,
+    uint32_t length,
+    const std::vector<uint32_t>& stepsize,
+    const std::vector<uint32_t>& wrap,
+    const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+    bool enable_packet,
+    uint8_t packet_id,
+    uint8_t out_of_order_bd_id,
+    bool tlast_suppress,
+    uint32_t iteration_stepsize,
+    uint16_t iteration_wrap,
+    uint8_t iteration_current,
+    bool enable_compression,
+    bool lock_acq_enable,
+    int8_t lock_acq_value,
+    uint8_t lock_acq_id,
+    int8_t lock_rel_value,
+    uint8_t lock_rel_id,
+    bool use_next_bd,
+    uint8_t next_bd,
+    uint8_t burst_length)
+{
+  try {
+    configure_bd(handle, tileType, column, bdId, row, address, length, stepsize, wrap, padding, enable_packet, packet_id, out_of_order_bd_id, tlast_suppress, iteration_stepsize, iteration_wrap, iteration_current, enable_compression, lock_acq_enable, lock_acq_value, lock_acq_id, lock_rel_value, lock_rel_id, use_next_bd, next_bd, burst_length);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtEnqueueTask(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+{
+  try {
+    enqueue_task(handle, tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, startBdId);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtWaitDMAChannelTaskQueue(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  try {
+    wait_dma_channel_task_queue(handle, tileType, column, row, dir, channel);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtWaitDMAChannelDone(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  try {
+    wait_dma_channel_done(handle, tileType, column, row, dir, channel);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtInitializeLock(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+{
+  try {
+    initialize_lock(handle, tileType, column, row, lockId, initVal);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtAcquireLock(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+{
+  try {
+    acquire_lock(handle, tileType, column, row, lockId, acqVal);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get_code();
+  }
+  catch (const std::exception& ex) {
+    send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xrtReleaseLock(xrtDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+{
+  try {
+    release_lock(handle, tileType, column, row, lockId, relVal);
     return 0;
   }
   catch (const xrt_core::error& ex) {

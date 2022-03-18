@@ -1037,3 +1037,250 @@ xclStopProfiling(xclDeviceHandle handle, int phdl)
   }
   return -1;
 }
+
+int
+xclConfigureBD(xclDeviceHandle handle,
+  int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+  uint64_t address,
+  uint32_t length,
+  const std::vector<uint32_t>& stepsize,
+  const std::vector<uint32_t>& wrap,
+  const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+  bool enable_packet,
+  uint8_t packet_id,
+  uint8_t out_of_order_bd_id,
+  bool tlast_suppress,
+  uint32_t iteration_stepsize,
+  uint16_t iteration_wrap,
+  uint8_t iteration_current,
+  bool enable_compression,
+  bool lock_acq_enable,
+  int8_t lock_acq_value,
+  uint8_t lock_acq_id,
+  int8_t lock_rel_value,
+  uint8_t lock_rel_id,
+  bool use_next_bd,
+  uint8_t next_bd,
+  uint8_t burst_length
+)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->configure_bd(tileType, column, row, bdId, address, length, stepsize, wrap, padding, enable_packet, packet_id, out_of_order_bd_id, tlast_suppress, iteration_stepsize, iteration_wrap, iteration_current, enable_compression, lock_acq_enable, lock_acq_value, lock_acq_id, lock_rel_value, lock_rel_id, use_next_bd, next_bd, burst_length);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclEnqueueTask(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->enqueue_task(tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, startBdId);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclWaitDMAChannelTaskQueue(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->wait_dma_channel_task_queue(tileType, column, row, dir, channel);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclWaitDMAChannelDone(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->wait_dma_channel_done(tileType, column, row, dir, channel);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclInitializeLock(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->initialize_lock(tileType, column, row, lockId, initVal);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclAcquireLock(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->acquire_lock(tileType, column, row, lockId, acqVal);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}
+
+int
+xclReleaseLock(xclDeviceHandle handle, int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal)
+{
+  try {
+#ifndef __AIESIM__
+    auto device = xrt_core::get_userpf_device(handle);
+    auto drv = ZYNQ::shim::handleCheck(device->get_device_handle());
+
+    if (!drv->isAieRegistered())
+      throw xrt_core::error(-EINVAL, "No AIE presented");
+    auto aieArray = drv->getAieArray();
+#else
+    auto aieArray = getAieArray();
+#endif
+
+    if (!aieArray->is_context_set()) {
+      aieArray->open_context(device.get(), xrt::aie::access_mode::primary);
+    }
+
+    aieArray->release_lock(tileType, column, row, lockId, relVal);
+    return 0;
+  }
+  catch (const xrt_core::error& ex) {
+    xrt_core::send_exception_message(ex.what());
+    errno = ex.get();
+  }
+  catch (const std::exception& ex) {
+    xrt_core::send_exception_message(ex.what());
+  }
+  return -1;
+}

@@ -230,6 +230,48 @@ struct ishim
 
   virtual void
   load_axlf_meta(const axlf*) = 0;
+
+  virtual void
+  configure_bd(int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+    uint64_t address,
+    uint32_t length,
+    const std::vector<uint32_t>& stepsize,
+    const std::vector<uint32_t>& wrap,
+    const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+    bool enable_packet,
+    uint8_t packet_id,
+    uint8_t out_of_order_bd_id,
+    bool tlast_suppress,
+    uint32_t iteration_stepsize,
+    uint16_t iteration_wrap,
+    uint8_t iteration_current,
+    bool enable_compression,
+    bool lock_acq_enable,
+    int8_t lock_acq_value,
+    uint8_t lock_acq_id,
+    int8_t lock_rel_value,
+    uint8_t lock_rel_id,
+    bool use_next_bd,
+    uint8_t next_bd,
+    uint8_t burst_length) = 0;
+
+  virtual void
+  enqueue_task(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId) = 0;
+
+  virtual void
+  wait_dma_channel_task_queue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel) = 0;
+
+  virtual void
+  wait_dma_channel_done(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel) = 0;
+
+  virtual void
+  initialize_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal) = 0;
+
+  virtual void
+  acquire_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal) = 0;
+
+  virtual void
+  release_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal) = 0;
 #endif
 };
 
@@ -620,6 +662,70 @@ struct shim : public DeviceType
     if (auto ret = xclLoadXclBinMeta(DeviceType::get_device_handle(), buffer))
       throw system_error(ret, "failed to load xclbin");
   }
+
+  void configure_bd(int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+    uint64_t address,
+    uint32_t length,
+    const std::vector<uint32_t>& stepsize,
+    const std::vector<uint32_t>& wrap,
+    const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+    bool enable_packet,
+    uint8_t packet_id,
+    uint8_t out_of_order_bd_id,
+    bool tlast_suppress,
+    uint32_t iteration_stepsize,
+    uint16_t iteration_wrap,
+    uint8_t iteration_current,
+    bool enable_compression,
+    bool lock_acq_enable,
+    int8_t lock_acq_value,
+    uint8_t lock_acq_id,
+    int8_t lock_rel_value,
+    uint8_t lock_rel_id,
+    bool use_next_bd,
+    uint8_t next_bd,
+    uint8_t burst_length) override
+  {
+    if (auto ret = xclConfigureBD(DeviceType::get_device_handle(), tileType, column, row, bdId, address, length, stepsize, wrap, padding, enable_packet, packet_id, out_of_order_bd_id, tlast_suppress, iteration_stepsize, iteration_wrap, iteration_current, enable_compression, lock_acq_enable, lock_acq_value, lock_acq_id, lock_rel_value, lock_rel_id, use_next_bd, next_bd, burst_length))
+      throw system_error(ret, "fail to configure bd");
+  }
+
+  void enqueue_task(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId) override
+  {
+    if (auto ret = xclEnqueueTask(DeviceType::get_device_handle(), tileType, column, row, dir, channel, repeatCount, enableTaskCompleteToken, startBdId))
+      throw system_error(ret, "fail to enqueue task");
+  }
+
+  void wait_dma_channel_task_queue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel) override
+  {
+    if (auto ret = xclWaitDMAChannelTaskQueue(DeviceType::get_device_handle(), tileType, column, row, dir, channel))
+      throw system_error(ret, "fail to wait for dma channel task queue");
+  }
+
+  void wait_dma_channel_done(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel) override
+  {
+    if (auto ret = xclWaitDMAChannelDone(DeviceType::get_device_handle(), tileType, column, row, dir, channel))
+      throw system_error(ret, "fail to wait for dma channel done");
+  }
+
+  void initialize_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal) override
+  {
+    if (auto ret = xclInitializeLock(DeviceType::get_device_handle(), tileType, column, row, lockId, initVal))
+      throw system_error(ret, "fail to initialize lock");
+  }
+
+  void acquire_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal) override
+  {
+    if (auto ret = xclAcquireLock(DeviceType::get_device_handle(), tileType, column, row, lockId, acqVal))
+      throw system_error(ret, "fail to acquire lock");
+  }
+
+  void release_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal) override
+  {
+    if (auto ret = xclReleaseLock(DeviceType::get_device_handle(), tileType, column, row, lockId, relVal))
+      throw system_error(ret, "fail to release lock");
+  }
+
 #endif
 };
 

@@ -125,6 +125,48 @@ public:
     void
     clear_bd(BD& bd);
 
+    void
+    configure_bd(int tileType, uint8_t column, uint8_t row, uint8_t bdId,
+        uint64_t address,
+        uint32_t length,
+        const std::vector<uint32_t>& stepsize,
+        const std::vector<uint32_t>& wrap,
+        const std::vector<std::pair<uint32_t, uint32_t>>& padding,
+        bool enable_packet,
+        uint8_t packet_id,
+        uint8_t out_of_order_bd_id,
+        bool tlast_suppress,
+        uint32_t iteration_stepsize,
+        uint16_t iteration_wrap,
+        uint8_t iteration_current,
+        bool enable_compression,
+        bool lock_acq_enable,
+        int8_t lock_acq_value,
+        uint8_t lock_acq_id,
+        int8_t lock_rel_value,
+        uint8_t lock_rel_id,
+        bool use_next_bd,
+        uint8_t next_bd,
+        uint8_t burst_length);
+
+    void
+    enqueue_task(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel, uint32_t repeatCount, bool enableTaskCompleteToken, uint8_t startBdId);
+
+    void
+    wait_dma_channel_task_queue(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
+
+    void
+    wait_dma_channel_done(int tileType, uint8_t column, uint8_t row, int dir, uint8_t channel);
+
+    void
+    initialize_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t initVal);
+
+    void
+    acquire_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t acqVal);
+
+    void
+    release_lock(int tileType, uint8_t column, uint8_t row, unsigned short lockId, int8_t relVal);
+
 private:
     int numCols;
     int fd;
